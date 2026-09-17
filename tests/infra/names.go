@@ -9,9 +9,16 @@ import (
 // `docker ps` truncates the NAMES column and these appear constantly.
 const Prefix = "inf"
 
-// NetworkName is the single network. Package-scoped containers join it too, so an
+// NetworkName is the shared network. Package-scoped containers join it too, so an
 // Isolated suite can still reach the shared Mailpit. It holds no state.
 const NetworkName = Prefix + "-net"
+
+// PackageNetwork is the network an Isolated package gets to itself.
+//
+// Its own, because a host alias belongs to the network: two WireMocks claiming
+// api.github.com on one network make Docker DNS round-robin between them, so a stub
+// registered on one is missed by a request that lands on the other.
+func PackageNetwork(pkg string) string { return NetworkName + "-" + Sanitize(pkg) }
 
 var unsafeNameChars = regexp.MustCompile(`[^a-zA-Z0-9_.-]+`)
 

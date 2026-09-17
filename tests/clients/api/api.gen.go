@@ -321,6 +321,819 @@ func (e UpdateAdminConfig500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody0Credentials0InstanceType.
+const (
+	CreateGitHubAppConnectionJSONBody0Credentials0InstanceTypeServer CreateGitHubAppConnectionJSONBody0Credentials0InstanceType = "server"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody0Credentials0InstanceType enum.
+func (e CreateGitHubAppConnectionJSONBody0Credentials0InstanceType) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody0Credentials0InstanceTypeServer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody0Credentials1InstanceType.
+const (
+	CreateGitHubAppConnectionJSONBody0Credentials1InstanceTypeCloud CreateGitHubAppConnectionJSONBody0Credentials1InstanceType = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody0Credentials1InstanceType enum.
+func (e CreateGitHubAppConnectionJSONBody0Credentials1InstanceType) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody0Credentials1InstanceTypeCloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody0Method.
+const (
+	CreateGitHubAppConnectionJSONBody0MethodGithubApp CreateGitHubAppConnectionJSONBody0Method = "github-app"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody0Method enum.
+func (e CreateGitHubAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody0MethodGithubApp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody1Credentials0InstanceType.
+const (
+	CreateGitHubAppConnectionJSONBody1Credentials0InstanceTypeServer CreateGitHubAppConnectionJSONBody1Credentials0InstanceType = "server"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody1Credentials0InstanceType enum.
+func (e CreateGitHubAppConnectionJSONBody1Credentials0InstanceType) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody1Credentials0InstanceTypeServer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody1Credentials1InstanceType.
+const (
+	CreateGitHubAppConnectionJSONBody1Credentials1InstanceTypeCloud CreateGitHubAppConnectionJSONBody1Credentials1InstanceType = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody1Credentials1InstanceType enum.
+func (e CreateGitHubAppConnectionJSONBody1Credentials1InstanceType) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody1Credentials1InstanceTypeCloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody1Method.
+const (
+	CreateGitHubAppConnectionJSONBody1MethodOauth CreateGitHubAppConnectionJSONBody1Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody1Method enum.
+func (e CreateGitHubAppConnectionJSONBody1Method) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody1MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody2Credentials0InstanceType.
+const (
+	CreateGitHubAppConnectionJSONBody2Credentials0InstanceTypeServer CreateGitHubAppConnectionJSONBody2Credentials0InstanceType = "server"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody2Credentials0InstanceType enum.
+func (e CreateGitHubAppConnectionJSONBody2Credentials0InstanceType) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody2Credentials0InstanceTypeServer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody2Credentials1InstanceType.
+const (
+	CreateGitHubAppConnectionJSONBody2Credentials1InstanceTypeCloud CreateGitHubAppConnectionJSONBody2Credentials1InstanceType = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody2Credentials1InstanceType enum.
+func (e CreateGitHubAppConnectionJSONBody2Credentials1InstanceType) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody2Credentials1InstanceTypeCloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnectionJSONBody2Method.
+const (
+	CreateGitHubAppConnectionJSONBody2MethodPat CreateGitHubAppConnectionJSONBody2Method = "pat"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnectionJSONBody2Method enum.
+func (e CreateGitHubAppConnectionJSONBody2Method) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnectionJSONBody2MethodPat:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection0AppGithub CreateGitHubAppConnection200JSONResponseBodyAppConnection0App = "github"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection0AppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0Server CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 = "server"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0Server:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1Cloud CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1Cloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection0MethodGithubApp CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method = "github-app"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection0MethodGithubApp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection1AppGithub CreateGitHubAppConnection200JSONResponseBodyAppConnection1App = "github"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection1AppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0Server CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 = "server"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0Server:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1Cloud CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1Cloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection1MethodOauth CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection1MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection2App.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection2AppGithub CreateGitHubAppConnection200JSONResponseBodyAppConnection2App = "github"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection2App enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection2App) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection2AppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0Server CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 = "server"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0Server:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1Cloud CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1Cloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection2MethodPat CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method = "pat"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection2MethodPat:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus.
+const (
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed  CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "failed"
+	CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus enum.
+func (e CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed:
+		return true
+	case CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateGitHubAppConnection400JSONResponseBodyStatusCodeN400 CreateGitHubAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateGitHubAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateGitHubAppConnection401JSONResponseBodyStatusCodeN401 CreateGitHubAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateGitHubAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateGitHubAppConnection403JSONResponseBodyStatusCodeN403 CreateGitHubAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateGitHubAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateGitHubAppConnection404JSONResponseBodyStatusCodeN404 CreateGitHubAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateGitHubAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateGitHubAppConnection422JSONResponseBodyStatusCodeN422 CreateGitHubAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateGitHubAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateGitHubAppConnection500JSONResponseBodyStatusCodeN500 CreateGitHubAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateGitHubAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection0AppGithub DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App = "github"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection0AppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0Server DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 = "server"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0Server:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1Cloud DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1Cloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection0MethodGithubApp DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method = "github-app"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection0MethodGithubApp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection1AppGithub DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App = "github"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection1AppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0Server DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 = "server"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0Server:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1Cloud DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1Cloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection1MethodOauth DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection1MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection2AppGithub DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App = "github"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection2AppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0Server DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 = "server"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0Server:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1Cloud DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 = "cloud"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1Cloud:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection2MethodPat DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method = "pat"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection2MethodPat:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus.
+const (
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed  DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "failed"
+	DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus enum.
+func (e DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed:
+		return true
+	case DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection400JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubAppConnection400JSONResponseBodyStatusCodeN400 DeleteGitHubAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection400JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection401JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubAppConnection401JSONResponseBodyStatusCodeN401 DeleteGitHubAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection401JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection403JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubAppConnection403JSONResponseBodyStatusCodeN403 DeleteGitHubAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection403JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection404JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubAppConnection404JSONResponseBodyStatusCodeN404 DeleteGitHubAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection404JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection422JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubAppConnection422JSONResponseBodyStatusCodeN422 DeleteGitHubAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection422JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubAppConnection500JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubAppConnection500JSONResponseBodyStatusCodeN500 DeleteGitHubAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubAppConnection500JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RefreshAuthToken400JSONResponseBodyStatusCode.
 const (
 	RefreshAuthToken400JSONResponseBodyStatusCodeN400 RefreshAuthToken400JSONResponseBodyStatusCode = 400
@@ -2169,6 +2982,186 @@ func (e CompleteAccountSignupV3500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for BeginEmailSignupV3400JSONResponseBodyStatusCode.
+const (
+	BeginEmailSignupV3400JSONResponseBodyStatusCodeN400 BeginEmailSignupV3400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the BeginEmailSignupV3400JSONResponseBodyStatusCode enum.
+func (e BeginEmailSignupV3400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BeginEmailSignupV3400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BeginEmailSignupV3401JSONResponseBodyStatusCode.
+const (
+	BeginEmailSignupV3401JSONResponseBodyStatusCodeN401 BeginEmailSignupV3401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the BeginEmailSignupV3401JSONResponseBodyStatusCode enum.
+func (e BeginEmailSignupV3401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BeginEmailSignupV3401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BeginEmailSignupV3403JSONResponseBodyStatusCode.
+const (
+	BeginEmailSignupV3403JSONResponseBodyStatusCodeN403 BeginEmailSignupV3403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the BeginEmailSignupV3403JSONResponseBodyStatusCode enum.
+func (e BeginEmailSignupV3403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BeginEmailSignupV3403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BeginEmailSignupV3404JSONResponseBodyStatusCode.
+const (
+	BeginEmailSignupV3404JSONResponseBodyStatusCodeN404 BeginEmailSignupV3404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the BeginEmailSignupV3404JSONResponseBodyStatusCode enum.
+func (e BeginEmailSignupV3404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BeginEmailSignupV3404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BeginEmailSignupV3422JSONResponseBodyStatusCode.
+const (
+	BeginEmailSignupV3422JSONResponseBodyStatusCodeN422 BeginEmailSignupV3422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the BeginEmailSignupV3422JSONResponseBodyStatusCode enum.
+func (e BeginEmailSignupV3422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BeginEmailSignupV3422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BeginEmailSignupV3500JSONResponseBodyStatusCode.
+const (
+	BeginEmailSignupV3500JSONResponseBodyStatusCodeN500 BeginEmailSignupV3500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the BeginEmailSignupV3500JSONResponseBodyStatusCode enum.
+func (e BeginEmailSignupV3500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BeginEmailSignupV3500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailSignupV3400JSONResponseBodyStatusCode.
+const (
+	VerifyEmailSignupV3400JSONResponseBodyStatusCodeN400 VerifyEmailSignupV3400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailSignupV3400JSONResponseBodyStatusCode enum.
+func (e VerifyEmailSignupV3400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailSignupV3400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailSignupV3401JSONResponseBodyStatusCode.
+const (
+	VerifyEmailSignupV3401JSONResponseBodyStatusCodeN401 VerifyEmailSignupV3401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailSignupV3401JSONResponseBodyStatusCode enum.
+func (e VerifyEmailSignupV3401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailSignupV3401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailSignupV3403JSONResponseBodyStatusCode.
+const (
+	VerifyEmailSignupV3403JSONResponseBodyStatusCodeN403 VerifyEmailSignupV3403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailSignupV3403JSONResponseBodyStatusCode enum.
+func (e VerifyEmailSignupV3403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailSignupV3403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailSignupV3404JSONResponseBodyStatusCode.
+const (
+	VerifyEmailSignupV3404JSONResponseBodyStatusCodeN404 VerifyEmailSignupV3404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailSignupV3404JSONResponseBodyStatusCode enum.
+func (e VerifyEmailSignupV3404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailSignupV3404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailSignupV3422JSONResponseBodyStatusCode.
+const (
+	VerifyEmailSignupV3422JSONResponseBodyStatusCodeN422 VerifyEmailSignupV3422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailSignupV3422JSONResponseBodyStatusCode enum.
+func (e VerifyEmailSignupV3422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailSignupV3422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailSignupV3500JSONResponseBodyStatusCode.
+const (
+	VerifyEmailSignupV3500JSONResponseBodyStatusCodeN500 VerifyEmailSignupV3500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailSignupV3500JSONResponseBodyStatusCode enum.
+func (e VerifyEmailSignupV3500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailSignupV3500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // GetServerStatus400JSONResponseBodyStatusCode defines parameters for GetServerStatus.
 type GetServerStatus400JSONResponseBodyStatusCode float32
 
@@ -2295,6 +3288,652 @@ type UpdateAdminConfig422JSONResponseBodyStatusCode float32
 
 // UpdateAdminConfig500JSONResponseBodyStatusCode defines parameters for UpdateAdminConfig.
 type UpdateAdminConfig500JSONResponseBodyStatusCode float32
+
+// CreateGitHubAppConnectionJSONBody defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody struct {
+	// Description An optional description for the GitHub Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId The Gateway ID to use for this connection.
+	GatewayId *openapi_types.UUID `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId The Gateway Pool ID to use for this connection.
+	GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for GitHub Connections.
+	IsAutoRotationEnabled *CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for GitHub Connections.
+	IsPlatformManagedCredentials *CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the GitHub Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the GitHub Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for GitHub Connections.
+	Rotation *CreateGitHubAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateGitHubAppConnectionJSONBodyRotation0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateGitHubAppConnectionJSONBodyRotation1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateGitHubAppConnectionJSONBody_Rotation defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnectionJSONBody0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with GitHub.
+	Credentials CreateGitHubAppConnectionJSONBody_0_Credentials `json:"credentials"`
+
+	// Method The method used to authenticate with GitHub.
+	Method CreateGitHubAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateGitHubAppConnectionJSONBody0Credentials0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody0Credentials0 struct {
+	Code           string                                                     `json:"code"`
+	GitHubAppId    *openapi_types.UUID                                        `json:"gitHubAppId,omitempty"`
+	Host           string                                                     `json:"host"`
+	InstallationId string                                                     `json:"installationId"`
+	InstanceType   CreateGitHubAppConnectionJSONBody0Credentials0InstanceType `json:"instanceType"`
+}
+
+// CreateGitHubAppConnectionJSONBody0Credentials0InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody0Credentials0InstanceType string
+
+// CreateGitHubAppConnectionJSONBody0Credentials1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody0Credentials1 struct {
+	Code           string                                                      `json:"code"`
+	GitHubAppId    *openapi_types.UUID                                         `json:"gitHubAppId,omitempty"`
+	Host           *string                                                     `json:"host,omitempty"`
+	InstallationId string                                                      `json:"installationId"`
+	InstanceType   *CreateGitHubAppConnectionJSONBody0Credentials1InstanceType `json:"instanceType,omitempty"`
+}
+
+// CreateGitHubAppConnectionJSONBody0Credentials1InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody0Credentials1InstanceType string
+
+// CreateGitHubAppConnectionJSONBody_0_Credentials defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody_0_Credentials struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnectionJSONBody0Method defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody0Method string
+
+// CreateGitHubAppConnectionJSONBody1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody1 struct {
+	// Credentials The credentials used to connect with GitHub.
+	Credentials CreateGitHubAppConnectionJSONBody_1_Credentials `json:"credentials"`
+
+	// Method The method used to authenticate with GitHub.
+	Method CreateGitHubAppConnectionJSONBody1Method `json:"method"`
+}
+
+// CreateGitHubAppConnectionJSONBody1Credentials0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody1Credentials0 struct {
+	Code         string                                                     `json:"code"`
+	Host         string                                                     `json:"host"`
+	InstanceType CreateGitHubAppConnectionJSONBody1Credentials0InstanceType `json:"instanceType"`
+}
+
+// CreateGitHubAppConnectionJSONBody1Credentials0InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody1Credentials0InstanceType string
+
+// CreateGitHubAppConnectionJSONBody1Credentials1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody1Credentials1 struct {
+	Code         string                                                      `json:"code"`
+	Host         *string                                                     `json:"host,omitempty"`
+	InstanceType *CreateGitHubAppConnectionJSONBody1Credentials1InstanceType `json:"instanceType,omitempty"`
+}
+
+// CreateGitHubAppConnectionJSONBody1Credentials1InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody1Credentials1InstanceType string
+
+// CreateGitHubAppConnectionJSONBody_1_Credentials defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody_1_Credentials struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnectionJSONBody1Method defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody1Method string
+
+// CreateGitHubAppConnectionJSONBody2 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody2 struct {
+	// Credentials The credentials used to connect with GitHub.
+	Credentials CreateGitHubAppConnectionJSONBody_2_Credentials `json:"credentials"`
+
+	// Method The method used to authenticate with GitHub.
+	Method CreateGitHubAppConnectionJSONBody2Method `json:"method"`
+}
+
+// CreateGitHubAppConnectionJSONBody2Credentials0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody2Credentials0 struct {
+	Host                string                                                     `json:"host"`
+	InstanceType        CreateGitHubAppConnectionJSONBody2Credentials0InstanceType `json:"instanceType"`
+	PersonalAccessToken string                                                     `json:"personalAccessToken"`
+}
+
+// CreateGitHubAppConnectionJSONBody2Credentials0InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody2Credentials0InstanceType string
+
+// CreateGitHubAppConnectionJSONBody2Credentials1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody2Credentials1 struct {
+	Host                *string                                                     `json:"host,omitempty"`
+	InstanceType        *CreateGitHubAppConnectionJSONBody2Credentials1InstanceType `json:"instanceType,omitempty"`
+	PersonalAccessToken string                                                      `json:"personalAccessToken"`
+}
+
+// CreateGitHubAppConnectionJSONBody2Credentials1InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody2Credentials1InstanceType string
+
+// CreateGitHubAppConnectionJSONBody_2_Credentials defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody_2_Credentials struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnectionJSONBody2Method defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnectionJSONBody2Method string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateGitHubAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                     `json:"createdAt"`
+	Credentials struct {
+		GitHubAppId  *openapi_types.UUID                                                                    `json:"gitHubAppId,omitempty"`
+		Host         *string                                                                                `json:"host,omitempty"`
+		InstanceType *CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType `json:"instanceType,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 string
+
+// CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         CreateGitHubAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                     `json:"createdAt"`
+	Credentials struct {
+		Host         *string                                                                                `json:"host,omitempty"`
+		InstanceType *CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType `json:"instanceType,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection1App defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection1App string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 string
+
+// CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection1Method string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection2 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection2 struct {
+	App         CreateGitHubAppConnection200JSONResponseBodyAppConnection2App `json:"app"`
+	CreatedAt   time.Time                                                     `json:"createdAt"`
+	Credentials struct {
+		Host         *string                                                                                `json:"host,omitempty"`
+		InstanceType *CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType `json:"instanceType,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection2App defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection2App string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 string
+
+// CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection2Method string
+
+// CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus string
+
+// CreateGitHubAppConnection200JSONResponseBody_AppConnection defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateGitHubAppConnection400JSONResponseBodyStatusCode defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateGitHubAppConnection401JSONResponseBodyStatusCode defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateGitHubAppConnection403JSONResponseBodyStatusCode defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateGitHubAppConnection404JSONResponseBodyStatusCode defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateGitHubAppConnection422JSONResponseBodyStatusCode defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateGitHubAppConnection500JSONResponseBodyStatusCode defines parameters for CreateGitHubAppConnection.
+type CreateGitHubAppConnection500JSONResponseBodyStatusCode float32
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection0 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                     `json:"createdAt"`
+	Credentials struct {
+		GitHubAppId  *openapi_types.UUID                                                                    `json:"gitHubAppId,omitempty"`
+		Host         *string                                                                                `json:"host,omitempty"`
+		InstanceType *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType `json:"instanceType,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection0App string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 string
+
+// DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType struct {
+	union json.RawMessage
+}
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection0Method string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection1 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                     `json:"createdAt"`
+	Credentials struct {
+		Host         *string                                                                                `json:"host,omitempty"`
+		InstanceType *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType `json:"instanceType,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection1App string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 string
+
+// DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType struct {
+	union json.RawMessage
+}
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection1Method string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection2 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection2 struct {
+	App         DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App `json:"app"`
+	CreatedAt   time.Time                                                     `json:"createdAt"`
+	Credentials struct {
+		Host         *string                                                                                `json:"host,omitempty"`
+		InstanceType *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType `json:"instanceType,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection2App string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 string
+
+// DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType struct {
+	union json.RawMessage
+}
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection2Method string
+
+// DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus string
+
+// DeleteGitHubAppConnection200JSONResponseBody_AppConnection defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// DeleteGitHubAppConnection400JSONResponseBodyStatusCode defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection400JSONResponseBodyStatusCode float32
+
+// DeleteGitHubAppConnection401JSONResponseBodyStatusCode defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection401JSONResponseBodyStatusCode float32
+
+// DeleteGitHubAppConnection403JSONResponseBodyStatusCode defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection403JSONResponseBodyStatusCode float32
+
+// DeleteGitHubAppConnection404JSONResponseBodyStatusCode defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection404JSONResponseBodyStatusCode float32
+
+// DeleteGitHubAppConnection422JSONResponseBodyStatusCode defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection422JSONResponseBodyStatusCode float32
+
+// DeleteGitHubAppConnection500JSONResponseBodyStatusCode defines parameters for DeleteGitHubAppConnection.
+type DeleteGitHubAppConnection500JSONResponseBodyStatusCode float32
 
 // RefreshAuthToken400JSONResponseBodyStatusCode defines parameters for RefreshAuthToken.
 type RefreshAuthToken400JSONResponseBodyStatusCode float32
@@ -2948,11 +4587,62 @@ type CompleteAccountSignupV3422JSONResponseBodyStatusCode float32
 // CompleteAccountSignupV3500JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
 type CompleteAccountSignupV3500JSONResponseBodyStatusCode float32
 
+// BeginEmailSignupV3JSONBody defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3JSONBody struct {
+	CaptchaToken *string             `json:"captchaToken,omitempty"`
+	Email        openapi_types.Email `json:"email"`
+}
+
+// BeginEmailSignupV3400JSONResponseBodyStatusCode defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3400JSONResponseBodyStatusCode float32
+
+// BeginEmailSignupV3401JSONResponseBodyStatusCode defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3401JSONResponseBodyStatusCode float32
+
+// BeginEmailSignupV3403JSONResponseBodyStatusCode defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3403JSONResponseBodyStatusCode float32
+
+// BeginEmailSignupV3404JSONResponseBodyStatusCode defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3404JSONResponseBodyStatusCode float32
+
+// BeginEmailSignupV3422JSONResponseBodyStatusCode defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3422JSONResponseBodyStatusCode float32
+
+// BeginEmailSignupV3500JSONResponseBodyStatusCode defines parameters for BeginEmailSignupV3.
+type BeginEmailSignupV3500JSONResponseBodyStatusCode float32
+
+// VerifyEmailSignupV3JSONBody defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3JSONBody struct {
+	Code  string              `json:"code"`
+	Email openapi_types.Email `json:"email"`
+}
+
+// VerifyEmailSignupV3400JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3400JSONResponseBodyStatusCode float32
+
+// VerifyEmailSignupV3401JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3401JSONResponseBodyStatusCode float32
+
+// VerifyEmailSignupV3403JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3403JSONResponseBodyStatusCode float32
+
+// VerifyEmailSignupV3404JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3404JSONResponseBodyStatusCode float32
+
+// VerifyEmailSignupV3422JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3422JSONResponseBodyStatusCode float32
+
+// VerifyEmailSignupV3500JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
+type VerifyEmailSignupV3500JSONResponseBodyStatusCode float32
+
 // AdminBootstrapJSONRequestBody defines body for AdminBootstrap for application/json ContentType.
 type AdminBootstrapJSONRequestBody AdminBootstrapJSONBody
 
 // UpdateAdminConfigJSONRequestBody defines body for UpdateAdminConfig for application/json ContentType.
 type UpdateAdminConfigJSONRequestBody UpdateAdminConfigJSONBody
+
+// CreateGitHubAppConnectionJSONRequestBody defines body for CreateGitHubAppConnection for application/json ContentType.
+type CreateGitHubAppConnectionJSONRequestBody CreateGitHubAppConnectionJSONBody
 
 // AttachUniversalAuthJSONRequestBody defines body for AttachUniversalAuth for application/json ContentType.
 type AttachUniversalAuthJSONRequestBody AttachUniversalAuthJSONBody
@@ -2995,6 +4685,1026 @@ type SelectOrganizationV3JSONRequestBody SelectOrganizationV3JSONBody
 
 // CompleteAccountSignupV3JSONRequestBody defines body for CompleteAccountSignupV3 for application/json ContentType.
 type CompleteAccountSignupV3JSONRequestBody CompleteAccountSignupV3JSONBody
+
+// BeginEmailSignupV3JSONRequestBody defines body for BeginEmailSignupV3 for application/json ContentType.
+type BeginEmailSignupV3JSONRequestBody BeginEmailSignupV3JSONBody
+
+// VerifyEmailSignupV3JSONRequestBody defines body for VerifyEmailSignupV3 for application/json ContentType.
+type VerifyEmailSignupV3JSONRequestBody VerifyEmailSignupV3JSONBody
+
+// AsCreateGitHubAppConnectionJSONBody0 returns the union data inside the CreateGitHubAppConnectionJSONBody as a CreateGitHubAppConnectionJSONBody0
+func (t CreateGitHubAppConnectionJSONBody) AsCreateGitHubAppConnectionJSONBody0() (CreateGitHubAppConnectionJSONBody0, error) {
+	var body CreateGitHubAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody0 overwrites any union data inside the CreateGitHubAppConnectionJSONBody as the provided CreateGitHubAppConnectionJSONBody0
+func (t *CreateGitHubAppConnectionJSONBody) FromCreateGitHubAppConnectionJSONBody0(v CreateGitHubAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody0 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody, using the provided CreateGitHubAppConnectionJSONBody0
+func (t *CreateGitHubAppConnectionJSONBody) MergeCreateGitHubAppConnectionJSONBody0(v CreateGitHubAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody1 returns the union data inside the CreateGitHubAppConnectionJSONBody as a CreateGitHubAppConnectionJSONBody1
+func (t CreateGitHubAppConnectionJSONBody) AsCreateGitHubAppConnectionJSONBody1() (CreateGitHubAppConnectionJSONBody1, error) {
+	var body CreateGitHubAppConnectionJSONBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody1 overwrites any union data inside the CreateGitHubAppConnectionJSONBody as the provided CreateGitHubAppConnectionJSONBody1
+func (t *CreateGitHubAppConnectionJSONBody) FromCreateGitHubAppConnectionJSONBody1(v CreateGitHubAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody1 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody, using the provided CreateGitHubAppConnectionJSONBody1
+func (t *CreateGitHubAppConnectionJSONBody) MergeCreateGitHubAppConnectionJSONBody1(v CreateGitHubAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody2 returns the union data inside the CreateGitHubAppConnectionJSONBody as a CreateGitHubAppConnectionJSONBody2
+func (t CreateGitHubAppConnectionJSONBody) AsCreateGitHubAppConnectionJSONBody2() (CreateGitHubAppConnectionJSONBody2, error) {
+	var body CreateGitHubAppConnectionJSONBody2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody2 overwrites any union data inside the CreateGitHubAppConnectionJSONBody as the provided CreateGitHubAppConnectionJSONBody2
+func (t *CreateGitHubAppConnectionJSONBody) FromCreateGitHubAppConnectionJSONBody2(v CreateGitHubAppConnectionJSONBody2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody2 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody, using the provided CreateGitHubAppConnectionJSONBody2
+func (t *CreateGitHubAppConnectionJSONBody) MergeCreateGitHubAppConnectionJSONBody2(v CreateGitHubAppConnectionJSONBody2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateGitHubAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBodyRotation0 returns the union data inside the CreateGitHubAppConnectionJSONBody_Rotation as a CreateGitHubAppConnectionJSONBodyRotation0
+func (t CreateGitHubAppConnectionJSONBody_Rotation) AsCreateGitHubAppConnectionJSONBodyRotation0() (CreateGitHubAppConnectionJSONBodyRotation0, error) {
+	var body CreateGitHubAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_Rotation as the provided CreateGitHubAppConnectionJSONBodyRotation0
+func (t *CreateGitHubAppConnectionJSONBody_Rotation) FromCreateGitHubAppConnectionJSONBodyRotation0(v CreateGitHubAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_Rotation, using the provided CreateGitHubAppConnectionJSONBodyRotation0
+func (t *CreateGitHubAppConnectionJSONBody_Rotation) MergeCreateGitHubAppConnectionJSONBodyRotation0(v CreateGitHubAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBodyRotation1 returns the union data inside the CreateGitHubAppConnectionJSONBody_Rotation as a CreateGitHubAppConnectionJSONBodyRotation1
+func (t CreateGitHubAppConnectionJSONBody_Rotation) AsCreateGitHubAppConnectionJSONBodyRotation1() (CreateGitHubAppConnectionJSONBodyRotation1, error) {
+	var body CreateGitHubAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_Rotation as the provided CreateGitHubAppConnectionJSONBodyRotation1
+func (t *CreateGitHubAppConnectionJSONBody_Rotation) FromCreateGitHubAppConnectionJSONBodyRotation1(v CreateGitHubAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_Rotation, using the provided CreateGitHubAppConnectionJSONBodyRotation1
+func (t *CreateGitHubAppConnectionJSONBody_Rotation) MergeCreateGitHubAppConnectionJSONBodyRotation1(v CreateGitHubAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody0Credentials0 returns the union data inside the CreateGitHubAppConnectionJSONBody_0_Credentials as a CreateGitHubAppConnectionJSONBody0Credentials0
+func (t CreateGitHubAppConnectionJSONBody_0_Credentials) AsCreateGitHubAppConnectionJSONBody0Credentials0() (CreateGitHubAppConnectionJSONBody0Credentials0, error) {
+	var body CreateGitHubAppConnectionJSONBody0Credentials0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody0Credentials0 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_0_Credentials as the provided CreateGitHubAppConnectionJSONBody0Credentials0
+func (t *CreateGitHubAppConnectionJSONBody_0_Credentials) FromCreateGitHubAppConnectionJSONBody0Credentials0(v CreateGitHubAppConnectionJSONBody0Credentials0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody0Credentials0 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_0_Credentials, using the provided CreateGitHubAppConnectionJSONBody0Credentials0
+func (t *CreateGitHubAppConnectionJSONBody_0_Credentials) MergeCreateGitHubAppConnectionJSONBody0Credentials0(v CreateGitHubAppConnectionJSONBody0Credentials0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody0Credentials1 returns the union data inside the CreateGitHubAppConnectionJSONBody_0_Credentials as a CreateGitHubAppConnectionJSONBody0Credentials1
+func (t CreateGitHubAppConnectionJSONBody_0_Credentials) AsCreateGitHubAppConnectionJSONBody0Credentials1() (CreateGitHubAppConnectionJSONBody0Credentials1, error) {
+	var body CreateGitHubAppConnectionJSONBody0Credentials1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody0Credentials1 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_0_Credentials as the provided CreateGitHubAppConnectionJSONBody0Credentials1
+func (t *CreateGitHubAppConnectionJSONBody_0_Credentials) FromCreateGitHubAppConnectionJSONBody0Credentials1(v CreateGitHubAppConnectionJSONBody0Credentials1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody0Credentials1 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_0_Credentials, using the provided CreateGitHubAppConnectionJSONBody0Credentials1
+func (t *CreateGitHubAppConnectionJSONBody_0_Credentials) MergeCreateGitHubAppConnectionJSONBody0Credentials1(v CreateGitHubAppConnectionJSONBody0Credentials1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnectionJSONBody_0_Credentials) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnectionJSONBody_0_Credentials) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody1Credentials0 returns the union data inside the CreateGitHubAppConnectionJSONBody_1_Credentials as a CreateGitHubAppConnectionJSONBody1Credentials0
+func (t CreateGitHubAppConnectionJSONBody_1_Credentials) AsCreateGitHubAppConnectionJSONBody1Credentials0() (CreateGitHubAppConnectionJSONBody1Credentials0, error) {
+	var body CreateGitHubAppConnectionJSONBody1Credentials0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody1Credentials0 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_1_Credentials as the provided CreateGitHubAppConnectionJSONBody1Credentials0
+func (t *CreateGitHubAppConnectionJSONBody_1_Credentials) FromCreateGitHubAppConnectionJSONBody1Credentials0(v CreateGitHubAppConnectionJSONBody1Credentials0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody1Credentials0 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_1_Credentials, using the provided CreateGitHubAppConnectionJSONBody1Credentials0
+func (t *CreateGitHubAppConnectionJSONBody_1_Credentials) MergeCreateGitHubAppConnectionJSONBody1Credentials0(v CreateGitHubAppConnectionJSONBody1Credentials0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody1Credentials1 returns the union data inside the CreateGitHubAppConnectionJSONBody_1_Credentials as a CreateGitHubAppConnectionJSONBody1Credentials1
+func (t CreateGitHubAppConnectionJSONBody_1_Credentials) AsCreateGitHubAppConnectionJSONBody1Credentials1() (CreateGitHubAppConnectionJSONBody1Credentials1, error) {
+	var body CreateGitHubAppConnectionJSONBody1Credentials1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody1Credentials1 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_1_Credentials as the provided CreateGitHubAppConnectionJSONBody1Credentials1
+func (t *CreateGitHubAppConnectionJSONBody_1_Credentials) FromCreateGitHubAppConnectionJSONBody1Credentials1(v CreateGitHubAppConnectionJSONBody1Credentials1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody1Credentials1 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_1_Credentials, using the provided CreateGitHubAppConnectionJSONBody1Credentials1
+func (t *CreateGitHubAppConnectionJSONBody_1_Credentials) MergeCreateGitHubAppConnectionJSONBody1Credentials1(v CreateGitHubAppConnectionJSONBody1Credentials1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnectionJSONBody_1_Credentials) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnectionJSONBody_1_Credentials) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody2Credentials0 returns the union data inside the CreateGitHubAppConnectionJSONBody_2_Credentials as a CreateGitHubAppConnectionJSONBody2Credentials0
+func (t CreateGitHubAppConnectionJSONBody_2_Credentials) AsCreateGitHubAppConnectionJSONBody2Credentials0() (CreateGitHubAppConnectionJSONBody2Credentials0, error) {
+	var body CreateGitHubAppConnectionJSONBody2Credentials0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody2Credentials0 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_2_Credentials as the provided CreateGitHubAppConnectionJSONBody2Credentials0
+func (t *CreateGitHubAppConnectionJSONBody_2_Credentials) FromCreateGitHubAppConnectionJSONBody2Credentials0(v CreateGitHubAppConnectionJSONBody2Credentials0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody2Credentials0 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_2_Credentials, using the provided CreateGitHubAppConnectionJSONBody2Credentials0
+func (t *CreateGitHubAppConnectionJSONBody_2_Credentials) MergeCreateGitHubAppConnectionJSONBody2Credentials0(v CreateGitHubAppConnectionJSONBody2Credentials0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnectionJSONBody2Credentials1 returns the union data inside the CreateGitHubAppConnectionJSONBody_2_Credentials as a CreateGitHubAppConnectionJSONBody2Credentials1
+func (t CreateGitHubAppConnectionJSONBody_2_Credentials) AsCreateGitHubAppConnectionJSONBody2Credentials1() (CreateGitHubAppConnectionJSONBody2Credentials1, error) {
+	var body CreateGitHubAppConnectionJSONBody2Credentials1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnectionJSONBody2Credentials1 overwrites any union data inside the CreateGitHubAppConnectionJSONBody_2_Credentials as the provided CreateGitHubAppConnectionJSONBody2Credentials1
+func (t *CreateGitHubAppConnectionJSONBody_2_Credentials) FromCreateGitHubAppConnectionJSONBody2Credentials1(v CreateGitHubAppConnectionJSONBody2Credentials1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnectionJSONBody2Credentials1 performs a merge with any union data inside the CreateGitHubAppConnectionJSONBody_2_Credentials, using the provided CreateGitHubAppConnectionJSONBody2Credentials1
+func (t *CreateGitHubAppConnectionJSONBody_2_Credentials) MergeCreateGitHubAppConnectionJSONBody2Credentials1(v CreateGitHubAppConnectionJSONBody2Credentials1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnectionJSONBody_2_Credentials) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnectionJSONBody_2_Credentials) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as a CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0() (CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as a CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1() (CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as a CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0() (CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as a CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1() (CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as a CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0() (CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as a CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1() (CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection as a CreateGitHubAppConnection200JSONResponseBodyAppConnection0
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection0() (CreateGitHubAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection0(v CreateGitHubAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection as a CreateGitHubAppConnection200JSONResponseBodyAppConnection1
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection1() (CreateGitHubAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection1(v CreateGitHubAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubAppConnection200JSONResponseBodyAppConnection2 returns the union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection as a CreateGitHubAppConnection200JSONResponseBodyAppConnection2
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection) AsCreateGitHubAppConnection200JSONResponseBodyAppConnection2() (CreateGitHubAppConnection200JSONResponseBodyAppConnection2, error) {
+	var body CreateGitHubAppConnection200JSONResponseBodyAppConnection2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubAppConnection200JSONResponseBodyAppConnection2 overwrites any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection as the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection2
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) FromCreateGitHubAppConnection200JSONResponseBodyAppConnection2(v CreateGitHubAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection2 performs a merge with any union data inside the CreateGitHubAppConnection200JSONResponseBody_AppConnection, using the provided CreateGitHubAppConnection200JSONResponseBodyAppConnection2
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) MergeCreateGitHubAppConnection200JSONResponseBodyAppConnection2(v CreateGitHubAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection0CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_0_Credentials_InstanceType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection1CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_1_Credentials_InstanceType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection2CredentialsInstanceType1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection_2_Credentials_InstanceType) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection0
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection0() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection0
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection0(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection1
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection1() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection1
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection1(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection2 returns the union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection as a DeleteGitHubAppConnection200JSONResponseBodyAppConnection2
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection) AsDeleteGitHubAppConnection200JSONResponseBodyAppConnection2() (DeleteGitHubAppConnection200JSONResponseBodyAppConnection2, error) {
+	var body DeleteGitHubAppConnection200JSONResponseBodyAppConnection2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection2 overwrites any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection as the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection2
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) FromDeleteGitHubAppConnection200JSONResponseBodyAppConnection2(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection2 performs a merge with any union data inside the DeleteGitHubAppConnection200JSONResponseBody_AppConnection, using the provided DeleteGitHubAppConnection200JSONResponseBodyAppConnection2
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) MergeDeleteGitHubAppConnection200JSONResponseBodyAppConnection2(v DeleteGitHubAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteGitHubAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // AsCreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0 returns the union data inside the CreateProject200JSONResponseBody_Project_DeletedEnvironments_DeletedBy as a CreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0
 func (t CreateProject200JSONResponseBody_Project_DeletedEnvironments_DeletedBy) AsCreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0() (CreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0, error) {
@@ -3337,6 +6047,23 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	UpdateAdminConfig(ctx context.Context, body UpdateAdminConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateGitHubAppConnectionWithBody performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a GitHub Connection.
+	CreateGitHubAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGitHubAppConnection performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a GitHub Connection.
+	CreateGitHubAppConnection(ctx context.Context, body CreateGitHubAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteGitHubAppConnection performs a DELETE /api/v1/app-connections/github/{connectionId} (the `DeleteGitHubAppConnection` operationId) request.
+	//
+	// Delete the specified GitHub Connection.
+	DeleteGitHubAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RefreshAuthToken performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	RefreshAuthToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3494,6 +6221,22 @@ type ClientInterface interface {
 	// CompleteAccountSignupV3 performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request.
 	// Takes a body of the `application/json` content type.
 	CompleteAccountSignupV3(ctx context.Context, body CompleteAccountSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BeginEmailSignupV3WithBody performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request,
+	// with any type of body and a specified content type.
+	BeginEmailSignupV3WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BeginEmailSignupV3 performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request.
+	// Takes a body of the `application/json` content type.
+	BeginEmailSignupV3(ctx context.Context, body BeginEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyEmailSignupV3WithBody performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request,
+	// with any type of body and a specified content type.
+	VerifyEmailSignupV3WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyEmailSignupV3 performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request.
+	// Takes a body of the `application/json` content type.
+	VerifyEmailSignupV3(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetServerStatus performs a GET /api/status (the `GetServerStatus` operationId) request.
@@ -3555,6 +6298,53 @@ func (c *Client) UpdateAdminConfigWithBody(ctx context.Context, contentType stri
 // Takes a body of the `application/json` content type.
 func (c *Client) UpdateAdminConfig(ctx context.Context, body UpdateAdminConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAdminConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGitHubAppConnectionWithBody performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a GitHub Connection.
+func (c *Client) CreateGitHubAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGitHubAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGitHubAppConnection performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a GitHub Connection.
+func (c *Client) CreateGitHubAppConnection(ctx context.Context, body CreateGitHubAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGitHubAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteGitHubAppConnection performs a DELETE /api/v1/app-connections/github/{connectionId} (the `DeleteGitHubAppConnection` operationId) request.
+//
+// Delete the specified GitHub Connection.
+func (c *Client) DeleteGitHubAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteGitHubAppConnectionRequest(c.Server, connectionId)
 	if err != nil {
 		return nil, err
 	}
@@ -4043,6 +6833,62 @@ func (c *Client) CompleteAccountSignupV3(ctx context.Context, body CompleteAccou
 	return c.Client.Do(req)
 }
 
+// BeginEmailSignupV3WithBody performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) BeginEmailSignupV3WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBeginEmailSignupV3RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BeginEmailSignupV3 performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) BeginEmailSignupV3(ctx context.Context, body BeginEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBeginEmailSignupV3Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyEmailSignupV3WithBody performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) VerifyEmailSignupV3WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyEmailSignupV3RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyEmailSignupV3 performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) VerifyEmailSignupV3(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyEmailSignupV3Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewGetServerStatusRequest constructs an http.Request for the GetServerStatus method
 func NewGetServerStatusRequest(server string) (*http.Request, error) {
 	var err error
@@ -4146,6 +6992,80 @@ func NewUpdateAdminConfigRequestWithBody(server string, contentType string, body
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateGitHubAppConnectionRequest calls the generic CreateGitHubAppConnection builder with application/json body
+func NewCreateGitHubAppConnectionRequest(server string, body CreateGitHubAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGitHubAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateGitHubAppConnectionRequestWithBody constructs an http.Request for the CreateGitHubAppConnection method, with any body, and a specified content type
+func NewCreateGitHubAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/github")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteGitHubAppConnectionRequest constructs an http.Request for the DeleteGitHubAppConnection method
+func NewDeleteGitHubAppConnectionRequest(server string, connectionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/github/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -4959,6 +7879,86 @@ func NewCompleteAccountSignupV3RequestWithBody(server string, contentType string
 	return req, nil
 }
 
+// NewBeginEmailSignupV3Request calls the generic BeginEmailSignupV3 builder with application/json body
+func NewBeginEmailSignupV3Request(server string, body BeginEmailSignupV3JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBeginEmailSignupV3RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewBeginEmailSignupV3RequestWithBody constructs an http.Request for the BeginEmailSignupV3 method, with any body, and a specified content type
+func NewBeginEmailSignupV3RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v3/signup/email/signup")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewVerifyEmailSignupV3Request calls the generic VerifyEmailSignupV3 builder with application/json body
+func NewVerifyEmailSignupV3Request(server string, body VerifyEmailSignupV3JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewVerifyEmailSignupV3RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewVerifyEmailSignupV3RequestWithBody constructs an http.Request for the VerifyEmailSignupV3 method, with any body, and a specified content type
+func NewVerifyEmailSignupV3RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v3/signup/email/verify")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -5027,6 +8027,27 @@ type ClientWithResponsesInterface interface {
 	// UpdateAdminConfigWithResponse performs a PATCH /api/v1/admin/config (the `UpdateAdminConfig` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	UpdateAdminConfigWithResponse(ctx context.Context, body UpdateAdminConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAdminConfigResponse, error)
+
+	// CreateGitHubAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a GitHub Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateGitHubAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGitHubAppConnectionResponse, error)
+
+	// CreateGitHubAppConnectionWithResponse performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a GitHub Connection.
+	CreateGitHubAppConnectionWithResponse(ctx context.Context, body CreateGitHubAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGitHubAppConnectionResponse, error)
+
+	// DeleteGitHubAppConnectionWithResponse performs a DELETE /api/v1/app-connections/github/{connectionId} (the `DeleteGitHubAppConnection` operationId) request.
+	//
+	// Delete the specified GitHub Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteGitHubAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGitHubAppConnectionResponse, error)
 
 	// RefreshAuthTokenWithResponse performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	//
@@ -5221,6 +8242,26 @@ type ClientWithResponsesInterface interface {
 	// CompleteAccountSignupV3WithResponse performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	CompleteAccountSignupV3WithResponse(ctx context.Context, body CompleteAccountSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteAccountSignupV3Response, error)
+
+	// BeginEmailSignupV3WithBodyWithResponse performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	BeginEmailSignupV3WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BeginEmailSignupV3Response, error)
+
+	// BeginEmailSignupV3WithResponse performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	BeginEmailSignupV3WithResponse(ctx context.Context, body BeginEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*BeginEmailSignupV3Response, error)
+
+	// VerifyEmailSignupV3WithBodyWithResponse performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	VerifyEmailSignupV3WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VerifyEmailSignupV3Response, error)
+
+	// VerifyEmailSignupV3WithResponse performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	VerifyEmailSignupV3WithResponse(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyEmailSignupV3Response, error)
 }
 
 type GetServerStatusResponse struct {
@@ -5802,6 +8843,308 @@ func (r UpdateAdminConfigResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateAdminConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateGitHubAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateGitHubAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGitHubAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGitHubAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGitHubAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGitHubAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGitHubAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGitHubAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateGitHubAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGitHubAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGitHubAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGitHubAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGitHubAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGitHubAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateGitHubAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGitHubAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateGitHubAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGitHubAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGitHubAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGitHubAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteGitHubAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection DeleteGitHubAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGitHubAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGitHubAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGitHubAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGitHubAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGitHubAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGitHubAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON200() *struct {
+	AppConnection DeleteGitHubAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGitHubAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGitHubAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGitHubAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGitHubAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGitHubAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteGitHubAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGitHubAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteGitHubAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteGitHubAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteGitHubAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteGitHubAppConnectionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8964,6 +12307,332 @@ func (r CompleteAccountSignupV3Response) ContentType() string {
 	return ""
 }
 
+type BeginEmailSignupV3Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CooldownSeconds float32 `json:"cooldownSeconds"`
+		Message         string  `json:"message"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode BeginEmailSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode BeginEmailSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode BeginEmailSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode BeginEmailSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode BeginEmailSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode BeginEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON200() *struct {
+	CooldownSeconds float32 `json:"cooldownSeconds"`
+	Message         string  `json:"message"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode BeginEmailSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode BeginEmailSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode BeginEmailSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode BeginEmailSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode BeginEmailSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r BeginEmailSignupV3Response) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode BeginEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r BeginEmailSignupV3Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BeginEmailSignupV3Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BeginEmailSignupV3Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BeginEmailSignupV3Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type VerifyEmailSignupV3Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message string `json:"message"`
+		Token   string `json:"token"`
+		User    struct {
+			AuthMethods     *[]string          `json:"authMethods,omitempty"`
+			Email           *string            `json:"email,omitempty"`
+			FirstName       *string            `json:"firstName,omitempty"`
+			Id              openapi_types.UUID `json:"id"`
+			IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+			LastName        *string            `json:"lastName,omitempty"`
+			PublicKey       *string            `json:"publicKey,omitempty"`
+			Username        string             `json:"username"`
+		} `json:"user"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode VerifyEmailSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode VerifyEmailSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode VerifyEmailSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode VerifyEmailSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode VerifyEmailSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode VerifyEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON200() *struct {
+	Message string `json:"message"`
+	Token   string `json:"token"`
+	User    struct {
+		AuthMethods     *[]string          `json:"authMethods,omitempty"`
+		Email           *string            `json:"email,omitempty"`
+		FirstName       *string            `json:"firstName,omitempty"`
+		Id              openapi_types.UUID `json:"id"`
+		IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+		LastName        *string            `json:"lastName,omitempty"`
+		PublicKey       *string            `json:"publicKey,omitempty"`
+		Username        string             `json:"username"`
+	} `json:"user"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode VerifyEmailSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode VerifyEmailSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode VerifyEmailSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode VerifyEmailSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode VerifyEmailSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r VerifyEmailSignupV3Response) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode VerifyEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r VerifyEmailSignupV3Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VerifyEmailSignupV3Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VerifyEmailSignupV3Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VerifyEmailSignupV3Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetServerStatusWithResponse performs a GET /api/status (the `GetServerStatus` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -9017,6 +12686,45 @@ func (c *ClientWithResponses) UpdateAdminConfigWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseUpdateAdminConfigResponse(rsp)
+}
+
+// CreateGitHubAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a GitHub Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGitHubAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGitHubAppConnectionResponse, error) {
+	rsp, err := c.CreateGitHubAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGitHubAppConnectionResponse(rsp)
+}
+
+// CreateGitHubAppConnectionWithResponse performs a POST /api/v1/app-connections/github (the `CreateGitHubAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a GitHub Connection.
+func (c *ClientWithResponses) CreateGitHubAppConnectionWithResponse(ctx context.Context, body CreateGitHubAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGitHubAppConnectionResponse, error) {
+	rsp, err := c.CreateGitHubAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGitHubAppConnectionResponse(rsp)
+}
+
+// DeleteGitHubAppConnectionWithResponse performs a DELETE /api/v1/app-connections/github/{connectionId} (the `DeleteGitHubAppConnection` operationId) request.
+//
+// Delete the specified GitHub Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteGitHubAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteGitHubAppConnectionResponse, error) {
+	rsp, err := c.DeleteGitHubAppConnection(ctx, connectionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteGitHubAppConnectionResponse(rsp)
 }
 
 // RefreshAuthTokenWithResponse performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
@@ -9405,6 +13113,50 @@ func (c *ClientWithResponses) CompleteAccountSignupV3WithResponse(ctx context.Co
 	return ParseCompleteAccountSignupV3Response(rsp)
 }
 
+// BeginEmailSignupV3WithBodyWithResponse performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BeginEmailSignupV3WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BeginEmailSignupV3Response, error) {
+	rsp, err := c.BeginEmailSignupV3WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBeginEmailSignupV3Response(rsp)
+}
+
+// BeginEmailSignupV3WithResponse performs a POST /api/v3/signup/email/signup (the `BeginEmailSignupV3` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BeginEmailSignupV3WithResponse(ctx context.Context, body BeginEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*BeginEmailSignupV3Response, error) {
+	rsp, err := c.BeginEmailSignupV3(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBeginEmailSignupV3Response(rsp)
+}
+
+// VerifyEmailSignupV3WithBodyWithResponse performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) VerifyEmailSignupV3WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VerifyEmailSignupV3Response, error) {
+	rsp, err := c.VerifyEmailSignupV3WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyEmailSignupV3Response(rsp)
+}
+
+// VerifyEmailSignupV3WithResponse performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) VerifyEmailSignupV3WithResponse(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyEmailSignupV3Response, error) {
+	rsp, err := c.VerifyEmailSignupV3(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyEmailSignupV3Response(rsp)
+}
+
 // ParseGetServerStatusResponse parses an HTTP response from a GetServerStatusWithResponse call
 func ParseGetServerStatusResponse(rsp *http.Response) (*GetServerStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9766,6 +13518,210 @@ func ParseUpdateAdminConfigResponse(rsp *http.Response) (*UpdateAdminConfigRespo
 			Message    string                                         `json:"message"`
 			ReqId      string                                         `json:"reqId"`
 			StatusCode UpdateAdminConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateGitHubAppConnectionResponse parses an HTTP response from a CreateGitHubAppConnectionWithResponse call
+func ParseCreateGitHubAppConnectionResponse(rsp *http.Response) (*CreateGitHubAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGitHubAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateGitHubAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGitHubAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGitHubAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGitHubAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGitHubAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGitHubAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGitHubAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteGitHubAppConnectionResponse parses an HTTP response from a DeleteGitHubAppConnectionWithResponse call
+func ParseDeleteGitHubAppConnectionResponse(rsp *http.Response) (*DeleteGitHubAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteGitHubAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection DeleteGitHubAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGitHubAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGitHubAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGitHubAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGitHubAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGitHubAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGitHubAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -11821,6 +15777,222 @@ func ParseCompleteAccountSignupV3Response(rsp *http.Response) (*CompleteAccountS
 			Message    string                                               `json:"message"`
 			ReqId      string                                               `json:"reqId"`
 			StatusCode CompleteAccountSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBeginEmailSignupV3Response parses an HTTP response from a BeginEmailSignupV3WithResponse call
+func ParseBeginEmailSignupV3Response(rsp *http.Response) (*BeginEmailSignupV3Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BeginEmailSignupV3Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CooldownSeconds float32 `json:"cooldownSeconds"`
+			Message         string  `json:"message"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode BeginEmailSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode BeginEmailSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode BeginEmailSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode BeginEmailSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode BeginEmailSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode BeginEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVerifyEmailSignupV3Response parses an HTTP response from a VerifyEmailSignupV3WithResponse call
+func ParseVerifyEmailSignupV3Response(rsp *http.Response) (*VerifyEmailSignupV3Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VerifyEmailSignupV3Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message string `json:"message"`
+			Token   string `json:"token"`
+			User    struct {
+				AuthMethods     *[]string          `json:"authMethods,omitempty"`
+				Email           *string            `json:"email,omitempty"`
+				FirstName       *string            `json:"firstName,omitempty"`
+				Id              openapi_types.UUID `json:"id"`
+				IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+				LastName        *string            `json:"lastName,omitempty"`
+				PublicKey       *string            `json:"publicKey,omitempty"`
+				Username        string             `json:"username"`
+			} `json:"user"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode VerifyEmailSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode VerifyEmailSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode VerifyEmailSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode VerifyEmailSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode VerifyEmailSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode VerifyEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

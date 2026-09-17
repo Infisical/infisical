@@ -69,6 +69,9 @@ func (d Deps) Run(ctx context.Context, spec ContainerSpec) (Container, error) {
 	if spec.Labels == nil {
 		spec.Labels = Labels(d.name, d.workspace)
 	}
+	if spec.Network == "" {
+		spec.Network = d.network
+	}
 	return d.runner.Run(ctx, spec)
 }
 

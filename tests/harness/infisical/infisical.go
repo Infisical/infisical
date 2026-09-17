@@ -113,13 +113,25 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		env["SMTP_REQUIRE_TLS"] = "false"
 	}
 
+	var files []infra.File
 	if wm, ok := wiremock.From(d); ok {
 		proxy := wm.ProxyURL(infra.Internal)
 		env["HTTP_PROXY"] = proxy
 		env["HTTPS_PROXY"] = proxy
 		env["NO_PROXY"] = wiremock.NoProxy(postgres.MustFrom(d).Endpoint(infra.Internal).Host,
 			redis.MustFrom(d).Endpoint(infra.Internal).Host)
+
+		// Browser proxying signs a certificate per host with WireMock's own CA, so
+		// without this every HTTPS call through the proxy fails verification. Node
+		// warns about a missing NODE_EXTRA_CA_CERTS and carries on, which makes the
+		// omission silent: HTTP keeps working and every real provider breaks.
+		ca, err := wm.CAFile(ctx)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, infra.File{Src: ca, Dst: wiremock.CAPath})
 		env["NODE_EXTRA_CA_CERTS"] = wiremock.CAPath
+		env["ALLOW_INTERNAL_IP_CONNECTIONS"] = "true"
 
 		// Point the license client at the same WireMock, which is what makes
 		// entitlements resolve per organization. Without this the instance is not
@@ -138,6 +150,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Image: m.image.Ref,
 		Env:   env,
 		Ports: []int{port},
+		Files: files,
 		// /api/status is registered before the run-mode guard, so it answers even on
 		// a pod that serves no product routes. It also reports emailConfigured and
 		// redisConfigured, which the harness asserts so a misconfigured SMTP is a

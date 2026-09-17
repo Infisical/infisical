@@ -17,11 +17,15 @@ lint:
 	@out="$$($(GOFMT) -l .)"; \
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 	go vet ./...
-	go tool staticcheck ./harness/... ./infra/... ./internal/...
+	go tool staticcheck ./...
 
 # Unit tests only: no Docker, no containers, runs in under a second.
+#
+# Everything except ./suites/..., which needs a stack. Derived rather than listed,
+# because a hand-written list silently stops covering a package the day someone adds
+# one -- which is exactly what happened when fixture/, provider/ and stub/ appeared.
 test-unit:
-	go test ./infra/... ./internal/... ./harness/... -count=1
+	go test $$(go list ./... | grep -v '/suites/') -count=1
 
 test: lint test-unit
 
@@ -58,3 +62,4 @@ status:
 # and regenerating against it silently drops operations. The dev stack qualifies.
 generate-client:
 	go tool oapi-codegen -config clients/api/oapi-codegen.yaml $(INFISICAL_OPENAPI_URL)/api/docs/json
+

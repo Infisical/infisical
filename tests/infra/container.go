@@ -23,8 +23,15 @@ type ContainerSpec struct {
 	Alias   string // primary network alias, which becomes the Internal host
 
 	// Aliases are extra network aliases. WireMock uses them to answer for hostnames
-	// that cloud SDKs hardcode and would otherwise never send through a proxy.
+	// a client resolves itself and would otherwise never send through a proxy.
+	//
+	// An alias belongs to the network, not the container, so two containers claiming
+	// one on the same network make Docker DNS round-robin between them. That is why
+	// an Isolated stack gets its own network rather than sharing.
 	Aliases []string
+
+	// Network is which network to join. Empty means the runner's current one.
+	Network string
 	Files   []File
 	Labels  map[string]string
 
@@ -82,4 +89,8 @@ func (c Container) Exec(ctx context.Context, cmd []string) (int, string, error) 
 type Runner interface {
 	Run(ctx context.Context, spec ContainerSpec) (Container, error)
 	Network(ctx context.Context, name string) error
+
+	// Connect attaches an already-running container to another network, which is how
+	// a Shared container reaches an Isolated stack that lives on its own one.
+	Connect(ctx context.Context, container, network string, aliases ...string) error
 }

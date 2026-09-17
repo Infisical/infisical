@@ -93,6 +93,18 @@ func down() int {
 		}
 		fmt.Printf("removed %d container(s)\n", len(list))
 	}
+	// Package networks too: an Isolated suite takes one of its own, named after the
+	// package, and leaving them behind accumulates a network per suite.
+	if nets, err := docker("network", "ls", "--format", "{{.Name}}", "--filter", "name="+infra.NetworkName); err == nil {
+		for _, n := range strings.Fields(nets) {
+			if n != infra.NetworkName {
+				if _, err := docker("network", "rm", n); err == nil {
+					fmt.Printf("removed network %s\n", n)
+				}
+			}
+		}
+	}
+
 	if _, err := docker("network", "rm", infra.NetworkName); err == nil {
 		fmt.Println("removed network " + infra.NetworkName)
 	}

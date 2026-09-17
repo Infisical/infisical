@@ -205,3 +205,23 @@ func (in *Inbox) get(ctx context.Context, path string, into any) error {
 	}
 	return json.NewDecoder(res.Body).Decode(into)
 }
+
+// Code returns the first run of exactly n digits in the body.
+//
+// The signup and MFA mails carry a numeric code rather than a link, so Param
+// cannot reach it. Bounded on both sides so a longer number, such as a timestamp in
+// a footer, is not mistaken for a six-digit code.
+func Code(m Message, n int) (string, error) {
+	runs := 0
+	for i := 0; i <= len(m.Body); i++ {
+		if i < len(m.Body) && m.Body[i] >= '0' && m.Body[i] <= '9' {
+			runs++
+			continue
+		}
+		if runs == n {
+			return m.Body[i-n : i], nil
+		}
+		runs = 0
+	}
+	return "", fmt.Errorf("mail: no %d-digit code in %q:\n%s", n, m.Subject, m.Body)
+}

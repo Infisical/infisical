@@ -138,6 +138,17 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
+	// An Isolated package takes its own network so its WireMock can hold a host alias
+	// without competing with the shared one for the name. Shared containers stay on
+	// the shared network and are connected to this one below.
+	stackNet := infra.NetworkName
+	if profile == Isolated {
+		stackNet = infra.PackageNetwork(pkg)
+		if err := runner.Network(ctx, stackNet); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	handles := map[infra.Key]infra.Handle{}
 	var owned []infra.Handle
 
@@ -149,12 +160,28 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 			name.ScopeID = pkg
 		}
 
-		h, err := mod.Start(ctx, infra.NewDeps(handles, infra.NetworkName, infra.Workspace(), name, runner, log))
+		net := stackNet
+		if scope == infra.Shared {
+			net = infra.NetworkName
+		}
+
+		h, err := mod.Start(ctx, infra.NewDeps(handles, net, infra.Workspace(), name, runner, log))
 		if err != nil {
 			stopAll(ctx, owned)
 			return nil, nil, err
 		}
 		handles[mod.Key()] = h
+
+		// A Shared container lives on the shared network, so an Isolated stack has to
+		// be let in explicitly. The alias is the container name, because that is what
+		// Internal addressing resolves to.
+		if scope == infra.Shared && net != stackNet {
+			if err := runner.Connect(ctx, infra.ContainerName(name), stackNet); err != nil {
+				stopAll(ctx, owned)
+				return nil, nil, err
+			}
+		}
+
 		if scope != infra.Shared {
 			owned = append(owned, h)
 		}
@@ -208,29 +235,6 @@ func (s *Stack) Require(t *testing.T, key infra.Key, option string) infra.Handle
 	return h
 }
 
-// failer is the part of *testing.T a guard needs.
-//
-// testing.TB cannot be implemented outside the testing package -- it carries an
-// unexported method for exactly that reason -- so asserting that a guard fires needs
-// a narrower interface of our own.
-type failer interface {
-	Helper()
-	Fatalf(format string, args ...any)
-}
-
-// requireIsolated refuses instance-wide access from a Shared package.
-func (s *Stack) requireIsolated(f failer) {
-	f.Helper()
-	if s.profile == Isolated {
-		return
-	}
-	f.Fatalf("%s: InstanceAdmin needs harness.Isolated.\n"+
-		"Instance configuration is global, so writing it from a Shared package would "+
-		"change the instance every other package is using.\n"+
-		"Change TestMain in %s to harness.Main(m, harness.Isolated).",
-		s.pkg, filepath.Base(s.mainFile))
-}
-
 // packageNameFor derives a container-name fragment from the TestMain file, so an
 // Isolated package's containers cannot be adopted by a different one.
 func packageNameFor(mainFile string) string {
@@ -259,7 +263,13 @@ func packageNameFor(mainFile string) string {
 // a super admin in their own right (super-admin-fns.ts accepts either).
 func (s *Stack) InstanceAdmin(t *testing.T) *Principal {
 	t.Helper()
-	s.requireIsolated(t)
+	if s.profile != Isolated {
+		t.Fatalf("%s: InstanceAdmin needs harness.Isolated.\n"+
+			"Instance configuration is global, so writing it from a Shared package would "+
+			"change the instance every other package is using.\n"+
+			"Change TestMain in %s to harness.Main(m, harness.Isolated).",
+			s.pkg, filepath.Base(s.mainFile))
+	}
 
 	s.adminOnce.Do(func() {
 		ip := newIP()

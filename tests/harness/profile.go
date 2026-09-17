@@ -9,6 +9,24 @@ import (
 	"github.com/Infisical/infisical/tests/infra/wiremock"
 )
 
+// stubbedHosts are resolved to WireMock by Docker DNS instead of to the real
+// service.
+//
+// Needed because Infisical's SSRF-safe client resolves a hostname up front and pins
+// the socket to that IP, which leaves it dialling the real host on the proxy's port
+// and hanging. The alias makes the pinned address WireMock's own, so the request
+// lands on the proxy and WireMock still forges a certificate for the hostname from
+// the CONNECT line. Providers on plain axios do not need an entry; they follow
+// HTTP_PROXY on their own.
+//
+// One list for the whole run, not per suite: Docker DNS aliases are fixed when the
+// container is created, and the container is shared. After changing this, run
+// `make down` -- the name does not change, so a running WireMock would be adopted
+// with the old aliases and the new host would quietly reach the internet.
+var stubbedHosts = []string{
+	"api.github.com",
+}
+
 // Profile is how a package declares what it needs. It is the only thing a TestMain
 // says, and it determines the isolation a suite gets.
 type Profile int
@@ -52,7 +70,7 @@ func (p Profile) modules(img infisical.Image, extra ...infra.Module) ([]infra.Mo
 		postgres.Module(),
 		redis.Module(),
 		mailpit.Module(),
-		wiremock.Module(),
+		wiremock.Module(wiremock.WithHostAliases(stubbedHosts...)),
 		infisical.Module(infisical.WithImage(img)),
 	}
 	scopes := map[infra.Key]infra.Scope{
