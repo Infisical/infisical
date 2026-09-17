@@ -948,7 +948,8 @@ export const licenseV2ServiceFactory = ({
     const buildIdentityBreakdown = async (
       counts: { users: number; identities: number },
       rows: { orgId: string; projectId: string | null; count: number }[],
-      withProjectDetail: boolean
+      withProjectDetail: boolean,
+      unit: string
     ): Promise<BillingV2UsageBreakdown> => {
       const attributed = withProjectDetail
         ? rows
@@ -965,7 +966,7 @@ export const licenseV2ServiceFactory = ({
         userCount: counts.users,
         scopedCount: counts.identities,
         hasProjectDetail: withProjectDetail,
-        unit: "machine identity",
+        unit,
         scopes: $buildScopes(orgs, projectsById, attributed)
       };
     };
@@ -986,12 +987,12 @@ export const licenseV2ServiceFactory = ({
           licenseDAL.countBillableOrgActors(rootOrgId),
           licenseDAL.getBillableIdentityOwnershipBreakdown(rootOrgId)
         ]);
-        return { breakdown: await buildIdentityBreakdown(counts, rows, true) };
+        return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
       }
       case BillingV2BreakdownDimension.SecretIdentities:
       case BillingV2BreakdownDimension.PamIdentities: {
-        const projectType =
-          dimensionKey === BillingV2BreakdownDimension.SecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
+        const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
+        const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
           usageCounterDAL.countProjectIdentitiesByKindFor(projectType, scopeOrgId),
           usageCounterDAL.getProjectIdentityBreakdown(projectType, scopeOrgId)
@@ -1000,7 +1001,8 @@ export const licenseV2ServiceFactory = ({
           breakdown: await buildIdentityBreakdown(
             counts,
             rows,
-            dimensionKey === BillingV2BreakdownDimension.SecretIdentities
+            isSecretIdentities,
+            isSecretIdentities ? "secret identity" : "PAM identity"
           )
         };
       }

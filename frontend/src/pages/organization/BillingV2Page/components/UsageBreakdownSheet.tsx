@@ -322,7 +322,11 @@ const BreakdownBody = ({
           <EmptyHeader>
             <EmptyTitle>Nothing counted yet</EmptyTitle>
             <EmptyDescription>
-              No {unitLabel} have been created in this organization or its sub-organizations.
+              No {unitLabel} have been created{" "}
+              {isInstanceScope
+                ? "anywhere on this instance"
+                : "in this organization or its sub-organizations"}
+              .
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

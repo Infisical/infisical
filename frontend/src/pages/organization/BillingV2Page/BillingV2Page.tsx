@@ -33,8 +33,9 @@ import {
   asCloudOverview,
   asManagedCloudOverview,
   PREVIEW_CATALOG,
-  PREVIEW_ENTITLEMENTS,
-  PREVIEW_MODE
+  PREVIEW_MODE,
+  previewEntitlements,
+  usePreviewUsage
 } from "./billing-v2-local-preview";
 import { BillingV2RenderState } from "./billing-v2-view-types";
 
@@ -98,17 +99,21 @@ export const BillingV2Page = () => {
   // PREVIEW_MODE in billing-v2-local-preview.ts.
   const usePreview = PREVIEW_MODE !== "off" && realCatalog.length === 0;
   const catalog = usePreview ? PREVIEW_CATALOG : realCatalog;
+  // Real figures for the faked products, read off this instance's own database through the breakdown
+  // endpoint, so picking an organization moves the meters the way it will in production.
+  const previewUsage = usePreviewUsage(selectedOrgId, breakdownScope);
+  const previewedEntitlements = previewEntitlements(previewUsage);
   // Shadows the real overview for the whole component, so every branch keyed off it (subState, the
   // managed/self-serve copy, the payment and invoice cards) sees the faked shape too. Restore to
   // `const { data: overview, ... } = useGetBillingV2Overview(selectedOrgId)` when removing the preview.
   let overview = serverOverview;
   if (usePreview && serverOverview) {
     if (PREVIEW_MODE === "cloud") {
-      overview = asCloudOverview(serverOverview);
+      overview = asCloudOverview(serverOverview, previewedEntitlements);
     } else if (PREVIEW_MODE === "cloud-managed") {
-      overview = asManagedCloudOverview(serverOverview);
+      overview = asManagedCloudOverview(serverOverview, previewedEntitlements);
     } else {
-      overview = { ...serverOverview, entitlements: PREVIEW_ENTITLEMENTS };
+      overview = { ...serverOverview, entitlements: previewedEntitlements };
     }
   }
   // The preview fakes the deployment, so it has to fake this endpoint's answer too. A dev stack is
@@ -259,7 +264,7 @@ export const BillingV2Page = () => {
               onSetCommitment={onSetCommitment}
               onViewBreakdown={onViewBreakdown}
               rootOrgs={pickerOrgs}
-              rootOrgCount={rootOrgCount}
+              rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
               isRootOrgsLoading={isOrgSearchPending}
               isReloading={isReloading}
               selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
