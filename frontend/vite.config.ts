@@ -1,5 +1,5 @@
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, PluginOption } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import wasm from "vite-plugin-wasm";
@@ -68,8 +68,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     optimizeDeps: {
-      // Deps that the initial esbuild scan can't reach: `react/jsx-runtime` is injected by the
-      // SWC transform (the scanner reads pre-transform source), and the rest are only imported
+      // Deps that the initial dependency scan can't reach: `react/jsx-runtime` is injected by the
+      // JSX transform (the scanner reads pre-transform source), and the rest are only imported
       // from lazy route components. Discovering them mid-session re-runs optimizeDeps, which
       // rotates the ?v= hash on every /node_modules/.vite/deps URL and force-reloads the page.
       include: [
