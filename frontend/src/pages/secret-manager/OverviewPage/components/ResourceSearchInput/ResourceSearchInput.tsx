@@ -154,8 +154,8 @@ export const ResourceSearchInput = ({
               setIsFocused(false);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Tab") {
-                if (e.shiftKey) e.preventDefault();
+              if (e.key === "Tab" && e.shiftKey) {
+                e.preventDefault();
                 inputRef.current?.focus();
               }
             }}
