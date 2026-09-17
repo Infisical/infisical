@@ -75,9 +75,27 @@ export const Overview = ({
   ) : null;
 
   if (subState === "loading" || isReloading) {
+    const isManagedShell = overview ? overview.mode === "managed" : !isInfisicalCloud();
+    const hasHeaderTiles = overview ? overview.subState !== "no-subscription" : true;
+    const keepsBillingHistory = Boolean(
+      overview && (overview.payment || overview.billingDetails || overview.invoices.length > 0)
+    );
+    const hasBillingSection = overview
+      ? overview.isCloud && (overview.subState !== "no-subscription" || keepsBillingHistory)
+      : isInfisicalCloud();
+
     return (
       <div className="flex flex-col gap-4">
-        <StatTilesSkeleton />
+        {isManagedShell && (
+          <Banner
+            mode="managed"
+            subState={subState}
+            canManage={false}
+            onUpdatePayment={onUpdatePayment}
+            onManageSubscription={onManageSubscription}
+          />
+        )}
+        {hasHeaderTiles && <StatTilesSkeleton />}
         <ProductsCard
           key="products"
           overview={overview}
@@ -90,7 +108,7 @@ export const Overview = ({
           onViewBreakdown={onViewBreakdown}
           onContact={onContact}
         />
-        {(overview?.isCloud ?? isInfisicalCloud()) && <BillingSectionSkeleton />}
+        {hasBillingSection && <BillingSectionSkeleton />}
       </div>
     );
   }

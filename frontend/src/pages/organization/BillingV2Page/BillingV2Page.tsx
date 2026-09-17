@@ -32,9 +32,12 @@ import { catalogById } from "./billing-v2-format";
 import {
   asCloudOverview,
   asManagedCloudOverview,
+  asTrialCloudOverview,
   PREVIEW_CATALOG,
   PREVIEW_MODE,
   previewEntitlements,
+  TRIAL_CATALOG,
+  trialEntitlements,
   usePreviewUsage
 } from "./billing-v2-local-preview";
 import { BillingV2RenderState } from "./billing-v2-view-types";
@@ -98,11 +101,15 @@ export const BillingV2Page = () => {
   // substitutes the licence server's half of the data so the layout is reviewable. Switch views with
   // PREVIEW_MODE in billing-v2-local-preview.ts.
   const usePreview = PREVIEW_MODE !== "off" && realCatalog.length === 0;
-  const catalog = usePreview ? PREVIEW_CATALOG : realCatalog;
+  const isTrialPreview = PREVIEW_MODE === "cloud-trial";
+  const previewCatalog = isTrialPreview ? TRIAL_CATALOG : PREVIEW_CATALOG;
+  const catalog = usePreview ? previewCatalog : realCatalog;
   // Real figures for the faked products, read off this instance's own database through the breakdown
   // endpoint, so picking an organization moves the meters the way it will in production.
   const previewUsage = usePreviewUsage(selectedOrgId, breakdownScope);
-  const previewedEntitlements = previewEntitlements(previewUsage);
+  const previewedEntitlements = isTrialPreview
+    ? trialEntitlements(previewUsage)
+    : previewEntitlements(previewUsage);
   // Shadows the real overview for the whole component, so every branch keyed off it (subState, the
   // managed/self-serve copy, the payment and invoice cards) sees the faked shape too. Restore to
   // `const { data: overview, ... } = useGetBillingV2Overview(selectedOrgId)` when removing the preview.
@@ -110,6 +117,8 @@ export const BillingV2Page = () => {
   if (usePreview && serverOverview) {
     if (PREVIEW_MODE === "cloud") {
       overview = asCloudOverview(serverOverview, previewedEntitlements);
+    } else if (isTrialPreview) {
+      overview = asTrialCloudOverview(serverOverview, previewedEntitlements);
     } else if (PREVIEW_MODE === "cloud-managed") {
       overview = asManagedCloudOverview(serverOverview, previewedEntitlements);
     } else {

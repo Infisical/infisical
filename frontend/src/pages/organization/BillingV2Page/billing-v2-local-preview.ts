@@ -6,12 +6,14 @@
 // ONE SWITCH for reviewing the layout. Flip this, save, and the page re-renders:
 //
 //   "cloud"         paying cloud customer: header tiles, payment card, invoices, no org picker
+//   "cloud-trial"   self-serve cloud mid-trial: one trialing product, a card on file but nothing
+//                   billed yet, and an available row mixing a sales-led product with a trialable one
 //   "cloud-managed" enterprise-managed cloud: Managed Billing notice, no Stripe sections
 //   "self-hosted" licensed instance: managed copy, instance-admin org picker, no Stripe cards
 //   "offline"     air-gapped licence: the standalone OfflineBillingPage (nothing from this feature)
 //   "off"         no faking at all; on a dev stack this shows "No products available"
 // The usage
-export type PreviewMode = "cloud" | "cloud-managed" | "self-hosted" | "offline" | "off";
+export type PreviewMode = "cloud" | "cloud-trial" | "cloud-managed" | "self-hosted" | "offline" | "off";
 export const PREVIEW_MODE: PreviewMode = "self-hosted";
 
 import { useMemo } from "react";
@@ -27,7 +29,13 @@ import {
   BillingV2UsageBreakdown
 } from "@app/hooks/api";
 
-const dim = (key: string, label: string, noun: string, used: number): BillingV2EntitlementDim => ({
+const dim = (
+  key: string,
+  label: string,
+  noun: string,
+  used: number,
+  rate?: number
+): BillingV2EntitlementDim => ({
   key,
   label,
   noun,
@@ -38,6 +46,7 @@ const dim = (key: string, label: string, noun: string, used: number): BillingV2E
   limit: null,
   committed: null,
   commitAvailable: false,
+  rate,
   onDemandAmount: 0
 });
 
@@ -187,6 +196,70 @@ export const previewEntitlements = (usage: PreviewUsage = {}): Record<string, Bi
 
 export const PREVIEW_ENTITLEMENTS = previewEntitlements();
 
+// "cloud-trial" is a self-serve cloud account partway through a trial, which the other cloud shapes do
+// not reach: the plan badge and the Trial badge on one card, "Included" where a price would be, a card
+// on file with nothing yet to charge, and an available row carrying both CTAs at once. Its own catalog,
+// because PREVIEW_CATALOG is enterprise-shaped and every tile there is sales-led.
+const plan = (
+  tier: string,
+  name: string,
+  { selfServe = false, salesLed = false, trialDays = 0 } = {}
+): BillingV2CatalogProduct["plans"][number] => ({
+  tier,
+  name,
+  selfServe,
+  salesLed,
+  trialable: trialDays > 0,
+  upgradeable: selfServe,
+  trialDays,
+  dims: []
+});
+
+export const TRIAL_CATALOG: BillingV2CatalogProduct[] = [
+  {
+    ...product(
+      "secrets",
+      "Secrets Management",
+      "key_round",
+      "#e0ed34",
+      "Store, manage, and sync secrets across your stack."
+    ),
+    plans: [plan("pro", "Pro", { selfServe: true }), plan("enterprise", "Enterprise", { salesLed: true })]
+  },
+  product(
+    "pki",
+    "Certificate Management",
+    "file_check",
+    "#ed8c34",
+    "Issue and manage X.509 certificates and private CAs."
+  ),
+  {
+    ...product(
+      "pam",
+      "Privileged Access Management",
+      "user_round_plus",
+      "#ff3568",
+      "Secure, broker, and audit privileged access."
+    ),
+    plans: [plan("pro", "Pro", { selfServe: true, trialDays: 14 })]
+  }
+];
+
+// Only secrets is entitled, so the other two fall to the available row: pki sales-led ("Contact
+// sales"), pam trialable ("Try free for 14 days").
+export const trialEntitlements = (usage: PreviewUsage = {}): Record<string, BillingV2Entitlement> => ({
+  secrets: {
+    entitled: true,
+    planTier: "pro",
+    cadence: "monthly",
+    isTrialing: true,
+    trialEndsAt: "October 1, 2026",
+    dimensions: [
+      dim("secret_identities", "Secret Identities", "identity", usage.secret_identities ?? 0, 23)
+    ]
+  }
+});
+
 // One request per previewed dimension, keyed on the picked organization and scope, so switching the
 // picker refetches and the cards move with it.
 export const usePreviewUsage = (orgId: string, scope: BillingV2BreakdownScopeKind): PreviewUsage => {
@@ -286,6 +359,29 @@ export const asCloudOverview = (
     },
     { id: "in_1", number: "INV-0001", date: "July 1, 2026", amount: 1156, paid: true, pdfUrl: null }
   ]
+});
+
+export const asTrialCloudOverview = (
+  overview: BillingV2Overview,
+  entitlements: Record<string, BillingV2Entitlement>
+): BillingV2Overview => ({
+  ...overview,
+  ...CLOUD_BASE,
+  entitlements,
+  planName: "Pro",
+  subState: "trialing",
+  selfServe: true,
+  // A trial charges nothing yet, so every figure in the header is empty while the card is on file.
+  billing: { monthlyRecurring: 0, annualCommitted: 0, activeProductCount: 1, nextCharge: null },
+  onDemandAmount: 0,
+  payment: { brand: "mastercard", last4: "7002", expMonth: 2, expYear: 2029 },
+  billingDetails: {
+    name: "Personal Org",
+    email: "billing@example.com",
+    address: null,
+    taxIds: []
+  },
+  invoices: []
 });
 
 // "cloud-managed" is an enterprise-managed cloud org, which is what a real production account looked

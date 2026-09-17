@@ -7,7 +7,7 @@ export const StatTilesSkeleton = () => (
   <div className="flex flex-col gap-3">
     <div className="flex flex-col gap-4 lg:flex-row">
       {TILES.map((tile) => (
-        <Card key={tile} className="flex-1 gap-2 p-4 shadow-none">
+        <Card key={tile} className="flex-1 gap-2 p-4">
           <CardHeader>
             <CardTitle>
               <div className="flex h-4 items-center">
