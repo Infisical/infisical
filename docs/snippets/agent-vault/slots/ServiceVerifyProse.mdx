@@ -1,0 +1,35 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch service="none">
+  > Run `curl -sS <endpoint-url>` and show me the output.
+
+  The API should respond successfully. The agent doesn't need any real API credentials because the proxy attaches the credential as the request passes through. Run the same command outside the agent, and it fails with an authentication error.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="github">
+  > Run `curl -sS https://api.github.com/user` and show me the output.
+
+  GitHub returns your account. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="slack">
+  > Run `curl -sS https://slack.com/api/auth.test` and show me the output.
+
+  Slack returns your workspace and user IDs. Run the same request outside the agent and it returns `not_authed`.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="anthropic">
+  > Run `curl -sS https://api.anthropic.com/v1/models` and show me the output.
+
+  Anthropic returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="openai">
+  > Run `curl -sS https://api.openai.com/v1/models` and show me the output.
+
+  OpenAI returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch serviceNot="none,github,slack,anthropic,openai">
+  Ask the agent to hit an authenticated endpoint on the API. The proxy attaches the credential as the request passes through, so the agent needs no real token. Run the same request outside the agent and it should fail with an authentication error.
+</AgentVaultBranch>

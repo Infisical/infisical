@@ -345,6 +345,43 @@ Claude
 Codex
 LiteLLM
 Fireworks
+Cohere
+DeepSeek
+Gemini
+Grok
+Groq
+Mistral
+Perplexity
+xAI
+
+# --- Communication and messaging ---
+Discord
+Postmark
+Resend
+SendGrid
+Twilio
+
+# --- Payments and commerce ---
+Stripe
+Shopify
+
+# --- Dev tools and platforms ---
+Cloudflare
+GitLab
+Supabase
+Vercel
+npm
+
+# --- Monitoring and observability ---
+Datadog
+PagerDuty
+Sentry
+
+# --- Productivity ---
+Google Workspace
+Jira
+Linear
+Notion
 
 # --- Acronyms and initialisms ---
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.

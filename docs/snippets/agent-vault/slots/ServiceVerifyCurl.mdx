@@ -1,0 +1,31 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch serviceNot="github,slack,anthropic,openai">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS <endpoint-url>
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch service="github">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.github.com/user
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch service="slack">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://slack.com/api/auth.test
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch service="anthropic">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.anthropic.com/v1/models
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch service="openai">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.openai.com/v1/models
+  ```
+</AgentVaultBranch>
