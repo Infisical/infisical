@@ -9,7 +9,7 @@ export const AccountMaskingBadge = ({ warnings }: { warnings: PamAccountWarning[
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="neutral">
+        <Badge variant="warning">
           <AlertTriangle className="size-3" />
           Partial masking
         </Badge>

@@ -46,12 +46,17 @@ export enum PamAccountWarning {
   SessionLogMaskingDegraded = "session-log-masking-degraded"
 }
 
-// Brokered over RDP, whose recordings the gateway never masks. Mirrors
-// accountTypeSupportsSessionLogMasking in backend/src/ee/services/pam/pam-enums.ts.
-export const RDP_PAM_ACCOUNT_TYPES = [PamAccountType.Windows, PamAccountType.WindowsAd];
+// Windows is brokered over RDP, whose recordings the gateway never masks; AWS IAM is gateway-less
+// and produces no session log. Mirrors accountTypeSupportsSessionLogMasking in
+// backend/src/ee/services/pam/pam-enums.ts.
+export const UNMASKABLE_PAM_ACCOUNT_TYPES = [
+  PamAccountType.Windows,
+  PamAccountType.WindowsAd,
+  PamAccountType.AwsIam
+];
 
 export const pamAccountTypeSupportsSessionLogMasking = (type: PamAccountType | string) =>
-  !(RDP_PAM_ACCOUNT_TYPES as string[]).includes(type);
+  !(UNMASKABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
 // Mirrors ORACLE_MAX_PASSWORD_LENGTH in backend/src/ee/services/pam-account/pam-account-schemas.ts, which is
 // what actually rejects a longer one. Change both together.

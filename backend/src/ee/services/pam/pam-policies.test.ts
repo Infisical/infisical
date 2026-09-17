@@ -217,15 +217,15 @@ describe("buildPamPolicyRules", () => {
 });
 
 describe("accountTypeSupportsSessionLogMasking", () => {
-  test("is false for the RDP-brokered types", () => {
-    expect(accountTypeSupportsSessionLogMasking(PamAccountType.Windows)).toBe(false);
-    expect(accountTypeSupportsSessionLogMasking(PamAccountType.WindowsAd)).toBe(false);
+  // RDP recordings are base64 frames, and AWS IAM is gateway-less so it has no session log.
+  const unmaskable = [PamAccountType.Windows, PamAccountType.WindowsAd, PamAccountType.AwsIam];
+
+  test("is false for types with no maskable session log", () => {
+    expect(unmaskable.every((type) => !accountTypeSupportsSessionLogMasking(type))).toBe(true);
   });
 
   test("is true for everything else", () => {
-    const rest = Object.values(PamAccountType).filter(
-      (type) => type !== PamAccountType.Windows && type !== PamAccountType.WindowsAd
-    );
+    const rest = Object.values(PamAccountType).filter((type) => !unmaskable.includes(type));
     expect(rest.every(accountTypeSupportsSessionLogMasking)).toBe(true);
   });
 });

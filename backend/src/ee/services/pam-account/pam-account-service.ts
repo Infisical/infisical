@@ -120,7 +120,7 @@ type TPamAccountServiceFactoryDep = {
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
-  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
+  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "findHealthyGatewaysByPoolId">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
     "getPlatformConnectionDetailsByGatewayId" | "getPAMConnectionDetails"
@@ -268,39 +268,41 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayPoolId: a.gatewayPoolId ?? a.templateGatewayPoolId
     }));
 
+    if (!candidates.some((c) => c.enabled)) return candidates.map(() => false);
+
+    const supportsMasking = (gateway: { capabilities?: unknown }) =>
+      (gateway.capabilities as { sessionLogMaskingBuiltInDetection?: boolean } | undefined)
+        ?.sessionLogMaskingBuiltInDetection === true;
+
+    // Only reachable members can serve a session, so an offline one lacking the capability must not
+    // make the account look degraded. Same reachability filter pool selection uses.
     const poolIds = [
       ...new Set(candidates.filter((c) => c.enabled && !c.gatewayId && c.gatewayPoolId).map((c) => c.gatewayPoolId!))
     ];
-    const memberships = poolIds.length ? await gatewayPoolMembershipDAL.find({ $in: { gatewayPoolId: poolIds } }) : [];
-    const poolGatewayIds = new Map<string, string[]>();
-    memberships.forEach((m) => {
-      poolGatewayIds.set(m.gatewayPoolId, [...(poolGatewayIds.get(m.gatewayPoolId) ?? []), m.gatewayId]);
-    });
+    const poolDegraded = new Map<string, boolean>();
+    await Promise.all(
+      poolIds.map(async (poolId) => {
+        const healthy = await gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
+        poolDegraded.set(
+          poolId,
+          healthy.some((gateway) => !supportsMasking(gateway))
+        );
+      })
+    );
 
-    const gatewayIds = [
-      ...new Set([
-        ...candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!),
-        ...[...poolGatewayIds.values()].flat()
-      ])
-    ];
-    const gatewayIdSet = new Set(gatewayIds);
-    const orgGateways = gatewayIdSet.size ? await gatewayV2DAL.find({ orgId }) : [];
-    const gateways = orgGateways.filter((g) => gatewayIdSet.has(g.id));
+    const directIds = new Set(candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!));
     const unsupported = new Set(
-      gateways
-        .filter(
-          (g) =>
-            (g.capabilities as { sessionLogMaskingBuiltInDetection?: boolean } | undefined)
-              ?.sessionLogMaskingBuiltInDetection !== true
-        )
-        .map((g) => g.id)
+      directIds.size
+        ? (await gatewayV2DAL.find({ orgId }))
+            .filter((g) => directIds.has(g.id) && !supportsMasking(g))
+            .map((g) => g.id)
+        : []
     );
 
     return candidates.map((c) => {
       if (!c.enabled) return false;
       if (c.gatewayId) return unsupported.has(c.gatewayId);
-      if (c.gatewayPoolId) return (poolGatewayIds.get(c.gatewayPoolId) ?? []).some((id) => unsupported.has(id));
-      return false;
+      return poolDegraded.get(c.gatewayPoolId ?? "") ?? false;
     });
   };
 
