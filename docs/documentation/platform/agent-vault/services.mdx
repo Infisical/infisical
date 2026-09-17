@@ -155,12 +155,12 @@ Different access bundles can cover the same host with different credentials, sin
 A service can add two things to a request that the agent never holds: custom headers and placeholder substitutions. Both are optional, and both work with any credential type, including pass-through.
 
 <Frame>
-  <img src="/images/platform/agent-vault/service-transformations.png" alt="The Transformations step with an API version custom header and a substitution that swaps the agent's placeholder for the real token, matched in the header" />
+  <img src="/images/platform/agent-vault/service-transformations.png" alt="The Credential step with an API version custom header and a substitution that swaps the agent's placeholder for the real token, matched in the header" />
 </Frame>
 
 ### Custom headers
 
-Some APIs need a header alongside the credential, such as an organization ID or an API version. On the **Transformations** step, add one with a name, an optional prefix, and a value. The proxy attaches it to every request to that service.
+Some APIs need a header alongside the credential, such as an organization ID or an API version. On the **Credential** step, add one with a name, an optional prefix, and a value. The proxy attaches it to every request to that service.
 
 Infisical never returns a header value once it's saved, so renaming a header keeps its value and there's nothing to retype.
 
@@ -183,7 +183,3 @@ The swap is a plain find-and-replace, so pick a placeholder distinctive enough t
 A value containing a `/` stays inside one path segment rather than adding another, so a GitLab project reaches the API as `group%2Fproject` and a path prefix still accepts it.
 
 The proxy doesn't rewrite a body over 10 MB, or one sent compressed with `Content-Encoding`. The placeholder goes out unchanged, and the proxy logs a warning naming the service.
-
-<Warning>
-Method rules, path prefixes, custom headers, and substitutions all need a recent [proxy](/documentation/platform/agent-vault/proxies). An older proxy forwards the request without them: the credential still goes out, the restrictions aren't enforced, and the upstream rejects a request that needed a custom header. Upgrade your proxies before you rely on any of these.
-</Warning>
