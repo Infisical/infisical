@@ -52,8 +52,6 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   updatedAt: true
 });
 
-// The audit body keeps the three flat ids it has always carried, because renaming a field on a live
-// event breaks the SIEM rules customers built on it.
 const auditActorFields = (actor: { type: AgentVaultMemberType; id: string }) => ({
   ...(actor.type === AgentVaultMemberType.User && { userId: actor.id }),
   ...(actor.type === AgentVaultMemberType.Identity && { identityId: actor.id }),
@@ -577,8 +575,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     }
   });
 
-  // Collapsing these into one /:actorType/:actorId route would let the filter be built with two
-  // undefined actor columns, which knex rejects at run time rather than at compile time.
   const revokeAccessBundle = async (
     req: FastifyRequest,
     accessBundleId: string,

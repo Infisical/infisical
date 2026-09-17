@@ -1012,8 +1012,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    // The actor is not looked up: a message that told an unknown id apart from an ungranted one would
-    // answer whether that id exists in the org.
     const member = await membershipDAL.findOne({
       ...bundleScope(rest.projectId, bundle.id),
       [ACTOR_COLUMN_OF[actor.type]]: actor.id

@@ -212,7 +212,6 @@ export const AgentVaultServiceSchema = z.object({
     .array()
     .describe(AGENT_VAULT.SERVICE.substitutions),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
-  // Only a user edit writes this row, so unlike the proxy's, this is not moved by a background write.
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 });
 
@@ -238,9 +237,6 @@ const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
 
 const actorIdSchema = z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId);
 
-// A grant names exactly one actor, so the three are a union rather than three nullable columns. Write
-// responses carry only the reference: they do not join the actor's row, and adding a join to report
-// what the caller just sent would cost a query per grant.
 export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
   z
     .object({ type: actorTypeSchema(AgentVaultMemberType.User), id: actorIdSchema })
@@ -287,8 +283,6 @@ export const AgentVaultRemovedMemberSchema = z.object({
   actor: AgentVaultActorRefSchema
 });
 
-// No accessBundleId: the list route carries it in the URL and the bundle-detail route nests these
-// inside the bundle, so on both it would only repeat something the caller already has.
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),

@@ -250,8 +250,6 @@ describe("Agent Vault V1 Router", async () => {
           .statusCode
       ).toBe(200);
 
-      // The column is maintained by a Postgres trigger rather than by any write in this codebase, so
-      // nothing but a round trip proves it fires.
       const touched = await read();
       expect(new Date(touched.updatedAt).getTime()).toBeGreaterThan(new Date(fresh.updatedAt).getTime());
       expect(touched.createdAt).toBe(fresh.createdAt);
@@ -1789,7 +1787,6 @@ describe("Agent Vault V1 Router", async () => {
       const identity = await createOrgIdentity(`av-arms-identity-${Date.now()}`);
 
       try {
-        // A grant only reaches an actor already in the implicit project.
         expect(
           (
             await inject("POST", `/api/v1/agent-vault/memberships/identities/${identity.id}`, {
@@ -1825,7 +1822,6 @@ describe("Agent Vault V1 Router", async () => {
         expect(byType.user.actor).toMatchObject({ type: "user", id: seedData1.id });
         expect(byType.user.actor.username).toBeTruthy();
 
-        // The three nullable id columns and the three nullable detail objects are gone for good.
         members.forEach((member) => {
           expect(member).not.toHaveProperty("accessBundleId");
           expect(member).not.toHaveProperty("userId");
@@ -2218,8 +2214,6 @@ describe("Agent Vault V1 Router", async () => {
 
       const seatsBefore = await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id);
 
-      // A lookup that lost scopeResourceType or scopeResourceId would find this row instead and evict
-      // the identity from Agent Vault, which is why the assertion below is about a row nothing touched.
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
         .first();
