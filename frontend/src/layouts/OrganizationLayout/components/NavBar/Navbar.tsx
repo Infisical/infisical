@@ -648,7 +648,7 @@ export const Navbar = () => {
               <CircleHelp />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom" sideOffset={8}>
+          <DropdownMenuContent align="end" side="bottom">
             {INFISICAL_SUPPORT_OPTIONS.map(([Icon, text, getUrl]) => {
               const url =
                 text === "Email Support"
@@ -709,7 +709,7 @@ export const Navbar = () => {
               <User />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
+          <DropdownMenuContent side="bottom" align="end">
             <div className="cursor-default px-3 py-2">
               <div className="text-sm font-medium capitalize">
                 {user?.firstName} {user?.lastName}
