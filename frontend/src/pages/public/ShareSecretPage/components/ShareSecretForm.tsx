@@ -517,13 +517,17 @@ export const ShareSecretForm = ({
                         <InputGroupInput
                           {...field}
                           id="share-secret-password"
+                          name="shared-secret-passphrase"
                           placeholder="Password"
-                          type={isPasswordVisible ? "text" : "password"}
-                          autoComplete="new-password"
+                          type="text"
+                          autoComplete="off"
                           autoCorrect="off"
                           spellCheck={false}
                           aria-autocomplete="none"
                           data-form-type="other"
+                          data-1p-ignore
+                          data-lpignore="true"
+                          className={twMerge(!isPasswordVisible && "[-webkit-text-security:disc]")}
                           aria-invalid={Boolean(error)}
                         />
                         <InputGroupAddon align="inline-end">
@@ -542,117 +546,119 @@ export const ShareSecretForm = ({
               </FieldSet>
 
               {!isPublic && (
-                <FieldSet className="gap-4 border-t border-border pt-6">
-                  <FieldLegend variant="label">Delivery</FieldLegend>
-                  <Controller
-                    control={control}
-                    name="accessType"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                      <Field orientation="horizontal">
-                        <Toggle
-                          variant="project"
-                          id="share-secret-org-only"
-                          checked={
-                            field.value === SecretSharingAccessType.Organization ||
-                            !allowSecretSharingOutsideOrganization
-                          }
-                          disabled={!allowSecretSharingOutsideOrganization}
-                          onCheckedChange={(v) => {
-                            if (v) {
-                              setValue("allowExternalEmails", false, { shouldValidate: true });
+                <div className="border-t border-border pt-6">
+                  <FieldSet className="gap-4">
+                    <FieldLegend variant="label">Delivery</FieldLegend>
+                    <Controller
+                      control={control}
+                      name="accessType"
+                      render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <Field orientation="horizontal">
+                          <Toggle
+                            variant="project"
+                            id="share-secret-org-only"
+                            checked={
+                              field.value === SecretSharingAccessType.Organization ||
+                              !allowSecretSharingOutsideOrganization
                             }
-                            onChange(
-                              v
-                                ? SecretSharingAccessType.Organization
-                                : SecretSharingAccessType.Anyone
-                            );
-                          }}
-                        />
-                        <FieldLabel htmlFor="share-secret-org-only" className="flex-auto">
-                          Limit access to people within organization
-                          {!allowSecretSharingOutsideOrganization && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Lock className="size-3 text-muted" />
-                              </TooltipTrigger>
-                              <TooltipContent>Enforced by your organization</TooltipContent>
-                            </Tooltip>
-                          )}
-                        </FieldLabel>
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
-                  />
+                            disabled={!allowSecretSharingOutsideOrganization}
+                            onCheckedChange={(v) => {
+                              if (v) {
+                                setValue("allowExternalEmails", false, { shouldValidate: true });
+                              }
+                              onChange(
+                                v
+                                  ? SecretSharingAccessType.Organization
+                                  : SecretSharingAccessType.Anyone
+                              );
+                            }}
+                          />
+                          <FieldLabel htmlFor="share-secret-org-only" className="flex-auto">
+                            Limit access to people within organization
+                            {!allowSecretSharingOutsideOrganization && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Lock className="size-3 text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent>Enforced by your organization</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </FieldLabel>
+                          {error && <FieldError>{error.message}</FieldError>}
+                        </Field>
+                      )}
+                    />
 
-                  <Controller
-                    control={control}
-                    name="allowExternalEmails"
-                    render={({
-                      field: { onChange, value: isChecked, ...field },
-                      fieldState: { error }
-                    }) => (
-                      <Field orientation="horizontal">
-                        <Toggle
-                          {...field}
-                          variant="project"
-                          id="share-secret-allow-external"
-                          checked={isOrgAccess ? false : (isChecked ?? false)}
-                          onCheckedChange={onChange}
-                          disabled={isOrgAccess}
-                        />
-                        <FieldLabel htmlFor="share-secret-allow-external" className="flex-auto">
-                          Allow recipients without an Infisical account
-                          {!allowSecretSharingOutsideOrganization && (
+                    <Controller
+                      control={control}
+                      name="allowExternalEmails"
+                      render={({
+                        field: { onChange, value: isChecked, ...field },
+                        fieldState: { error }
+                      }) => (
+                        <Field orientation="horizontal">
+                          <Toggle
+                            {...field}
+                            variant="project"
+                            id="share-secret-allow-external"
+                            checked={isOrgAccess ? false : (isChecked ?? false)}
+                            onCheckedChange={onChange}
+                            disabled={isOrgAccess}
+                          />
+                          <FieldLabel htmlFor="share-secret-allow-external" className="flex-auto">
+                            Allow recipients without an Infisical account
+                            {!allowSecretSharingOutsideOrganization && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Lock className="size-3 text-muted" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  External sharing is disabled by your organization
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </FieldLabel>
+                          {error && <FieldError>{error.message}</FieldError>}
+                        </Field>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="emails"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field>
+                          <FieldLabel htmlFor="share-secret-emails">
+                            Email Recipients{" "}
+                            <span className="text-xs text-muted italic">- Optional</span>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Lock className="size-3 text-muted" />
+                                <Info className="size-3 cursor-help text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent>
-                                External sharing is disabled by your organization
+                              <TooltipContent className="max-w-sm">
+                                Each recipient gets their own link. Leave this empty to get one link
+                                you can share yourself.
                               </TooltipContent>
                             </Tooltip>
-                          )}
-                        </FieldLabel>
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name="emails"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel htmlFor="share-secret-emails">
-                          Email Recipients{" "}
-                          <span className="text-xs text-muted italic">- Optional</span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="size-3 cursor-help text-muted" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-sm">
-                              Each recipient gets their own link. Leave this empty to get one link
-                              you can share yourself.
-                            </TooltipContent>
-                          </Tooltip>
-                        </FieldLabel>
-                        <Input
-                          {...field}
-                          id="share-secret-emails"
-                          placeholder="user1@example.com, user2@example.com"
-                          autoComplete="off"
-                          isError={Boolean(error)}
-                        />
-                        <FieldDescription>
-                          {isAllowingExternalEmails
-                            ? "Recipients do not need an Infisical account, but they do need the password above."
-                            : "Recipients must sign in to Infisical so their identity can be verified."}
-                        </FieldDescription>
-                        {error && <FieldError>{error.message}</FieldError>}
-                      </Field>
-                    )}
-                  />
-                </FieldSet>
+                          </FieldLabel>
+                          <Input
+                            {...field}
+                            id="share-secret-emails"
+                            placeholder="user1@example.com, user2@example.com"
+                            autoComplete="off"
+                            isError={Boolean(error)}
+                          />
+                          <FieldDescription>
+                            {isAllowingExternalEmails
+                              ? "Recipients do not need an Infisical account, but they do need the password above."
+                              : "Recipients must sign in to Infisical so their identity can be verified."}
+                          </FieldDescription>
+                          {error && <FieldError>{error.message}</FieldError>}
+                        </Field>
+                      )}
+                    />
+                  </FieldSet>
+                </div>
               )}
             </AccordionContent>
           </AccordionItem>

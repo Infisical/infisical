@@ -67,6 +67,7 @@ export const PasswordContainer = ({
           render={({ field, fieldState: { error } }) => (
             <Field style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
               <FieldLabel
+                htmlFor="shared-secret-passphrase"
                 className={brandingTheme ? "text-[var(--muted-color)]" : ""}
                 style={
                   brandingTheme
@@ -79,12 +80,21 @@ export const PasswordContainer = ({
               <div className="flex items-center gap-2">
                 <Input
                   {...field}
+                  id="shared-secret-passphrase"
+                  name="shared-secret-passphrase"
                   autoFocus
                   placeholder="Enter password to view secret"
-                  type="password"
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  aria-autocomplete="none"
+                  data-form-type="other"
+                  data-1p-ignore
+                  data-lpignore="true"
                   style={inputStyle}
                   className={twMerge(
-                    "flex-1",
+                    "flex-1 [-webkit-text-security:disc]",
                     brandingTheme &&
                       "border placeholder:text-[var(--muted-color)]/50 focus-visible:ring-[var(--muted-color)]/50"
                   )}

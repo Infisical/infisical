@@ -27,7 +27,7 @@ export const ShareSecretPage = () => {
       <Card className="z-50 m-auto w-full max-w-xl">
         <CardHeader>
           <CardTitle>
-            <LockKeyhole className="size-4 text-project" />
+            <LockKeyhole className="size-4" />
             Share a Secret
           </CardTitle>
           <CardDescription>
