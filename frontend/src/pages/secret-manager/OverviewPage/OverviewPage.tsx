@@ -1168,14 +1168,7 @@ const OverviewPageContent = () => {
         projectId
       });
     },
-    [
-      ensureFolderRbacPlan,
-      getFolderByNameAndEnv,
-      singleEnvSlug,
-      childFolderPath,
-      orgId,
-      projectId
-    ]
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {

@@ -332,8 +332,8 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                 <EmptyHeader>
                   <EmptyTitle>This {actorNoun} has no folder access</EmptyTitle>
                   <EmptyDescription>
-                    Grant access to a folder to override{" "}
-                    {actor.type === "user" ? "their" : "its"} project roles within it
+                    Grant access to a folder to override {actor.type === "user" ? "their" : "its"}{" "}
+                    project roles within it
                   </EmptyDescription>
                 </EmptyHeader>
                 {!hideActions && (

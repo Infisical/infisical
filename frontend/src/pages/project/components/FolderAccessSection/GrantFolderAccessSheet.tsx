@@ -235,12 +235,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
   );
 };
 
-export const GrantFolderAccessSheet = ({
-  isOpen,
-  onOpenChange,
-  actor,
-  existingAccess
-}: Props) => (
+export const GrantFolderAccessSheet = ({ isOpen, onOpenChange, actor, existingAccess }: Props) => (
   <Sheet open={isOpen} onOpenChange={onOpenChange}>
     <SheetContent className="gap-y-0 sm:max-w-[600px]">
       {isOpen && (
