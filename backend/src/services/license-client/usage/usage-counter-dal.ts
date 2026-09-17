@@ -365,9 +365,15 @@ export const usageCounterDALFactory = (db: TDbClient) => {
         ])
         .select({
           quotaKey: `${TableName.Certificate}.quotaKey`,
-          orgId: `${TableName.Project}.orgId`,
-          hasWildcard: `${TableName.Certificate}.hasWildcard`
-        });
+          orgId: `${TableName.Project}.orgId`
+        })
+        // For each certificate row, it looks at all rows with the same quotaKey and sets hasWildcard to true if any of them is wildcard.
+        .select(
+          db.raw(`bool_or(??) OVER (PARTITION BY ??) as "hasWildcard"`, [
+            `${TableName.Certificate}.hasWildcard`,
+            `${TableName.Certificate}.quotaKey`
+          ])
+        );
 
       const rows = (await db
         .replicaNode()

@@ -76,6 +76,7 @@ export const BillingV2Page = () => {
     search: debouncedOrgSearch,
     limit: ORG_PAGE_SIZE
   });
+  const isOrgSearchPending = isRootOrgsFetching || orgSearch !== debouncedOrgSearch;
   const rootOrgs = orgPage?.organizations ?? [];
   const { data: unsearchedOrgPage, isPending: isRootOrgCountPending } =
     useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
@@ -259,12 +260,13 @@ export const BillingV2Page = () => {
               onViewBreakdown={onViewBreakdown}
               rootOrgs={pickerOrgs}
               rootOrgCount={rootOrgCount}
-              isRootOrgsLoading={isRootOrgsFetching}
+              isRootOrgsLoading={isOrgSearchPending}
               isReloadingProducts={isReloadingProducts}
               selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
               onSelectOrg={(nextId) => {
                 if (nextId === ALL_ORGS_VALUE) {
                   setBreakdownScope("instance");
+                  setSelectedOrgId(orgId);
                   return;
                 }
                 setBreakdownScope("organization");

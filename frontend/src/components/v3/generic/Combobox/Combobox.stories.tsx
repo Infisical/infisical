@@ -200,7 +200,7 @@ const ServerSearchRender = () => {
         onValueChange={setValue}
         onClear={() => setValue(null)}
         onSearchChange={setSearch}
-        isLoading={isLoading}
+        isLoading={isLoading || search !== debouncedSearch}
         getOptionValue={(option) => option.id}
         getOptionLabel={(option) => option.name}
         placeholder="Select organization..."
@@ -221,7 +221,8 @@ const ServerSearchRender = () => {
  * Passing `onSearchChange` hands filtering to the caller: the internal matcher is switched off
  * and `options` renders exactly as given. Use it when the option set is too large to send in
  * full, so the popup shows one page of server results and typing fetches the next one. Debounce
- * the query on your side, and pair it with `isLoading` so the popup says it is still working.
+ * the query on your side, and pair it with `isLoading` so the popup says it is still working —
+ * cover the debounce window as well as the request, or the stale page reads as the answer.
  *
  * It also turns off the auto-highlight that local filtering uses: the list arrives after a debounce
  * and a round trip, so highlighting the top match would put it on a row the user has not seen yet and

@@ -181,12 +181,74 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
   );
 };
 
+const SUB_ORG_ROWS = ["row-a", "row-b", "row-c"];
+
+const ScopeRowSkeleton = () => (
+  <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex h-5 min-w-0 items-center gap-2">
+        <Skeleton className="size-3.5 shrink-0 rounded-xs" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+      <div className="flex h-4 items-center">
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+    <Skeleton className="h-[3px] w-full rounded-xs" />
+  </div>
+);
+
 const BreakdownSkeleton = () => (
   <div className="flex flex-col gap-4">
-    <Skeleton className="h-24 w-full" />
-    <Skeleton className="h-28 w-full" />
-    <Skeleton className="h-14 w-full" />
-    <Skeleton className="h-14 w-full" />
+    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <div className="flex h-8 items-center gap-2">
+        <Skeleton className="h-6 w-12" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+      <div className="flex h-4 items-center gap-4">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-1 pt-1">
+      <div className="flex h-6 items-center">
+        <Skeleton className="h-4 w-44" />
+      </div>
+      <div className="flex h-4 items-center">
+        <Skeleton className="h-3 w-64" />
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <div className="flex h-8 items-center gap-2">
+        <Skeleton className="h-6 w-12" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+      <Skeleton className="h-[5px] w-full rounded-xs" />
+      <div className="flex h-4 items-center gap-5">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="h-3 w-36" />
+      </div>
+    </div>
+
+    <ScopeRowSkeleton />
+
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-9 flex-1 rounded-md" />
+        <Skeleton className="h-9 w-36 shrink-0 rounded-md" />
+      </div>
+      <div className="flex h-4 items-center justify-between gap-3 px-0.5">
+        <Skeleton className="h-2.5 w-32" />
+        <Skeleton className="h-2.5 w-6" />
+      </div>
+      <div className="flex flex-col gap-2">
+        {SUB_ORG_ROWS.map((row) => (
+          <ScopeRowSkeleton key={row} />
+        ))}
+      </div>
+    </div>
   </div>
 );
 
@@ -397,11 +459,13 @@ export const UsageBreakdownSheet = ({
   const [activeKey, setActiveKey] = useState(dimensions[0]?.key ?? "");
   const activeDim = dimensions.find((dim) => dim.key === activeKey) ?? dimensions[0];
 
+  const dimensionKey = activeDim?.key ?? null;
   const {
     data: breakdown,
     isPending,
     isError
-  } = useGetBillingV2UsageBreakdown(orgId, activeDim?.key ?? null, scope);
+  } = useGetBillingV2UsageBreakdown(orgId, dimensionKey, scope);
+  const isLoading = isPending && Boolean(dimensionKey);
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -427,7 +491,18 @@ export const UsageBreakdownSheet = ({
             </Tabs>
           )}
 
-          {isPending && <BreakdownSkeleton />}
+          {isLoading && <BreakdownSkeleton />}
+
+          {!dimensionKey && (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Nothing to break down</EmptyTitle>
+                <EmptyDescription>
+                  This product no longer meters usage that can be traced to an organization.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
 
           {isError && (
             <Empty className="border">
