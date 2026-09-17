@@ -28,8 +28,7 @@ const pathPrefixError = (raw: string) => {
   if (!value.startsWith("/")) return `"${value}" must start with a /.`;
   if (value.includes("//")) return `"${value}" can't contain an empty path segment.`;
   if (hasTraversalSegment(value)) return `"${value}" can't contain a . or .. segment.`;
-  if (!PATH_PREFIX_RE.test(value))
-    return `"${value}" can only contain letters, digits and - . _ ~ $ & + : = @.`;
+  if (!PATH_PREFIX_RE.test(value)) return `"${value}" can only contain letters, digits and - . _ ~ $ & + : = @.`;
   return null;
 };
 

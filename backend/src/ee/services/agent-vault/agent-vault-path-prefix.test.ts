@@ -11,7 +11,6 @@ describe("agent vault path prefixes", () => {
       ["/v1/chat/completions"],
       ["/repos-and-more"],
       ["/a+b"],
-      ["/a,b"],
       ["/tenants/acme:v2@edge"],
       ["/~user/$data"]
     ])("accepts %s", (prefix) => {
@@ -29,6 +28,7 @@ describe("agent vault path prefixes", () => {
       ["/repos?x=1", "? ends the path"],
       ["/repos#x", "# ends the path"],
       ["/repos x", "a space would have to be escaped"],
+      ["/a,b", "a comma separates one prefix from the next"],
       ["/caf\u00e9", "a non-ASCII prefix is compared against /caf%C3%A9 and could never match"],
       ["/repos/{owner}", "braces are encoded in the request URL, so this would match nothing"],
       ["/a[b]", "brackets survive or not depending on the rest of the path"],
