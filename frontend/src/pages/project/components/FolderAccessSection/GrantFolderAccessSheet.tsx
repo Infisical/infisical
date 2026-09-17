@@ -160,7 +160,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
 
       <div className="thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4">
         <div className="space-y-2">
-          <Label>Folder</Label>
+          <Label>Folder Path</Label>
           <div className="grid grid-cols-[minmax(8rem,0.8fr)_minmax(0,1.2fr)] gap-2">
             <Select
               value={environmentSlug}
