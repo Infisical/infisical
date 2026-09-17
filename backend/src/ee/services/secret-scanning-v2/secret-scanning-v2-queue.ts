@@ -103,7 +103,8 @@ export const secretScanningV2QueueServiceFactory = ({
    */
   const acquireFullScanLease = async (resourceId: string, scanId: string) => {
     const key = KeyStorePrefixes.SecretScanningFullScanLease(resourceId);
-    const ttlSeconds = Math.ceil(getSecretScanningScanBudgetMs(getConfig()) / 1000);
+    const scanBudget = getSecretScanningScanBudgetMs(getConfig());
+    const ttlSeconds = Math.ceil(scanBudget / 1000);
 
     const acquired = await keyStore.setItemWithExpiryNX(key, ttlSeconds, scanId);
 
@@ -266,14 +267,28 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
-      await secretScanningV2DAL.scans.update(
-        { id: scanId },
+      // Guarded so a retry cannot reopen a scan that already reached a terminal status. The work
+      // itself succeeded and only a side effect after it (a notification enqueue, an audit log)
+      // threw, so BullMQ hands the whole handler back; without this an already-Completed scan would
+      // be reset to `scanning` and, on the last attempt, closed out as Failed.
+      const startedScans = await secretScanningV2DAL.scans.update(
+        {
+          id: scanId,
+          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+        },
         {
           status: SecretScanningScanStatus.Scanning,
           scanningStartedAt: new Date(),
           progressUpdatedAt: new Date()
         }
       );
+
+      if (!startedScans.length) {
+        logger.warn(
+          `secretScanningV2Queue: Full Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.FullScan}]`
+        );
+        return;
+      }
 
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
@@ -642,13 +657,25 @@ export const secretScanningV2QueueServiceFactory = ({
     );
 
     try {
-      await secretScanningV2DAL.scans.update(
-        { id: scanId },
+      // Same guard as the full scan: a retry after a post-completion side effect failed must not
+      // reopen a scan that already reached a terminal status.
+      const startedScans = await secretScanningV2DAL.scans.update(
+        {
+          id: scanId,
+          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+        },
         {
           status: SecretScanningScanStatus.Scanning,
           scanningStartedAt: new Date()
         }
       );
+
+      if (!startedScans.length) {
+        logger.warn(
+          `secretScanningV2Queue: Diff Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.DiffScan}]`
+        );
+        return;
+      }
 
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);

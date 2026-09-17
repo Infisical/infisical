@@ -22,7 +22,7 @@ import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-qu
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
 import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
@@ -165,10 +165,6 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
  */
 const COMMIT_LIST_ARGS = ["rev-list", "--full-history", "--all"];
 
-// Enumeration is a traversal with no patch generation, so it is bounded separately from the scan
-// rather than spending any of the customer-tunable scan budget.
-const COMMIT_ENUMERATION_TIMEOUT = 5 * 60 * 1000;
-
 export type TCommitBatch = {
   /** Commits to skip in `git log`'s newest-first order before this batch begins. */
   skip: number;
@@ -205,7 +201,7 @@ export const planCommitBatches = async ({
   await execFileBounded("git", [...COMMIT_LIST_ARGS, "--reverse"], {
     phase: SecretScanningExecPhase.Enumerate,
     cwd: repoPath,
-    timeoutMs: COMMIT_ENUMERATION_TIMEOUT,
+    timeoutMs: SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT,
     env: GIT_PROCESS_ENV,
     onStdoutLine: (line) => {
       const commit = line.trim();

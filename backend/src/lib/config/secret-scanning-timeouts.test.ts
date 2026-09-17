@@ -106,7 +106,7 @@ describe("secret scanning timeouts", () => {
       });
 
       expect(issuesFor(result, "SECRET_SCANNING_STUCK_SCAN_TIMEOUT")).toEqual([
-        "SECRET_SCANNING_STUCK_SCAN_TIMEOUT (1200000ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus 300000ms of measurement and bookkeeping (1500000ms), otherwise healthy in-flight scans are reaped as stuck."
+        "SECRET_SCANNING_STUCK_SCAN_TIMEOUT (1200000ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus 600000ms of commit enumeration, measurement and bookkeeping (1800000ms), otherwise healthy in-flight scans are reaped as stuck."
       ]);
     });
 
@@ -114,7 +114,7 @@ describe("secret scanning timeouts", () => {
       const result = parse({
         SECRET_SCANNING_CLONE_TIMEOUT: "1m",
         SECRET_SCANNING_SCAN_TIMEOUT: "1m",
-        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "7m"
+        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "12m"
       });
 
       expect(result.success).toBe(false);
@@ -124,7 +124,7 @@ describe("secret scanning timeouts", () => {
       const result = parse({
         SECRET_SCANNING_CLONE_TIMEOUT: "1m",
         SECRET_SCANNING_SCAN_TIMEOUT: "1m",
-        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "420001"
+        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "720001"
       });
 
       expect(result.success).toBe(true);

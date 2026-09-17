@@ -66,14 +66,29 @@ export const runModesSchema = zpStr(z.string().optional())
 export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
 
 /**
- * Clone plus scan plus that overhead: the longest a healthy scan can go without making externally
- * visible progress. The stuck-scan validation and the full-scan lease TTL both key off it, so they
- * cannot drift apart.
+ * Ceiling for the `git rev-list` pass that plans a full scan's commit batches. Enumeration is a
+ * traversal with no patch generation, so it is bounded separately from the scan rather than
+ * spending any of the customer-tunable scan budget — but it runs between the clone and the first
+ * progress update, so the stuck-scan budget has to carry it.
+ */
+export const SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT = ms("5m");
+
+/**
+ * Everything a scan can spend between two progress updates that is not the customer's clone and
+ * scan timeouts: enumerating the commits to batch, and the measurement and bookkeeping around them.
+ */
+export const SECRET_SCANNING_FIXED_SCAN_HEADROOM =
+  SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+
+/**
+ * The longest a healthy scan can go without recording progress: the clone, the commit enumeration
+ * and measurement that follow it, one `infisical scan` invocation, and the bookkeeping around them.
+ * The stuck-scan validation and the full-scan lease TTL both key off it, so they cannot drift apart.
  */
 export const getSecretScanningScanBudgetMs = (timeouts: {
   SECRET_SCANNING_CLONE_TIMEOUT: number;
   SECRET_SCANNING_SCAN_TIMEOUT: number;
-}) => timeouts.SECRET_SCANNING_CLONE_TIMEOUT + timeouts.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+}) => timeouts.SECRET_SCANNING_CLONE_TIMEOUT + timeouts.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_FIXED_SCAN_HEADROOM;
 
 const zodTimeoutMs = ({
   envVar,
@@ -150,7 +165,7 @@ export const validateSecretScanningTimeouts = (
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT"],
-      message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_SCAN_OVERHEAD}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+      message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_FIXED_SCAN_HEADROOM}ms of commit enumeration, measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
     });
   }
 };
