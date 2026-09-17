@@ -79,15 +79,21 @@ export enum ServiceStep {
   Template = "template",
   Details = "details",
   Credential = "credential",
-  Transformations = "transformations",
   Review = "review"
 }
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
   [ServiceStep.Details]: ["name", "hosts", "hostDraft", "methods", "pathPrefixes", "pathDraft"],
-  [ServiceStep.Credential]: ["credentialType", "headerName", "headerPrefix", "username", "secret"],
-  [ServiceStep.Transformations]: ["customHeaders", "substitutions"],
+  [ServiceStep.Credential]: [
+    "credentialType",
+    "headerName",
+    "headerPrefix",
+    "username",
+    "secret",
+    "customHeaders",
+    "substitutions"
+  ],
   [ServiceStep.Review]: []
 };
 

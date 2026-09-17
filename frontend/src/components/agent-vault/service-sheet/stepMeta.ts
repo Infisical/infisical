@@ -34,19 +34,10 @@ export const SERVICE_STEPS: StepMeta[] = [
     name: "Credential",
     shortDescription: "How to authenticate",
     title: "Credential",
-    subtitle: "How requests to this service are authenticated.",
+    subtitle: "How requests to this service are authenticated, and anything else to add to them.",
     rightLabel: "CREDENTIAL",
-    rightDescription: "Agents reach this service without ever holding the credential themselves."
-  },
-  {
-    step: ServiceStep.Transformations,
-    name: "Transformations",
-    shortDescription: "Custom headers and substitutions",
-    title: "Transformations",
-    subtitle: "Custom headers and placeholder swaps. Skip this if you don't need them.",
-    rightLabel: "TRANSFORMATIONS",
     rightDescription:
-      "Custom headers are added to every request to this service. A substitution swaps a placeholder your agent already sends for the real value."
+      "Agents reach this service without ever holding the credential themselves. Custom headers go out on top of it, and a substitution swaps a placeholder your agent already sends for the real value."
   },
   {
     step: ServiceStep.Review,

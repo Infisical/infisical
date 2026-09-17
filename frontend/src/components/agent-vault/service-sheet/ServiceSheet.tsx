@@ -52,7 +52,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   hosts: [],
   hostDraft: "",
   pathDraft: "",
-  credentialType: AgentVaultCredentialType.Bearer,
+  credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
   username: "",
@@ -288,8 +288,8 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
           credential: ServiceStep.Credential,
-          customHeaders: ServiceStep.Transformations,
-          substitutions: ServiceStep.Transformations
+          customHeaders: ServiceStep.Credential,
+          substitutions: ServiceStep.Credential
         };
 
         const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
@@ -375,8 +375,6 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         requestDiscard();
       }}
     >
-      {/* Same width as the proxied service sheet, which this whole layout mirrors: three columns need more
-          than the Sheet default, which caps at sm:max-w-md and leaves the middle one about 445px. */}
       <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
         <SheetHeader>
           {isTemplateStep ? (
@@ -440,9 +438,11 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
                   {current.step === ServiceStep.Details && <DetailsFields />}
                   {current.step === ServiceStep.Credential && (
-                    <CredentialFields storedType={service?.credential.type} />
+                    <div className="flex flex-col gap-5">
+                      <CredentialFields storedType={service?.credential.type} />
+                      <TransformationsFields />
+                    </div>
                   )}
-                  {current.step === ServiceStep.Transformations && <TransformationsFields />}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 
