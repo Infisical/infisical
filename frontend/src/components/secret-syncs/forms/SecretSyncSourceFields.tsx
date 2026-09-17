@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
+import { Info, TriangleAlert } from "lucide-react";
 
 import {
   Alert,
@@ -50,7 +50,7 @@ const DefaultSecretSyncSourceFields = () => {
 
   const { syncOption } = useSecretSyncOption(destination);
 
-  const { conflicts, isChecking, isClear } = useRecursiveConflictsCheck({
+  const { conflicts, isChecking } = useRecursiveConflictsCheck({
     destination,
     projectId: currentProject.id,
     environment: selectedEnvironment?.slug,
