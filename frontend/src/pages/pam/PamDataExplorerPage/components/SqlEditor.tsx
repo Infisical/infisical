@@ -33,7 +33,7 @@ const infisicalTheme = EditorView.theme({
   ".cm-gutters": {
     backgroundColor: "var(--color-card)",
     borderRight: "1px solid var(--color-border)",
-    color: "#707174"
+    color: "var(--color-muted)"
   },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 12px 0 8px" },
   ".cm-activeLine": {
@@ -55,23 +55,23 @@ const infisicalTheme = EditorView.theme({
 
 const infisicalHighlight = HighlightStyle.define(
   [
-    { tag: tags.keyword, color: "#63b0bd", fontWeight: "600" },
-    { tag: tags.string, color: "#29b866" },
-    { tag: tags.number, color: "#f39c12" },
-    { tag: tags.comment, color: "#707174", fontStyle: "italic" },
-    { tag: tags.operator, color: "#adaeb0" },
-    { tag: tags.punctuation, color: "#adaeb0" },
-    { tag: tags.separator, color: "#adaeb0" },
-    { tag: tags.bracket, color: "#adaeb0" },
-    { tag: tags.name, color: "#ebebeb" },
-    { tag: tags.function(tags.name), color: "#63b0bd" },
-    { tag: tags.typeName, color: "#f39c12" },
-    { tag: tags.bool, color: "#63b0bd" },
-    { tag: tags.null, color: "#707174" },
-    { tag: tags.special(tags.string), color: "#29b866" },
-    { tag: tags.invalid, color: "#e74c3c" }
+    { tag: tags.keyword, color: "var(--color-info)", fontWeight: "600" },
+    { tag: tags.string, color: "var(--color-success)" },
+    { tag: tags.number, color: "var(--color-warning)" },
+    { tag: tags.comment, color: "var(--color-muted)", fontStyle: "italic" },
+    { tag: tags.operator, color: "var(--color-label)" },
+    { tag: tags.punctuation, color: "var(--color-label)" },
+    { tag: tags.separator, color: "var(--color-label)" },
+    { tag: tags.bracket, color: "var(--color-label)" },
+    { tag: tags.name, color: "var(--color-foreground)" },
+    { tag: tags.function(tags.name), color: "var(--color-info)" },
+    { tag: tags.typeName, color: "var(--color-warning)" },
+    { tag: tags.bool, color: "var(--color-info)" },
+    { tag: tags.null, color: "var(--color-muted)" },
+    { tag: tags.special(tags.string), color: "var(--color-success)" },
+    { tag: tags.invalid, color: "var(--color-danger)" }
   ],
-  { all: { color: "#ebebeb" } }
+  { all: { color: "var(--color-foreground)" } }
 );
 
 const MAX_SQL_BYTES = 50 * 1024; // 50KB — matches backend Zod limit
