@@ -2099,6 +2099,7 @@ export const registerRoutes = async (
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     pamFolderDAL,
+    gatewayPoolMembershipDAL,
     pamAccountTemplateDAL,
     membershipDAL,
     membershipRoleDAL,

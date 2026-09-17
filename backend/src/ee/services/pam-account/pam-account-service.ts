@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -30,9 +31,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
+  accountTypeSupportsSessionLogMasking,
   PamAccessStatus,
   PamAccessType,
   PamAccountType,
+  PamAccountWarning,
   PamHeartbeatStatus,
   PamProductRole,
   PamSessionStatus
@@ -116,7 +119,8 @@ type TPamAccountServiceFactoryDep = {
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
+  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
   gatewayV2Service: Pick<
     TGatewayV2ServiceFactory,
     "getPlatformConnectionDetailsByGatewayId" | "getPAMConnectionDetails"
@@ -206,6 +210,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     kmsService,
     gatewayV2Service,
     gatewayPoolService,
+    gatewayPoolMembershipDAL,
+    gatewayV2DAL,
     licenseService
   } = deps;
 
@@ -236,6 +242,66 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   }) => {
     const accessibilityIssues = getAccountAccessibilityIssues(a);
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };
+  };
+
+  // The gateway performs the masking, so a build predating built-in detection ignores the
+  // template's setting without reporting anything. Derived server-side because listing gateways is
+  // an org-admin permission, and a PAM member who can see the account must still see this.
+  const $resolveMaskingDegraded = async (
+    orgId: string,
+    accounts: {
+      accountType: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
+      templateGatewayId: string | null;
+      templateGatewayPoolId: string | null;
+      templateSettings: unknown;
+    }[]
+  ) => {
+    const candidates = accounts.map((a) => ({
+      enabled:
+        accountTypeSupportsSessionLogMasking(a.accountType as PamAccountType) &&
+        PamTemplateSettingsSchema.safeParse(a.templateSettings).data?.sessionLogMaskingBuiltInDetection === true,
+      // Mirrors the session launch path: each field falls back to the template independently,
+      // and a direct gateway wins over a pool.
+      gatewayId: a.gatewayId ?? a.templateGatewayId,
+      gatewayPoolId: a.gatewayPoolId ?? a.templateGatewayPoolId
+    }));
+
+    const poolIds = [
+      ...new Set(candidates.filter((c) => c.enabled && !c.gatewayId && c.gatewayPoolId).map((c) => c.gatewayPoolId!))
+    ];
+    const memberships = poolIds.length ? await gatewayPoolMembershipDAL.find({ $in: { gatewayPoolId: poolIds } }) : [];
+    const poolGatewayIds = new Map<string, string[]>();
+    memberships.forEach((m) => {
+      poolGatewayIds.set(m.gatewayPoolId, [...(poolGatewayIds.get(m.gatewayPoolId) ?? []), m.gatewayId]);
+    });
+
+    const gatewayIds = [
+      ...new Set([
+        ...candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!),
+        ...[...poolGatewayIds.values()].flat()
+      ])
+    ];
+    const gatewayIdSet = new Set(gatewayIds);
+    const orgGateways = gatewayIdSet.size ? await gatewayV2DAL.find({ orgId }) : [];
+    const gateways = orgGateways.filter((g) => gatewayIdSet.has(g.id));
+    const unsupported = new Set(
+      gateways
+        .filter(
+          (g) =>
+            (g.capabilities as { sessionLogMaskingBuiltInDetection?: boolean } | undefined)
+              ?.sessionLogMaskingBuiltInDetection !== true
+        )
+        .map((g) => g.id)
+    );
+
+    return candidates.map((c) => {
+      if (!c.enabled) return false;
+      if (c.gatewayId) return unsupported.has(c.gatewayId);
+      if (c.gatewayPoolId) return (poolGatewayIds.get(c.gatewayPoolId) ?? []).some((id) => unsupported.has(id));
+      return false;
+    });
   };
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
@@ -324,7 +390,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       )
     ]);
 
-    return accounts.map((a) => {
+    const maskingDegraded = await $resolveMaskingDegraded(ctx.actorOrgId, accounts);
+
+    return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
       const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
@@ -348,6 +416,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
         isStale: a.isStale,
+        warnings: maskingDegraded[idx] ? [PamAccountWarning.SessionLogMaskingDegraded] : [],
         heartbeatStatus: (a.heartbeatStatus as PamHeartbeatStatus | null) ?? null,
         heartbeatEnabled: Boolean(a.heartbeatEnabled),
         requiresApproval,

@@ -2,7 +2,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { validatePolicyValues } from "../pam/pam-policies";
 import {
@@ -23,7 +23,8 @@ import {
   DEFAULT_HEARTBEAT_CONFIG,
   PamRecordingS3ConfigSchema,
   PamTemplateSettingsSchema,
-  TPamTemplateSettings
+  TPamTemplateSettings,
+  TPamTemplateSettingsInput
 } from "./pam-account-template-schemas";
 import {
   TCreatePamAccountTemplateDTO,
@@ -65,7 +66,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   // Reject rotation config on non-rotatable template types (the settings schema can't, since the type is a sibling
   // field). The supported-type list is derived from the registry so it never goes stale as types are added.
-  const validateTemplateRotationConfig = (accountType: string, settings: TPamTemplateSettings | undefined) => {
+  const validateTemplateRotationConfig = (accountType: string, settings: TPamTemplateSettingsInput | undefined) => {
     if (!settings) return;
     const hasRotationConfig = settings.rotation !== undefined || settings.passwordRequirements !== undefined;
     if (hasRotationConfig && !isRotatableAccountType(accountType)) {
@@ -103,7 +104,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   const validateTemplateRecordingS3Config = async (
     recordingConnectionId: string | null | undefined,
-    settings: TPamTemplateSettings | undefined,
+    settings: TPamTemplateSettingsInput | undefined,
     ctx: TActorContext
   ): Promise<TPamRecordingResolvedConfig | null> => {
     const isS3Backend = settings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
@@ -165,12 +166,15 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
-    // Credential health checking is on for a new template unless the caller says otherwise.
+    // Credential health checking and built-in masking are on for a new template unless the caller
+    // says otherwise.
     // Partial on purpose: the schema's defaults are applied on read, exactly as they were when create stored
     // no settings at all.
     const seededSettings: Partial<TPamTemplateSettings> = {
       ...(settings ?? {}),
-      heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG
+      heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG,
+      sessionLogMaskingBuiltInDetection:
+        settings?.sessionLogMaskingBuiltInDetection ?? accountTypeSupportsSessionLogMasking(type)
     };
 
     try {

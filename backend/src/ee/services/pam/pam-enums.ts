@@ -101,3 +101,14 @@ export enum PamNotificationEvent {
 
 // Best-effort: the tunnel is torn down either way.
 export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;
+
+// Informational conditions surfaced on an account. Unlike PamAccountAccessibilityIssue these gate
+// nothing: the account launches, records and rotates as normal.
+export enum PamAccountWarning {
+  SessionLogMaskingDegraded = "session-log-masking-degraded"
+}
+
+// These are brokered over RDP, whose recordings are base64 frames rather than terminal text, so
+// the gateway never masks them.
+export const accountTypeSupportsSessionLogMasking = (accountType: PamAccountType): boolean =>
+  accountType !== PamAccountType.Windows && accountType !== PamAccountType.WindowsAd;

@@ -1,7 +1,14 @@
 import { describe, expect, test } from "vitest";
 
-import { PamAccountType } from "./pam-enums";
-import { getApplicablePolicies, PamPolicyType, resolveAccessControls, validatePolicyValues } from "./pam-policies";
+import { accountTypeSupportsSessionLogMasking, PamAccountType } from "./pam-enums";
+import {
+  buildPamPolicyRules,
+  getApplicablePolicies,
+  PamPolicyType,
+  PamSettingType,
+  resolveAccessControls,
+  validatePolicyValues
+} from "./pam-policies";
 
 describe("getApplicablePolicies", () => {
   test("returns the universal policies for any account type", () => {
@@ -165,5 +172,60 @@ describe("resolveAccessControls", () => {
       ...DEFAULTS,
       requireMfa: true
     });
+  });
+});
+
+describe("buildPamPolicyRules", () => {
+  const empty = { commandBlockingPatterns: [], maskingPatterns: [], maskingBuiltInDetection: false };
+
+  test("returns null when nothing is configured", () => {
+    expect(buildPamPolicyRules(empty)).toBeNull();
+  });
+
+  test("emits command blocking on its own", () => {
+    expect(buildPamPolicyRules({ ...empty, commandBlockingPatterns: ["rm\\s+-rf"] })).toEqual({
+      [PamPolicyType.CommandBlocking]: { patterns: ["rm\\s+-rf"] }
+    });
+  });
+
+  // Must serialize exactly as it did before built-in detection existed.
+  test("emits custom masking patterns with detection off", () => {
+    expect(buildPamPolicyRules({ ...empty, maskingPatterns: ["password=\\S+"] })).toEqual({
+      [PamSettingType.SessionLogMasking]: { patterns: ["password=\\S+"], builtInDetection: false }
+    });
+  });
+
+  // The case the old shape could not express.
+  test("emits the masking rule for detection alone", () => {
+    expect(buildPamPolicyRules({ ...empty, maskingBuiltInDetection: true })).toEqual({
+      [PamSettingType.SessionLogMasking]: { patterns: [], builtInDetection: true }
+    });
+  });
+
+  test("emits both arms together", () => {
+    expect(
+      buildPamPolicyRules({
+        commandBlockingPatterns: ["shutdown"],
+        maskingPatterns: ["token=\\S+"],
+        maskingBuiltInDetection: true
+      })
+    ).toEqual({
+      [PamPolicyType.CommandBlocking]: { patterns: ["shutdown"] },
+      [PamSettingType.SessionLogMasking]: { patterns: ["token=\\S+"], builtInDetection: true }
+    });
+  });
+});
+
+describe("accountTypeSupportsSessionLogMasking", () => {
+  test("is false for the RDP-brokered types", () => {
+    expect(accountTypeSupportsSessionLogMasking(PamAccountType.Windows)).toBe(false);
+    expect(accountTypeSupportsSessionLogMasking(PamAccountType.WindowsAd)).toBe(false);
+  });
+
+  test("is true for everything else", () => {
+    const rest = Object.values(PamAccountType).filter(
+      (type) => type !== PamAccountType.Windows && type !== PamAccountType.WindowsAd
+    );
+    expect(rest.every(accountTypeSupportsSessionLogMasking)).toBe(true);
   });
 });
