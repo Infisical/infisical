@@ -317,14 +317,22 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
-    // Create rather than Read: the only reason to call this is to configure a sync at this source,
-    // and the check is subject-scoped so it still holds for an actor whose sync permission is
-    // narrowed to particular paths. Update is enforced separately in updateSecretSync, which has a
-    // sync to name in the subject; this route does not.
-    ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Create,
-      subject(ProjectPermissionSub.SecretSyncs, { environment, secretPath })
-    );
+    // Create or Edit rather than Read, because configuring a sync at this source is the only
+    // reason to call this, and the source step is shared by the create and the edit form: a custom
+    // role can carry Edit without Create, and that actor still has to see the conflicts before
+    // saving. Subject-scoped so it holds for an actor whose sync permission is narrowed to
+    // particular paths. Neither action can be narrowed further here, since the route carries no
+    // sync and so no connection to name in the subject.
+    const sourceSubject = subject(ProjectPermissionSub.SecretSyncs, { environment, secretPath });
+
+    if (
+      projectPermission.cannot(ProjectPermissionSecretSyncActions.Create, sourceSubject) &&
+      projectPermission.cannot(ProjectPermissionSecretSyncActions.Edit, sourceSubject)
+    ) {
+      throw new ForbiddenRequestError({
+        message: `You do not have permission to configure secret syncs at path "${secretPath}" in environment "${environment}".`
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
