@@ -146,3 +146,43 @@ test("CLI exit codes distinguish monitor, enforce, and operational failures with
     assert.ok(!`${result.stdout}${result.stderr}`.includes(candidate));
   }
 });
+
+test("PostgreSQL URL credentials are detected independently of variable names or entropy", async (t) => {
+  const { commit, options } = repository(t);
+  const password = createHash("sha256").update("synthetic database password").digest("hex").slice(0, 28);
+  const cases = [
+    ["postgresql", "reader", password, "database.example.invalid:5432/application"],
+    ["postgres", "reader", "ab" + "cd", "localhost/app"],
+    ["POSTGRESQL", "reader", password, "[::1]:5432/app"],
+    ["postgresql", "reader%40example.invalid", `${password}%40%3A%2F`, "db.example.invalid/app?sslmode=require"],
+    ["postgres", "reader", `${password}:suffix`, "db.example.invalid"],
+    ["postgresql", "reader", password, "db.example.invalid:5432/app"]
+  ];
+  const content = cases.map(([scheme, user, value, host], index) =>
+    `export const setting${index} = "${scheme}://${user}:${value}@${host}";`
+  ).join("\n");
+  commit("config/database.ts", `${content}\n`);
+  const { report, exitCode } = await run({ ...options, mode: "enforce" }, { apiKey: "" });
+  assert.equal(exitCode, 1);
+  const findings = report.findings.filter((finding) => finding.rule === "postgresql-connection-string");
+  assert.deepEqual(findings.map((finding) => finding.line).sort((a, b) => a - b), cases.map((_, index) => index + 1));
+  for (const file of ["findings.json", "findings.sarif", "summary.md"]) {
+    assert.ok(!readFileSync(join(options.output, file), "utf8").includes(password));
+  }
+});
+
+test("PostgreSQL URLs without literal passwords are not treated as leaked credentials", async (t) => {
+  const { commit, options } = repository(t);
+  const scheme = "postgresql";
+  const values = [
+    `${scheme}://database.example.invalid/application`,
+    `${scheme}://reader@database.example.invalid/application`,
+    `${scheme}://reader:@database.example.invalid/application`,
+    `${scheme}://reader:${"${DB_PASSWORD}"}@database.example.invalid/application`,
+    `${scheme}://reader:<PASSWORD>@database.example.invalid/application`
+  ];
+  commit("config/templates.json", JSON.stringify(values, null, 2));
+  const { report, exitCode } = await run({ ...options, mode: "enforce" }, { apiKey: "" });
+  assert.equal(exitCode, 0);
+  assert.deepEqual(report.findings, []);
+});

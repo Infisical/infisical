@@ -1,6 +1,6 @@
 # Contextual secret scanning for CI
 
-This standalone CI scanner combines Gitleaks 8.30.1 detection with optional Jev contextual classification. It runs alongside the existing GitGuardian integration; it does not change GitGuardian settings or branch protection.
+This standalone CI scanner combines Gitleaks 8.30.1 detection with optional Jev contextual classification. It runs alongside the existing GitGuardian integration; it does not change GitGuardian settings or branch protection. Its trusted rules extend Gitleaks with detection of literal passwords in `postgres://` and `postgresql://` connection URLs, including percent-encoded passwords and IPv6 hosts. Passwordless URLs and explicit password interpolation are not classified as literal credential leaks by that rule.
 
 The default **monitor** mode reports every finding without blocking on findings. **Enforce** mode fails on every finding, including likely test fixtures. AI assessments never suppress detections. A scanner failure fails either mode.
 
