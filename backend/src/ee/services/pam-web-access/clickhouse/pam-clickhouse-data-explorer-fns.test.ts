@@ -1,0 +1,167 @@
+import { describe, expect, test } from "vitest";
+
+import {
+  extractCommand,
+  MAX_ROWS,
+  parseStatementBody,
+  splitClickhouseStatements,
+  toRowObjects,
+  uniqueFieldNames
+} from "./pam-clickhouse-data-explorer-fns";
+
+describe("splitClickhouseStatements", () => {
+  test("single statement with and without a trailing semicolon", () => {
+    expect(splitClickhouseStatements("SELECT 1")).toEqual(["SELECT 1"]);
+    expect(splitClickhouseStatements("SELECT 1;")).toEqual(["SELECT 1"]);
+  });
+
+  test("multiple statements", () => {
+    expect(splitClickhouseStatements("SELECT 1; SELECT 2; SELECT 3")).toEqual(["SELECT 1", "SELECT 2", "SELECT 3"]);
+  });
+
+  test("drops empty statements and whitespace-only input", () => {
+    expect(splitClickhouseStatements("SELECT 1;; ;SELECT 2")).toEqual(["SELECT 1", "SELECT 2"]);
+    expect(splitClickhouseStatements("")).toEqual([]);
+    expect(splitClickhouseStatements("   \n\t  ")).toEqual([]);
+  });
+
+  test("semicolon inside a string literal", () => {
+    expect(splitClickhouseStatements("SELECT 'a;b'; SELECT 2")).toEqual(["SELECT 'a;b'", "SELECT 2"]);
+  });
+
+  test("semicolon inside a double-quoted or backtick identifier", () => {
+    expect(splitClickhouseStatements('SELECT "col;name" FROM t; SELECT 2')).toEqual([
+      'SELECT "col;name" FROM t',
+      "SELECT 2"
+    ]);
+    expect(splitClickhouseStatements("SELECT `col;name` FROM t; SELECT 2")).toEqual([
+      "SELECT `col;name` FROM t",
+      "SELECT 2"
+    ]);
+  });
+
+  test("escaped and doubled quotes inside a literal", () => {
+    expect(splitClickhouseStatements("SELECT 'it''s;fine'; SELECT 2")).toEqual(["SELECT 'it''s;fine'", "SELECT 2"]);
+    expect(splitClickhouseStatements("SELECT 'a\\';b'; SELECT 2")).toEqual(["SELECT 'a\\';b'", "SELECT 2"]);
+  });
+
+  test("semicolon inside every comment form ClickHouse accepts", () => {
+    expect(splitClickhouseStatements("SELECT 1 -- a;b\n; SELECT 2")).toEqual(["SELECT 1 -- a;b", "SELECT 2"]);
+    expect(splitClickhouseStatements("SELECT 1 # a;b\n; SELECT 2")).toEqual(["SELECT 1 # a;b", "SELECT 2"]);
+    expect(splitClickhouseStatements("SELECT /* a;b */ 1; SELECT 2")).toEqual(["SELECT /* a;b */ 1", "SELECT 2"]);
+  });
+
+  test("an unterminated literal swallows the rest rather than splitting inside it", () => {
+    expect(splitClickhouseStatements("SELECT 'oops; SELECT 2")).toEqual(["SELECT 'oops; SELECT 2"]);
+  });
+});
+
+describe("extractCommand", () => {
+  test("reads the leading keyword, skipping whitespace and comments", () => {
+    expect(extractCommand("select 1")).toBe("SELECT");
+    expect(extractCommand("  \n  INSERT INTO t VALUES (1)")).toBe("INSERT");
+    expect(extractCommand("-- a comment\nCREATE TABLE t")).toBe("CREATE");
+    expect(extractCommand("# a comment\nALTER TABLE t")).toBe("ALTER");
+    expect(extractCommand("/* a comment */ OPTIMIZE TABLE t")).toBe("OPTIMIZE");
+  });
+
+  test("stops at a delimiter and handles an empty statement", () => {
+    expect(extractCommand("SELECT(1)")).toBe("SELECT");
+    expect(extractCommand("")).toBe("");
+  });
+});
+
+describe("uniqueFieldNames", () => {
+  test("leaves distinct names alone and disambiguates repeats", () => {
+    expect(uniqueFieldNames(["a", "b"])).toEqual(["a", "b"]);
+    expect(uniqueFieldNames(["a", "a", "a"])).toEqual(["a", "a_1", "a_2"]);
+  });
+});
+
+describe("toRowObjects", () => {
+  test("zips column names onto positional rows", () => {
+    expect(
+      toRowObjects(
+        ["id", "name"],
+        [
+          [1, "one"],
+          [2, "two"]
+        ]
+      )
+    ).toEqual([
+      { id: 1, name: "one" },
+      { id: 2, name: "two" }
+    ]);
+  });
+
+  test("a missing value becomes null rather than undefined", () => {
+    expect(toRowObjects(["id", "name"], [[1]])).toEqual([{ id: 1, name: null }]);
+  });
+});
+
+describe("parseStatementBody", () => {
+  const compact = (meta: string[], data: unknown[][]) =>
+    JSON.stringify({ meta: meta.map((name) => ({ name, type: "String" })), data, rows: data.length });
+
+  test("an empty body takes its row count from the summary", () => {
+    expect(parseStatementBody("", { written_rows: "42" })).toEqual({
+      rows: [],
+      fields: [],
+      rowCount: 42,
+      isTruncated: false
+    });
+    expect(parseStatementBody("   \n ").rowCount).toBeNull();
+  });
+
+  test("reads the JSONCompact shape the session asks for", () => {
+    expect(
+      parseStatementBody(
+        compact(
+          ["id", "name"],
+          [
+            [1, "one"],
+            [2, "two"]
+          ]
+        )
+      )
+    ).toEqual({
+      rows: [
+        { id: 1, name: "one" },
+        { id: 2, name: "two" }
+      ],
+      fields: [{ name: "id" }, { name: "name" }],
+      rowCount: 2,
+      isTruncated: false
+    });
+  });
+
+  test("a statement that asks for FORMAT JSON returns rows as objects already", () => {
+    const body = JSON.stringify({
+      meta: [{ name: "id", type: "UInt64" }],
+      data: [{ id: 1 }, { id: 2 }],
+      rows: 2
+    });
+    expect(parseStatementBody(body).rows).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
+  test("caps the rows it returns and says it did", () => {
+    const data = Array.from({ length: MAX_ROWS + 1 }, (_, index) => [index]);
+    const result = parseStatementBody(compact(["n"], data));
+    expect(result.rows).toHaveLength(MAX_ROWS);
+    expect(result.rowCount).toBe(MAX_ROWS + 1);
+    expect(result.isTruncated).toBe(true);
+  });
+
+  test("output in a format it cannot read is handed back verbatim", () => {
+    expect(parseStatementBody("1\tone\n2\ttwo\n")).toEqual({
+      rows: [{ result: "1\tone\n2\ttwo\n" }],
+      fields: [{ name: "result" }],
+      rowCount: null,
+      isTruncated: false
+    });
+  });
+
+  test("a repeated column name still reaches the grid", () => {
+    expect(parseStatementBody(compact(["a", "a"], [[1, 2]])).rows).toEqual([{ a: 1, a_1: 2 }]);
+  });
+});

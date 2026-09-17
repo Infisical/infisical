@@ -768,7 +768,8 @@ export const pamSessionServiceFactory = ({
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.MongoDB ||
           account.accountType === PamAccountType.MsSQL ||
-          account.accountType === PamAccountType.OracleDB) &&
+          account.accountType === PamAccountType.OracleDB ||
+          account.accountType === PamAccountType.ClickHouse) &&
         rawConnectionDetails.database
       ) {
         metadata.database = rawConnectionDetails.database as string;

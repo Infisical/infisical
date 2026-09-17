@@ -20,6 +20,7 @@ import {
   buildInsertQuery,
   buildSelectQuery,
   buildUpdateQuery,
+  supportsRowEditing,
   wrapInTransaction
 } from "../sql-generation";
 import { DataExplorerToolbar } from "./DataExplorerToolbar";
@@ -46,6 +47,14 @@ type DataExplorerGridProps = {
 };
 
 const ROW_KEY_PREFIX = "__new_";
+
+function readOnlyReason(dialect: SqlDialect, tableType?: string): string {
+  if (!supportsRowEditing(dialect)) {
+    return "ClickHouse applies row changes as asynchronous mutations, so the grid is read-only. Edit from the SQL editor with ALTER TABLE ... UPDATE or DELETE FROM.";
+  }
+  if (tableType === "view" || tableType === "materialized_view") return "This view is read-only.";
+  return "This table has no primary key. Browsing is read-only — editing requires a primary key.";
+}
 
 function cellValuesEqual(a: unknown, b: unknown): boolean {
   if (a === null && b === null) return true;
@@ -211,7 +220,7 @@ export const DataExplorerGrid = ({
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const foreignKeys = tableDetail?.foreignKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
-  const hasPrimaryKey = primaryKeys.length > 0;
+  const canEditRows = primaryKeys.length > 0 && supportsRowEditing(dialect);
   const primaryKeysRef = useRef(primaryKeys);
   primaryKeysRef.current = primaryKeys;
 
@@ -224,10 +233,10 @@ export const DataExplorerGrid = ({
   // Build TanStack Table column definitions from PG metadata
   const columnDefs = useMemo(
     () =>
-      hasPrimaryKey
+      canEditRows
         ? [SELECT_COLUMN, ...buildColumnDefs(tableColumns, primaryKeys, foreignKeys)]
         : buildColumnDefs(tableColumns, primaryKeys, foreignKeys),
-    [hasPrimaryKey, tableColumns, primaryKeys, foreignKeys]
+    [canEditRows, tableColumns, primaryKeys, foreignKeys]
   );
 
   const fetchData = useCallback(
@@ -599,11 +608,11 @@ export const DataExplorerGrid = ({
     columns: columnDefs,
     onDataChange: handleDataChange,
     getRowId,
-    readOnly: !hasPrimaryKey,
+    readOnly: !canEditRows,
     rowHeight: "short",
     enableSearch: true,
-    enablePaste: hasPrimaryKey,
-    onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined,
+    enablePaste: canEditRows,
+    onRowsDelete: canEditRows ? handleRowsDelete : undefined,
     onRowSelectionChange: (rowSelection) => {
       const selectedIds = new Set(Object.keys(rowSelection).filter((k) => rowSelection[k]));
       setSelectedRowCount(selectedIds.size);
@@ -723,7 +732,7 @@ export const DataExplorerGrid = ({
         onOffsetChange={handleOffsetChange}
         onPageSizeChange={handlePageSizeChange}
         executionTimeMs={executionTimeMs}
-        hasPrimaryKey={hasPrimaryKey}
+        canEditRows={canEditRows}
         isDataLoading={isDataLoading}
         onRefresh={async () => {
           if (onRefresh) await onRefresh();
@@ -748,15 +757,11 @@ export const DataExplorerGrid = ({
         dialect={dialect}
       />
 
-      {!hasPrimaryKey && (
+      {!canEditRows && (
         <div className="shrink-0 px-3 py-3">
           <Alert variant="info" className="py-2">
             <EyeIcon />
-            <AlertDescription>
-              {tableType === "view" || tableType === "materialized_view"
-                ? "This view is read-only."
-                : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
-            </AlertDescription>
+            <AlertDescription>{readOnlyReason(dialect, tableType)}</AlertDescription>
           </Alert>
         </div>
       )}

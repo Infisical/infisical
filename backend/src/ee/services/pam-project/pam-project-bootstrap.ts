@@ -142,6 +142,14 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
+  },
+  {
+    name: "clickhouse",
+    type: PamAccountType.ClickHouse,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
+    }
   }
 ];
 

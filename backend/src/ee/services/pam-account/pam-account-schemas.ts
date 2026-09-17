@@ -593,6 +593,50 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.ClickHouse]: {
+    name: "ClickHouse",
+    icon: "ClickHouse.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number().int().min(1).max(65535),
+      database: z.string().trim().min(1).max(255),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: boundedOptionalString(256)
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: {
+        defaultValue: 8123,
+        tooltip:
+          "The HTTP interface port: 8123 for plain HTTP, 8443 for HTTPS. Sessions never use the native protocol on 9000."
+      },
+      database: {
+        defaultValue: "default",
+        tooltip: "The database sessions open. The explorer lists the tables inside it."
+      },
+      username: {
+        defaultValue: "default",
+        tooltip: "The ClickHouse user sessions connect as. Use 'default' for the built-in user."
+      },
+      password: { widget: PamFieldWidget.Password, secret: true, optional: true },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      }
+    }
+  },
+
   [PamAccountType.SSH]: {
     name: "SSH",
     icon: "SSH.png",
@@ -1009,6 +1053,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB:
     case PamAccountType.Redis:
+    case PamAccountType.ClickHouse:
     case PamAccountType.Windows:
       return {
         host: (validated as { host: string; port: number }).host,
@@ -1151,9 +1196,11 @@ const accountTypeConnectionStringSchemes = (accountType: PamAccountType): string
   return config?.connectionStringSchemes ? [...config.connectionStringSchemes] : undefined;
 };
 
-// redis can be reached without credentials
+// redis and clickhouse both accept a passwordless user, so an account without one is still launchable
+const CREDENTIAL_OPTIONAL_ACCOUNT_TYPES: PamAccountType[] = [PamAccountType.Redis, PamAccountType.ClickHouse];
+
 export const accountTypeRequiresCredential = (accountType: PamAccountType): boolean =>
-  accountType !== PamAccountType.Redis;
+  !CREDENTIAL_OPTIONAL_ACCOUNT_TYPES.includes(accountType);
 
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;
