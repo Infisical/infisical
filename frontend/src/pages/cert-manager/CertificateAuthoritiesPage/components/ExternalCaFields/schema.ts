@@ -22,7 +22,7 @@ const acmeConfigurationSchema = z
     }),
     dnsProviderConfig: z.object({
       provider: z.nativeEnum(AcmeDnsProvider),
-      hostedZoneId: z.string().trim().min(1, "Hosted Zone ID is required")
+      hostedZoneIds: z.array(z.string().trim().min(1)).min(1, "At least one zone is required")
     }),
     directoryUrl: z.string().trim().min(1, "Directory URL is required").url("Must be a valid URL"),
     accountEmail: z
