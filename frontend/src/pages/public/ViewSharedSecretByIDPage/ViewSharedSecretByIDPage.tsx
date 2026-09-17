@@ -259,7 +259,7 @@ export const ViewSharedSecretByIDPage = () => {
             }}
           >
             <h1 className="mb-5 text-lg font-semibold" style={{ color: brandingTheme?.textColor }}>
-              View shared secret
+              View Shared Secret
             </h1>
             {secretContent}
           </div>
@@ -280,10 +280,18 @@ export const ViewSharedSecretByIDPage = () => {
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <Card className="w-full max-w-xl">
           <CardHeader>
-            <CardTitle>View shared secret</CardTitle>
+            <CardTitle>View Shared Secret</CardTitle>
           </CardHeader>
           <CardContent>{secretContent}</CardContent>
         </Card>
+        <a
+          href="/share-secret"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 text-xs text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline"
+        >
+          Share your own secret
+        </a>
       </div>
       <AuthPageFooter />
     </div>

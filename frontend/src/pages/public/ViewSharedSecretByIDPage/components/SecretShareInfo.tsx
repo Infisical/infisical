@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Clock, Eye } from "lucide-react";
+import { CalendarClock, Eye } from "lucide-react";
 
 import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
@@ -33,7 +33,6 @@ export const SecretShareInfo = ({ secret, brandingTheme }: Props) => {
 
   const infoStyle = brandingTheme
     ? {
-        backgroundColor: brandingTheme.inputBg,
         borderColor: brandingTheme.panelBorder,
         color: brandingTheme.textMutedColor
       }
@@ -43,25 +42,29 @@ export const SecretShareInfo = ({ secret, brandingTheme }: Props) => {
 
   return (
     <div
-      className={`mt-4 flex flex-col gap-2 rounded-md border p-3 text-sm ${
-        brandingTheme ? "" : "border-border bg-container text-label"
+      className={`mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2 ${
+        brandingTheme ? "" : "border-border text-label"
       }`}
       style={infoStyle}
     >
       {timeRemaining && (
-        <div className="flex items-center gap-2">
-          <Clock className="size-3.5 shrink-0" style={iconStyle} />
-          <span>Expires on {timeRemaining}</span>
+        <div className="flex items-start gap-2">
+          <CalendarClock className="mt-0.5 size-3.5 shrink-0" style={iconStyle} />
+          <div>
+            <p className="text-xs font-medium">Expires</p>
+            <p className="mt-0.5 text-xs opacity-80">{timeRemaining}</p>
+          </div>
         </div>
       )}
       {viewsRemaining !== null && (
-        <div className="flex items-center gap-2">
-          <Eye className="size-3.5 shrink-0" style={iconStyle} />
-          <span>
-            {viewsRemaining === 0
-              ? "This is the last time you can view this secret"
-              : `${viewsRemaining} more view${viewsRemaining === 1 ? "" : "s"} remaining`}
-          </span>
+        <div className="flex items-start gap-2">
+          <Eye className="mt-0.5 size-3.5 shrink-0" style={iconStyle} />
+          <div>
+            <p className="text-xs font-medium">Views Remaining</p>
+            <p className="mt-0.5 text-xs opacity-80">
+              {viewsRemaining === 0 ? "Last available view" : viewsRemaining}
+            </p>
+          </div>
         </div>
       )}
     </div>

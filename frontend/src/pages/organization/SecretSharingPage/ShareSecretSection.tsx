@@ -1,7 +1,6 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
@@ -53,27 +52,19 @@ export const ShareSecretSection = () => {
   };
 
   return (
-    <div>
-      <Helmet>
-        <title>Secret Sharing</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
-
-      <Tabs value={activeTab} onValueChange={updateSelectedTab}>
-        <TabList>
-          {tabs.map(({ key, label }) => (
-            <Tab variant="project" value={key} key={`tab-${key}`}>
-              {label}
-            </Tab>
-          ))}
-        </TabList>
-        {tabs.map(({ key, component: Component }) => (
-          <TabPanel value={key} key={`tab-panel-${key}`}>
-            <Component />
-          </TabPanel>
+    <Tabs value={activeTab} onValueChange={updateSelectedTab}>
+      <TabsList variant="project" aria-label="Secret sharing sections">
+        {tabs.map(({ key, label }) => (
+          <TabsTrigger value={key} key={`tab-${key}`}>
+            {label}
+          </TabsTrigger>
         ))}
-      </Tabs>
-    </div>
+      </TabsList>
+      {tabs.map(({ key, component: Component }) => (
+        <TabsContent value={key} key={`tab-panel-${key}`}>
+          <Component />
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 };
