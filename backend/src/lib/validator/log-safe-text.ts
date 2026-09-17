@@ -1,7 +1,9 @@
+import RE2 from "re2";
+
 /**
  * Normalizes free text bound for an audit record: C0/C1 controls, ANSI escapes, bidirectional
- * overrides and zero-width characters. All are legal in JSON, so well-formed output says nothing
- * about how a value renders in a terminal, a CSV export or a line-based SIEM.
+ * overrides and invisible formatting characters. All are legal in JSON, so well-formed output says
+ * nothing about how a value renders in a terminal, a CSV export or a line-based SIEM.
  *
  * Reject at the API boundary, where the caller can correct its input; strip on the way into the
  * log, where dropping the event would lose the record.
@@ -18,35 +20,46 @@ const BEL = String.fromCharCode(0x07);
 // introducer falls through to the single-character branch instead, which removes `ESC ]` alone.
 // That branch's `[@-Z\-_]` class covers 0x40-0x5A and 0x5C-0x5F, so it matches `]` but not `[`;
 // CSI is listed first to catch `ESC [` before it.
-const ANSI_ESCAPE_PATTERN = new RegExp(
+const ANSI_ESCAPE_PATTERN = new RE2(
   `${ESC}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL}${ESC}]*(?:${BEL}|${ESC}\\\\)|[@-Z\\\\-_])`,
   "g"
 );
 
 // Whitespace controls carry word boundaries, so a run collapses to a single space rather than being
 // deleted, which would run the surrounding words together.
-const WHITESPACE_CONTROL_RUN = /[\t\n\v\f\r]+/g;
+const WHITESPACE_CONTROL_RUN = new RE2("[\\t\\n\\v\\f\\r\\u2028\\u2029]+", "g");
 
-const TAB = 0x09;
-const LINE_FEED = 0x0a;
-const CARRIAGE_RETURN = 0x0d;
+// The line-break set a multiline field is allowed to contain. U+2028/U+2029 are line and paragraph
+// separators: not C0 controls, but line breaks to anything that splits on them, so a single-line
+// field has to reject them too.
+const LINE_BREAKS = new Set([0x09, 0x0a, 0x0d, 0x2028, 0x2029]);
 
 const isControlCharacter = (code: number) => code <= 0x1f || (code >= 0x7f && code <= 0x9f);
 
-// Bidi overrides, embeddings and isolates, LRM/RLM, ZWSP and the BOM. U+200C/U+200D (ZWNJ/ZWJ) are
-// deliberately excluded: they are ordinary text, joining emoji sequences and Persian, Arabic and
-// Indic script, so removing them corrupts the value rather than neutralizing it.
-const isInvisibleCharacter = (code: number) =>
-  code === 0x200b ||
-  code === 0x200e ||
-  code === 0x200f ||
-  (code >= 0x202a && code <= 0x202e) ||
-  (code >= 0x2066 && code <= 0x2069) ||
-  code === 0xfeff;
+// Invisible and bidirectional formatting characters. Two deliberate exclusions: U+200C/U+200D
+// (ZWNJ/ZWJ) join emoji sequences and Persian, Arabic and Indic script, and U+FE00-U+FE0F
+// (variation selectors) select emoji presentation. Removing either corrupts ordinary text.
+const isFormatCharacter = (code: number) =>
+  code === 0x061c || // Arabic letter mark
+  code === 0x180e || // Mongolian vowel separator
+  code === 0x200b || // zero-width space
+  code === 0x200e || // left-to-right mark
+  code === 0x200f || // right-to-left mark
+  (code >= 0x202a && code <= 0x202e) || // bidi embeddings and overrides
+  (code >= 0x2060 && code <= 0x2064) || // word joiner and invisible operators
+  (code >= 0x2066 && code <= 0x2069) || // bidi isolates
+  code === 0x2028 || // line separator
+  code === 0x2029 || // paragraph separator
+  code === 0xfeff || // byte order mark
+  (code >= 0xfff9 && code <= 0xfffb) || // interlinear annotation
+  (code >= 0x1d173 && code <= 0x1d17a) || // musical format controls
+  (code >= 0xe0000 && code <= 0xe007f); // tags block
 
+// codePointAt, not charCodeAt: the astral ranges above sit beyond U+FFFF, where charCodeAt would
+// return a surrogate half and never match.
 const isUnsafeCharacter = (character: string) => {
-  const code = character.charCodeAt(0);
-  return isControlCharacter(code) || isInvisibleCharacter(code);
+  const code = character.codePointAt(0) ?? 0;
+  return isControlCharacter(code) || isFormatCharacter(code);
 };
 
 // `allowMultiline` is for fields a user types into a textarea, where a line break or tab is ordinary
@@ -57,8 +70,8 @@ export const containsLogUnsafeCharacters = (value: string, { allowMultiline = fa
   if (ANSI_ESCAPE_PATTERN.test(value)) return true;
 
   return Array.from(value).some((character) => {
-    const code = character.charCodeAt(0);
-    if (allowMultiline && (code === LINE_FEED || code === TAB || code === CARRIAGE_RETURN)) return false;
+    const code = character.codePointAt(0) ?? 0;
+    if (allowMultiline && LINE_BREAKS.has(code)) return false;
     return isUnsafeCharacter(character);
   });
 };
@@ -74,12 +87,6 @@ export const sanitizeLogText = <T extends string | null | undefined>(value: T): 
     .join("") as T;
 };
 
-// Audit metadata is shallow; the cap bounds recursion on arbitrary input. Past it the subtree is
-// replaced by a marker rather than dropped, so the truncation is visible in the record itself and an
-// array element cannot become a hole that serializes to null.
-const MAX_SANITIZE_DEPTH = 12;
-export const DEPTH_LIMIT_MARKER = "[truncated: nesting depth limit]";
-
 // Two keys can normalize to the same string, so a collision is suffixed rather than left to
 // overwrite and silently drop a field.
 const disambiguate = (key: string, taken: Set<string>) => {
@@ -90,22 +97,52 @@ const disambiguate = (key: string, taken: Set<string>) => {
   return `${key}~${suffix}`;
 };
 
-// Keys are sanitized alongside values: a flattening exporter renders both.
-export const sanitizeLogPayload = <T>(payload: T, depth = 0): T => {
+const emptyLike = (node: object) => (Array.isArray(node) ? [] : {}) as Record<string, unknown> | unknown[];
+
+/**
+ * Sanitizes every string in a metadata payload, keys included: a flattening exporter renders both.
+ *
+ * The walk is iterative and has no depth limit, because the structure is part of the record. An
+ * event can legitimately nest (`oidcClaimsReceived` on LOGIN_IDENTITY_OIDC_AUTH carries whatever the
+ * IdP returned), and truncating it would retype fields that downstream consumers already parse.
+ * Input always arrives from JSON.parse in the audit queue, so it is finite, acyclic and holds no
+ * shared references.
+ */
+export const sanitizeLogPayload = <T>(payload: T): T => {
   if (typeof payload === "string") return sanitizeLogText(payload) as T;
   if (payload === null || typeof payload !== "object") return payload;
-  if (depth >= MAX_SANITIZE_DEPTH) return DEPTH_LIMIT_MARKER as T;
 
-  if (Array.isArray(payload)) {
-    return (payload as unknown[]).map((item) => sanitizeLogPayload(item, depth + 1)) as T;
+  const root = emptyLike(payload);
+  const pending: [source: object, target: Record<string, unknown> | unknown[]][] = [[payload, root]];
+
+  while (pending.length) {
+    const [source, target] = pending.pop()!;
+
+    const assign = (key: string | number, value: unknown) => {
+      if (typeof value === "string") {
+        (target as Record<string | number, unknown>)[key] = sanitizeLogText(value);
+        return;
+      }
+      if (value !== null && typeof value === "object") {
+        const child = emptyLike(value);
+        (target as Record<string | number, unknown>)[key] = child;
+        pending.push([value, child]);
+        return;
+      }
+      (target as Record<string | number, unknown>)[key] = value;
+    };
+
+    if (Array.isArray(source)) {
+      source.forEach((item, index) => assign(index, item));
+    } else {
+      const taken = new Set<string>();
+      Object.entries(source as Record<string, unknown>).forEach(([key, value]) => {
+        const sanitizedKey = disambiguate(sanitizeLogText(key), taken);
+        taken.add(sanitizedKey);
+        assign(sanitizedKey, value);
+      });
+    }
   }
 
-  const taken = new Set<string>();
-  return Object.fromEntries(
-    Object.entries(payload as Record<string, unknown>).map(([key, value]) => {
-      const sanitizedKey = disambiguate(sanitizeLogText(key), taken);
-      taken.add(sanitizedKey);
-      return [sanitizedKey, sanitizeLogPayload(value, depth + 1)];
-    })
-  ) as T;
+  return root as T;
 };

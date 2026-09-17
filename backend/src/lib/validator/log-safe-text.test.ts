@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { containsLogUnsafeCharacters, DEPTH_LIMIT_MARKER, sanitizeLogPayload, sanitizeLogText } from "./log-safe-text";
+import { containsLogUnsafeCharacters, sanitizeLogPayload, sanitizeLogText } from "./log-safe-text";
 
 const NUL = String.fromCharCode(0);
 const ESC = String.fromCharCode(27);
@@ -88,15 +88,19 @@ describe("sanitizeLogPayload", () => {
     expect(sanitizeLogPayload(null)).toBeNull();
   });
 
-  test("marks the subtree at the depth cap rather than dropping it silently", () => {
-    let deep: Record<string, unknown> = { value: `a${NUL}b` };
+  test("preserves deep structure instead of truncating it", () => {
+    // oidcClaimsReceived carries whatever the IdP returned, so nesting is legitimate and the shape
+    // is part of what downstream consumers parse.
+    let deep: Record<string, unknown> = { value: `a${NUL}b`, keep: 7 };
     for (let i = 0; i < 40; i += 1) deep = { nested: deep };
 
     const sanitized = sanitizeLogPayload(deep);
 
-    let cursor: unknown = sanitized;
-    for (let i = 0; i < 12; i += 1) cursor = (cursor as Record<string, unknown>).nested;
-    expect(cursor).toBe(DEPTH_LIMIT_MARKER);
+    let cursor: Record<string, unknown> = sanitized;
+    for (let i = 0; i < 40; i += 1) cursor = cursor.nested as Record<string, unknown>;
+
+    expect(cursor.value).toBe("ab");
+    expect(cursor.keep).toBe(7);
   });
 
   test("keeps both fields when two keys normalize to the same string", () => {
@@ -126,6 +130,39 @@ describe("sanitizeLogPayload", () => {
     expect(sanitizeLogText(persian)).toBe(persian);
     expect(containsLogUnsafeCharacters(rainbowFlag)).toBe(false);
     expect(containsLogUnsafeCharacters(persian)).toBe(false);
+  });
+
+  test.each([
+    ["arabic letter mark", 0x061c],
+    ["mongolian vowel separator", 0x180e],
+    ["word joiner", 0x2060],
+    ["interlinear annotation anchor", 0xfff9],
+    ["musical format control", 0x1d173],
+    ["tag character", 0xe0020]
+  ])("catches the %s", (_label, code) => {
+    const value = `a${String.fromCodePoint(code)}b`;
+
+    expect(containsLogUnsafeCharacters(value)).toBe(true);
+    expect(sanitizeLogText(value)).toBe("ab");
+  });
+
+  test("line and paragraph separators collapse like other line breaks", () => {
+    expect(sanitizeLogText(`one${String.fromCodePoint(0x2028)}two`)).toBe("one two");
+    expect(sanitizeLogText(`one${String.fromCodePoint(0x2029)}two`)).toBe("one two");
+  });
+
+  test.each([0x2028, 0x2029])("a single-line field rejects U+%s", (code) => {
+    const value = `one${String.fromCodePoint(code)}two`;
+
+    expect(containsLogUnsafeCharacters(value)).toBe(true);
+    expect(containsLogUnsafeCharacters(value, { allowMultiline: true })).toBe(false);
+  });
+
+  test("keeps variation selectors, which choose emoji presentation", () => {
+    const flag = String.fromCodePoint(0x1f3f3, 0xfe0f);
+
+    expect(containsLogUnsafeCharacters(flag)).toBe(false);
+    expect(sanitizeLogText(flag)).toBe(flag);
   });
 
   test("still strips the zero-width space itself", () => {
