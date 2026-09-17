@@ -53,6 +53,7 @@ const buildService = (
     [PamAccountType.Postgres]: handler,
     [PamAccountType.MySQL]: handler,
     [PamAccountType.MsSQL]: handler,
+    [PamAccountType.OracleDB]: handler,
     [PamAccountType.Windows]: handler,
     [PamAccountType.WindowsAd]: handler
   } as typeof PAM_ROTATION_FACTORY_MAP;

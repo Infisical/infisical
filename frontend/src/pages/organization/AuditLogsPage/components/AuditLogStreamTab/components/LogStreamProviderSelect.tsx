@@ -83,6 +83,7 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
         })}
       </div>
       <UpgradePlanModal
+        paywallKey="organization.log-stream-provider-select"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to this audit log stream provider. To unlock this feature, please upgrade to Infisical Enterprise plan."

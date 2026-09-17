@@ -1351,14 +1351,16 @@ export const registerRoutes = async (
     totpConfigDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    userService
   });
 
   const webAuthnService = webAuthnServiceFactory({
     webAuthnCredentialDAL,
     userDAL,
     tokenService,
-    keyStore
+    keyStore,
+    userService
   });
 
   const mfaLockoutService = mfaLockoutServiceFactory({
@@ -1767,6 +1769,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     approvalPolicyDAL,
     approvalRequestDAL,
+    pkiSyncDAL,
     permissionService
   });
 
@@ -2878,6 +2881,7 @@ export const registerRoutes = async (
 
   const certificateInventoryViewService = certificateInventoryViewServiceFactory({
     certificateInventoryViewDAL,
+    pkiApplicationDAL,
     permissionService
   });
 
@@ -3465,6 +3469,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
+    pkiApplicationDAL,
     certificateAuthorityDAL,
     permissionService,
     appConnectionDAL,
@@ -3556,6 +3561,7 @@ export const registerRoutes = async (
     pkiCollectionDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
+    auditLogService,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateAuthorityService,
@@ -3587,6 +3593,7 @@ export const registerRoutes = async (
   const certificateRequestService = certificateRequestServiceFactory({
     certificateRequestDAL,
     certificateDAL,
+    pkiApplicationDAL,
     certificateService,
     permissionService,
     resourceMetadataDAL,
@@ -3641,7 +3648,8 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL
+    apiEnrollmentConfigDAL,
+    pkiSyncQueue
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
@@ -3670,6 +3678,7 @@ export const registerRoutes = async (
 
   const certificateV3Service = certificateV3ServiceFactory({
     usageCounterDAL,
+    pkiApplicationDAL,
     keyStore,
     certificateDAL,
     certificateSecretDAL,
@@ -3759,6 +3768,7 @@ export const registerRoutes = async (
 
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
+    pkiApplicationDAL,
     usageCounterDAL,
     certificateV3Service,
     certificateProfileDAL,
@@ -3848,10 +3858,13 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     licenseService,
+    keyStore,
     pkiSyncQueue,
     pkiSyncHealthCheckQueue,
     auditLogService,
-    kmsService
+    kmsService,
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL
   });
 
   const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({

@@ -127,7 +127,7 @@ export const AgentVaultSessionsPage = () => {
   } else if (!hasReachableBundles) {
     emptyTitle = isAdmin ? "No sessions yet" : "No access bundles granted to you";
     emptyDescription = isAdmin
-      ? "Create an access bundle first, then mint a session over it. Agents also need a proxy to route through."
+      ? "Create an access bundle first, then create a session with it. Agents also need a proxy to route through."
       : "Ask an admin to grant you an access bundle.";
   } else {
     emptyTitle = "No sessions yet";
@@ -135,7 +135,7 @@ export const AgentVaultSessionsPage = () => {
   }
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: "Sessions" })}</title>
       </Helmet>
@@ -143,7 +143,7 @@ export const AgentVaultSessionsPage = () => {
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}
         title="Sessions"
-        description="What an agent runs with. Each session carries one access bundle."
+        description="Create sessions that let your agents reach the services in an access bundle."
       />
 
       <Card>
@@ -153,7 +153,8 @@ export const AgentVaultSessionsPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
           </CardTitle>
           <CardDescription>
-            A session names one actor, the access bundle it carries, and when it expires.
+            A session names the actor who holds it, the access bundle it carries, and when it
+            expires.
           </CardDescription>
           <CardAction>
             <Button

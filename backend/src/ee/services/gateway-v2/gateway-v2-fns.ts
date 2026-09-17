@@ -1,4 +1,6 @@
+import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { callSqlRotateCredential, TSqlRpcResponse } from "@app/lib/gateway-v2/sql-rpc";
 import { callTestConnection, TestConnectionResponse } from "@app/lib/gateway-v2/test-connection-rpc";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 
@@ -37,4 +39,29 @@ export const testConnectionWithGateway = async (
   } catch {
     return null;
   }
+};
+
+export const rotateSqlCredentialWithGateway = async (
+  targetHost: string,
+  targetPort: number,
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep,
+  request: Record<string, unknown>,
+  timeoutMs: number
+): Promise<TSqlRpcResponse> => {
+  const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
+
+  const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost: host,
+    targetPort
+  });
+  if (!platform) {
+    throw new BadRequestError({ message: "Unable to reach the gateway for this account" });
+  }
+
+  return withGatewayV2Proxy((proxyPort) => callSqlRotateCredential({ port: proxyPort, body: request, timeoutMs }), {
+    protocol: GatewayProxyProtocol.Sql,
+    ...platform
+  });
 };

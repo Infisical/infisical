@@ -15,16 +15,16 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
 ## What's in a signer?
 
 <CardGroup cols={2}>
-  <Card title="Certificate" icon="certificate">
+  <Card title="Certificate" icon="award">
     The X.509 code-signing certificate the Signer uses, backed by an internal or external CA.
   </Card>
   <Card title="Members" icon="users">
     Users, machine identities, and groups. Each member has an Administrator, Operator, or Auditor role on this Signer.
   </Card>
-  <Card title="Approval policy" icon="check-double">
+  <Card title="Approval policy" icon="check-check">
     Optional. Decides whether signing needs approval, who approves, and how each approval is bounded. See [Approvals](/documentation/platform/pki/code-signing/approvals).
   </Card>
-  <Card title="Activity" icon="clock-rotate-left">
+  <Card title="Activity" icon="history">
     Audit trail of every successful, failed, and denied signing operation.
   </Card>
 </CardGroup>
@@ -204,16 +204,16 @@ To sign with a Signer, pick the integration that matches your tooling:
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/code-signing/approvals">
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/code-signing/approvals">
     Add approval steps and per-approval limits to a Signer.
   </Card>
-  <Card title="HSM Connectors" icon="shield-halved" href="/documentation/platform/pki/settings/hsm-connectors">
+  <Card title="HSM Connectors" icon="shield-half" href="/documentation/platform/pki/settings/hsm-connectors">
     Route the Signer's key operations to your own HSM.
   </Card>
   <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
     Use jarsigner, cosign, osslsigncode, and friends with this Signer.
   </Card>
-  <Card title="Windows KSP" icon="windows" href="/documentation/platform/pki/code-signing/windows-ksp">
+  <Card title="Windows KSP" icon="windows" iconType="brands" href="/documentation/platform/pki/code-signing/windows-ksp">
     Sign with native `signtool` on Windows.
   </Card>
 </CardGroup>

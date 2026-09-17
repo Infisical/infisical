@@ -32,13 +32,17 @@ Infisical provides managed relay infrastructure in US/EU regions for Infisical C
 
 If you're using Infisical Cloud and don't have specific requirements, you can use the managed relays provided by Infisical and skip the rest of this guide.
 
+## Host requirements
+
+Relays forward traffic between Infisical and your gateways. Each relay requires a minimum of 2 vCPUs and 1 GB of memory, and relays under heavier throughput require additional resources.
+
 ## Deployment steps
 
 To successfully deploy an Infisical Relay for use, follow these steps in order.
 
 <Steps>
    <Step title="Provision a Server">
-    Provision a server or virtual machine where you plan to deploy the relay. This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
+    Provision a server or virtual machine where you plan to deploy the relay, sized as described in [Host requirements](#host-requirements). This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
    </Step>
 
    <Step title="Create the Relay in the UI">
