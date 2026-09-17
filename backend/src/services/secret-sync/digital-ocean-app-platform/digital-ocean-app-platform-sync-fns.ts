@@ -61,17 +61,7 @@ export const DigitalOceanAppPlatformSyncFns = {
     try {
       const existingSecrets = await DigitalOceanAppPlatformPublicAPI.getVariables(secretSync.connection, config.appId);
 
-      const vars = Object.entries(existingSecrets)
-        .map(([key, v]) => {
-          if (!(key in secretMap)) return;
-
-          return {
-            key,
-            value: v.value,
-            type: "SECRET"
-          } as TDigitalOceanVariable;
-        })
-        .filter(Boolean) as TDigitalOceanVariable[];
+      const vars = existingSecrets.filter((v) => v.key in secretMap);
 
       await DigitalOceanAppPlatformPublicAPI.deleteVariables(secretSync.connection, config.appId, ...vars);
     } catch (error) {
