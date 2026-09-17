@@ -54,6 +54,24 @@ func (s *Server) InstallFallback(ctx context.Context, p Plan) error {
 		return fmt.Errorf("license: installing fallback entitlements: %w", err)
 	}
 
+	// Deleting an organization cancels its subscription against the license server,
+	// and the delete fails if that call does. Every tenant registers its own removal
+	// on t.Cleanup, so without this each test leaks its organization into the shared
+	// database for the life of the run.
+	//
+	// The outcome is parsed rather than ignored, so an empty body is not enough: the
+	// delete fails validating the response it just got.
+	if _, err := s.wm.Register(ctx, wiremock.Stub{
+		Method:   "POST",
+		URLRe:    `/v1/organizations/[^/]+/subscription/cancel`,
+		Status:   200,
+		JSONBody: map[string]any{"outcome": "subscription_canceled"},
+		Priority: priorityFallback,
+		Metadata: map[string]string{"harness": "license-fallback"},
+	}); err != nil {
+		return fmt.Errorf("license: installing subscription cancellation: %w", err)
+	}
+
 	// The usage reporter authenticates against the same server. Nothing asserts on
 	// it, but an unanswered call is noise in the logs and a failed request path.
 	for _, path := range []string{"/v1/products", "/v1/subscription"} {

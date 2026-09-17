@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/project"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/spec"
 )
@@ -122,8 +123,8 @@ func TestProject_Access(t *testing.T) {
 	t.Run("ok/an identity created in a project can read it", func(t *testing.T) {
 		t.Parallel()
 		tn := h.NewTenant(t)
-		proj := tn.NewProject(t)
-		id := proj.NewIdentity(t, harness.ProjectRole("admin"))
+		proj := project.New(t, tn)
+		id := proj.NewIdentity(t, project.Role("admin"))
 
 		res, err := id.API.ListProjectMachineIdentitiesWithResponse(t.Context(), proj.ID, nil)
 		if err != nil {
@@ -140,7 +141,7 @@ func TestProject_Access(t *testing.T) {
 			the mistake that would make every project-scoped authorization test vacuous.`)
 
 		tn := h.NewTenant(t)
-		proj := tn.NewProject(t)
+		proj := project.New(t, tn)
 		outsider := tn.NewIdentity(t, harness.OrgRole("member"))
 
 		res, err := outsider.API.ListProjectMachineIdentitiesWithResponse(t.Context(), proj.ID, nil)
@@ -155,7 +156,7 @@ func TestProject_Access(t *testing.T) {
 	t.Run("ok/granting an existing identity opens the project", func(t *testing.T) {
 		t.Parallel()
 		tn := h.NewTenant(t)
-		proj := tn.NewProject(t)
+		proj := project.New(t, tn)
 		id := tn.NewIdentity(t, harness.OrgRole("member"))
 
 		proj.Grant(t, id, "admin")
@@ -172,8 +173,8 @@ func TestProject_Access(t *testing.T) {
 	t.Run("ok/a user can be added to a project", func(t *testing.T) {
 		t.Parallel()
 		tn := h.NewTenant(t)
-		proj := tn.NewProject(t)
-		bob := proj.NewUser(t, harness.WithName("bob"), harness.ProjectRole("admin"))
+		proj := project.New(t, tn)
+		bob := proj.NewUser(t, project.Name("bob"), project.Role("admin"))
 
 		res, err := bob.API.ListProjectMachineIdentitiesWithResponse(t.Context(), proj.ID, nil)
 		if err != nil {

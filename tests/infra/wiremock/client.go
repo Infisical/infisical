@@ -39,15 +39,25 @@ func MatchesRe(v string) Matcher {
 
 // Stub is one mapping.
 type Stub struct {
-	Method   string
-	URLPath  string
-	URLRe    string
+	Method  string
+	URLPath string
+	URLRe   string
+
+	// URLAnyPattern matches the whole URL including the query, where URLRe matches
+	// the path only. Needed for a catch-all, which cannot know the path.
+	URLAnyPattern string
+
 	Headers  map[string]Matcher
 	Query    map[string]Matcher
 	Status   int
 	JSONBody any
+	Body     string
 	Priority int
 	Metadata map[string]string
+
+	// Transformers are WireMock response transformers. "response-template" lets Body
+	// interpolate the request, which is how a rejection can name what it rejected.
+	Transformers []string
 }
 
 type mapping struct {
@@ -61,6 +71,8 @@ type mapping struct {
 func (c *Client) Register(ctx context.Context, s Stub) (string, error) {
 	req := map[string]any{"method": s.Method}
 	switch {
+	case s.URLAnyPattern != "":
+		req["urlPattern"] = s.URLAnyPattern
 	case s.URLRe != "":
 		req["urlPathPattern"] = s.URLRe
 	default:
@@ -81,6 +93,12 @@ func (c *Client) Register(ctx context.Context, s Stub) (string, error) {
 	if s.JSONBody != nil {
 		resp["jsonBody"] = s.JSONBody
 		resp["headers"] = map[string]string{"Content-Type": "application/json"}
+	}
+	if s.Body != "" {
+		resp["body"] = s.Body
+	}
+	if len(s.Transformers) > 0 {
+		resp["transformers"] = s.Transformers
 	}
 
 	var out struct {
@@ -153,3 +171,66 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 // NewAdminClient returns a client for this WireMock. Always External: the Go test
 // process talks to the admin API, not a container.
 func (h *Handle) NewAdminClient() *Client { return NewClient(h.AdminURL(infra.External)) }
+
+// PriorityDenyAll is below every stub a test registers, so the catch-all only wins
+// when nothing else matched. WireMock reads a lower number as higher priority.
+const PriorityDenyAll = 100
+
+// MetadataDenyAll tags the catch-all, so the journal can be asked what went
+// unstubbed.
+const MetadataDenyAll = "harness-deny-all"
+
+// DenyUnstubbed makes an outbound call nothing stubbed fail loudly.
+//
+// Browser proxying forwards anything it has no mapping for to the real host, so
+// without this the suite silently reaches the internet: a test that forgets a stub
+// passes against the live API, and a container phones home at boot. Neither is
+// acceptable in a suite that has to be hermetic and parallel.
+//
+// 501 rather than a connection error, because a refused connection reads to the
+// application as a network blip and is often retried.
+func (c *Client) DenyUnstubbed(ctx context.Context) error {
+	_, err := c.Register(ctx, Stub{
+		Method:        "ANY",
+		URLAnyPattern: ".*",
+		Status:        http.StatusNotImplemented,
+		// Composed from the parts rather than {{request.absoluteUrl}}, which renders
+		// empty for a proxied request even though the journal records it correctly.
+		Body: "The harness has no stub for {{request.method}} " +
+			"{{request.scheme}}://{{request.host}}{{request.url}}\n" +
+			"Register one with conn.Stub(t), or add the host to the provider registry.\n",
+		Transformers: []string{"response-template"},
+		Priority:     PriorityDenyAll,
+		Metadata:     map[string]string{"harness": MetadataDenyAll},
+	})
+	return err
+}
+
+// Unstubbed returns the outbound calls that reached the catch-all, newest first.
+//
+// What to print when a test fails having forgotten a stub: the journal knows the
+// exact URL, and the application's own error rarely carries it.
+func (c *Client) Unstubbed(ctx context.Context) ([]string, error) {
+	var out struct {
+		Requests []struct {
+			Request struct {
+				Method      string `json:"method"`
+				AbsoluteURL string `json:"absoluteUrl"`
+			} `json:"request"`
+			StubMapping struct {
+				Metadata map[string]string `json:"metadata"`
+			} `json:"stubMapping"`
+		} `json:"requests"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/requests?limit=200", nil, &out); err != nil {
+		return nil, err
+	}
+
+	var calls []string
+	for _, r := range out.Requests {
+		if r.StubMapping.Metadata["harness"] == MetadataDenyAll {
+			calls = append(calls, r.Request.Method+" "+r.Request.AbsoluteURL)
+		}
+	}
+	return calls, nil
+}

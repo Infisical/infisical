@@ -59,3 +59,35 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+func TestCode_FindsTheSignupCode(t *testing.T) {
+	m := Message{Subject: "Your confirmation code", Body: `
+Confirm your email address with this code:
+
+  481920
+
+This code expires in 5 minutes. Sent 2026-09-17.
+`}
+
+	got, err := Code(m, 6)
+	if err != nil {
+		t.Fatalf("extracting the code: %v", err)
+	}
+	if got != "481920" {
+		t.Errorf("code = %q, want 481920", got)
+	}
+}
+
+func TestCode_IgnoresLongerNumbers(t *testing.T) {
+	// A year, a port and a message id are all digits, and the footer of a real mail
+	// is full of them. Matching a bare run of digits would pick up the wrong one.
+	m := Message{Subject: "Your confirmation code", Body: "id=20260917120000 port=8080\ncode: 771234\n"}
+
+	got, err := Code(m, 6)
+	if err != nil {
+		t.Fatalf("extracting the code: %v", err)
+	}
+	if got != "771234" {
+		t.Errorf("code = %q, want 771234", got)
+	}
+}

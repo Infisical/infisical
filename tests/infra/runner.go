@@ -58,10 +58,11 @@ func NewRunner(workspace string, log Logger) Runner {
 
 // Network creates the shared network if it is absent, and is a no-op otherwise.
 //
-// There is exactly one, with a fixed name, because a Package-scoped container has to
-// join the same network as the Shared ones or an Isolated suite could not reach the
-// shared Mailpit. testcontainers' network.New generates a random name per process,
-// which would give every test binary its own island.
+// One per stack: the shared network for a Shared profile, and a package-specific one
+// for an Isolated profile so its WireMock can claim a host alias without competing
+// with the shared WireMock for the same name. Shared containers are connected to the
+// package network afterwards. testcontainers' network.New generates a random name per
+// process, which would give every test binary its own island.
 //
 // Shelled out rather than using the Docker API, because importing the moby network
 // types reintroduces an ambiguous import between github.com/moby/moby and
@@ -89,6 +90,28 @@ func (r *dockerRunner) Network(ctx context.Context, name string) error {
 	return nil
 }
 
+// Connect attaches a running container to another network.
+//
+// Needed because a Shared container is created once, on the shared network, and an
+// Isolated stack lives on its own: without this its Infisical could not reach the
+// shared Mailpit. Adopting a container does not re-apply network options, so this
+// has to be an explicit step rather than something Run can do.
+func (r *dockerRunner) Connect(ctx context.Context, container, net string, aliases ...string) error {
+	args := []string{"network", "connect"}
+	for _, a := range aliases {
+		args = append(args, "--alias", a)
+	}
+	args = append(args, net, container)
+
+	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
+	// Already attached is the same outcome as attaching, and happens whenever a
+	// second binary adopts a container the first one already connected.
+	if err != nil && !strings.Contains(string(out), "already exists") {
+		return fmt.Errorf("infra: connecting %s to %s: %w: %s", container, net, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, error) {
 	opts := []testcontainers.ContainerCustomizer{
 		testcontainers.WithReuseByName(spec.Name),
@@ -112,13 +135,17 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 	if len(spec.Command) > 0 {
 		opts = append(opts, testcontainers.WithCmd(spec.Command...))
 	}
-	if r.netName != "" {
+	net := spec.Network
+	if net == "" {
+		net = r.netName
+	}
+	if net != "" {
 		alias := spec.Alias
 		if alias == "" {
 			alias = spec.Name
 		}
 		aliases := append([]string{alias}, spec.Aliases...)
-		opts = append(opts, network.WithNetworkName(aliases, r.netName))
+		opts = append(opts, network.WithNetworkName(aliases, net))
 	}
 	for _, f := range spec.Files {
 		mode := f.Mode

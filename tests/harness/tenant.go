@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/harness/license"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 )
 
@@ -22,9 +23,14 @@ type Tenant struct {
 	OrgID   uuid.UUID
 	OrgSlug string
 
-	// Admin is a plain organization administrator, not the instance root. It carries
-	// no super-admin flag, so a test cannot reach instance-wide state through it by
-	// accident: the server answers 403.
+	// Admin is this tenant's own organization administrator, an ordinary user with
+	// no super-admin flag: a test cannot reach instance-wide state through it,
+	// because the server answers 403.
+	//
+	// Its own account rather than one shared across tenants. Sharing would save the
+	// signup, but revokeAllMySessions deletes by user id alone, so one test changing
+	// a password or revoking sessions would log out every tenant running in
+	// parallel. A fresh account per tenant keeps that contained.
 	Admin *Principal
 
 	// ip is this tenant's rate-limit bucket. See infisical.ForwardedFor.
@@ -107,29 +113,25 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 	}
 
 	ip := newIP()
-	unscoped := s.rootToken(t, ip)
+	rootUnscoped := s.rootToken(t, ip)
 
-	created, err := s.client(t, unscoped, ip).CreateOrganizationWithResponse(ctx,
+	created, err := s.client(t, rootUnscoped, ip).CreateOrganizationWithResponse(ctx,
 		api.CreateOrganizationJSONRequestBody{Name: cfg.name})
 	if err != nil {
 		t.Fatalf("harness: creating an organization: %v", err)
 	}
 	if created.JSON200 == nil {
-		t.Fatalf("harness: creating an organization returned %d: %s", created.StatusCode(), body(created.Body))
+		t.Fatalf("harness: creating an organization returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
 	}
 
 	org := created.JSON200.Organization
 	tenant := &Tenant{OrgID: org.Id, OrgSlug: org.Slug, ip: ip, stack: s, plan: cfg.plan}
 
-	scoped := s.scopeToOrg(t, unscoped, org.Id, ip)
-	tenant.Admin = &Principal{
-		Kind:  User,
-		Name:  "admin",
-		Email: s.root.Email,
-		Token: scoped,
-		API:   s.client(t, scoped, ip),
-		ip:    ip,
-	}
+	// The root binds itself to the new organization only to invite its administrator,
+	// and its token goes no further than this function. What a test receives is an
+	// ordinary user at admin@<orgslug>.test, unique to this tenant.
+	rootScoped := s.scopeToOrg(t, rootUnscoped, org.Id, ip)
+	tenant.Admin = tenant.newUser(t, principalConfig{name: "admin", orgRole: "admin"}, rootScoped)
 
 	if cfg.plan != nil {
 		tenant.SetPlan(t, *cfg.plan)
@@ -171,7 +173,7 @@ func (t *Tenant) Verify(tt *testing.T, want license.Plan) {
 		tt.Fatalf("harness: reading the plan back: %v", err)
 	}
 	if res.JSON200 == nil {
-		tt.Fatalf("harness: reading the plan back returned %d: %s", res.StatusCode(), body(res.Body))
+		tt.Fatalf("harness: reading the plan back returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	}
 
 	got, ok := res.JSON200.Plan.(map[string]any)
@@ -244,7 +246,7 @@ func (s *Stack) rootToken(t *testing.T, ip string) string {
 		t.Fatalf("harness: logging in as the instance root: %v", err)
 	}
 	if res.JSON200 == nil {
-		t.Fatalf("harness: logging in as the instance root returned %d: %s", res.StatusCode(), body(res.Body))
+		t.Fatalf("harness: logging in as the instance root returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	}
 	return res.JSON200.AccessToken
 }
@@ -265,9 +267,28 @@ func (s *Stack) scopeToOrg(t *testing.T, unscoped string, orgID uuid.UUID, ip st
 		t.Fatalf("harness: selecting the organization: %v", err)
 	}
 	if res.JSON200 == nil {
-		t.Fatalf("harness: selecting the organization returned %d: %s", res.StatusCode(), body(res.Body))
+		t.Fatalf("harness: selecting the organization returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	}
 	return res.JSON200.Token
+}
+
+// Client builds an API client for a token, on this tenant's rate-limit bucket.
+//
+// The only way a fixture package should obtain a client. Building one directly
+// loses the tenant's X-Forwarded-For address, and the calls then draw down whatever
+// bucket the default source address lands in -- which is shared with every other
+// test, so the symptom is a 429 somewhere unrelated.
+func (t *Tenant) Client(tt *testing.T, token string) *api.ClientWithResponses {
+	tt.Helper()
+	return t.stack.client(tt, token, t.ip)
+}
+
+// Module returns a container handle, or fails the test naming the profile to use.
+//
+// A fixture that stubs or reads mail needs this; option is what to put in TestMain.
+func (t *Tenant) Module(tt *testing.T, key infra.Key, option string) infra.Handle {
+	tt.Helper()
+	return t.stack.Require(tt, key, option)
 }
 
 // client builds an API client carrying a token and a rate-limit bucket.
@@ -306,12 +327,4 @@ func (t *Tenant) remove() {
 func refreshCache() *api.GetOrganizationPlanParamsRefreshCache {
 	v := api.GetOrganizationPlanParamsRefreshCache("true")
 	return &v
-}
-
-func body(b []byte) string {
-	const max = 400
-	if len(b) > max {
-		return string(b[:max]) + "..."
-	}
-	return string(b)
 }

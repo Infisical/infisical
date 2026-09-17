@@ -28,12 +28,16 @@ output-options:
     - getOrganizationPlan
     - inviteUsersToOrganization
     - verifyUserToOrganization
+    - beginEmailSignupV3
+    - verifyEmailSignupV3
     - completeAccountSignupV3
     - inviteProjectMembers
     - createMachineIdentity
     - createProjectMachineIdentity
     - createProjectIdentityMembership
     - listProjectMachineIdentities
+    - createGitHubAppConnection
+    - deleteGitHubAppConnection
     - attachUniversalAuth
     - createUniversalAuthClientSecret
     - loginWithUniversalAuth

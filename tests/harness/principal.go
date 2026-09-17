@@ -2,17 +2,16 @@ package harness
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/mailpit"
+	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/Infisical/infisical/tests/internal/mail"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -29,14 +28,8 @@ const UserPassword = "HarnessUserPassword7!"
 type PrincipalOption func(*principalConfig)
 
 type principalConfig struct {
-	name         string
-	orgRole      string
-	projectRoles []string
-
-	// set records which options the caller passed, so a constructor that cannot honour
-	// one can say so. Silently dropping a role is the worst outcome available here: the
-	// test still runs, and passes or fails for a reason unrelated to what it asked for.
-	set map[string]bool
+	name    string
+	orgRole string
 }
 
 // WithName names the principal. For a user it also picks the mailbox, so
@@ -47,31 +40,13 @@ func WithName(name string) PrincipalOption {
 
 // OrgRole sets the organization role: no-access, member or admin, or a custom slug.
 //
-// Rejected by Project.NewIdentity, which creates the identity through the project
-// route and has no organization role to set. Create it with Tenant.NewIdentity and
-// grant it the project afterwards if you need both.
+// Project roles are a different thing entirely, and live in the project package.
 func OrgRole(slug string) PrincipalOption {
-	return func(c *principalConfig) { c.orgRole = slug; c.set["OrgRole"] = true }
-}
-
-// ProjectRole sets the roles the principal gets on the project it is created in.
-//
-// Rejected by the tenant-level constructors, which create nothing in a project.
-func ProjectRole(slugs ...string) PrincipalOption {
-	return func(c *principalConfig) { c.projectRoles = slugs; c.set["ProjectRole"] = true }
-}
-
-// reject fails the test when the caller passed an option this constructor cannot act
-// on, naming the constructor that can.
-func (c principalConfig) reject(f failer, option, by, instead string) {
-	f.Helper()
-	if c.set[option] {
-		f.Fatalf("harness: %s ignores %s.\n%s", by, option, instead)
-	}
+	return func(c *principalConfig) { c.orgRole = slug }
 }
 
 func newPrincipalConfig(prefix string, opts []PrincipalOption) principalConfig {
-	cfg := principalConfig{name: prefix + "-" + shortID(), orgRole: "member", set: map[string]bool{}}
+	cfg := principalConfig{name: prefix + "-" + id.Short(), orgRole: "member"}
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -101,13 +76,13 @@ func (t *Tenant) Mail(tt *testing.T) *mail.Inbox {
 func (t *Tenant) NewUser(tt *testing.T, opts ...PrincipalOption) *Principal {
 	tt.Helper()
 	cfg := newPrincipalConfig("u", opts)
-	cfg.reject(tt, "ProjectRole", "Tenant.NewUser",
-		"It creates an organization member and nothing in a project. Use project.NewUser, "+
-			"or project.Grant to add this user afterwards.")
-	return t.newUser(tt, cfg)
+	return t.newUser(tt, cfg, t.Admin.Token)
 }
 
-func (t *Tenant) newUser(tt *testing.T, cfg principalConfig) *Principal {
+// newUser runs the invitation flow. inviterToken is normally the tenant's own
+// administrator; creating that administrator is the one case where it is the root,
+// because there is nobody else in the organization yet.
+func (t *Tenant) newUser(tt *testing.T, cfg principalConfig, inviterToken string) *Principal {
 	tt.Helper()
 	ctx := tt.Context()
 	addr := t.Address(cfg.name)
@@ -116,7 +91,7 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig) *Principal {
 	// smtpRateLimit, which is a hardcoded two per forty seconds keyed on the source
 	// address and is not raisable through the plan.
 	ip := newIP()
-	inviter := t.stack.client(tt, t.Admin.Token, ip)
+	inviter := t.stack.client(tt, inviterToken, ip)
 
 	invited, err := inviter.InviteUsersToOrganizationWithResponse(ctx, api.InviteUsersToOrganizationJSONRequestBody{
 		InviteeEmails:        []openapi_types.Email{openapi_types.Email(addr)},
@@ -127,7 +102,7 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig) *Principal {
 		tt.Fatalf("harness: inviting %s: %v", addr, err)
 	}
 	if invited.StatusCode() != http.StatusOK {
-		tt.Fatalf("harness: inviting %s returned %d: %s", addr, invited.StatusCode(), body(invited.Body))
+		tt.Fatalf("harness: inviting %s returned %d: %s", addr, invited.StatusCode(), apierr.Body(invited.Body))
 	}
 
 	msg, err := t.Mail(tt).Await(ctx, addr, mail.Subject("invitation"))
@@ -153,7 +128,7 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig) *Principal {
 	}
 	if verified.JSON200 == nil || verified.JSON200.Token == nil {
 		tt.Fatalf("harness: verifying the invitation for %s returned %d: %s",
-			addr, verified.StatusCode(), body(verified.Body))
+			addr, verified.StatusCode(), apierr.Body(verified.Body))
 	}
 
 	var signupBody api.CompleteAccountSignupV3JSONBody
@@ -182,7 +157,7 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig) *Principal {
 	}
 	if completed.JSON200 == nil {
 		tt.Fatalf("harness: completing the account for %s returned %d: %s",
-			addr, completed.StatusCode(), body(completed.Body))
+			addr, completed.StatusCode(), apierr.Body(completed.Body))
 	}
 
 	scoped := t.stack.scopeToOrg(tt, completed.JSON200.Token, t.OrgID, ip)
@@ -204,9 +179,6 @@ func (t *Tenant) newUser(tt *testing.T, cfg principalConfig) *Principal {
 func (t *Tenant) NewIdentity(tt *testing.T, opts ...PrincipalOption) *Principal {
 	tt.Helper()
 	cfg := newPrincipalConfig("i", opts)
-	cfg.reject(tt, "ProjectRole", "Tenant.NewIdentity",
-		"It creates an organization identity and nothing in a project. Use project.NewIdentity, "+
-			"or project.Grant to add this identity afterwards.")
 
 	res, err := t.Admin.API.CreateMachineIdentityWithResponse(tt.Context(), api.CreateMachineIdentityJSONRequestBody{
 		Name:           cfg.name,
@@ -217,112 +189,17 @@ func (t *Tenant) NewIdentity(tt *testing.T, opts ...PrincipalOption) *Principal 
 		tt.Fatalf("harness: creating identity %s: %v", cfg.name, err)
 	}
 	if res.JSON200 == nil {
-		tt.Fatalf("harness: creating identity %s returned %d: %s", cfg.name, res.StatusCode(), body(res.Body))
+		tt.Fatalf("harness: creating identity %s returned %d: %s", cfg.name, res.StatusCode(), apierr.Body(res.Body))
 	}
-	return t.loginIdentity(tt, res.JSON200.Identity.Id, cfg.name)
+	return t.LoginIdentity(tt, res.JSON200.Identity.Id, cfg.name)
 }
 
-// NewIdentity creates a machine identity directly inside this project.
+// LoginIdentity attaches universal auth to an existing identity and exchanges the
+// credentials for an access token.
 //
-// One call rather than two: createProjectMachineIdentity takes the project roles and
-// makes the org identity and the project membership together.
-func (p *Project) NewIdentity(tt *testing.T, opts ...PrincipalOption) *Principal {
-	tt.Helper()
-	cfg := newPrincipalConfig("i", opts)
-	cfg.reject(tt, "OrgRole", "Project.NewIdentity",
-		"createProjectMachineIdentity takes project roles only. Use tenant.NewIdentity(OrgRole(...)) "+
-			"and then project.Grant if the identity needs both.")
-
-	req := api.CreateProjectMachineIdentityJSONRequestBody{Name: cfg.name}
-	if len(cfg.projectRoles) > 0 {
-		roles := make([]api.CreateProjectMachineIdentityJSONBody_Roles_Item, 0, len(cfg.projectRoles))
-		for _, slug := range cfg.projectRoles {
-			var item api.CreateProjectMachineIdentityJSONBody_Roles_Item
-			if err := item.FromCreateProjectMachineIdentityJSONBodyRoles0(
-				api.CreateProjectMachineIdentityJSONBodyRoles0{Role: slug}); err != nil {
-				tt.Fatalf("harness: %v", err)
-			}
-			roles = append(roles, item)
-		}
-		req.Roles = &roles
-	}
-
-	res, err := p.tn.Admin.API.CreateProjectMachineIdentityWithResponse(tt.Context(), p.ID, req)
-	if err != nil {
-		tt.Fatalf("harness: creating identity %s in project %s: %v", cfg.name, p.Slug, err)
-	}
-	if res.JSON200 == nil {
-		tt.Fatalf("harness: creating identity %s in project %s returned %d: %s",
-			cfg.name, p.Slug, res.StatusCode(), body(res.Body))
-	}
-	return p.tn.loginIdentity(tt, res.JSON200.Identity.Id, cfg.name)
-}
-
-// NewUser creates a user and grants it access to this project.
-func (p *Project) NewUser(tt *testing.T, opts ...PrincipalOption) *Principal {
-	tt.Helper()
-	cfg := newPrincipalConfig("u", opts)
-	pr := p.tn.newUser(tt, cfg)
-	p.Grant(tt, pr, cfg.projectRoles...)
-	return pr
-}
-
-// Grant gives an existing principal access to this project.
-//
-// Users and identities take different routes -- inviteProjectMembers against the
-// project's membership collection, createProjectIdentityMembership against the
-// identity -- which is why Principal carries its Kind.
-func (p *Project) Grant(tt *testing.T, pr *Principal, roles ...string) {
-	tt.Helper()
-	ctx := tt.Context()
-
-	// Defaulted here rather than left to the server: inviteProjectMembers falls back to
-	// member on its own, createProjectIdentityMembership does not, and a fixture that
-	// behaves differently for a user and an identity is a trap.
-	if len(roles) == 0 {
-		roles = []string{"member"}
-	}
-
-	switch pr.Kind {
-	case User:
-		res, err := p.tn.Admin.API.InviteProjectMembersWithResponse(ctx, p.ID,
-			api.InviteProjectMembersJSONRequestBody{
-				Emails:    &[]openapi_types.Email{openapi_types.Email(pr.Email)},
-				RoleSlugs: &roles,
-			})
-		if err != nil {
-			tt.Fatalf("harness: adding %s to project %s: %v", pr.Email, p.Slug, err)
-		}
-		if res.StatusCode() != http.StatusOK {
-			tt.Fatalf("harness: adding %s to project %s returned %d: %s",
-				pr.Email, p.Slug, res.StatusCode(), body(res.Body))
-		}
-
-	case Identity:
-		items := make([]api.CreateProjectIdentityMembershipJSONBody_Roles_Item, 0, len(roles))
-		for _, slug := range roles {
-			var item api.CreateProjectIdentityMembershipJSONBody_Roles_Item
-			if err := item.FromCreateProjectIdentityMembershipJSONBodyRoles0(
-				api.CreateProjectIdentityMembershipJSONBodyRoles0{Role: slug}); err != nil {
-				tt.Fatalf("harness: %v", err)
-			}
-			items = append(items, item)
-		}
-		res, err := p.tn.Admin.API.CreateProjectIdentityMembershipWithResponse(ctx, p.ID, pr.ID.String(),
-			api.CreateProjectIdentityMembershipJSONRequestBody{Roles: &items})
-		if err != nil {
-			tt.Fatalf("harness: adding identity %s to project %s: %v", pr.Name, p.Slug, err)
-		}
-		if res.StatusCode() != http.StatusOK {
-			tt.Fatalf("harness: adding identity %s to project %s returned %d: %s",
-				pr.Name, p.Slug, res.StatusCode(), body(res.Body))
-		}
-	}
-}
-
-// loginIdentity attaches universal auth to an identity and exchanges the credentials
-// for an access token.
-func (t *Tenant) loginIdentity(tt *testing.T, id uuid.UUID, name string) *Principal {
+// Exported for fixture packages that create an identity through a product route --
+// a project, say -- and still need it to be able to authenticate.
+func (t *Tenant) LoginIdentity(tt *testing.T, id uuid.UUID, name string) *Principal {
 	tt.Helper()
 	ctx := tt.Context()
 
@@ -333,7 +210,7 @@ func (t *Tenant) loginIdentity(tt *testing.T, id uuid.UUID, name string) *Princi
 	}
 	if attached.JSON200 == nil {
 		tt.Fatalf("harness: attaching universal auth to %s returned %d: %s",
-			name, attached.StatusCode(), body(attached.Body))
+			name, attached.StatusCode(), apierr.Body(attached.Body))
 	}
 
 	secret, err := t.Admin.API.CreateUniversalAuthClientSecretWithResponse(ctx, id.String(),
@@ -343,7 +220,7 @@ func (t *Tenant) loginIdentity(tt *testing.T, id uuid.UUID, name string) *Princi
 	}
 	if secret.JSON200 == nil {
 		tt.Fatalf("harness: creating a client secret for %s returned %d: %s",
-			name, secret.StatusCode(), body(secret.Body))
+			name, secret.StatusCode(), apierr.Body(secret.Body))
 	}
 
 	ip := newIP()
@@ -361,7 +238,7 @@ func (t *Tenant) loginIdentity(tt *testing.T, id uuid.UUID, name string) *Princi
 		tt.Fatalf("harness: logging in as %s: %v", name, err)
 	}
 	if login.JSON200 == nil {
-		tt.Fatalf("harness: logging in as %s returned %d: %s", name, login.StatusCode(), body(login.Body))
+		tt.Fatalf("harness: logging in as %s returned %d: %s", name, login.StatusCode(), apierr.Body(login.Body))
 	}
 
 	return &Principal{
@@ -372,10 +249,4 @@ func (t *Tenant) loginIdentity(tt *testing.T, id uuid.UUID, name string) *Princi
 		API:   t.stack.client(tt, login.JSON200.AccessToken, ip),
 		ip:    ip,
 	}
-}
-
-func shortID() string {
-	b := make([]byte, 4)
-	_, _ = rand.Read(b)
-	return strings.ToLower(fmt.Sprintf("%x", b))
 }
