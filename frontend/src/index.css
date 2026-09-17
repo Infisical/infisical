@@ -345,6 +345,14 @@ html[data-theme="light"] {
   --color-proxied-service: oklch(0.4447 0.1461 309.7);
 }
 
+.product-color {
+  --product-color-resolved: var(--product-color);
+}
+
+html[data-theme="light"] .product-color {
+  --product-color-resolved: color-mix(in oklab, var(--product-color) 55%, var(--color-foreground));
+}
+
 /* Platform overrides */
 /* iOS Safari zooms the viewport when focusing an input whose font-size is below 16px.
    Bumping the type scale on detected iOS devices keeps form controls at/above that
