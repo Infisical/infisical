@@ -8,7 +8,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 const docs = DASHBOARD.SECRET_METADATA_LIST;
 
 export const SecretMetadataQuerySchema = z.object({
-  projectId: z.string().trim().uuid().describe(docs.projectId),
+  projectId: z.string().trim().describe(docs.projectId),
   environment: slugSchema({ field: "Environment slug" }).describe(docs.environment),
   secretPath: z
     .string()

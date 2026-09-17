@@ -82,7 +82,9 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
       <SheetContent className="sm:max-w-[640px]">
         <SheetHeader>
           <SheetTitle>Manage Access</SheetTitle>
-          <SheetDescription>Who can mint a session over {accessBundle?.name}.</SheetDescription>
+          <SheetDescription>
+            Manage who can create sessions with {accessBundle?.name}.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -100,7 +102,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No members yet</EmptyTitle>
                 <EmptyDescription>
-                  Grant this bundle to a user, machine identity or group.
+                  Grant this bundle to a user, machine identity, or group.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -172,8 +174,8 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
                 Revoke Access for &quot;{memberToRemoveName}&quot;
               </AlertDialogTitle>
               <AlertDialogDescription>
-                They lose this bundle, and any live session they hold stops reaching its hosts at
-                the next proxy poll.
+                They lose this access bundle. Any active session they hold stops reaching its hosts
+                at the next proxy poll.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

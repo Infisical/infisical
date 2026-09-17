@@ -134,6 +134,24 @@ export const certificateDALFactory = (db: TDbClient) => {
     applicationIds?: string[];
   };
 
+  type TSyncEligibilityFilterParams = Omit<TInventoryFilterParams, "status">;
+
+  type TPkiSyncMatchFilters = {
+    profileIds?: string[];
+    certificateOrderIds?: string[];
+    metadata?: { key: string; value?: string }[];
+  };
+
+  type TMatchedSyncCertificate = {
+    id: string;
+    commonName: string;
+    altNames?: string | null;
+    serialNumber: string;
+    notAfter: Date;
+    orderId: string;
+    profileName?: string | null;
+  };
+
   const applyInventoryFilters = (
     query: Knex.QueryBuilder,
     filters: TInventoryFilterParams,
@@ -424,17 +442,17 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findActiveCertificatesByIds = async (certificateIds: string[]): Promise<TCertificates[]> => {
+  const findActiveCertificatesByIds = async (certificateIds: string[], tx?: Knex): Promise<TCertificates[]> => {
     try {
       if (certificateIds.length === 0) {
         return [];
       }
 
-      const certs = await db
-        .replicaNode()(TableName.Certificate)
+      const certs = await (tx || db.replicaNode())(TableName.Certificate)
         .whereIn("id", certificateIds)
         .where({ status: CertStatus.ACTIVE })
         .where("notAfter", ">", new Date())
+        .whereNull("renewedByCertificateId")
         .orderBy("notBefore", "desc")
         .select("*");
 
@@ -444,36 +462,36 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const $applyActiveForSyncEligibility = (query: Knex.QueryBuilder): Knex.QueryBuilder =>
+    query
+      .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
+      .where(`${TableName.Certificate}.notAfter`, ">", new Date())
+      .whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+
   const findActiveCertificatesForSync = async (
-    filter: Partial<Omit<TCertificates, "status" | "keyAlgorithm" | "source"> & TInventoryFilterParams>,
+    filter: TSyncEligibilityFilterParams & { projectId: string },
     options?: { limit?: number; offset?: number },
     permissionFilters?: ProcessedPermissionRules
-  ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
+  ): Promise<(TCertificates & { hasPrivateKey: boolean; profileName?: string | null })[]> => {
     try {
+      const { projectId, ...inventoryFilters } = filter;
+
       let query = db
         .replicaNode()(TableName.Certificate)
         .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
-        .where({ status: CertStatus.ACTIVE })
-        .where("notAfter", ">", new Date())
-        .whereNull("renewedByCertificateId");
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .andWhere(`${TableName.Certificate}.projectId`, projectId);
 
-      Object.entries(filter).forEach(([key, value]) => {
-        if (value === undefined || value === null) return;
-        if (key === "applicationIds") {
-          if (Array.isArray(value) && value.length > 0) {
-            query = query.whereIn(`${TableName.Certificate}.applicationId`, value as string[]);
-          }
-          return;
-        }
-        if (key === "friendlyName" || key === "commonName") {
-          const sanitizedValue = sanitizeSqlLikeString(String(value));
-          query = query.andWhere(`${TableName.Certificate}.${key}`, "like", `%${sanitizedValue}%`);
-        } else {
-          query = query.andWhere(`${TableName.Certificate}.${key}`, value);
-        }
-      });
+      query = $applyActiveForSyncEligibility(query) as typeof query;
+
+      query = applyInventoryFilters(query, inventoryFilters, false) as typeof query;
 
       if (permissionFilters) {
         query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
@@ -499,48 +517,173 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countActiveCertificatesForSync = async ({
-    projectId,
-    friendlyName,
-    commonName,
-    applicationId,
-    applicationIds
-  }: {
-    projectId: string;
-    friendlyName?: string;
-    commonName?: string;
-    applicationId?: string;
-    applicationIds?: string[];
-  }) => {
+  const $buildSyncFilterMatchQuery = (
+    filters: TPkiSyncMatchFilters | null | undefined,
+    scope: { projectId: string; applicationId: string; certificateId?: string },
+    permissionFilters?: ProcessedPermissionRules
+  ) => {
+    let query = db(TableName.Certificate)
+      .leftJoin(
+        TableName.PkiCertificateProfile,
+        `${TableName.Certificate}.profileId`,
+        `${TableName.PkiCertificateProfile}.id`
+      )
+      .where(`${TableName.Certificate}.projectId`, scope.projectId)
+      .andWhere(`${TableName.Certificate}.applicationId`, scope.applicationId);
+
+    query = $applyActiveForSyncEligibility(query) as typeof query;
+
+    if (scope.certificateId) {
+      query = query.andWhere(`${TableName.Certificate}.id`, scope.certificateId);
+    }
+
+    if (filters?.certificateOrderIds) {
+      query = query.whereIn(`${TableName.Certificate}.orderId`, filters.certificateOrderIds);
+    }
+
+    if (filters?.profileIds) {
+      query = query.whereIn(`${TableName.Certificate}.profileId`, filters.profileIds);
+    }
+
+    if (filters?.metadata) {
+      query = filters.metadata.length
+        ? applyMetadataFilter(query, filters.metadata, "certificateId", TableName.Certificate)
+        : query.whereRaw("1 = 0");
+    }
+
+    if (permissionFilters) {
+      query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
+    }
+
+    return query;
+  };
+
+  const countCertificatesMatchingSyncFilters = async (
+    filters: TPkiSyncMatchFilters | null | undefined,
+    scope: { projectId: string; applicationId: string },
+    permissionFilters?: ProcessedPermissionRules
+  ): Promise<number> => {
+    try {
+      const result = (await $buildSyncFilterMatchQuery(filters, scope, permissionFilters).count(
+        `${TableName.Certificate}.id as count`
+      )) as unknown as Array<{ count: string }>;
+
+      return Number(result?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count certificates matching sync filters" });
+    }
+  };
+
+  const findReadableCertificateIds = async (
+    certificateIds: string[],
+    projectId: string,
+    permissionFilters?: ProcessedPermissionRules
+  ): Promise<string[]> => {
+    try {
+      if (certificateIds.length === 0) return [];
+
+      let query = db(TableName.Certificate)
+        .where(`${TableName.Certificate}.projectId`, projectId)
+        .whereIn(`${TableName.Certificate}.id`, certificateIds);
+
+      if (permissionFilters) {
+        query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
+      }
+
+      const rows = (await query.select(`${TableName.Certificate}.id`)) as { id: string }[];
+
+      return rows.map((row) => row.id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find readable certificates by IDs" });
+    }
+  };
+
+  const findLatestCertificatesByOrderIds = async (
+    orderIds: string[],
+    scope: { projectId: string; applicationId: string },
+    permissionFilters?: ProcessedPermissionRules
+  ): Promise<{ orderId: string; commonName: string; altNames: string | null }[]> => {
+    try {
+      if (orderIds.length === 0) return [];
+
+      let query = db
+        .replicaNode()(TableName.Certificate)
+        .where(`${TableName.Certificate}.projectId`, scope.projectId)
+        .andWhere(`${TableName.Certificate}.applicationId`, scope.applicationId)
+        .whereIn(`${TableName.Certificate}.orderId`, orderIds);
+
+      if (permissionFilters) {
+        query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
+      }
+
+      const rows = await query
+        .distinctOn(`${TableName.Certificate}.orderId`)
+        .orderBy([
+          { column: `${TableName.Certificate}.orderId`, order: "asc" },
+          { column: `${TableName.Certificate}.notBefore`, order: "desc" },
+          { column: `${TableName.Certificate}.createdAt`, order: "desc" }
+        ])
+        .select(
+          `${TableName.Certificate}.orderId`,
+          `${TableName.Certificate}.commonName`,
+          `${TableName.Certificate}.altNames`
+        );
+
+      return rows as { orderId: string; commonName: string; altNames: string | null }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find latest certificates by order IDs" });
+    }
+  };
+
+  const findCertificatesMatchingSyncFilters = async (
+    filters: TPkiSyncMatchFilters | null | undefined,
+    scope: { projectId: string; applicationId: string; certificateId?: string },
+    options?: { offset?: number; limit?: number; permissionFilters?: ProcessedPermissionRules }
+  ): Promise<TMatchedSyncCertificate[]> => {
+    try {
+      let query = $buildSyncFilterMatchQuery(filters, scope, options?.permissionFilters);
+
+      if (options?.offset) {
+        query = query.offset(options.offset);
+      }
+
+      if (options?.limit) {
+        query = query.limit(options.limit);
+      }
+
+      return (await query
+        .orderBy(`${TableName.Certificate}.commonName`, "asc")
+        .select(
+          `${TableName.Certificate}.id`,
+          `${TableName.Certificate}.commonName`,
+          `${TableName.Certificate}.serialNumber`,
+          `${TableName.Certificate}.notAfter`,
+          `${TableName.Certificate}.orderId`,
+          db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName")
+        )) as TMatchedSyncCertificate[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificates matching sync filters" });
+    }
+  };
+
+  const countActiveCertificatesForSync = async (
+    filter: TSyncEligibilityFilterParams & { projectId: string },
+    permissionFilters?: ProcessedPermissionRules
+  ) => {
     try {
       interface CountResult {
         count: string;
       }
 
-      let query = db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
-        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.id`, projectId)
-        .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
-        .where(`${TableName.Certificate}.notAfter`, ">", new Date())
-        .whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+      const { projectId, ...inventoryFilters } = filter;
 
-      if (friendlyName) {
-        const sanitizedValue = sanitizeSqlLikeString(friendlyName);
-        query = query.andWhere(`${TableName.Certificate}.friendlyName`, "like", `%${sanitizedValue}%`);
-      }
+      let query = db.replicaNode()(TableName.Certificate).where(`${TableName.Certificate}.projectId`, projectId);
 
-      if (commonName) {
-        const sanitizedValue = sanitizeSqlLikeString(commonName);
-        query = query.andWhere(`${TableName.Certificate}.commonName`, "like", `%${sanitizedValue}%`);
-      }
+      query = $applyActiveForSyncEligibility(query) as typeof query;
+      query = applyInventoryFilters(query, inventoryFilters, false) as typeof query;
 
-      if (applicationId) {
-        query = query.andWhere(`${TableName.Certificate}.applicationId`, applicationId);
-      }
-      if (applicationIds && applicationIds.length > 0) {
-        query = query.whereIn(`${TableName.Certificate}.applicationId`, applicationIds);
+      if (permissionFilters) {
+        query = applyProcessedPermissionRulesToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
       }
 
       const count = await query.count("*").first();
@@ -557,7 +700,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   }: {
     limit: number;
     offset: number;
-  }): Promise<(TCertificates & { profileName?: string })[]> => {
+  }): Promise<(TCertificates & { profileName?: string; applicationName?: string | null })[]> => {
     try {
       const now = new Date();
       const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
@@ -566,11 +709,13 @@ export const certificateDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Certificate)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .leftJoin(
           TableName.PkiCertificateProfile,
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .innerJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
         .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
         .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
@@ -1255,7 +1400,10 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     ...certificateOrm,
     create,
     countCertificatesInProject,
@@ -1268,6 +1416,10 @@ export const certificateDALFactory = (db: TDbClient) => {
     findByThumbprintInOrg,
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
+    findCertificatesMatchingSyncFilters,
+    countCertificatesMatchingSyncFilters,
+    findReadableCertificateIds,
+    findLatestCertificatesByOrderIds,
     findCertificatesEligibleForRenewal,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,

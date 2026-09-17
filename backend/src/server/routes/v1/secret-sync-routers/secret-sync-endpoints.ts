@@ -514,12 +514,12 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         connectionId: z.string().uuid().optional(),
         syncOptions: z.record(z.unknown()).optional(),
         excludeSyncId: z.string().uuid().optional(),
-        projectId: z.string().uuid()
+        projectId: z.string()
       }),
       response: {
         200: z.object({
           hasDuplicate: z.boolean(),
-          duplicateProjectId: z.string().uuid().optional()
+          duplicateProjectId: z.string().optional()
         })
       }
     },

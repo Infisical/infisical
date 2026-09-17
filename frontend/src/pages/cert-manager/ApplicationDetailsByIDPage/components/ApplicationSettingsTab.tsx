@@ -876,6 +876,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         applicationId={application.id}
       />
       <UpgradePlanModal
+        paywallKey="cert-manager.application-settings"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { text: string })?.text}

@@ -536,6 +536,7 @@ export const GatewayTab = withPermission(
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
         />
         <UpgradePlanModal
+          paywallKey="organization.gateway"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."

@@ -111,6 +111,7 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
           ))}
       </SidebarMenu>
       <UpgradePlanModal
+        paywallKey="organization.sub-organizations"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You need to upgrade your plan to manage sub-organizations."
