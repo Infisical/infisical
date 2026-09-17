@@ -35,7 +35,7 @@ const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
   createdAt: z.date()
-});
+}).describe(JSON.stringify({ title: "Admin view" }));
 
 const EnrollmentSchema = z.object({
   token: z.string().describe(AGENT_VAULT.PROXY.enrollmentToken),
@@ -57,7 +57,13 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       operationId: "listAgentVaultProxies",
       description: "List the organization's Agent Vault proxies",
       tags: [ApiDocsTags.AgentVaultProxies],
-      response: { 200: z.object({ proxies: z.union([ProxyAdminViewSchema, ProxyMemberViewSchema]).array() }) }
+      response: {
+        200: z.object({
+          proxies: z
+            .union([ProxyAdminViewSchema, ProxyMemberViewSchema.describe(JSON.stringify({ title: "Member view" }))])
+            .array()
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
