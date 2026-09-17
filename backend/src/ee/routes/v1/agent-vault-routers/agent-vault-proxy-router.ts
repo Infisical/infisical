@@ -34,7 +34,8 @@ const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
   trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
-  createdAt: z.date()
+  createdAt: z.date(),
+  updatedAt: z.date()
 }).describe(JSON.stringify({ title: "Admin view" }));
 
 const EnrollmentSchema = z.object({

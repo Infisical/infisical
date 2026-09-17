@@ -48,7 +48,8 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   id: true,
   name: true,
   description: true,
-  createdAt: true
+  createdAt: true,
+  updatedAt: true
 });
 
 // The audit body keeps the three flat ids it has always carried, because renaming a field on a live

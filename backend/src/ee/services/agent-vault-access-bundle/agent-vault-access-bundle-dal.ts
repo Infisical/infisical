@@ -13,6 +13,7 @@ export type TAgentVaultAccessBundleListRow = {
   name: string;
   description: string | null;
   createdAt: Date;
+  updatedAt: Date;
   serviceCount: number;
   hostPatterns: string[];
   memberCount: number;
@@ -86,6 +87,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("description").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("createdAt").withSchema(TableName.AgentVaultAccessBundle),
+          db.ref("updatedAt").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
           db.raw('COALESCE(mc.count, 0)::int as "memberCount"')
@@ -95,6 +97,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         name: string;
         description: string | null;
         createdAt: Date;
+        updatedAt: Date;
         serviceId: string | null;
         hostPattern: string | null;
         memberCount: number;
@@ -109,6 +112,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             name: row.name,
             description: row.description,
             createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
             serviceCount: 0,
             hostPatterns: [],
             memberCount: row.memberCount

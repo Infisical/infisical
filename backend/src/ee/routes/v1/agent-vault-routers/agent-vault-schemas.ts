@@ -211,7 +211,8 @@ export const AgentVaultServiceSchema = z.object({
     })
     .array()
     .describe(AGENT_VAULT.SERVICE.substitutions),
-  createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt)
+  createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
+  updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 });
 
 // One list per actor type rather than a list of one-of-three objects: the field name carries the type,

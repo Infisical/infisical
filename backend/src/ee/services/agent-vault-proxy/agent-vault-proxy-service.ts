@@ -105,7 +105,8 @@ export const agentVaultProxyServiceFactory = ({
   const toAdminView = (proxy: TAgentVaultProxies) => ({
     ...toMemberView(proxy),
     ...toConfig(proxy),
-    createdAt: proxy.createdAt
+    createdAt: proxy.createdAt,
+    updatedAt: proxy.updatedAt
   });
 
   const $authorize = async ({ projectId, ctx }: TListProxiesDTO, action: ProjectPermissionAgentVaultProxyActions) => {

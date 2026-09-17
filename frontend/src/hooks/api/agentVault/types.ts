@@ -69,6 +69,7 @@ export type TAgentVaultService = {
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
   createdAt: string;
+  updatedAt: string;
 };
 
 export type TAgentVaultActor =
@@ -94,6 +95,7 @@ export type TAgentVaultAccessBundle = {
   name: string;
   description?: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
@@ -145,6 +147,7 @@ export type TAgentVaultProxy = {
   allowedHosts?: string | null;
   pollInterval?: number;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 export type TAgentVaultEnrollment = {

@@ -360,7 +360,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       placeholder: substitution.placeholder,
       surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
     })),
-    createdAt: service.createdAt
+    createdAt: service.createdAt,
+    updatedAt: service.updatedAt
   });
 
   const loadTransformations = async (serviceIds: string[], tx?: Knex) => {
@@ -450,6 +451,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       name: bundle.name,
       description: bundle.description ?? null,
       createdAt: bundle.createdAt,
+      updatedAt: bundle.updatedAt,
       services: services.map((service) =>
         projectService(
           service,
