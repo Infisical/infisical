@@ -526,6 +526,7 @@ export enum EventType {
   GET_CMEK = "get-cmek",
   CMEK_ENCRYPT = "cmek-encrypt",
   CMEK_DECRYPT = "cmek-decrypt",
+  CMEK_DERIVE_SHARED_SECRET = "cmek-derive-shared-secret",
   CMEK_SIGN = "cmek-sign",
   CMEK_VERIFY = "cmek-verify",
   CMEK_GENERATE_MAC = "cmek-generate-mac",
@@ -4280,6 +4281,13 @@ interface CmekEncryptEvent {
 
 interface CmekDecryptEvent {
   type: EventType.CMEK_DECRYPT;
+  metadata: {
+    keyId: string;
+  };
+}
+
+interface CmekDeriveSharedSecretEvent {
+  type: EventType.CMEK_DERIVE_SHARED_SECRET;
   metadata: {
     keyId: string;
   };
@@ -8044,6 +8052,7 @@ export type Event =
   | GetCmeksEvent
   | CmekEncryptEvent
   | CmekDecryptEvent
+  | CmekDeriveSharedSecretEvent
   | CmekSignEvent
   | CmekVerifyEvent
   | CmekGenerateMacEvent

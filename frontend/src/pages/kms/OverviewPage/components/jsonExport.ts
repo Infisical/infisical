@@ -18,6 +18,13 @@ type CmekExportEntry =
     }
   | {
       name: string;
+      keyType: "key-agreement";
+      algorithm: string;
+      privateKey: string;
+      publicKey: string;
+    }
+  | {
+      name: string;
       keyType: "generate-verify-mac";
       algorithm: string;
       keyMaterial: string;
@@ -25,10 +32,13 @@ type CmekExportEntry =
 
 export const cmekKeysToExportJSON = (keys: TCmekBulkExportedKey[]): CmekExportEntry[] => {
   return keys.map((key) => {
-    if (key.keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+    if (key.keyUsage === KmsKeyUsage.SIGN_VERIFY || key.keyUsage === KmsKeyUsage.KEY_AGREEMENT) {
       return {
         name: key.name,
-        keyType: "sign-verify" as const,
+        keyType:
+          key.keyUsage === KmsKeyUsage.KEY_AGREEMENT
+            ? ("key-agreement" as const)
+            : ("sign-verify" as const),
         algorithm: key.algorithm,
         privateKey: key.privateKey,
         publicKey: key.publicKey ?? ""

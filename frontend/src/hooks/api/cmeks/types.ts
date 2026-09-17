@@ -5,7 +5,8 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 export enum KmsKeyUsage {
   ENCRYPT_DECRYPT = "encrypt-decrypt",
   SIGN_VERIFY = "sign-verify",
-  GENERATE_VERIFY_MAC = "generate-verify-mac"
+  GENERATE_VERIFY_MAC = "generate-verify-mac",
+  KEY_AGREEMENT = "key-agreement"
 }
 
 export type TCmek = {
@@ -62,6 +63,15 @@ export type TListProjectCmeksDTO = {
   orderBy?: CmekOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+};
+
+export type TDeriveSharedSecretKmsDTO = {
+  kmsId: string;
+  publicKey: Buffer;
+};
+export type TDeriveSharedSecretKmsResponse = {
+  secret: string;
+  keyId: string;
 };
 
 export type TCmekEncryptResponse = {
@@ -155,6 +165,8 @@ export enum CmekOrderBy {
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECC_NIST_P256 = "ECC_NIST_P256",
+  ECC_NIST_P384 = "ECC_NIST_P384",
+  ECC_NIST_P521 = "ECC_NIST_P521",
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
@@ -201,3 +213,21 @@ export enum SigningAlgorithm {
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
 }
+
+export enum KeyAgreementAlgorithm {
+  ECDH = "ECDH"
+}
+
+export const EccNistKeyAlgorithm = {
+  ECC_NIST_P256: AsymmetricKeyAlgorithm.ECC_NIST_P256,
+  ECC_NIST_P384: AsymmetricKeyAlgorithm.ECC_NIST_P384,
+  ECC_NIST_P521: AsymmetricKeyAlgorithm.ECC_NIST_P521
+} as const;
+
+export type EccNistKeyAlgorithm = (typeof EccNistKeyAlgorithm)[keyof typeof EccNistKeyAlgorithm];
+
+export type KeyAlgorithmEnum =
+  | typeof SymmetricKeyAlgorithm
+  | typeof AsymmetricKeyAlgorithm
+  | typeof HmacAlgorithm
+  | typeof EccNistKeyAlgorithm;

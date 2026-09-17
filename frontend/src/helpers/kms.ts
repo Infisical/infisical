@@ -1,5 +1,6 @@
 import {
   AsymmetricKeyAlgorithm,
+  EccNistKeyAlgorithm,
   HmacAlgorithm,
   KmsKeyUsage,
   SigningAlgorithm,
@@ -27,16 +28,21 @@ export const kmsKeyUsageOptions: Record<
     label: "Generate/Verify MAC",
     tooltip:
       "Symmetric HMAC keys for generating and verifying hash-based message authentication codes (MACs)."
+  },
+  [KmsKeyUsage.KEY_AGREEMENT]: {
+    label: "Key Agreement",
+    tooltip: "Derive shared secrets with another party's public key."
   }
 };
 
 export const keyUsageDefaultOption: Record<
   KmsKeyUsage,
-  SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm
+  SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm | EccNistKeyAlgorithm
 > = {
   [KmsKeyUsage.ENCRYPT_DECRYPT]: SymmetricKeyAlgorithm.AES_GCM_256,
   [KmsKeyUsage.SIGN_VERIFY]: AsymmetricKeyAlgorithm.RSA_4096,
-  [KmsKeyUsage.GENERATE_VERIFY_MAC]: HmacAlgorithm.HMAC_SHA_256
+  [KmsKeyUsage.GENERATE_VERIFY_MAC]: HmacAlgorithm.HMAC_SHA_256,
+  [KmsKeyUsage.KEY_AGREEMENT]: EccNistKeyAlgorithm.ECC_NIST_P256
 };
 
 export const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
