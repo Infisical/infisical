@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 
 import {
   Checkbox,
@@ -8,7 +9,10 @@ import {
   FieldError,
   FieldLabel,
   Input,
-  TagsInput
+  TagsInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
@@ -131,7 +135,18 @@ export const DetailsFields = () => {
         name="pathPrefixes"
         render={({ field, fieldState }) => (
           <Field>
-            <FieldLabel>Paths</FieldLabel>
+            <FieldLabel>
+              Paths
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  The routes this service allows on its hosts. A prefix matches whole segments, so
+                  /api/v1 covers /api/v1/users but not /api/v10.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FieldContent>
               <Controller
                 control={control}
@@ -145,8 +160,6 @@ export const DetailsFields = () => {
                       draft.onChange(next);
                       if (fieldState.error) clearErrors("pathPrefixes");
                     }}
-                    // A comma is legal inside a path, so only Enter, Tab and blur commit here.
-                    separators={[]}
                     validateTag={pathPrefixError}
                     onValidationError={(reason) =>
                       reason ? trigger("pathPrefixes") : clearErrors("pathPrefixes")
@@ -157,9 +170,7 @@ export const DetailsFields = () => {
                   />
                 )}
               />
-              <FieldDescription>
-                A prefix matches whole segments, so /api/v1 covers /api/v1/users but not /api/v10.
-              </FieldDescription>
+              <FieldDescription>Leave empty to allow every path.</FieldDescription>
               <FieldError
                 errors={Array.isArray(fieldState.error) ? fieldState.error : [fieldState.error]}
               />

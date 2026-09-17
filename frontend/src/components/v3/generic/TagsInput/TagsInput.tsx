@@ -17,8 +17,6 @@ import "../../utils/ScrollEdgeFade.css";
 
 const NO_ITEMS: string[] = [];
 
-const escapeForCharClass = (value: string) => value.replace(/[\\\]^-]/g, "\\$&");
-
 type TagsInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
   "children" | "disabled" | "onChange" | "type" | "value"
@@ -28,8 +26,6 @@ type TagsInputProps = Omit<
   onValueChange: (next: string[]) => void;
   isDisabled?: boolean;
   isError?: boolean;
-  /** A newline always splits pasted text, even with `separators={[]}`. */
-  separators?: readonly string[];
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
   onValidationError?: (reason: string | null) => void;
@@ -45,7 +41,6 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       onValueChange,
       isDisabled,
       isError,
-      separators = [","],
       validateTag,
       onValidationError,
       inputValue,
@@ -94,12 +89,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      if (event.key === "Tab") {
-        if (draft.trim() && !commit(draft)) event.preventDefault();
-        return;
-      }
-
-      if (separators.includes(event.key)) {
+      if (event.key === ",") {
         event.preventDefault();
         commit(draft);
       }
@@ -107,7 +97,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
       const pasted = event.clipboardData.getData("text");
-      const splitOn = new RegExp(`[\\n\\r${separators.map(escapeForCharClass).join("")}]`);
+      const splitOn = /[\n\r,]/;
       if (!splitOn.test(pasted)) return;
 
       event.preventDefault();
@@ -137,7 +127,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      setDraft(parts.slice(refusedFrom).join(separators[0] ?? " "));
+      setDraft(parts.slice(refusedFrom).join(","));
     };
 
     return (
