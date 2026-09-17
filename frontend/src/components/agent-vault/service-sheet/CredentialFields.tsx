@@ -53,7 +53,8 @@ export const SecretInput = <TName extends SecretName>({
   ariaLabel,
   placeholder,
   isError,
-  isUntouched
+  isUntouched,
+  isRequired
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -62,6 +63,8 @@ export const SecretInput = <TName extends SecretName>({
   placeholder: string;
   isError: boolean;
   isUntouched: boolean;
+  /** Whether an empty value is a real one. Only a field that refuses empty can restore the sentinel. */
+  isRequired: boolean;
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -71,9 +74,14 @@ export const SecretInput = <TName extends SecretName>({
         {...field}
         aria-label={ariaLabel}
         type={isVisible ? "text" : "password"}
-        // Selected rather than cleared, so focusing the field and moving on cannot remove a credential.
-        onFocus={(event) => {
-          if (isUntouched) event.target.select();
+        onFocus={() => {
+          if (isUntouched) field.onChange("");
+        }}
+        // A required field cannot mean anything by empty, so leaving it that way restores the stored
+        // secret rather than wiping it. Where empty is a real value, it is left alone.
+        onBlur={() => {
+          if (isRequired && !field.value) field.onChange(UNCHANGED_SECRET);
+          field.onBlur();
         }}
         placeholder={placeholder}
         isError={isError}
@@ -128,6 +136,7 @@ export const CredentialFields = ({ storedType }: Props) => {
               placeholder={isBasic ? "Enter the password" : "Enter the token"}
               isError={Boolean(fieldState.error)}
               isUntouched={isUntouched}
+              isRequired={!isBasic}
             />
             <FieldError>{fieldState.error?.message}</FieldError>
           </FieldContent>
@@ -213,6 +222,7 @@ export const CredentialFields = ({ storedType }: Props) => {
                     placeholder="Enter the username"
                     isError={Boolean(fieldState.error)}
                     isUntouched={isUsernameUntouched}
+                    isRequired={false}
                   />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>

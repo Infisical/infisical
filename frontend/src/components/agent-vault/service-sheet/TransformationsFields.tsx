@@ -149,6 +149,7 @@ export const TransformationsFields = () => {
                                 placeholder="Enter the value"
                                 isError={Boolean(fieldState.error)}
                                 isUntouched={field.value === UNCHANGED_SECRET}
+                                isRequired
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>
@@ -242,6 +243,7 @@ export const TransformationsFields = () => {
                                 placeholder="Enter the real value"
                                 isError={Boolean(fieldState.error)}
                                 isUntouched={field.value === UNCHANGED_SECRET}
+                                isRequired
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>
