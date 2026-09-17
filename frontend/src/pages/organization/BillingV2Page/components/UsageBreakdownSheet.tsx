@@ -29,7 +29,6 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useHeldLoading } from "@app/hooks";
 import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownScope,
@@ -98,7 +97,6 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
   const orgLevelTint = "bg-neutral/85";
   const canExpand = hasProjectDetail && scope.count > 0;
   const ScopeIcon = scope.isRoot ? OrgIcon : SubOrgIcon;
-  const projectLabel = `${scope.projects.length} ${scope.projects.length === 1 ? "project" : "projects"}`;
 
   const header = (
     <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -156,9 +154,9 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
               </div>
             )}
             {scope.projects.length > 0 && (
-              <div className="flex items-center gap-2 border-t border-border pt-2.5">
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
                 <span className="text-2xs tracking-wide text-muted uppercase">Projects</span>
-                <span className="text-2xs text-muted">{projectLabel}</span>
+                <span className="text-2xs text-muted tabular-nums">{scope.projects.length}</span>
               </div>
             )}
             {scope.projects.map((project) => (
@@ -472,7 +470,7 @@ export const UsageBreakdownSheet = ({
     isPending,
     isError
   } = useGetBillingV2UsageBreakdown(orgId, dimensionKey, scope);
-  const isLoading = useHeldLoading(isPending && Boolean(dimensionKey));
+  const isLoading = isPending && Boolean(dimensionKey);
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -523,9 +521,7 @@ export const UsageBreakdownSheet = ({
             </Empty>
           )}
 
-          {breakdown && !isError && !isLoading && (
-            <BreakdownBody breakdown={breakdown} scopeKind={scope} />
-          )}
+          {breakdown && !isError && <BreakdownBody breakdown={breakdown} scopeKind={scope} />}
         </div>
 
         <SheetFooter className="flex-row items-center justify-end border-t">

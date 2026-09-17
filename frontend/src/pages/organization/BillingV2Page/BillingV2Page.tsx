@@ -12,7 +12,7 @@ import {
   useOrgPermission
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useDebounce, useHeldLoading } from "@app/hooks";
+import { useDebounce } from "@app/hooks";
 import {
   BillingV2BreakdownScopeKind,
   useAddBillingV2PaymentMethod,
@@ -170,7 +170,7 @@ export const BillingV2Page = () => {
   const isViewingOtherOrg = selectedOrgId !== orgId;
   const canManageBilling = hasManageBillingPermission && !isViewingOtherOrg;
 
-  const isReloading = useHeldLoading(isPlaceholderData && !isError);
+  const isReloading = isPlaceholderData && !isError;
 
   let subState: BillingV2RenderState = "loading";
   if (isError) {
