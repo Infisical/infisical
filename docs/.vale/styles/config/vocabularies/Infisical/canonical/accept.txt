@@ -383,6 +383,7 @@ PagerDuty
 Sentry
 
 # --- Productivity ---
+Atlassian
 Google Workspace
 Jira
 Linear

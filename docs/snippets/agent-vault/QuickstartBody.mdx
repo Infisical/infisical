@@ -4,6 +4,7 @@ import ServiceTemplatePick from "/snippets/agent-vault/slots/ServiceTemplatePick
 import ServiceTemplatePickNote from "/snippets/agent-vault/slots/ServiceTemplatePickNote.mdx";
 import ServiceCredentialLine from "/snippets/agent-vault/slots/ServiceCredentialLine.mdx";
 import AgentLaunchCommand from "/snippets/agent-vault/slots/AgentLaunchCommand.mdx";
+import ServiceVerifyIntro from "/snippets/agent-vault/slots/ServiceVerifyIntro.mdx";
 import ServiceVerifyProse from "/snippets/agent-vault/slots/ServiceVerifyProse.mdx";
 import ServiceVerifyCurl from "/snippets/agent-vault/slots/ServiceVerifyCurl.mdx";
 import ServiceCheckCallout from "/snippets/agent-vault/slots/ServiceCheckCallout.mdx";
@@ -129,7 +130,7 @@ The CLI adds the proxy's certificate authority to the agent process' trusted CAs
 
 ## Step 3: Verify it works
 
-To confirm the proxy is attaching credentials, make a test call to a service you configured. Pick an authenticated endpoint on that service (for example, one that returns your account), and make the call one of two ways:
+<ServiceVerifyIntro />
 
 <Tabs>
   <Tab title="With your agent">
