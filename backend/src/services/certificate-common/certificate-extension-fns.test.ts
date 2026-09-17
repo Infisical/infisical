@@ -2,7 +2,11 @@ import * as x509 from "@peculiar/x509";
 import * as asn1js from "asn1js";
 import { describe, expect, it } from "vitest";
 
-import { CertExtensionCriticality, certificateExtensionOidSchema } from "./certificate-constants";
+import {
+  CertExtensionCriticality,
+  CertExtensionValueEncoding,
+  certificateExtensionOidSchema
+} from "./certificate-constants";
 import {
   appendCustomExtensions,
   CUSTOM_EXTENSION_PRESETS_BY_OID,
@@ -14,6 +18,7 @@ import {
   parseCustomExtensionsFromCertificate,
   resolveCustomExtensions,
   TCustomExtensionRule,
+  toCarriedCustomExtensions,
   toRequestCustomExtensions,
   TProfileCustomExtension,
   validateCustomExtensionValue
@@ -24,8 +29,28 @@ const TEMPLATE_NAME_OID = "1.3.6.1.4.1.311.20.2";
 const TEMPLATE_INFO_OID = "1.3.6.1.4.1.311.21.7";
 const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
 const OPAQUE_OID = "1.3.6.1.4.1.311.21.20";
+const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
 
 const SID = "S-1-5-21-1004336348-1177238915-682003330-1103";
+
+const buildCertificateWithExtension = async (oid: string, der: Buffer) => {
+  const keys = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"]
+  );
+  const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: "01",
+    name: "CN=custom-extension-test",
+    notBefore: new Date(),
+    notAfter: new Date(Date.now() + 60 * 60 * 1000),
+    keys,
+    signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    extensions: [new x509.Extension(oid, false, der)]
+  });
+
+  return Buffer.from(certificate.toString("pem"));
+};
 
 describe("certificateExtensionOidSchema", () => {
   it.each(["1.3.6.1.4.1.311.25.2", "2.999.1", "0.9.2342"])("accepts %s", (oid) => {
@@ -423,10 +448,217 @@ describe("resolveCustomExtensions", () => {
     expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID, SID_OID]);
   });
 
-  it("refuses to reissue an extension whose stored value cannot be read back", () => {
-    const stored = [{ oid: SID_OID, critical: false, value: Buffer.from([0x05, 0x00]).toString("base64") }];
+  it("yields to a policy-pinned criticality for a carried extension rather than blocking the renewal", () => {
+    const carried = toRequestCustomExtensions([
+      { oid: CUSTOM_OID, critical: true, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+    ]);
 
-    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
+    const { extensions, errors } = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"], critical: CertExtensionCriticality.NOT_CRITICAL }],
+      requestExtensions: carried
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions[0].critical).toBe(false);
+  });
+
+  it("still refuses a criticality the caller sets against a policy that pins it", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"], critical: CertExtensionCriticality.NOT_CRITICAL }],
+      requestExtensions: [{ oid: CUSTOM_OID, value: "ops-prod", critical: true }]
+    });
+
+    expect(errors[0]).toContain("its criticality cannot be set");
+  });
+
+  it("carries an extension whose stored value is not text forward as DER", () => {
+    const derValue = Buffer.from([0x05, 0x00]).toString("base64");
+    const stored = [{ oid: SID_OID, critical: true, value: derValue }];
+
+    expect(toRequestCustomExtensions(stored)).toEqual([
+      { oid: SID_OID, value: derValue, valueEncoding: CertExtensionValueEncoding.DER, critical: true, carried: true }
+    ]);
+  });
+
+  it.each([
+    ["1.3.6.1.4.1.11129.2.4.2", "SCT list, RFC 6962"],
+    ["1.3.6.1.4.1.11129.2.4.3", "precertificate poison, RFC 6962"],
+    ["1.3.6.1.4.1.11129.2.4.5", "OCSP SCT, RFC 6962"],
+    ["1.3.101.75", "transparency information, RFC 9162"],
+    ["1.3.6.1.4.1.311.21.1", "ADCS certification authority version"],
+    ["1.3.6.1.4.1.311.21.2", "ADCS previous certification authority certificate hash"]
+  ])("never copies %s (%s) from one certificate to the next", (oid) => {
+    const stored = [{ oid, critical: false, value: Buffer.from([0x05, 0x00]).toString("base64") }];
+
+    expect(toCarriedCustomExtensions(stored)).toEqual([]);
+    expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([oid]);
+  });
+
+  it("drops issuer-generated extensions from a renewal, and keeps them when a stored request is replayed", () => {
+    const stored = [
+      { oid: SCT_LIST_OID, critical: false, value: Buffer.from([0x04, 0x02, 0x00, 0x42]).toString("base64") },
+      { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+    ];
+
+    expect(toCarriedCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
+    expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([SCT_LIST_OID, CUSTOM_OID]);
+  });
+
+  it("records an issuer-generated extension on an imported certificate rather than hiding it", async () => {
+    const certificate = await buildCertificateWithExtension(SCT_LIST_OID, Buffer.from([0x04, 0x02, 0x00, 0x42]));
+
+    expect(parseCustomExtensionsFromCertificate(certificate).map((entry) => entry.oid)).toEqual([SCT_LIST_OID]);
+  });
+
+  it("still emits an issuer-generated OID when a profile or a request asks for it outright", () => {
+    const declared = resolveCustomExtensions({ declarations: [{ oid: SCT_LIST_OID, value: "anything" }] });
+    const requested = resolveCustomExtensions({
+      requestExtensions: [{ oid: SCT_LIST_OID, value: "BAIAQg==", valueEncoding: CertExtensionValueEncoding.DER }]
+    });
+
+    expect(declared.errors).toEqual([]);
+    expect(declared.extensions.map((entry) => entry.oid)).toEqual([SCT_LIST_OID]);
+    expect(requested.errors).toEqual([]);
+    expect(requested.extensions[0].value).toBe("BAIAQg==");
+  });
+
+  it("resolves a DER value verbatim, without re-encoding it as text", () => {
+    const derValue = Buffer.from([0x30, 0x03, 0x02, 0x01, 0x05]).toString("base64");
+    const { extensions, errors } = resolveCustomExtensions({
+      rules: null,
+      requestExtensions: [
+        { oid: CUSTOM_OID, value: derValue, valueEncoding: CertExtensionValueEncoding.DER, critical: true }
+      ]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions).toEqual([{ oid: CUSTOM_OID, critical: true, value: derValue }]);
+  });
+
+  it("rejects a DER value that is not a single well-formed ASN.1 value", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: null,
+      requestExtensions: [
+        {
+          oid: CUSTOM_OID,
+          value: Buffer.from([0x30, 0x03, 0x02]).toString("base64"),
+          valueEncoding: CertExtensionValueEncoding.DER
+        }
+      ]
+    });
+
+    expect(errors[0]).toContain("single DER-encoded ASN.1 value");
+  });
+
+  it("normalises unpadded base64 so the resolved value matches what the certificate will carry", () => {
+    const { extensions, errors } = resolveCustomExtensions({
+      rules: null,
+      requestExtensions: [
+        { oid: CUSTOM_OID, value: "MAMCAQU", valueEncoding: CertExtensionValueEncoding.DER }
+      ]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions[0].value).toBe("MAMCAQU=");
+  });
+
+  it("takes a DER value for an OID Infisical encodes itself, which is the escape hatch for a CA that wants other bytes", () => {
+    const { errors, extensions } = resolveCustomExtensions({
+      rules: null,
+      requestExtensions: [
+        { oid: SID_OID, value: "MAMCAQU=", valueEncoding: CertExtensionValueEncoding.DER }
+      ]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions[0].value).toBe("MAMCAQU=");
+  });
+
+  it("still carries a DER value off an existing certificate for an OID Infisical encodes itself", () => {
+    const carried = toRequestCustomExtensions([
+      { oid: SID_OID, critical: false, value: Buffer.from([0x05, 0x00]).toString("base64") }
+    ]);
+
+    const { extensions, errors } = resolveCustomExtensions({ rules: null, requestExtensions: carried });
+
+    expect(errors).toEqual([]);
+    expect(extensions[0].value).toBe("BQA=");
+  });
+
+  it("refuses a DER value it cannot read rather than letting it past a policy's denied values", () => {
+    const octetString = Buffer.concat([Buffer.from([0x04, 0x0b]), Buffer.from("secret-prod", "utf8")]).toString(
+      "base64"
+    );
+
+    for (const rules of [
+      [{ oid: CUSTOM_OID, denied: ["secret-*"] }],
+      [{ oid: CUSTOM_OID, allowed: ["*"], denied: ["secret-*"] }]
+    ]) {
+      const { extensions, errors } = resolveCustomExtensions({
+        rules,
+        requestExtensions: [
+          { oid: CUSTOM_OID, value: octetString, valueEncoding: CertExtensionValueEncoding.DER }
+        ]
+      });
+
+      expect(extensions).toEqual([]);
+      expect(errors[0]).toContain("cannot check against the values it denies");
+    }
+  });
+
+  it("leaves a DER value alone when the policy sets no denied values", () => {
+    const octetString = Buffer.concat([Buffer.from([0x04, 0x0b]), Buffer.from("secret-prod", "utf8")]).toString(
+      "base64"
+    );
+
+    const { extensions, errors } = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"] }],
+      requestExtensions: [
+        { oid: CUSTOM_OID, value: octetString, valueEncoding: CertExtensionValueEncoding.DER }
+      ]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions[0].value).toBe(octetString);
+  });
+
+  it("matches a policy against the text inside a DER value, whichever ASN.1 string type carries it", () => {
+    const denyRule = [{ oid: CUSTOM_OID, denied: ["secret-*"] }];
+    const encodeString = (tag: number, text: string) =>
+      Buffer.concat([Buffer.from([tag, text.length]), Buffer.from(text, "utf8")]).toString("base64");
+
+    for (const tag of [0x0c, 0x13, 0x16, 0x1a]) {
+      const { errors } = resolveCustomExtensions({
+        rules: denyRule,
+        requestExtensions: [
+          {
+            oid: CUSTOM_OID,
+            value: encodeString(tag, "secret-prod"),
+            valueEncoding: CertExtensionValueEncoding.DER
+          }
+        ]
+      });
+
+      expect(errors[0]).toContain("is denied by this policy");
+    }
+  });
+
+  it("clears a value-constrained policy for a DER value only where the policy allows anything", () => {
+    const derValue = Buffer.from([0x30, 0x03, 0x02, 0x01, 0x05]).toString("base64");
+
+    expect(
+      resolveCustomExtensions({
+        rules: [{ oid: CUSTOM_OID, allowed: ["ops-*"] }],
+        requestExtensions: [{ oid: CUSTOM_OID, value: derValue, valueEncoding: CertExtensionValueEncoding.DER }]
+      }).errors[0]
+    ).toContain("is not allowed by this policy");
+
+    expect(
+      resolveCustomExtensions({
+        rules: [{ oid: CUSTOM_OID, allowed: ["*"] }],
+        requestExtensions: [{ oid: CUSTOM_OID, value: derValue, valueEncoding: CertExtensionValueEncoding.DER }]
+      }).errors
+    ).toEqual([]);
   });
 
   it("keeps the profile default and the request's own OID side by side", () => {

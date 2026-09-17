@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   CertExtendedKeyUsageType,
+  CertExtensionValueEncoding,
   CertKeyAlgorithm,
   CertKeyUsageType,
   CertSignatureAlgorithm,
@@ -286,6 +287,41 @@ describe("buildRenewalAuditChanges", () => {
     expect(changes).toEqual([
       { field: "customExtensions", from: "1.3.6.1.4.1.99001.1=before", to: "1.3.6.1.4.1.99001.1=after" }
     ]);
+  });
+
+  it("records a change when a binary custom extension is replaced with different bytes", () => {
+    const withExtension = {
+      ...cert,
+      customExtensions: [{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }]
+    };
+
+    const [change] = buildRenewalAuditChanges(withExtension, {
+      ...unchangedRequest,
+      customExtensions: [
+        { oid: "1.3.6.1.5.5.7.1.24", value: "MAMCAQY=", valueEncoding: CertExtensionValueEncoding.DER }
+      ]
+    });
+
+    expect(change.field).toBe("customExtensions");
+    expect(change.from).not.toBe(change.to);
+    expect(change.from).toContain("1.3.6.1.5.5.7.1.24=(binary sha256:");
+    expect(change.to).toContain("1.3.6.1.5.5.7.1.24=(binary sha256:");
+  });
+
+  it("records nothing when a binary custom extension keeps the same bytes", () => {
+    const withExtension = {
+      ...cert,
+      customExtensions: [{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }]
+    };
+
+    expect(
+      buildRenewalAuditChanges(withExtension, {
+        ...unchangedRequest,
+        customExtensions: [
+          { oid: "1.3.6.1.5.5.7.1.24", value: "MAMCAQU=", valueEncoding: CertExtensionValueEncoding.DER }
+        ]
+      })
+    ).toEqual([]);
   });
 
   it("records nothing when the custom extensions are unchanged", () => {

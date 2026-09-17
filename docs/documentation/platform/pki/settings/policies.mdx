@@ -209,6 +209,8 @@ Patterns are matched against the value you enter rather than its encoded form, a
 
 If you configure Custom Extensions, only the OIDs you list are permitted. Any other OID in a request is rejected, including one carried in a signing request, so the patterns are what limit what an enrolling client can assert. An empty configuration forbids all custom extensions, and leaving the section unconfigured allows any OID with any value.
 
+Patterns are text, so a DER value, such as OCSP must-staple, matches nothing but `*`. Allow those OIDs with a `*` rule. A rule that denies values refuses a DER value outright, because its patterns can't be checked against one.
+
 Infisical manages some extensions itself, so you can't set any OID under `2.5.29.` or authority information access here.
 
 Custom extensions need a certificate authority that can emit them: an internal CA, Microsoft ADCS, or AWS Private CA. A [certificate profile](/documentation/platform/pki/settings/profiles) built on any other certificate authority can't declare them. AWS Private CA also caps a certificate at three custom extensions.

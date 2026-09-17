@@ -8,7 +8,9 @@ import { matchesNormalizedPattern } from "../certificate-policy/certificate-poli
 import {
   CERT_EXTENSION_OID_PATTERN_SOURCE,
   CertExtensionCriticality,
+  CertExtensionValueEncoding,
   CUSTOM_EXTENSION_PRESET_OIDS,
+  ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS,
   MAX_CUSTOM_EXTENSION_VALUE_BYTES,
   MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE,
   RESERVED_CERT_EXTENSION_OID_MESSAGES,
@@ -38,12 +40,15 @@ export type TProfileCustomExtension = {
   label?: string;
   critical?: boolean;
   value?: string;
+  valueEncoding?: CertExtensionValueEncoding;
 };
 
 export type TRequestCustomExtension = {
   oid: string;
   value?: string;
+  valueEncoding?: CertExtensionValueEncoding;
   critical?: boolean;
+  carried?: boolean;
 };
 
 type TCustomExtensionPreset = {
@@ -57,6 +62,10 @@ const SID_PATTERN = new RE2("^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$");
 const TEMPLATE_INFORMATION_PATTERN = new RE2(
   `^(${CERT_EXTENSION_OID_PATTERN_SOURCE}):(0|[1-9][0-9]{0,4})(\\.(0|[1-9][0-9]{0,4}))?$`
 );
+
+const BASE64_PADDING_PATTERN = new RE2("=+$");
+
+const stripBase64Padding = (value: string) => value.replace(BASE64_PADDING_PATTERN, "");
 
 const toDerBuffer = (schema: { toBER: (sizeOnly?: boolean) => ArrayBuffer }): Buffer =>
   Buffer.from(new Uint8Array(schema.toBER(false)));
@@ -194,6 +203,9 @@ export const describeReservedExtensionOid = (oid: string): string =>
   RESERVED_CERT_EXTENSION_OID_MESSAGES[oid] ??
   `OID ${oid} is a standard X.509 extension that Infisical manages, so it cannot be used as a custom extension.`;
 
+export const isIssuerGeneratedExtensionOid = (oid: string): boolean =>
+  Object.hasOwn(ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS, oid);
+
 const getCustomExtensionPreset = (oid: string): TCustomExtensionPreset | undefined =>
   Object.hasOwn(CUSTOM_EXTENSION_PRESETS_BY_OID, oid) ? CUSTOM_EXTENSION_PRESETS_BY_OID[oid] : undefined;
 
@@ -203,6 +215,22 @@ export const validateCustomExtensionValue = (oid: string, value: string): string
   if (!value.length) return "Value cannot be empty";
   if (Buffer.byteLength(value, "utf8") > MAX_CUSTOM_EXTENSION_VALUE_BYTES) {
     return `Value cannot exceed ${MAX_CUSTOM_EXTENSION_VALUE_BYTES} bytes`;
+  }
+  return null;
+};
+
+const normalizeDerValue = (derValue: string): string => Buffer.from(derValue, "base64").toString("base64");
+
+export const validateCustomExtensionDerValue = (derValue: string): string | null => {
+  const der = Buffer.from(derValue, "base64");
+  if (!der.length || stripBase64Padding(der.toString("base64")) !== stripBase64Padding(derValue)) {
+    return "DER value must be base64-encoded";
+  }
+  if (der.length > MAX_CUSTOM_EXTENSION_VALUE_BYTES) {
+    return `DER value cannot exceed ${MAX_CUSTOM_EXTENSION_VALUE_BYTES} bytes`;
+  }
+  if (!parseSingleDerValue(der)) {
+    return "DER value must be a single DER-encoded ASN.1 value";
   }
   return null;
 };
@@ -229,6 +257,22 @@ export const describeCustomExtensionValue = (oid: string, base64Value: string): 
   } catch {
     return null;
   }
+};
+
+const ASN1_STRING_TAG_NUMBERS = new Set([12, 18, 19, 20, 21, 22, 25, 26, 27, 28, 29, 30]);
+
+export const describeCustomExtensionTextForPolicy = (oid: string, base64Value: string): string | null => {
+  const described = describeCustomExtensionValue(oid, base64Value);
+  if (described !== null) return described;
+
+  const parsed = parseSingleDerValue(Buffer.from(base64Value, "base64"));
+  if (!parsed) return null;
+
+  const { idBlock, valueBlock } = parsed as { idBlock: { tagClass: number; tagNumber: number }; valueBlock: unknown };
+  if (idBlock.tagClass !== 1 || !ASN1_STRING_TAG_NUMBERS.has(idBlock.tagNumber)) return null;
+
+  const { value } = valueBlock as { value?: unknown };
+  return typeof value === "string" ? value : null;
 };
 
 export const parseCustomExtensionsFromCertificate = (
@@ -318,21 +362,20 @@ export const findUnsatisfiedCustomExtensionOids = (
 };
 
 export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
-  ((stored as TResolvedCustomExtension[] | null) ?? []).flatMap((extension) => {
+  ((stored as TResolvedCustomExtension[] | null) ?? []).map((extension) => {
     const value = describeCustomExtensionValue(extension.oid, extension.value);
-    if (value === null) {
-      throw new BadRequestError({
-        message: `Custom extension '${extension.oid}' on this certificate cannot be read back into a value a new request can carry, so it cannot be reissued. Issue a new certificate, or renew from a certificate signing request that carries the extension.`
-      });
-    }
-    return [
-      {
-        oid: extension.oid,
-        value,
-        critical: extension.critical
-      }
-    ];
+
+    return {
+      oid: extension.oid,
+      value: value ?? extension.value,
+      ...(value === null && { valueEncoding: CertExtensionValueEncoding.DER }),
+      critical: extension.critical,
+      carried: true
+    };
   });
+
+export const toCarriedCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
+  toRequestCustomExtensions(stored).filter((extension) => !isIssuerGeneratedExtensionOid(extension.oid));
 
 export const assertAwsPcaCustomExtensionLimit = (count: number): void => {
   if (count > MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE) {
@@ -377,7 +420,7 @@ const resolveCriticality = ({
   const preset = getCustomExtensionPreset(oid);
 
   const fixed = (critical: boolean, reason: string) => {
-    const contested = [declaration.critical, requested?.critical].some(
+    const contested = [declaration.critical, requested?.carried ? undefined : requested?.critical].some(
       (asked) => asked !== undefined && asked !== critical
     );
     return {
@@ -448,14 +491,19 @@ export const resolveCustomExtensions = ({
       continue;
     }
 
-    const displayValue = requested?.value ?? declaration.value;
-    if (displayValue === undefined) {
+    const isFromRequest = requested?.value !== undefined;
+    const source = isFromRequest ? requested : declaration;
+    const suppliedValue = source.value;
+    if (suppliedValue === undefined) {
       // eslint-disable-next-line no-continue
       continue;
     }
 
-    const isFromRequest = requested?.value !== undefined;
-    const invalid = validateCustomExtensionValue(oid, displayValue);
+    const isDer = source.valueEncoding === CertExtensionValueEncoding.DER;
+
+    const invalid = isDer
+      ? validateCustomExtensionDerValue(suppliedValue)
+      : validateCustomExtensionValue(oid, suppliedValue);
     if (invalid) {
       errors.push(
         isFromRequest
@@ -466,30 +514,47 @@ export const resolveCustomExtensions = ({
       continue;
     }
 
+    const normalizedValue = isDer ? normalizeDerValue(suppliedValue) : suppliedValue;
+    const encodedValue = isDer ? normalizedValue : encodeCustomExtensionValue(oid, normalizedValue);
+    const displayValue = isDer ? describeCustomExtensionValue(oid, normalizedValue) : normalizedValue;
+    const matchValue = isDer ? describeCustomExtensionTextForPolicy(oid, normalizedValue) : normalizedValue;
+
     const denied = rule.denied ?? [];
     const required = rule.required ?? [];
     const allowed = rule.allowed ?? [];
 
-    if (matchesAnyPattern(displayValue, denied)) {
+    const matchesPatterns = (patterns: string[]) =>
+      matchValue === null ? patterns.includes("*") : matchesAnyPattern(matchValue, patterns);
+    const valueForMessage = matchValue ?? "(binary)";
+
+    if (matchValue === null && denied.length > 0) {
       errors.push(
-        `Custom extension '${oid}' value '${displayValue}' is denied by this policy. Denied values: ${denied.join(", ")}`
+        `Custom extension '${oid}' was supplied as binary, which this policy cannot check against the values it denies: ${denied.join(", ")}. Supply the value as text so it can be checked.`
       );
       // eslint-disable-next-line no-continue
       continue;
     }
 
-    const satisfiesRequired = required.length > 0 && matchesAnyPattern(displayValue, required);
+    if (matchesPatterns(denied)) {
+      errors.push(
+        `Custom extension '${oid}' value '${valueForMessage}' is denied by this policy. Denied values: ${denied.join(", ")}`
+      );
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const satisfiesRequired = required.length > 0 && matchesPatterns(required);
     if (required.length > 0 && !satisfiesRequired) {
       errors.push(
-        `Custom extension '${oid}' value '${displayValue}' does not match any value required by this policy: ${required.join(", ")}`
+        `Custom extension '${oid}' value '${valueForMessage}' does not match any value required by this policy: ${required.join(", ")}`
       );
       // eslint-disable-next-line no-continue
       continue;
     }
 
-    if (!satisfiesRequired && allowed.length > 0 && !matchesAnyPattern(displayValue, allowed)) {
+    if (!satisfiesRequired && allowed.length > 0 && !matchesPatterns(allowed)) {
       errors.push(
-        `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${allowed.join(", ")}`
+        `Custom extension '${oid}' value '${valueForMessage}' is not allowed by this policy. Allowed values: ${allowed.join(", ")}`
       );
       // eslint-disable-next-line no-continue
       continue;
@@ -499,8 +564,8 @@ export const resolveCustomExtensions = ({
     extensions.push({
       oid,
       critical: criticality.critical,
-      value: encodeCustomExtensionValue(oid, displayValue),
-      displayValue
+      value: encodedValue,
+      ...(displayValue !== null && { displayValue })
     });
   }
 

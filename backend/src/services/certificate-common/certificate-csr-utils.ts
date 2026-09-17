@@ -20,6 +20,7 @@ import {
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
+  CertExtensionValueEncoding,
   GENERAL_NAME_TYPES_WITH_OTHER_NAME,
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard,
@@ -28,6 +29,7 @@ import {
 import {
   appendCustomExtensions,
   describeCustomExtensionValue,
+  isIssuerGeneratedExtensionOid,
   isReservedExtensionOid,
   TIssuedCustomExtension
 } from "./certificate-extension-fns";
@@ -125,14 +127,18 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   }
 
   const csrCustomExtensions = csrObj.extensions
-    .filter((extension) => !isReservedExtensionOid(extension.type))
-    .map((extension) => ({
-      oid: extension.type,
-      value:
-        describeCustomExtensionValue(extension.type, Buffer.from(new Uint8Array(extension.value)).toString("base64")) ??
-        undefined,
-      critical: extension.critical
-    }));
+    .filter((extension) => !isReservedExtensionOid(extension.type) && !isIssuerGeneratedExtensionOid(extension.type))
+    .map((extension) => {
+      const der = Buffer.from(new Uint8Array(extension.value)).toString("base64");
+      const text = describeCustomExtensionValue(extension.type, der);
+
+      return {
+        oid: extension.type,
+        value: text ?? der,
+        ...(text === null && { valueEncoding: CertExtensionValueEncoding.DER }),
+        critical: extension.critical
+      };
+    });
 
   if (csrCustomExtensions.length) {
     certificateRequest.customExtensions = csrCustomExtensions;

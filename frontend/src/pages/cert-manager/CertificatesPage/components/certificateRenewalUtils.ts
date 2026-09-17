@@ -2,13 +2,19 @@ import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
+import {
+  CertExtensionValueEncoding,
+  CertificateRenewalKeySource
+} from "@app/hooks/api/certificates/enums";
+import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
 import { TCertificate, TRenewCertificateAttributes } from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  isIssuerGeneratedExtensionOid,
+  isPresetExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { RenewalFormData } from "./CertificateRenewalModal";
@@ -127,8 +133,17 @@ export const buildRenewalFormDefaults = (
   keyUsages: toUsageFormKeys(cert.keyUsages, KEY_USAGE_BY_NAME),
   extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME),
   customExtensions: (cert.customExtensions ?? [])
-    .filter((extension) => extension.displayValue !== undefined)
-    .map((extension) => ({ oid: extension.oid, value: extension.displayValue as string }))
+    .filter((extension) => !isIssuerGeneratedExtensionOid(extension.oid))
+    .map((extension) =>
+      extension.displayValue === undefined
+        ? {
+            oid: extension.oid,
+            value: extension.value,
+            valueEncoding: CertExtensionValueEncoding.DER,
+            critical: extension.critical
+          }
+        : { oid: extension.oid, value: extension.displayValue, critical: extension.critical }
+    )
 });
 
 const buildBasicConstraints = (
@@ -146,22 +161,31 @@ const buildBasicConstraints = (
 export const buildRenewalRequestAttributes = ({
   formData,
   constraints,
-  isExternalTemplateProfile = false
+  isExternalTemplateProfile = false,
+  caSupportsCustomExtensions = true,
+  policyRules
 }: {
   formData: RenewalFormData;
   constraints: TemplateConstraints;
   isExternalTemplateProfile?: boolean;
+  caSupportsCustomExtensions?: boolean;
+  policyRules?: TCustomExtensionRule[] | null;
 }): TRenewCertificateAttributes => {
+  const isCriticalityFixed = (oid: string) =>
+    isPresetExtensionOid(oid) || Boolean(policyRules?.find((rule) => rule.oid === oid)?.critical);
+
   const customExtensions = (formData.customExtensions ?? [])
     .filter((extension) => extension.oid.trim())
     .map((extension) => ({
       oid: extension.oid.trim(),
       value: extension.value,
-      ...(extension.critical !== undefined && { critical: extension.critical })
+      ...(extension.valueEncoding && { valueEncoding: extension.valueEncoding }),
+      ...(extension.critical !== undefined &&
+        !isCriticalityFixed(extension.oid.trim()) && { critical: extension.critical })
     }));
 
   if (formData.keySource === CertificateRenewalKeySource.Csr) {
-    return { ttl: formData.ttl, customExtensions };
+    return { ttl: formData.ttl, ...(caSupportsCustomExtensions && { customExtensions }) };
   }
 
   const basicConstraints = buildBasicConstraints(formData, constraints);
@@ -181,7 +205,9 @@ export const buildRenewalRequestAttributes = ({
         ...(basicConstraints && { basicConstraints })
       };
 
-  attributes.customExtensions = customExtensions;
+  if (caSupportsCustomExtensions) {
+    attributes.customExtensions = customExtensions;
+  }
 
   if (constraints.shouldShowSubjectSection) {
     SUBJECT_ATTR_MAP.forEach(({ attrType, requestKey }) => {

@@ -3,6 +3,7 @@ import { CaType } from "@app/hooks/api/ca/enums";
 
 import {
   CertExtendedKeyUsage,
+  CertExtensionValueEncoding,
   CertificateIssuerKind,
   CertificateRenewalKeySource,
   CertificateRequestStatus,
@@ -156,6 +157,7 @@ export type TRenewCertificateAttributes = {
   customExtensions?: Array<{
     oid: string;
     value?: string;
+    valueEncoding?: CertExtensionValueEncoding;
     critical?: boolean;
   }>;
 };

@@ -399,6 +399,15 @@ export const RESERVED_CERT_EXTENSION_OID_MESSAGES: Record<string, string> = {
     "Use a UPN subject alternative name instead of declaring OID 1.3.6.1.4.1.311.20.2.3 as a custom extension."
 };
 
+export const ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "signed certificate timestamp list",
+  "1.3.6.1.4.1.11129.2.4.3": "precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamp list",
+  "1.3.101.75": "certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "certification authority version",
+  "1.3.6.1.4.1.311.21.2": "previous certification authority certificate hash"
+};
+
 export const CERT_EXTENSION_OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
 
 const CERT_EXTENSION_OID_PATTERN = new RE2(`^${CERT_EXTENSION_OID_PATTERN_SOURCE}$`);
@@ -436,6 +445,23 @@ export const customExtensionValueSchema = z
   .trim()
   .min(1, "Value cannot be empty")
   .max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH, "Value is too large");
+
+export enum CertExtensionValueEncoding {
+  TEXT = "text",
+  DER = "der"
+}
+
+export const customExtensionRequestSchema = z.object({
+  oid: certificateExtensionOidSchema,
+  value: customExtensionValueSchema.optional().describe("The extension value, read as `valueEncoding` says."),
+  valueEncoding: z
+    .nativeEnum(CertExtensionValueEncoding)
+    .optional()
+    .describe(
+      "How to read `value`. 'text' is the default and encodes it as a DER UTF8String. 'der' takes base64-encoded DER and emits those bytes unchanged, which is how to set a value that is not text, such as OCSP must-staple."
+    ),
+  critical: z.boolean().optional()
+});
 
 export const resolvedCustomExtensionSchema = z.object({
   oid: z.string().max(MAX_CERT_EXTENSION_OID_LENGTH),
@@ -490,13 +516,7 @@ export const certificateAttributesSchema = z.object({
     })
     .optional(),
   customExtensions: z
-    .array(
-      z.object({
-        oid: certificateExtensionOidSchema,
-        value: customExtensionValueSchema.optional(),
-        critical: z.boolean().optional()
-      })
-    )
+    .array(customExtensionRequestSchema)
     .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
     .superRefine((extensions, ctx) => {
       const seen = new Set<string>();

@@ -1,3 +1,5 @@
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
@@ -410,8 +412,30 @@ export const getPresetExtensionCriticality = (oid: string): CertExtensionCritica
 
 export const isPresetExtensionOid = (oid: string) => Boolean(getCustomExtensionPreset(oid));
 
+export const ISSUER_GENERATED_EXTENSION_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "Signed certificate timestamps",
+  "1.3.6.1.4.1.11129.2.4.3": "Precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamps",
+  "1.3.101.75": "Certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "CA version",
+  "1.3.6.1.4.1.311.21.2": "Previous CA certificate hash"
+};
+
+export { CertExtensionValueEncoding };
+
+export const CUSTOM_EXTENSION_VALUE_ENCODINGS = [
+  { value: CertExtensionValueEncoding.TEXT, label: "Text" },
+  { value: CertExtensionValueEncoding.DER, label: "DER" }
+];
+
+export const isIssuerGeneratedExtensionOid = (oid: string) =>
+  Object.prototype.hasOwnProperty.call(ISSUER_GENERATED_EXTENSION_LABELS, oid);
+
 export const customExtensionLabelFor = (oid: string, label?: string | null) =>
-  label?.trim() || getCustomExtensionPreset(oid)?.label || oid;
+  label?.trim() ||
+  getCustomExtensionPreset(oid)?.label ||
+  ISSUER_GENERATED_EXTENSION_LABELS[oid] ||
+  oid;
 
 export const validateCustomExtensionValue = (oid: string, value: string): string | null => {
   const preset = getCustomExtensionPreset(oid);
@@ -423,6 +447,14 @@ export const validateCustomExtensionValue = (oid: string, value: string): string
 
 export const getCustomExtensionValuePlaceholder = (oid: string) =>
   getCustomExtensionPreset(oid)?.placeholder ?? "Value";
+
+export const getCustomExtensionValuePlaceholderFor = (
+  oid: string,
+  encoding?: CertExtensionValueEncoding
+) =>
+  encoding === CertExtensionValueEncoding.DER
+    ? "Base64-encoded DER, for example MAMCAQU="
+    : getCustomExtensionValuePlaceholder(oid);
 
 export type TCustomExtensionRow = {
   oid: string;

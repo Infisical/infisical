@@ -17,12 +17,12 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 
-import { CertKeyUsageType } from "../certificate-common/certificate-constants";
+import { CertExtensionValueEncoding, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
-import { toRequestCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
+import { toCarriedCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
@@ -84,17 +84,19 @@ type TRenewalAttributeDescriptor<K extends keyof TRenewalAttributes> = {
 
 const text = (value: string | null | undefined) => value ?? "";
 
-const describeStoredCustomExtensions = (stored: unknown): TRequestCustomExtension[] => {
-  try {
-    return toRequestCustomExtensions(stored);
-  } catch {
-    return ((stored as { oid: string }[] | null) ?? []).map(({ oid }) => ({ oid, value: "" }));
-  }
+const customExtensionValueForAudit = (extension: TRequestCustomExtension) => {
+  if (extension.valueEncoding !== CertExtensionValueEncoding.DER) return extension.value ?? "";
+  if (!extension.value) return "(binary)";
+  const digest = crypto.nativeCrypto.createHash("sha256").update(extension.value, "base64").digest("hex");
+  return `(binary sha256:${digest.slice(0, 16)})`;
 };
 
 const customExtensionList = (extensions: TRequestCustomExtension[] | null | undefined) =>
   (extensions ?? [])
-    .map((extension) => `${extension.oid}=${extension.value ?? ""}${extension.critical ? " (critical)" : ""}`)
+    .map(
+      (extension) =>
+        `${extension.oid}=${customExtensionValueForAudit(extension)}${extension.critical ? " (critical)" : ""}`
+    )
     .join(",");
 const list = (values: readonly string[] | null | undefined) => (values ?? []).join(",");
 
@@ -189,7 +191,7 @@ const RENEWAL_ATTRIBUTES: { [K in keyof TRenewalAttributes]-?: TRenewalAttribute
     label: "custom extensions",
     csrEditable: true,
     apply: (value) => ({ customExtensions: value }),
-    current: (original) => customExtensionList(describeStoredCustomExtensions(original.customExtensions)),
+    current: (original) => customExtensionList(toCarriedCustomExtensions(original.customExtensions)),
     issued: (request) => customExtensionList(request.customExtensions)
   }
 };
