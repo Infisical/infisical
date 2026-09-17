@@ -4,10 +4,11 @@ import { z } from "zod";
 export const AGENT_VAULT_MAX_PATH_PREFIX_LENGTH = 512;
 export const AGENT_VAULT_MAX_PATH_PREFIXES = 20;
 
-// An allowlist, because a prefix is compared against the escaped path and only these survive that encoding:
-// `/café` would be judged against `/caf%C3%A9` and could never match. '%' is left out so the comparison stays
-// exact, ';' and '\' because servers disagree about them, '?' and '#' because both end the path. ',' survives
-// encoding and would match, but the UI commits a chip on it, so it cannot be typed and is refused here too.
+// A prefix is compared against the escaped path, so anything the encoder rewrites could never match:
+// `/café` would be judged against `/caf%C3%A9`. Deliberate exclusions on top of that: '%' keeps the
+// comparison exact, ';' and '\' are what isAmbiguousPath refuses, '?' and '#' end the path, ',' commits a
+// chip in the UI. Anything else left out, '(' say, survives the wire but is useless in a prefix anyway,
+// since matching is by whole segment and `/Products` never covers `/Products(1)`.
 const PATH_PREFIX_RE = new RE2(/^\/[A-Za-z0-9\-._~$&+/:=@]*$/);
 
 const hasTraversalSegment = (value: string) => value.split("/").some((segment) => segment === "." || segment === "..");
