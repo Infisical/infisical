@@ -420,6 +420,18 @@ export const SelectionPanel = ({
 
   const handleCopyToClipboard = async () => {
     if (isClipboardDisabled || isCopying) return;
+    if (
+      selectedSecretEntries.some(
+        ([, secret]) => !/^[A-Za-z_]/.test(secret.key) || /[^A-Za-z0-9_]/.test(secret.key)
+      )
+    ) {
+      createNotification({
+        type: "error",
+        title: "Cannot copy secrets as .env",
+        text: "Secret names must start with a letter or underscore and contain only letters, numbers, and underscores. Nothing was copied."
+      });
+      return;
+    }
     setIsCopying(true);
     try {
       const groups = selectedSecretEntries.reduce<
