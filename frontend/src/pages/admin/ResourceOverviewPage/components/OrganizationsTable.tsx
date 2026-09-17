@@ -754,6 +754,7 @@ export const OrganizationsTable = () => {
           (popUp?.deleteOrganizationMembership?.data as { orgName: string })?.orgName || ""
         }?`}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteOrganizationMembership", isOpen)}
+        description="The user will lose access to this organization. You can add them again later."
         onConfirm={handleDeleteOrganizationMembership}
       />
       <ConfirmActionDialog

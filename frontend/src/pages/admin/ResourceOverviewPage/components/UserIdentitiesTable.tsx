@@ -478,6 +478,7 @@ export const UserIdentitiesTable = () => {
           }?`}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradeToServerAdmin", isOpen)}
           confirmationKey="confirm"
+          description="This grants instance-wide administrative access. You can remove it later."
           onConfirm={handleGrantServerAdminAccess}
           confirmLabel="Grant Access"
         />
@@ -488,6 +489,7 @@ export const UserIdentitiesTable = () => {
           }?`}
           onOpenChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
           confirmationKey="confirm"
+          description="You can grant Server Admin access again later."
           onConfirm={handleRemoveServerAdminAccess}
           confirmLabel="Remove Access"
         />

@@ -211,6 +211,7 @@ export const MachineIdentitiesTable = () => {
         }?`}
         onOpenChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
         confirmationKey="confirm"
+        description="You can grant Server Admin access again later."
         onConfirm={handleRemoveServerAdmin}
         confirmLabel="Remove Access"
       />
