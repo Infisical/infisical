@@ -122,7 +122,7 @@ export const SecretValueRenderer = ({
               size="xs"
               className={twMerge(
                 isLoading ? "animate-pulse" : "",
-                isOldVersion ? "bg-[#161518]/80" : "bg-[#121819]/80"
+                "bg-container/80"
               )}
               onClick={handleToggleVisibility}
             >
