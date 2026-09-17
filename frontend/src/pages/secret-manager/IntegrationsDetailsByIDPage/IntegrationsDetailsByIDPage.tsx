@@ -187,7 +187,6 @@ export const IntegrationDetailsByIDPage = () => {
           <div className="mt-4">
             <Checkbox
               id="delete-integration-secrets"
-              checkIndicatorBg="text-white"
               onCheckedChange={() => setShouldDeleteSecrets.toggle()}
             >
               Delete previously synced secrets from the destination
