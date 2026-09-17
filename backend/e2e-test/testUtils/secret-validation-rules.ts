@@ -27,6 +27,6 @@ export const createStaticSecretsValidationRule = async (dto: {
       valueConstraints: dto.valueConstraints
     }
   });
-  expect(res.statusCode).toBe(201);
+  expect(res.statusCode).toBe(200);
   return res.json().secretValidationRule as TStaticSecretsValidationRule;
 };
