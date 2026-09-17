@@ -428,7 +428,7 @@ export const SelectionPanel = ({
       createNotification({
         type: "error",
         title: "Cannot copy secrets as .env",
-        text: "Secret names must start with a letter or underscore and contain only letters, numbers, and underscores. Nothing was copied."
+        text: "Some selected secret names aren’t compatible with .env format. Names must contain only letters, numbers, and underscores, and cannot start with a number. Nothing was copied."
       });
       return;
     }
