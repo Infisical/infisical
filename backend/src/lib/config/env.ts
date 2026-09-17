@@ -497,7 +497,7 @@ const envSchema = z
       .number()
       .int()
       .min(0)
-      .default(1000)
+      .default(10_000)
       .describe(
         "Commits scanned per `infisical scan` invocation during a full scan. Each batch's findings and resume point are persisted before the next one starts, so a worker killed mid-scan resumes rather than restarting. Set to 0 to scan the whole history in a single invocation."
       ),
