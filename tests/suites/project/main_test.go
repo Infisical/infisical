@@ -1,4 +1,4 @@
-package platform_test
+package project_test
 
 import (
 	"testing"

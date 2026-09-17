@@ -25,7 +25,7 @@ lint:
 # because a hand-written list silently stops covering a package the day someone adds
 # one -- which is exactly what happened when fixture/, provider/ and stub/ appeared.
 test-unit:
-	go test $$(go list ./... | grep -v '/suites/') -count=1
+	go test $$(go list ./... | grep -vE '/(suites|harnesstest)/') -count=1
 
 test: lint test-unit
 
@@ -43,7 +43,7 @@ test-docker:
 #
 # The recipe's exit status is still `go test`'s, so a failure stays a failure.
 test-suites: up
-	@trap '$(MAKE) --no-print-directory down' EXIT; go test ./suites/... -count=1
+	@trap '$(MAKE) --no-print-directory down' EXIT; go test ./suites/... ./harnesstest/... -count=1
 
 up:
 	go run ./cmd/inf up
