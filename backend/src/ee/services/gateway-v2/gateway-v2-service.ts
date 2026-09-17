@@ -44,6 +44,7 @@ import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import {
+  CERT_NOT_BEFORE_BACKDATE_MS,
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
@@ -415,7 +416,7 @@ export const gatewayV2ServiceFactory = ({
       ["sign"]
     );
 
-    const clientCertIssuedAt = new Date();
+    const clientCertIssuedAt = new Date(Date.now() - CERT_NOT_BEFORE_BACKDATE_MS);
     const clientCertExpiration = new Date(new Date().getTime() + 5 * 60 * 1000);
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
@@ -586,7 +587,7 @@ export const gatewayV2ServiceFactory = ({
       ["sign"]
     );
 
-    const clientCertIssuedAt = new Date();
+    const clientCertIssuedAt = new Date(Date.now() - CERT_NOT_BEFORE_BACKDATE_MS);
     const clientCertExpiration = new Date(new Date().getTime() + (duration ?? 5 * 60 * 1000));
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
