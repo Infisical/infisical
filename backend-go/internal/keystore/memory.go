@@ -2,6 +2,7 @@ package keystore
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -128,7 +129,7 @@ func (m *MemoryKeyStore) StreamAdd(_ context.Context, stream, id string, values 
 }
 
 func intToString(n int64) string {
-	return string(rune(n))
+	return strconv.FormatInt(n, 10)
 }
 
 func stringToInt(s string) int64 {
