@@ -1383,7 +1383,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const reissued = await inject(
         "POST",
-        `/api/v1/agent-vault/proxies/${body.proxy.id}/token-auth/generate-enrollment-token`
+        `/api/v1/agent-vault/proxies/${body.proxy.id}/token-auth/enrollment-token`
       );
       expect(reissued.statusCode).toBe(200);
       const again = JSON.parse(reissued.payload) as { token: string; expiresAt: string };
