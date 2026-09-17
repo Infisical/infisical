@@ -20,7 +20,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  PageLoader
+  PageLoader,
+  ProviderIcon
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -118,9 +119,9 @@ const PageContent = () => {
             {applicationName ? "Back to Application" : "Certificate Syncs"}
           </button>
           <div className="mb-6 flex w-full items-center gap-3">
-            <img
+            <ProviderIcon
               alt={`${destinationDetails.name} sync`}
-              src={`/images/integrations/${destinationDetails.image}`}
+              icon={destinationDetails.image}
               className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">

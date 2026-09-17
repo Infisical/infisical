@@ -31,6 +31,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -260,11 +261,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
                     iconPos="right"
                   >
                     <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} integration`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
+                      <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
                       <span>{name}</span>
                     </div>
                   </DropdownMenuItem>

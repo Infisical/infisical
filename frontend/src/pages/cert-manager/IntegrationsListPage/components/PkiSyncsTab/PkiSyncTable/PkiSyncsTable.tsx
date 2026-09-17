@@ -30,6 +30,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
   TableBody,
   TableHead,
@@ -322,11 +323,7 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                     key={destination}
                   >
                     <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} integration`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
+                      <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
                       <span>{name}</span>
                     </div>
                   </DropdownMenuCheckboxItem>

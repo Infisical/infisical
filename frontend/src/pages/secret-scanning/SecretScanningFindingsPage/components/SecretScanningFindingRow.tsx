@@ -19,7 +19,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, ProviderIcon } from "@app/components/v3";
 import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
@@ -103,9 +103,9 @@ export const SecretScanningFindingRow = ({
         </Td>
         <Td className="max-w-0 min-w-16!">
           <div className="flex w-full items-center">
-            <img
+            <ProviderIcon
               alt={`${sourceDetails.name} Data Source`}
-              src={`/images/integrations/${sourceDetails.image}`}
+              icon={sourceDetails.image}
               className="w-5"
             />
             <p className="ml-2 truncate">{sourceDetails.name}</p>

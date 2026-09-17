@@ -16,6 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -92,12 +93,7 @@ export const AWSSecretManagerAuthorizePage = () => {
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center">
-              <img
-                src="/images/integrations/Amazon Web Services.png"
-                height={35}
-                width={35}
-                alt="AWS logo"
-              />
+              <ProviderIcon icon="Amazon Web Services.png" height={35} width={35} alt="AWS logo" />
             </div>
             <span className="ml-1.5">AWS Secrets Manager Integration </span>
             <a

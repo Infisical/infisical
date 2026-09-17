@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, ProviderIcon } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -82,9 +82,9 @@ export const IntegrationRow = ({
     >
       <Td>
         <div className="flex items-center gap-2">
-          <img
+          <ProviderIcon
             alt={`${cloudIntegration?.name} integration`}
-            src={`/images/integrations/${cloudIntegration?.image}`}
+            icon={cloudIntegration?.image}
             className="h-5 w-5"
           />
           <span className="hidden lg:inline">{cloudIntegration?.name}</span>

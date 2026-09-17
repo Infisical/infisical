@@ -31,6 +31,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionSecretScanningFindingActions,
@@ -278,11 +279,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                     iconPos="right"
                   >
                     <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} integration`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
+                      <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
                       <span>{name}</span>
                     </div>
                   </DropdownMenuItem>

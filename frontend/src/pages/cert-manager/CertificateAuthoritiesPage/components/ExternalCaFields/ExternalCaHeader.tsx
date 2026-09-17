@@ -1,5 +1,7 @@
 import { type LucideIcon } from "lucide-react";
 
+import { ProviderIcon } from "@app/components/v3";
+
 type Props = {
   name: string;
   subtitle: string;
@@ -12,11 +14,7 @@ export const ExternalCaHeader = ({ name, subtitle, image, icon: Icon }: Props) =
     <div className="flex w-full items-start gap-2">
       <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-container">
         {image ? (
-          <img
-            alt={`${name} logo`}
-            src={`/images/integrations/${image}`}
-            className="h-7 w-7 object-contain"
-          />
+          <ProviderIcon alt={`${name} logo`} icon={image} className="h-7 w-7 object-contain" />
         ) : (
           Icon && <Icon className="h-5 w-5 text-foreground" />
         )}

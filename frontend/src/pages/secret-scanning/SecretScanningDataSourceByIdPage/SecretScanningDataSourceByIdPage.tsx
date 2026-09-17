@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
@@ -74,9 +75,9 @@ const PageContent = () => {
           Data Sources
         </Button>
         <div className="mb-6 flex w-full items-center gap-3">
-          <img
+          <ProviderIcon
             alt={`${details.name} data source`}
-            src={`/images/integrations/${details.image}`}
+            icon={details.image}
             className="mt-3 ml-1 w-14"
           />
           <div>

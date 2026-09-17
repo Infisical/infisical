@@ -15,6 +15,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
@@ -45,7 +46,7 @@ export const GithubAuthorizePage = () => {
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/GitHub.png" height={30} width={30} alt="Github logo" />
+              <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
             </div>
             <span className="ml-2.5">GitHub Integration </span>
             <a

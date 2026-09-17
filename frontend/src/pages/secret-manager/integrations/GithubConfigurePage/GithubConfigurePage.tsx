@@ -34,6 +34,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -301,12 +302,7 @@ export const GithubConfigurePage = () => {
           >
             <div className="flex flex-row items-center">
               <div className="flex items-center rounded-full bg-foreground-secondary">
-                <img
-                  src="/images/integrations/GitHub.png"
-                  height={30}
-                  width={30}
-                  alt="GitHub logo"
-                />
+                <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
               </div>
               <span className="ml-2.5">GitHub Integration </span>
               <a

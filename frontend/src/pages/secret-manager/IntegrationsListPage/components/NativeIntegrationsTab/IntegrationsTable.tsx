@@ -32,6 +32,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -317,9 +318,9 @@ export const IntegrationsTable = ({
                 iconPos="right"
               >
                 <div className="flex items-center gap-2">
-                  <img
+                  <ProviderIcon
                     alt={`${cloudIntegrationMap.get(integration)!.name} integration`}
-                    src={`/images/integrations/${cloudIntegrationMap.get(integration)!.image}`}
+                    icon={cloudIntegrationMap.get(integration)!.image}
                     className="h-4 w-4"
                   />
                   <span className="capitalize">{cloudIntegrationMap.get(integration)!.name}</span>

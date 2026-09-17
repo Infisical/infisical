@@ -24,7 +24,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, ProviderIcon } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -182,12 +182,7 @@ export const AWSParameterStoreConfigurePage = () => {
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center">
-              <img
-                src="/images/integrations/Amazon Web Services.png"
-                height={35}
-                width={35}
-                alt="AWS logo"
-              />
+              <ProviderIcon icon="Amazon Web Services.png" height={35} width={35} alt="AWS logo" />
             </div>
             <span className="ml-1.5">AWS Parameter Store Integration </span>
             <a

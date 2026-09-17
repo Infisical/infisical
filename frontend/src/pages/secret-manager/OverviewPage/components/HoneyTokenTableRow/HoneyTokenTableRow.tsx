@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -204,8 +205,8 @@ export const HoneyTokenTableRow = ({
             variant="neutral"
             className="mx-2.5 bg-[color-mix(in_srgb,var(--color-neutral)_15%,var(--color-container))]"
           >
-            <img
-              src={`/images/integrations/${tokenInfo.image}`}
+            <ProviderIcon
+              icon={tokenInfo.image}
               style={{ width: "11px" }}
               alt={`${tokenInfo.name} logo`}
             />

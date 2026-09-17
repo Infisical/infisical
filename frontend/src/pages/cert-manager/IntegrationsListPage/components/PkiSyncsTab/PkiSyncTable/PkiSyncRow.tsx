@@ -28,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  ProviderIcon,
   TableCell,
   TableRow,
   Tooltip,
@@ -133,9 +134,9 @@ export const PkiSyncRow = ({
       key={`sync-${id}`}
     >
       <TableCell>
-        <img
+        <ProviderIcon
           alt={`${destinationDetails.name} sync`}
-          src={`/images/integrations/${destinationDetails.image}`}
+          icon={destinationDetails.image}
           className="w-5 min-w-5"
         />
       </TableCell>
