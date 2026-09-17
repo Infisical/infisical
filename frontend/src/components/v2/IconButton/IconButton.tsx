@@ -28,7 +28,7 @@ const iconButtonVariants = cva(
           "text-label-cool",
           "border-border-strong hover:bg-muted-secondary"
         ],
-        danger: ["bg-[#973939]", "text-white", "border-danger"]
+        danger: ["bg-danger", "text-white", "border-danger"]
       },
       variant: {
         solid: "",

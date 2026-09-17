@@ -182,7 +182,7 @@ export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Prop
                         <div key={`tag-color-${$tagColor.id}`}>
                           <Tooltip content={`${$tagColor.name}`}>
                             <div
-                              className="flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-transparent bg-[#bec2c8] p-2 hover:border-black hover:shadow-lg hover:ring-2 hover:ring-offset-2"
+                              className="flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-transparent bg-container p-2 hover:border-black hover:shadow-lg hover:ring-2 hover:ring-offset-2"
                               key={`tag-${$tagColor.id}`}
                               style={{ backgroundColor: `${$tagColor.hex}` }}
                               onClick={() => setValue("color", $tagColor.hex)}

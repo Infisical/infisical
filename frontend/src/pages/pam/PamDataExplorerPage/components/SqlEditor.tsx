@@ -9,32 +9,48 @@ import { tags } from "@lezer/highlight";
 import type { SqlDialect } from "../sql-generation";
 
 const infisicalTheme = EditorView.theme({
-  "&": { height: "100%", fontSize: "13px", backgroundColor: "#16181a" },
-  "&.cm-editor": { backgroundColor: "#16181a" },
+  "&": { height: "100%", fontSize: "13px", backgroundColor: "var(--color-card)" },
+  "&.cm-editor": { backgroundColor: "var(--color-card)" },
   ".cm-scroller": {
     overflow: "auto",
     fontFamily: "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace",
-    backgroundColor: "#16181a",
+    backgroundColor: "var(--color-card)",
     scrollbarWidth: "thin",
-    scrollbarColor: "#39393d transparent"
+    scrollbarColor: "var(--color-scrollbar-track-thumb) transparent"
   },
   ".cm-scroller::-webkit-scrollbar": { width: "4px", height: "4px" },
   ".cm-scroller::-webkit-scrollbar-track": { background: "transparent" },
-  ".cm-scroller::-webkit-scrollbar-thumb": { background: "#39393d", borderRadius: "2px" },
-  ".cm-content": { padding: "8px 0", caretColor: "#e0ed34", backgroundColor: "#16181a" },
+  ".cm-scroller::-webkit-scrollbar-thumb": {
+    background: "var(--color-scrollbar-track-thumb)",
+    borderRadius: "2px"
+  },
+  ".cm-content": {
+    padding: "8px 0",
+    caretColor: "var(--color-project)",
+    backgroundColor: "var(--color-card)"
+  },
   ".cm-line": { backgroundColor: "transparent" },
   ".cm-gutters": {
-    backgroundColor: "#16181a",
-    borderRight: "1px solid #2b2c30",
+    backgroundColor: "var(--color-card)",
+    borderRight: "1px solid var(--color-border)",
     color: "#707174"
   },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 12px 0 8px" },
-  ".cm-activeLine": { backgroundColor: "rgba(45, 47, 51, 0.5)" },
-  ".cm-activeLineGutter": { backgroundColor: "rgba(45, 47, 51, 0.5)" },
-  ".cm-cursor": { borderLeftColor: "#e0ed34" },
-  ".cm-selectionBackground": { backgroundColor: "#2d2f33 !important" },
-  "&.cm-focused .cm-selectionBackground": { backgroundColor: "#2d2f33 !important" },
-  ".cm-matchingBracket": { backgroundColor: "#323439", color: "#e0ed34 !important" }
+  ".cm-activeLine": {
+    backgroundColor: "color-mix(in srgb, var(--color-border-control) 50%, transparent)"
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "color-mix(in srgb, var(--color-border-control) 50%, transparent)"
+  },
+  ".cm-cursor": { borderLeftColor: "var(--color-project)" },
+  ".cm-selectionBackground": { backgroundColor: "var(--color-border-control) !important" },
+  "&.cm-focused .cm-selectionBackground": {
+    backgroundColor: "var(--color-border-control) !important"
+  },
+  ".cm-matchingBracket": {
+    backgroundColor: "var(--color-surface-selected)",
+    color: "var(--color-project) !important"
+  }
 });
 
 const infisicalHighlight = HighlightStyle.define(
