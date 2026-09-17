@@ -8,7 +8,7 @@ GOFMT := $(shell go env GOROOT)/bin/gofmt
 # are missing and no test can reach them.
 INFISICAL_OPENAPI_URL ?= http://localhost:8080
 
-.PHONY: fmt lint test test-unit test-docker test-suites up down status generate-client
+.PHONY: fmt lint test test-unit test-docker test-suites test-harness test-all up down status generate-client
 
 fmt:
 	$(GOFMT) -w .
@@ -42,8 +42,15 @@ test-docker:
 # still cleans up.
 #
 # The recipe's exit status is still `go test`'s, so a failure stays a failure.
-test-suites: up
-	@trap '$(MAKE) --no-print-directory down' EXIT; go test ./suites/... ./harnesstest/... -count=1
+# Separate targets so a red line says which thing broke. `test-suites` failing means
+# Infisical is broken; `test-harness` failing means the harness is. One target running
+# both would report them the same way.
+test-suites:  PKGS = ./suites/...
+test-harness: PKGS = ./harnesstest/...
+test-all:     PKGS = ./suites/... ./harnesstest/...
+
+test-suites test-harness test-all: up
+	@trap '$(MAKE) --no-print-directory down' EXIT; go test $(PKGS) -count=1
 
 up:
 	go run ./cmd/inf up

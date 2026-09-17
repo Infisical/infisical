@@ -3162,6 +3162,456 @@ func (e VerifyEmailSignupV3500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListSecretsV4ParamsViewSecretValue.
+const (
+	ListSecretsV4ParamsViewSecretValueFalse ListSecretsV4ParamsViewSecretValue = "false"
+	ListSecretsV4ParamsViewSecretValueTrue  ListSecretsV4ParamsViewSecretValue = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4ParamsViewSecretValue enum.
+func (e ListSecretsV4ParamsViewSecretValue) Valid() bool {
+	switch e {
+	case ListSecretsV4ParamsViewSecretValueFalse:
+		return true
+	case ListSecretsV4ParamsViewSecretValueTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4ParamsExpandSecretReferences.
+const (
+	ListSecretsV4ParamsExpandSecretReferencesFalse ListSecretsV4ParamsExpandSecretReferences = "false"
+	ListSecretsV4ParamsExpandSecretReferencesTrue  ListSecretsV4ParamsExpandSecretReferences = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4ParamsExpandSecretReferences enum.
+func (e ListSecretsV4ParamsExpandSecretReferences) Valid() bool {
+	switch e {
+	case ListSecretsV4ParamsExpandSecretReferencesFalse:
+		return true
+	case ListSecretsV4ParamsExpandSecretReferencesTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4ParamsRecursive.
+const (
+	ListSecretsV4ParamsRecursiveFalse ListSecretsV4ParamsRecursive = "false"
+	ListSecretsV4ParamsRecursiveTrue  ListSecretsV4ParamsRecursive = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4ParamsRecursive enum.
+func (e ListSecretsV4ParamsRecursive) Valid() bool {
+	switch e {
+	case ListSecretsV4ParamsRecursiveFalse:
+		return true
+	case ListSecretsV4ParamsRecursiveTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4ParamsIncludePersonalOverrides.
+const (
+	ListSecretsV4ParamsIncludePersonalOverridesFalse ListSecretsV4ParamsIncludePersonalOverrides = "false"
+	ListSecretsV4ParamsIncludePersonalOverridesTrue  ListSecretsV4ParamsIncludePersonalOverrides = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4ParamsIncludePersonalOverrides enum.
+func (e ListSecretsV4ParamsIncludePersonalOverrides) Valid() bool {
+	switch e {
+	case ListSecretsV4ParamsIncludePersonalOverridesFalse:
+		return true
+	case ListSecretsV4ParamsIncludePersonalOverridesTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4ParamsIncludeImports.
+const (
+	ListSecretsV4ParamsIncludeImportsFalse ListSecretsV4ParamsIncludeImports = "false"
+	ListSecretsV4ParamsIncludeImportsTrue  ListSecretsV4ParamsIncludeImports = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4ParamsIncludeImports enum.
+func (e ListSecretsV4ParamsIncludeImports) Valid() bool {
+	switch e {
+	case ListSecretsV4ParamsIncludeImportsFalse:
+		return true
+	case ListSecretsV4ParamsIncludeImportsTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4400JSONResponseBodyStatusCode.
+const (
+	ListSecretsV4400JSONResponseBodyStatusCodeN400 ListSecretsV4400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4400JSONResponseBodyStatusCode enum.
+func (e ListSecretsV4400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretsV4400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4401JSONResponseBodyStatusCode.
+const (
+	ListSecretsV4401JSONResponseBodyStatusCodeN401 ListSecretsV4401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4401JSONResponseBodyStatusCode enum.
+func (e ListSecretsV4401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretsV4401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4403JSONResponseBodyStatusCode.
+const (
+	ListSecretsV4403JSONResponseBodyStatusCodeN403 ListSecretsV4403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4403JSONResponseBodyStatusCode enum.
+func (e ListSecretsV4403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretsV4403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4404JSONResponseBodyStatusCode.
+const (
+	ListSecretsV4404JSONResponseBodyStatusCodeN404 ListSecretsV4404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4404JSONResponseBodyStatusCode enum.
+func (e ListSecretsV4404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretsV4404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4422JSONResponseBodyStatusCode.
+const (
+	ListSecretsV4422JSONResponseBodyStatusCodeN422 ListSecretsV4422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4422JSONResponseBodyStatusCode enum.
+func (e ListSecretsV4422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretsV4422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSecretsV4500JSONResponseBodyStatusCode.
+const (
+	ListSecretsV4500JSONResponseBodyStatusCodeN500 ListSecretsV4500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListSecretsV4500JSONResponseBodyStatusCode enum.
+func (e ListSecretsV4500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSecretsV4500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4ParamsType.
+const (
+	GetSecretByNameV4ParamsTypePersonal GetSecretByNameV4ParamsType = "personal"
+	GetSecretByNameV4ParamsTypeShared   GetSecretByNameV4ParamsType = "shared"
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4ParamsType enum.
+func (e GetSecretByNameV4ParamsType) Valid() bool {
+	switch e {
+	case GetSecretByNameV4ParamsTypePersonal:
+		return true
+	case GetSecretByNameV4ParamsTypeShared:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4ParamsViewSecretValue.
+const (
+	GetSecretByNameV4ParamsViewSecretValueFalse GetSecretByNameV4ParamsViewSecretValue = "false"
+	GetSecretByNameV4ParamsViewSecretValueTrue  GetSecretByNameV4ParamsViewSecretValue = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4ParamsViewSecretValue enum.
+func (e GetSecretByNameV4ParamsViewSecretValue) Valid() bool {
+	switch e {
+	case GetSecretByNameV4ParamsViewSecretValueFalse:
+		return true
+	case GetSecretByNameV4ParamsViewSecretValueTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4ParamsExpandSecretReferences.
+const (
+	GetSecretByNameV4ParamsExpandSecretReferencesFalse GetSecretByNameV4ParamsExpandSecretReferences = "false"
+	GetSecretByNameV4ParamsExpandSecretReferencesTrue  GetSecretByNameV4ParamsExpandSecretReferences = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4ParamsExpandSecretReferences enum.
+func (e GetSecretByNameV4ParamsExpandSecretReferences) Valid() bool {
+	switch e {
+	case GetSecretByNameV4ParamsExpandSecretReferencesFalse:
+		return true
+	case GetSecretByNameV4ParamsExpandSecretReferencesTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4ParamsIncludeImports.
+const (
+	GetSecretByNameV4ParamsIncludeImportsFalse GetSecretByNameV4ParamsIncludeImports = "false"
+	GetSecretByNameV4ParamsIncludeImportsTrue  GetSecretByNameV4ParamsIncludeImports = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4ParamsIncludeImports enum.
+func (e GetSecretByNameV4ParamsIncludeImports) Valid() bool {
+	switch e {
+	case GetSecretByNameV4ParamsIncludeImportsFalse:
+		return true
+	case GetSecretByNameV4ParamsIncludeImportsTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4400JSONResponseBodyStatusCode.
+const (
+	GetSecretByNameV4400JSONResponseBodyStatusCodeN400 GetSecretByNameV4400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4400JSONResponseBodyStatusCode enum.
+func (e GetSecretByNameV4400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSecretByNameV4400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4401JSONResponseBodyStatusCode.
+const (
+	GetSecretByNameV4401JSONResponseBodyStatusCodeN401 GetSecretByNameV4401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4401JSONResponseBodyStatusCode enum.
+func (e GetSecretByNameV4401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSecretByNameV4401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4403JSONResponseBodyStatusCode.
+const (
+	GetSecretByNameV4403JSONResponseBodyStatusCodeN403 GetSecretByNameV4403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4403JSONResponseBodyStatusCode enum.
+func (e GetSecretByNameV4403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSecretByNameV4403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4404JSONResponseBodyStatusCode.
+const (
+	GetSecretByNameV4404JSONResponseBodyStatusCodeN404 GetSecretByNameV4404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4404JSONResponseBodyStatusCode enum.
+func (e GetSecretByNameV4404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSecretByNameV4404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4422JSONResponseBodyStatusCode.
+const (
+	GetSecretByNameV4422JSONResponseBodyStatusCodeN422 GetSecretByNameV4422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4422JSONResponseBodyStatusCode enum.
+func (e GetSecretByNameV4422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSecretByNameV4422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSecretByNameV4500JSONResponseBodyStatusCode.
+const (
+	GetSecretByNameV4500JSONResponseBodyStatusCodeN500 GetSecretByNameV4500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByNameV4500JSONResponseBodyStatusCode enum.
+func (e GetSecretByNameV4500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSecretByNameV4500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4JSONBodyType.
+const (
+	CreateSecretV4JSONBodyTypePersonal CreateSecretV4JSONBodyType = "personal"
+	CreateSecretV4JSONBodyTypeShared   CreateSecretV4JSONBodyType = "shared"
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4JSONBodyType enum.
+func (e CreateSecretV4JSONBodyType) Valid() bool {
+	switch e {
+	case CreateSecretV4JSONBodyTypePersonal:
+		return true
+	case CreateSecretV4JSONBodyTypeShared:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4400JSONResponseBodyStatusCode.
+const (
+	CreateSecretV4400JSONResponseBodyStatusCodeN400 CreateSecretV4400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4400JSONResponseBodyStatusCode enum.
+func (e CreateSecretV4400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSecretV4400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4401JSONResponseBodyStatusCode.
+const (
+	CreateSecretV4401JSONResponseBodyStatusCodeN401 CreateSecretV4401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4401JSONResponseBodyStatusCode enum.
+func (e CreateSecretV4401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSecretV4401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4403JSONResponseBodyStatusCode.
+const (
+	CreateSecretV4403JSONResponseBodyStatusCodeN403 CreateSecretV4403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4403JSONResponseBodyStatusCode enum.
+func (e CreateSecretV4403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSecretV4403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4404JSONResponseBodyStatusCode.
+const (
+	CreateSecretV4404JSONResponseBodyStatusCodeN404 CreateSecretV4404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4404JSONResponseBodyStatusCode enum.
+func (e CreateSecretV4404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSecretV4404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4422JSONResponseBodyStatusCode.
+const (
+	CreateSecretV4422JSONResponseBodyStatusCodeN422 CreateSecretV4422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4422JSONResponseBodyStatusCode enum.
+func (e CreateSecretV4422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSecretV4422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSecretV4500JSONResponseBodyStatusCode.
+const (
+	CreateSecretV4500JSONResponseBodyStatusCodeN500 CreateSecretV4500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretV4500JSONResponseBodyStatusCode enum.
+func (e CreateSecretV4500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSecretV4500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // GetServerStatus400JSONResponseBodyStatusCode defines parameters for GetServerStatus.
 type GetServerStatus400JSONResponseBodyStatusCode float32
 
@@ -4635,6 +5085,243 @@ type VerifyEmailSignupV3422JSONResponseBodyStatusCode float32
 // VerifyEmailSignupV3500JSONResponseBodyStatusCode defines parameters for VerifyEmailSignupV3.
 type VerifyEmailSignupV3500JSONResponseBodyStatusCode float32
 
+// ListSecretsV4Params defines parameters for ListSecretsV4.
+type ListSecretsV4Params struct {
+	// MetadataFilter Unencrypted secret metadata key-value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4.
+	MetadataFilter *string `form:"metadataFilter,omitempty" json:"metadataFilter,omitempty"`
+
+	// ProjectId The ID of the project to list secrets from.
+	ProjectId *string `form:"projectId,omitempty" json:"projectId,omitempty"`
+
+	// Environment The slug of the environment to list secrets from.
+	Environment *string `form:"environment,omitempty" json:"environment,omitempty"`
+
+	// SecretPath The secret path to list secrets from.
+	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
+
+	// ViewSecretValue Whether or not to retrieve the secret value.
+	ViewSecretValue *ListSecretsV4ParamsViewSecretValue `form:"viewSecretValue,omitempty" json:"viewSecretValue,omitempty"`
+
+	// ExpandSecretReferences Whether or not to expand secret references.
+	ExpandSecretReferences *ListSecretsV4ParamsExpandSecretReferences `form:"expandSecretReferences,omitempty" json:"expandSecretReferences,omitempty"`
+
+	// Recursive Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.
+	Recursive *ListSecretsV4ParamsRecursive `form:"recursive,omitempty" json:"recursive,omitempty"`
+
+	// IncludePersonalOverrides Whether or not to include personal secrets in the response. When enabled, personal secrets will be included in the response. Shared secrets will still be included, but personal secrets will take priority, and the corresponding shared secrets will be replaced with the personal secrets.
+	IncludePersonalOverrides *ListSecretsV4ParamsIncludePersonalOverrides `form:"includePersonalOverrides,omitempty" json:"includePersonalOverrides,omitempty"`
+
+	// IncludeImports Weather to include imported secrets or not.
+	IncludeImports *ListSecretsV4ParamsIncludeImports `form:"includeImports,omitempty" json:"includeImports,omitempty"`
+
+	// TagSlugs The comma separated tag slugs to filter secrets.
+	TagSlugs *string `form:"tagSlugs,omitempty" json:"tagSlugs,omitempty"`
+}
+
+// ListSecretsV4ParamsViewSecretValue defines parameters for ListSecretsV4.
+type ListSecretsV4ParamsViewSecretValue string
+
+// ListSecretsV4ParamsExpandSecretReferences defines parameters for ListSecretsV4.
+type ListSecretsV4ParamsExpandSecretReferences string
+
+// ListSecretsV4ParamsRecursive defines parameters for ListSecretsV4.
+type ListSecretsV4ParamsRecursive string
+
+// ListSecretsV4ParamsIncludePersonalOverrides defines parameters for ListSecretsV4.
+type ListSecretsV4ParamsIncludePersonalOverrides string
+
+// ListSecretsV4ParamsIncludeImports defines parameters for ListSecretsV4.
+type ListSecretsV4ParamsIncludeImports string
+
+// ListSecretsV4400JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
+type ListSecretsV4400JSONResponseBodyStatusCode float32
+
+// ListSecretsV4401JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
+type ListSecretsV4401JSONResponseBodyStatusCode float32
+
+// ListSecretsV4403JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
+type ListSecretsV4403JSONResponseBodyStatusCode float32
+
+// ListSecretsV4404JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
+type ListSecretsV4404JSONResponseBodyStatusCode float32
+
+// ListSecretsV4422JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
+type ListSecretsV4422JSONResponseBodyStatusCode float32
+
+// ListSecretsV4500JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
+type ListSecretsV4500JSONResponseBodyStatusCode float32
+
+// GetSecretByNameV4Params defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4Params struct {
+	// ProjectId The ID of the project to get the secret from.
+	ProjectId string `form:"projectId" json:"projectId"`
+
+	// Environment The slug of the environment to get the secret from.
+	Environment *string `form:"environment,omitempty" json:"environment,omitempty"`
+
+	// SecretPath The path of the secret to get.
+	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
+
+	// Version The version of the secret to get.
+	Version *float32 `form:"version,omitempty" json:"version,omitempty"`
+
+	// Type The type of the secret to get.
+	Type *GetSecretByNameV4ParamsType `form:"type,omitempty" json:"type,omitempty"`
+
+	// ViewSecretValue Whether or not to retrieve the secret value.
+	ViewSecretValue *GetSecretByNameV4ParamsViewSecretValue `form:"viewSecretValue,omitempty" json:"viewSecretValue,omitempty"`
+
+	// ExpandSecretReferences Whether or not to expand secret references.
+	ExpandSecretReferences *GetSecretByNameV4ParamsExpandSecretReferences `form:"expandSecretReferences,omitempty" json:"expandSecretReferences,omitempty"`
+
+	// IncludeImports Weather to include imported secrets or not.
+	IncludeImports *GetSecretByNameV4ParamsIncludeImports `form:"includeImports,omitempty" json:"includeImports,omitempty"`
+}
+
+// GetSecretByNameV4ParamsType defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4ParamsType string
+
+// GetSecretByNameV4ParamsViewSecretValue defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4ParamsViewSecretValue string
+
+// GetSecretByNameV4ParamsExpandSecretReferences defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4ParamsExpandSecretReferences string
+
+// GetSecretByNameV4ParamsIncludeImports defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4ParamsIncludeImports string
+
+// GetSecretByNameV4400JSONResponseBodyStatusCode defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4400JSONResponseBodyStatusCode float32
+
+// GetSecretByNameV4401JSONResponseBodyStatusCode defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4401JSONResponseBodyStatusCode float32
+
+// GetSecretByNameV4403JSONResponseBodyStatusCode defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4403JSONResponseBodyStatusCode float32
+
+// GetSecretByNameV4404JSONResponseBodyStatusCode defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4404JSONResponseBodyStatusCode float32
+
+// GetSecretByNameV4422JSONResponseBodyStatusCode defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4422JSONResponseBodyStatusCode float32
+
+// GetSecretByNameV4500JSONResponseBodyStatusCode defines parameters for GetSecretByNameV4.
+type GetSecretByNameV4500JSONResponseBodyStatusCode float32
+
+// CreateSecretV4JSONBody defines parameters for CreateSecretV4.
+type CreateSecretV4JSONBody struct {
+	// Environment The slug of the environment to create the secret in.
+	Environment string `json:"environment"`
+
+	// ProjectId The ID of the project to create the secret in.
+	ProjectId string `json:"projectId"`
+
+	// SecretComment Attach a comment to the secret.
+	SecretComment  *string `json:"secretComment,omitempty"`
+	SecretMetadata *[]struct {
+		IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+		Key         string  `json:"key"`
+		Value       *string `json:"value,omitempty"`
+	} `json:"secretMetadata,omitempty"`
+
+	// SecretPath The path to create the secret in.
+	SecretPath *string `json:"secretPath,omitempty"`
+
+	// SecretReminderNote Note to be attached in notification email.
+	SecretReminderNote *string `json:"secretReminderNote,omitempty"`
+
+	// SecretReminderRepeatDays Interval for secret rotation notifications, measured in days.
+	SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+
+	// SecretValue The value of the secret to create.
+	SecretValue string `json:"secretValue"`
+
+	// SkipMultilineEncoding Skip multiline encoding for the secret value.
+	SkipMultilineEncoding *bool `json:"skipMultilineEncoding,omitempty"`
+
+	// TagIds The ID of the tags to be attached to the created secret.
+	TagIds *[]string `json:"tagIds,omitempty"`
+
+	// Type The type of the secret to create.
+	Type *CreateSecretV4JSONBodyType `json:"type,omitempty"`
+}
+
+// CreateSecretV4JSONBodyType defines parameters for CreateSecretV4.
+type CreateSecretV4JSONBodyType string
+
+// CreateSecretV4200JSONResponseBody0 defines parameters for CreateSecretV4.
+type CreateSecretV4200JSONResponseBody0 struct {
+	Secret struct {
+		UnderscoreId string `json:"_id"`
+		Actor        *struct {
+			ActorId      *string `json:"actorId,omitempty"`
+			ActorType    *string `json:"actorType,omitempty"`
+			GroupId      *string `json:"groupId,omitempty"`
+			MembershipId *string `json:"membershipId,omitempty"`
+			Name         *string `json:"name,omitempty"`
+		} `json:"actor,omitempty"`
+		CreatedAt                time.Time           `json:"createdAt"`
+		Environment              string              `json:"environment"`
+		Id                       string              `json:"id"`
+		IsRotatedSecret          *bool               `json:"isRotatedSecret,omitempty"`
+		RotationId               *openapi_types.UUID `json:"rotationId,omitempty"`
+		SecretComment            string              `json:"secretComment"`
+		SecretKey                string              `json:"secretKey"`
+		SecretReminderNote       *string             `json:"secretReminderNote,omitempty"`
+		SecretReminderRepeatDays *float32            `json:"secretReminderRepeatDays,omitempty"`
+		SecretValue              string              `json:"secretValue"`
+		SkipMultilineEncoding    *bool               `json:"skipMultilineEncoding,omitempty"`
+		Type                     string              `json:"type"`
+		UpdatedAt                time.Time           `json:"updatedAt"`
+		Version                  float32             `json:"version"`
+		Workspace                string              `json:"workspace"`
+	} `json:"secret"`
+}
+
+// CreateSecretV4200JSONResponseBody1 defines parameters for CreateSecretV4.
+type CreateSecretV4200JSONResponseBody1 struct {
+	Approval struct {
+		BypassReason          *string             `json:"bypassReason,omitempty"`
+		CommitMessage         *string             `json:"commitMessage,omitempty"`
+		CommitterIdentityId   *openapi_types.UUID `json:"committerIdentityId,omitempty"`
+		CommitterUserId       *openapi_types.UUID `json:"committerUserId,omitempty"`
+		Conflicts             interface{}         `json:"conflicts,omitempty"`
+		CreatedAt             time.Time           `json:"createdAt"`
+		FolderId              openapi_types.UUID  `json:"folderId"`
+		HasMerged             *bool               `json:"hasMerged,omitempty"`
+		Id                    openapi_types.UUID  `json:"id"`
+		IsReplicated          *bool               `json:"isReplicated,omitempty"`
+		PolicyId              openapi_types.UUID  `json:"policyId"`
+		Slug                  string              `json:"slug"`
+		Status                *string             `json:"status,omitempty"`
+		StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
+		UpdatedAt             time.Time           `json:"updatedAt"`
+	} `json:"approval"`
+}
+
+// CreateSecretV4200JSONResponseBody defines parameters for CreateSecretV4.
+type CreateSecretV4200JSONResponseBody struct {
+	union json.RawMessage
+}
+
+// CreateSecretV4400JSONResponseBodyStatusCode defines parameters for CreateSecretV4.
+type CreateSecretV4400JSONResponseBodyStatusCode float32
+
+// CreateSecretV4401JSONResponseBodyStatusCode defines parameters for CreateSecretV4.
+type CreateSecretV4401JSONResponseBodyStatusCode float32
+
+// CreateSecretV4403JSONResponseBodyStatusCode defines parameters for CreateSecretV4.
+type CreateSecretV4403JSONResponseBodyStatusCode float32
+
+// CreateSecretV4404JSONResponseBodyStatusCode defines parameters for CreateSecretV4.
+type CreateSecretV4404JSONResponseBodyStatusCode float32
+
+// CreateSecretV4422JSONResponseBodyStatusCode defines parameters for CreateSecretV4.
+type CreateSecretV4422JSONResponseBodyStatusCode float32
+
+// CreateSecretV4500JSONResponseBodyStatusCode defines parameters for CreateSecretV4.
+type CreateSecretV4500JSONResponseBodyStatusCode float32
+
 // AdminBootstrapJSONRequestBody defines body for AdminBootstrap for application/json ContentType.
 type AdminBootstrapJSONRequestBody AdminBootstrapJSONBody
 
@@ -4691,6 +5378,9 @@ type BeginEmailSignupV3JSONRequestBody BeginEmailSignupV3JSONBody
 
 // VerifyEmailSignupV3JSONRequestBody defines body for VerifyEmailSignupV3 for application/json ContentType.
 type VerifyEmailSignupV3JSONRequestBody VerifyEmailSignupV3JSONBody
+
+// CreateSecretV4JSONRequestBody defines body for CreateSecretV4 for application/json ContentType.
+type CreateSecretV4JSONRequestBody CreateSecretV4JSONBody
 
 // AsCreateGitHubAppConnectionJSONBody0 returns the union data inside the CreateGitHubAppConnectionJSONBody as a CreateGitHubAppConnectionJSONBody0
 func (t CreateGitHubAppConnectionJSONBody) AsCreateGitHubAppConnectionJSONBody0() (CreateGitHubAppConnectionJSONBody0, error) {
@@ -5954,6 +6644,68 @@ func (t *CompleteAccountSignupV3JSONBody) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsCreateSecretV4200JSONResponseBody0 returns the union data inside the CreateSecretV4200JSONResponseBody as a CreateSecretV4200JSONResponseBody0
+func (t CreateSecretV4200JSONResponseBody) AsCreateSecretV4200JSONResponseBody0() (CreateSecretV4200JSONResponseBody0, error) {
+	var body CreateSecretV4200JSONResponseBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateSecretV4200JSONResponseBody0 overwrites any union data inside the CreateSecretV4200JSONResponseBody as the provided CreateSecretV4200JSONResponseBody0
+func (t *CreateSecretV4200JSONResponseBody) FromCreateSecretV4200JSONResponseBody0(v CreateSecretV4200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateSecretV4200JSONResponseBody0 performs a merge with any union data inside the CreateSecretV4200JSONResponseBody, using the provided CreateSecretV4200JSONResponseBody0
+func (t *CreateSecretV4200JSONResponseBody) MergeCreateSecretV4200JSONResponseBody0(v CreateSecretV4200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateSecretV4200JSONResponseBody1 returns the union data inside the CreateSecretV4200JSONResponseBody as a CreateSecretV4200JSONResponseBody1
+func (t CreateSecretV4200JSONResponseBody) AsCreateSecretV4200JSONResponseBody1() (CreateSecretV4200JSONResponseBody1, error) {
+	var body CreateSecretV4200JSONResponseBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateSecretV4200JSONResponseBody1 overwrites any union data inside the CreateSecretV4200JSONResponseBody as the provided CreateSecretV4200JSONResponseBody1
+func (t *CreateSecretV4200JSONResponseBody) FromCreateSecretV4200JSONResponseBody1(v CreateSecretV4200JSONResponseBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateSecretV4200JSONResponseBody1 performs a merge with any union data inside the CreateSecretV4200JSONResponseBody, using the provided CreateSecretV4200JSONResponseBody1
+func (t *CreateSecretV4200JSONResponseBody) MergeCreateSecretV4200JSONResponseBody1(v CreateSecretV4200JSONResponseBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateSecretV4200JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateSecretV4200JSONResponseBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 
@@ -6237,6 +6989,28 @@ type ClientInterface interface {
 	// VerifyEmailSignupV3 performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request.
 	// Takes a body of the `application/json` content type.
 	VerifyEmailSignupV3(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSecretsV4 performs a GET /api/v4/secrets (the `ListSecretsV4` operationId) request.
+	//
+	// List secrets.
+	ListSecretsV4(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSecretByNameV4 performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
+	//
+	// Get a secret by name.
+	GetSecretByNameV4(ctx context.Context, secretName string, params *GetSecretByNameV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSecretV4WithBody performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create secret.
+	CreateSecretV4WithBody(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSecretV4 performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create secret.
+	CreateSecretV4(ctx context.Context, secretName string, body CreateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetServerStatus performs a GET /api/status (the `GetServerStatus` operationId) request.
@@ -6879,6 +7653,68 @@ func (c *Client) VerifyEmailSignupV3WithBody(ctx context.Context, contentType st
 // Takes a body of the `application/json` content type.
 func (c *Client) VerifyEmailSignupV3(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyEmailSignupV3Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListSecretsV4 performs a GET /api/v4/secrets (the `ListSecretsV4` operationId) request.
+//
+// List secrets.
+func (c *Client) ListSecretsV4(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSecretsV4Request(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSecretByNameV4 performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
+//
+// Get a secret by name.
+func (c *Client) GetSecretByNameV4(ctx context.Context, secretName string, params *GetSecretByNameV4Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSecretByNameV4Request(c.Server, secretName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSecretV4WithBody performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create secret.
+func (c *Client) CreateSecretV4WithBody(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSecretV4RequestWithBody(c.Server, secretName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSecretV4 performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create secret.
+func (c *Client) CreateSecretV4(ctx context.Context, secretName string, body CreateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSecretV4Request(c.Server, secretName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7959,6 +8795,356 @@ func NewVerifyEmailSignupV3RequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
+// NewListSecretsV4Request constructs an http.Request for the ListSecretsV4 method
+func NewListSecretsV4Request(server string, params *ListSecretsV4Params) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v4/secrets")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.MetadataFilter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "metadataFilter", *params.MetadataFilter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ProjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Environment != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environment", *params.Environment, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SecretPath != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ViewSecretValue != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "viewSecretValue", *params.ViewSecretValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExpandSecretReferences != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "expandSecretReferences", *params.ExpandSecretReferences, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Recursive != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "recursive", *params.Recursive, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludePersonalOverrides != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includePersonalOverrides", *params.IncludePersonalOverrides, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeImports != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.TagSlugs != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tagSlugs", *params.TagSlugs, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSecretByNameV4Request constructs an http.Request for the GetSecretByNameV4 method
+func NewGetSecretByNameV4Request(server string, secretName string, params *GetSecretByNameV4Params) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "secretName", secretName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v4/secrets/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Environment != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environment", *params.Environment, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.SecretPath != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Version != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "version", *params.Version, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Type != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "type", *params.Type, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ViewSecretValue != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "viewSecretValue", *params.ViewSecretValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ExpandSecretReferences != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "expandSecretReferences", *params.ExpandSecretReferences, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeImports != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateSecretV4Request calls the generic CreateSecretV4 builder with application/json body
+func NewCreateSecretV4Request(server string, secretName string, body CreateSecretV4JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSecretV4RequestWithBody(server, secretName, "application/json", bodyReader)
+}
+
+// NewCreateSecretV4RequestWithBody constructs an http.Request for the CreateSecretV4 method, with any body, and a specified content type
+func NewCreateSecretV4RequestWithBody(server string, secretName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "secretName", secretName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v4/secrets/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -8262,6 +9448,34 @@ type ClientWithResponsesInterface interface {
 	// VerifyEmailSignupV3WithResponse performs a POST /api/v3/signup/email/verify (the `VerifyEmailSignupV3` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	VerifyEmailSignupV3WithResponse(ctx context.Context, body VerifyEmailSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyEmailSignupV3Response, error)
+
+	// ListSecretsV4WithResponse performs a GET /api/v4/secrets (the `ListSecretsV4` operationId) request.
+	//
+	// List secrets.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListSecretsV4WithResponse(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*ListSecretsV4Response, error)
+
+	// GetSecretByNameV4WithResponse performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
+	//
+	// Get a secret by name.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSecretByNameV4WithResponse(ctx context.Context, secretName string, params *GetSecretByNameV4Params, reqEditors ...RequestEditorFn) (*GetSecretByNameV4Response, error)
+
+	// CreateSecretV4WithBodyWithResponse performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create secret.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateSecretV4WithBodyWithResponse(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSecretV4Response, error)
+
+	// CreateSecretV4WithResponse performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create secret.
+	CreateSecretV4WithResponse(ctx context.Context, secretName string, body CreateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretV4Response, error)
 }
 
 type GetServerStatusResponse struct {
@@ -12633,6 +13847,680 @@ func (r VerifyEmailSignupV3Response) ContentType() string {
 	return ""
 }
 
+type ListSecretsV4Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Imports *[]struct {
+			Environment string  `json:"environment"`
+			FolderId    *string `json:"folderId,omitempty"`
+			SecretPath  string  `json:"secretPath"`
+			Secrets     []struct {
+				UnderscoreId string `json:"_id"`
+				Actor        *struct {
+					ActorId      *string `json:"actorId,omitempty"`
+					ActorType    *string `json:"actorType,omitempty"`
+					GroupId      *string `json:"groupId,omitempty"`
+					MembershipId *string `json:"membershipId,omitempty"`
+					Name         *string `json:"name,omitempty"`
+				} `json:"actor,omitempty"`
+				Environment     string              `json:"environment"`
+				Id              string              `json:"id"`
+				IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+				RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+				SecretComment   string              `json:"secretComment"`
+				SecretKey       string              `json:"secretKey"`
+				SecretMetadata  *[]struct {
+					IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+					Key         string  `json:"key"`
+					Value       *string `json:"value,omitempty"`
+				} `json:"secretMetadata,omitempty"`
+				SecretPath               *string  `json:"secretPath,omitempty"`
+				SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+				SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+				SecretValue              string   `json:"secretValue"`
+				SecretValueHidden        bool     `json:"secretValueHidden"`
+				SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+				Type                     string   `json:"type"`
+				Version                  float32  `json:"version"`
+				Workspace                string   `json:"workspace"`
+			} `json:"secrets"`
+		} `json:"imports,omitempty"`
+		Secrets []struct {
+			UnderscoreId string `json:"_id"`
+			Actor        *struct {
+				ActorId      *string `json:"actorId,omitempty"`
+				ActorType    *string `json:"actorType,omitempty"`
+				GroupId      *string `json:"groupId,omitempty"`
+				MembershipId *string `json:"membershipId,omitempty"`
+				Name         *string `json:"name,omitempty"`
+			} `json:"actor,omitempty"`
+			CreatedAt       time.Time           `json:"createdAt"`
+			Environment     string              `json:"environment"`
+			Id              string              `json:"id"`
+			IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+			RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+			SecretComment   string              `json:"secretComment"`
+			SecretKey       string              `json:"secretKey"`
+			SecretMetadata  *[]struct {
+				IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+				Key         string  `json:"key"`
+				Value       *string `json:"value,omitempty"`
+			} `json:"secretMetadata,omitempty"`
+			SecretPath               *string  `json:"secretPath,omitempty"`
+			SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+			SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+			SecretValue              string   `json:"secretValue"`
+			SecretValueHidden        bool     `json:"secretValueHidden"`
+			SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+			Tags                     *[]struct {
+				Color *string            `json:"color,omitempty"`
+				Id    openapi_types.UUID `json:"id"`
+				Name  string             `json:"name"`
+				Slug  string             `json:"slug"`
+			} `json:"tags,omitempty"`
+			Type      string    `json:"type"`
+			UpdatedAt time.Time `json:"updatedAt"`
+			Version   float32   `json:"version"`
+			Workspace string    `json:"workspace"`
+		} `json:"secrets"`
+	}
+	// JSON304 the response for an HTTP 304 `application/json` response
+	JSON304 *interface{}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode ListSecretsV4400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode ListSecretsV4401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode ListSecretsV4403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode ListSecretsV4404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                     `json:"error"`
+		Message    interface{}                                `json:"message,omitempty"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode ListSecretsV4422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode ListSecretsV4500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListSecretsV4Response) GetJSON200() *struct {
+	Imports *[]struct {
+		Environment string  `json:"environment"`
+		FolderId    *string `json:"folderId,omitempty"`
+		SecretPath  string  `json:"secretPath"`
+		Secrets     []struct {
+			UnderscoreId string `json:"_id"`
+			Actor        *struct {
+				ActorId      *string `json:"actorId,omitempty"`
+				ActorType    *string `json:"actorType,omitempty"`
+				GroupId      *string `json:"groupId,omitempty"`
+				MembershipId *string `json:"membershipId,omitempty"`
+				Name         *string `json:"name,omitempty"`
+			} `json:"actor,omitempty"`
+			Environment     string              `json:"environment"`
+			Id              string              `json:"id"`
+			IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+			RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+			SecretComment   string              `json:"secretComment"`
+			SecretKey       string              `json:"secretKey"`
+			SecretMetadata  *[]struct {
+				IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+				Key         string  `json:"key"`
+				Value       *string `json:"value,omitempty"`
+			} `json:"secretMetadata,omitempty"`
+			SecretPath               *string  `json:"secretPath,omitempty"`
+			SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+			SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+			SecretValue              string   `json:"secretValue"`
+			SecretValueHidden        bool     `json:"secretValueHidden"`
+			SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+			Type                     string   `json:"type"`
+			Version                  float32  `json:"version"`
+			Workspace                string   `json:"workspace"`
+		} `json:"secrets"`
+	} `json:"imports,omitempty"`
+	Secrets []struct {
+		UnderscoreId string `json:"_id"`
+		Actor        *struct {
+			ActorId      *string `json:"actorId,omitempty"`
+			ActorType    *string `json:"actorType,omitempty"`
+			GroupId      *string `json:"groupId,omitempty"`
+			MembershipId *string `json:"membershipId,omitempty"`
+			Name         *string `json:"name,omitempty"`
+		} `json:"actor,omitempty"`
+		CreatedAt       time.Time           `json:"createdAt"`
+		Environment     string              `json:"environment"`
+		Id              string              `json:"id"`
+		IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+		RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+		SecretComment   string              `json:"secretComment"`
+		SecretKey       string              `json:"secretKey"`
+		SecretMetadata  *[]struct {
+			IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+			Key         string  `json:"key"`
+			Value       *string `json:"value,omitempty"`
+		} `json:"secretMetadata,omitempty"`
+		SecretPath               *string  `json:"secretPath,omitempty"`
+		SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+		SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+		SecretValue              string   `json:"secretValue"`
+		SecretValueHidden        bool     `json:"secretValueHidden"`
+		SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+		Tags                     *[]struct {
+			Color *string            `json:"color,omitempty"`
+			Id    openapi_types.UUID `json:"id"`
+			Name  string             `json:"name"`
+			Slug  string             `json:"slug"`
+		} `json:"tags,omitempty"`
+		Type      string    `json:"type"`
+		UpdatedAt time.Time `json:"updatedAt"`
+		Version   float32   `json:"version"`
+		Workspace string    `json:"workspace"`
+	} `json:"secrets"`
+} {
+	return r.JSON200
+}
+
+// GetJSON304 returns the response for an HTTP 304 `application/json` response
+func (r ListSecretsV4Response) GetJSON304() *interface{} {
+	return r.JSON304
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListSecretsV4Response) GetJSON400() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode ListSecretsV4400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListSecretsV4Response) GetJSON401() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode ListSecretsV4401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListSecretsV4Response) GetJSON403() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode ListSecretsV4403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListSecretsV4Response) GetJSON404() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode ListSecretsV4404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListSecretsV4Response) GetJSON422() *struct {
+	Error      string                                     `json:"error"`
+	Message    interface{}                                `json:"message,omitempty"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode ListSecretsV4422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListSecretsV4Response) GetJSON500() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode ListSecretsV4500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListSecretsV4Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSecretsV4Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSecretsV4Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListSecretsV4Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSecretByNameV4Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Secret struct {
+			UnderscoreId string `json:"_id"`
+			Actor        *struct {
+				ActorId      *string `json:"actorId,omitempty"`
+				ActorType    *string `json:"actorType,omitempty"`
+				GroupId      *string `json:"groupId,omitempty"`
+				MembershipId *string `json:"membershipId,omitempty"`
+				Name         *string `json:"name,omitempty"`
+			} `json:"actor,omitempty"`
+			CreatedAt       time.Time           `json:"createdAt"`
+			Environment     string              `json:"environment"`
+			Id              string              `json:"id"`
+			IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+			RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+			SecretComment   string              `json:"secretComment"`
+			SecretKey       string              `json:"secretKey"`
+			SecretMetadata  *[]struct {
+				IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+				Key         string  `json:"key"`
+				Value       *string `json:"value,omitempty"`
+			} `json:"secretMetadata,omitempty"`
+			SecretPath               string   `json:"secretPath"`
+			SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+			SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+			SecretValue              string   `json:"secretValue"`
+			SecretValueHidden        bool     `json:"secretValueHidden"`
+			SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+			Tags                     *[]struct {
+				Color *string            `json:"color,omitempty"`
+				Id    openapi_types.UUID `json:"id"`
+				Name  string             `json:"name"`
+				Slug  string             `json:"slug"`
+			} `json:"tags,omitempty"`
+			Type      string    `json:"type"`
+			UpdatedAt time.Time `json:"updatedAt"`
+			Version   float32   `json:"version"`
+			Workspace string    `json:"workspace"`
+		} `json:"secret"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetSecretByNameV4400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetSecretByNameV4401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetSecretByNameV4403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetSecretByNameV4404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetSecretByNameV4422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetSecretByNameV4500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON200() *struct {
+	Secret struct {
+		UnderscoreId string `json:"_id"`
+		Actor        *struct {
+			ActorId      *string `json:"actorId,omitempty"`
+			ActorType    *string `json:"actorType,omitempty"`
+			GroupId      *string `json:"groupId,omitempty"`
+			MembershipId *string `json:"membershipId,omitempty"`
+			Name         *string `json:"name,omitempty"`
+		} `json:"actor,omitempty"`
+		CreatedAt       time.Time           `json:"createdAt"`
+		Environment     string              `json:"environment"`
+		Id              string              `json:"id"`
+		IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+		RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+		SecretComment   string              `json:"secretComment"`
+		SecretKey       string              `json:"secretKey"`
+		SecretMetadata  *[]struct {
+			IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+			Key         string  `json:"key"`
+			Value       *string `json:"value,omitempty"`
+		} `json:"secretMetadata,omitempty"`
+		SecretPath               string   `json:"secretPath"`
+		SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+		SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+		SecretValue              string   `json:"secretValue"`
+		SecretValueHidden        bool     `json:"secretValueHidden"`
+		SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+		Tags                     *[]struct {
+			Color *string            `json:"color,omitempty"`
+			Id    openapi_types.UUID `json:"id"`
+			Name  string             `json:"name"`
+			Slug  string             `json:"slug"`
+		} `json:"tags,omitempty"`
+		Type      string    `json:"type"`
+		UpdatedAt time.Time `json:"updatedAt"`
+		Version   float32   `json:"version"`
+		Workspace string    `json:"workspace"`
+	} `json:"secret"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetSecretByNameV4400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetSecretByNameV4401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetSecretByNameV4403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetSecretByNameV4404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetSecretByNameV4422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSecretByNameV4Response) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetSecretByNameV4500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSecretByNameV4Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSecretByNameV4Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSecretByNameV4Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSecretByNameV4Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateSecretV4Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CreateSecretV4200JSONResponseBody
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode CreateSecretV4400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode CreateSecretV4401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode CreateSecretV4403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode CreateSecretV4404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode CreateSecretV4422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode CreateSecretV4500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateSecretV4Response) GetJSON200() *CreateSecretV4200JSONResponseBody {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateSecretV4Response) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode CreateSecretV4400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateSecretV4Response) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode CreateSecretV4401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateSecretV4Response) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode CreateSecretV4403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateSecretV4Response) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode CreateSecretV4404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateSecretV4Response) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode CreateSecretV4422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateSecretV4Response) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode CreateSecretV4500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateSecretV4Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSecretV4Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSecretV4Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSecretV4Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetServerStatusWithResponse performs a GET /api/status (the `GetServerStatus` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -13155,6 +15043,58 @@ func (c *ClientWithResponses) VerifyEmailSignupV3WithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseVerifyEmailSignupV3Response(rsp)
+}
+
+// ListSecretsV4WithResponse performs a GET /api/v4/secrets (the `ListSecretsV4` operationId) request.
+//
+// List secrets.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListSecretsV4WithResponse(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*ListSecretsV4Response, error) {
+	rsp, err := c.ListSecretsV4(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSecretsV4Response(rsp)
+}
+
+// GetSecretByNameV4WithResponse performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
+//
+// Get a secret by name.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSecretByNameV4WithResponse(ctx context.Context, secretName string, params *GetSecretByNameV4Params, reqEditors ...RequestEditorFn) (*GetSecretByNameV4Response, error) {
+	rsp, err := c.GetSecretByNameV4(ctx, secretName, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSecretByNameV4Response(rsp)
+}
+
+// CreateSecretV4WithBodyWithResponse performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create secret.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateSecretV4WithBodyWithResponse(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSecretV4Response, error) {
+	rsp, err := c.CreateSecretV4WithBody(ctx, secretName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSecretV4Response(rsp)
+}
+
+// CreateSecretV4WithResponse performs a POST /api/v4/secrets/{secretName} (the `CreateSecretV4` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create secret.
+func (c *ClientWithResponses) CreateSecretV4WithResponse(ctx context.Context, secretName string, body CreateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretV4Response, error) {
+	rsp, err := c.CreateSecretV4(ctx, secretName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSecretV4Response(rsp)
 }
 
 // ParseGetServerStatusResponse parses an HTTP response from a GetServerStatusWithResponse call
@@ -15993,6 +17933,426 @@ func ParseVerifyEmailSignupV3Response(rsp *http.Response) (*VerifyEmailSignupV3R
 			Message    string                                           `json:"message"`
 			ReqId      string                                           `json:"reqId"`
 			StatusCode VerifyEmailSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListSecretsV4Response parses an HTTP response from a ListSecretsV4WithResponse call
+func ParseListSecretsV4Response(rsp *http.Response) (*ListSecretsV4Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSecretsV4Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Imports *[]struct {
+				Environment string  `json:"environment"`
+				FolderId    *string `json:"folderId,omitempty"`
+				SecretPath  string  `json:"secretPath"`
+				Secrets     []struct {
+					UnderscoreId string `json:"_id"`
+					Actor        *struct {
+						ActorId      *string `json:"actorId,omitempty"`
+						ActorType    *string `json:"actorType,omitempty"`
+						GroupId      *string `json:"groupId,omitempty"`
+						MembershipId *string `json:"membershipId,omitempty"`
+						Name         *string `json:"name,omitempty"`
+					} `json:"actor,omitempty"`
+					Environment     string              `json:"environment"`
+					Id              string              `json:"id"`
+					IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+					RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+					SecretComment   string              `json:"secretComment"`
+					SecretKey       string              `json:"secretKey"`
+					SecretMetadata  *[]struct {
+						IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+						Key         string  `json:"key"`
+						Value       *string `json:"value,omitempty"`
+					} `json:"secretMetadata,omitempty"`
+					SecretPath               *string  `json:"secretPath,omitempty"`
+					SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+					SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+					SecretValue              string   `json:"secretValue"`
+					SecretValueHidden        bool     `json:"secretValueHidden"`
+					SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+					Type                     string   `json:"type"`
+					Version                  float32  `json:"version"`
+					Workspace                string   `json:"workspace"`
+				} `json:"secrets"`
+			} `json:"imports,omitempty"`
+			Secrets []struct {
+				UnderscoreId string `json:"_id"`
+				Actor        *struct {
+					ActorId      *string `json:"actorId,omitempty"`
+					ActorType    *string `json:"actorType,omitempty"`
+					GroupId      *string `json:"groupId,omitempty"`
+					MembershipId *string `json:"membershipId,omitempty"`
+					Name         *string `json:"name,omitempty"`
+				} `json:"actor,omitempty"`
+				CreatedAt       time.Time           `json:"createdAt"`
+				Environment     string              `json:"environment"`
+				Id              string              `json:"id"`
+				IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+				RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+				SecretComment   string              `json:"secretComment"`
+				SecretKey       string              `json:"secretKey"`
+				SecretMetadata  *[]struct {
+					IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+					Key         string  `json:"key"`
+					Value       *string `json:"value,omitempty"`
+				} `json:"secretMetadata,omitempty"`
+				SecretPath               *string  `json:"secretPath,omitempty"`
+				SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+				SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+				SecretValue              string   `json:"secretValue"`
+				SecretValueHidden        bool     `json:"secretValueHidden"`
+				SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+				Tags                     *[]struct {
+					Color *string            `json:"color,omitempty"`
+					Id    openapi_types.UUID `json:"id"`
+					Name  string             `json:"name"`
+					Slug  string             `json:"slug"`
+				} `json:"tags,omitempty"`
+				Type      string    `json:"type"`
+				UpdatedAt time.Time `json:"updatedAt"`
+				Version   float32   `json:"version"`
+				Workspace string    `json:"workspace"`
+			} `json:"secrets"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 304:
+		var dest interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON304 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode ListSecretsV4400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode ListSecretsV4401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode ListSecretsV4403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode ListSecretsV4404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    interface{}                                `json:"message,omitempty"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode ListSecretsV4422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode ListSecretsV4500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSecretByNameV4Response parses an HTTP response from a GetSecretByNameV4WithResponse call
+func ParseGetSecretByNameV4Response(rsp *http.Response) (*GetSecretByNameV4Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSecretByNameV4Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Secret struct {
+				UnderscoreId string `json:"_id"`
+				Actor        *struct {
+					ActorId      *string `json:"actorId,omitempty"`
+					ActorType    *string `json:"actorType,omitempty"`
+					GroupId      *string `json:"groupId,omitempty"`
+					MembershipId *string `json:"membershipId,omitempty"`
+					Name         *string `json:"name,omitempty"`
+				} `json:"actor,omitempty"`
+				CreatedAt       time.Time           `json:"createdAt"`
+				Environment     string              `json:"environment"`
+				Id              string              `json:"id"`
+				IsRotatedSecret *bool               `json:"isRotatedSecret,omitempty"`
+				RotationId      *openapi_types.UUID `json:"rotationId,omitempty"`
+				SecretComment   string              `json:"secretComment"`
+				SecretKey       string              `json:"secretKey"`
+				SecretMetadata  *[]struct {
+					IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+					Key         string  `json:"key"`
+					Value       *string `json:"value,omitempty"`
+				} `json:"secretMetadata,omitempty"`
+				SecretPath               string   `json:"secretPath"`
+				SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+				SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+				SecretValue              string   `json:"secretValue"`
+				SecretValueHidden        bool     `json:"secretValueHidden"`
+				SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+				Tags                     *[]struct {
+					Color *string            `json:"color,omitempty"`
+					Id    openapi_types.UUID `json:"id"`
+					Name  string             `json:"name"`
+					Slug  string             `json:"slug"`
+				} `json:"tags,omitempty"`
+				Type      string    `json:"type"`
+				UpdatedAt time.Time `json:"updatedAt"`
+				Version   float32   `json:"version"`
+				Workspace string    `json:"workspace"`
+			} `json:"secret"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetSecretByNameV4400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetSecretByNameV4401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetSecretByNameV4403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetSecretByNameV4404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetSecretByNameV4422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetSecretByNameV4500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSecretV4Response parses an HTTP response from a CreateSecretV4WithResponse call
+func ParseCreateSecretV4Response(rsp *http.Response) (*CreateSecretV4Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSecretV4Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreateSecretV4200JSONResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode CreateSecretV4400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode CreateSecretV4401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode CreateSecretV4403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode CreateSecretV4404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode CreateSecretV4422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode CreateSecretV4500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
