@@ -120,10 +120,7 @@ export const SecretValueRenderer = ({
             <IconButton
               variant="ghost"
               size="xs"
-              className={twMerge(
-                isLoading ? "animate-pulse" : "",
-                "bg-container/80"
-              )}
+              className={twMerge(isLoading ? "animate-pulse" : "", "bg-container/80")}
               onClick={handleToggleVisibility}
             >
               {isVisible ? <EyeOffIcon /> : <EyeIcon />}
