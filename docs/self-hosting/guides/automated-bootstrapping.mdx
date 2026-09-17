@@ -133,11 +133,20 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
 
       secretDestination:
         name: "infisical-bootstrap-secret"
-        namespace: "" # defaults to release namespace if not specified
+        namespace: "" # leave empty to use the release namespace
 
       credentialSecret:
         name: "infisical-bootstrap-credentials"
     ```
+
+    <Warning>
+      Chart versions before 1.10.1 shipped `secretDestination.namespace` as the literal string
+      `default`, so the fallback to the release namespace never applied. Those releases wrote the
+      instance admin token to the `default` namespace and still reported a successful install.
+
+      This default applies to future bootstrap runs only. Upgrading an existing release does not move
+      the secret that is already there, so follow the migration steps below.
+    </Warning>
 
     You'll also need to create a secret containing the bootstrap credentials before deployment. The secret must contain `INFISICAL_ADMIN_EMAIL` and `INFISICAL_ADMIN_PASSWORD` keys:
 
@@ -147,6 +156,35 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
       --from-literal=INFISICAL_ADMIN_PASSWORD="your-secure-password" \
       --namespace=release-namespace
     ```
+
+    ### Migrating from chart versions before 1.10.1
+
+    Upgrading moves the bootstrap Role and RoleBinding to the release namespace, but it leaves the
+    secret itself in `default`. The bootstrap job is a post-install hook, and an instance can be
+    bootstrapped only once, so the job neither re-runs on upgrade nor can reissue the token. Until
+    you migrate, the instance admin token stays readable in `default` while your automation looks for
+    it in the release namespace.
+
+    Copy the secret into the release namespace, keeping whatever keys your `secretTemplate` produced:
+
+    ```bash
+    release_namespace=<your-release-namespace>
+
+    kubectl get secret infisical-bootstrap-secret -n default -o json \
+      | jq 'del(.metadata.namespace, .metadata.uid, .metadata.resourceVersion,
+                .metadata.creationTimestamp, .metadata.managedFields, .metadata.ownerReferences)' \
+      | kubectl apply -n "$release_namespace" -f -
+    ```
+
+    Confirm the copy, then remove the original:
+
+    ```bash
+    kubectl get secret infisical-bootstrap-secret -n "$release_namespace"
+    kubectl delete secret infisical-bootstrap-secret -n default
+    ```
+
+    The token was readable by anything with secret access in `default` for as long as it sat there,
+    so treat it as exposed and rotate the root identity credentials after you migrate.
 
     ### How it works
 
