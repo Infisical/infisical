@@ -33,7 +33,8 @@ export const useGetBillingV2Overview = (orgId: string) => {
 
       return overview;
     },
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId),
+    placeholderData: keepPreviousData
   });
 };
 
@@ -49,7 +50,8 @@ export const useGetBillingV2Catalog = (orgId: string) => {
 
       return products;
     },
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId),
+    placeholderData: keepPreviousData
   });
 };
 

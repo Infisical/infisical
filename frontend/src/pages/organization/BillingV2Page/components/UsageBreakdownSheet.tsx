@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
-import { ArrowDownAZ, ArrowDownWideNarrow, Box, Building2, Search } from "lucide-react";
+import { ArrowDownAZ, ArrowDownWideNarrow, Search } from "lucide-react";
 
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Badge,
   Button,
   Empty,
   EmptyDescription,
@@ -15,6 +14,8 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OrgIcon,
+  ProjectIcon,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -22,6 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
   Skeleton,
+  SubOrgIcon,
   Tabs,
   TabsList,
   TabsTrigger
@@ -77,7 +79,7 @@ const CountShare = ({ count, total, unitLabel }: CountShareProps) => (
 
 type MeterProps = { className: string; width: string; height?: string };
 
-const Meter = ({ className, width, height = "h-1.5" }: MeterProps) => (
+const Meter = ({ className, width, height = "h-[3px]" }: MeterProps) => (
   <div className={cn("w-full overflow-hidden rounded-xs bg-background", height)}>
     <div className={cn("animate-bar-grow h-full rounded-xs", className)} style={{ width }} />
   </div>
@@ -94,17 +96,17 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
   const scopeTint = scope.isRoot ? "bg-org/85" : "bg-sub-org/85";
   const orgLevelTint = "bg-neutral/85";
   const canExpand = hasProjectDetail && scope.count > 0;
+  const ScopeIcon = scope.isRoot ? OrgIcon : SubOrgIcon;
   const projectLabel = `${scope.projects.length} ${scope.projects.length === 1 ? "project" : "projects"}`;
 
   const header = (
     <div className="flex min-w-0 flex-1 flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
-          <Building2
+          <ScopeIcon
             className={cn("size-3.5 shrink-0", scope.isRoot ? "text-org" : "text-sub-org")}
           />
           <span className="truncate">{scope.name}</span>
-          {scope.isRoot && <Badge variant="org">Root org</Badge>}
         </span>
         <CountShare count={scope.count} total={scopedCount} unitLabel={unitLabel} />
       </div>
@@ -114,14 +116,19 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
 
   if (!canExpand) {
     return (
-      <div className="rounded-md border border-border bg-container p-3">
+      <div className="rounded-md border border-border p-3">
         <div className="flex">{header}</div>
       </div>
     );
   }
 
   return (
-    <Accordion type="single" collapsible>
+    <Accordion
+      variant="ghost"
+      type="single"
+      collapsible
+      className="rounded-md border border-border"
+    >
       <AccordionItem value={scope.orgId}>
         <AccordionTrigger className="px-3 py-3">{header}</AccordionTrigger>
         <AccordionContent className="border-t border-border px-3 pt-3 pb-3.5">
@@ -141,7 +148,7 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
                 <Meter
                   className={orgLevelTint}
                   width={pct(scope.orgLevelCount, scope.count)}
-                  height="h-1"
+                  height="h-[2px]"
                 />
               </div>
             )}
@@ -155,7 +162,7 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
               <div key={project.id} className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
-                    <Box className="size-3 shrink-0 text-project" />
+                    <ProjectIcon className="size-3 shrink-0 text-project" />
                     <span className="truncate">{project.name}</span>
                   </span>
                   <CountShare count={project.count} total={scope.count} />
@@ -163,7 +170,7 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
                 <Meter
                   className="bg-project/85"
                   width={pct(project.count, scope.count)}
-                  height="h-1"
+                  height="h-[2px]"
                 />
               </div>
             ))}
@@ -225,7 +232,7 @@ const BreakdownBody = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-semibold text-foreground tabular-nums">
             {total.toLocaleString()}
@@ -266,14 +273,14 @@ const BreakdownBody = ({
           </div>
 
           {subOrgScopes.length > 0 && rootScope && (
-            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+            <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-semibold text-foreground tabular-nums">
                   {scopedCount.toLocaleString()}
                 </span>
                 <span className="text-xs text-muted">{unitLabel}</span>
               </div>
-              <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-xs bg-background">
+              <div className="flex h-[5px] w-full gap-0.5 overflow-hidden rounded-xs bg-background">
                 <div
                   className="animate-bar-grow h-full rounded-xs bg-org/85"
                   style={{ width: pct(rootScope.count, scopedCount) }}
@@ -340,10 +347,7 @@ const BreakdownBody = ({
                 <span className="text-2xs tracking-wide text-muted uppercase">
                   Sub-organizations
                 </span>
-                <span className="text-2xs text-muted">
-                  {visibleSubOrgs.length}{" "}
-                  {visibleSubOrgs.length === 1 ? "sub-organization" : "sub-organizations"}
-                </span>
+                <span className="text-2xs text-muted tabular-nums">{visibleSubOrgs.length}</span>
               </div>
 
               {visibleSubOrgs.length === 0 ? (

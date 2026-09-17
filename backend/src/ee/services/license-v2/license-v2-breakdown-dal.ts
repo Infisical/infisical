@@ -7,7 +7,7 @@ import { orgTreeIds } from "@app/lib/knex";
 export type TLicenseV2BreakdownDALFactory = ReturnType<typeof licenseV2BreakdownDALFactory>;
 
 export type TScopeOrgRow = { id: string; name: string; isRoot: boolean };
-export type TRootOrgRow = { id: string; name: string };
+export type TRootOrgRow = { id: string; name: string; slug: string };
 
 export type TScopeProjectRow = { id: string; name: string; orgId: string };
 
@@ -67,12 +67,13 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
     try {
       const baseQuery = db.replicaNode()(TableName.Organization).whereNull("rootOrgId");
       if (dto.search) {
-        void baseQuery.whereILike("name", `%${sanitizeSqlLikeString(dto.search)}%`);
+        const term = `%${sanitizeSqlLikeString(dto.search)}%`;
+        void baseQuery.where((builder) => void builder.whereILike("name", term).orWhereILike("slug", term));
       }
 
       const [totalResult, orgs] = await Promise.all([
         baseQuery.clone().count({ count: "*" }).first(),
-        baseQuery.clone().orderBy("name", "asc").limit(dto.limit).offset(dto.offset).select("id", "name")
+        baseQuery.clone().orderBy("name", "asc").limit(dto.limit).offset(dto.offset).select("id", "name", "slug")
       ]);
 
       return { orgs: orgs as TRootOrgRow[], totalCount: Number(totalResult?.count ?? 0) };

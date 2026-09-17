@@ -294,7 +294,12 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         "List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.",
       params: z.object({ organizationId: z.string().trim().uuid() }),
       querystring: z.object({
-        search: z.string().trim().max(255).optional().describe("Match root organizations whose name contains this."),
+        search: z
+          .string()
+          .trim()
+          .max(255)
+          .optional()
+          .describe("Match root organizations whose name or slug contains this."),
         limit: z.coerce.number().int().min(1).max(1000).default(100).describe("Maximum organizations to return."),
         offset: z.coerce.number().int().min(0).default(0).describe("Number of organizations to skip.")
       }),
@@ -303,7 +308,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
           organizations: z
             .object({
               id: z.string().describe("ID of the root organization."),
-              name: z.string().describe("Display name of the root organization.")
+              name: z.string().describe("Display name of the root organization."),
+              slug: z.string().describe("Slug of the root organization.")
             })
             .array(),
           totalCount: z.number().describe("Root organizations matching the search, across every page.")

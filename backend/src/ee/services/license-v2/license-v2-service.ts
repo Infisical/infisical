@@ -1060,8 +1060,11 @@ export const licenseV2ServiceFactory = ({
         throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
       }
 
-      const matches = search ? organization.name.toLowerCase().includes(search.toLowerCase()) : true;
-      const organizations = matches ? [{ id: organization.id, name: organization.name }] : [];
+      const term = search?.toLowerCase();
+      const matches = term
+        ? organization.name.toLowerCase().includes(term) || organization.slug.toLowerCase().includes(term)
+        : true;
+      const organizations = matches ? [{ id: organization.id, name: organization.name, slug: organization.slug }] : [];
       return {
         organizations: organizations.slice(offset, offset + limit),
         totalCount: organizations.length

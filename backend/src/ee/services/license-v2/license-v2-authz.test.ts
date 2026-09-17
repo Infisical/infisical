@@ -32,7 +32,7 @@ const buildService = () => {
 
   const service = licenseV2ServiceFactory({
     envConfig: { isCloud: false, SITE_URL: "http://localhost" },
-    orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other" })) },
+    orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other", slug: "other" })) },
     permissionService: { getOrgPermission },
     licenseDAL: {
       countBillableOrgActors: vi.fn(async () => ({ users: 0, identities: 0 })),
@@ -48,7 +48,7 @@ const buildService = () => {
     breakdownDAL: {
       findOrgTreeNames: vi.fn(async () => []),
       findProjectNames: vi.fn(async () => []),
-      findAllRootOrgs: vi.fn(async () => ({ orgs: [{ id: ROOT_ORG, name: "Root" }], totalCount: 1 }))
+      findAllRootOrgs: vi.fn(async () => ({ orgs: [{ id: ROOT_ORG, name: "Root", slug: "root" }], totalCount: 1 }))
     },
     meteredFeatures: [],
     licenseClient: {}

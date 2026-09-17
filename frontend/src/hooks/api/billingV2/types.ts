@@ -399,6 +399,7 @@ export type BillingV2BreakdownScopeKind = "instance" | "organization";
 export type BillingV2Organization = {
   id: string;
   name: string;
+  slug?: string;
 };
 
 export type BillingV2OrganizationsPage = {

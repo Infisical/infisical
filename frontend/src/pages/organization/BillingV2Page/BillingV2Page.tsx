@@ -11,7 +11,8 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
-import { useDebounce } from "@app/hooks";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { useDebounce, useHeldLoading } from "@app/hooks";
 import {
   BillingV2BreakdownScopeKind,
   useAddBillingV2PaymentMethod,
@@ -82,6 +83,7 @@ export const BillingV2Page = () => {
   const {
     data: serverOverview,
     isPending,
+    isPlaceholderData,
     isError,
     refetch
   } = useGetBillingV2Overview(selectedOrgId);
@@ -153,15 +155,15 @@ export const BillingV2Page = () => {
   const isViewingOtherOrg = selectedOrgId !== orgId;
   const canManageBilling = hasManageBillingPermission && !isViewingOtherOrg;
 
+  const isReloadingProducts = useHeldLoading(isPlaceholderData);
+
   let subState: BillingV2RenderState = "loading";
   if (isError) {
     subState = "error";
-  } else if (isRootOrgCountPending) {
+  } else if (isPending || isRootOrgCountPending) {
     subState = "loading";
   } else if (overview) {
     subState = overview.subState;
-  } else if (isPending) {
-    subState = "loading";
   }
 
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
@@ -227,7 +229,7 @@ export const BillingV2Page = () => {
   };
 
   // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
-  const isManaged = overview?.mode === "managed";
+  const isManaged = overview ? overview.mode === "managed" : !isInfisicalCloud();
   const pageDescription = isManaged
     ? "View your subscription, products, and usage. Your plan is managed through your license."
     : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
@@ -258,6 +260,7 @@ export const BillingV2Page = () => {
               rootOrgs={pickerOrgs}
               rootOrgCount={rootOrgCount}
               isRootOrgsLoading={isRootOrgsFetching}
+              isReloadingProducts={isReloadingProducts}
               selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
               onSelectOrg={(nextId) => {
                 if (nextId === ALL_ORGS_VALUE) {

@@ -2,6 +2,7 @@ import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
@@ -11,7 +12,7 @@ import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
 import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
-import { OverviewSkeleton } from "./states/OverviewSkeleton";
+import { BillingSectionSkeleton, StatTilesSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
 import { RootOrgFilter } from "./RootOrgFilter";
 import { TrialBanners } from "./TrialBanners";
@@ -27,6 +28,7 @@ export type OverviewProps = {
   rootOrgs: BillingV2Organization[];
   rootOrgCount: number;
   isRootOrgsLoading: boolean;
+  isReloadingProducts: boolean;
   selectedOrgId: string;
   onSelectOrg: (orgId: string) => void;
   onSearchOrgs: (search: string) => void;
@@ -50,6 +52,7 @@ export const Overview = ({
   rootOrgs,
   rootOrgCount,
   isRootOrgsLoading,
+  isReloadingProducts,
   selectedOrgId,
   onSelectOrg,
   onSearchOrgs,
@@ -74,8 +77,18 @@ export const Overview = ({
   if (subState === "loading") {
     return (
       <div className="flex flex-col gap-4">
-        {orgFilter}
-        <OverviewSkeleton />
+        <StatTilesSkeleton />
+        <ProductsCard
+          key="products"
+          catalog={catalog}
+          readOnly
+          orgFilter={orgFilter}
+          onManage={onUpgrade}
+          onSetCommitment={onSetCommitment}
+          onViewBreakdown={onViewBreakdown}
+          onContact={onContact}
+        />
+        {isInfisicalCloud() && <BillingSectionSkeleton />}
       </div>
     );
   }
@@ -83,7 +96,8 @@ export const Overview = ({
   if (subState === "error" || !overview) {
     return (
       <div className="flex flex-col gap-4">
-        {orgFilter}
+        {/* The picker stays reachable so a failing organization is not a dead end. */}
+        {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
         <ErrorPanel onRetry={onRetry} />
       </div>
     );
@@ -157,11 +171,13 @@ export const Overview = ({
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
-        {orgFilter}
         <ProductsCard
+          key="products"
           overview={overview}
           catalog={catalog}
           readOnly={productsReadOnly}
+          orgFilter={orgFilter}
+          isReloading={isReloadingProducts}
           onManage={onUpgrade}
           onSetCommitment={onSetCommitment}
           onViewBreakdown={onViewBreakdown}
@@ -198,11 +214,13 @@ export const Overview = ({
         onContact={onContact}
       />
       <BillingHeaderCard overview={overview} catalog={catalog} />
-      {orgFilter}
       <ProductsCard
+        key="products"
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
+        orgFilter={orgFilter}
+        isReloading={isReloadingProducts}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
         onViewBreakdown={onViewBreakdown}

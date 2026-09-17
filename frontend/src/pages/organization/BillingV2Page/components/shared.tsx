@@ -209,7 +209,7 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2.5 text-xs">
-        <span className="text-muted">{dim.label}</span>
+        <span className="text-accent">{dim.label}</span>
         <span className="text-muted tabular-nums">{right}</span>
       </div>
       {hasCeiling && (

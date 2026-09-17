@@ -11,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -20,6 +21,7 @@ import { useOrganization } from "@app/context";
 import {
   BillingV2CatalogProduct,
   BillingV2Entitlement,
+  BillingV2EntitlementDim,
   BillingV2Overview,
   useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
@@ -205,7 +207,7 @@ const ActiveProductCard = ({
             commitNudge && "mb-0"
           )}
         >
-          <span className="text-xs text-muted">Break this down by organization usage</span>
+          <span className="text-xs text-muted">Usage across your organizations</span>
           <span className="flex shrink-0 items-center gap-1 text-xs text-accent transition-colors group-hover:text-foreground">
             View breakdown
             <ChevronRight className="size-3.5" />
@@ -304,10 +306,72 @@ const AvailableProductTile = ({
   );
 };
 
+type ProductSkeletonRow = { key: string; hasBar: boolean };
+
+const skeletonRows = (dims: BillingV2EntitlementDim[]): ProductSkeletonRow[] =>
+  dims.map((dim) => ({ key: dim.key, hasBar: dimHasCeiling(dim) }));
+
+const UNKNOWN_PRODUCT_ROWS: ProductSkeletonRow[] = [
+  { key: "first", hasBar: true },
+  { key: "second", hasBar: true }
+];
+
+type ActiveProductCardSkeletonProps = {
+  rows: ProductSkeletonRow[];
+  hasBreakdown: boolean;
+  showAction: boolean;
+  className?: string;
+};
+
+const ActiveProductCardSkeleton = ({
+  rows,
+  hasBreakdown,
+  showAction,
+  className
+}: ActiveProductCardSkeletonProps) => (
+  <div
+    className={cn(
+      "flex flex-col gap-3 overflow-hidden rounded-lg border border-border bg-container p-4",
+      className
+    )}
+  >
+    <div className="flex items-center gap-3">
+      <Skeleton className="size-10 shrink-0 rounded-lg" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <Skeleton className="h-3.5 w-2/5" />
+        <Skeleton className="h-2.5 w-1/4" />
+      </div>
+      <Skeleton className="h-4 w-16 shrink-0" />
+      {showAction && <Skeleton className="h-8 w-20 shrink-0 rounded-md" />}
+    </div>
+    {rows.length > 0 && (
+      <div className="flex flex-col gap-3.5">
+        {rows.map((row) => (
+          <div key={row.key} className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2.5">
+              <Skeleton className="h-2.5 w-24" />
+              <Skeleton className="h-2.5 w-28" />
+            </div>
+            {row.hasBar && <Skeleton className="h-[5px] w-full rounded-xs" />}
+          </div>
+        ))}
+      </div>
+    )}
+    {hasBreakdown && (
+      <div className="-mx-4 mt-auto -mb-4 flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+        <Skeleton className="h-2.5 w-44" />
+        <Skeleton className="h-2.5 w-24" />
+      </div>
+    )}
+  </div>
+);
+
 type ProductsCardProps = {
-  overview: BillingV2Overview;
+  overview?: BillingV2Overview;
   catalog: BillingV2CatalogProduct[];
   readOnly?: boolean;
+  orgFilter?: ReactNode;
+  isReloading?: boolean;
   onManage: (id: string) => void;
   onSetCommitment: (id: string) => void;
   onViewBreakdown: (id: string) => void;
@@ -318,18 +382,21 @@ export const ProductsCard = ({
   overview,
   catalog,
   readOnly,
+  orgFilter,
+  isReloading,
   onManage,
   onSetCommitment,
   onViewBreakdown,
   onContact
 }: ProductsCardProps) => {
+  const entitlements = overview?.entitlements ?? {};
   // A deprecated product stays visible to existing subscribers but is closed to new ones, so hide it
   // from anyone who isn't already entitled to it (plan-level deprecation still shows the product).
   const visible = [...catalog]
-    .filter((prod) => !prod.deprecated || overview.entitlements[prod.id]?.entitled)
+    .filter((prod) => !prod.deprecated || entitlements[prod.id]?.entitled)
     .sort(byDisplayOrder);
-  const active = visible.filter((prod) => overview.entitlements[prod.id]?.entitled);
-  const available = visible.filter((prod) => !overview.entitlements[prod.id]?.entitled);
+  const active = visible.filter((prod) => entitlements[prod.id]?.entitled);
+  const available = visible.filter((prod) => !entitlements[prod.id]?.entitled);
 
   const { currentOrg } = useOrganization();
   const refreshEntitlements = useRefreshBillingV2Entitlements();
@@ -353,32 +420,52 @@ export const ProductsCard = ({
           Products
         </CardTitle>
         <CardDescription>Active products</CardDescription>
-        {!readOnly && (
+        {(orgFilter || !readOnly) && (
           <CardAction>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isDisabled={refreshEntitlements.isPending}
-                  onClick={handleRefresh}
-                >
-                  <RefreshCw />
-                  Refresh
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Plan changes may take a few minutes to take effect.</TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2">
+              {orgFilter}
+              {!readOnly && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isDisabled={refreshEntitlements.isPending}
+                      onClick={handleRefresh}
+                    >
+                      <RefreshCw />
+                      Refresh
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Plan changes may take a few minutes to take effect.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </CardAction>
         )}
       </CardHeader>
       <CardContent>
-        {visible.length === 0 ? (
+        {!overview && (
+          <div className="flex flex-col gap-4">
+            {[0, 1].map((i) => (
+              <ActiveProductCardSkeleton
+                key={i}
+                rows={UNKNOWN_PRODUCT_ROWS}
+                hasBreakdown
+                showAction={false}
+              />
+            ))}
+          </div>
+        )}
+        {overview && visible.length === 0 && (
           <CardEmpty
             title="No products available"
             description="Products will appear here once they're available."
           />
-        ) : (
+        )}
+        {overview && visible.length > 0 && (
           <>
             {active.length === 0 && (
               <CardEmpty
@@ -388,16 +475,27 @@ export const ProductsCard = ({
             )}
             <div className="flex flex-col gap-4">
               {active.map((prod) => (
-                <ActiveProductCard
-                  key={prod.id}
-                  prod={prod}
-                  entitlement={overview.entitlements[prod.id]}
-                  readOnly={readOnly}
-                  selfServe={overview.selfServe}
-                  onManage={onManage}
-                  onSetCommitment={onSetCommitment}
-                  onViewBreakdown={onViewBreakdown}
-                />
+                <div key={prod.id} className="relative">
+                  <div className={cn(isReloading && "invisible")} aria-hidden={isReloading}>
+                    <ActiveProductCard
+                      prod={prod}
+                      entitlement={entitlements[prod.id]}
+                      readOnly={readOnly}
+                      selfServe={overview.selfServe}
+                      onManage={onManage}
+                      onSetCommitment={onSetCommitment}
+                      onViewBreakdown={onViewBreakdown}
+                    />
+                  </div>
+                  {isReloading && (
+                    <ActiveProductCardSkeleton
+                      className="absolute inset-0"
+                      rows={skeletonRows(entitlements[prod.id]?.dimensions ?? [])}
+                      hasBreakdown={breakdownableDimensions(entitlements[prod.id]).length > 0}
+                      showAction={!readOnly && overview.selfServe}
+                    />
+                  )}
+                </div>
               ))}
               {available.length > 0 && (
                 <>
