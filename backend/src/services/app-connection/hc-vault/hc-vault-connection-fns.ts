@@ -169,12 +169,12 @@ export const requestWithHCVaultGateway = async <T>(
     return request.request(requestConfig);
   }
 
-  let gatewayConnectionDetails: TGatewayV2ConnectionDetails | undefined = gatewayDetails?.details;
-
+  let gatewayConnectionDetails: TGatewayV2ConnectionDetails | undefined;
   let targetHost: string;
   let targetPort: number;
 
   if (gatewayDetails) {
+    gatewayConnectionDetails = gatewayDetails.details;
     targetHost = gatewayDetails.target.host;
     targetPort = gatewayDetails.target.port;
   } else {
@@ -182,9 +182,6 @@ export const requestWithHCVaultGateway = async <T>(
     // port is empty string when using protocol's default port (443 for https, 80 for http)
     // eslint-disable-next-line no-nested-ternary
     targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
-  }
-
-  if (!gatewayDetails) {
     gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost,

@@ -4,29 +4,26 @@ import { apiRequest } from "@app/config/request";
 
 import { TGatewayV2 } from "../gateways-v2/types";
 
-export type TListedGateway = TGatewayV2;
+const hasConnected = (gateway: TGatewayV2) =>
+  Boolean(gateway.identityId || gateway.heartbeat || gateway.directHeartbeat);
+
+const fetchGateways = async () => {
+  const { data } = await apiRequest.get<TGatewayV2[]>("/api/v2/gateways");
+  return data;
+};
 
 export const gatewaysQueryKeys = {
   allKey: () => ["gateways"],
   listKey: () => [...gatewaysQueryKeys.allKey(), "list"],
+  listAll: () =>
+    queryOptions({
+      queryKey: gatewaysQueryKeys.listKey(),
+      queryFn: fetchGateways
+    }),
   list: () =>
     queryOptions({
       queryKey: gatewaysQueryKeys.listKey(),
-      queryFn: async () => {
-        const { data } = await apiRequest.get<TGatewayV2[]>("/api/v2/gateways");
-
-        // Filter out enrollment-flow gateways that haven't connected yet
-        // so gateway pickers don't show them as selectable options.
-        return data.filter((g) => g.identityId || g.heartbeat || g.directHeartbeat);
-      }
-    }),
-  listWithTokensKey: () => [...gatewaysQueryKeys.allKey(), "list-with-tokens"],
-  listWithTokens: () =>
-    queryOptions({
-      queryKey: gatewaysQueryKeys.listWithTokensKey(),
-      queryFn: async () => {
-        const { data } = await apiRequest.get<TGatewayV2[]>("/api/v2/gateways");
-        return data;
-      }
+      queryFn: fetchGateways,
+      select: (gateways: TGatewayV2[]) => gateways.filter(hasConnected)
     })
 };

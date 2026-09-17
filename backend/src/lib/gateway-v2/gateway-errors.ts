@@ -1,7 +1,8 @@
 /**
  * A gateway id that resolves to no gateway is never safe to treat as "no gateway configured": the
  * resource is pinned to it, so dialling the target directly would bypass the network boundary the
- * gateway exists to enforce. Every caller turns this into a 404 instead.
+ * gateway exists to enforce. Callers raise it instead, keeping whatever status that site already
+ * used — 404 on the dial and ownership paths, 400 where the id arrived as a field on a patch.
  *
  * The most likely reason a caller lands here is a resource still pointing at a legacy gateway.
  * Those rows are retained but no longer read, and there is no in-place upgrade for one, so the

@@ -981,9 +981,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       if (!gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
-        });
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
       // when the gateway comes from a template, attaching the gateway was authorized at
@@ -1368,9 +1366,7 @@ export const identityKubernetesAuthServiceFactory = ({
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
 
       if (!gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
-        });
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
       if (!template) {
@@ -1421,6 +1417,10 @@ export const identityKubernetesAuthServiceFactory = ({
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
     const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
+
+    if (isPinnedToRetiredGateway(identityKubernetesAuth) && !shouldUpdateGatewayId) {
+      throw new BadRequestError({ message: getRetiredGatewayMessage("This Kubernetes auth method") });
+    }
     let gatewayV2IdValue: string | null | undefined = null;
     if (!gatewayPoolId && gatewayId) {
       gatewayV2IdValue = gatewayId;

@@ -239,7 +239,7 @@ export const executeWithPotentialGateway = async <T>(
       ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
       : directGatewayId;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
     await blockLocalAndPrivateIpAddresses(credentials.url, true);
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,

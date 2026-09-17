@@ -15,6 +15,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { TOrgPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -224,7 +225,7 @@ export const identityAuthTemplateServiceFactory = ({
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId });
       if (!gatewayV2) {
         throw new BadRequestError({
-          message: `Gateway with ID '${gatewayId}' was not found in this organization. Select an existing gateway for the template.`
+          message: getMissingGatewayMessage(gatewayId)
         });
       }
       resolvedGatewayV2Id = gatewayId;

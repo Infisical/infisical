@@ -169,7 +169,7 @@ describe("identityAuthTemplateServiceFactory kubernetes host validation", () => 
     const { service } = createService();
 
     await expect(patchTemplate(service, { gatewayId: "11111111-1111-1111-1111-111111111111" })).rejects.toThrow(
-      "was not found in this organization"
+      "11111111-1111-1111-1111-111111111111' was not found"
     );
   });
 

@@ -166,7 +166,7 @@ export const executeWithPotentialGateway = async <T>(
       ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
       : directGatewayId;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
     const [targetHost] = await verifyHostInputValidity({
       host: credentials.host,
       isGateway: true,

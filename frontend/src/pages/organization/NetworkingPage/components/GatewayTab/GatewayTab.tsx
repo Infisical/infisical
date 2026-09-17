@@ -97,7 +97,7 @@ export const GatewayTab = withPermission(
     const [poolSearch, setPoolSearch] = useState("");
     const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
-      ...gatewaysQueryKeys.listWithTokens(),
+      ...gatewaysQueryKeys.listAll(),
       refetchInterval: 15_000
     });
     const { data: pools } = useListGatewayPools({ enabled: Boolean(showPoolsTab) });

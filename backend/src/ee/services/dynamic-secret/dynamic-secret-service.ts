@@ -10,6 +10,7 @@ import {
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { extractObjectFieldPaths, takeDistinctKeyScanWindow } from "@app/lib/fn";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -177,9 +178,7 @@ export const dynamicSecretServiceFactory = ({
       const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
 
       if (!gatewayv2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
-        });
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
       const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -408,9 +407,7 @@ export const dynamicSecretServiceFactory = ({
       const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
 
       if (!gatewayv2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
-        });
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
       const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -445,6 +442,9 @@ export const dynamicSecretServiceFactory = ({
           status: null,
           ...(hasGatewayFieldInInput
             ? {
+                // clears the retired v1 pin alongside, so a repointed secret never carries both
+                // columns; rows nobody edits keep their v1 value and stay revertible
+                gatewayId: null,
                 gatewayV2Id: !selectedGatewayPoolId ? selectedGatewayId : null,
                 gatewayPoolId: selectedGatewayPoolId
               }

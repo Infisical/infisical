@@ -20,6 +20,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
@@ -313,7 +314,7 @@ export const externalMigrationServiceFactory = ({
 
       // Ensure gatewayId is part of the actor's org
       if (!gatewayV2.length) {
-        throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
     }
 

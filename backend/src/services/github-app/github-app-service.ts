@@ -22,6 +22,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator/safe-request";
@@ -147,9 +148,7 @@ export const gitHubAppServiceFactory = ({
 
     const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
     if (!gatewayV2) {
-      throw new NotFoundError({
-        message: `Gateway with ID ${gatewayId} not found for org`
-      });
+      throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
     }
   };
 

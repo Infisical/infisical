@@ -25,6 +25,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
@@ -563,9 +564,7 @@ export const appConnectionServiceFactory = ({
 
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
       if (!gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
-        });
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
     }
 
@@ -787,9 +786,7 @@ export const appConnectionServiceFactory = ({
       if (gatewayId) {
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
         if (!gatewayV2) {
-          throw new NotFoundError({
-            message: `Gateway with ID ${gatewayId} not found for org`
-          });
+          throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
       }
     }
