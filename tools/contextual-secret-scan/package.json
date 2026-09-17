@@ -1,0 +1,20 @@
+{
+  "name": "@infisical/contextual-secret-scan",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "scan": "node scan.mjs",
+    "test": "node --test *.test.mjs",
+    "check": "eslint ."
+  },
+  "dependencies": {
+    "@ai-sdk/gateway": "4.0.85",
+    "ai": "7.0.105",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "eslint": "10.10.0"
+  }
+}
