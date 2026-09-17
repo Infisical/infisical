@@ -43,6 +43,8 @@ A helm chart to deploy Infisical
 | infisical.resources.requests.cpu | string | `"350m"` | CPU request for Infisical container |
 | infisical.service.annotations | object | `{}` | Custom annotations for Infisical service |
 | infisical.service.nodePort | string | `""` | Optional node port for service when using NodePort type |
+| infisical.service.port | int | `8080` | Port the service listens on. The ingress backends and the auto-bootstrap job follow this value. |
+| infisical.service.targetPort | string | `""` | Pod port the service forwards to. Defaults to 8080, the port the Infisical container listens on, and should stay there unless a sidecar (e.g. a TLS-terminating proxy injected via `infisical.extraContainers`) fronts the Infisical container on a different port. |
 | infisical.service.type | string | `"ClusterIP"` | Service type, can be changed based on exposure needs (e.g., LoadBalancer) |
 | infisical.serviceAccount.annotations | object | `{}` | Custom annotations for the auto-created service account |
 | infisical.serviceAccount.create | bool | `true` | Creates a new service account if true, with necessary permissions for this chart. If false and `serviceAccount.name` is not defined, the chart will attempt to use the Default service account |
