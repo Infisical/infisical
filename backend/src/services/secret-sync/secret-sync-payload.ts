@@ -17,8 +17,8 @@ export type TSecretPayload = {
 export type TSecretSyncPayload = {
   secrets: TSecretPayload[];
   environment: string;
-  flatten: (opts?: { applySchema?: boolean }) => TSecretMap;
-  findConflicts: (opts?: { applySchema?: boolean }) => TSecretSyncConflict[];
+  flatten: (opts?: { disableKeySchema?: boolean }) => TSecretMap;
+  findConflicts: (opts?: { disableKeySchema?: boolean }) => TSecretSyncConflict[];
   dedupeConflicts: () => TSecretSyncPayload;
 };
 
@@ -67,9 +67,9 @@ const groupByDestinationKey = (
 // keySchema never has to be a field the payload object exposes to its own callers.
 export const findFlattenConflicts = (
   payload: { secrets: TSecretPayload[]; environment: string; keySchema?: string },
-  { applySchema = true }: { applySchema?: boolean } = {}
+  { disableKeySchema = false }: { disableKeySchema?: boolean } = {}
 ): TSecretSyncConflict[] => {
-  const schema = applySchema ? payload.keySchema : undefined;
+  const schema = disableKeySchema ? undefined : payload.keySchema;
   const grouped = groupByDestinationKey(payload, schema);
 
   return [...grouped.entries()]
@@ -124,16 +124,16 @@ export const createSecretSyncPayload = (
   secrets,
   environment,
   // A destination whose sync targets can't carry the configured key schema (eg a many-to-one JSON
-  // body whose fields are app-facing variable names) calls flatten({ applySchema: false }) to get
-  // the raw-key view instead. Either way flatten() still groups by the resulting destination key
-  // and rejects collisions, so duplicate-name detection never depends on whether the schema was
-  // applied.
-  flatten: ({ applySchema = true }: { applySchema?: boolean } = {}) => {
-    const conflicts = findFlattenConflicts({ secrets, environment, keySchema }, { applySchema });
+  // body whose fields are app-facing variable names) calls flatten({ disableKeySchema: true }) to
+  // get the raw-key view instead. Either way flatten() still groups by the resulting destination
+  // key and rejects collisions, so duplicate-name detection never depends on whether the schema
+  // was applied.
+  flatten: ({ disableKeySchema = false }: { disableKeySchema?: boolean } = {}) => {
+    const conflicts = findFlattenConflicts({ secrets, environment, keySchema }, { disableKeySchema });
 
     if (conflicts.length) throw buildConflictError(conflicts);
 
-    const schema = applySchema ? keySchema : undefined;
+    const schema = disableKeySchema ? undefined : keySchema;
     const grouped = groupByDestinationKey({ secrets, environment }, schema);
     const map: TSecretMap = {};
 

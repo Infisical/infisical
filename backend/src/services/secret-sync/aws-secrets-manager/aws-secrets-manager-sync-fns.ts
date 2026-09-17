@@ -363,7 +363,7 @@ export const AwsSecretsManagerSyncFns = {
     // own (unprefixed) key, so this destination needs both views: the schema-applied map for
     // the one-to-one path below, and the raw-key map for that JSON body.
     const secretMap = payload.flatten();
-    const unmodifiedSecretMap = payload.flatten({ applySchema: false });
+    const unmodifiedSecretMap = payload.flatten({ disableKeySchema: true });
 
     const client = await getSecretsManagerClient(secretSync);
 

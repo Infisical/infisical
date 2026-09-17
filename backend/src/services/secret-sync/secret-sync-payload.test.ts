@@ -61,22 +61,22 @@ describe("createSecretSyncPayload", () => {
     expect(Object.keys(payload.flatten())).toEqual(["dev_DB_URL"]);
   });
 
-  test("flatten({ applySchema: false }) ignores the key schema", () => {
+  test("flatten({ disableKeySchema: true }) ignores the key schema", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/")], {
       environment: "dev",
       keySchema: "{{environment}}_{{secretKey}}"
     });
 
-    expect(Object.keys(payload.flatten({ applySchema: false }))).toEqual(["DB_URL"]);
+    expect(Object.keys(payload.flatten({ disableKeySchema: true }))).toEqual(["DB_URL"]);
   });
 
-  test("flatten({ applySchema: false }) still rejects a raw-key collision", () => {
+  test("flatten({ disableKeySchema: true }) still rejects a raw-key collision", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
       environment: "dev",
       keySchema: "{{environment}}_{{secretKey}}"
     });
 
-    expect(() => payload.flatten({ applySchema: false })).toThrow(/"DB_URL" in \/backend and \/backend\/api/);
+    expect(() => payload.flatten({ disableKeySchema: true })).toThrow(/"DB_URL" in \/backend and \/backend\/api/);
   });
 
   test("flatten() does not treat a name that only resembles a schema-prefixed one as a conflict", () => {
@@ -102,13 +102,13 @@ describe("createSecretSyncPayload", () => {
     expect(payload.findConflicts()).toEqual([]);
   });
 
-  test("findConflicts({ applySchema: false }) reports raw-key collisions instead of schema-applied ones", () => {
+  test("findConflicts({ disableKeySchema: true }) reports raw-key collisions instead of schema-applied ones", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
       environment: "dev",
       keySchema: "{{environment}}_{{secretKey}}"
     });
 
-    expect(payload.findConflicts({ applySchema: false })).toEqual([
+    expect(payload.findConflicts({ disableKeySchema: true })).toEqual([
       { key: "DB_URL", paths: ["/backend", "/backend/api"] }
     ]);
   });
@@ -158,14 +158,14 @@ describe("findFlattenConflicts", () => {
     expect(findFlattenConflicts({ secrets: [secret("DB_URL", "/")], environment: "dev" })).toEqual([]);
   });
 
-  test("applySchema: false reports raw-key collisions instead of schema-applied ones", () => {
+  test("disableKeySchema: true reports raw-key collisions instead of schema-applied ones", () => {
     const conflicts = findFlattenConflicts(
       {
         secrets: [secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")],
         environment: "dev",
         keySchema: "{{environment}}_{{secretKey}}"
       },
-      { applySchema: false }
+      { disableKeySchema: true }
     );
 
     expect(conflicts).toEqual([{ key: "DB_URL", paths: ["/backend", "/backend/api"] }]);
