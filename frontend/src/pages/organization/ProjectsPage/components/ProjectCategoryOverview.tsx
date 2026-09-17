@@ -59,42 +59,42 @@ const PRODUCT_STYLES: Record<
   [ProjectType.SecretManager]: {
     iconClassName: "text-product-sm",
     containerClassName:
-      "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
+      "bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-sm/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-sm/60"
   },
   [ProjectType.CertificateManager]: {
     iconClassName: "text-product-pki",
     containerClassName:
-      "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
+      "bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pki/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pki/60"
   },
   [ProjectType.KMS]: {
     iconClassName: "text-product-kms",
     containerClassName:
-      "border-product-kms/30 bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:border-product-kms/50 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
+      "bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-kms/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-kms/60"
   },
   [ProjectType.SecretScanning]: {
     iconClassName: "text-product-ss",
     containerClassName:
-      "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:border-product-ss/50 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
+      "bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-ss/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-ss/60"
   },
   [ProjectType.PAM]: {
     iconClassName: "text-product-pam",
     containerClassName:
-      "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
+      "bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
   },
   [ProjectType.AgentVault]: {
     iconClassName: "text-product-av",
     containerClassName:
-      "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
+      "bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:from-product-av/25 group-hover:to-product-av/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-av/60"
   }
@@ -423,7 +423,7 @@ export const ProjectCategoryOverview = () => {
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
               <div className="flex items-start gap-3">
-                <Skeleton className="size-12 shrink-0" />
+                <Skeleton className="size-9 shrink-0" />
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <Skeleton className="h-5 w-2/3" />
                   <Skeleton className="h-4 w-full" />
@@ -477,7 +477,7 @@ export const ProjectCategoryOverview = () => {
               <CardHeader>
                 <div className="flex items-start gap-3">
                   <div
-                    className={`flex size-12 shrink-0 items-center justify-center rounded-sm border transition-colors duration-200 ${containerClassName}`}
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-sm transition-colors duration-200 ${containerClassName}`}
                   >
                     <ProductPixelIcon type={type} className={iconClassName} />
                   </div>

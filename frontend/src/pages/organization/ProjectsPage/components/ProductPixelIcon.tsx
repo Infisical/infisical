@@ -22,11 +22,11 @@ type Props = {
 
 export const ProductPixelIcon = ({ type, className }: Props) => (
   <svg
-    width={32}
-    height={32}
+    width={24}
+    height={24}
     viewBox="0 0 32 32"
     fill="currentColor"
-    shapeRendering="crispEdges"
+    shapeRendering="geometricPrecision"
     aria-hidden="true"
     focusable="false"
     className={className}
