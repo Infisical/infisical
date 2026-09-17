@@ -30,7 +30,12 @@ export type GitHubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
 export type GitLabFormData = BaseFormData &
-  Pick<TGitLabConnection, "name" | "method" | "description" | "credentials">;
+  Pick<TGitLabConnection, "name" | "method" | "description"> & {
+    credentials: {
+      code: string;
+      instanceUrl?: string;
+    }
+  };
 
 export type AzureKeyVaultFormData = BaseFormData &
   Pick<
