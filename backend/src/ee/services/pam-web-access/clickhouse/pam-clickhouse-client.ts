@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 const REQUEST_TIMEOUT_MS = 30 * 60 * 1000;
 const CONNECT_TIMEOUT_MS = 30 * 1000;
 
-export const MAX_RESULT_BYTES = 64 * 1024 * 1024;
+export const MAX_RESULT_BYTES = 16 * 1024 * 1024;
 
 export const createRelayClient = (opts: {
   relayPort: number;
@@ -74,12 +74,16 @@ export const verifyRelayReachable = async (opts: { relayPort: number; database?:
   }
 };
 
-export const readStreamText = async (stream: Readable, maxBytes: number): Promise<string> => {
+export const readStreamText = async (
+  stream: Readable,
+  maxBytes: number
+): Promise<{ text: string; truncated: boolean }> => {
   // Stops an unhandled 'error' from taking the process down once iteration has moved on
   stream.on("error", () => {});
 
   const chunks: Buffer[] = [];
   let total = 0;
+  let truncated = false;
   try {
     for await (const chunk of stream) {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
@@ -87,6 +91,7 @@ export const readStreamText = async (stream: Readable, maxBytes: number): Promis
       if (buffer.length >= remaining) {
         chunks.push(buffer.subarray(0, remaining));
         total = maxBytes;
+        truncated = true;
         break;
       }
       chunks.push(buffer);
@@ -96,8 +101,18 @@ export const readStreamText = async (stream: Readable, maxBytes: number): Promis
     stream.destroy();
   }
 
-  return Buffer.concat(chunks).toString("utf8");
+  return { text: Buffer.concat(chunks).toString("utf8"), truncated };
 };
+
+export class ClickhouseResultTooLargeError extends Error {
+  constructor(maxBytes: number) {
+    super(
+      `This statement returned more than the ${Math.round(maxBytes / (1024 * 1024))} MB a browser session can hold. ` +
+        `Narrow the query, or use the CLI with your own client to read the full result.`
+    );
+    this.name = "ClickhouseResultTooLargeError";
+  }
+}
 
 export const clickhouseErrorFields = (err: unknown): { message?: string; detail?: string } => {
   if (err instanceof ClickHouseError) {

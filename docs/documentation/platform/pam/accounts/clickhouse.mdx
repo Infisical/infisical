@@ -54,7 +54,7 @@ CREATE USER pam_service IDENTIFIED WITH sha256_password BY '<password>';
 GRANT SELECT ON analytics.* TO pam_service;
 ```
 
-The account's **Database** sets what a session opens by default, not a boundary it stays inside: a session can query any database the user holds a grant on, and Web Access lists all of them. Scope the grants rather than the account's database field.
+Every session opens on the account's **Database**, whatever a client asks for. That is a starting point, not a limit: a session can still read any database the user has a grant on, and Web Access lists them all. Scope the grants, not the **Database** field.
 
 Command blocking matches the text of each statement, so a statement that builds SQL at runtime can run something a pattern would otherwise reject. Use ClickHouse grants for restrictions that have to hold.
 

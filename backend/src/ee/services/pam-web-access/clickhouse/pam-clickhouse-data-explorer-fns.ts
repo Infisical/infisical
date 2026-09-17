@@ -27,10 +27,37 @@ const skipLineComment = (sql: string, pos: number): number => {
   return i;
 };
 
+// ClickHouse nests block comments, so the first */ does not necessarily end one
 const skipBlockComment = (sql: string, pos: number): number => {
-  let i = pos + 2;
-  while (i + 1 < sql.length && !(sql[i] === "*" && sql[i + 1] === "/")) i += 1;
-  return Math.min(i + 2, sql.length);
+  let depth = 0;
+  let i = pos;
+  while (i < sql.length) {
+    if (sql[i] === "/" && sql[i + 1] === "*") {
+      depth += 1;
+      i += 2;
+    } else if (sql[i] === "*" && sql[i + 1] === "/") {
+      depth -= 1;
+      i += 2;
+      if (depth === 0) return i;
+    } else {
+      i += 1;
+    }
+  }
+  return sql.length;
+};
+
+// A $tag$ ... $tag$ heredoc carries its contents verbatim, semicolons included
+const heredocTagAt = (sql: string, pos: number): string | null => {
+  if (sql[pos] !== "$") return null;
+  let i = pos + 1;
+  while (i < sql.length && /[A-Za-z0-9_]/.test(sql[i])) i += 1;
+  if (sql[i] !== "$") return null;
+  return sql.slice(pos, i + 1);
+};
+
+const skipHeredoc = (sql: string, pos: number, tag: string): number => {
+  const end = sql.indexOf(tag, pos + tag.length);
+  return end === -1 ? sql.length : end + tag.length;
 };
 
 // The HTTP interface runs one statement per request, so an editor tab's script is split here
@@ -41,8 +68,11 @@ export const splitClickhouseStatements = (sql: string): string[] => {
 
   while (pos < sql.length) {
     const ch = sql[pos];
+    const heredocTag = heredocTagAt(sql, pos);
 
-    if (ch === "'" || ch === '"' || ch === "`") {
+    if (heredocTag) {
+      pos = skipHeredoc(sql, pos, heredocTag);
+    } else if (ch === "'" || ch === '"' || ch === "`") {
       pos = skipQuoted(sql, pos, ch);
     } else if (isLineComment(sql, pos)) {
       pos = skipLineComment(sql, pos);
@@ -86,11 +116,17 @@ export const extractCommand = (sql: string): string => {
 };
 
 export const uniqueFieldNames = (names: string[]): string[] => {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   return names.map((name) => {
-    const count = seen.get(name) ?? 0;
-    seen.set(name, count + 1);
-    return count === 0 ? name : `${name}_${count}`;
+    if (!used.has(name)) {
+      used.add(name);
+      return name;
+    }
+    let suffix = 1;
+    while (used.has(`${name}_${suffix}`)) suffix += 1;
+    const unique = `${name}_${suffix}`;
+    used.add(unique);
+    return unique;
   });
 };
 

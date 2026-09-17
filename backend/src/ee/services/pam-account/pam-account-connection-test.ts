@@ -389,15 +389,14 @@ export const buildGatewayConnectionTest = async (
         sslCertificate?: string;
       };
       const c = creds as { username: string; password?: string } | null;
-      const username = (c?.username ?? (credentials?.username as string | undefined))?.trim();
-      if (!username) return tcp(host, port);
+      if (!c) return tcp(host, port);
       return {
         host,
         port,
         request: {
           mode: TestConnectionMode.ClickHouse,
-          username,
-          password: c?.password,
+          username: c.username,
+          password: c.password,
           database: cd.database,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,

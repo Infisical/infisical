@@ -602,7 +602,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       database: z.string().trim().min(1).max(255),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
-      sslCertificate: optionalTrimmedString
+      sslCertificate: boundedOptionalString(16384)
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),

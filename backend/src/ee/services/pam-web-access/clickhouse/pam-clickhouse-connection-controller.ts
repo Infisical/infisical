@@ -12,6 +12,7 @@ import {
 } from "../pam-data-explorer-ws-types";
 import {
   clickhouseErrorFields,
+  ClickhouseResultTooLargeError,
   isRelayGoneError,
   MAX_RESULT_BYTES,
   openRelayClient,
@@ -111,7 +112,10 @@ export const createClickhouseConnectionController = async (
       }
     });
 
-    return parseStatementBody(await readStreamText(stream, MAX_RESULT_BYTES), summary);
+    const { text, truncated } = await readStreamText(stream, MAX_RESULT_BYTES);
+    if (truncated) throw new ClickhouseResultTooLargeError(MAX_RESULT_BYTES);
+
+    return parseStatementBody(text, summary);
   };
 
   const runQuery = async (sql: string) => {

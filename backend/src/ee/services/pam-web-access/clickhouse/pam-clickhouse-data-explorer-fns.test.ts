@@ -51,6 +51,18 @@ describe("splitClickhouseStatements", () => {
     expect(splitClickhouseStatements("SELECT /* a;b */ 1; SELECT 2")).toEqual(["SELECT /* a;b */ 1", "SELECT 2"]);
   });
 
+  test("semicolon inside a heredoc", () => {
+    expect(splitClickhouseStatements("SELECT $doc$a;b$doc$; SELECT 2")).toEqual(["SELECT $doc$a;b$doc$", "SELECT 2"]);
+    expect(splitClickhouseStatements("SELECT $$a;b$$; SELECT 2")).toEqual(["SELECT $$a;b$$", "SELECT 2"]);
+  });
+
+  test("semicolon inside a nested block comment", () => {
+    expect(splitClickhouseStatements("SELECT /* outer /* inner; */ tail; */ 1; SELECT 2")).toEqual([
+      "SELECT /* outer /* inner; */ tail; */ 1",
+      "SELECT 2"
+    ]);
+  });
+
   test("an unterminated literal swallows the rest rather than splitting inside it", () => {
     expect(splitClickhouseStatements("SELECT 'oops; SELECT 2")).toEqual(["SELECT 'oops; SELECT 2"]);
   });
@@ -65,6 +77,10 @@ describe("extractCommand", () => {
     expect(extractCommand("/* a comment */ OPTIMIZE TABLE t")).toBe("OPTIMIZE");
   });
 
+  test("skips a nested block comment before the keyword", () => {
+    expect(extractCommand("/* a /* nested */ comment */ SELECT 1")).toBe("SELECT");
+  });
+
   test("stops at a delimiter and handles an empty statement", () => {
     expect(extractCommand("SELECT(1)")).toBe("SELECT");
     expect(extractCommand("")).toBe("");
@@ -75,6 +91,11 @@ describe("uniqueFieldNames", () => {
   test("leaves distinct names alone and disambiguates repeats", () => {
     expect(uniqueFieldNames(["a", "b"])).toEqual(["a", "b"]);
     expect(uniqueFieldNames(["a", "a", "a"])).toEqual(["a", "a_1", "a_2"]);
+  });
+
+  test("a generated suffix never collides with a real column of that name", () => {
+    expect(uniqueFieldNames(["a", "a", "a_1"])).toEqual(["a", "a_1", "a_1_1"]);
+    expect(uniqueFieldNames(["a", "a_1", "a"])).toEqual(["a", "a_1", "a_2"]);
   });
 });
 
