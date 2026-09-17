@@ -89,7 +89,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      if (event.key === ",") {
+      if (event.key === "," || event.key === " ") {
         event.preventDefault();
         commit(draft);
       }
@@ -97,7 +97,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
       const pasted = event.clipboardData.getData("text");
-      const splitOn = /[\n\r,]/;
+      const splitOn = /[\n\r, ]/;
       if (!splitOn.test(pasted)) return;
 
       event.preventDefault();
