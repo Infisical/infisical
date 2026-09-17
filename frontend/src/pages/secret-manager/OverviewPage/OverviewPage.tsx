@@ -2662,57 +2662,49 @@ const OverviewPageContent = () => {
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <div className="flex min-w-0 flex-1 items-center overflow-hidden px-1 whitespace-nowrap">
-                <FolderBreadcrumb
-                  secretPath={secretPath}
-                  onManageFolderAccess={
-                    canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
-                  }
-                />
-              </div>
-              {userAvailableEnvs.length > 0 && (
-                <div className="shrink-0">
-                  <AddResourceButtons {...addResourceButtonsProps} />
+            <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 md:flex-nowrap">
+                <div className="max-w-full shrink-0">
+                  <EnvironmentSelect
+                    selectedEnvs={filteredEnvs}
+                    setSelectedEnvs={setFilteredEnvs}
+                    isDisabled={
+                      isBatchModeActive &&
+                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                    }
+                  />
                 </div>
-              )}
-            </div>
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <div className="max-w-full shrink-0">
-                <EnvironmentSelect
-                  selectedEnvs={filteredEnvs}
-                  setSelectedEnvs={setFilteredEnvs}
-                  isDisabled={
-                    isBatchModeActive &&
-                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                  }
+                <ResourceSearchInput
+                  key={secretPath}
+                  className="max-w-2xl min-w-0 flex-1 basis-48"
+                  value={searchFilter}
+                  tags={tags}
+                  onChange={setSearchFilter}
+                  onSelectResult={({ search }) => setSearchFilter(search)}
+                  environments={userAvailableEnvs}
+                  projectId={currentProject?.id}
                 />
+                {userAvailableEnvs.length > 0 && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <ResourceFilter
+                      rowTypeFilter={filter}
+                      onToggleRowType={handleToggleRowType}
+                      tags={tags}
+                      selectedTagSlugs={tagFilter}
+                      onToggleTag={handleToggleTag}
+                      onClearTags={handleClearTags}
+                    />
+                    <DownloadEnvButton
+                      secretPath={secretPath}
+                      environments={visibleEnvs}
+                      projectId={projectId}
+                    />
+                  </div>
+                )}
               </div>
-              <ResourceSearchInput
-                key={secretPath}
-                className="min-w-0 flex-1 basis-48"
-                value={searchFilter}
-                tags={tags}
-                onChange={setSearchFilter}
-                onSelectResult={({ search }) => setSearchFilter(search)}
-                environments={userAvailableEnvs}
-                projectId={currentProject?.id}
-              />
               {userAvailableEnvs.length > 0 && (
-                <div className="flex shrink-0 items-center gap-2">
-                  <ResourceFilter
-                    rowTypeFilter={filter}
-                    onToggleRowType={handleToggleRowType}
-                    tags={tags}
-                    selectedTagSlugs={tagFilter}
-                    onToggleTag={handleToggleTag}
-                    onClearTags={handleClearTags}
-                  />
-                  <DownloadEnvButton
-                    secretPath={secretPath}
-                    environments={visibleEnvs}
-                    projectId={projectId}
-                  />
+                <div className="flex justify-end">
+                  <AddResourceButtons {...addResourceButtonsProps} />
                 </div>
               )}
             </div>
@@ -2796,6 +2788,24 @@ const OverviewPageContent = () => {
                 </AlertTitle>
               </Alert>
             ) : null)}
+          <div
+            className={twMerge(
+              "flex h-10 min-w-0 items-center border border-border bg-container-hover whitespace-nowrap",
+              tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
+            )}
+          >
+            <FolderBreadcrumb projectName={currentProject.name} secretPath={secretPath} />
+            {canManageCurrentFolderAccess && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className="mr-1.5 shrink-0"
+                onClick={handleCurrentFolderAccessOpen}
+              >
+                Manage Access
+              </Button>
+            )}
+          </div>
           {tableView === "no-environments" && (
             <EmptyResourceDisplay
               variant="no-environments"
@@ -2819,8 +2829,8 @@ const OverviewPageContent = () => {
               <DragDropProvider onDragEnd={handleSecretImportReorder}>
                 <Table
                   ref={tableRef}
-                  className="border-separate border-spacing-0"
-                  containerClassName="overscroll-x-none"
+                  className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
+                  containerClassName="overscroll-x-none rounded-t-none"
                 >
                   <TableHeader>
                     <TableRow className="h-10">
