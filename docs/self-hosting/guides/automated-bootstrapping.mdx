@@ -140,7 +140,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     ```
 
     <Warning>
-      Chart versions before 1.10.1 shipped `secretDestination.namespace` as the literal string
+      Chart versions before 1.11.0 shipped `secretDestination.namespace` as the literal string
       `default`, so the fallback to the release namespace never applied. Those releases wrote the
       instance admin token to the `default` namespace and still reported a successful install.
 
@@ -157,7 +157,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
       --namespace=release-namespace
     ```
 
-    ### Migrating from chart versions before 1.10.1
+    ### Migrating from chart versions before 1.11.0
 
     Upgrading moves the bootstrap Role and RoleBinding to the release namespace, but it leaves the
     secret itself in `default`. The bootstrap job is a post-install hook, and an instance can be
