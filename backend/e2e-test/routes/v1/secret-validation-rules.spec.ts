@@ -1,9 +1,7 @@
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createFolder } from "e2e-test/testUtils/folders";
 import { createStaticSecretsValidationRule } from "e2e-test/testUtils/secret-validation-rules";
-import { createSecretV2 } from "e2e-test/testUtils/secrets";
-
-import { SecretType } from "@app/db/schemas";
+import { createSecretV2, updateSecretV2 } from "e2e-test/testUtils/secrets";
 
 const PROD_ENV = "prod";
 const STAGING_ENV = "staging";
@@ -110,25 +108,20 @@ describe("Secret validation rules", () => {
         authToken
       });
 
-      const res = await testServer.inject({
-        method: "POST",
-        url: "/api/v3/secrets/raw/DUPLICATE",
-        headers: { authorization: `Bearer ${authToken}` },
-        body: {
-          workspaceId: projectId,
-          environment: PROD_ENV,
-          type: SecretType.Shared,
-          secretPath: "/",
-          secretKey: "DUPLICATE",
-          secretValue: "duplicated-value"
-        }
-      });
-
-      expect(res.statusCode).toBe(400);
       // The writer is a project admin here, so the message names where the value is already held.
-      expect(res.json().message).toContain('Secret "DUPLICATE"');
-      expect(res.json().message).toContain('value is already used by secret "ORIGINAL"');
-      expect(res.json().message).toContain(`environment "${PROD_ENV}"`);
+      await createSecretV2({
+        workspaceId: projectId,
+        environmentSlug: PROD_ENV,
+        secretPath: "/",
+        key: "DUPLICATE",
+        value: "duplicated-value",
+        authToken
+      }).expect((res) => {
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toContain('Secret "DUPLICATE"');
+        expect(res.json().message).toContain('value is already used by secret "ORIGINAL"');
+        expect(res.json().message).toContain(`environment "${PROD_ENV}"`);
+      });
     });
 
     test("rejects updating a secret to a value production already holds", async () => {
@@ -149,23 +142,19 @@ describe("Secret validation rules", () => {
         authToken
       });
 
-      const res = await testServer.inject({
-        method: "PATCH",
-        url: "/api/v3/secrets/raw/UPDATE_TARGET",
-        headers: { authorization: `Bearer ${authToken}` },
-        body: {
-          workspaceId: projectId,
-          environment: PROD_ENV,
-          type: SecretType.Shared,
-          secretPath: "/",
-          secretValue: "value-held-by-another-secret"
-        }
+      await updateSecretV2({
+        workspaceId: projectId,
+        environmentSlug: PROD_ENV,
+        secretPath: "/",
+        key: "UPDATE_TARGET",
+        value: "value-held-by-another-secret",
+        authToken
+      }).expect((res) => {
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toContain('Secret "UPDATE_TARGET"');
+        expect(res.json().message).toContain('value is already used by secret "UPDATE_HOLDER"');
+        expect(res.json().message).toContain(`environment "${PROD_ENV}"`);
       });
-
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toContain('Secret "UPDATE_TARGET"');
-      expect(res.json().message).toContain('value is already used by secret "UPDATE_HOLDER"');
-      expect(res.json().message).toContain(`environment "${PROD_ENV}"`);
     });
 
     test("accepts re-saving a secret with the value it already holds", async () => {
@@ -179,21 +168,17 @@ describe("Secret validation rules", () => {
       });
 
       // The secret being written is excluded from the lookup, so it does not collide with itself.
-      const res = await testServer.inject({
-        method: "PATCH",
-        url: "/api/v3/secrets/raw/SELF_UPDATE",
-        headers: { authorization: `Bearer ${authToken}` },
-        body: {
-          workspaceId: projectId,
-          environment: PROD_ENV,
-          type: SecretType.Shared,
-          secretPath: "/",
-          secretValue: "self-update-value",
-          secretComment: "touched"
-        }
+      const updated = await updateSecretV2({
+        workspaceId: projectId,
+        environmentSlug: PROD_ENV,
+        secretPath: "/",
+        key: "SELF_UPDATE",
+        value: "self-update-value",
+        comment: "touched",
+        authToken
       });
 
-      expect(res.statusCode).toBe(200);
+      expect(updated.secretValue).toBe("self-update-value");
     });
   });
 });
