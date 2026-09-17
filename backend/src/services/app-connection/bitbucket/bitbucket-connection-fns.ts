@@ -2,6 +2,7 @@ import { AxiosError, HttpStatusCode } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -70,47 +71,16 @@ interface BitbucketWorkspaceMembership {
   workspace: { slug: string };
 }
 
-interface BitbucketWorkspacesResponse {
-  values: BitbucketWorkspaceMembership[];
-  next?: string;
-}
-
-export const listBitbucketWorkspaces = async (appConnection: TBitbucketConnection, search?: string) => {
-  const { email, apiToken } = appConnection.credentials;
-
-  const headers = {
-    Authorization: createAuthHeader(email, apiToken),
-    Accept: "application/json"
-  };
-
-  let allWorkspaces: TBitbucketWorkspace[] = [];
-
-  const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces`);
-  baseUrl.searchParams.set("pagelen", BITBUCKET_PAGE_SIZE.toString());
-  if (search) {
-    baseUrl.searchParams.set("q", `slug ~ "${search.replace(/"/g, "")}"`);
-  }
-
-  const endpoint = baseUrl.toString();
-  try {
-    const { data }: { data: BitbucketWorkspacesResponse } = await request.get<BitbucketWorkspacesResponse>(endpoint, {
-      headers
-    });
-
-    allWorkspaces = allWorkspaces.concat(data.values.map((membership) => ({ slug: membership.workspace.slug })));
-  } catch (error) {
-    ensureBitbucketRateLimitNotExceeded(error);
-  }
-
-  return allWorkspaces;
-};
-
 interface BitbucketPaginatedResponse<T> {
   values: T[];
   next?: string;
 }
 
-const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, string>): Promise<T[]> => {
+const paginateBitbucketRequest = async <T>(
+  url: string,
+  headers: Record<string, string>,
+  username?: string
+): Promise<T[]> => {
   let allItems: T[] = [];
   let nextUrl: string | undefined = url;
   let iterationCount = 0;
@@ -124,6 +94,13 @@ const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, 
       nextUrl = data.next;
       iterationCount += 1;
     }
+
+    if (nextUrl) {
+      const userTag = username ? ` [username=${username}]` : "";
+      logger.warn(
+        `Stopped listing Bitbucket resources from ${sanitizeUrlForLog(url)} after ${BITBUCKET_MAX_PAGES} pages${userTag}; some results were not returned`
+      );
+    }
   } catch (error) {
     ensureBitbucketRateLimitNotExceeded(error);
   }
@@ -131,11 +108,32 @@ const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, 
   return allItems;
 };
 
+export const listBitbucketWorkspaces = async (
+  appConnection: TBitbucketConnection,
+  search?: string
+): Promise<TBitbucketWorkspace[]> => {
+  const { email, apiToken } = appConnection.credentials;
+
+  const headers = {
+    Authorization: createAuthHeader(email, apiToken),
+    Accept: "application/json"
+  };
+
+  const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/user/workspaces`);
+  baseUrl.searchParams.set("pagelen", BITBUCKET_PAGE_SIZE.toString());
+  if (search) {
+    baseUrl.searchParams.set("q", `slug ~ "${search.replace(/"/g, "")}"`);
+  }
+
+  const memberships = await paginateBitbucketRequest<BitbucketWorkspaceMembership>(baseUrl.toString(), headers, email);
+  return memberships.map((membership) => ({ slug: membership.workspace.slug }));
+};
+
 export const listBitbucketRepositories = async (
   appConnection: TBitbucketConnection,
   workspaceSlug: string,
   search?: string
-) => {
+): Promise<TBitbucketRepo[]> => {
   const { email, apiToken } = appConnection.credentials;
 
   const headers = {
@@ -144,27 +142,21 @@ export const listBitbucketRepositories = async (
   };
 
   const encodedSlug = encodeURIComponent(workspaceSlug);
-
-  try {
-    const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}`);
-    baseUrl.searchParams.set("pagelen", String(BITBUCKET_PAGE_SIZE));
-    baseUrl.searchParams.set("sort", "slug");
-    if (search) {
-      baseUrl.searchParams.set("q", `name ~ "${search.replace(/"/g, "")}"`);
-    }
-
-    const { data } = await request.get<BitbucketPaginatedResponse<TBitbucketRepo>>(baseUrl.toString(), { headers });
-    return data.values;
-  } catch (error) {
-    return ensureBitbucketRateLimitNotExceeded(error);
+  const baseUrl = new URL(`${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodedSlug}`);
+  baseUrl.searchParams.set("pagelen", String(BITBUCKET_PAGE_SIZE));
+  baseUrl.searchParams.set("sort", "slug");
+  if (search) {
+    baseUrl.searchParams.set("q", `name ~ "${search.replace(/"/g, "")}"`);
   }
+
+  return paginateBitbucketRequest<TBitbucketRepo>(baseUrl.toString(), headers, email);
 };
 
 export const listBitbucketEnvironments = async (
   appConnection: TBitbucketConnection,
   workspaceSlug: string,
   repositorySlug: string
-) => {
+): Promise<TBitbucketEnvironment[]> => {
   const { email, apiToken } = appConnection.credentials;
 
   const headers = {
@@ -172,10 +164,9 @@ export const listBitbucketEnvironments = async (
     Accept: "application/json"
   };
 
-  // We still need to paginate this one as it's the only endpoint we use that doesn't support searching
-  // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-deployments/#api-repositories-workspace-repo-slug-environments-get
   return paginateBitbucketRequest<TBitbucketEnvironment>(
     `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=${BITBUCKET_PAGE_SIZE}`,
-    headers
+    headers,
+    email
   );
 };
