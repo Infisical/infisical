@@ -24,8 +24,9 @@ jobs:
     steps:
       - name: Resolve tag
         id: release
+        env:
+          TAG_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
-          TAG_NAME="${{ inputs.tag || github.ref_name }}"
           if ! echo "$TAG_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "Skipping non-stable release tag: $TAG_NAME"
             echo "stable=false" >> "$GITHUB_OUTPUT"
@@ -68,11 +69,12 @@ jobs:
 
       - name: Generate upgrade impact data
         if: steps.release.outputs.stable == 'true'
-        run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
         working-directory: upgrade-impact
         env:
+          TAG: ${{ steps.release.outputs.tag }}
           UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run generate -- --tag "$TAG"
 
       - name: Validate upgrade impact data
         if: steps.release.outputs.stable == 'true'
