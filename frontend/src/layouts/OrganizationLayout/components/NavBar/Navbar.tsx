@@ -382,7 +382,7 @@ export const Navbar = () => {
             </Tooltip>
             <Link
               to="/admin"
-              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-white transition-all duration-100"
+              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-foreground transition-all duration-100"
             >
               <InstanceIcon className="size-3.5 text-admin" />
               <div className="whitespace-nowrap">Server Console</div>
