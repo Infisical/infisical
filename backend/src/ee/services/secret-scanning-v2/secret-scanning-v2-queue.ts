@@ -330,7 +330,10 @@ export const secretScanningV2QueueServiceFactory = ({
        * the scan and its lease — once the reaper has given up on it, or another scan of the resource
        * has taken over, there is nothing left to make progress on.
        */
-      const persistBatch = async (batchFindings: TFindingsPayload, lastScannedCommit?: string) => {
+      const persistBatch = async (
+        batchFindings: TFindingsPayload,
+        resumePoint?: { lastScannedCommit: string; lastScannedCommitDigest: string }
+      ) => {
         const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
           if (batchFindings.length) {
             const findings = await secretScanningV2DAL.findings.upsert(
@@ -353,7 +356,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
           const progressed = await secretScanningV2DAL.scans.update(
             { id: scanId, status: SecretScanningScanStatus.Scanning },
-            { lastScannedCommit, progressUpdatedAt: new Date() },
+            { ...resumePoint, progressUpdatedAt: new Date() },
             tx
           );
 
@@ -394,14 +397,17 @@ export const secretScanningV2QueueServiceFactory = ({
           const plan = await planCommitBatches({
             repoPath: scanPath,
             batchSize,
-            resumeAfterCommit: scan.lastScannedCommit
+            resumeAfterCommit: scan.lastScannedCommit,
+            resumeAfterCommitDigest: scan.lastScannedCommitDigest
           });
 
-          // A rewritten history (force push, or a rebase landing between runs) can take the commit
-          // this scan stopped at out of the repository entirely, leaving nothing to resume from.
+          // Two ways a resume point stops meaning anything: a rewritten history (force push, or a
+          // rebase landing between runs) takes the commit out of the repository entirely, or a newly
+          // reachable ref puts commits ahead of it that this scan has never looked at. Either way the
+          // repository is re-walked from the start rather than resumed past commits nobody scanned.
           if (scan.lastScannedCommit && !plan.resumed) {
             logger.warn(
-              `secretScanningV2Queue: Full Scan resume point is no longer in the repository, restarting ${logDetails} [lastScannedCommit=${scan.lastScannedCommit}]`
+              `secretScanningV2Queue: Full Scan cannot resume, restarting ${logDetails} [lastScannedCommit=${scan.lastScannedCommit}] [reason=${plan.prefixChanged ? "history before the resume point changed" : "resume point is no longer in the repository"}]`
             );
           }
 
@@ -421,7 +427,10 @@ export const secretScanningV2QueueServiceFactory = ({
             findingsCount += batchFindings.length;
 
             // eslint-disable-next-line no-await-in-loop
-            stillOwned = await persistBatch(batchFindings, batch.lastCommit);
+            stillOwned = await persistBatch(batchFindings, {
+              lastScannedCommit: batch.lastCommit,
+              lastScannedCommitDigest: batch.prefixDigest
+            });
 
             if (!stillOwned) break;
 

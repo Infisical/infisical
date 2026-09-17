@@ -156,9 +156,16 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
 };
 
 /**
- * Commits are enumerated oldest-first and scanned in slices of that order, because that is the only
- * ordering a resumed scan can trust: new commits land at the end, so an index into it still means
- * the same commit on the next run, where a newest-first index shifts under every push.
+ * Commits are enumerated oldest-first and scanned in slices of that order, because a newest-first
+ * index shifts under every push while an oldest-first one usually survives: an ordinary push lands
+ * its commits at the end, leaving everything before them where it was.
+ *
+ * "Usually" is not "always", which is what `lastScannedCommitDigest` is for. A ref that
+ * becomes reachable between two runs — a new branch, a fetched tag — brings its commits in at their
+ * own dates, which can be older than the resume point, so they sort into the middle of the ordering
+ * and push every later index up. An index alone cannot tell that apart from the commits it used to
+ * name, so the prefix is digested as it is walked and the resumed run checks the digest it stored
+ * against the prefix it now sees.
  *
  * `git log` itself only walks newest-first, so a slice is expressed as a skip/count against that
  * order. Both halves must enumerate with identical flags for the two orderings to correspond.
@@ -171,6 +178,13 @@ export type TCommitBatch = {
   maxCount: number;
   /** The batch's newest commit, recorded as the scan's resume point once the batch completes. */
   lastCommit: string;
+  /**
+   * Digest of every commit up to and including `lastCommit`, recorded beside it so the next run can
+   * tell if a new commit has creeped into this batch and it needs to be rescanned.
+   *
+   * This scenario can happen if a rebase happens in the repository.
+   */
+  prefixDigest: string;
 };
 
 const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>
@@ -185,16 +199,26 @@ const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>
 export const planCommitBatches = async ({
   repoPath,
   batchSize,
-  resumeAfterCommit
+  resumeAfterCommit,
+  resumeAfterCommitDigest
 }: {
   repoPath: string;
   batchSize: number;
   resumeAfterCommit?: string | null;
-}): Promise<{ totalCommits: number; batches: TCommitBatch[]; resumed: boolean }> => {
-  const boundaries: { index: number; commit: string }[] = [];
+  resumeAfterCommitDigest?: string | null;
+}): Promise<{
+  totalCommits: number;
+  batches: TCommitBatch[];
+  resumed: boolean;
+  /** Set when the resume point is still present but the history before it is not the history that was scanned. */
+  prefixChanged: boolean;
+}> => {
+  const boundaries: { index: number; commit: string; prefixDigest: string }[] = [];
   let totalCommits = 0;
   let resumeIndex = -1;
+  let resumePrefixDigest = "";
   let newestCommit = "";
+  let prefixDigest = "";
 
   // A repository with hundreds of thousands of commits emits more than the exec layer will buffer,
   // and nothing here needs the full list: only the batch edges and the resume point are retained.
@@ -210,28 +234,44 @@ export const planCommitBatches = async ({
       const index = totalCommits;
       totalCommits += 1;
       newestCommit = commit;
+      prefixDigest = crypto.nativeCrypto.createHash("sha256").update(`${prefixDigest}${commit}`).digest("hex");
 
-      if (commit === resumeAfterCommit) resumeIndex = index;
-      if ((index + 1) % batchSize === 0) boundaries.push({ index, commit });
+      if (commit === resumeAfterCommit) {
+        resumeIndex = index;
+        resumePrefixDigest = prefixDigest;
+      }
+      if ((index + 1) % batchSize === 0) boundaries.push({ index, commit, prefixDigest });
     }
   });
 
   const lastIndex = totalCommits - 1;
   if (totalCommits && boundaries[boundaries.length - 1]?.index !== lastIndex) {
-    boundaries.push({ index: lastIndex, commit: newestCommit });
+    boundaries.push({ index: lastIndex, commit: newestCommit, prefixDigest });
   }
 
+  // Commits that became reachable since the last run can sort in ahead of the resume point, so the
+  // indexes after it no longer name the commits they named then. Skipping to that index would step
+  // over commits this scan has never looked at, so the only safe reading of the plan is a fresh one.
+  const prefixChanged = resumeIndex >= 0 && resumePrefixDigest !== resumeAfterCommitDigest;
+  const resumableIndex = prefixChanged ? -1 : resumeIndex;
+
   const batches = boundaries
-    .map(({ index, commit }, position) => ({
+    .map(({ index, commit, prefixDigest: boundaryPrefixDigest }, position) => ({
       index,
       skip: totalCommits - 1 - index,
       maxCount: index - position * batchSize + 1,
-      lastCommit: commit
+      lastCommit: commit,
+      prefixDigest: boundaryPrefixDigest
     }))
-    .filter(({ index }) => index > resumeIndex)
-    .map(({ skip, maxCount, lastCommit }) => ({ skip, maxCount, lastCommit }));
+    .filter(({ index }) => index > resumableIndex)
+    .map(({ skip, maxCount, lastCommit, prefixDigest: boundaryPrefixDigest }) => ({
+      skip,
+      maxCount,
+      lastCommit,
+      prefixDigest: boundaryPrefixDigest
+    }));
 
-  return { totalCommits, batches, resumed: resumeIndex >= 0 };
+  return { totalCommits, batches, resumed: resumableIndex >= 0, prefixChanged };
 };
 
 export async function scanDirectory(
