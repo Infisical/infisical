@@ -37,7 +37,7 @@ const projectGroupMembershipRoleSchema = z.object({
 const projectGroupMembershipSchema = z.object({
   id: z.string().uuid(),
   groupId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   group: GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
     orgId: z.string().uuid().optional()
   }),
