@@ -144,7 +144,7 @@ export const getPkiSyncConnectionApps = (destination: PkiSync): AppConnection[] 
 ];
 
 export const BOOLEAN_SYNC_OPTION_FIELDS = [
-  { key: "canRemoveCertificates", label: "Remove Expired/Revoked Certificates" },
+  { key: "canRemoveCertificates", label: "Allow to remove certificates from destination" },
   { key: "canImportCertificates", label: "Import Certificates" },
   { key: "includeRootCa", label: "Include Root CA in Chain" },
   { key: "preserveArn", label: "Preserve ARN on Renewal" },

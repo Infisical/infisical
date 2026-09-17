@@ -304,6 +304,7 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
       </Modal>
 
       <UpgradePlanModal
+        paywallKey="cert-manager.ca-distribution-points"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Certificate revocation lists are available on Infisical's Enterprise plan."

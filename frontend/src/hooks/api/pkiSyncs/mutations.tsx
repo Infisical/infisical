@@ -7,6 +7,8 @@ import {
   TCreatePkiSyncDTO,
   TDeletePkiSyncDTO,
   TPkiSync,
+  TPkiSyncFilterPreview,
+  TPkiSyncFilters,
   TPkiSyncHealthCheckResult,
   TTriggerPkiSyncImportCertificatesDTO,
   TTriggerPkiSyncRemoveCertificatesDTO,
@@ -59,6 +61,7 @@ export const useUpdatePkiSync = () => {
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.certificates(syncId) });
     }
   });
 };
@@ -92,6 +95,7 @@ export const useTestPkiSyncHealthCheck = () => {
       applicationId,
       syncId,
       certificateIds,
+      filters,
       destinationConfig,
       syncOptions
     }: {
@@ -100,12 +104,21 @@ export const useTestPkiSyncHealthCheck = () => {
       applicationId?: string;
       syncId?: string;
       certificateIds?: string[];
+      filters?: TPkiSyncFilters | null;
       destinationConfig: Record<string, unknown>;
       syncOptions: Record<string, unknown>;
     }) => {
       const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
         `/api/v1/cert-manager/syncs/${destination}/test-health-check`,
-        { connectionId, applicationId, syncId, certificateIds, destinationConfig, syncOptions }
+        {
+          connectionId,
+          applicationId,
+          syncId,
+          certificateIds,
+          filters,
+          destinationConfig,
+          syncOptions
+        }
       );
 
       return data.healthCheck;
@@ -285,6 +298,25 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
       if (context?.previousPkiSync) {
         queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), context.previousPkiSync);
       }
+    }
+  });
+};
+
+export const usePreviewPkiSyncFilters = () => {
+  return useMutation({
+    mutationFn: async ({
+      pkiSyncId,
+      filters
+    }: {
+      pkiSyncId: string;
+      filters?: TPkiSyncFilters | null;
+    }) => {
+      const { data } = await apiRequest.post<TPkiSyncFilterPreview>(
+        "/api/v1/cert-manager/syncs/certificates/search",
+        { pkiSyncId, filters: filters ?? null }
+      );
+
+      return data;
     }
   });
 };

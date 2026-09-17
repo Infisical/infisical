@@ -15,6 +15,7 @@ import { getSignupProduct, SignupProductType } from "@app/components/auth/signup
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
+import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -227,7 +228,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
 
   const renderBottomContent = () => {
     if (section === SignupSection.Email) {
-      return <AuthTermsNotice />;
+      return <AuthTermsNotice showCaptchaNotice={Boolean(envConfig.CAPTCHA_SITE_KEY)} />;
     }
 
     if (section === SignupSection.VerifyCode) {

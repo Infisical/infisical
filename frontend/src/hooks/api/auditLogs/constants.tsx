@@ -188,6 +188,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PKI_SYNC]: "Create PKI sync",
   [EventType.UPDATE_PKI_SYNC]: "Update PKI sync",
   [EventType.DELETE_PKI_SYNC]: "Delete PKI sync",
+  [EventType.PKI_SYNC_LINK_CERTIFICATES]: "PKI Sync linked certificates",
+  [EventType.PKI_SYNC_UNLINK_CERTIFICATES]: "PKI Sync unlinked certificates",
+  [EventType.PKI_SYNC_SKIP_CERTIFICATE]: "PKI Sync skipped a certificate",
   [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
   [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
   [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
@@ -376,7 +379,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
   [EventType.GET_CERTIFICATE_PROFILE]: "Get Certificate Profile",
   [EventType.LIST_CERTIFICATE_PROFILES]: "List Certificate Profiles",
-  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Request Certificate From Profile",
+  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:

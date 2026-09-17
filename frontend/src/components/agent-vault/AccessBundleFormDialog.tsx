@@ -86,7 +86,7 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
         <DialogHeader>
           <DialogTitle>{isUpdate ? "Edit Access Bundle" : "Create Access Bundle"}</DialogTitle>
           <DialogDescription>
-            An access bundle groups the services an agent may use.
+            An access bundle groups the services an agent can reach in one session.
           </DialogDescription>
         </DialogHeader>
 
@@ -103,7 +103,7 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
                     placeholder="on-call-infrastructure"
                     isError={Boolean(fieldState.error)}
                   />
-                  <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
+                  <FieldDescription>Use lowercase letters, numbers, and hyphens.</FieldDescription>
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>

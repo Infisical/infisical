@@ -478,7 +478,7 @@ const Page = () => {
         </PageHeader>
         <div className="flex flex-col gap-5 lg:flex-row">
           <CertificateOverviewSection certificateId={certificate.id} />
-          <div className="flex flex-1 flex-col gap-y-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <CertificateDetailsSection certificateId={certificate.id} />
             <CertificateInstallationsSection certificateId={certificate.id} />
           </div>

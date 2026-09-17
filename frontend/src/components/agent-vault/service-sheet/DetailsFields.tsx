@@ -25,7 +25,7 @@ export const DetailsFields = () => {
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
               <Input {...field} placeholder="datadog-us5" isError={Boolean(fieldState.error)} />
-              <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
+              <FieldDescription>Use lowercase letters, numbers, and hyphens.</FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
           </Field>
@@ -46,7 +46,7 @@ export const DetailsFields = () => {
                 isError={Boolean(fieldState.error)}
               />
               <FieldDescription>
-                Comma separated. Wildcards like *.example.com are allowed.
+                Separate multiple hosts with commas. Wildcards like *.example.com are allowed.
               </FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
