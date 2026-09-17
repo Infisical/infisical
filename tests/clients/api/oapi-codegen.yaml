@@ -41,3 +41,6 @@ output-options:
     - attachUniversalAuth
     - createUniversalAuthClientSecret
     - loginWithUniversalAuth
+    - createSecretV4
+    - getSecretByNameV4
+    - listSecretsV4
