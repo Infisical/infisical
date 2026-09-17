@@ -4,6 +4,7 @@ import {
   AgentVaultHttpMethod,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultAccessBundleActorRef } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string; value: string }
@@ -97,5 +98,5 @@ export type TAddMembersDTO = TAgentVaultProjectScoped & {
 
 export type TRemoveMemberDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
-  memberId: string;
+  actor: TAgentVaultAccessBundleActorRef;
 };

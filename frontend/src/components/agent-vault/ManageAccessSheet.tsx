@@ -65,7 +65,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
 
       await removeMember.mutateAsync({
         accessBundleId: accessBundle.id,
-        memberId: memberToRemove.id
+        actor: memberToRemove.actor
       });
       createNotification({
         text: `Access bundle revoked from "${memberToRemoveName}"`,

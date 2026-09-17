@@ -147,6 +147,12 @@ export const useDeleteAgentVaultService = () => {
   });
 };
 
+const ACTOR_PATH: Record<AgentVaultMemberType, string> = {
+  [AgentVaultMemberType.User]: "users",
+  [AgentVaultMemberType.Group]: "groups",
+  [AgentVaultMemberType.Identity]: "identities"
+};
+
 export const useAddAgentVaultAccessBundleMembers = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -173,13 +179,13 @@ export const useRemoveAgentVaultAccessBundleMember = () => {
   return useMutation({
     mutationFn: async ({
       accessBundleId,
-      memberId
+      actor
     }: {
       accessBundleId: string;
-      memberId: string;
+      actor: { type: AgentVaultMemberType; id: string };
     }) => {
       const { data } = await apiRequest.delete<{ member: { id: string } }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/${memberId}`
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/${ACTOR_PATH[actor.type]}/${actor.id}`
       );
       return data.member;
     },

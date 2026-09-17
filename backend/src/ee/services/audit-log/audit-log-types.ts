@@ -6417,6 +6417,9 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
     accessBundleId: string;
     accessBundleName: string;
     memberId: string;
+    userId?: string;
+    identityId?: string;
+    groupId?: string;
   };
 }
 

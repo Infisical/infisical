@@ -127,6 +127,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     actorGroupId: AgentVaultMemberType.Group
   };
 
+  const ACTOR_COLUMN_OF: Record<AgentVaultMemberType, TGrantActorColumn> = {
+    [AgentVaultMemberType.User]: "actorUserId",
+    [AgentVaultMemberType.Identity]: "actorIdentityId",
+    [AgentVaultMemberType.Group]: "actorGroupId"
+  };
+
+  const ACTOR_LABEL_OF: Record<AgentVaultMemberType, string> = {
+    [AgentVaultMemberType.User]: "User with ID",
+    [AgentVaultMemberType.Identity]: "Machine identity with ID",
+    [AgentVaultMemberType.Group]: "Group with ID"
+  };
+
   const toActorRefFromGrant = ({ actorColumn, actorId }: TGrantActor): TAgentVaultAccessBundleActorRef => ({
     type: ACTOR_TYPE_OF[actorColumn],
     id: actorId
@@ -993,15 +1005,24 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  const removeMember = async ({ accessBundleId, memberId, ...rest }: TRemoveMemberDTO) => {
+  const removeMember = async ({ accessBundleId, actor, ...rest }: TRemoveMemberDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const member = await membershipDAL.findOne({ ...bundleScope(rest.projectId, bundle.id), id: memberId });
-    if (!member) throw new NotFoundError({ message: `Access bundle membership with ID '${memberId}' not found` });
+    // The actor is not looked up: a message that told an unknown id apart from an ungranted one would
+    // answer whether that id exists in the org.
+    const member = await membershipDAL.findOne({
+      ...bundleScope(rest.projectId, bundle.id),
+      [ACTOR_COLUMN_OF[actor.type]]: actor.id
+    });
+    if (!member) {
+      throw new NotFoundError({
+        message: `${ACTOR_LABEL_OF[actor.type]} '${actor.id}' does not have this access bundle`
+      });
+    }
 
     await membershipDAL.deleteById(member.id);
     return { ...toMember(member), accessBundleName: bundle.name };

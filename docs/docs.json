@@ -4424,7 +4424,9 @@
                 "pages": [
                   "api-reference/endpoints/agent-vault-access-bundle-members/list",
                   "api-reference/endpoints/agent-vault-access-bundle-members/add",
-                  "api-reference/endpoints/agent-vault-access-bundle-members/remove"
+                  "api-reference/endpoints/agent-vault-access-bundle-members/remove-user",
+                  "api-reference/endpoints/agent-vault-access-bundle-members/remove-group",
+                  "api-reference/endpoints/agent-vault-access-bundle-members/remove-identity"
                 ]
               },
               {

@@ -2019,9 +2019,9 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
         expect((await resolve()).services).toHaveLength(1);
 
-        const [grant] = await grantRows(bundle.id, { actorGroupId: group.id });
         expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/${grant.id}`)).statusCode
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/groups/${group.id}`))
+            .statusCode
         ).toBe(200);
         expect((await resolve()).services).toHaveLength(0);
 
@@ -2163,7 +2163,51 @@ describe("Agent Vault V1 Router", async () => {
       expect(await testDb("membership_roles").where({ membershipId: grant.id })).toHaveLength(0);
     });
 
-    test("a member id from another scope is refused, and grants are not seats", async () => {
+    test("a revoke is confined to the named bundle, actor and actor type", async () => {
+      const projectId = await getProjectId();
+      const [held, other] = [await createAccessBundle("revoke-held"), await createAccessBundle("revoke-other")];
+      const group = await createProjectGroup(projectId, "av-revoke-group", ProjectMembershipRole.Member);
+
+      try {
+        expect(
+          (await inject("POST", `/api/v1/agent-vault/access-bundles/${held.id}/members`, { groupIds: [group.id] }))
+            .statusCode
+        ).toBe(200);
+
+        const stillGranted = async () => (await grantRows(held.id, { actorGroupId: group.id })).length;
+
+        expect(
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${other.id}/members/groups/${group.id}`))
+            .statusCode
+        ).toBe(404);
+        expect(await stillGranted()).toBe(1);
+
+        expect(
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/users/${group.id}`)).statusCode
+        ).toBe(404);
+        expect(await stillGranted()).toBe(1);
+
+        expect(
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/users/${crypto.randomUUID()}`))
+            .statusCode
+        ).toBe(404);
+
+        expect(
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/groups/${group.id}`))
+            .statusCode
+        ).toBe(200);
+        expect(await stillGranted()).toBe(0);
+
+        expect(
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/groups/${group.id}`))
+            .statusCode
+        ).toBe(404);
+      } finally {
+        await group.cleanup();
+      }
+    });
+
+    test("a revoke reaches only this bundle's grant for this actor, and grants are not seats", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle("scoped-member-ids");
       const identity = await createOrgIdentity(`av-seats-${Date.now()}`);
@@ -2174,12 +2218,14 @@ describe("Agent Vault V1 Router", async () => {
 
       const seatsBefore = await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id);
 
+      // A lookup that lost scopeResourceType or scopeResourceId would find this row instead and evict
+      // the identity from Agent Vault, which is why the assertion below is about a row nothing touched.
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
         .first();
       const refused = await inject(
         "DELETE",
-        `/api/v1/agent-vault/access-bundles/${bundle.id}/members/${projectMembership.id}`
+        `/api/v1/agent-vault/access-bundles/${bundle.id}/members/identities/${identity.id}`
       );
       expect(refused.statusCode).toBe(404);
       expect(await testDb("memberships").where({ id: projectMembership.id })).toHaveLength(1);
