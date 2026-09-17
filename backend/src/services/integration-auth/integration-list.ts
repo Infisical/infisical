@@ -64,10 +64,12 @@ export enum IntegrationUrls {
   GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token",
   BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token",
   CAMUNDA_TOKEN_URL = "https://login.cloud.camunda.io/oauth/token",
+  STRIPE_TOKEN_URL = "https://api.stripe.com/v1/oauth/token",
 
   // integration apps endpoints
   GCP_API_URL = "https://cloudresourcemanager.googleapis.com",
   HEROKU_API_URL = "https://api.heroku.com",
+  STRIPE_API_URL = "https://api.stripe.com",
   GITLAB_URL = "https://gitlab.com",
   GITLAB_API_URL = `${GITLAB_URL}/api`,
   GITHUB_API_URL = "https://api.github.com",

@@ -263,6 +263,8 @@ import {
   validateSpaceliftConnectionCredentials
 } from "./spacelift";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
+import { StripeConnectionMethod } from "./stripe";
+import { getStripeConnectionListItem, validateStripeConnectionCredentials } from "./stripe/stripe-connection-fns";
 import {
   getSupabaseConnectionListItem,
   SupabaseConnectionMethod,
@@ -427,7 +429,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getFireworksConnectionListItem(),
     getNutanixPrismCentralConnectionListItem(),
     getSpaceliftConnectionListItem(),
-    getDaytonaConnectionListItem()
+    getDaytonaConnectionListItem(),
+    getStripeConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -683,7 +686,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.NutanixPrismCentral]:
       validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -707,6 +711,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
     case VenafiTppConnectionMethod.OAuth:
+    case StripeConnectionMethod.OAuth:
       return "OAuth";
     case HerokuConnectionMethod.AuthToken:
       return "Auth Token";
@@ -955,7 +960,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
   [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
-  [AppConnection.Daytona]: platformManagedCredentialsNotSupported
+  [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
+  [AppConnection.Stripe]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
