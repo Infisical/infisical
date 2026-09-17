@@ -94,9 +94,6 @@ export const DetailsFields = () => {
                 <FieldLabel htmlFor="all-methods">All Methods</FieldLabel>
               </Field>
 
-              {/* Indented under the checkbox label so the seven read as what "All Methods" governs.
-                  Fixed columns line the boxes up; w-fit keeps them hugging the labels rather than
-                  stretching across the width of the sheet. */}
               <div
                 role="group"
                 aria-label="Methods"

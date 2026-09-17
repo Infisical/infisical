@@ -130,7 +130,6 @@ export const ReviewFields = ({ isUpdate }: Props) => {
         <DetailGroupHeader className="border-b border-border pb-2">
           Transformations
         </DetailGroupHeader>
-        {/* One line each, so a header reads the way it goes out on the wire. */}
         <div className="flex flex-col gap-3">
           {headerRows.length === 0 && substitutionRows.length === 0 && (
             <p className="text-sm">{NONE}</p>
