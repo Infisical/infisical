@@ -57,7 +57,8 @@
               "documentation/getting-started/choose-a-product/secret-scanning",
               "documentation/getting-started/choose-a-product/pki",
               "documentation/getting-started/choose-a-product/kms",
-              "documentation/getting-started/choose-a-product/pam"
+              "documentation/getting-started/choose-a-product/pam",
+              "documentation/getting-started/choose-a-product/agent-vault"
             ]
           },
           {

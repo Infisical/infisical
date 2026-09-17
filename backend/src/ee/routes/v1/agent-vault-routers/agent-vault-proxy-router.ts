@@ -79,9 +79,9 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
         name: slugSchema({ max: 64, field: "Name" }).describe(AGENT_VAULT.PROXY.name),
-        trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
-        allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
-        pollInterval: ProxySettingsSchema.pollInterval.optional()
+        trafficPolicy: ProxySettingsSchema.trafficPolicy.default(AgentVaultTrafficPolicy.AnyHost),
+        allowedHosts: ProxySettingsSchema.allowedHosts.default(null),
+        pollInterval: ProxySettingsSchema.pollInterval.default(60)
       }),
       response: { 200: z.object({ proxy: ProxyAdminViewSchema, ...EnrollmentSchema.shape }) }
     },
