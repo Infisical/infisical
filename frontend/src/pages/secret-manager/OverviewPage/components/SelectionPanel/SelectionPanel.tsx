@@ -1,10 +1,21 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ClipboardIcon,
+  CopyPlus,
+  FolderInputIcon,
+  TagsIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   SelectedActionBar,
   Tooltip,
   TooltipContent,
@@ -20,6 +31,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
+import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -76,6 +88,7 @@ export const SelectionPanel = ({
   onCopySecrets
 }: Props) => {
   const { permission } = useProjectPermission();
+  const [isCopying, setIsCopying] = useState(false);
   const { subscription } = useSubscription();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -383,10 +396,62 @@ export const SelectionPanel = ({
       return { ...byEnvironment, [environment]: [...(byEnvironment[environment] ?? []), { path }] };
     }, {});
   const shouldShowBulkCopy = selectedKeysCount > 0 || selectedFolderCount > 0;
+  const isClipboardDisabled =
+    selectedSecretEntries.length === 0 ||
+    hasUnmaterializedSecretSelection ||
+    areFoldersSelected ||
+    areRotationsSelected ||
+    selectedSecretEntries.some(
+      ([environment, secret]) =>
+        secret.secretValueHidden ||
+        !permission.can(
+          ProjectPermissionSecretActions.ReadValue,
+          subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath: secret.path ?? secretPath,
+            secretName: secret.key,
+            secretTags: (secret.tags ?? []).map((tag) => tag.slug)
+          })
+        )
+    );
+
+  const handleCopyToClipboard = async () => {
+    if (isClipboardDisabled || isCopying) return;
+    setIsCopying(true);
+    try {
+      const lines = await selectedSecretEntries.reduce<Promise<string[]>>(
+        async (pendingLines, [environment, secret]) => {
+          const copiedLines = await pendingLines;
+          const { value } = await fetchSecretValue({
+            projectId,
+            environment,
+            secretPath: secret.path ?? secretPath,
+            secretKey: secret.key
+          });
+          if (value === undefined) throw new Error("Secret value unavailable");
+          if (visibleEnvs.length > 1) copiedLines.push(`# ${environment}`);
+          const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+          copiedLines.push(`${secret.key}="${escapedValue}"`);
+          return copiedLines;
+        },
+        Promise.resolve([])
+      );
+      await navigator.clipboard.writeText(lines.join("\n"));
+      createNotification({ type: "success", text: "Selected secrets copied to clipboard" });
+    } catch {
+      createNotification({ type: "error", text: "Failed to copy selected secrets to clipboard" });
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   return (
     <>
-      <SelectedActionBar selectedCount={selectedCount} onClearSelection={resetSelectedEntries}>
+      <SelectedActionBar
+        selectedCount={selectedCount}
+        onClearSelection={resetSelectedEntries}
+        iconOnlyClear
+      >
         {selectedKeysCount > 0 && (
           <Tooltip open={isTagActionDisabled ? undefined : false}>
             <TooltipTrigger>
@@ -420,32 +485,47 @@ export const SelectionPanel = ({
           </Tooltip>
         )}
         {shouldShowBulkCopy && (
-          <Tooltip open={isCopyDisabled ? undefined : false}>
-            <TooltipTrigger>
-              <Button
-                isDisabled={isCopyDisabled}
-                variant="project"
-                onClick={() => {
-                  if (isCopyDisabled) return;
-                  onCopySecrets({
-                    origin: "bulk",
-                    sourcePath: secretPath,
-                    selectedSecretCount: selectedKeysCount,
-                    secretsByEnvironment: copySecretsByEnvironment,
-                    sourceEnvironmentSlug:
-                      visibleEnvs.length === 1 ? visibleEnvs[0].slug : undefined,
-                    folderNames: Object.keys(selectedEntries[EntryType.FOLDER]),
-                    foldersByEnvironment: copyFoldersByEnvironment
-                  });
-                }}
-                size="xs"
-              >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="project" size="xs" isPending={isCopying} isDisabled={isCopying}>
                 <CopyPlus />
                 Copy
+                <ChevronDownIcon />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>{copyDisabledReason}</TooltipContent>
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top">
+              <Tooltip open={isCopyDisabled ? undefined : false}>
+                <TooltipTrigger asChild>
+                  <span>
+                    <DropdownMenuItem
+                      isDisabled={isCopyDisabled}
+                      onSelect={() => {
+                        if (isCopyDisabled) return;
+                        onCopySecrets({
+                          origin: "bulk",
+                          sourcePath: secretPath,
+                          selectedSecretCount: selectedKeysCount,
+                          secretsByEnvironment: copySecretsByEnvironment,
+                          sourceEnvironmentSlug:
+                            visibleEnvs.length === 1 ? visibleEnvs[0].slug : undefined,
+                          folderNames: Object.keys(selectedEntries[EntryType.FOLDER]),
+                          foldersByEnvironment: copyFoldersByEnvironment
+                        });
+                      }}
+                    >
+                      <CopyPlus />
+                      Copy to Environment
+                    </DropdownMenuItem>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{copyDisabledReason}</TooltipContent>
+              </Tooltip>
+              <DropdownMenuItem isDisabled={isClipboardDisabled} onSelect={handleCopyToClipboard}>
+                <ClipboardIcon />
+                Copy to Clipboard
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {shouldShowDelete && (
           <Tooltip open={isDeleteDisabled ? undefined : false}>
