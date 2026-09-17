@@ -413,7 +413,15 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             allowedMethods: req.body.allowedMethods,
             allowedPathPrefixes: req.body.allowedPathPrefixes,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
+            // A row omitting a value keeps the stored secret, so sending one is what marks a rotation.
+            // Without this a rotation and a no-op save write the same row.
+            customHeadersReplaced: req.body.customHeaders
+              ?.filter((header) => header.value !== undefined)
+              .map((header) => header.name),
             substitutionPlaceholders: req.body.substitutions?.map((substitution) => substitution.placeholder),
+            substitutionsReplaced: req.body.substitutions
+              ?.filter((substitution) => substitution.value !== undefined)
+              .map((substitution) => substitution.placeholder),
             credentialReplaced: isStoredSecretReplaced(req.body.credential)
           }
         }

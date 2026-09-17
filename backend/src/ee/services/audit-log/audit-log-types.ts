@@ -6345,7 +6345,9 @@ interface AgentVaultServiceUpdateEvent {
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
     customHeaderNames?: string[];
+    customHeadersReplaced?: string[];
     substitutionPlaceholders?: string[];
+    substitutionsReplaced?: string[];
     credentialReplaced: boolean;
   };
 }
