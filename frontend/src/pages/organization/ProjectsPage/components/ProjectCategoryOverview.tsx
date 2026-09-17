@@ -26,18 +26,15 @@ import {
   getCertManagerActiveProjectCookie,
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
-import {
-  getProjectDescription,
-  getProjectLucideIcon,
-  getProjectTitle,
-  projectTypeToUrlSlug
-} from "@app/helpers/project";
+import { getProjectDescription, getProjectTitle, projectTypeToUrlSlug } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+
+import { ProductPixelIcon } from "./ProductPixelIcon";
 
 type ActiveProducts = ProjectType;
 
@@ -60,42 +57,42 @@ const PRODUCT_STYLES: Record<
   }
 > = {
   [ProjectType.SecretManager]: {
-    iconClassName: "h-4.5 w-4.5 text-product-sm",
+    iconClassName: "text-product-sm",
     containerClassName:
       "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-sm/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-sm/60"
   },
   [ProjectType.CertificateManager]: {
-    iconClassName: "h-4.5 w-4.5 text-product-pki",
+    iconClassName: "text-product-pki",
     containerClassName:
       "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pki/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pki/60"
   },
   [ProjectType.KMS]: {
-    iconClassName: "h-4.5 w-4.5 text-product-kms",
+    iconClassName: "text-product-kms",
     containerClassName:
       "border-product-kms/30 bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:border-product-kms/50 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-kms/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-kms/60"
   },
   [ProjectType.SecretScanning]: {
-    iconClassName: "h-4.5 w-4.5 text-product-ss",
+    iconClassName: "text-product-ss",
     containerClassName:
       "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:border-product-ss/50 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-ss/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-ss/60"
   },
   [ProjectType.PAM]: {
-    iconClassName: "h-4.5 w-4.5 text-product-pam",
+    iconClassName: "text-product-pam",
     containerClassName:
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
   },
   [ProjectType.AgentVault]: {
-    iconClassName: "h-4.5 w-4.5 text-product-av",
+    iconClassName: "text-product-av",
     containerClassName:
       "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
@@ -426,7 +423,7 @@ export const ProjectCategoryOverview = () => {
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
               <div className="flex items-start gap-3">
-                <Skeleton className="h-9 w-9 shrink-0" />
+                <Skeleton className="size-12 shrink-0" />
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <Skeleton className="h-5 w-2/3" />
                   <Skeleton className="h-4 w-full" />
@@ -474,16 +471,15 @@ export const ProjectCategoryOverview = () => {
           const stats = getStatsForType(type);
           const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
             PRODUCT_STYLES[type];
-          const Icon = getProjectLucideIcon(type);
 
           const tileBody = (
             <>
               <CardHeader>
                 <div className="flex items-start gap-3">
                   <div
-                    className={`shrink-0 rounded-sm border p-1.5 transition-colors duration-200 ${containerClassName}`}
+                    className={`flex size-12 shrink-0 items-center justify-center rounded-sm border transition-colors duration-200 ${containerClassName}`}
                   >
-                    <Icon className={iconClassName} />
+                    <ProductPixelIcon type={type} className={iconClassName} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <CardDescription className="flex items-center gap-1.5 text-base font-semibold text-foreground">
@@ -541,7 +537,7 @@ export const ProjectCategoryOverview = () => {
             );
           }
 
-          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
+          const tileClassName = `group h-auto cursor-pointer rounded-md transition-colors duration-200 ease-out ${cardClassName}`;
 
           // Cert Manager and PAM resolve their destination asynchronously (instance picker,
           // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
