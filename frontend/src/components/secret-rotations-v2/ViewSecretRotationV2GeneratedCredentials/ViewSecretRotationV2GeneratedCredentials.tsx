@@ -38,6 +38,7 @@ import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRout
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewSalesforceOauthCredentialsRotationGeneratedCredentials } from "./ViewSalesforceOauthCredentialsRotationGeneratedCredentials";
 import { ViewSnowflakeUserKeyPairRotationGeneratedCredentials } from "./ViewSnowflakeUserKeyPairRotationGeneratedCredentials";
+import { ViewStripeApiKeyRotationGeneratedCredentials } from "./ViewStripeApiKeyRotationGeneratedCredentials";
 import { ViewSupabaseApiKeyRotationGeneratedCredentials } from "./ViewSupabaseApiKeyRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
@@ -248,6 +249,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.CloudflareR2AccessKey:
       Component = (
         <ViewCloudflareR2AccessKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.StripeApiKey:
+      Component = (
+        <ViewStripeApiKeyRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

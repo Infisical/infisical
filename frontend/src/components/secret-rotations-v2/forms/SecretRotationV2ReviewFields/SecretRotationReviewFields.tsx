@@ -28,6 +28,7 @@ import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotation
 import { SalesforceOauthCredentialsRotationReviewFields } from "./SalesforceOauthCredentialsRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 import { SnowflakeUserKeyPairRotationReviewFields } from "./SnowflakeUserKeyPairRotationReviewFields";
+import { StripeApiKeyRotationReviewFields } from "./StripeApiKeyRotationReviewFields";
 import { SupabaseApiKeyRotationReviewFields } from "./SupabaseApiKeyRotationReviewFields";
 import { UnixLinuxLocalAccountRotationReviewFields } from "./UnixLinuxLocalAccountRotationReviewFields";
 import { WindowsLocalAccountRotationReviewFields } from "./WindowsLocalAccountRotationReviewFields";
@@ -61,7 +62,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields,
   [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationReviewFields,
-  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields
+  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
+  [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {
