@@ -112,7 +112,3 @@ if (!rootElement.innerHTML) {
     </StrictMode>
   );
 }
-
-if (import.meta.env.DEV) {
-  import("./dev/ColorLab");
-}
