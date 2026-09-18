@@ -49,7 +49,7 @@ description: "Learn how to configure PingOne OIDC for Infisical SSO."
       Once done, press the "Save" button.
 
       <Note>
-         Infisical takes a user's name from the `given_name` and `family_name` claims. If you map `name` instead, Infisical falls back to it and stores the whole name as the user's first name. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for how that fallback resolves.
+         Infisical takes a user's name from the `given_name` and `family_name` claims. If you map `name` in place of `given_name`, Infisical falls back to it and removes `family_name` from the end of it, so the surname isn't stored twice. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for the exact fallback rules.
       </Note>
 
    </Step>

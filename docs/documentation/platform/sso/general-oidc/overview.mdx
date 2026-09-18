@@ -21,7 +21,7 @@ You can configure your organization in Infisical to have members authenticate wi
 Prerequisites:
 
 - The identity provider (Okta, Google, Entra ID, etc.) should support OIDC.
-- Users in the IdP should have a configured `email`, `given_name`, and `family_name`.
+- Users in the IdP should have a configured `email` and either `given_name` or `name`. Configure `family_name` as well for Infisical to store a separate last name.
 
 <Steps>
    <Step title="Setup Identity Provider">
