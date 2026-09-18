@@ -46,6 +46,53 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.
   const $keyName = () => `infisical-${secretsMapping.apiKey}-${Date.now()}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
 
+  /** A 404 means the key is already gone; anything else is handed back for the caller to report. */
+  const $tryRetireKey = async (keyId: string): Promise<{ retired: true } | { retired: false; error: unknown }> => {
+    try {
+      await request.post(
+        `${STRIPE_API_KEYS_URL}/${keyId}/expire`,
+        {},
+        withIdempotencyKey(getStripePlatformRequestConfig(accountId))
+      );
+      return { retired: true };
+    } catch (error) {
+      if (getStripeErrorStatus(error) === 404) return { retired: true };
+
+      return { retired: false, error };
+    }
+  };
+
+  /**
+   * Expire is the whole retirement. Stripe decides when it takes effect, so nothing here claims the
+   * key is dead. Narrowing the key's permissions first would stop it sooner, and was measured
+   * working, but is deliberately not in v1. See the design doc.
+   */
+  const $retireKey = async (keyId: string) => {
+    const result = await $tryRetireKey(keyId);
+
+    if (!result.retired) throwStripeApiKeyManagementError(accountId, result.error);
+  };
+
+  /**
+   * A key exists in Stripe before the row does, so anything that fails after create, whether that is
+   * decrypting the secret Stripe returned or committing the row, has to take the key with it.
+   */
+  const $retireOnFailure = async <T>(keyId: string, action: () => Promise<T>): Promise<T> => {
+    try {
+      return await action();
+    } catch (actionError) {
+      try {
+        await $retireKey(keyId);
+      } catch (cleanupError) {
+        throw new BadRequestError({
+          message: `${getErrorMessage(actionError)} The newly created Stripe API key ${keyId} could not be expired and may need to be removed manually: ${getErrorMessage(cleanupError)}`
+        });
+      }
+
+      throw actionError;
+    }
+  };
+
   const $createApiKey = async () => {
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
 
@@ -71,46 +118,12 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
       throw new BadRequestError({ message: "Stripe did not return an ID for the created API key." });
     }
 
-    return { keyId: data.id, apiKey: readStripeSecret(data.secret_key, privateKey) };
-  };
+    const { id: keyId } = data;
 
-  /**
-   * Expire is the whole retirement. Stripe decides when it takes effect, so nothing here claims the
-   * key is dead. Narrowing the key's permissions first would stop it sooner, and was measured
-   * working, but is deliberately not in v1. See the design doc.
-   */
-  const $retireKey = async (keyId: string) => {
-    try {
-      await request.post(
-        `${STRIPE_API_KEYS_URL}/${keyId}/expire`,
-        {},
-        withIdempotencyKey(getStripePlatformRequestConfig(accountId))
-      );
-    } catch (error) {
-      if (getStripeErrorStatus(error) === 404) return;
-
-      throwStripeApiKeyManagementError(accountId, error);
-    }
-  };
-
-  /** A key exists in Stripe before the row does, so a failed commit has to take the key with it. */
-  const $commitOrCleanUp = async <T>(
-    credentials: { keyId: string; apiKey: string },
-    callback: (credentials: { keyId: string; apiKey: string }) => Promise<T>
-  ): Promise<T> => {
-    try {
-      return await callback(credentials);
-    } catch (commitError) {
-      try {
-        await $retireKey(credentials.keyId);
-      } catch (cleanupError) {
-        throw new BadRequestError({
-          message: `${getErrorMessage(commitError)} The newly created Stripe API key ${credentials.keyId} could not be expired and may need to be removed manually: ${getErrorMessage(cleanupError)}`
-        });
-      }
-
-      throw commitError;
-    }
+    // readStripeSecret can throw (a malformed JWE, an unsupported algorithm, a decrypt failure). The
+    // key already exists in Stripe by that point, so that throw needs the same cleanup as a failed
+    // commit, not a bare rethrow.
+    return $retireOnFailure(keyId, async () => ({ keyId, apiKey: readStripeSecret(data.secret_key, privateKey) }));
   };
 
   const issueCredentials: TRotationFactoryIssueCredentials<TStripeApiKeyRotationGeneratedCredentials> = async (
@@ -118,7 +131,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   ) => {
     const credentials = await $createApiKey();
 
-    return $commitOrCleanUp(credentials, callback);
+    return $retireOnFailure(credentials.keyId, () => callback(credentials));
   };
 
   const revokeCredentials: TRotationFactoryRevokeCredentials<TStripeApiKeyRotationGeneratedCredentials> = async (
@@ -144,22 +157,22 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
     // Retire before committing, so a failure leaves Postgres and Stripe agreeing with each other and
     // the key we just minted gets cleaned up rather than orphaned across BullMQ's retries.
     if (credentialsToRevoke?.keyId) {
-      try {
-        await $retireKey(credentialsToRevoke.keyId);
-      } catch (retireError) {
-        try {
-          await $retireKey(newCredentials.keyId);
-        } catch (cleanupError) {
+      const retireResult = await $tryRetireKey(credentialsToRevoke.keyId);
+
+      if (!retireResult.retired) {
+        const cleanupResult = await $tryRetireKey(newCredentials.keyId);
+
+        if (!cleanupResult.retired) {
           throw new BadRequestError({
-            message: `${getErrorMessage(retireError)} The newly created Stripe API key ${newCredentials.keyId} could not be expired and may need to be removed manually: ${getErrorMessage(cleanupError)}`
+            message: `Stripe API key ${credentialsToRevoke.keyId} could not be retired (${getStripeErrorMessage(retireResult.error)}), and the newly created key ${newCredentials.keyId} could not be cleaned up either (${getStripeErrorMessage(cleanupResult.error)}). Both may need to be removed manually from the Stripe dashboard.`
           });
         }
 
-        throw retireError;
+        throwStripeApiKeyManagementError(accountId, retireResult.error);
       }
     }
 
-    return $commitOrCleanUp(newCredentials, callback);
+    return $retireOnFailure(newCredentials.keyId, () => callback(newCredentials));
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TStripeApiKeyRotationGeneratedCredentials> = ({

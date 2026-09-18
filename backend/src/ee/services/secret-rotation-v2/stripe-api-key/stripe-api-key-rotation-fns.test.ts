@@ -93,14 +93,43 @@ describe("stripeApiKeyRotationFactory", () => {
     expect(expireCalls("mk_new")).toHaveLength(1);
   });
 
-  it("retires the previous key before committing the new one", async () => {
-    mockStripe({ createIds: ["mk_new"] });
+  it("expires the new key when reading the returned secret fails", async () => {
+    postMock.mockImplementation(async (url: string) => {
+      if (isCreate(url)) return { data: { id: "mk_new", secret_key: {} } };
+      if (isExpire(url)) return { data: {} };
+      throw new Error(`unexpected request to ${url}`);
+    });
     const callback = vi.fn(async (credentials: unknown) => credentials);
+
+    await expect(makeFactory().issueCredentials(callback as any)).rejects.toThrow(
+      "Stripe returned an API key without a secret"
+    );
+
+    expect(expireCalls("mk_new")).toHaveLength(1);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("retires the previous key before committing the new one", async () => {
+    const order: string[] = [];
+    postMock.mockImplementation(async (url: string) => {
+      if (isCreate(url)) {
+        order.push("create");
+        return { data: { id: "mk_new", secret_key: { token: "rk_test_mk_new" } } };
+      }
+      if (isExpire(url)) {
+        order.push(url.split("/").slice(-2)[0]);
+        return { data: {} };
+      }
+      throw new Error(`unexpected request to ${url}`);
+    });
+    const callback = vi.fn(async (credentials: unknown) => {
+      order.push("commit");
+      return credentials;
+    });
 
     await makeFactory().rotateCredentials({ keyId: "mk_old", apiKey: "rk_old" } as any, callback as any, {} as any);
 
-    const order = postMock.mock.calls.map(([url]) => (isCreate(url) ? "create" : url.split("/").slice(-2)[0]));
-    expect(order).toEqual(["create", "mk_old"]);
+    expect(order).toEqual(["create", "mk_old", "commit"]);
     expect(callback).toHaveBeenCalledWith({ keyId: "mk_new", apiKey: "rk_test_mk_new" });
   });
 
@@ -129,9 +158,15 @@ describe("stripeApiKeyRotationFactory", () => {
     });
     const callback = vi.fn(async (credentials: unknown) => credentials);
 
-    await expect(
-      makeFactory().rotateCredentials({ keyId: "mk_old" } as any, callback as any, {} as any)
-    ).rejects.toThrow(/mk_new/);
+    let caughtMessage = "";
+    try {
+      await makeFactory().rotateCredentials({ keyId: "mk_old" } as any, callback as any, {} as any);
+    } catch (error) {
+      caughtMessage = (error as Error).message;
+    }
+
+    expect(caughtMessage).toMatch(/mk_old/);
+    expect(caughtMessage).toMatch(/mk_new/);
   });
 
   it("treats a 404 on expire as already gone", async () => {
@@ -146,6 +181,56 @@ describe("stripeApiKeyRotationFactory", () => {
     await expect(
       makeFactory().rotateCredentials({ keyId: "mk_old" } as any, callback as any, {} as any)
     ).resolves.toBeDefined();
+  });
+
+  it("revokeCredentials returns early without contacting Stripe when there are no credentials", async () => {
+    const callback = vi.fn(async () => "done");
+
+    const result = await makeFactory().revokeCredentials([] as any, callback as any);
+
+    expect(result).toBe("done");
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("revokeCredentials expires every key it is given", async () => {
+    mockStripe();
+    const callback = vi.fn(async () => "done");
+
+    const result = await makeFactory().revokeCredentials(
+      [
+        { keyId: "mk_one", apiKey: "rk_one" },
+        { keyId: "mk_two", apiKey: "rk_two" }
+      ] as any,
+      callback as any
+    );
+
+    expect(expireCalls("mk_one")).toHaveLength(1);
+    expect(expireCalls("mk_two")).toHaveLength(1);
+    expect(result).toBe("done");
+  });
+
+  it("revokeCredentials stops at the first failure and never calls back", async () => {
+    mockStripe({
+      expire: async (keyId) => {
+        if (keyId === "mk_two") throw httpError(500, "Stripe is down");
+        return { data: {} };
+      }
+    });
+    const callback = vi.fn(async () => "done");
+
+    await expect(
+      makeFactory().revokeCredentials(
+        [
+          { keyId: "mk_one", apiKey: "rk_one" },
+          { keyId: "mk_two", apiKey: "rk_two" }
+        ] as any,
+        callback as any
+      )
+    ).rejects.toThrow("Stripe is down");
+
+    expect(expireCalls("mk_one")).toHaveLength(1);
+    expect(expireCalls("mk_two")).toHaveLength(1);
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("maps only the API key into the secrets payload", () => {
