@@ -89,6 +89,7 @@ export enum PostHogEventTypes {
   SecretImportCreated = "Secret Import Created",
   SecretShared = "Secret Shared",
   SharedSecretViewed = "Shared Secret Viewed",
+  SharedSecretLinkOpened = "Shared Secret Link Opened",
   SecretRollbackPerformed = "Secret Rollback Performed",
   SecretRevertPerformed = "Secret Revert Performed",
   WebhookCreated = "Webhook Created",
@@ -777,8 +778,18 @@ export type TSecretSharedEvent = {
 export type TSharedSecretViewedEvent = {
   event: PostHogEventTypes.SharedSecretViewed;
   properties: {
-    sharedSecretId: string;
+    sharedSecretIdHash: string;
     accessType: SecretSharingAccessType;
+  };
+};
+
+export type TSharedSecretLinkOpenedEvent = {
+  event: PostHogEventTypes.SharedSecretLinkOpened;
+  properties: {
+    sharedSecretIdHash: string;
+    accessType: SecretSharingAccessType;
+    expiresAt: string;
+    hasPassword: boolean;
   };
 };
 
@@ -2638,6 +2649,7 @@ export type TPostHogEvent = {
   | TSecretImportCreatedEvent
   | TSecretSharedEvent
   | TSharedSecretViewedEvent
+  | TSharedSecretLinkOpenedEvent
   | TSecretRollbackPerformedEvent
   | TSecretRevertPerformedEvent
   | TWebhookCreatedEvent
