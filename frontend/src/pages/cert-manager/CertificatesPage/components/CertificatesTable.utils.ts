@@ -61,18 +61,20 @@ type TCertificateDeletionSource = {
   status?: string | null;
   notAfter: string;
   source?: string | null;
-  caId?: string | null;
 };
 
-export const getCertificateDeletionBlockReason = (certificate: TCertificateDeletionSource) => {
+export const getCertificateDeletionBlockReason = (
+  certificate: TCertificateDeletionSource,
+  canRevoke: boolean
+) => {
   const source = certificate.source ?? CertSource.Issued;
+  const hasExpired = new Date(certificate.notAfter) <= new Date();
 
-  if (source === CertSource.Discovered || source === CertSource.Imported) return null;
-  if (new Date(certificate.notAfter) <= new Date()) return null;
-
+  if (hasExpired) return null;
   if (certificate.status === CertStatus.REVOKED) return DELETION_BLOCKED_REVOKED_NOT_EXPIRED;
+  if (source === CertSource.Discovered || source === CertSource.Imported) return null;
 
-  return certificate.caId ? DELETION_BLOCKED_NOT_EXPIRED : DELETION_BLOCKED_NOT_EXPIRED_NO_ISSUER;
+  return canRevoke ? DELETION_BLOCKED_NOT_EXPIRED : DELETION_BLOCKED_NOT_EXPIRED_NO_ISSUER;
 };
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {

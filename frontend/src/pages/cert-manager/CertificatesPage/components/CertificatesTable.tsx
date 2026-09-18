@@ -918,6 +918,11 @@ export const CertificatesTable = ({
                   const canDeleteCertificate =
                     permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
                     canDeleteAtApplication;
+                  const certificateCaType = caCapabilityMap[certificate.caId];
+                  const canRevokeCertificate =
+                    Boolean(certificate.caId) &&
+                    (!certificateCaType ||
+                      caSupportsCapability(certificateCaType, CaCapability.REVOKE_CERTIFICATES));
                   const canEditPkiSyncs =
                     permission.can(
                       ProjectPermissionPkiSyncActions.Edit,
@@ -1296,13 +1301,8 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 )}
                               {(() => {
-                                const caType = caCapabilityMap[certificate.caId];
-                                const supportsRevocation =
-                                  !caType ||
-                                  caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
-
                                 if (
-                                  !supportsRevocation ||
+                                  !canRevokeCertificate ||
                                   isRevoked ||
                                   certificate.source === CertSource.Discovered ||
                                   (isInventoryView && certificate.applicationId)
@@ -1329,7 +1329,7 @@ export const CertificatesTable = ({
                               {!(isInventoryView && certificate.applicationId) &&
                                 (() => {
                                   const deletionBlockReason =
-                                    getCertificateDeletionBlockReason(certificate);
+                                    getCertificateDeletionBlockReason(certificate, canRevokeCertificate);
 
                                   const item = (
                                     <DropdownMenuItem

@@ -440,6 +440,13 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const $canRevokeThroughIssuer = async (caId: string) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch(() => null);
+    if (!ca) return false;
+
+    return caSupportsCapability((ca.externalCa?.type as CaType) ?? CaType.INTERNAL, CaCapability.REVOKE_CERTIFICATES);
+  };
+
   /**
    * Delete certificate with serial number [serialNumber]
    */
@@ -507,7 +514,7 @@ export const certificateServiceFactory = ({
       let message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Delete it once it has expired.`;
       if (cert.status === CertStatus.REVOKED) {
         message = `Certificate '${certName}' was revoked but does not expire until ${expiresAt}. Delete it once it has expired.`;
-      } else if (cert.caId) {
+      } else if (cert.caId && (await $canRevokeThroughIssuer(cert.caId))) {
         message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Revoke it to retire it early, then delete it once it has expired.`;
       }
 

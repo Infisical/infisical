@@ -471,7 +471,10 @@ const Page = () => {
                 )}
               {!(isInventoryView && certificate.applicationId) &&
                 (() => {
-                  const deletionBlockReason = getCertificateDeletionBlockReason(certificate);
+                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                    certificate,
+                    supportsRevocation
+                  );
 
                   const item = (
                     <DropdownMenuItem
