@@ -5,6 +5,8 @@ import {
 } from "react-select";
 import { CheckIcon, KeyIcon } from "lucide-react";
 
+import { ProviderIcon } from "@app/components/v3";
+
 export type NetworkingAuthMethod = "aws" | "kubernetes" | "token";
 
 export type NetworkingAuthMethodOption = {
@@ -21,8 +23,8 @@ export const NETWORKING_AUTH_METHOD_OPTIONS: NetworkingAuthMethodOption[] = [
 const NetworkingAuthMethodIcon = ({ method }: { method: NetworkingAuthMethod }) => {
   if (method === "aws") {
     return (
-      <img
-        src="/images/integrations/Amazon Web Services.png"
+      <ProviderIcon
+        icon="Amazon Web Services.png"
         alt=""
         aria-hidden
         className="size-4 object-contain"

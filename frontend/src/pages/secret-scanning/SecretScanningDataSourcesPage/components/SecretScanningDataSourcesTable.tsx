@@ -31,6 +31,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -227,8 +228,8 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                isTableFiltered && "border-project/50 text-project"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
@@ -254,17 +255,13 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
                     key={type}
                     icon={
                       filters.types.includes(type) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                        <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                       )
                     }
                     iconPos="right"
                   >
                     <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} integration`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
+                      <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
                       <span>{name}</span>
                     </div>
                   </DropdownMenuItem>

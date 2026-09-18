@@ -1,11 +1,15 @@
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Control, Controller, useForm, useFormState } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Alert,
   AlertDescription,
   Button,
@@ -77,6 +81,41 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
+const ADVANCED_ITEM = "advanced-options";
+
+const AdvancedOptions = ({
+  control,
+  children
+}: {
+  control: Control<FormData>;
+  children: ReactNode;
+}) => {
+  const [openItem, setOpenItem] = useState("");
+  const { errors, submitCount } = useFormState({ control });
+  const hasError = Boolean(errors.allowedHosts || errors.pollInterval);
+
+  useEffect(() => {
+    if (hasError) setOpenItem(ADVANCED_ITEM);
+  }, [hasError, submitCount]);
+
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      variant="ghost"
+      value={openItem}
+      onValueChange={setOpenItem}
+    >
+      <AccordionItem value={ADVANCED_ITEM}>
+        <AccordionTrigger>Advanced Options</AccordionTrigger>
+        <AccordionContent>
+          <div className="flex flex-col gap-4">{children}</div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+};
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -87,9 +126,14 @@ type Props = {
 export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Props) => {
   const createProxy = useCreateAgentVaultProxy();
   const updateProxy = useUpdateAgentVaultProxy();
-  const isUpdate = Boolean(proxy);
+
+  const lastProxy = useRef(proxy);
+  if (isOpen) lastProxy.current = proxy;
+  const shownProxy = isOpen ? proxy : lastProxy.current;
+  const isUpdate = Boolean(shownProxy);
 
   const {
+    clearErrors,
     control,
     handleSubmit,
     reset,
@@ -100,14 +144,14 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
   const isBundleOnly = watch("trafficPolicy") === AgentVaultTrafficPolicy.BundleHosts;
 
   const saveDelayNote = (() => {
-    if (!proxy?.heartbeat) return null;
-    return proxy.isHealthy
+    if (!shownProxy?.heartbeat) return null;
+    return shownProxy.isHealthy
       ? "This proxy picks up the change on its next poll."
       : "This proxy is not connected right now. It picks up the change when it reconnects.";
   })();
 
-  useEffect(() => {
-    if (!isOpen) return;
+  useLayoutEffect(() => {
+    if (!isOpen) return undefined;
 
     reset({
       name: proxy?.name ?? "",
@@ -115,7 +159,9 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       allowedHosts: proxy?.allowedHosts ?? "",
       pollInterval: proxy?.pollInterval ?? 60
     });
-  }, [isOpen, proxy, reset]);
+
+    return () => clearErrors();
+  }, [isOpen, proxy, reset, clearErrors]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -140,6 +186,82 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
+
+  const settingsFields = (
+    <>
+      <Controller
+        control={control}
+        name="trafficPolicy"
+        render={({ field }) => (
+          <Field>
+            <FieldLabel>Traffic Policy</FieldLabel>
+            <FieldContent>
+              <RadioGroup value={field.value} onValueChange={field.onChange}>
+                {TRAFFIC_POLICY_CHOICES.map((choice) => {
+                  const id = `traffic-policy-${choice.value}`;
+
+                  return (
+                    <FieldLabel key={choice.value} htmlFor={id} variant="av">
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>{choice.title}</FieldTitle>
+                          <FieldDescription>{choice.description}</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem id={id} value={choice.value} />
+                      </Field>
+                    </FieldLabel>
+                  );
+                })}
+              </RadioGroup>
+            </FieldContent>
+          </Field>
+        )}
+      />
+      {isBundleOnly && (
+        <Controller
+          control={control}
+          name="allowedHosts"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel>Exceptions</FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  placeholder="registry.npmjs.org, proxy.golang.org"
+                  isError={Boolean(fieldState.error)}
+                />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+      <Controller
+        control={control}
+        name="pollInterval"
+        render={({ field, fieldState }) => (
+          <Field>
+            <FieldLabel>
+              Poll Interval
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  How often the proxy refreshes its configuration, in seconds. This determines how
+                  long a change in these settings takes to reach a running agent.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input {...field} type="number" isError={Boolean(fieldState.error)} />
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </FieldContent>
+          </Field>
+        )}
+      />
+    </>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -167,77 +289,11 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 </Field>
               )}
             />
-            <Controller
-              control={control}
-              name="trafficPolicy"
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Traffic Policy</FieldLabel>
-                  <FieldContent>
-                    <RadioGroup value={field.value} onValueChange={field.onChange}>
-                      {TRAFFIC_POLICY_CHOICES.map((choice) => {
-                        const id = `traffic-policy-${choice.value}`;
-
-                        return (
-                          <FieldLabel key={choice.value} htmlFor={id} variant="av">
-                            <Field orientation="horizontal">
-                              <FieldContent>
-                                <FieldTitle>{choice.title}</FieldTitle>
-                                <FieldDescription>{choice.description}</FieldDescription>
-                              </FieldContent>
-                              <RadioGroupItem id={id} value={choice.value} />
-                            </Field>
-                          </FieldLabel>
-                        );
-                      })}
-                    </RadioGroup>
-                  </FieldContent>
-                </Field>
-              )}
-            />
-            {isBundleOnly && (
-              <Controller
-                control={control}
-                name="allowedHosts"
-                render={({ field, fieldState }) => (
-                  <Field>
-                    <FieldLabel>Exceptions</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        {...field}
-                        placeholder="registry.npmjs.org, proxy.golang.org"
-                        isError={Boolean(fieldState.error)}
-                      />
-                      <FieldError>{fieldState.error?.message}</FieldError>
-                    </FieldContent>
-                  </Field>
-                )}
-              />
+            {shownProxy ? (
+              settingsFields
+            ) : (
+              <AdvancedOptions control={control}>{settingsFields}</AdvancedOptions>
             )}
-            <Controller
-              control={control}
-              name="pollInterval"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>
-                    Poll Interval
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        How often the proxy refreshes its configuration, in seconds. This determines
-                        how long a change in these settings takes to reach a running agent.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input {...field} type="number" isError={Boolean(fieldState.error)} />
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
             {saveDelayNote && (
               <Alert variant="info">
                 <InfoIcon />

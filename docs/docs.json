@@ -57,7 +57,8 @@
               "documentation/getting-started/choose-a-product/secret-scanning",
               "documentation/getting-started/choose-a-product/pki",
               "documentation/getting-started/choose-a-product/kms",
-              "documentation/getting-started/choose-a-product/pam"
+              "documentation/getting-started/choose-a-product/pam",
+              "documentation/getting-started/choose-a-product/agent-vault"
             ]
           },
           {
@@ -780,6 +781,14 @@
                   "documentation/platform/agent-vault/quickstart",
                   "documentation/platform/agent-vault/why-agent-vault",
                   "documentation/platform/agent-vault/how-it-works"
+                ]
+              },
+              {
+                "group": "Agent guides",
+                "pages": [
+                  "documentation/platform/agent-vault/guides/claude-code",
+                  "documentation/platform/agent-vault/guides/codex",
+                  "documentation/platform/agent-vault/guides/opencode"
                 ]
               },
               {

@@ -2,6 +2,7 @@ import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Spinner, Tooltip } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
@@ -18,8 +19,8 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <Spinner size="lg" className="text-surface-selected" />
+        <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );
   }
@@ -34,15 +35,10 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             type="button"
             key={type}
             onClick={() => onSelect(type)}
-            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-border-control bg-surface-hover p-4 duration-200 hover:bg-surface-active"
           >
-            <img
-              src={`/images/integrations/${image}`}
-              width={size}
-              className="mt-auto"
-              alt={`${name} logo`}
-            />
-            <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+            <ProviderIcon icon={image} width={size} className="mt-auto" alt={`${name} logo`} />
+            <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
               {name}
             </div>
           </button>
@@ -59,7 +55,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             service you're looking for,`}{" "}
               <a
                 target="_blank"
-                className="underline hover:text-mineshaft-300"
+                className="underline hover:text-label"
                 href="https://infisical.com/slack"
                 rel="noopener noreferrer"
               >
@@ -68,7 +64,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
               or{" "}
               <a
                 target="_blank"
-                className="underline hover:text-mineshaft-300"
+                className="underline hover:text-label"
                 href="https://github.com/Infisical/infisical/discussions"
                 rel="noopener noreferrer"
               >
@@ -79,9 +75,9 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
           </>
         }
       >
-        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-mineshaft-600 bg-mineshaft-800 p-4 hover:bg-mineshaft-900/50">
+        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-border-control bg-surface-raised p-4 hover:bg-surface-base/50">
           <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
-          <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+          <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
             Coming Soon
           </div>
         </div>

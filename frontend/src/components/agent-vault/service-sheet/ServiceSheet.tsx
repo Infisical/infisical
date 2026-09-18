@@ -18,6 +18,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
@@ -302,11 +303,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             <>
               <SheetTitle className="flex items-center gap-2.5">
                 {template && (
-                  <img
-                    src={`/images/integrations/${template.image}`}
-                    alt=""
-                    className="size-6 object-contain"
-                  />
+                  <ProviderIcon icon={template.image} alt="" className="size-6 object-contain" />
                 )}
                 {template?.name ?? (isUpdate ? service?.name : "Custom")}
                 <DocumentationLinkBadge href={SERVICE_DOCS_URL} />

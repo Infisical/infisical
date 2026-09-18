@@ -300,7 +300,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               onAcknowledgedChange: setHasSavedRecoveryCodes,
               confirmLabel: "Continue",
               isConfirmPending: isLoading,
-              labelClassName: "text-bunker-200",
+              labelClassName: "text-foreground-soft",
               onConfirm: async () => {
                 setIsLoading(true);
                 await completeLogin();

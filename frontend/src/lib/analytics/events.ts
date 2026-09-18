@@ -4,6 +4,7 @@ export const AnalyticsEvent = {
   FolderAccessSheetOpened: "Folder Access Sheet Opened",
   FolderAccessAddSheetOpened: "Folder Access Add Sheet Opened",
   FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened"
+  ThemePreferenceChanged: "Theme Preference Changed"
 } as const;
 
 type PaywallProperties = {
@@ -41,3 +42,9 @@ export type OrganizationAnalyticsEventMap = {
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
+
+export type ThemePreferenceChangedProperties = {
+  source: "command-menu" | "profile-menu";
+  theme: "dark" | "light" | "system";
+  resolvedTheme: "dark" | "light";
+};
