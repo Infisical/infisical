@@ -306,13 +306,15 @@ export const ProductsCard = ({
 
   // Pull the latest entitlements from the license server (busting the server cache) and refetch the
   // overview so the freshly-resolved products land in the UI.
-  const handleRefresh = async () => {
-    try {
-      await refreshEntitlements.mutateAsync({ orgId: currentOrg.id });
-      createNotification({ type: "success", text: "Entitlements refreshed." });
-    } catch {
-      createNotification({ type: "error", text: "Failed to refresh entitlements." });
-    }
+  const handleRefresh = () => {
+    refreshEntitlements.mutate(
+      { orgId: currentOrg.id },
+      {
+        onSuccess: () => {
+          createNotification({ type: "success", text: "Entitlements refreshed." });
+        }
+      }
+    );
   };
 
   return (

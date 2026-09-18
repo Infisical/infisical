@@ -518,6 +518,18 @@ export const identityAuthTemplateServiceFactory = ({
       kubernetesPropagationData.gatewayPoolId = effectiveGatewayColumns.gatewayPoolId;
     }
 
+    if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.LDAP) {
+      const merged = mergedTemplateFields as TLdapTemplateFields;
+      const current = currentTemplateFields as TLdapTemplateFields;
+
+      if (merged.url?.trim() !== current.url?.trim() && !("bindPass" in fieldPatch)) {
+        throw new BadRequestError({
+          message:
+            "Changing an LDAP auth template's URL requires supplying bindPass. The stored bind password cannot be read back, and the new URL is applied to every identity linked to this template."
+        });
+      }
+    }
+
     let oidcPropagationData: TIdentityOidcAuthsUpdate | undefined;
     if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.OIDC) {
       const merged = mergedTemplateFields as TOidcTemplateFields;

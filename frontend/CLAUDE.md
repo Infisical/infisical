@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 6, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
