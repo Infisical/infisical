@@ -143,7 +143,6 @@ export const NotificationDropdown = () => {
                 ))}
                 {hasMoreNotifications && (
                   <DropdownMenuItem
-                    className="justify-center rounded-none"
                     onSelect={(e) => {
                       e.preventDefault();
                       setVisibleNotificationCount((count) => count + NOTIFICATIONS_PER_PAGE);
