@@ -33,7 +33,7 @@ description: "Learn how to configure Auth0 OIDC for Infisical SSO."
       ![OIDC auth0 application connections](../../../images/sso/auth0-oidc/application-connections.png)
 
       <Note>
-         Infisical takes a user's name from the `given_name` and `family_name` claims, so make sure both are set on your Auth0 users. If `given_name` is missing, Infisical falls back to the `name` claim. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for how that fallback resolves.
+         Infisical takes a user's first name from the `given_name` claim and their last name from `family_name`. Configure `family_name` only if Infisical should store a separate last name. If `given_name` is missing, Infisical falls back to the `name` claim. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for the exact fallback rules.
       </Note>
 
    </Step>
