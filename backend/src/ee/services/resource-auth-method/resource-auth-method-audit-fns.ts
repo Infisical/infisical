@@ -1,5 +1,3 @@
-import { InternalServerError } from "@app/lib/errors";
-
 import { ResourceAuthMethodType } from "./resource-auth-method-fns";
 import { TAuthMethodView } from "./resource-auth-method-types";
 
@@ -53,10 +51,7 @@ export const resourceAuthMethodAuditMetadata = ({
     };
   }
 
-  if (view.method === ResourceAuthMethodType.Token) {
-    return { ...base, method: view.method, methodConfigId: resourceId };
-  }
-
-  // Legacy identity gateways cannot be created or have their method set, so reaching this is a bug.
-  throw new InternalServerError({ message: `Cannot audit auth method "${view.method}" for a ${resourceType}` });
+  // Naming the remaining methods keeps a new one from silently landing here with no audit fields.
+  const methodWithoutConfig: typeof ResourceAuthMethodType.Token | typeof ResourceAuthMethodType.Identity = view.method;
+  return { ...base, method: methodWithoutConfig, methodConfigId: resourceId };
 };

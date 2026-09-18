@@ -126,7 +126,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `gateway.enrollment.aws.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for AWS auth. |
 | `gateway.enrollment.gcp.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for GCP auth. |
 | `gateway.enrollment.gcp.type` | `""` | How the identity is proven: `gce` reads a token from the metadata server, `iam` signs one through the IAM Credentials API. Empty means `gce`. |
-| `gateway.enrollment.gcp.serviceAccountKeyFilePath` | `""` | Only for `type: iam` on a pod with no workload identity. Path to a service account key file you mount yourself. |
+| `gateway.enrollment.gcp.serviceAccountKeyFilePath` | `""` | Only for `type: iam` on a pod with no workload identity. Path to a service account key file, which you mount with `extraVolumes` and `extraVolumeMounts`. |
 | `gateway.enrollment.kubernetes.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for Kubernetes auth. |
 | `gateway.enrollment.kubernetes.serviceAccountTokenPath` | `""` | Override the projected service account token path. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`. |
 | `gateway.enrollment.kubernetes.externalTokenReview` | `false` | Set true when TokenReview permission comes from outside this chart, either a token reviewer JWT configured in Infisical or a binding you manage. Required to install with `serviceAccount.createAsAuthDelegator` disabled. |
@@ -151,6 +151,8 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `extraEnv` | `[]` | Extra environment variables for the gateway container. |
 | `extraEnvFrom` | `[]` | Load environment variables from Secrets or ConfigMaps. |
 | `extraArgs` | `[]` | Extra arguments appended to the gateway container command. |
+| `extraVolumes` | `[]` | Additional volumes to attach to the gateway pod. |
+| `extraVolumeMounts` | `[]` | Additional volume mounts for the gateway container. |
 | `extraObjects` | `[]` | Extra Kubernetes manifests to deploy with this chart. |
 | `service.type` | `ClusterIP` | Type of the Service created in direct listen mode. |
 | `service.port` | `""` | Port the Service exposes. Empty means the port from `gateway.listenAddress`. Set it only to put a different port in front of the gateway. |
@@ -227,7 +229,7 @@ gateway:
       # Credentials API. Leave empty for the CLI default of "gce".
       type: ""
       # Only for type=iam, and only when the pod has no workload identity to sign with. Path to a
-      # service account key file, which you must mount yourself.
+      # service account key file, which you mount with extraVolumes and extraVolumeMounts.
       serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
@@ -331,6 +333,18 @@ extraEnvFrom: []
 # Extra arguments appended to the gateway container command
 extraArgs: []
 #  - --log-level=debug
+
+# Additional volumes to attach to the gateway pod
+extraVolumes: []
+#  - name: gcp-service-account-key
+#    secret:
+#      secretName: gcp-service-account-key
+
+# Additional volume mounts for the gateway container
+extraVolumeMounts: []
+#  - name: gcp-service-account-key
+#    mountPath: /var/secrets/gcp
+#    readOnly: true
 
 # Extra Kubernetes manifests to deploy with this chart
 extraObjects: []

@@ -42,7 +42,8 @@ gateway:
       # "gce" reads an identity token from the metadata server (covers GKE workload identity),
       # "iam" signs one through the IAM Credentials API. Empty means "gce".
       type: ""
-      # Only for type=iam without workload identity. You must mount the key file yourself.
+      # Only for type=iam without workload identity. Path to a service account key file that you
+      # mount into the container with extraVolumes and extraVolumeMounts.
       serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
@@ -146,6 +147,18 @@ extraEnvFrom: []
 # -- Extra arguments appended to the gateway container command
 extraArgs: []
 #  - --log-level=debug
+
+# -- Additional volumes to attach to the gateway pod
+extraVolumes: []
+#  - name: gcp-service-account-key
+#    secret:
+#      secretName: gcp-service-account-key
+
+# -- Additional volume mounts for the gateway container
+extraVolumeMounts: []
+#  - name: gcp-service-account-key
+#    mountPath: /var/secrets/gcp
+#    readOnly: true
 
 # -- Extra Kubernetes manifests to deploy with this chart
 extraObjects: []

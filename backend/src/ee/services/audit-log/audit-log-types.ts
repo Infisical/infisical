@@ -7,7 +7,10 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
-import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import {
+  ResourceAuthMethodType,
+  TSettableAuthMethod
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   TCreateSecretRotationV2DTO,
@@ -7324,7 +7327,7 @@ interface ResourceAuthMethodConfigMetadata {
   resourceType: ResourceAuthMethodResourceType;
   resourceId: string;
   resourceName?: string;
-  method: ResourceAuthMethodKind;
+  method: ResourceAuthMethodType;
   methodConfigId: string;
   stsEndpoint?: string;
   allowedPrincipalArns?: string;

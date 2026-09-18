@@ -18,6 +18,9 @@
   {{- if and .Values.gateway.enrollment.gcp.serviceAccountKeyFilePath (ne $gcpType "iam") }}
     {{- fail "gateway.enrollment.gcp.serviceAccountKeyFilePath only applies when gateway.enrollment.gcp.type is 'iam'. The gce type reads its token from the instance metadata server." }}
   {{- end }}
+  {{- if and .Values.gateway.enrollment.gcp.serviceAccountKeyFilePath (not .Values.extraVolumeMounts) }}
+    {{- fail "gateway.enrollment.gcp.serviceAccountKeyFilePath is a path inside the container, and nothing in this chart puts a file there. Mount the key with extraVolumes and extraVolumeMounts, or leave the path empty and give the pod a workload identity." }}
+  {{- end }}
 {{- end }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
@@ -80,6 +83,9 @@ spec:
         {{- if and (not $usePVC) (not (hasPrefix "/var/lib/infisical" $sessionPath)) }}
         - name: session-recordings
           emptyDir: {}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -175,6 +181,9 @@ spec:
             - name: session-recordings
               mountPath: {{ $sessionPath }}
             {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- else }}
           args:
             - gateway
@@ -215,6 +224,9 @@ spec:
             {{- else if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
             - name: session-recordings
               mountPath: {{ $sessionPath }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
           {{- with .Values.resources }}
