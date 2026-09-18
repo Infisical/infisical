@@ -351,6 +351,7 @@ const OverviewPageContent = () => {
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
+  const [isSearchAllFoldersOpen, setIsSearchAllFoldersOpen] = useState(false);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -2684,6 +2685,8 @@ const OverviewPageContent = () => {
                   tags={tags}
                   onChange={setSearchFilter}
                   onSelectResult={({ search }) => setSearchFilter(search)}
+                  isSearchAllFoldersOpen={isSearchAllFoldersOpen}
+                  onSearchAllFoldersOpenChange={setIsSearchAllFoldersOpen}
                   environments={userAvailableEnvs}
                   projectId={currentProject?.id}
                 />
@@ -2825,7 +2828,11 @@ const OverviewPageContent = () => {
           )}
           {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
           {tableView === "filter-empty" && (
-            <EmptyResourceDisplay isFiltered={isTableFiltered || Boolean(searchFilter)} />
+            <EmptyResourceDisplay
+              isFiltered={isTableFiltered || Boolean(searchFilter.trim())}
+              hasSearch={Boolean(searchFilter.trim())}
+              onSearchAllFolders={() => setIsSearchAllFoldersOpen(true)}
+            />
           )}
           {tableView === "table" && (
             <>
