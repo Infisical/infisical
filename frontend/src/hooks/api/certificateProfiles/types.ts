@@ -1,8 +1,11 @@
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
+
 export type TProfileCustomExtension = {
   oid: string;
   label?: string;
   critical?: boolean;
   value?: string;
+  valueEncoding?: CertExtensionValueEncoding;
 };
 
 export enum EnrollmentType {

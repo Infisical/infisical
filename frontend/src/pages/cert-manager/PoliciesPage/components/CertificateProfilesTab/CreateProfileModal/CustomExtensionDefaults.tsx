@@ -19,9 +19,12 @@ import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/Cus
 
 import {
   CertExtensionCriticality,
+  CertExtensionValueEncoding,
+  CUSTOM_EXTENSION_VALUE_ENCODINGS,
   customExtensionLabelFor,
-  getCustomExtensionValuePlaceholder,
+  getCustomExtensionValuePlaceholderFor,
   isPresetExtensionOid,
+  validateCustomExtensionDerValue,
   validateCustomExtensionValue
 } from "../../CertificatePoliciesTab/shared/certificate-constants";
 import { SectionHeading } from "./SectionHeading";
@@ -34,6 +37,11 @@ type Props = {
   }> | null;
   extensions: TProfileCustomExtension[];
   onChange: (next: TProfileCustomExtension[]) => void;
+};
+
+const customExtensionValueError = (oid: string, value: string | undefined, isDer: boolean) => {
+  if (!oid || !value) return null;
+  return isDer ? validateCustomExtensionDerValue(value) : validateCustomExtensionValue(oid, value);
 };
 
 export const CustomExtensionDefaults = ({
@@ -98,16 +106,17 @@ export const CustomExtensionDefaults = ({
 
             {extensions.map((extension, index) => {
               const isPreset = isPresetExtensionOid(extension.oid);
-              const placeholder = getCustomExtensionValuePlaceholder(extension.oid);
+              const placeholder = getCustomExtensionValuePlaceholderFor(
+                extension.oid,
+                extension.valueEncoding
+              );
               const criticalityPinned = criticalityPinnedFor(extension.oid);
               const criticalityLocked = isPreset || Boolean(criticalityPinned);
               const isCritical = criticalityPinned
                 ? criticalityPinned === CertExtensionCriticality.CRITICAL
                 : Boolean(extension.critical);
-              const valueError =
-                extension.oid && extension.value
-                  ? validateCustomExtensionValue(extension.oid, extension.value)
-                  : null;
+              const isDer = extension.valueEncoding === CertExtensionValueEncoding.DER;
+              const valueError = customExtensionValueError(extension.oid, extension.value, isDer);
 
               const criticalityCheckbox = (
                 <Checkbox
@@ -155,6 +164,32 @@ export const CustomExtensionDefaults = ({
                       onChange={(oid) => replace(index, declarationFor(oid))}
                     />
                   )}
+
+                  <Select
+                    value={
+                      isPreset
+                        ? CertExtensionValueEncoding.TEXT
+                        : (extension.valueEncoding ?? CertExtensionValueEncoding.TEXT)
+                    }
+                    disabled={isPreset}
+                    onValueChange={(encoding) =>
+                      update(index, {
+                        value: "",
+                        valueEncoding: encoding as CertExtensionValueEncoding
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-24 shrink-0" aria-label="Value format">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {CUSTOM_EXTENSION_VALUE_ENCODINGS.map((encoding) => (
+                        <SelectItem key={encoding.value} value={encoding.value}>
+                          {encoding.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
                   <div className="min-w-0 flex-[4]">
                     <Input

@@ -3,10 +3,14 @@ import {
   TCertificatePolicyRule,
   TSubjectRule
 } from "@app/hooks/api/certificatePolicies";
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
+  collectDerTextValues,
+  decodeDerTextValue,
   formatSANType,
+  validateCustomExtensionDerValue,
   validateCustomExtensionValue
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -672,15 +676,31 @@ export const evaluateCustomExtensions = ({
   rules
 }: {
   declarations: TCustomExtensionDeclaration[];
-  rows: { oid: string; value: string }[];
+  rows: { oid: string; value: string; valueEncoding?: CertExtensionValueEncoding }[];
   rules?: TCustomExtensionPolicyRule[] | null;
 }): CustomExtensionsGuidance => {
   const errorsByOid: Record<string, string> = {};
   const declarationByOid = new Map(
     declarations.map((declaration) => [declaration.oid, declaration])
   );
+  const suppliedRows = rows.filter((row) => row.oid.trim());
   const valueByOid = new Map(
-    rows.filter((row) => row.oid.trim()).map((row) => [row.oid, row.value])
+    suppliedRows.map((row) => [
+      row.oid,
+      row.valueEncoding === CertExtensionValueEncoding.DER
+        ? (decodeDerTextValue(row.value) ?? row.value)
+        : row.value
+    ])
+  );
+  const derValueByOid = new Map(
+    suppliedRows
+      .filter((row) => row.valueEncoding === CertExtensionValueEncoding.DER)
+      .map((row) => [row.oid, row.value])
+  );
+  const nestedTextsByOid = new Map(
+    suppliedRows
+      .filter((row) => row.valueEncoding === CertExtensionValueEncoding.DER)
+      .map((row) => [row.oid, collectDerTextValues(row.value)])
   );
   const isUnrestricted = rules === undefined || rules === null;
 
@@ -707,7 +727,11 @@ export const evaluateCustomExtensions = ({
       return;
     }
 
-    const malformed = validateCustomExtensionValue(oid, value);
+    const derValue = derValueByOid.get(oid);
+    const malformed =
+      derValue === undefined
+        ? validateCustomExtensionValue(oid, value)
+        : validateCustomExtensionDerValue(derValue);
     if (malformed) {
       errorsByOid[oid] = malformed;
       return;
@@ -718,7 +742,12 @@ export const evaluateCustomExtensions = ({
     const matchesAnyExtensionPattern = (patterns: string[]) =>
       patterns.some((pattern) => matchesNormalizedPattern(value, pattern));
 
-    if (matchesAnyExtensionPattern(rule.denied ?? [])) {
+    const deniedMatchesNested = (patterns: string[]) =>
+      (nestedTextsByOid.get(oid) ?? []).some((nested) =>
+        patterns.some((pattern) => matchesNormalizedPattern(nested, pattern))
+      );
+
+    if (matchesAnyExtensionPattern(rule.denied ?? []) || deniedMatchesNested(rule.denied ?? [])) {
       errorsByOid[oid] = "This value is denied by this policy";
       return;
     }

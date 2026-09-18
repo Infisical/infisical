@@ -21,8 +21,10 @@ import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
 import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
 import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 import {
+  CertExtensionValueEncoding,
+  CUSTOM_EXTENSION_VALUE_ENCODINGS,
   customExtensionLabelFor,
-  getCustomExtensionValuePlaceholder,
+  getCustomExtensionValuePlaceholderFor,
   isPresetExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -31,6 +33,7 @@ import { PolicyRowMessage } from "./PolicyRowMessage";
 export type TRequestCustomExtension = {
   oid: string;
   value: string;
+  valueEncoding?: CertExtensionValueEncoding;
   critical?: boolean;
 };
 
@@ -116,6 +119,49 @@ export const RequestCustomExtensionsField = ({
             : null;
         };
 
+        const renderValueFormat = (
+          oid: string,
+          encoding: CertExtensionValueEncoding | undefined,
+          onSelect: (next: CertExtensionValueEncoding) => void
+        ) => {
+          const current = encoding ?? CertExtensionValueEncoding.TEXT;
+          const isPreset = isPresetExtensionOid(oid) && current !== CertExtensionValueEncoding.DER;
+          const select = (
+            <Select
+              value={current}
+              disabled={isPreset}
+              onValueChange={(next) => onSelect(next as CertExtensionValueEncoding)}
+            >
+              <SelectTrigger className="w-20 shrink-0" aria-label="Value format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {CUSTOM_EXTENSION_VALUE_ENCODINGS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+
+          if (!isPreset) return select;
+
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                <span tabIndex={0} className="shrink-0">
+                  {select}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-64">
+                Infisical encodes this extension for you, so its value is written as text.
+              </TooltipContent>
+            </Tooltip>
+          );
+        };
+
         const renderCriticality = (
           oid: string,
           isCritical: boolean,
@@ -159,17 +205,24 @@ export const RequestCustomExtensionsField = ({
             <FieldLabel>Custom Extensions</FieldLabel>
             <div className="space-y-3">
               {pinnedDeclarations.map((declaration) => {
-                const placeholder = getCustomExtensionValuePlaceholder(declaration.oid);
                 const error = rowError(declaration.oid);
                 const current = rows.find((row) => row.oid === declaration.oid);
+                const encoding = current?.valueEncoding ?? declaration.valueEncoding;
+                const placeholder = getCustomExtensionValuePlaceholderFor(
+                  declaration.oid,
+                  encoding
+                );
 
                 return (
                   <div key={`declared-${declaration.oid}`} className="flex items-start gap-2">
                     <Input
-                      className="w-44 shrink-0 font-mono text-xs"
+                      className="w-36 shrink-0 font-mono text-xs"
                       value={labelOf(declaration.oid)}
                       disabled
                     />
+                    {renderValueFormat(declaration.oid, encoding, (next) =>
+                      upsert(declaration.oid, { value: "", valueEncoding: next })
+                    )}
                     <div className="min-w-0 flex-1">
                       <Input
                         className="w-full"
@@ -190,7 +243,11 @@ export const RequestCustomExtensionsField = ({
 
               {rows.map((row, index) => {
                 if (pinnedOids.includes(row.oid)) return null;
-                const placeholder = getCustomExtensionValuePlaceholder(row.oid);
+
+                const placeholder = getCustomExtensionValuePlaceholderFor(
+                  row.oid,
+                  row.valueEncoding
+                );
                 const error = rowError(row.oid);
                 const selectableOids = row.oid ? [row.oid, ...offerableOids] : offerableOids;
 
@@ -200,15 +257,25 @@ export const RequestCustomExtensionsField = ({
                   onChange(updated);
                 };
 
-                const selectOid = (oid: string) =>
-                  replaceRow({ oid, value: row.value || (declarationByOid.get(oid)?.value ?? "") });
+                const selectOid = (oid: string) => {
+                  const declared = declarationByOid.get(oid);
+                  const encoding = isPresetExtensionOid(oid)
+                    ? undefined
+                    : (row.valueEncoding ?? declared?.valueEncoding);
+
+                  replaceRow({
+                    oid,
+                    value: row.value || (declared?.value ?? ""),
+                    ...(encoding && { valueEncoding: encoding })
+                  });
+                };
 
                 return (
                   // eslint-disable-next-line react/no-array-index-key
                   <div key={`custom-extension-${index}`} className="flex items-start gap-2">
                     {isUnrestricted ? (
                       <CustomExtensionOidSelect
-                        className="w-44 shrink-0"
+                        className="w-36 shrink-0"
                         value={row.oid}
                         onChange={selectOid}
                         extraOptions={offerableOids.map((oid) => ({
@@ -219,7 +286,7 @@ export const RequestCustomExtensionsField = ({
                       />
                     ) : (
                       <Select value={row.oid || undefined} onValueChange={selectOid}>
-                        <SelectTrigger className="w-44 shrink-0" aria-label="Extension">
+                        <SelectTrigger className="w-36 shrink-0" aria-label="Extension">
                           <SelectValue placeholder="Select an extension" />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -231,6 +298,10 @@ export const RequestCustomExtensionsField = ({
                         </SelectContent>
                       </Select>
                     )}
+                    {renderValueFormat(row.oid, row.valueEncoding, (next) =>
+                      replaceRow({ ...row, value: "", valueEncoding: next })
+                    )}
+
                     <div className="min-w-0 flex-1">
                       <Input
                         className="w-full"

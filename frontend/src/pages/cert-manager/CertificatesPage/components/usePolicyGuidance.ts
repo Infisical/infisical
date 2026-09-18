@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UseFormClearErrors, UseFormWatch } from "react-hook-form";
 
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
 
 import {
   buildPolicyRules,
@@ -85,8 +86,11 @@ export const usePolicyGuidance = ({
     watch("subjectAttributes") ?? EMPTY_SUBJECT_ATTRIBUTES;
   const subjectAltNames: SubjectAltName[] = watch("subjectAltNames") ?? EMPTY_SUBJECT_ALT_NAMES;
   const ttl: string = watch("ttl") ?? "";
-  const customExtensionRows: { oid: string; value: string }[] =
-    watch("customExtensions") ?? EMPTY_CUSTOM_EXTENSION_ROWS;
+  const customExtensionRows: {
+    oid: string;
+    value: string;
+    valueEncoding?: CertExtensionValueEncoding;
+  }[] = watch("customExtensions") ?? EMPTY_CUSTOM_EXTENSION_ROWS;
 
   const rules = useMemo(
     () => buildPolicyRules(isSubjectEvaluated ? policy : undefined),

@@ -36,7 +36,11 @@ import { CaCapability } from "@app/hooks/api/ca/enums";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { buildExtendedKeyUsageToggleSchema } from "@app/hooks/api/certificates/constants";
-import { CertificateRequestStatus, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import {
+  CertExtensionValueEncoding,
+  CertificateRequestStatus,
+  CertKeyUsage
+} from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -152,7 +156,14 @@ const buildFormSchema = (variant: CaFormVariant) => {
     keyUsages: keyUsagesField,
     extendedKeyUsages: extendedKeyUsagesField,
     customExtensions: z
-      .array(z.object({ oid: z.string(), value: z.string(), critical: z.boolean().optional() }))
+      .array(
+        z.object({
+          oid: z.string(),
+          value: z.string(),
+          valueEncoding: z.nativeEnum(CertExtensionValueEncoding).optional(),
+          critical: z.boolean().optional()
+        })
+      )
       .optional()
   });
 
