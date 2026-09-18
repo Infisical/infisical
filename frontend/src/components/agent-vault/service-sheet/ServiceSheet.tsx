@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -45,7 +45,7 @@ import {
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
-import { TransformationsFields } from "./TransformationsFields";
+import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
@@ -70,6 +70,11 @@ type Props = {
   service?: TAgentVaultService | null;
 };
 
+// Long enough for the advanced section to open and settle. There is no event to wait on: the section
+// is a Radix accordion, whose content is unmounted while closed, so the control cannot be measured
+// until after it mounts and takes its height.
+const SECTION_OPEN_MS = 250;
+
 export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: Props) => {
   const isUpdate = Boolean(service);
   const createService = useCreateAgentVaultService();
@@ -88,7 +93,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     reset,
     setError,
     trigger,
-    formState: { isDirty, isSubmitting }
+    formState: { errors, isDirty, isSubmitting }
   } = formMethods;
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
@@ -101,12 +106,41 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   );
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
+  // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
+  // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
+  // the errors it finds are the ones already there.
+  const [blockedAttempt, setBlockedAttempt] = useState(0);
+
   const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } = useWizardSteps<ServiceStep>({
     stepKeys,
     stepFields: SERVICE_STEP_FIELDS,
     invalidMessage: "Fix the errors before saving.",
-    validateStep: (fields) => trigger(fields as (keyof TServiceForm)[])
+    validateStep: async (fields) => {
+      const isValid = await trigger(fields as (keyof TServiceForm)[]);
+      if (!isValid) setBlockedAttempt((count) => count + 1);
+      return isValid;
+    }
   });
+
+  const hasAdvancedError = Boolean(errors.customHeaders || errors.substitutions);
+
+  useEffect(() => {
+    if (hasAdvancedError) setOpenItem(ADVANCED_ITEM);
+  }, [hasAdvancedError, blockedAttempt]);
+
+  useEffect(() => {
+    if (!blockedAttempt) return undefined;
+    // Once the accordion has finished opening: a control inside it is neither mounted nor at its final
+    // offset before then, so anything sooner scrolls to the wrong place or to nothing. The control
+    // rather than its message, which arrives a render later and keeps its text once the error clears.
+    const id = window.setTimeout(() => {
+      const invalid = panelRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      (invalid?.closest('[data-slot="field"]') ?? invalid)?.scrollIntoView({ block: "nearest" });
+    }, SECTION_OPEN_MS);
+    return () => window.clearTimeout(id);
+  }, [blockedAttempt]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -446,7 +480,10 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   </Stepper>
                 </aside>
 
-                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
+                <div
+                  ref={panelRef}
+                  className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6"
+                >
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
@@ -456,7 +493,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   {current.step === ServiceStep.Credential && (
                     <div className="flex flex-col gap-5">
                       <CredentialFields storedType={service?.credential.type} />
-                      <TransformationsFields />
+                      <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                     </div>
                   )}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}

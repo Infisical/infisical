@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { Controller, useFieldArray, useFormContext, useFormState } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { PlusIcon, TrashIcon } from "lucide-react";
 
 import {
@@ -31,9 +30,9 @@ import {
   UNCHANGED_SECRET
 } from "./serviceSchema";
 
-const SURFACES = Object.values(AgentVaultSubstitutionSurface);
+export const ADVANCED_ITEM = "advanced-options";
 
-const ADVANCED_ITEM = "advanced-options";
+const SURFACES = Object.values(AgentVaultSubstitutionSurface);
 
 const RemoveRowButton = ({
   ariaLabel,
@@ -64,17 +63,16 @@ const RemoveRowButton = ({
   </div>
 );
 
-export const TransformationsFields = () => {
+export const TransformationsFields = ({
+  openItem,
+  onOpenChange
+}: {
+  openItem: string;
+  onOpenChange: (item: string) => void;
+}) => {
   const { control, getValues } = useFormContext<TServiceForm>();
   const customHeaders = useFieldArray({ control, name: "customHeaders" });
   const substitutions = useFieldArray({ control, name: "substitutions" });
-  const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
-  const { errors, submitCount } = useFormState({ control });
-  const hasError = Boolean(errors.customHeaders || errors.substitutions);
-
-  useEffect(() => {
-    if (hasError) setOpenItem(ADVANCED_ITEM);
-  }, [hasError, submitCount]);
 
   return (
     <Accordion
@@ -82,7 +80,7 @@ export const TransformationsFields = () => {
       collapsible
       variant="ghost"
       value={openItem}
-      onValueChange={setOpenItem}
+      onValueChange={onOpenChange}
     >
       <AccordionItem value={ADVANCED_ITEM}>
         <AccordionTrigger>Advanced Options</AccordionTrigger>
