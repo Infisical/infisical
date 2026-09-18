@@ -3,7 +3,6 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -22,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageHeader,
   PageLoader,
   Pagination,
   ResourceIcon,
@@ -180,7 +180,7 @@ export const ApplicationsPage = () => {
       </Helmet>
       <div className="h-full bg-bunker-800">
         <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}

@@ -3,8 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
-import { AccessRestrictedDialog, PageLoader } from "@app/components/v3";
+import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -97,7 +96,7 @@ export const InventoryPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Inventory" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Inventory"

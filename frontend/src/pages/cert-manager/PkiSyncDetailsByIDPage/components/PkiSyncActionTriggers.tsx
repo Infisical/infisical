@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -33,8 +32,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
@@ -46,17 +43,16 @@ import {
   useTriggerPkiSyncSyncCertificates,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
-import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
   pkiSync: TPkiSync;
   onEdit: () => void;
+  onDelete: () => void;
 };
 
-export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
+export const PkiSyncActionTriggers = ({ pkiSync, onEdit, onDelete }: Props) => {
   const { destination, projectId, id } = pkiSync;
 
-  const navigate = useNavigate();
   const {
     canEdit: canEditSync,
     canDelete: canDeleteSync,
@@ -80,7 +76,6 @@ export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
   const updatePkiSyncMutation = useUpdatePkiSync();
 
   const { syncOption } = usePkiSyncOption(destination);
-  const { currentOrg } = useOrganization();
 
   const destinationName = PKI_SYNC_MAP[destination].name;
 
@@ -250,18 +245,7 @@ export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSync", isOpen)}
         isOpen={popUp.deleteSync.isOpen}
         pkiSync={pkiSync}
-        onComplete={() =>
-          navigate({
-            to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
-            params: {
-              projectId,
-              orgId: currentOrg.id
-            },
-            search: {
-              selectedTab: IntegrationsListPageTabs.PkiSyncs
-            }
-          })
-        }
+        onComplete={onDelete}
       />
     </>
   );

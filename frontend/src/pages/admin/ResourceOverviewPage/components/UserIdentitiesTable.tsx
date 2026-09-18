@@ -500,6 +500,7 @@ export const UserIdentitiesTable = () => {
           buttonText="Remove Access"
         />
         <UpgradePlanModal
+          paywallKey="admin.user-identities"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan.data?.text}

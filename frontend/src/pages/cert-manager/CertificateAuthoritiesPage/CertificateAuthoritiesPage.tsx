@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -48,9 +47,8 @@ export const CertificateAuthoritiesPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Authorities" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
-          className="mb-6"
           scope={ProjectType.CertificateManager}
           title="Certificate Authorities"
           description="Define the trust anchors that sign your certificates: internal CAs you operate, plus external CAs you connect to."

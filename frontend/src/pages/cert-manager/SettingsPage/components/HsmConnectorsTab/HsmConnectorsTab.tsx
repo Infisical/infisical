@@ -117,6 +117,7 @@ export const HsmConnectorsTab = () => {
           <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Enterprise</Button>
         </div>
         <UpgradePlanModal
+          paywallKey="cert-manager.hsm-connectors"
           isOpen={upgradeOpen}
           onOpenChange={setUpgradeOpen}
           text="To use HSM Connectors, upgrade to Infisical's Enterprise plan."

@@ -18,16 +18,17 @@ import {
 } from "@app/components/v3";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { EditPkiSyncForm } from "./forms";
+import { EditPkiSyncForm, TPkiSyncEditStepKey } from "./forms";
 import { PkiSyncModalHeader } from "./PkiSyncModalHeader";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   pkiSync?: TPkiSync;
+  initialStepKey?: TPkiSyncEditStepKey;
 };
 
-export const EditPkiSyncModal = ({ isOpen, pkiSync, onOpenChange }: Props) => {
+export const EditPkiSyncModal = ({ isOpen, pkiSync, onOpenChange, initialStepKey }: Props) => {
   const [isDirty, setIsDirty] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
@@ -61,6 +62,7 @@ export const EditPkiSyncModal = ({ isOpen, pkiSync, onOpenChange }: Props) => {
           </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col">
             <EditPkiSyncForm
+              initialStepKey={initialStepKey}
               pkiSync={pkiSync}
               onComplete={() => onOpenChange(false)}
               onDirtyChange={setIsDirty}

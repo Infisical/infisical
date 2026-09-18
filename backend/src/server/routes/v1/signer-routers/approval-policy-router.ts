@@ -67,12 +67,14 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId
       });
 
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY,
-          metadata: { signerId: req.params.signerId, stepCount: req.body.steps.length }
+          metadata: { signerId: req.params.signerId, name: signer.name, stepCount: req.body.steps.length }
         }
       });
 

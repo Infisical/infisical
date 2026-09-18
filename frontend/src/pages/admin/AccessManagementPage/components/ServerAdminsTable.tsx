@@ -404,6 +404,7 @@ export const ServerAdminsTable = () => {
           onOpenChange={(isOpen) => handlePopUpToggle("addServerAdmin", isOpen)}
         />
         <UpgradePlanModal
+          paywallKey="admin.server-admins"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."

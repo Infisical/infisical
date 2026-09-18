@@ -1,6 +1,7 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { isMfaProofAccepted } from "@app/services/auth/auth-fns";
 import { MfaMethod } from "@app/services/auth/auth-type";
 import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -59,12 +60,15 @@ export const mfaSessionServiceFactory = ({
   // re-implementing the checks, so a session minted for one resource (e.g. a
   // low-value PAM account) can never be replayed against another (e.g. recovery
   // codes). verifyMfaSession only flips PENDING -> ACTIVE; the resource binding
-  // is enforced here at the point of use.
+  // is enforced here at the point of use. `acceptedMfaMethods` narrows it further where
+  // the challenged factor varies per action, so a proof of a fallback factor can't be
+  // replayed on an action that would never have asked for it.
   const isMfaSessionActive = async ({
     mfaSessionId,
     userId,
     resourceId,
-    tokenVersionId
+    tokenVersionId,
+    acceptedMfaMethods
   }: TIsMfaSessionActiveDTO): Promise<boolean> => {
     const mfaSession = await getMfaSession(mfaSessionId);
     if (
@@ -77,6 +81,10 @@ export const mfaSessionServiceFactory = ({
     }
 
     if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+      return false;
+    }
+
+    if (acceptedMfaMethods && !isMfaProofAccepted(mfaSession.mfaMethod, acceptedMfaMethods)) {
       return false;
     }
 
@@ -197,7 +205,7 @@ export const mfaSessionServiceFactory = ({
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
 
     if (mfaSession.resourceId === MfaStepUpResource.MfaManagement) {
-      await mfaLockoutService.recordRecentMfaAuth(userId, tokenVersionId);
+      await mfaLockoutService.recordRecentMfaAuth(userId, tokenVersionId, mfaMethod);
     }
 
     return {
@@ -269,11 +277,13 @@ export const mfaSessionServiceFactory = ({
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
   };
 
-  // True when THIS session (tokenVersionId) completed a full MFA login or management
-  // step-up recently, so an MFA-management step-up can be skipped within the grace
-  // window (see recordRecentMfaAuth). Session-scoped, never user-scoped.
-  const hasRecentMfaAuth = async (userId: string, tokenVersionId: string): Promise<boolean> => {
-    return mfaLockoutService.hasRecentMfaAuth(userId, tokenVersionId);
+  // Session-scoped grace after a login or management step-up, see recordRecentMfaAuth.
+  const hasRecentMfaAuth = async (
+    userId: string,
+    tokenVersionId: string,
+    acceptedMfaMethods: MfaMethod[]
+  ): Promise<boolean> => {
+    return mfaLockoutService.hasRecentMfaAuth(userId, tokenVersionId, acceptedMfaMethods);
   };
 
   return {
