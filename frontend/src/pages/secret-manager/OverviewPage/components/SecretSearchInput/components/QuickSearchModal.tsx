@@ -50,6 +50,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useGetProjectSecretsQuickSearch,
@@ -575,47 +576,44 @@ const Content = ({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border p-4">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              aria-label="Search filters"
-              aria-expanded={isFilterRailOpen}
-              aria-controls="quick-search-filters"
-              variant={isFilterRailOpen || activeFilterCount > 0 ? "project" : "outline"}
-              onClick={() => setIsFilterRailOpen((open) => !open)}
-            >
-              <PanelLeftIcon />
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>{isFilterRailOpen ? "Hide Filters" : "Show Filters"}</TooltipContent>
-        </Tooltip>
-        <InputGroup className="flex-1">
-          <InputGroupAddon>
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            ref={searchInputRef}
-            aria-label="Search resources"
-            placeholder="Search by resource name, secret metadata or tag..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </InputGroup>
-        {!isFilterRailOpen && activeFilterCount > 0 && (
-          <span className="shrink-0 text-xs text-accent">
-            {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"}
-          </span>
+    <div
+      className={cn(
+        "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-4 p-4",
+        isFilterRailOpen
+          ? "grid-rows-[auto_auto_minmax(0,1fr)] md:grid-rows-[auto_minmax(0,1fr)]"
+          : "grid-rows-[auto_minmax(0,1fr)]"
+      )}
+    >
+      <div
+        id="quick-search-filters"
+        role={isFilterRailOpen ? "complementary" : undefined}
+        aria-label={isFilterRailOpen ? "Search filters" : undefined}
+        className={cn(
+          "flex min-h-0 flex-col",
+          isFilterRailOpen
+            ? "col-span-2 col-start-1 row-start-1 max-h-[45dvh] rounded-lg bg-card ring-1 ring-border ring-inset md:col-span-1 md:row-span-2 md:max-h-none md:w-72"
+            : "col-start-1 row-start-1"
         )}
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      >
+        <div className="flex shrink-0 items-center gap-2 p-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="Search filters"
+                aria-expanded={isFilterRailOpen}
+                aria-controls="quick-search-filters"
+                variant={isFilterRailOpen || activeFilterCount > 0 ? "project" : "outline"}
+                onClick={() => setIsFilterRailOpen((open) => !open)}
+              >
+                <PanelLeftIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{isFilterRailOpen ? "Hide Filters" : "Show Filters"}</TooltipContent>
+          </Tooltip>
+          {isFilterRailOpen && <span className="text-sm font-medium">Filters</span>}
+        </div>
         {isFilterRailOpen && (
-          <aside
-            id="quick-search-filters"
-            aria-label="Search filters"
-            className="flex max-h-[45%] shrink-0 flex-col border-b border-border bg-card md:max-h-none md:w-72 md:border-r md:border-b-0"
-          >
+          <>
             <ScrollableContent
               aria-label="Filter options"
               outline={false}
@@ -737,68 +735,101 @@ const Content = ({
                 Reset Filters
               </Button>
             </div>
-          </aside>
+          </>
         )}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <ScrollableContent
-            aria-label="Search results"
-            edgeBehavior="fade"
-            outline={false}
-            maxHeight="100%"
-            containerClassName="flex min-h-0 flex-1 flex-col"
-            className="flex-1"
-            contentClassName="p-4"
+      </div>
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-2 py-3",
+          isFilterRailOpen
+            ? "col-span-2 col-start-1 row-start-2 md:col-span-1 md:col-start-2 md:row-start-1"
+            : "col-start-2 row-start-1"
+        )}
+      >
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            ref={searchInputRef}
+            aria-label="Search resources"
+            placeholder="Search by resource name, secret metadata or tag..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </InputGroup>
+        {!isFilterRailOpen && activeFilterCount > 0 && (
+          <span className="shrink-0 text-xs text-accent">
+            {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"}
+          </span>
+        )}
+      </div>
+      <div
+        className={cn(
+          "col-span-2 col-start-1 flex min-h-0 min-w-0 flex-col",
+          isFilterRailOpen
+            ? "row-start-3 md:col-span-1 md:col-start-2 md:row-start-2"
+            : "row-start-2"
+        )}
+      >
+        <ScrollableContent
+          aria-label="Search results"
+          edgeBehavior="fade"
+          outline={false}
+          maxHeight="100%"
+          containerClassName="flex min-h-0 flex-1 flex-col"
+          className="flex-1"
+          contentClassName="py-4"
+        >
+          {resultsContent}
+        </ScrollableContent>
+        {isMetadataMode && (
+          <div
+            className="shrink-0 space-y-1 border-t border-border p-4 text-xs text-accent"
+            role="status"
           >
-            {resultsContent}
-          </ScrollableContent>
-          {isMetadataMode && (
-            <div
-              className="shrink-0 space-y-1 border-t border-border p-4 text-xs text-accent"
-              role="status"
-            >
-              <p className="font-medium text-foreground">
-                {isMetadataLoading
-                  ? "Searching..."
-                  : `${metadataResultCount} matching ${metadataResultCount === 1 ? "secret" : "secrets"} shown`}
-              </p>
-              <p>{`Search checks up to ${metadataData?.searchLimit ?? 100} candidates per metadata query. Results may be incomplete. Narrow your filters to see the rest.`}</p>
-            </div>
-          )}
-          {isDeepSearchEnabled && !isDeepSearchLoading && visibleResultCount > 0 && (
-            <div className="shrink-0 border-t border-border px-4 py-2">
-              <Pagination
-                startAdornment={
-                  <div className="flex items-center gap-3">
-                    <ResourceCount
-                      folderCount={showType(RowType.Folder) ? totalFolderCount : 0}
-                      secretCount={showType(RowType.Secret) ? totalSecretCount : 0}
-                      dynamicSecretCount={
-                        showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0
-                      }
-                      secretRotationCount={
-                        showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
-                      }
-                    />
-                    {(isSearchLimitReached || pageableResultCount < visibleResultCount) && (
-                      <span className="text-xs text-accent">
-                        {`Only the first ${searchLimit} matches per resource type can be reached. Narrow your search to see the rest.`}
-                      </span>
-                    )}
-                  </div>
-                }
-                count={pageableResultCount}
-                page={page}
-                perPage={perPage}
-                perPageList={QUICK_SEARCH_PER_PAGE_OPTIONS}
-                onChangePage={setPage}
-                onChangePerPage={(newPerPage) => {
-                  setPerPage(newPerPage);
-                  setPage(1);
-                }}
-              />
-            </div>
-          )}
-        </div>
+            <p className="font-medium text-foreground">
+              {isMetadataLoading
+                ? "Searching..."
+                : `${metadataResultCount} matching ${metadataResultCount === 1 ? "secret" : "secrets"} shown`}
+            </p>
+            <p>{`Search checks up to ${metadataData?.searchLimit ?? 100} candidates per metadata query. Results may be incomplete. Narrow your filters to see the rest.`}</p>
+          </div>
+        )}
+        {isDeepSearchEnabled && !isDeepSearchLoading && visibleResultCount > 0 && (
+          <div className="shrink-0 border-t border-border px-4 py-2">
+            <Pagination
+              startAdornment={
+                <div className="flex items-center gap-3">
+                  <ResourceCount
+                    folderCount={showType(RowType.Folder) ? totalFolderCount : 0}
+                    secretCount={showType(RowType.Secret) ? totalSecretCount : 0}
+                    dynamicSecretCount={
+                      showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0
+                    }
+                    secretRotationCount={
+                      showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
+                    }
+                  />
+                  {(isSearchLimitReached || pageableResultCount < visibleResultCount) && (
+                    <span className="text-xs text-accent">
+                      {`Only the first ${searchLimit} matches per resource type can be reached. Narrow your search to see the rest.`}
+                    </span>
+                  )}
+                </div>
+              }
+              count={pageableResultCount}
+              page={page}
+              perPage={perPage}
+              perPageList={QUICK_SEARCH_PER_PAGE_OPTIONS}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
