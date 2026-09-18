@@ -155,11 +155,17 @@ vi.mock("@app/services/identity-gcp-auth/identity-gcp-auth-fns", () => ({
 
 // Neither the logger nor the crypto layer is initialised in the unit environment.
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+// jsonwebtoken returns null for anything it cannot decode rather than throwing.
 vi.mock("@app/lib/crypto", () => ({
   crypto: {
     jwt: () => ({
-      decode: (token: string) =>
-        JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()) as Record<string, unknown>
+      decode: (token: string) => {
+        try {
+          return JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      }
     })
   }
 }));
@@ -176,8 +182,9 @@ describe("verifyGcpTokenAndExtractCaller", () => {
 
   test("dispatches the gce type to the ID token validator", async () => {
     vi.mocked(validateIdTokenIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT, computeEngineDetails: undefined });
-    await verifyGcpTokenAndExtractCaller({ type: "gce", jwt: "t", audience: "gw-1", errorContext });
-    expect(validateIdTokenIdentity).toHaveBeenCalledWith({ audience: "gw-1", jwt: "t" });
+    const jwt = jwtWith({ aud: "gw-1" });
+    await verifyGcpTokenAndExtractCaller({ type: "gce", jwt, audience: "gw-1", errorContext });
+    expect(validateIdTokenIdentity).toHaveBeenCalledWith({ audience: "gw-1", jwt });
     expect(validateIamIdentity).not.toHaveBeenCalled();
   });
 
@@ -189,16 +196,23 @@ describe("verifyGcpTokenAndExtractCaller", () => {
     expect(validateIdTokenIdentity).not.toHaveBeenCalled();
   });
 
-  test("wraps a verification failure as an unauthorized error carrying the resource id", async () => {
+  test("refuses a token that does not parse before calling a validator", async () => {
+    await expect(
+      verifyGcpTokenAndExtractCaller({ type: "gce", jwt: "not-a-jwt", audience: "gw-1", errorContext })
+    ).rejects.toMatchObject({ detail: { reasonCode: "gcp_malformed_token", resourceId: "gw-1" } });
+    expect(validateIdTokenIdentity).not.toHaveBeenCalled();
+  });
+
+  test("reports a signature or upstream failure separately from a rejected claim", async () => {
     vi.mocked(validateIdTokenIdentity).mockRejectedValue(new Error("bad signature"));
     await expect(
-      verifyGcpTokenAndExtractCaller({ type: "gce", jwt: "t", audience: "gw-1", errorContext })
+      verifyGcpTokenAndExtractCaller({ type: "gce", jwt: jwtWith({ aud: "gw-1" }), audience: "gw-1", errorContext })
     ).rejects.toMatchObject({
       detail: { reasonCode: "gcp_token_verification_failed", resourceId: "gw-1" }
     });
   });
 
-  test("wraps an unauthorized error raised by the validator itself", async () => {
+  test("reports a claim the validator rejected as such", async () => {
     vi.mocked(validateIamIdentity).mockRejectedValue(new UnauthorizedError({ message: "Invalid audience" }));
     await expect(
       verifyGcpTokenAndExtractCaller({
@@ -208,7 +222,7 @@ describe("verifyGcpTokenAndExtractCaller", () => {
         errorContext
       })
     ).rejects.toMatchObject({
-      detail: { reasonCode: "gcp_token_verification_failed", resourceId: "gw-1" }
+      detail: { reasonCode: "gcp_token_rejected", resourceId: "gw-1" }
     });
   });
 

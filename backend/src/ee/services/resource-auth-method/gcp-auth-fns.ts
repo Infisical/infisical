@@ -46,6 +46,14 @@ export const verifyGcpTokenAndExtractCaller = async ({
   audience,
   errorContext
 }: TVerifyGcpTokenInput): Promise<TGcpIdentityDetails> => {
+  // A token that does not even parse is the caller's mistake, not a verification outcome.
+  if (!crypto.jwt().decode(jwt)) {
+    throw new UnauthorizedError({
+      message: "Access denied: the GCP token could not be parsed as a JWT.",
+      detail: { reasonCode: ResourceAuthLoginFailureReason.GcpMalformedToken, ...errorContext }
+    });
+  }
+
   let identityDetails: TGcpIdentityDetails;
   try {
     identityDetails =
@@ -57,12 +65,20 @@ export const verifyGcpTokenAndExtractCaller = async ({
       err,
       `Resource GCP Auth Login: token verification failed [resourceId=${String(errorContext.resourceId)}]`
     );
+
+    // The validators raise UnauthorizedError when a claim is wrong and anything else when the
+    // signature check or the call to Google fails, so the two are worth telling apart.
+    const claimRejected = err instanceof UnauthorizedError;
     throw new UnauthorizedError({
-      message:
-        type === GcpAuthType.Gce
-          ? "Could not verify the GCP identity token. Check that it was issued for this gateway's ID as the audience."
-          : "Could not verify the signed GCP service account token. Check that it was signed for this gateway's ID as the audience.",
-      detail: { reasonCode: ResourceAuthLoginFailureReason.GcpTokenVerificationFailed, ...errorContext }
+      message: claimRejected
+        ? "Access denied: the GCP token's claims were rejected. Check that it was issued for this gateway's ID as the audience, and that it carries a service account identity."
+        : "Access denied: the GCP token could not be verified against Google's signing keys. This is a bad signature, an expired token, or Google being unreachable.",
+      detail: {
+        reasonCode: claimRejected
+          ? ResourceAuthLoginFailureReason.GcpTokenRejected
+          : ResourceAuthLoginFailureReason.GcpTokenVerificationFailed,
+        ...errorContext
+      }
     });
   }
 

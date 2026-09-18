@@ -172,6 +172,8 @@ export const ResourceAuthLoginFailureReason = {
   NameNotAllowed: "name_not_allowed",
   AudienceNotAllowed: "audience_not_allowed",
   GatewayProxyUnavailable: "gateway_proxy_unavailable",
+  GcpMalformedToken: "gcp_malformed_token",
+  GcpTokenRejected: "gcp_token_rejected",
   GcpTokenVerificationFailed: "gcp_token_verification_failed",
   GcpTokenLifetimeRejected: "gcp_token_lifetime_rejected",
   ServiceAccountNotAllowed: "service_account_not_allowed",
