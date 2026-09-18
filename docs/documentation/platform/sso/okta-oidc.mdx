@@ -48,6 +48,10 @@ description: "Learn how to configure Okta OIDC for Infisical SSO."
          Infisical does not currently support DPoP for OIDC authentication.
       </Warning>
 
+      <Note>
+         Infisical takes a user's name from the `given_name` and `family_name` claims, so make sure both are set on your Okta users. If `given_name` is missing, Infisical falls back to the `name` claim. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for how that fallback resolves.
+      </Note>
+
    </Step>
    <Step title="Retrieve Identity Provider (IdP) Information from Okta">
       After creating the application, you'll be taken to the application's settings page. From the **General** tab, copy the **Client ID** and **Client Secret** values.
