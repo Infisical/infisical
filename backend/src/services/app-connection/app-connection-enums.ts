@@ -82,7 +82,8 @@ export enum AppConnection {
   MicrosoftIntune = "microsoft-intune",
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  ServiceNow = "servicenow"
 }
 
 export enum AWSRegion {

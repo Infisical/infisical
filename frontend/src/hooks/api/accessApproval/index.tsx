@@ -2,6 +2,7 @@ export {
   useCreateAccessApprovalPolicy,
   useCreateAccessRequest,
   useDeleteAccessApprovalPolicy,
+  useRetryExternalApprovalDispatch,
   useReviewAccessRequest,
   useRevokeAccessRequest,
   useUpdateAccessApprovalPolicy
@@ -10,5 +11,7 @@ export {
   useGetAccessApprovalPolicies,
   useGetAccessApprovalRequests,
   useGetAccessPolicyApprovalCount,
-  useGetAccessRequestsCount
+  useGetAccessRequestsCount,
+  useGetExternalApprovalApproverIdentities,
+  useGetExternalApprovalOptions
 } from "./queries";

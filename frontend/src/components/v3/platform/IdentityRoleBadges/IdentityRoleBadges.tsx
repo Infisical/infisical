@@ -1,6 +1,6 @@
 import { ClockAlertIcon, ClockIcon } from "lucide-react";
 
-import { formatProjectRoleName } from "@app/helpers/roles";
+import { formatProjectRoleName, isRoleExpired } from "@app/helpers/roles";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { Badge } from "../../generic/Badge";
@@ -28,10 +28,6 @@ const DEFAULT_MAX_VISIBLE = 2;
 
 const getRoleLabel = (role: TIdentityRoleBadge) =>
   formatProjectRoleName(role.role, role.customRoleName ?? undefined);
-
-const isRoleExpired = (role: TIdentityRoleBadge) =>
-  Boolean(role.isTemporary && role.temporaryAccessEndTime) &&
-  new Date() > new Date(role.temporaryAccessEndTime as string);
 
 const RoleBadge = ({ role, className }: { role: TIdentityRoleBadge; className?: string }) => {
   const expired = isRoleExpired(role);

@@ -1,11 +1,19 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
+import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 import { z } from "zod";
 
+import { TAccessApprovalRequests, TemporaryPermissionMode } from "@app/db/schemas";
 import { PermissionConditionOperators } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { slugSchema } from "@app/server/lib/schemas";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
+import { getExternalApprovalProviderName } from "../external-approval/external-approval-map";
+import { TExternalApprovalPolicyDALFactory } from "../external-approval/external-approval-policy-dal";
 import { CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
 import { PermissionConditionSchema } from "../permission/permission-types";
 import {
@@ -16,7 +24,43 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "../permission/project-permission";
-import { TVerifyPermission } from "./access-approval-request-types";
+import type { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
+import { ApprovalStatus, TVerifyPermission } from "./access-approval-request-types";
+
+export const toExternalApprovalProvider = (type: string) => ({
+  externalApprovalProvider: getExternalApprovalProviderName(type)
+});
+
+export const toExternalApprovalAuditLabels = ({
+  requestedByUser,
+  policyName,
+  externalId,
+  connectionName
+}: {
+  requestedByUser: { email?: string | null; username: string };
+  policyName: string;
+  externalId?: string | null;
+  connectionName?: string | null;
+}) => ({
+  requesterEmail: requestedByUser.email || requestedByUser.username,
+  policyName,
+  ...(externalId ? { externalId } : {}),
+  ...(connectionName ? { connectionName } : {})
+});
+
+export const getExternalApprovalProvider = async (
+  externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">,
+  externalApprovalPolicyId: string
+) => {
+  const externalApprovalPolicy = await externalApprovalPolicyDAL.findById(externalApprovalPolicyId);
+  if (!externalApprovalPolicy) {
+    throw new NotFoundError({
+      message: `External approval policy with ID '${externalApprovalPolicyId}' not found`
+    });
+  }
+
+  return toExternalApprovalProvider(externalApprovalPolicy.type);
+};
 
 const ACCESS_REQUEST_SECRET_PATH_MAX_LENGTH = 512;
 
@@ -61,16 +105,6 @@ const AccessApprovalRequestConditionsSchema = z
   })
   .strict();
 
-// Every allowed rule has the same shape: one whitelisted subject, that subject's allowed
-// actions, and the exact conditions the form produces. The whole unpacked rule is parsed
-// (not a projection of it), with .strict() so no other CASL rule attribute (field-level
-// scoping, reasons) can ride along into the privilege that gets granted on approval.
-// `inverted` needs an explicit key: unpackRules() stamps `inverted: false` on every rule,
-// which strict() would otherwise reject, while a crafted request can smuggle
-// `inverted: true` (a "cannot" rule) that must fail; literal(false).optional() allows
-// exactly the former and rejects the latter.
-// TAction admits `V | V[]` because the CASL_ACTION_SCHEMA_* transforms, while always
-// returning an array at runtime, declare their output as the union (generic narrowing).
 const accessApprovalRequestRuleSchema = <
   TSub extends ProjectPermissionSub,
   TAction extends z.ZodType<string | string[], z.ZodTypeDef, unknown>
@@ -87,12 +121,6 @@ const accessApprovalRequestRuleSchema = <
     })
     .strict();
 
-// The exact resources/actions the Request Access sheet's RESOURCE_CONFIGS can submit.
-// Access requests ask an approver to grant elevated access, so unlike custom project
-// roles this must not accept arbitrary CASL subjects/actions (Member/GrantPrivileges,
-// Kms, Role, etc). Every ProjectPermissionSub not listed below is rejected automatically:
-// z.discriminatedUnion has no catch-all branch, so any other subject literal fails with
-// Zod's own "Invalid discriminator value" issue.
 const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subject", [
   accessApprovalRequestRuleSchema(
     ProjectPermissionSub.Secrets,
@@ -120,11 +148,6 @@ const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subject", [
   )
 ]);
 
-// unpackRules always splits subject/action on "," (even a single value becomes a
-// 1-element array), so a crafted packed tuple like ["read", "secrets,member", {...}]
-// unpacks to subject: ["secrets", "member"]. Require exactly one subject per rule so
-// that can't slip a second, forbidden subject past validation while still being
-// persisted verbatim.
 const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessApprovalRequestRule[]) =>
   permissions.map((rule) => {
     const subjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
@@ -210,4 +233,84 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
     accessTypes,
     requestedPermissions
   };
+};
+
+type TGrantApprovedRequestPrivilege = {
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "findByIdForUpdate" | "updateById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
+  accessApprovalRequest: Pick<
+    TAccessApprovalRequests,
+    "id" | "isTemporary" | "temporaryRange" | "requestedByUserId" | "permissions"
+  > & { projectId: string };
+  approvedByUserId: string | null;
+  bypassReason: string | null;
+};
+
+export const grantApprovedRequestPrivilege = async (
+  {
+    accessApprovalRequestDAL,
+    additionalPrivilegeDAL,
+    accessApprovalRequest,
+    approvedByUserId,
+    bypassReason
+  }: TGrantApprovedRequestPrivilege,
+  tx: Knex
+) => {
+  const currentRequestState = await accessApprovalRequestDAL.findByIdForUpdate(accessApprovalRequest.id, tx);
+  if (!currentRequestState) {
+    throw new NotFoundError({ message: `Access approval request with ID '${accessApprovalRequest.id}' not found` });
+  }
+  if (currentRequestState.status !== ApprovalStatus.PENDING) {
+    throw new BadRequestError({ message: "The request has been closed" });
+  }
+  if (currentRequestState.privilegeId) return currentRequestState;
+
+  if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+    throw new BadRequestError({ message: "Temporary range is required for temporary access" });
+  }
+
+  let privilegeId: string;
+  if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+    const privilege = await additionalPrivilegeDAL.create(
+      {
+        actorUserId: accessApprovalRequest.requestedByUserId,
+        projectId: accessApprovalRequest.projectId,
+        name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+        permissions: JSON.stringify(accessApprovalRequest.permissions)
+      },
+      tx
+    );
+    privilegeId = privilege.id;
+  } else {
+    const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
+    const startTime = new Date();
+
+    const privilege = await additionalPrivilegeDAL.create(
+      {
+        actorUserId: accessApprovalRequest.requestedByUserId,
+        projectId: accessApprovalRequest.projectId,
+        name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+        permissions: JSON.stringify(accessApprovalRequest.permissions),
+        isTemporary: true,
+        temporaryMode: TemporaryPermissionMode.Relative,
+        temporaryRange: accessApprovalRequest.temporaryRange!,
+        temporaryAccessStartTime: startTime,
+        temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
+      },
+      tx
+    );
+    privilegeId = privilege.id;
+  }
+
+  return accessApprovalRequestDAL.updateById(
+    accessApprovalRequest.id,
+    {
+      privilegeId,
+      status: ApprovalStatus.APPROVED,
+      approvedAt: new Date(),
+      approvedByUserId,
+      bypassReason
+    },
+    tx
+  );
 };

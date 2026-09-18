@@ -1,4 +1,5 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TAccessApprovalRequests } from "@app/db/schemas";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 
 export enum ApprovalStatus {
   PENDING = "pending",
@@ -23,6 +24,13 @@ export type TReviewAccessRequestDTO = {
   bypassReason?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TReviewExternalAccessRequestDTO = {
+  requestId: string;
+  externalId: string;
+  status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED;
+  actor: OrgServiceActor;
+};
+
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
   permissions: unknown;
@@ -35,11 +43,21 @@ export type TRevokeAccessRequestDTO = {
   requestId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TRetryExternalApprovalDispatchDTO = {
+  requestId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateAccessApprovalRequestDTO = {
   requestId: string;
   temporaryRange: string;
   editNote: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TAccessApprovalRequestExternalApproval = {
+  id: string;
+  status: string | null | undefined;
+  externalId: string | null | undefined;
+} | null;
 
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
@@ -50,6 +68,7 @@ export type TListApprovalRequestsDTO = {
 export interface TAccessApprovalRequestServiceFactory {
   createAccessApprovalRequest: (arg: TCreateAccessApprovalRequestDTO) => Promise<{
     request: {
+      externalApprovalRequestId?: string | null | undefined;
       status: string;
       id: string;
       createdAt: Date;
@@ -66,6 +85,7 @@ export interface TAccessApprovalRequestServiceFactory {
       expiresAt?: Date | null | undefined;
     };
     projectId: string;
+    externalApprovalProvider?: string;
   }>;
   updateAccessApprovalRequest: (arg: TUpdateAccessApprovalRequestDTO) => Promise<{
     request: {
@@ -118,7 +138,9 @@ export interface TAccessApprovalRequestServiceFactory {
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
         requestExpirationTime?: string | null;
+        externalApprovalPolicyId?: string | null;
       };
+      externalApproval: TAccessApprovalRequestExternalApproval;
       projectId: string;
       environment: string;
       environmentName: string;
@@ -205,6 +227,29 @@ export interface TAccessApprovalRequestServiceFactory {
     projectId: string;
     policyId: string;
     isBypass: boolean;
+  }>;
+  reviewExternalAccessRequest: (arg: TReviewExternalAccessRequestDTO) => Promise<{
+    request: TAccessApprovalRequests;
+    projectId: string;
+    policyId: string;
+    policyName: string;
+    requesterEmail: string;
+    externalApprovalRequestId: string;
+    externalApprovalPolicyId: string;
+    externalApprovalProvider: string;
+    externalId?: string;
+    connectionName?: string;
+  }>;
+  retryExternalApprovalDispatch: (arg: TRetryExternalApprovalDispatchDTO) => Promise<{
+    projectId: string;
+    policyId: string;
+    policyName: string;
+    requesterEmail: string;
+    externalApprovalRequestId: string;
+    externalApprovalPolicyId: string;
+    externalApprovalProvider: string;
+    externalId?: string;
+    connectionName?: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

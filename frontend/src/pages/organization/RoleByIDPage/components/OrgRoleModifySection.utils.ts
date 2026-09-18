@@ -12,6 +12,7 @@ import {
   OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
   OrgPermissionEmailDomainActions,
+  OrgPermissionExternalApprovalActions,
   OrgPermissionGroupActions,
   OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
@@ -208,6 +209,10 @@ const honeyTokenPermissionSchema = z
   .array(z.object({ [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional() }))
   .optional();
 
+const externalApprovalPermissionSchema = z
+  .array(z.object({ [OrgPermissionExternalApprovalActions.Review]: z.boolean().optional() }))
+  .optional();
+
 const secretsManagementInsightsPermissionSchema = z
   .array(
     z.object({
@@ -278,7 +283,8 @@ export const formSchema = z.object({
       "sub-organization": subOrganizationPermissionSchema,
       "email-domains": emailDomainPermissionSchema,
       "honey-tokens": honeyTokenPermissionSchema,
-      [OrgPermissionSubjects.SecretsManagementInsights]: secretsManagementInsightsPermissionSchema
+      [OrgPermissionSubjects.SecretsManagementInsights]: secretsManagementInsightsPermissionSchema,
+      [OrgPermissionSubjects.ExternalApproval]: externalApprovalPermissionSchema
     })
     .optional()
     .superRefine((permissions, ctx) => {
@@ -971,6 +977,18 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionHoneyTokenActions.Setup,
         label: "Setup",
         description: "Set up honey tokens for the organization"
+      }
+    ]
+  },
+  [OrgPermissionSubjects.ExternalApproval]: {
+    title: "External Approvals",
+    description: "Report access request decisions made in an external system such as ServiceNow",
+    actions: [
+      {
+        value: OrgPermissionExternalApprovalActions.Review,
+        label: "Review",
+        description:
+          "Submit an approve or reject decision for requests sent to an external approver"
       }
     ]
   },

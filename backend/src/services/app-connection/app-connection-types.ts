@@ -408,6 +408,12 @@ import {
   TValidateSalesforceConnectionCredentialsSchema
 } from "./salesforce";
 import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./servicenow";
+import {
   TSmbConnection,
   TSmbConnectionConfig,
   TSmbConnectionInput,
@@ -585,6 +591,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TNutanixPrismCentralConnection
   | TSpaceliftConnection
   | TDaytonaConnection
+  | TServiceNowConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -680,6 +687,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNutanixPrismCentralConnectionInput
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
+  | TServiceNowConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -806,7 +814,8 @@ export type TAppConnectionConfig =
   | TFireworksConnectionConfig
   | TNutanixPrismCentralConnectionConfig
   | TSpaceliftConnectionConfig
-  | TDaytonaConnectionConfig;
+  | TDaytonaConnectionConfig
+  | TServiceNowConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -892,7 +901,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateFireworksConnectionCredentialsSchema
   | TValidateNutanixPrismCentralConnectionCredentialsSchema
   | TValidateSpaceliftConnectionCredentialsSchema
-  | TValidateDaytonaConnectionCredentialsSchema;
+  | TValidateDaytonaConnectionCredentialsSchema
+  | TValidateServiceNowConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

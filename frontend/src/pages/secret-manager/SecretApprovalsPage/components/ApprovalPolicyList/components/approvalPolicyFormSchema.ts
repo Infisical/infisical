@@ -1,7 +1,11 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
+import {
+  ApproverType,
+  BypasserType,
+  ExternalApprovalType
+} from "@app/hooks/api/accessApproval/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 
 import { getEmptyApprovalStepIndexes } from "./approvalPolicyFormUtils";
@@ -106,27 +110,40 @@ export const approvalPolicyFormSchema = z
       .default([])
       .optional(),
     maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
+    requestExpirationTime: durationSchema,
+    externalMode: z.boolean().default(false),
+    externalApproval: z
+      .object({
+        type: z.nativeEnum(ExternalApprovalType).default(ExternalApprovalType.ServiceNow),
+        connectionId: z.string().optional(),
+        approverIdentityId: z.string().optional()
+      })
+      .optional()
   })
   .superRefine((data, ctx) => {
-    const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
-    if (bypasserCount > MAX_POLICY_SUBJECTS) {
-      ctx.addIssue({
-        path: ["userBypassers"],
-        code: z.ZodIssueCode.custom,
-        message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
-      });
-    }
+    // the form hides bypassers for external policies, so an issue here would be unreachable
+    const isExternalPolicy = data.policyType === PolicyType.AccessPolicy && data.externalMode;
 
-    data.userBypassers.forEach((bypasser, index) => {
-      if (bypasser.isOrgMembershipActive === false) {
+    if (!isExternalPolicy) {
+      const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
+      if (bypasserCount > MAX_POLICY_SUBJECTS) {
         ctx.addIssue({
-          path: ["userBypassers", index],
+          path: ["userBypassers"],
           code: z.ZodIssueCode.custom,
-          message: "Inactive users cannot bypass approval policies"
+          message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
         });
       }
-    });
+
+      data.userBypassers.forEach((bypasser, index) => {
+        if (bypasser.isOrgMembershipActive === false) {
+          ctx.addIssue({
+            path: ["userBypassers", index],
+            code: z.ZodIssueCode.custom,
+            message: "Inactive users cannot bypass approval policies"
+          });
+        }
+      });
+    }
 
     if (data.policyType === PolicyType.ChangePolicy) {
       const approverCount = data.userApprovers.length + data.groupApprovers.length;
@@ -169,6 +186,26 @@ export const approvalPolicyFormSchema = z
           });
         }
       });
+      return;
+    }
+
+    if (data.externalMode) {
+      if (!data.externalApproval?.connectionId) {
+        ctx.addIssue({
+          path: ["externalApproval", "connectionId"],
+          code: z.ZodIssueCode.custom,
+          message: "Select an app connection"
+        });
+      }
+
+      if (!data.externalApproval?.approverIdentityId) {
+        ctx.addIssue({
+          path: ["externalApproval", "approverIdentityId"],
+          code: z.ZodIssueCode.custom,
+          message: "Select an approving identity"
+        });
+      }
+
       return;
     }
 

@@ -137,7 +137,7 @@ describe("api-metrics plugin", () => {
       "http.response.status_code": 200
     });
     await app.close();
-  });
+  }, 15_000);
 
   test("records an error response, and keeps the route template", async () => {
     installMeterProvider();

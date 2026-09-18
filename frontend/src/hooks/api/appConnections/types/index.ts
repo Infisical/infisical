@@ -69,6 +69,7 @@ import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TRundeckConnection } from "./rundeck-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
+import { TServiceNowConnection } from "./servicenow-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSpaceliftConnection } from "./spacelift-connection";
@@ -151,6 +152,7 @@ export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./rundeck-connection";
 export * from "./salesforce-connection";
+export * from "./servicenow-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./spacelift-connection";
@@ -251,7 +253,8 @@ export type TAppConnection =
   | TFireworksConnection
   | TNutanixPrismCentralConnection
   | TSpaceliftConnection
-  | TDaytonaConnection;
+  | TDaytonaConnection
+  | TServiceNowConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

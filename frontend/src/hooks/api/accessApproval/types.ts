@@ -1,7 +1,51 @@
+import { AppConnection } from "../appConnections/enums";
 import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
 import { ApprovalStatus } from "../secretApprovalRequest/types";
+
+export enum ExternalApprovalType {
+  ServiceNow = "servicenow"
+}
+
+export type TExternalApprovalPolicy = {
+  id: string;
+  type: ExternalApprovalType;
+  connectionId: string;
+  approverIdentityId?: string | null;
+};
+
+export type TExternalApprovalOption = {
+  type: ExternalApprovalType;
+  app: AppConnection;
+  name: string;
+};
+
+export type TExternalApprovalApproverIdentity = {
+  id: string;
+  name: string;
+  orgId: string;
+};
+
+export enum ExternalApprovalRequestStatus {
+  PendingDispatch = "pending_dispatch",
+  FailedDispatch = "failed_dispatch",
+  WaitingApproval = "waiting_approval",
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
+export type TExternalApprovalRequest = {
+  id: string;
+  status?: ExternalApprovalRequestStatus | null;
+  externalId?: string | null;
+};
+
+export type TExternalApprovalPolicyInput = {
+  type: ExternalApprovalType;
+  connectionId: string;
+  approverIdentityId: string;
+};
 
 export type TAccessApprovalPolicy = {
   id: string;
@@ -21,6 +65,8 @@ export type TAccessApprovalPolicy = {
   bypassForMachineIdentities?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalPolicyId?: string | null;
+  externalApproval?: TExternalApprovalPolicy | null;
 };
 
 export enum ApproverType {
@@ -127,7 +173,10 @@ export type TAccessApprovalRequest = {
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    externalApprovalPolicyId?: string | null;
   };
+
+  externalApproval?: TExternalApprovalRequest | null;
 
   reviewers: {
     isOrgMembershipActive: boolean;
@@ -238,6 +287,7 @@ export type TCreateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -255,6 +305,7 @@ export type TUpdateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput | null;
 };
 
 export type TDeleteSecretPolicyDTO = {

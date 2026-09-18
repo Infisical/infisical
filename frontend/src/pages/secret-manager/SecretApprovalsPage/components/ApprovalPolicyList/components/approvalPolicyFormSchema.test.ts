@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
+import {
+  ApproverType,
+  BypasserType,
+  ExternalApprovalType
+} from "@app/hooks/api/accessApproval/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 
 import { approvalPolicyFormSchema } from "./approvalPolicyFormSchema";
@@ -25,6 +29,19 @@ const basePolicy = {
   allowedSelfApprovals: true,
   bypassForMachineIdentities: false,
   sequenceApprovers: []
+};
+
+const externalPolicy = {
+  ...basePolicy,
+  policyType: PolicyType.AccessPolicy,
+  userApprovers: [],
+  sequenceApprovers: [],
+  externalMode: true,
+  externalApproval: {
+    type: ExternalApprovalType.ServiceNow,
+    connectionId: "connection-1",
+    approverIdentityId: "identity-1"
+  }
 };
 
 const getIssuePaths = (input: unknown) => {
@@ -133,5 +150,56 @@ describe("approval policy form schema", () => {
     });
 
     assert.ok(issuePaths.includes("userApprovers.0.username"));
+  });
+
+  it("rejects external mode without an app connection", () => {
+    const issuePaths = getIssuePaths({
+      ...externalPolicy,
+      externalApproval: {
+        type: ExternalApprovalType.ServiceNow,
+        approverIdentityId: "identity-1"
+      }
+    });
+
+    assert.ok(issuePaths.includes("externalApproval.connectionId"));
+  });
+
+  it("rejects external mode without an approving identity", () => {
+    const issuePaths = getIssuePaths({
+      ...externalPolicy,
+      externalApproval: {
+        type: ExternalApprovalType.ServiceNow,
+        connectionId: "connection-1"
+      }
+    });
+
+    assert.ok(issuePaths.includes("externalApproval.approverIdentityId"));
+  });
+
+  it("accepts an external-mode policy with no approval steps", () => {
+    const result = approvalPolicyFormSchema.safeParse(externalPolicy);
+
+    assert.equal(result.success, true);
+  });
+
+  it("accepts an external-mode policy that still carries an inactive bypasser", () => {
+    const result = approvalPolicyFormSchema.safeParse({
+      ...externalPolicy,
+      userBypassers: [
+        {
+          type: BypasserType.User,
+          id: "inactive-bypasser",
+          isOrgMembershipActive: false
+        }
+      ]
+    });
+
+    assert.equal(result.success, true);
+  });
+
+  it("still requires an approval step when external mode is off", () => {
+    const issuePaths = getIssuePaths({ ...externalPolicy, externalMode: false });
+
+    assert.ok(issuePaths.includes("sequenceApprovers"));
   });
 });

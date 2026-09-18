@@ -59,7 +59,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     [AppConnection.MySql]: "MySql",
     [AppConnection.OracleDB]: "OracleDb",
     [AppConnection.MongoDB]: "MongoDb",
-    [AppConnection.TravisCI]: "TravisCI"
+    [AppConnection.TravisCI]: "TravisCI",
+    [AppConnection.ServiceNow]: "ServiceNow"
   };
   const appNameForOpId =
     specialCases[app] ??
