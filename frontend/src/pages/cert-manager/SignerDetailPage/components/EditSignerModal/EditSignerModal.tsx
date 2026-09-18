@@ -306,11 +306,11 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 <PenTool className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
+                <div className="flex items-center gap-x-2 text-label">
                   Edit Signer
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.edit} />
                 </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <p className="text-sm leading-4 text-muted">
                   Update the signer&apos;s name, validity, and certificate authority.
                 </p>
               </div>

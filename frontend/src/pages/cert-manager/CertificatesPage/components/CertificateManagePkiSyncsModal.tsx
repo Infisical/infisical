@@ -217,7 +217,7 @@ export const CertificateManagePkiSyncsModal = ({
         <div className="mt-4 max-h-96 overflow-y-auto">
           {isPending && (
             <div className="flex h-32 items-center justify-center">
-              <div className="text-bunker-300">Loading PKI syncs...</div>
+              <div className="text-label-secondary">Loading PKI syncs...</div>
             </div>
           )}
           {!isPending && pkiSyncs.length === 0 && (
@@ -227,7 +227,7 @@ export const CertificateManagePkiSyncsModal = ({
                 <button
                   type="button"
                   onClick={handleNavigateToPkiSyncs}
-                  className="cursor-pointer underline hover:text-mineshaft-300"
+                  className="cursor-pointer underline hover:text-label"
                 >
                   PKI sync
                 </button>{" "}
@@ -263,7 +263,7 @@ export const CertificateManagePkiSyncsModal = ({
                         className={
                           managesItsOwnCertificates
                             ? "opacity-60"
-                            : "cursor-pointer hover:bg-mineshaft-700"
+                            : "cursor-pointer hover:bg-surface-hover"
                         }
                         onClick={() => !managesItsOwnCertificates && handleSyncToggle(sync.id)}
                       >
@@ -280,9 +280,7 @@ export const CertificateManagePkiSyncsModal = ({
                             {sync.name}
                           </div>
                           {unavailableReason && (
-                            <div className="truncate text-xs text-mineshaft-400">
-                              {unavailableReason}
-                            </div>
+                            <div className="truncate text-xs text-muted">{unavailableReason}</div>
                           )}
                         </Td>
                         <Td className="w-1/2 max-w-0">

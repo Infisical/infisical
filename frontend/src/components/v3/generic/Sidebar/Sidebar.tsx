@@ -202,7 +202,7 @@ function Sidebar({
               data-slot="sidebar"
               data-mobile="true"
               className={cn(
-                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
+                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground in-data-[theme=light]:bg-none [&>button]:hidden",
                 (scope === "project" || scope === "pam" || scope === "agent-vault") &&
                   "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
@@ -238,7 +238,7 @@ function Sidebar({
         >
           <div
             className={cn(
-              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
+              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear in-data-[theme=light]:bg-none",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
               (scope === "project" || scope === "pam" || scope === "agent-vault") &&
                 "from-project/5",

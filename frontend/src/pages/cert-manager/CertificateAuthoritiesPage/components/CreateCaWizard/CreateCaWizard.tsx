@@ -164,11 +164,11 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                 <ShieldIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
+                <div className="flex items-center gap-x-2 text-label">
                   Create Internal CA
                   <DocumentationLinkBadge href={PkiDocsUrls.ca.internal} />
                 </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <p className="text-sm leading-4 text-muted">
                   A private Certificate Authority hosted by Infisical, with its signing key managed
                   by Infisical or kept in your HSM.
                 </p>
