@@ -13,14 +13,14 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   IconButton,
   Input,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  InputGroupInput
 } from "@app/components/v3";
 import { AgentVaultSubstitutionSurface } from "@app/hooks/api/agentVault";
 
@@ -32,6 +32,7 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
+import { SubstitutionExample } from "./SubstitutionExample";
 
 export const ADVANCED_ITEM = "advanced-options";
 
@@ -268,15 +269,14 @@ export const TransformationsFields = ({
                           <FieldContent>
                             <FieldLabel className="text-xs">
                               Replace In
-                              <Tooltip>
-                                <TooltipTrigger asChild>
+                              <HoverCard openDelay={200} closeDelay={150}>
+                                <HoverCardTrigger asChild>
                                   <InfoIcon />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  Select the parts of the request where you want the placeholder
-                                  replaced: URL path, query string, headers, or body.
-                                </TooltipContent>
-                              </Tooltip>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-96" side="top" align="start">
+                                  <SubstitutionExample />
+                                </HoverCardContent>
+                              </HoverCard>
                             </FieldLabel>
                             <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
                               {SURFACES.map((surface) => (
