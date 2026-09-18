@@ -133,7 +133,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `gateway.enrollment.credentialsSecretRef` | `""` | Kubernetes secret with credentials injected as env vars. |
 | `gateway.relayName` | `""` | Specific relay to connect to. Empty for automatic selection. |
 | `gateway.listenAddress` | `""` | `host:port` that Infisical dials to reach the gateway, which runs it in direct listen mode. Empty for relay mode. |
-| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth, optional for AWS and Kubernetes auth. |
+| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth, optional for AWS, GCP and Kubernetes auth. |
 | `persistence.storageClass` | `""` | Storage class for the PVC. |
 | `persistence.size` | `5Gi` | PVC size. |
 | `persistence.existingClaim` | `""` | Use an existing PVC. |
@@ -200,7 +200,7 @@ gateway:
   domain: ""
 
   enrollment:
-    # Enrollment method: "token", "aws", or "kubernetes".
+    # Enrollment method: "token", "aws", "gcp", or "kubernetes".
     # Leave empty to use the legacy machine identity flow (env vars from secret.name).
     method: ""
 
@@ -258,7 +258,7 @@ gateway:
 
 # Persistent storage for the gateway (credentials and session recordings).
 # Required when enrollment.method=token so credentials survive pod restarts.
-# Optional when enrollment.method=aws or enrollment.method=kubernetes, since both re-authenticate
+# Optional when enrollment.method is aws, gcp or kubernetes, since all three re-authenticate
 # on every start.
 # For legacy machine-identity installs (no enrollment.method), persistence only takes effect
 # when existingClaim is provided.

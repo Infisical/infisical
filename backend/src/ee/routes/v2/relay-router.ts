@@ -3,7 +3,10 @@ import z from "zod";
 import { RelaysSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
-import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import {
+  ResourceAuthMethodType,
+  TSettableAuthMethod
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -114,7 +117,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             resourceType: "relay",
             resourceId: relay.id,
             resourceName: relay.name,
-            method: view.method as "aws" | "token",
+            method: view.method as TSettableAuthMethod,
             methodConfigId: "config" in view && "id" in view.config ? view.config.id : relay.id
           }
         }
@@ -250,7 +253,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
               resourceType: "relay",
               resourceId: req.params.relayId,
               resourceName: relay.name,
-              method: view.method as "aws" | "token",
+              method: view.method as TSettableAuthMethod,
               methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.relayId
             }
           }

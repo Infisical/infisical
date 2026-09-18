@@ -16,18 +16,29 @@ type TVerifyGcpTokenInput = {
 // signJwt accepts a payload with no `exp`, which would make the proof replayable forever.
 const MAX_IAM_TOKEN_LIFETIME_SECONDS = 12 * 60 * 60;
 
-export const assertIamTokenLifetime = (payload: { exp?: number } | null, nowSeconds: number) => {
-  if (!payload?.exp) return "missing_expiry" as const;
-  if (payload.exp <= nowSeconds) return "expired" as const;
-  if (payload.exp - nowSeconds > MAX_IAM_TOKEN_LIFETIME_SECONDS) return "lifetime_too_long" as const;
+export const IamTokenLifetimeProblem = {
+  MissingExpiry: "missing_expiry",
+  Expired: "expired",
+  LifetimeTooLong: "lifetime_too_long"
+} as const;
+
+export type TIamTokenLifetimeProblem = (typeof IamTokenLifetimeProblem)[keyof typeof IamTokenLifetimeProblem];
+
+export const assertIamTokenLifetime = (
+  payload: { exp?: number } | null,
+  nowSeconds: number
+): TIamTokenLifetimeProblem | null => {
+  if (!payload?.exp) return IamTokenLifetimeProblem.MissingExpiry;
+  if (payload.exp <= nowSeconds) return IamTokenLifetimeProblem.Expired;
+  if (payload.exp - nowSeconds > MAX_IAM_TOKEN_LIFETIME_SECONDS) return IamTokenLifetimeProblem.LifetimeTooLong;
   return null;
 };
 
-const IAM_LIFETIME_MESSAGE = {
-  missing_expiry: "carries no expiry",
-  expired: "has already expired",
-  lifetime_too_long: "expires more than 12 hours from now"
-} as const;
+const IAM_LIFETIME_MESSAGE: Record<TIamTokenLifetimeProblem, string> = {
+  [IamTokenLifetimeProblem.MissingExpiry]: "carries no expiry",
+  [IamTokenLifetimeProblem.Expired]: "has already expired",
+  [IamTokenLifetimeProblem.LifetimeTooLong]: "expires more than 12 hours from now"
+};
 
 export const verifyGcpTokenAndExtractCaller = async ({
   type,

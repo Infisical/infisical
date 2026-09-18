@@ -208,3 +208,6 @@ export type TGcpAuthType = (typeof GcpAuthType)[keyof typeof GcpAuthType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export type ResourceAuthMethodType = (typeof ResourceAuthMethodType)[keyof typeof ResourceAuthMethodType];
+
+// The methods a resource can actually be configured with; `identity` is legacy and read-only.
+export type TSettableAuthMethod = Exclude<ResourceAuthMethodType, typeof ResourceAuthMethodType.Identity>;

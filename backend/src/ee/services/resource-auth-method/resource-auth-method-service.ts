@@ -57,7 +57,8 @@ import {
   RESOURCE_TYPE_RELAY,
   ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
-  type ResourceRef
+  type ResourceRef,
+  type TSettableAuthMethod
 } from "./resource-auth-method-fns";
 import {
   TAuthMethodView,
@@ -1097,7 +1098,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
     if (loaded.identityId) {
       throw new BadRequestError({
-        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, Kubernetes, or Token auth instead.`
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, GCP, Kubernetes, or Token auth instead.`
       });
     }
 
@@ -1114,7 +1115,7 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       resourceName: loaded.name,
       orgId: loaded.orgId,
-      method: registry.method as "aws" | "gcp" | "kubernetes" | "token"
+      method: registry.method as TSettableAuthMethod
     };
   };
 

@@ -7,6 +7,7 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   TCreateSecretRotationV2DTO,
@@ -7277,7 +7278,7 @@ interface GatewayConnectEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "gcp" | "kubernetes" | "token";
+type ResourceAuthMethodKind = TSettableAuthMethod;
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {

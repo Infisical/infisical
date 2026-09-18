@@ -399,7 +399,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
 From the gateway's detail page (select the gateway row in the list):
 
 - **Generate deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS, GCP and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
-- **Edit auth method**: Switch between Token, AWS, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
+- **Edit auth method**: Switch between Token, AWS, GCP, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
 - **Options → Delete Gateway** — Permanently removes the gateway.
 
@@ -523,7 +523,7 @@ For **token-method** gateways, the access token and domain are saved to a config
 - **Running as root/sudo:** `/etc/infisical/gateways/<gateway-name>.conf`
 - **Running as a regular user:** `~/.infisical/gateways/<gateway-name>.conf`
 
-For **AWS-method** and **Kubernetes-method** gateways, no JWT is persisted to disk. The gateway re-authenticates on every start, by signing a fresh STS request with the host's AWS credentials or by presenting the pod's service account token. Only the gateway id and domain are stored locally.
+For **AWS-method**, **GCP-method** and **Kubernetes-method** gateways, no JWT is persisted to disk. The gateway re-authenticates on every start, by signing a fresh STS request with the host's AWS credentials, by presenting a GCP identity token, or by presenting the pod's service account token. Only the gateway id and domain are stored locally.
 
 For systemd-based installations, the configuration is at `/etc/infisical/gateways/<gateway-name>.conf`. All config files are created with restricted permissions (0600).
 </Accordion>

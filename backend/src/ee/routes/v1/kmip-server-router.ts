@@ -4,7 +4,10 @@ import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
-import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import {
+  ResourceAuthMethodType,
+  TSettableAuthMethod
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -161,7 +164,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
             resourceType: "kmip",
             resourceId: kmipServer.id,
             resourceName: kmipServer.name,
-            method: view.method as "aws" | "token",
+            method: view.method as TSettableAuthMethod,
             methodConfigId: "config" in view && "id" in view.config ? view.config.id : kmipServer.id
           }
         }
@@ -301,7 +304,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
               resourceType: "kmip",
               resourceId: req.params.kmipServerId,
               resourceName: kmipServer.name,
-              method: view.method as "aws" | "token",
+              method: view.method as TSettableAuthMethod,
               methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.kmipServerId
             }
           }

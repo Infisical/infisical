@@ -17,7 +17,8 @@ import {
 import {
   GcpAuthType,
   KubernetesTokenReviewMode,
-  ResourceAuthMethodType
+  ResourceAuthMethodType,
+  type TSettableAuthMethod
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { TAuthMethodView } from "@app/ee/services/resource-auth-method/resource-auth-method-types";
@@ -415,7 +416,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
               orgId: req.permission.orgId,
-              method: result.method as "aws" | "gcp" | "kubernetes" | "token"
+              method: result.method as TSettableAuthMethod
             }
           })
           .catch((err) => {
