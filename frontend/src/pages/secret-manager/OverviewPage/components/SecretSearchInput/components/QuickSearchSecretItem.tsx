@@ -11,6 +11,7 @@ import {
 } from "@app/components/v3";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
+import { QuickSearchMetadata, QuickSearchMetadataList } from "./QuickSearchMetadataList";
 import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
 import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
 import { QuickSearchSelection } from "./quickSearchTypes";
@@ -22,6 +23,7 @@ type Props = {
   tags: string[];
   search: string;
   onSelectResult: (selection: QuickSearchSelection) => void;
+  onApplyMetadataFilter: (metadata: QuickSearchMetadata) => void;
 };
 
 export const QuickSearchSecretItem = ({
@@ -29,6 +31,7 @@ export const QuickSearchSecretItem = ({
   envSlug,
   onClose,
   onSelectResult,
+  onApplyMetadataFilter,
   tags,
   search
 }: Props) => {
@@ -80,9 +83,15 @@ export const QuickSearchSecretItem = ({
           <TooltipContent className="max-w-lg">{secret.path}</TooltipContent>
         </Tooltip>
       </TableCell>
+      <TableCell>
+        <QuickSearchMetadataList
+          metadata={secret.secretMetadata}
+          onApplyFilter={onApplyMetadataFilter}
+        />
+      </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
-          <QuickSearchSecretDetails tags={secret.tags} metadata={secret.secretMetadata} />
+          <QuickSearchSecretDetails tags={secret.tags} />
           {tagMatch && (
             <Tooltip>
               <TooltipTrigger asChild>
