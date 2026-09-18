@@ -101,7 +101,7 @@ const Page = () => {
             search={{
               selectedTab: OrgAccessControlTabSections.Identities
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
@@ -241,6 +241,7 @@ const Page = () => {
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="organization.identity-details-by-id"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}

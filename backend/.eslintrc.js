@@ -79,6 +79,7 @@ module.exports = {
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-unsafe-enum-comparison": "off",
     "no-void": "off",
+    "no-continue": "off",
     "consistent-return": "off", // my style
     "import/order": "off", // for simple-import-order
     "import/prefer-default-export": "off", // why

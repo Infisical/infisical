@@ -4,7 +4,7 @@ import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from
 import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
   Card,
@@ -187,7 +187,7 @@ export const GroupsTab = () => {
           if (!isOpen) setGroupToRemove(null);
         }}
         title={`Remove "${groupToRemove?.name ?? ""}"`}
-        description="Everyone in the group loses access, along with every bundle granted to it."
+        description="Everyone in the group loses Agent Vault access, along with every access bundle granted to the group."
         confirmKey={groupToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={removeMember.isPending}

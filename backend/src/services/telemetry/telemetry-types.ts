@@ -102,8 +102,6 @@ export enum PostHogEventTypes {
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
-  GatewayUpdated = "Gateway Updated",
-  GatewayDeleted = "Gateway Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
   PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
@@ -298,6 +296,11 @@ export enum PostHogEventTypes {
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
   SecretRotationV2Failed = "Secret Rotation V2 Failed",
 
+  // Billing
+  BillingCheckoutSessionCreated = "Billing Checkout Session Created",
+  BillingProductActivated = "Billing Product Activated",
+  BillingPlanUpgraded = "Billing Plan Upgraded",
+
   // Agent Proxy
   ProxiedServiceCreated = "Proxied Service Created",
 
@@ -320,7 +323,13 @@ export enum PostHogEventTypes {
   AgentVaultProxyEnrolled = "Agent Vault Proxy Enrolled",
   AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
   AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
-  AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed"
+  AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
+
+  // Billing trials. Cloud-only: the self-hosted license backend rejects startTrial outright.
+  // "awaiting_card" gets its own event rather than an outcome property on TrialStarted, because it
+  // does NOT grant a trial; a "Trial Started" that never started would poison every funnel built on it.
+  TrialStarted = "Trial Started",
+  TrialCardRequired = "Trial Card Required"
 }
 
 export type TSecretModifiedEvent = {
@@ -1088,20 +1097,6 @@ export type TGatewayCertExchangedEvent = {
     certificateSerialNumber: string;
     identityId: string;
     orgId?: string;
-  };
-};
-
-export type TGatewayUpdatedEvent = {
-  event: PostHogEventTypes.GatewayUpdated;
-  properties: {
-    gatewayId: string;
-  };
-};
-
-export type TGatewayDeletedEvent = {
-  event: PostHogEventTypes.GatewayDeleted;
-  properties: {
-    gatewayId: string;
   };
 };
 
@@ -2365,6 +2360,35 @@ export type TProxiedServiceCreatedEvent = {
   };
 };
 
+export type TBillingCheckoutSessionCreatedEvent = {
+  event: PostHogEventTypes.BillingCheckoutSessionCreated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+  };
+};
+
+export type TBillingProductActivatedEvent = {
+  event: PostHogEventTypes.BillingProductActivated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+    subscriptionId?: string;
+  };
+};
+
+export type TBillingPlanUpgradedEvent = {
+  event: PostHogEventTypes.BillingPlanUpgraded;
+  properties: {
+    productId: string;
+    fromPlan?: string;
+    toPlan: string;
+    subscriptionId?: string;
+  };
+};
+
 type TAgentVaultEventBase = {
   orgId: string;
   channel: string;
@@ -2518,6 +2542,28 @@ export type TAgentVaultPostHogEvent =
 
 export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultProxyEnrolledEvent>;
 
+// A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
+// (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at
+// most once per (org, product) for the lifetime of the org. TrialCardRequired carries no such
+// guarantee: abandoning the card-setup checkout grants nothing and retrying is safe, so the same org
+// can emit it repeatedly for one product. Anything consuming these downstream must account for that.
+// `plan` is recorded on both anyway. It doesn't gate, but it says which tier they actually wanted.
+export type TTrialStartedEvent = {
+  event: PostHogEventTypes.TrialStarted;
+  properties: {
+    productId: string;
+    plan: string;
+  };
+};
+
+export type TTrialCardRequiredEvent = {
+  event: PostHogEventTypes.TrialCardRequired;
+  properties: {
+    productId: string;
+    plan: string;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -2605,8 +2651,6 @@ export type TPostHogEvent = {
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
-  | TGatewayUpdatedEvent
-  | TGatewayDeletedEvent
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent
@@ -2747,5 +2791,10 @@ export type TPostHogEvent = {
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
   | TProxiedServiceCreatedEvent
+  | TBillingCheckoutSessionCreatedEvent
+  | TBillingProductActivatedEvent
+  | TBillingPlanUpgradedEvent
   | TAgentVaultPostHogEvent
+  | TTrialStartedEvent
+  | TTrialCardRequiredEvent
 );

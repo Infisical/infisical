@@ -385,6 +385,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
         </Button>
       </div>
       <UpgradePlanModal
+        paywallKey="project.group-roles"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         text="Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan."

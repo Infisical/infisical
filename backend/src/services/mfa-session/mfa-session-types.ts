@@ -46,4 +46,5 @@ export type TIsMfaSessionActiveDTO = {
   userId: string;
   resourceId: string;
   tokenVersionId: string;
+  acceptedMfaMethods?: MfaMethod[];
 };

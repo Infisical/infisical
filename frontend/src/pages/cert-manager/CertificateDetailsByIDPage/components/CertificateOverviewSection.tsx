@@ -73,7 +73,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
       <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
         <Card>
           <CardContent className="flex items-center justify-center py-8">
-            <p className="text-sm text-mineshaft-400">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           </CardContent>
         </Card>
       </div>
@@ -112,6 +112,19 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
                 {certificate.id}
                 <CopyButton value={certificate.id} size="xs" variant="plain" />
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Order ID</DetailLabel>
+              <DetailValue className="flex items-center gap-2 font-mono text-xs">
+                {certificate.orderId ? (
+                  <>
+                    {certificate.orderId}
+                    <CopyButton value={certificate.orderId} size="xs" variant="plain" />
+                  </>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
               </DetailValue>
             </Detail>
             <Detail>
@@ -186,7 +199,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.caName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 )}
                 {!showCaLink &&
@@ -215,7 +228,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.applicationName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -274,7 +287,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                         certificate.renewedFromCertificateId
                       ).displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -296,7 +309,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                       getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
                         .displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>

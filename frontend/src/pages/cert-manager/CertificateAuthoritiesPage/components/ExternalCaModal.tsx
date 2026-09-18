@@ -15,6 +15,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -192,13 +193,13 @@ const CaTypeCard = ({
       type="button"
       onClick={onClick}
       disabled={isLocked}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-card"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors enabled:hover:border-border-strong enabled:hover:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
           {option.image ? (
-            <img
-              src={`/images/integrations/${option.image}`}
+            <ProviderIcon
+              icon={option.image}
               alt={`${option.name} logo`}
               className="h-6 w-6 object-contain"
             />

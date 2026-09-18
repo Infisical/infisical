@@ -7,8 +7,6 @@ import { chefConnectionService } from "@app/ee/services/app-connections/chef/che
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -27,6 +25,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
@@ -208,13 +207,11 @@ export type TAppConnectionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
     "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
@@ -318,10 +315,8 @@ export const appConnectionServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
-  gatewayDAL,
   gatewayV2DAL,
   projectDAL,
   appConnectionCredentialRotationService,
@@ -569,12 +564,9 @@ export const appConnectionServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
-        });
+      if (!gatewayV2) {
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
     }
 
@@ -612,7 +604,6 @@ export const appConnectionServiceFactory = ({
           gatewayId: validationGatewayId,
           projectType: project?.type
         } as TAppConnectionConfig,
-        gatewayService,
         gatewayV2Service,
         { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
       );
@@ -701,7 +692,6 @@ export const appConnectionServiceFactory = ({
             gatewayId: validationGatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
-          gatewayService,
           gatewayV2Service
         );
       } else {
@@ -796,12 +786,9 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
-        const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-        if (!gateway && !gatewayV2) {
-          throw new NotFoundError({
-            message: `Gateway with ID ${gatewayId} not found for org`
-          });
+        if (!gatewayV2) {
+          throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
       }
     }
@@ -903,7 +890,6 @@ export const appConnectionServiceFactory = ({
             gatewayId: validationGatewayId,
             projectType: updateProject?.type
           } as TAppConnectionConfig,
-          gatewayService,
           gatewayV2Service,
           { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
         );
@@ -988,7 +974,6 @@ export const appConnectionServiceFactory = ({
               gatewayId: validationGatewayIdForUpdate
             } as TAppConnectionConfig,
             (platformCredentials) => updateConnection(platformCredentials, tx),
-            gatewayService,
             gatewayV2Service
           );
         } else {
@@ -1370,7 +1355,7 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
     triggerCredentialRotation,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService, {
+    github: githubConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, {
       gitHubAppDAL,
       kmsService
     }),
@@ -1389,7 +1374,7 @@ export const appConnectionServiceFactory = ({
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
-    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),

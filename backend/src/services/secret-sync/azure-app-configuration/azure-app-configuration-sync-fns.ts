@@ -8,6 +8,7 @@ import { getAzureConnectionAccessToken } from "@app/services/app-connection/azur
 import { isAzureKeyVaultReference } from "@app/services/integration-auth/integration-sync-secret-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAzureAppConfigurationSyncWithCredentials } from "./azure-app-configuration-sync-types";
@@ -67,7 +68,8 @@ export const azureAppConfigurationSyncFactory = ({
     });
   };
 
-  const syncSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, secretMap: TSecretMap) => {
+  const syncSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (!secretSync.destinationConfig.configurationUrl.endsWith(".azconfig.io")) {
       throw new BadRequestError({
         message: "Invalid Azure App Configuration URL provided."
@@ -155,7 +157,8 @@ export const azureAppConfigurationSyncFactory = ({
     }
   };
 
-  const removeSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, secretMap: TSecretMap) => {
+  const removeSecrets = async (secretSync: TAzureAppConfigurationSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { accessToken } = await getAzureConnectionAccessToken(secretSync.connectionId, appConnectionDAL, kmsService);
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${

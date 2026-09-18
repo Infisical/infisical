@@ -1,4 +1,3 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { testConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -17,6 +16,8 @@ import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
+  exceedsOraclePasswordLimit,
+  ORACLE_MAX_PASSWORD_LENGTH,
   TestConnectionMode
 } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
@@ -34,6 +35,8 @@ import {
   classifyCloudProbeError,
   computeNextHeartbeatAt,
   describeFailure,
+  GATEWAY_MISSING_CHECK_NOTE,
+  gatewayIsMissingCheckSupport,
   HEARTBEAT_SSH_CERT_TTL_SECONDS,
   HEARTBEAT_TIMEOUT_MS,
   isHeartbeatScheduled,
@@ -43,7 +46,6 @@ import {
 
 type TPamAccountHeartbeatServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -56,7 +58,6 @@ export type TPamAccountHeartbeatServiceFactory = ReturnType<typeof pamAccountHea
 
 export const pamAccountHeartbeatServiceFactory = ({
   pamAccountDAL,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
   kmsService,
@@ -185,7 +186,7 @@ export const pamAccountHeartbeatServiceFactory = ({
             gatewayId: account.gatewayId ?? account.templateGatewayId,
             gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
           },
-          { gatewayService, gatewayV2Service, gatewayPoolService }
+          { gatewayV2Service, gatewayPoolService }
         );
       } catch (err) {
         const kind = (err as { gatewayFailureKind?: GatewayFailureKind | null }).gatewayFailureKind ?? null;
@@ -213,8 +214,15 @@ export const pamAccountHeartbeatServiceFactory = ({
     const probeCredentials =
       accountType === PamAccountType.SSH ? await mintEphemeralSshCertificate(account, credentials) : credentials;
 
+    if (exceedsOraclePasswordLimit(accountType, credentials)) {
+      return {
+        status: PamHeartbeatStatus.CannotCheck,
+        message: `This account's password is longer than ${ORACLE_MAX_PASSWORD_LENGTH} characters, so this credential was not checked`
+      };
+    }
+
     const test = await buildGatewayConnectionTest(accountType, connectionDetails, probeCredentials, orgId, {
-      allowWindowsAuthSql: true
+      allowNewerGatewayTests: true
     });
     if (!test) {
       return { status: PamHeartbeatStatus.Unknown, message: "This account type cannot be checked yet" };
@@ -252,6 +260,9 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.CannotCheck, message: "The gateway could not be reached" };
     }
     if (!result.ok) {
+      if (gatewayIsMissingCheckSupport(result.errorMessage)) {
+        return { status: PamHeartbeatStatus.CannotCheck, message: GATEWAY_MISSING_CHECK_NOTE };
+      }
       return {
         status: statusForFailureKind(result.kind),
         message: describeFailure(result.kind, result.errorMessage)

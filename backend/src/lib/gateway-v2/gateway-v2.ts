@@ -14,11 +14,11 @@ import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 import { getConfig } from "../config/env";
 import { BadRequestError, GatewayTransportError } from "../errors";
-import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 import { markAttemptTransportFailure, markAttemptTunnelEstablished } from "./gateway-attempt-context";
 import { getGatewayLoadTracker } from "./gateway-load-tracker";
 import { isGatewayTransportFailure } from "./gateway-retry";
+import { GatewayProxyProtocol } from "./types";
 
 interface IGatewayProxyServer {
   server: net.Server;
@@ -152,7 +152,8 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
     [GatewayProxyProtocol.Discovery]: ["infisical-discovery"],
     [GatewayProxyProtocol.ConnectionTest]: ["infisical-connection-test"],
-    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"]
+    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"],
+    [GatewayProxyProtocol.Sql]: ["infisical-sql"]
   };
 
   // SNI cannot carry an IP literal (RFC 6066), so an address goes in host and a name in servername.

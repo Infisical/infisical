@@ -124,7 +124,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
                       <Td className="w-1/3">
                         <p>{project.name}</p>
                         {project.description && (
-                          <p className="text-sm text-mineshaft-400">{project.description}</p>
+                          <p className="text-sm text-muted">{project.description}</p>
                         )}
                       </Td>
                       <Td>
