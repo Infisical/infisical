@@ -19,6 +19,10 @@ import type * as RealProvider from "../../src/ee/services/secret-rotation-v2/aws
 // without reaching IAM. Wired up by test.alias in vitest.e2e.config.mts; nothing under src/
 // references this file.
 //
+// The IAM user itself is not modelled. `parameters.userName` is accepted and ignored, and the
+// store starts empty: the first key exists because issueCredentials created it, which is what
+// creating a rotation does. A real provider would create the key on that named user.
+//
 // Unlike the Parameter Store fake, this does not mirror one real provider's behaviour. The
 // provider side of rotation has two shapes, and which one a provider is decides nothing about
 // the plumbing but everything about what the plumbing has to hand it:
@@ -33,30 +37,19 @@ import type * as RealProvider from "../../src/ee/services/secret-rotation-v2/aws
 //                       the provider needs is `credentialsToRevoke`. This is datadog-api-key,
 //                       azure-client-secret and most API key providers.
 //
-// So the mode is a property of the fake, and the lifecycle spec runs once in each. Both read
-// the same two arguments the service computes from `activeIndex`; a provider that got them the
-// wrong way round would revoke the credential its users are holding.
+// Each mode reacts to a different one of those two arguments, so which credentials are left live
+// is enough for a spec to tell what the service handed over. A provider given the two the wrong
+// way round would revoke the credential its users are holding, and the key store says so.
 
 export enum FakeIamRotationMode {
   ReplaceInPlace = "replace-in-place",
   IssueAndDisplace = "issue-and-displace"
 }
 
-type TFakeCredential = TAwsIamUserSecretRotationGeneratedCredentials[number];
-
-// What the factory was handed, in order. `undefined` is meaningful for credentialsToRevoke (the
-// first rotation has no displaced slot), so the field is always present.
-export type TFakeIamCall =
-  | { fn: "issueCredentials" }
-  | { fn: "rotateCredentials"; credentialsToRevoke: TFakeCredential | undefined; activeCredentials: TFakeCredential }
-  | { fn: "revokeCredentials"; credentials: TFakeCredential[] }
-  | { fn: "checkActiveCredentials"; activeCredentials: TFakeCredential };
-
 type TFakeIamState = {
   mode: FakeIamRotationMode;
   // The live access keys on the IAM user, by access key ID.
   keys: Map<string, string>;
-  calls: TFakeIamCall[];
   issueError: string | null;
   afterPersistError: string | null;
   keySequence: number;
@@ -78,7 +71,7 @@ const DEFAULTS = {
   keySequence: 0
 };
 
-globalScope.infisicalFakeIamUserSecret ??= { ...DEFAULTS, keys: new Map(), calls: [] };
+globalScope.infisicalFakeIamUserSecret ??= { ...DEFAULTS, keys: new Map() };
 
 const state = globalScope.infisicalFakeIamUserSecret;
 
@@ -88,7 +81,6 @@ export const fakeIamUserSecret = {
   reset: () => {
     Object.assign(state, DEFAULTS);
     state.keys.clear();
-    state.calls.length = 0;
   },
 
   // Which of the two provider shapes the factory behaves as. See the comment above.
@@ -98,10 +90,6 @@ export const fakeIamUserSecret = {
 
   // The access keys that exist on the IAM user right now, as the provider sees them.
   keys: (): Record<string, string> => Object.fromEntries(state.keys),
-
-  // What the service handed the factory, in call order. Lets a spec assert on the slot contract
-  // rather than only on the credentials that came out of it.
-  calls: (): TFakeIamCall[] => [...state.calls],
 
   // Make key creation fail, as IAM would for a missing user or a denied policy. Applies to both
   // issueCredentials and rotateCredentials, since both create a key.
@@ -122,7 +110,7 @@ export const fakeIamUserSecret = {
   }
 };
 
-const $createKey = (): TFakeCredential => {
+const $createKey = (): TAwsIamUserSecretRotationGeneratedCredentials[number] => {
   if (state.issueError) throw new BadRequestError({ message: state.issueError });
 
   state.keySequence += 1;
@@ -152,21 +140,13 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
 
   const issueCredentials: TRotationFactoryIssueCredentials<TAwsIamUserSecretRotationGeneratedCredentials> = async (
     callback
-  ) => {
-    state.calls.push({ fn: "issueCredentials" });
-
-    const credentials = $createKey();
-
-    return callback(credentials);
-  };
+  ) => callback($createKey());
 
   const rotateCredentials: TRotationFactoryRotateCredentials<TAwsIamUserSecretRotationGeneratedCredentials> = async (
     credentialsToRevoke,
     callback,
     activeCredentials
   ) => {
-    state.calls.push({ fn: "rotateCredentials", credentialsToRevoke, activeCredentials });
-
     const credentials = $createKey();
 
     if (state.mode === FakeIamRotationMode.ReplaceInPlace) {
@@ -188,8 +168,6 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
     credentials,
     callback
   ) => {
-    state.calls.push({ fn: "revokeCredentials", credentials: [...credentials] });
-
     credentials.forEach(({ accessKeyId }) => $deleteKey(accessKeyId));
 
     return callback();
@@ -205,8 +183,6 @@ export const awsIamUserSecretRotationFactory: TRotationFactory<
   const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
     TAwsIamUserSecretRotationGeneratedCredentials
   > = ({ accessKeyId, secretAccessKey }) => {
-    state.calls.push({ fn: "checkActiveCredentials", activeCredentials: { accessKeyId, secretAccessKey } });
-
     if (state.keys.get(accessKeyId) !== secretAccessKey) {
       throw new BadRequestError({ message: `Unable to validate credentials: the access key ${accessKeyId} is gone` });
     }
