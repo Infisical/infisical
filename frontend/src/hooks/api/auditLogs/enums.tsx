@@ -435,6 +435,7 @@ export enum EventType {
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_CREATE = "resource-auth-method-create",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",

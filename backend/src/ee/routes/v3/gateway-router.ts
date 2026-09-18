@@ -14,6 +14,7 @@ import {
   validateAllowedNamespaces,
   validateKubernetesHost
 } from "@app/ee/services/resource-auth-method/kubernetes-auth-validators";
+import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
 import {
   GcpAuthType,
   KubernetesTokenReviewMode,
@@ -21,9 +22,8 @@ import {
   type TSettableAuthMethod
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
-import { TAuthMethodView } from "@app/ee/services/resource-auth-method/resource-auth-method-types";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
-import { InternalServerError, UnauthorizedError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -236,56 +236,6 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
   return { method: ResourceAuthMethodType.Token } as const;
 };
 
-const gatewayAuthMethodAuditMetadata = (gatewayId: string, gatewayName: string, view: TAuthMethodView) => {
-  const base = {
-    resourceType: "gateway" as const,
-    resourceId: gatewayId,
-    resourceName: gatewayName
-  };
-
-  if (view.method === ResourceAuthMethodType.Aws) {
-    return {
-      ...base,
-      method: view.method,
-      methodConfigId: view.config.id,
-      stsEndpoint: view.config.stsEndpoint,
-      allowedPrincipalArns: view.config.allowedPrincipalArns,
-      allowedAccountIds: view.config.allowedAccountIds
-    };
-  }
-
-  if (view.method === ResourceAuthMethodType.Gcp) {
-    return {
-      ...base,
-      method: view.method,
-      methodConfigId: view.config.id,
-      gcpAuthType: view.config.type,
-      allowedServiceAccounts: view.config.allowedServiceAccounts,
-      allowedProjects: view.config.allowedProjects,
-      allowedZones: view.config.allowedZones
-    };
-  }
-
-  if (view.method === ResourceAuthMethodType.Kubernetes) {
-    return {
-      ...base,
-      method: view.method,
-      methodConfigId: view.config.id,
-      kubernetesHost: view.config.kubernetesHost,
-      allowedNamespaces: view.config.allowedNamespaces,
-      allowedNames: view.config.allowedNames,
-      allowedAudience: view.config.allowedAudience
-    };
-  }
-
-  if (view.method === ResourceAuthMethodType.Token) {
-    return { ...base, method: view.method, methodConfigId: gatewayId };
-  }
-
-  // Legacy identity gateways cannot be created or have their method set, so reaching this is a bug.
-  throw new InternalServerError({ message: `Cannot audit auth method "${view.method}" for a gateway` });
-};
-
 export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   // ─── POST / ──────────────────────────────────────────────────────────────
   // Create a gateway. Body requires `authMethod` so create-and-configure happen in one call.
@@ -335,8 +285,13 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-          metadata: gatewayAuthMethodAuditMetadata(gateway.id, gateway.name, view)
+          type: EventType.RESOURCE_AUTH_METHOD_CREATE,
+          metadata: resourceAuthMethodAuditMetadata({
+            resourceType: "gateway",
+            resourceId: gateway.id,
+            resourceName: gateway.name,
+            view
+          })
         }
       });
 
@@ -403,7 +358,12 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: gatewayAuthMethodAuditMetadata(req.params.gatewayId, updated.name, result)
+            metadata: resourceAuthMethodAuditMetadata({
+              resourceType: "gateway",
+              resourceId: req.params.gatewayId,
+              resourceName: updated.name,
+              view: result
+            })
           }
         });
 

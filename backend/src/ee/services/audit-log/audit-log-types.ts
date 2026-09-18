@@ -897,6 +897,7 @@ export enum EventType {
   // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_CREATE = "resource-auth-method-create",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",
@@ -7319,26 +7320,33 @@ interface ResourceAuthMethodLoginFailedEvent {
   };
 }
 
+interface ResourceAuthMethodConfigMetadata {
+  resourceType: ResourceAuthMethodResourceType;
+  resourceId: string;
+  resourceName?: string;
+  method: ResourceAuthMethodKind;
+  methodConfigId: string;
+  stsEndpoint?: string;
+  allowedPrincipalArns?: string;
+  allowedAccountIds?: string;
+  kubernetesHost?: string;
+  allowedNamespaces?: string;
+  allowedNames?: string;
+  allowedAudience?: string;
+  gcpAuthType?: string;
+  allowedServiceAccounts?: string;
+  allowedProjects?: string;
+  allowedZones?: string;
+}
+
+interface ResourceAuthMethodCreateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_CREATE;
+  metadata: ResourceAuthMethodConfigMetadata;
+}
+
 interface ResourceAuthMethodUpdateEvent {
   type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
-  metadata: {
-    resourceType: ResourceAuthMethodResourceType;
-    resourceId: string;
-    resourceName?: string;
-    method: ResourceAuthMethodKind;
-    methodConfigId: string;
-    stsEndpoint?: string;
-    allowedPrincipalArns?: string;
-    allowedAccountIds?: string;
-    kubernetesHost?: string;
-    allowedNamespaces?: string;
-    allowedNames?: string;
-    allowedAudience?: string;
-    gcpAuthType?: string;
-    allowedServiceAccounts?: string;
-    allowedProjects?: string;
-    allowedZones?: string;
-  };
+  metadata: ResourceAuthMethodConfigMetadata;
 }
 
 interface ResourceAuthMethodRevokeEvent {
@@ -8233,6 +8241,7 @@ export type Event =
   | GatewayConnectEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodCreateEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
   | RelayCreateEvent
