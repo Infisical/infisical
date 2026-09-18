@@ -123,7 +123,7 @@ export const ThemeProvider = ({
       }
 
       const transition = document.startViewTransition(updateThemeWithoutTransitions);
-      void transition.ready.then(restoreTransitions, restoreTransitions);
+      transition.ready.then(restoreTransitions, restoreTransitions);
     },
     [pathname, resolvedTheme]
   );
