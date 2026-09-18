@@ -26,18 +26,15 @@ import {
   getCertManagerActiveProjectCookie,
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
-import {
-  getProjectDescription,
-  getProjectLucideIcon,
-  getProjectTitle,
-  projectTypeToUrlSlug
-} from "@app/helpers/project";
+import { getProjectTitle, projectTypeToUrlSlug } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+
+import { ProductPixelIcon } from "./ProductPixelIcon";
 
 type ActiveProducts = ProjectType;
 
@@ -50,56 +47,56 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.AgentVault
 ];
 
-const PRODUCT_STYLES: Record<
+const PRODUCT_PRESENTATION: Record<
   ActiveProducts,
   {
     iconClassName: string;
     containerClassName: string;
     cardClassName: string;
-    titleUnderlineClassName: string;
+    description: string;
   }
 > = {
   [ProjectType.SecretManager]: {
-    iconClassName: "h-4.5 w-4.5 text-product-sm",
+    iconClassName: "text-product-sm",
     containerClassName:
-      "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
+      "bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-sm/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-sm/60"
+    description: "Manage and sync application secrets."
   },
   [ProjectType.CertificateManager]: {
-    iconClassName: "h-4.5 w-4.5 text-product-pki",
+    iconClassName: "text-product-pki",
     containerClassName:
-      "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
+      "bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pki/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-pki/60"
+    description: "Issue and renew certificates."
   },
   [ProjectType.KMS]: {
-    iconClassName: "h-4.5 w-4.5 text-product-kms",
+    iconClassName: "text-product-kms",
     containerClassName:
-      "border-product-kms/30 bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:border-product-kms/50 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
+      "bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-kms/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-kms/60"
+    description: "Manage encryption and signing keys."
   },
   [ProjectType.SecretScanning]: {
-    iconClassName: "h-4.5 w-4.5 text-product-ss",
+    iconClassName: "text-product-ss",
     containerClassName:
-      "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:border-product-ss/50 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
+      "bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-ss/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-ss/60"
+    description: "Find leaked secrets in your code."
   },
   [ProjectType.PAM]: {
-    iconClassName: "h-4.5 w-4.5 text-product-pam",
+    iconClassName: "text-product-pam",
     containerClassName:
-      "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
+      "bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-pam/60"
+    description: "Secure access to databases and servers."
   },
   [ProjectType.AgentVault]: {
-    iconClassName: "h-4.5 w-4.5 text-product-av",
+    iconClassName: "text-product-av",
     containerClassName:
-      "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
+      "bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:from-product-av/25 group-hover:to-product-av/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-av/60"
+    description: "Control AI agent access to services."
   }
 };
 
@@ -426,7 +423,7 @@ export const ProjectCategoryOverview = () => {
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
               <div className="flex items-start gap-3">
-                <Skeleton className="h-9 w-9 shrink-0" />
+                <Skeleton className="size-9 shrink-0" />
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <Skeleton className="h-5 w-2/3" />
                   <Skeleton className="h-4 w-full" />
@@ -472,31 +469,34 @@ export const ProjectCategoryOverview = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {PRODUCT_TYPES.map((type) => {
           const stats = getStatsForType(type);
-          const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
-            PRODUCT_STYLES[type];
-          const Icon = getProjectLucideIcon(type);
+          const { iconClassName, containerClassName, cardClassName, description } =
+            PRODUCT_PRESENTATION[type];
 
           const tileBody = (
             <>
               <CardHeader>
                 <div className="flex items-start gap-3">
                   <div
-                    className={`shrink-0 rounded-sm border p-1.5 transition-colors duration-200 ${containerClassName}`}
+                    className={`relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-sm transition-colors duration-200 ${containerClassName}`}
                   >
-                    <Icon className={iconClassName} />
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute inset-0 bg-current opacity-15 ${iconClassName}`}
+                      style={{
+                        maskImage:
+                          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Cpath d='M0 0h1v1H0zM2 0h1v1H2zM1 1h1v1H1zM0 2h1v1H0zM2 2h1v1H2zM3 3h1v1H3z'/%3E%3C/svg%3E\"), linear-gradient(to bottom right, black, transparent)",
+                        maskSize: "4px 4px, 100% 100%",
+                        maskComposite: "intersect"
+                      }}
+                    />
+                    <ProductPixelIcon type={type} className={`relative ${iconClassName}`} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <CardDescription className="flex items-center gap-1.5 text-base font-semibold text-foreground">
-                      <span
-                        className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
-                      >
-                        {getProjectTitle(type)}
-                      </span>
+                      <span>{getProjectTitle(type)}</span>
                       <PreviewBadge type={type} />
                     </CardDescription>
-                    <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                      {getProjectDescription(type)}
-                    </p>
+                    <p className="mt-0 text-sm leading-snug text-accent">{description}</p>
                   </div>
                 </div>
               </CardHeader>
@@ -541,7 +541,7 @@ export const ProjectCategoryOverview = () => {
             );
           }
 
-          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
+          const tileClassName = `group h-auto cursor-pointer rounded-md transition-colors duration-200 ease-out ${cardClassName}`;
 
           // Cert Manager and PAM resolve their destination asynchronously (instance picker,
           // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
