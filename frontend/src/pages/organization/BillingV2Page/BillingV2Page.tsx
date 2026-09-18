@@ -80,16 +80,18 @@ export const BillingV2Page = () => {
 
   const close = () => setFlow(null);
 
-  const redirectToPortal = async () => {
-    try {
-      const url = await createPortalSession.mutateAsync({
+  const redirectToPortal = () => {
+    createPortalSession.mutate(
+      {
         orgId,
         returnPath: window.location.pathname
-      });
-      window.location.href = url;
-    } catch {
-      createNotification({ type: "error", text: "Failed to open the billing portal." });
-    }
+      },
+      {
+        onSuccess: (url) => {
+          window.location.href = url;
+        }
+      }
+    );
   };
 
   const onManageSubscription = () => {
@@ -109,16 +111,18 @@ export const BillingV2Page = () => {
 
   const hasActiveSubscription = overview?.subState === "active";
 
-  const onUpdatePayment = async () => {
-    try {
-      const url = await addPaymentMethod.mutateAsync({
+  const onUpdatePayment = () => {
+    addPaymentMethod.mutate(
+      {
         orgId,
         returnPath: window.location.pathname
-      });
-      window.location.href = url;
-    } catch {
-      createNotification({ type: "error", text: "Failed to open the payment portal." });
-    }
+      },
+      {
+        onSuccess: (url) => {
+          window.location.href = url;
+        }
+      }
+    );
   };
 
   // Billing name/email and address are edited in the Stripe billing portal.
@@ -147,7 +151,7 @@ export const BillingV2Page = () => {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="mb-8 flex w-full justify-center bg-bunker-800 text-white">
+      <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan

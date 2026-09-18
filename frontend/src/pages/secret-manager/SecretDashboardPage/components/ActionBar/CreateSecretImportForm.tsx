@@ -362,12 +362,12 @@ export const CreateSecretImportForm = ({
 
         {selectedGrant && (
           <Item variant="outline">
-            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
-              <Key className="size-4 text-yellow-400" />
+            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+              <Key className="size-4 text-warning" />
             </ItemMedia>
             <ItemContent>
               <ItemTitle>
-                <span className="text-yellow-400">{selectedGrant.secretCount} secrets</span> will be
+                <span className="text-warning">{selectedGrant.secretCount} secrets</span> will be
                 imported
               </ItemTitle>
               <ItemDescription>
@@ -448,18 +448,18 @@ export const CreateSecretImportForm = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex cursor-default items-center">
-                    <InfoIcon size={16} className="text-mineshaft-400" />
+                    <InfoIcon size={16} className="text-muted" />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="right" align="start" className="max-w-sm">
-                  <p className="mb-2 text-mineshaft-300">
+                  <p className="mb-2 text-label">
                     You can import secrets into your project in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">This Project</strong> —
+                    <li className="text-foreground-secondary">
+                      <strong className="font-medium text-foreground">This Project</strong> —
                       Inherit secrets from another environment or folder within{" "}
-                      <strong className="font-medium text-mineshaft-100">
+                      <strong className="font-medium text-foreground">
                         {currentProject?.name ?? "this project"}
                       </strong>
                       .
@@ -468,8 +468,8 @@ export const CreateSecretImportForm = ({
                         the same project.
                       </p>
                     </li>
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">Another Project</strong> —
+                    <li className="text-foreground-secondary">
+                      <strong className="font-medium text-foreground">Another Project</strong> —
                       Import a folder or environment from a different project that has granted
                       access to this one.
                       <p className="mt-2">
