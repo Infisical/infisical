@@ -68,12 +68,20 @@ describe("decryptStripeJwe", () => {
     expect(() => decryptStripeJwe(jwe, privateKey)).toThrow(/A128GCM/);
   });
 
-  it("fails a tampered ciphertext", async () => {
+  it("fails a tampered ciphertext with a message an administrator can act on", async () => {
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
     const segments = encryptJwe("rk_live_secret", publicKey).split(".");
     segments[4] = Buffer.alloc(16).toString("base64url");
 
-    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow();
+    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow(/could not decrypt the secret/);
+  });
+
+  it("fails a corrupted wrapped key with a message an administrator can act on", async () => {
+    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
+    const segments = encryptJwe("rk_live_secret", publicKey).split(".");
+    segments[1] = Buffer.alloc(256).toString("base64url");
+
+    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow(/could not decrypt the secret/);
   });
 });
 

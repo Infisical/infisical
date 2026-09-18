@@ -64,16 +64,24 @@ export const decryptStripeJwe = (jwe: string, privateKeyPem: string): string => 
     });
   }
 
-  const contentKey = crypto.privateDecrypt(
-    { key: privateKeyPem, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash },
-    Buffer.from(wrappedKey, "base64url")
-  );
+  try {
+    const contentKey = crypto.privateDecrypt(
+      { key: privateKeyPem, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash },
+      Buffer.from(wrappedKey, "base64url")
+    );
 
-  const decipher = crypto.createDecipheriv("aes-256-gcm", contentKey, Buffer.from(iv, "base64url"));
-  decipher.setAAD(Buffer.from(protectedHeader, "ascii"));
-  decipher.setAuthTag(Buffer.from(authTag, "base64url"));
+    const decipher = crypto.createDecipheriv("aes-256-gcm", contentKey, Buffer.from(iv, "base64url"));
+    decipher.setAAD(Buffer.from(protectedHeader, "ascii"));
+    decipher.setAuthTag(Buffer.from(authTag, "base64url"));
 
-  return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final()]).toString();
+    return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final()]).toString();
+  } catch {
+    // Deliberately swallows the underlying OpenSSL error (unpad failure, auth tag mismatch): it is
+    // an implementation detail that must never reach a user, and its wording is not a stable contract.
+    throw new BadRequestError({
+      message: "Infisical could not decrypt the secret Stripe returned. Try creating the API key again."
+    });
+  }
 };
 
 /**
