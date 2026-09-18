@@ -628,3 +628,6 @@ MSBuild
 # --- Surfaced by the PAM Snowflake page ---
 DBeaver
 snowsql
+
+# --- Surfaced by the Stripe API key rotation pages ---
+Stripe
