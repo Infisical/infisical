@@ -64,6 +64,10 @@ Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm 
 
 ## Cross-Cutting Patterns
 
+### Contextual Secret Scanning
+
+`tools/contextual-secret-scan/` is an isolated Node.js CI tool, not a backend dependency. It scans PR commit ranges with pinned Gitleaks rules and optionally sends privacy-redacted structural context to Jev. `.github/workflows/contextual-secret-scan.yml` runs it alongside existing secret scanning in monitor mode by default; AI classifications never suppress findings. See the tool's README for opt-in variables, enforcement, trust boundaries, and local checks.
+
 ### Backend Code Quality
 
 **Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike.

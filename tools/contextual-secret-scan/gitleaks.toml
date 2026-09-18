@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "postgresql-connection-string"
+description = "PostgreSQL connection URL containing a literal password"
+regex = '''(?i)\bpostgres(?:ql)?://[^\s:/?#@"'`\\]+:([^\s/?#@"'`\\${}<>]+)@(?:\[[0-9a-f:.%]+\]|[a-z0-9][a-z0-9._-]*)(?::[0-9]+)?(?:[/\s?#"'`]|$)'''
+secretGroup = 1
+keywords = ["postgres://", "postgresql://"]
