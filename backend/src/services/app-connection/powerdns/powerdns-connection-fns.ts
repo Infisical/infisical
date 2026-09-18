@@ -1,14 +1,13 @@
 import { AxiosRequestConfig, isAxiosError } from "axios";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -243,7 +242,6 @@ export const patchPowerDnsZoneRrsets = async (
 
 export const validatePowerDnsConnectionCredentials = async (
   config: TPowerDnsConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {
