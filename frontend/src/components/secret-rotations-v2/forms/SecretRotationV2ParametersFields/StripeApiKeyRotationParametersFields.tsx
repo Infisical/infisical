@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { createNotification } from "@app/components/notifications";
@@ -28,6 +28,12 @@ export const StripeApiKeyRotationParametersFields = () => {
   // A disabled query (no connection picked yet) reports isPending forever, so it must not be
   // read on its own as "loading".
   const isApiKeysLoading = isApiKeysPending && Boolean(connectionId);
+
+  // A stale selection from a previous connection is not just visually wrong: the Combobox
+  // would keep offering a key that belongs to a different Stripe account.
+  useEffect(() => {
+    setCopiedFromKey(null);
+  }, [connectionId]);
 
   const permissions = useMemo(() => rotationOption?.template.permissions ?? [], [rotationOption]);
 
@@ -60,7 +66,7 @@ export const StripeApiKeyRotationParametersFields = () => {
     if (droppedCount > 0) {
       createNotification({
         type: "warning",
-        text: `${droppedCount} permission${droppedCount === 1 ? "" : "s"} on ${apiKey.name || apiKey.id} ${droppedCount === 1 ? "isn't" : "aren't"} recognized by Infisical and were not copied.`
+        text: `${droppedCount} permission${droppedCount === 1 ? "" : "s"} on ${apiKey.name || apiKey.id} ${droppedCount === 1 ? "isn't" : "aren't"} recognized by Infisical and ${droppedCount === 1 ? "was" : "were"} not copied.`
       });
     }
   };
@@ -114,6 +120,7 @@ export const StripeApiKeyRotationParametersFields = () => {
             searchPlaceholder="Search keys..."
             searchAriaLabel="Search Stripe API keys"
             isLoading={isApiKeysLoading}
+            isDisabled={isRotationOptionLoading}
           />
           <FieldDescription>
             Applies that key&apos;s permissions to the fields above. It does not link the rotation
