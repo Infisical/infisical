@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { agentVaultMembershipServiceFactory } from "./agent-vault-membership-service";
@@ -11,12 +12,15 @@ const OTHER_PROJECT_ID = "project-2";
 const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
 
+// Every guard case below acts on the one machine identity the fixture knows about.
+const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
+
 const ctx = {
   actor: ActorType.USER,
   actorId: ACTOR_ID,
   actorOrgId: ORG_ID,
   actorAuthMethod: undefined
-} as unknown as Parameters<ReturnType<typeof agentVaultMembershipServiceFactory>["addProductMember"]>[0]["ctx"];
+} as unknown as Parameters<ReturnType<typeof agentVaultMembershipServiceFactory>["addProductMembers"]>[0]["ctx"];
 
 const buildTx = (adminCount: number) => {
   const chain: Record<string, unknown> = {};
@@ -43,34 +47,49 @@ const buildService = ({
   const deps = {
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
     identityDAL: {
-      find: vi.fn().mockResolvedValue([{ id: IDENTITY_ID, name: "agent", orgId: ORG_ID, projectId: identityProjectId }])
+      // Honours a projectId filter, because the ownership check pushes it into the query rather than
+      // comparing in JS: a mock that ignored it would report every identity as Agent Vault's own.
+      find: vi.fn(({ projectId }: { projectId?: string }) =>
+        Promise.resolve(
+          projectId && projectId !== identityProjectId
+            ? []
+            : [{ id: IDENTITY_ID, name: "agent", orgId: ORG_ID, projectId: identityProjectId }]
+        )
+      )
     },
     groupDAL: { find: vi.fn().mockResolvedValue([]) },
     userDAL: { find: vi.fn().mockResolvedValue([]) },
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
-      findEffectiveOrgMembership: vi.fn().mockResolvedValue({ isActive: true })
+      findActiveEffectiveOrgMemberActorIds: vi.fn(({ actorIds }: { actorIds: string[] }) =>
+        Promise.resolve(new Set(actorIds))
+      )
     },
     membershipDAL: {
       find: vi.fn(({ scope }: { scope: string }) =>
-        Promise.resolve(scope === AccessScope.Project ? productMemberships : [])
+        Promise.resolve(
+          scope === AccessScope.Project
+            ? productMemberships.map((row) => ({ ...row, actorIdentityId: IDENTITY_ID, createdAt: new Date() }))
+            : []
+        )
       ),
       // assertWillRetainProjectAdmin takes an advisory lock through tx.raw, then counts live admins
       // with a query built off tx() itself. The chain answers with the fixture's admin count, so
       // adminMembershipIds still decides whether the guard lets the write through.
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(buildTx(adminMembershipIds.length)))),
-      create: vi.fn().mockResolvedValue({ id: "mem-new", createdAt: new Date() }),
-      delete: vi.fn().mockResolvedValue(undefined),
-      deleteById: vi.fn().mockResolvedValue(undefined)
+      insertMany: vi.fn((rows: Record<string, unknown>[]) =>
+        Promise.resolve(rows.map((row) => ({ ...row, id: "mem-new", createdAt: new Date() })))
+      ),
+      delete: vi.fn().mockResolvedValue(undefined)
     },
     membershipRoleDAL: {
       find: vi
         .fn()
         .mockResolvedValue(adminMembershipIds.map((id) => ({ membershipId: id, role: ProjectMembershipRole.Admin }))),
       create: vi.fn(({ role }: { role: string }) => Promise.resolve({ role })),
-      delete: vi.fn().mockResolvedValue(undefined),
-      update: vi.fn().mockResolvedValue(undefined)
+      insertMany: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined)
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
     usageMeteringService: { emitForProject: vi.fn() }
@@ -89,41 +108,41 @@ describe("agentVaultMembership guards", () => {
     const { service, deps } = buildService({ identityProjectId: OTHER_PROJECT_ID });
 
     await expect(
-      service.addProductMember({
+      service.addProductMembers({
         projectId: PROJECT_ID,
-        identityId: IDENTITY_ID,
+        ...addIds,
         role: ProjectMembershipRole.Member,
         ctx
       })
-    ).rejects.toThrow("belongs to another project");
+    ).rejects.toThrow("belong to another project");
 
-    expect(deps.membershipDAL.create).not.toHaveBeenCalled();
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
   test("accepts an identity that belongs to no project", async () => {
     const { service } = buildService({ identityProjectId: null });
 
-    const added = await service.addProductMember({
+    const { members } = await service.addProductMembers({
       projectId: PROJECT_ID,
-      identityId: IDENTITY_ID,
+      ...addIds,
       role: ProjectMembershipRole.Member,
       ctx
     });
 
-    expect(added.membershipId).toBe("mem-new");
+    expect(members[0].id).toBe("mem-new");
   });
 
   test("accepts an identity created inside Agent Vault itself", async () => {
     const { service } = buildService({ identityProjectId: PROJECT_ID });
 
-    const added = await service.addProductMember({
+    const { members } = await service.addProductMembers({
       projectId: PROJECT_ID,
-      identityId: IDENTITY_ID,
+      ...addIds,
       role: ProjectMembershipRole.Member,
       ctx
     });
 
-    expect(added.membershipId).toBe("mem-new");
+    expect(members[0].id).toBe("mem-new");
   });
 
   // Removing only the membership would leave the identity live but off every screen: this product's tab
@@ -131,11 +150,11 @@ describe("agentVaultMembership guards", () => {
   test("refuses to detach an identity Agent Vault owns, pointing at delete instead", async () => {
     const { service, deps } = buildService({ identityProjectId: PROJECT_ID });
 
-    await expect(service.removeProductMember({ projectId: PROJECT_ID, identityId: IDENTITY_ID, ctx })).rejects.toThrow(
+    await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
       "Delete the identity instead"
     );
 
-    expect(deps.membershipDAL.deleteById).not.toHaveBeenCalled();
+    expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
   });
 
   test("still detaches an identity the organization owns", async () => {
@@ -145,9 +164,9 @@ describe("agentVaultMembership guards", () => {
       adminMembershipIds: ["mem-other"]
     });
 
-    await service.removeProductMember({ projectId: PROJECT_ID, identityId: IDENTITY_ID, ctx });
+    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
-    expect(deps.membershipDAL.deleteById).toHaveBeenCalledWith("mem-1", expect.anything());
+    expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
   });
 
   test("refuses to change your own role", async () => {
@@ -156,7 +175,7 @@ describe("agentVaultMembership guards", () => {
     await expect(
       service.updateProductMemberRole({
         projectId: PROJECT_ID,
-        userId: ACTOR_ID,
+        actor: { type: AgentVaultMemberType.User, id: ACTOR_ID },
         role: ProjectMembershipRole.Member,
         ctx
       })
@@ -171,13 +190,13 @@ describe("agentVaultMembership guards", () => {
       adminMembershipIds: ["mem-other"]
     });
 
-    const updated = await service.updateProductMemberRole({
+    const { member } = await service.updateProductMemberRole({
       projectId: PROJECT_ID,
-      userId: "someone-else",
+      actor: { type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID },
       role: ProjectMembershipRole.Member,
       ctx
     });
 
-    expect(updated.role).toBe(ProjectMembershipRole.Member);
+    expect(member.role).toBe(ProjectMembershipRole.Member);
   });
 });

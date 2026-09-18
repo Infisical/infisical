@@ -105,7 +105,7 @@ export enum ApiDocsTags {
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
-  AgentVaultMemberships = "Agent Vault Memberships",
+  AgentVaultMembers = "Agent Vault Members",
   KmipServers = "KMIP Servers"
 }
 
@@ -4276,7 +4276,7 @@ export const AGENT_VAULT = {
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
     userIds: "The IDs of the users to grant the access bundle to.",
-    identityIds: "The IDs of the machine identities to grant the access bundle to.",
+    machineIdentityIds: "The IDs of the machine identities to grant the access bundle to.",
     groupIds: "The IDs of the groups to grant the access bundle to.",
     actorType: "Whether this member is a user, a machine identity or a group.",
     actorId: "The ID of the user, machine identity or group.",
@@ -4295,6 +4295,13 @@ export const AGENT_VAULT = {
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
     isActive: "Whether the member can currently reach Agent Vault.",
+    userIds: "The IDs of the users to act on.",
+    machineIdentityIds: "The IDs of the machine identities to act on.",
+    groupIds: "The IDs of the groups to act on.",
+    emails: "The email addresses of the users to give access to. Each must already be in the organization.",
+    identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
+    addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
+    revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",

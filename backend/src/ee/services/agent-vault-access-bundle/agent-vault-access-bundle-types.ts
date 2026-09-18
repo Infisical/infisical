@@ -93,7 +93,7 @@ export type TAddMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   userIds: string[];
   groupIds: string[];
-  identityIds: string[];
+  machineIdentityIds: string[];
 };
 
 export type TRemoveMemberDTO = TAgentVaultProjectScoped & {

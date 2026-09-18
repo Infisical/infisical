@@ -863,6 +863,49 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * The batched form of findEffectiveOrgMemberships: given many actors of one kind, returns the ids of
+   * those holding an active org membership, directly or through a group. One query, so a bulk caller
+   * does not fan out one lookup per actor against a pool of ten connections.
+   */
+  const findActiveEffectiveOrgMemberActorIds = async (
+    dto: { actorType: ActorType; actorIds: string[]; orgId: string },
+    tx?: Knex
+  ): Promise<Set<string>> => {
+    if (!dto.actorIds.length) return new Set();
+
+    try {
+      const conn = tx ?? db.replicaNode();
+      const isUser = dto.actorType === ActorType.USER;
+      const groupTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupActorColumn = `${groupTable}.${isUser ? "userId" : "identityId"}`;
+      const directColumn = `${TableName.Membership}.${isUser ? "actorUserId" : "actorIdentityId"}`;
+
+      const rows = (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(`${TableName.Membership}.isActive`, true)
+        // Restricted to the requested actors on the join itself, so a row reached through a group can
+        // still be attributed back to the actor that asked for it.
+        .leftJoin(groupTable, function joinGroupMembership() {
+          void this.on(`${groupTable}.groupId`, "=", `${TableName.Membership}.actorGroupId`).onIn(
+            groupActorColumn,
+            dto.actorIds
+          );
+        })
+        .where((qb) => {
+          void qb.whereIn(directColumn, dto.actorIds).orWhereNotNull(groupActorColumn);
+        })
+        .distinct(conn.raw(`COALESCE(??, ??) as "actorId"`, [directColumn, groupActorColumn]))) as {
+        actorId: string | null;
+      }[];
+
+      return new Set(rows.map((row) => row.actorId).filter((id): id is string => Boolean(id)));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active effective org member actor ids" });
+    }
+  };
+
   const findActiveEffectiveOrgMembershipsByUserId = async (userId: string, tx?: Knex): Promise<TMemberships[]> => {
     try {
       const conn = tx ?? db.replicaNode();
@@ -1103,6 +1146,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findMembership,
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
+    findActiveEffectiveOrgMemberActorIds,
     findActiveEffectiveOrgMembershipsByUserId,
     findMembershipWithScimFilter,
     createMembership,

@@ -932,7 +932,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultAccessBundleDAL.findMembers({ projectId: rest.projectId, accessBundleId: bundle.id });
   };
 
-  const addMembers = async ({ accessBundleId, userIds, groupIds, identityIds, ...rest }: TAddMembersDTO) => {
+  const addMembers = async ({ accessBundleId, userIds, groupIds, machineIdentityIds, ...rest }: TAddMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -943,7 +943,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const byColumn: [TGrantActorColumn, string[]][] = [
       ["actorUserId", userIds],
       ["actorGroupId", groupIds],
-      ["actorIdentityId", identityIds]
+      ["actorIdentityId", machineIdentityIds]
     ];
     byColumn.forEach(([actorColumn, ids]) => {
       ids.forEach((actorId) => {

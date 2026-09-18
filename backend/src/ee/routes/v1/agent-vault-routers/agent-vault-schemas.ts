@@ -216,21 +216,45 @@ export const AgentVaultServiceSchema = z.object({
 });
 
 // One list per actor type rather than a list of one-of-three objects: the field name carries the type,
-// so nothing has to be validated after parsing, and the grant stays a single atomic request.
+// so nothing has to be validated after parsing, and the write stays a single atomic request.
+const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
+  userIds: z.string().uuid().array().default([]).describe(docs.userIds),
+  machineIdentityIds: z.string().uuid().array().default([]).describe(docs.machineIdentityIds),
+  groupIds: z.string().uuid().array().default([]).describe(docs.groupIds)
+});
+
+const namedCount = (body: { userIds: string[]; machineIdentityIds: string[]; groupIds: string[]; emails?: string[] }) =>
+  body.userIds.length + body.machineIdentityIds.length + body.groupIds.length + (body.emails?.length ?? 0);
+
+const atLeastOne = "Name at least one user, machine identity, or group";
+
+const atMost = (action: string) =>
+  `${action} at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities, and groups at a time`;
+
+// The bounds go on last, and each schema repeats them, because .refine returns a ZodEffects that nothing
+// can be extended after -- so a shared helper would have to give up the body's type to the spread the
+// handlers do.
 export const AgentVaultMemberIdsSchema = z
-  .object({
-    userIds: z.string().uuid().array().default([]).describe(AGENT_VAULT.MEMBER.userIds),
-    identityIds: z.string().uuid().array().default([]).describe(AGENT_VAULT.MEMBER.identityIds),
-    groupIds: z.string().uuid().array().default([]).describe(AGENT_VAULT.MEMBER.groupIds)
-  })
-  .refine(
-    (body) => body.userIds.length + body.identityIds.length + body.groupIds.length > 0,
-    "Name at least one user, machine identity, or group"
+  .object(
+    memberIdsShape({
+      userIds: AGENT_VAULT.MEMBER.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBER.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBER.groupIds
+    })
   )
-  .refine(
-    (body) => body.userIds.length + body.identityIds.length + body.groupIds.length <= AGENT_VAULT_MAX_GRANTEES,
-    `Grant an access bundle to at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities, and groups at a time`
-  );
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Grant an access bundle to"));
+
+export const AgentVaultProductMemberIdsSchema = z
+  .object(
+    memberIdsShape({
+      userIds: AGENT_VAULT.MEMBERSHIP.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
+    })
+  )
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
 
 const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
   z.literal(type).describe(AGENT_VAULT.MEMBER.actorType);
@@ -333,6 +357,41 @@ export const AgentVaultProductMemberSchema = z.object({
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultProductActorSchema
 });
+
+// The write shape: a member the call touched, with the actor named but not hydrated, because these
+// endpoints do not join the actor's row and doing so per write would buy an echo of what was sent.
+export const AgentVaultProductMemberRefSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
+  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
+  actor: AgentVaultActorRefSchema
+});
+
+// Carries the identifier the caller sent rather than only the id it resolved to, so someone who added
+// ten people by email gets ten email addresses back instead of ten uuids they never saw.
+export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.User),
+      id: actorIdSchema,
+      identifier: z.string().describe(AGENT_VAULT.MEMBERSHIP.identifier)
+    })
+    .describe(JSON.stringify({ title: "User" })),
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.MachineIdentity),
+      id: actorIdSchema,
+      identifier: z.string().describe(AGENT_VAULT.MEMBERSHIP.identifier)
+    })
+    .describe(JSON.stringify({ title: "Machine identity" })),
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.Group),
+      id: actorIdSchema,
+      identifier: z.string().describe(AGENT_VAULT.MEMBERSHIP.identifier)
+    })
+    .describe(JSON.stringify({ title: "Group" }))
+]);
 
 export const AgentVaultRemovedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),

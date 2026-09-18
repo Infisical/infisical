@@ -207,7 +207,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             }
           }
 
-          const { memberships } = await server.services.agentVaultMembership.addProductUserMembers({
+          const { members } = await server.services.agentVaultMembership.addProductMembers({
             projectId: agentVaultProjectId,
             ctx: {
               actorId: req.permission.id,
@@ -216,23 +216,25 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
               actorAuthMethod: req.permission.authMethod
             },
             userIds: [],
+            groupIds: [],
+            machineIdentityIds: [],
             emails: req.body.inviteeEmails,
             role: ProjectMembershipRole.Member
           });
 
-          for await (const membership of memberships) {
+          for await (const member of members) {
             await server.services.auditLog.createAuditLog({
               ...req.auditLogInfo,
               orgId: req.permission.orgId,
               projectId: agentVaultProjectId,
               event: {
                 type: EventType.AGENT_VAULT_MEMBER_ADD,
-                metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
+                metadata: { userId: member.actor.id, userName: member.actorName, role: member.role }
               }
             });
             emitAgentVaultTelemetry(server.services.telemetry, req, {
               event: PostHogEventTypes.AgentVaultProductMemberAdded,
-              properties: { memberType: AgentVaultMemberType.User, role: membership.role }
+              properties: { memberType: AgentVaultMemberType.User, role: member.role }
             });
           }
         } catch (err) {
