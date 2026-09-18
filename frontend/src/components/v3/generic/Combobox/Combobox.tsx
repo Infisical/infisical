@@ -20,6 +20,8 @@ type ComboboxSharedProps<TOption> = {
   getOptionKeywords?: (option: TOption) => readonly string[];
   getOptionGroup?: (option: TOption) => string;
   isOptionDisabled?: (option: TOption) => boolean;
+  onSearchChange?: (search: string) => void;
+  listFooter?: React.ReactNode;
   renderOption?: (option: TOption, state: ComboboxRenderOptionState) => React.ReactNode;
   renderOptionIndicator?: (option: TOption, state: ComboboxRenderOptionState) => React.ReactNode;
   renderValue?: (option: TOption) => React.ReactNode;
@@ -219,39 +221,51 @@ const ComboboxList = <TOption,>({
         className={() =>
           cn(
             "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
-            (isLoading || isEmpty) && "hidden"
+            isEmpty && "hidden"
           )
         }
         style={{ maxHeight }}
       >
         {getOptionGroup
           ? (group: ComboboxGroup<TOption>) => (
-              <ComboboxPrimitive.Group key={group.value} items={group.items}>
-                <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
-                  {group.value}
-                </ComboboxPrimitive.GroupLabel>
+              <ComboboxPrimitive.Group
+                key={group.value}
+                items={group.items}
+                className={cn(
+                  group.value === "" && "border-b border-border pb-1",
+                  group.value === "" && "mb-1"
+                )}
+              >
+                {group.value !== "" && (
+                  <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
+                    {group.value}
+                  </ComboboxPrimitive.GroupLabel>
+                )}
                 <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
               </ComboboxPrimitive.Group>
             )
           : renderItem}
       </ComboboxPrimitive.List>
-      {isLoading ? (
-        <div
-          role="status"
-          className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
-        >
-          <span>{loadingMessage}</span>
-        </div>
-      ) : (
-        isEmpty && (
+      {isEmpty &&
+        (isLoading ? (
+          <div
+            role="status"
+            className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
+          >
+            <span>{loadingMessage}</span>
+          </div>
+        ) : (
           <div role="status" className="py-6 text-center text-sm text-muted">
             {emptyMessage}
           </div>
-        )
-      )}
+        ))}
     </>
   );
 };
+
+const ComboboxListFooter = ({ children }: { children: React.ReactNode }) => (
+  <div className="border-t border-border px-3 py-2 text-xs text-muted">{children}</div>
+);
 
 type ComboboxSelectAllProps = {
   areAllSelected: boolean;
@@ -353,6 +367,8 @@ const SingleCombobox = <TOption,>({
   getOptionKeywords,
   getOptionGroup,
   isOptionDisabled,
+  onSearchChange,
+  listFooter,
   renderOption,
   renderOptionIndicator,
   renderValue,
@@ -383,11 +399,17 @@ const SingleCombobox = <TOption,>({
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
+  // A caller-owned search returns one already-filtered page after a debounce and a round trip.
+  // The local matcher must not filter that page again, a selection missing from it is not a
+  // match to list, and neither the initial highlight nor Enter may commit a row the user has
+  // not seen yet.
+  const isSearchOwnedByCaller = Boolean(onSearchChange);
+  const isLocalFilterEnabled = shouldFilter && !isSearchOwnedByCaller;
   const items = useComboboxItems(
     options,
     selectedOptions,
     getOptionValue,
-    includeMissingSelectedOptions
+    includeMissingSelectedOptions && !isSearchOwnedByCaller
   );
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
@@ -402,8 +424,8 @@ const SingleCombobox = <TOption,>({
     [filter]
   );
   const visibleOptions = React.useMemo(
-    () => items.filter((option) => !shouldFilter || filter(option, search)),
-    [filter, items, search, shouldFilter]
+    () => items.filter((option) => !isLocalFilterEnabled || filter(option, search)),
+    [filter, isLocalFilterEnabled, items, search]
   );
   const selectableOptions = React.useMemo(
     () => visibleOptions.filter((option) => !isOptionDisabled?.(option)),
@@ -413,6 +435,11 @@ const SingleCombobox = <TOption,>({
     () => new Set(value == null ? [] : [getOptionValue(value)]),
     [getOptionValue, value]
   );
+  const updateSearch = (nextSearch: string) => {
+    setSearch(nextSearch);
+    onSearchChange?.(nextSearch);
+    onInputValueChange?.(nextSearch);
+  };
 
   return (
     <ComboboxPrimitive.Root<ComboboxItem<TOption>, false>
@@ -421,7 +448,7 @@ const SingleCombobox = <TOption,>({
       onValueChange={(nextValue, eventDetails) => {
         if (nextValue == null) {
           if (eventDetails.reason === "clear-press") {
-            setSearch("");
+            updateSearch("");
             onClear?.();
           }
           return;
@@ -438,11 +465,12 @@ const SingleCombobox = <TOption,>({
           // that search server-side never receive the seeded label (it would be
           // sent as a query and match nothing), so their input must stay in step
           // with the empty query the parent still holds.
-          if (eventDetails.reason !== "input-change") setSearch(shouldFilter ? selectedLabel : "");
+          if (eventDetails.reason !== "input-change") {
+            setSearch(isLocalFilterEnabled ? selectedLabel : "");
+          }
         } else {
           highlightedOptionValueRef.current = null;
-          setSearch("");
-          onInputValueChange?.("");
+          updateSearch("");
         }
       }}
       onItemHighlighted={(item) => {
@@ -451,8 +479,7 @@ const SingleCombobox = <TOption,>({
       inputValue={open ? search : selectedLabel}
       onInputValueChange={(nextValue, eventDetails) => {
         if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
-          setSearch(nextValue);
-          onInputValueChange?.(nextValue);
+          updateSearch(nextValue);
         }
       }}
       itemToStringLabel={(item) => getOptionLabel(item.option)}
@@ -460,10 +487,10 @@ const SingleCombobox = <TOption,>({
       isItemEqualToValue={(option, selectedOption) =>
         getOptionValue(option.option) === getOptionValue(selectedOption.option)
       }
-      filter={shouldFilter ? primitiveFilter : null}
+      filter={isLocalFilterEnabled ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight
+      autoHighlight={!isSearchOwnedByCaller}
     >
       <div className="relative w-full">
         <ComboboxPrimitive.Input
@@ -485,13 +512,13 @@ const SingleCombobox = <TOption,>({
               event.key === "Enter" &&
               open &&
               !isLoading &&
+              !isSearchOwnedByCaller &&
               !hasHighlightedOption &&
               selectableOptions[0]
             ) {
               onValueChange(selectableOptions[0]);
               setOpen(false);
-              setSearch("");
-              onInputValueChange?.("");
+              updateSearch("");
             }
 
             preventComboboxFormSubmit(event);
@@ -565,6 +592,7 @@ const SingleCombobox = <TOption,>({
           selectedValues={selectedValues}
           maxHeight={SINGLE_LIST_MAX_HEIGHT}
         />
+        {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
       </ComboboxPopup>
     </ComboboxPrimitive.Root>
   );
@@ -579,6 +607,8 @@ const MultipleCombobox = <TOption,>({
   getOptionKeywords,
   getOptionGroup,
   isOptionDisabled,
+  onSearchChange,
+  listFooter,
   renderOption,
   renderOptionIndicator,
   renderValue,
@@ -615,11 +645,16 @@ const MultipleCombobox = <TOption,>({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
+  // A caller-owned search returns one already-filtered page after a debounce and a round trip.
+  // The local matcher must not filter that page again, a selection missing from it is not a
+  // match to list, and the initial highlight may not land on a row the user has not seen yet.
+  const isSearchOwnedByCaller = Boolean(onSearchChange);
+  const isLocalFilterEnabled = shouldFilter && !isSearchOwnedByCaller;
   const items = useComboboxItems(
     options,
     selectedOptions,
     getOptionValue,
-    includeMissingSelectedOptions
+    includeMissingSelectedOptions && !isSearchOwnedByCaller
   );
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
@@ -639,9 +674,14 @@ const MultipleCombobox = <TOption,>({
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
+  const updateSearch = (nextSearch: string) => {
+    setSearch(nextSearch);
+    onSearchChange?.(nextSearch);
+    onInputValueChange?.(nextSearch);
+  };
   const visibleOptions = React.useMemo(
-    () => items.filter((option) => !shouldFilter || filter(option, search)),
-    [filter, items, search, shouldFilter]
+    () => items.filter((option) => !isLocalFilterEnabled || filter(option, search)),
+    [filter, isLocalFilterEnabled, items, search]
   );
   // Select all only covers the visible result set. External-search consumers
   // provide an already-filtered list, so do not apply the local filter again.
@@ -674,7 +714,7 @@ const MultipleCombobox = <TOption,>({
       onValueChange={(nextValue, eventDetails) => {
         if (eventDetails.reason === "item-press") {
           eventDetails.cancel();
-          setSearch("");
+          updateSearch("");
           setOpen(true);
           window.requestAnimationFrame(() => inputRef.current?.focus());
         }
@@ -689,15 +729,13 @@ const MultipleCombobox = <TOption,>({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (!nextOpen) {
-          setSearch("");
-          onInputValueChange?.("");
-        }
+        if (!nextOpen) updateSearch("");
       }}
       inputValue={search}
       onInputValueChange={(nextValue, eventDetails) => {
         setSearch(nextValue);
         if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+          onSearchChange?.(nextValue);
           onInputValueChange?.(nextValue);
         }
       }}
@@ -706,10 +744,10 @@ const MultipleCombobox = <TOption,>({
       isItemEqualToValue={(option, selectedOption) =>
         getOptionValue(option.option) === getOptionValue(selectedOption.option)
       }
-      filter={shouldFilter ? primitiveFilter : null}
+      filter={isLocalFilterEnabled ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight
+      autoHighlight={!isSearchOwnedByCaller}
     >
       <ComboboxPrimitive.Chips
         ref={chipsRef}
@@ -834,6 +872,7 @@ const MultipleCombobox = <TOption,>({
           selectedValues={selectedValues}
           maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
         />
+        {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
       </ComboboxPopup>
     </ComboboxPrimitive.Root>
   );
@@ -842,6 +881,8 @@ const MultipleCombobox = <TOption,>({
 /**
  * Searchable object select built on Base UI. Use `multiple` for the chips-based
  * multi-select contract while legacy `FilterableSelect` consumers migrate incrementally.
+ * Options are filtered in the browser unless `onSearchChange` is passed, which hands
+ * filtering to the caller so the list can be fetched a page at a time.
  */
 function Combobox<TOption>(props: ComboboxProps<TOption>) {
   const { multiple } = props;

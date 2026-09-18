@@ -26,7 +26,7 @@ import {
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
-  pluralizeUnit
+  unitForCount
 } from "../billing-v2-format";
 
 type ProductIconProps = {
@@ -207,7 +207,9 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
     right = (
       <>
         <span className="font-medium text-foreground">{dim.used.toLocaleString()}</span>
-        {dim.limit !== null ? ` / ${dim.limit.toLocaleString()}` : ` ${pluralizeUnit(dim.noun)}`}
+        {dim.limit !== null
+          ? ` / ${dim.limit.toLocaleString()}`
+          : ` ${unitForCount(dim.noun, dim.used)}`}
         {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
       </>
     );
@@ -219,7 +221,7 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
       style={{ "--product-color": color } as CSSProperties}
     >
       <div className="flex items-baseline justify-between gap-2.5 text-xs">
-        <span className="text-muted">{dim.label}</span>
+        <span className="text-accent">{dim.label}</span>
         <span className="text-muted tabular-nums">{right}</span>
       </div>
       {hasCeiling && (

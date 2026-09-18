@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode } from "react";
-import { Clock, DollarSign, Package, RefreshCw } from "lucide-react";
+import { ChevronRight, Clock, DollarSign, Package, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -34,6 +34,12 @@ import {
 } from "../../billing-v2-format";
 import { asPlanDeprecation, deprecationSubline } from "../deprecation/deprecation-data";
 import { ActiveBadge, CardEmpty, DimensionMeter, ProductIcon } from "../shared";
+import { breakdownableDimensions } from "../UsageBreakdownSheet";
+import {
+  ActiveProductCardSkeleton,
+  productCardShape,
+  UNKNOWN_PRODUCT_SHAPE
+} from "./ProductCardSkeleton";
 
 type ActiveProductCardProps = {
   prod: BillingV2CatalogProduct;
@@ -42,6 +48,7 @@ type ActiveProductCardProps = {
   selfServe: boolean;
   onManage: (id: string) => void;
   onSetCommitment: (id: string) => void;
+  onViewBreakdown: (id: string) => void;
 };
 
 // Full-width card for an active product: identity and status, price, Manage action, usage meters.
@@ -51,7 +58,8 @@ const ActiveProductCard = ({
   readOnly,
   selfServe,
   onManage,
-  onSetCommitment
+  onSetCommitment,
+  onViewBreakdown
 }: ActiveProductCardProps) => {
   // "Commit annually and save" nudge: shown when the org holds this product monthly but hasn't set the
   // available commitment. Clicking opens the set-commitment flow. Hidden for enterprise-managed orgs.
@@ -88,6 +96,8 @@ const ActiveProductCard = ({
 
   // Bar-bearing dims first so the block reads bars, then bare cost lines, then the shared legend.
   const sortedDims = [...dims].sort((a, b) => Number(dimHasCeiling(b)) - Number(dimHasCeiling(a)));
+
+  const hasBreakdown = breakdownableDimensions(entitlement).length > 0;
 
   // Cadence and renewal (or trial / deprecation) as one muted subline under the product name.
   let subline: ReactNode = null;
@@ -191,9 +201,32 @@ const ActiveProductCard = ({
           ))}
         </div>
       )}
+      {hasBreakdown && (
+        <button
+          type="button"
+          onClick={() => onViewBreakdown(prod.id)}
+          className={cn(
+            "group -mx-4 -mb-4 flex cursor-pointer items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-left transition-colors hover:bg-container-hover",
+            commitNudge && "mb-0"
+          )}
+        >
+          <span className="text-xs text-muted">Usage across your organization</span>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-accent transition-colors group-hover:text-foreground">
+            View breakdown
+            <ChevronRight className="size-3.5" />
+          </span>
+        </button>
+      )}
       {commitNudge && (
         // Full-bleed strip at the card's bottom edge nudging the monthly subscriber to commit annually.
-        <div className="-mx-4 mt-1 -mb-4 flex items-center justify-between gap-3 border-t border-border bg-warning/5 px-4 py-2.5">
+        <div
+          className={cn(
+            "-mx-4 -mb-4 flex items-center justify-between gap-3 border-t border-border bg-warning/5 px-4 py-2.5",
+            // Sitting under the breakdown strip, -mt-3 cancels the card's gap-3 so the two full-bleed
+            // strips meet on one divider and read as a single footer instead of two floating bars.
+            hasBreakdown ? "-mt-3" : "mt-1"
+          )}
+        >
           <span className="flex items-center gap-2.5 text-xs text-muted">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-warning/40 text-warning">
               <DollarSign className="size-3.5" />
@@ -276,12 +309,17 @@ const AvailableProductTile = ({
   );
 };
 
+const UNKNOWN_PRODUCTS = ["product-a", "product-b"];
+
 type ProductsCardProps = {
-  overview: BillingV2Overview;
+  overview?: BillingV2Overview;
   catalog: BillingV2CatalogProduct[];
   readOnly?: boolean;
+  orgFilter?: ReactNode;
+  isReloading?: boolean;
   onManage: (id: string) => void;
   onSetCommitment: (id: string) => void;
+  onViewBreakdown: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
@@ -289,17 +327,21 @@ export const ProductsCard = ({
   overview,
   catalog,
   readOnly,
+  orgFilter,
+  isReloading,
   onManage,
   onSetCommitment,
+  onViewBreakdown,
   onContact
 }: ProductsCardProps) => {
+  const entitlements = overview?.entitlements ?? {};
   // A deprecated product stays visible to existing subscribers but is closed to new ones, so hide it
   // from anyone who isn't already entitled to it (plan-level deprecation still shows the product).
   const visible = [...catalog]
-    .filter((prod) => !prod.deprecated || overview.entitlements[prod.id]?.entitled)
+    .filter((prod) => !prod.deprecated || entitlements[prod.id]?.entitled)
     .sort(byDisplayOrder);
-  const active = visible.filter((prod) => overview.entitlements[prod.id]?.entitled);
-  const available = visible.filter((prod) => !overview.entitlements[prod.id]?.entitled);
+  const active = visible.filter((prod) => entitlements[prod.id]?.entitled);
+  const available = visible.filter((prod) => !entitlements[prod.id]?.entitled);
 
   const { currentOrg } = useOrganization();
   const refreshEntitlements = useRefreshBillingV2Entitlements();
@@ -325,32 +367,47 @@ export const ProductsCard = ({
           Products
         </CardTitle>
         <CardDescription>Active products</CardDescription>
-        {!readOnly && (
+        {(orgFilter || !readOnly) && (
           <CardAction>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isDisabled={refreshEntitlements.isPending}
-                  onClick={handleRefresh}
-                >
-                  <RefreshCw />
-                  Refresh
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Plan changes may take a few minutes to take effect.</TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2">
+              {orgFilter}
+              {!readOnly && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isDisabled={refreshEntitlements.isPending}
+                      onClick={handleRefresh}
+                    >
+                      <RefreshCw />
+                      Refresh
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Plan changes may take a few minutes to take effect.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </CardAction>
         )}
       </CardHeader>
       <CardContent>
-        {visible.length === 0 ? (
+        {!overview && (
+          <div className="flex flex-col gap-4">
+            {UNKNOWN_PRODUCTS.map((product) => (
+              <ActiveProductCardSkeleton key={product} shape={UNKNOWN_PRODUCT_SHAPE} />
+            ))}
+          </div>
+        )}
+        {overview && visible.length === 0 && (
           <CardEmpty
             title="No products available"
             description="Products will appear here once they're available."
           />
-        ) : (
+        )}
+        {overview && visible.length > 0 && (
           <>
             {active.length === 0 && (
               <CardEmpty
@@ -359,17 +416,28 @@ export const ProductsCard = ({
               />
             )}
             <div className="flex flex-col gap-4">
-              {active.map((prod) => (
-                <ActiveProductCard
-                  key={prod.id}
-                  prod={prod}
-                  entitlement={overview.entitlements[prod.id]}
-                  readOnly={readOnly}
-                  selfServe={overview.selfServe}
-                  onManage={onManage}
-                  onSetCommitment={onSetCommitment}
-                />
-              ))}
+              {active.map((prod) =>
+                isReloading ? (
+                  <ActiveProductCardSkeleton
+                    key={prod.id}
+                    shape={productCardShape(entitlements[prod.id], {
+                      readOnly,
+                      selfServe: overview.selfServe
+                    })}
+                  />
+                ) : (
+                  <ActiveProductCard
+                    key={prod.id}
+                    prod={prod}
+                    entitlement={entitlements[prod.id]}
+                    readOnly={readOnly}
+                    selfServe={overview.selfServe}
+                    onManage={onManage}
+                    onSetCommitment={onSetCommitment}
+                    onViewBreakdown={onViewBreakdown}
+                  />
+                )
+              )}
               {available.length > 0 && (
                 <>
                   <div className="flex items-center gap-3 pt-2">
