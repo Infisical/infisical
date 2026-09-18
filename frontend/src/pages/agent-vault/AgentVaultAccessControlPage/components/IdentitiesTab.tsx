@@ -54,7 +54,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, useResetPageHelper } from "@app/hooks";
+import { useDebounce, useResetPageHelper, useResetPageOnSearch } from "@app/hooks";
 import {
   agentVaultKeys,
   useListAgentVaultMembers,
@@ -94,6 +94,7 @@ export const IdentitiesTab = () => {
   const filtered = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
+  useResetPageOnSearch({ debouncedSearch, setPage });
 
   const isFiltered = Boolean(debouncedSearch.trim());
 
@@ -167,10 +168,7 @@ export const IdentitiesTab = () => {
           </InputGroupAddon>
           <InputGroupInput
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search machine identities..."
           />
         </InputGroup>

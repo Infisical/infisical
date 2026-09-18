@@ -46,7 +46,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, useResetPageHelper } from "@app/hooks";
+import { useDebounce, useResetPageHelper, useResetPageOnSearch } from "@app/hooks";
 import { useListAgentVaultMembers, useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
@@ -77,6 +77,7 @@ export const MembersTab = () => {
   const filtered = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
+  useResetPageOnSearch({ debouncedSearch, setPage });
 
   const isFiltered = Boolean(debouncedSearch.trim());
 
@@ -122,10 +123,7 @@ export const MembersTab = () => {
           </InputGroupAddon>
           <InputGroupInput
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search users..."
           />
         </InputGroup>
