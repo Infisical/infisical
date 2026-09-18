@@ -103,7 +103,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   });
 
   const toActorRef = (row: TMemberships): TAgentVaultAccessBundleActorRef => {
-    if (row.actorIdentityId) return { type: AgentVaultMemberType.Identity, id: row.actorIdentityId };
+    if (row.actorIdentityId) return { type: AgentVaultMemberType.MachineIdentity, id: row.actorIdentityId };
     if (row.actorGroupId) return { type: AgentVaultMemberType.Group, id: row.actorGroupId };
     return { type: AgentVaultMemberType.User, id: row.actorUserId ?? "" };
   };
@@ -123,19 +123,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const ACTOR_TYPE_OF: Record<TGrantActorColumn, AgentVaultMemberType> = {
     actorUserId: AgentVaultMemberType.User,
-    actorIdentityId: AgentVaultMemberType.Identity,
+    actorIdentityId: AgentVaultMemberType.MachineIdentity,
     actorGroupId: AgentVaultMemberType.Group
   };
 
   const ACTOR_COLUMN_OF: Record<AgentVaultMemberType, TGrantActorColumn> = {
     [AgentVaultMemberType.User]: "actorUserId",
-    [AgentVaultMemberType.Identity]: "actorIdentityId",
+    [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
     [AgentVaultMemberType.Group]: "actorGroupId"
   };
 
   const ACTOR_LABEL_OF: Record<AgentVaultMemberType, string> = {
     [AgentVaultMemberType.User]: "User with ID",
-    [AgentVaultMemberType.Identity]: "Machine identity with ID",
+    [AgentVaultMemberType.MachineIdentity]: "Machine identity with ID",
     [AgentVaultMemberType.Group]: "Group with ID"
   };
 

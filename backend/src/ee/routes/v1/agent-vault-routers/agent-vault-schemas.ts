@@ -242,7 +242,7 @@ export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
     .object({ type: actorTypeSchema(AgentVaultMemberType.User), id: actorIdSchema })
     .describe(JSON.stringify({ title: "User" })),
   z
-    .object({ type: actorTypeSchema(AgentVaultMemberType.Identity), id: actorIdSchema })
+    .object({ type: actorTypeSchema(AgentVaultMemberType.MachineIdentity), id: actorIdSchema })
     .describe(JSON.stringify({ title: "Machine identity" })),
   z
     .object({ type: actorTypeSchema(AgentVaultMemberType.Group), id: actorIdSchema })
@@ -262,7 +262,7 @@ export const AgentVaultActorSchema = z.discriminatedUnion("type", [
     .describe(JSON.stringify({ title: "User" })),
   z
     .object({
-      type: actorTypeSchema(AgentVaultMemberType.Identity),
+      type: actorTypeSchema(AgentVaultMemberType.MachineIdentity),
       id: actorIdSchema,
       name: z.string().describe(AGENT_VAULT.MEMBER.identityName)
     })

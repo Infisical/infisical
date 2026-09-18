@@ -415,7 +415,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberAdded,
-        properties: { memberType: AgentVaultMemberType.Identity, role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.MachineIdentity, role: req.body.role }
       });
 
       return member;
@@ -459,7 +459,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: AgentVaultMemberType.Identity, role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.MachineIdentity, role: req.body.role }
       });
 
       return member;
@@ -497,7 +497,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: AgentVaultMemberType.Identity }
+        properties: { memberType: AgentVaultMemberType.MachineIdentity }
       });
 
       return { membershipId: removed.membershipId, identityId: req.params.identityId };

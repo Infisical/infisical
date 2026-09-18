@@ -1815,10 +1815,10 @@ describe("Agent Vault V1 Router", async () => {
 
         // The creator's own grant is already there, so all three arms are on one response.
         const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
-        expect(Object.keys(byType).sort()).toEqual(["group", "identity", "user"]);
+        expect(Object.keys(byType).sort()).toEqual(["group", "machineIdentity", "user"]);
 
         expect(byType.group.actor).toMatchObject({ type: "group", id: group.id });
-        expect(byType.identity.actor).toMatchObject({ type: "identity", id: identity.id });
+        expect(byType.machineIdentity.actor).toMatchObject({ type: "machineIdentity", id: identity.id });
         expect(byType.user.actor).toMatchObject({ type: "user", id: seedData1.id });
         expect(byType.user.actor.username).toBeTruthy();
 
@@ -2243,7 +2243,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(again.statusCode).toBe(200);
       expect(JSON.parse(again.payload)).toMatchObject({
         members: [],
-        skipped: [{ type: "identity", id: identity.id }]
+        skipped: [{ type: "machineIdentity", id: identity.id }]
       });
 
       expect(await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id)).toBe(

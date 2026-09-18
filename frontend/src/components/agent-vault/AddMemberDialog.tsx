@@ -28,7 +28,7 @@ import { PendingInvitationBadge } from "./PendingInvitationBadge";
 
 const KIND_ICON: Record<AgentVaultMemberType, typeof UserIcon> = {
   [AgentVaultMemberType.User]: UserIcon,
-  [AgentVaultMemberType.Identity]: BotIcon,
+  [AgentVaultMemberType.MachineIdentity]: BotIcon,
   [AgentVaultMemberType.Group]: UsersIcon
 };
 
@@ -90,7 +90,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     const identityOptions = (identities ?? [])
       .filter((member) => member.identityId)
       .map((member) => ({
-        kind: AgentVaultMemberType.Identity,
+        kind: AgentVaultMemberType.MachineIdentity,
         id: member.identityId as string,
         label: member.name,
         subtitle: "Machine Identity"
@@ -111,7 +111,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       const { members: granted, skipped } = await addMembers.mutateAsync({
         accessBundleId,
         userIds: idsOfKind(AgentVaultMemberType.User),
-        identityIds: idsOfKind(AgentVaultMemberType.Identity),
+        identityIds: idsOfKind(AgentVaultMemberType.MachineIdentity),
         groupIds: idsOfKind(AgentVaultMemberType.Group)
       });
 

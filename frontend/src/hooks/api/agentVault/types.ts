@@ -81,7 +81,7 @@ export type TAgentVaultActor =
       firstName: string | null;
       lastName: string | null;
     }
-  | { type: AgentVaultMemberType.Identity; id: string; name: string }
+  | { type: AgentVaultMemberType.MachineIdentity; id: string; name: string }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
 export type TAgentVaultMember = {

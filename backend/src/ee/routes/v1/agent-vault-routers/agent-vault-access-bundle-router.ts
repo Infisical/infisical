@@ -652,7 +652,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
       revokeAccessBundle(req, req.params.accessBundleId, {
-        type: AgentVaultMemberType.Identity,
+        type: AgentVaultMemberType.MachineIdentity,
         id: req.params.identityId
       })
   });

@@ -23,7 +23,7 @@ export enum AgentVaultCredentialType {
 
 export enum AgentVaultMemberType {
   User = "user",
-  Identity = "identity",
+  MachineIdentity = "machineIdentity",
   Group = "group"
 }
 

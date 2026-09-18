@@ -150,7 +150,7 @@ export const useDeleteAgentVaultService = () => {
 const ACTOR_PATH: Record<AgentVaultMemberType, string> = {
   [AgentVaultMemberType.User]: "users",
   [AgentVaultMemberType.Group]: "groups",
-  [AgentVaultMemberType.Identity]: "identities"
+  [AgentVaultMemberType.MachineIdentity]: "identities"
 };
 
 export const useAddAgentVaultAccessBundleMembers = () => {

@@ -12,7 +12,7 @@ export const memberDisplayName = ({ actor }: TAgentVaultMember) => {
 
 const KIND = {
   [AgentVaultMemberType.User]: { label: "User", icon: UserIcon },
-  [AgentVaultMemberType.Identity]: { label: "Machine Identity", icon: BotIcon },
+  [AgentVaultMemberType.MachineIdentity]: { label: "Machine Identity", icon: BotIcon },
   [AgentVaultMemberType.Group]: { label: "Group", icon: UsersIcon }
 };
 

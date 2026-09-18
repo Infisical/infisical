@@ -33,7 +33,7 @@ export type TAgentVaultAccessBundleActor =
       firstName: string | null;
       lastName: string | null;
     }
-  | { type: AgentVaultMemberType.Identity; id: string; name: string }
+  | { type: AgentVaultMemberType.MachineIdentity; id: string; name: string }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
 export type TAgentVaultAccessBundleMemberDetail = {
@@ -195,7 +195,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
 
       const actorOf = (row: (typeof rows)[number]): TAgentVaultAccessBundleActor => {
         if (row.identityId) {
-          return { type: AgentVaultMemberType.Identity, id: row.identityId, name: row.identityName ?? "" };
+          return { type: AgentVaultMemberType.MachineIdentity, id: row.identityId, name: row.identityName ?? "" };
         }
         if (row.groupId) {
           return { type: AgentVaultMemberType.Group, id: row.groupId, name: row.groupName ?? "" };
