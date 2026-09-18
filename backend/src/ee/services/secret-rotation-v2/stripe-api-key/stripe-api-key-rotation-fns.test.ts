@@ -183,18 +183,17 @@ describe("stripeApiKeyRotationFactory", () => {
     ).resolves.toBeDefined();
   });
 
-  it("completes a rotation when the old key is already gone from Stripe, without ever calling expire on it", async () => {
-    // A double expire's response has never been observed, so this drives the fix through the
-    // existence check (a 404 on retrieve) rather than assuming a 404 on a second expire call.
+  it("completes a rotation when the old key is already gone from Stripe, via the existence check after a non-404 expire failure", async () => {
+    // A double expire's response has never been observed, so a repeat expire is mocked to fail with
+    // something other than 404 (a generic 400), and the existence check (a 404 on retrieve) is what
+    // recognizes the key as already gone.
     getMock.mockImplementation(async (url: string) => {
       if (url.endsWith("/mk_old")) throw httpError(404, "No such key");
       throw new Error(`unexpected GET ${url}`);
     });
     mockStripe({
       expire: async (keyId) => {
-        if (keyId === "mk_old") {
-          throw new Error("expire must not be called for a key the existence check already found gone");
-        }
+        if (keyId === "mk_old") throw httpError(400, "Key is not active");
         return { data: {} };
       }
     });
@@ -204,8 +203,35 @@ describe("stripeApiKeyRotationFactory", () => {
       makeFactory().rotateCredentials({ keyId: "mk_old" } as any, callback as any, {} as any)
     ).resolves.toBeDefined();
 
-    expect(expireCalls("mk_old")).toHaveLength(0);
+    expect(expireCalls("mk_old")).toHaveLength(1);
     expect(callback).toHaveBeenCalled();
+  });
+
+  it("issues no GET at all on the happy path", async () => {
+    mockStripe();
+    const callback = vi.fn(async (credentials: unknown) => credentials);
+
+    await makeFactory().rotateCredentials({ keyId: "mk_old", apiKey: "rk_old" } as any, callback as any, {} as any);
+
+    expect(getMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the original expire error, not the existence check's error, when the check itself fails", async () => {
+    getMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/mk_old")) throw httpError(500, "Stripe existence check is down");
+      throw new Error(`unexpected GET ${url}`);
+    });
+    mockStripe({
+      expire: async (keyId) => {
+        if (keyId === "mk_old") throw httpError(400, "Key is not active");
+        return { data: {} };
+      }
+    });
+    const callback = vi.fn(async (credentials: unknown) => credentials);
+
+    await expect(
+      makeFactory().rotateCredentials({ keyId: "mk_old" } as any, callback as any, {} as any)
+    ).rejects.toThrow("Key is not active");
   });
 
   it("revokeCredentials returns early without contacting Stripe when there are no credentials", async () => {

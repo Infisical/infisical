@@ -44,9 +44,11 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.
   const $keyName = () => `infisical-${secretsMapping.apiKey}-${Date.now()}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
 
-  /** No 404 on a double expire has ever been observed, so retiring a key twice can't be trusted to look
-   *  like the first expire. Checking existence first sidesteps the question: a key that is already
-   *  gone is retired either way, and a key that still exists gets the expire call as before.
+  /** No 404 on a double expire has ever been observed, so a non-404 failure on retiring a key that
+   *  was already expired can't be told apart from a real failure by status code alone. This is only
+   *  ever consulted after the expire call itself has failed, to check whether the key was already
+   *  gone; it must never run first, since a transient failure here (a 429, a 5xx, a socket error)
+   *  would otherwise block an expire attempt that would very likely have succeeded.
    */
   const $keyExists = async (keyId: string): Promise<boolean> => {
     try {
@@ -61,22 +63,27 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 
   const $tryRetireKey = async (keyId: string): Promise<{ retired: true } | { retired: false; error: unknown }> => {
     try {
-      if (!(await $keyExists(keyId))) return { retired: true };
-    } catch (error) {
-      return { retired: false, error };
-    }
-
-    try {
       await request.post(
         `${STRIPE_API_KEYS_URL}/${keyId}/expire`,
         {},
         withIdempotencyKey(getStripePlatformRequestConfig(accountId))
       );
       return { retired: true };
-    } catch (error) {
-      if (getStripeErrorStatus(error) === 404) return { retired: true };
+    } catch (expireError) {
+      if (getStripeErrorStatus(expireError) === 404) return { retired: true };
 
-      return { retired: false, error };
+      // The expire failed for some other reason. It might still be that the key was already
+      // retired and a repeat expire doesn't return 404 the way a first one would, so check
+      // existence to excuse the failure. But the check is only ever an excuse, never a
+      // replacement: if it also fails, or it finds the key still there, the original expire
+      // error is what gets surfaced.
+      try {
+        if (!(await $keyExists(keyId))) return { retired: true };
+      } catch {
+        // Fall through and surface expireError below.
+      }
+
+      return { retired: false, error: expireError };
     }
   };
 
