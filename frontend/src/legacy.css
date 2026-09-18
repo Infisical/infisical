@@ -1,0 +1,160 @@
+/*
+ * Legacy compatibility palette.
+ *
+ * These tokens keep v2 and older product surfaces working while their
+ * consumers migrate to semantic v3 roles. Do not rename or remove them until
+ * all generated utility consumers have moved.
+ */
+@theme {
+  /* Legacy scope aliases */
+  --color-org-v1: #30b3ff;
+  --color-namespace-v1: #96ff59;
+
+  /* Legacy primary palette */
+  --color-primary-50: #fffff5;
+  --color-primary-100: #fcfce8;
+  --color-primary-200: #f8faca;
+  --color-primary-300: #f4f7ab;
+  --color-primary-400: #ecf26d;
+  --color-primary-500: #e0ed34;
+  --color-primary-600: #c2d62b;
+  --color-primary-700: #97b31d;
+  --color-primary-800: #708f13;
+  --color-primary-900: #4d6b0b;
+  --color-primary: #e0ed34;
+
+  /* Legacy neutral and miscellaneous aliases */
+  --color-grey: #0d1117;
+  --color-githubblack: #020409;
+  --color-blue1: #3498db;
+  --color-blue2: #130f40;
+  --color-orange: #f39c12;
+
+  /* Mineshaft */
+  --color-mineshaft-50: #f5f5f5;
+  --color-mineshaft-100: #ebebeb;
+  --color-mineshaft-200: #ccccce;
+  --color-mineshaft-300: #adaeb0;
+  --color-mineshaft-400: #707174;
+  --color-mineshaft-500: #323439;
+  --color-mineshaft-600: #2d2f33;
+  --color-mineshaft-700: #26272b;
+  --color-mineshaft-800: #1e1f22;
+  --color-mineshaft-900: #19191c;
+  --color-mineshaft: #323439;
+
+  /* Chicago */
+  --color-chicago-50: #f7f7f7;
+  --color-chicago-100: #efefef;
+  --color-chicago-200: #d6d6d7;
+  --color-chicago-300: #bdbebf;
+  --color-chicago-400: #8c8d8e;
+  --color-chicago-500: #5b5c5e;
+  --color-chicago-600: #525355;
+  --color-chicago-700: #444547;
+  --color-chicago-800: #373738;
+  --color-chicago-900: #2d2d2e;
+  --color-chicago: #5b5c5e;
+
+  /* Bunker */
+  --color-bunker-50: #f3f4f4;
+  --color-bunker-100: #e8e8e9;
+  --color-bunker-200: #c5c6c8;
+  --color-bunker-300: #a2a4a6;
+  --color-bunker-400: #5d5f64;
+  --color-bunker-500: #171b21;
+  --color-bunker-600: #15181e;
+  --color-bunker-700: #111419;
+  --color-bunker-800: #0e1014;
+  --color-bunker-900: #0b0d10;
+  --color-bunker: #171b21;
+
+  /* Legacy status ramps */
+  --color-yellow-50: #fefcf3;
+  --color-yellow-100: #fef9e7;
+  --color-yellow-200: #fcf0c3;
+  --color-yellow-300: #f9e79f;
+  --color-yellow-400: #f5d657;
+  --color-yellow-500: #f1c40f;
+  --color-yellow-600: #d9b00e;
+  --color-yellow-700: #b5930b;
+  --color-yellow-800: #917609;
+  --color-yellow-900: #766007;
+  --color-yellow: #f1c40f;
+
+  --color-red-50: #fef6f5;
+  --color-red-100: #fdedec;
+  --color-red-200: #f9d2ce;
+  --color-red-300: #f5b7b1;
+  --color-red-400: #ee8277;
+  --color-red-500: #e74c3c;
+  --color-red-600: #d04436;
+  --color-red-700: #ad392d;
+  --color-red-800: #8b2e24;
+  --color-red-900: #71251d;
+  --color-red: #e74c3c;
+
+  --color-green-50: #f5fcf8;
+  --color-green-100: #eafaf1;
+  --color-green-200: #cbf2dc;
+  --color-green-300: #abebc6;
+  --color-green-400: #6ddb9c;
+  --color-green-500: #2ecc71;
+  --color-green-600: #29b866;
+  --color-green-700: #239955;
+  --color-green-800: #1c7a44;
+  --color-green-900: #176437;
+  --color-green: #2ecc71;
+
+  --color-blue-50: #f2f8ff;
+  --color-blue-100: #e6f1ff;
+  --color-blue-200: #bfdbff;
+  --color-blue-300: #99c5ff;
+  --color-blue-400: #4d9aff;
+  --color-blue-500: #006eff;
+  --color-blue-600: #0063e6;
+  --color-blue-700: #0053bf;
+  --color-blue-800: #004299;
+  --color-blue-900: #00367d;
+}
+
+/* Legacy ramps are inverted in light mode for existing v2 surfaces. */
+html[data-theme="light"] {
+  --color-primary: oklch(0.6046 0.1440 123.9);
+
+  --color-mineshaft-50: oklch(0.2147 0.0058 285.9);
+  --color-mineshaft-100: oklch(0.2975 0.0018 286.3);
+  --color-mineshaft-200: oklch(0.3902 0.0036 264.5);
+  --color-mineshaft-300: oklch(0.4420 0.0035 264.5);
+  --color-mineshaft-400: oklch(0.5487 0.0048 271.3);
+  --color-mineshaft-500: oklch(0.8010 0.0018 247.8);
+  --color-mineshaft-600: oklch(0.8764 0.0014 286.4);
+  --color-mineshaft-700: oklch(0.9521 0.0000 0);
+  --color-mineshaft-800: oklch(0.9761 0.0000 0);
+  --color-mineshaft-900: oklch(1.0000 0.0000 0);
+  --color-mineshaft: oklch(0.8764 0.0014 286.4);
+
+  --color-chicago-50: oklch(0.2147 0.0058 285.9);
+  --color-chicago-100: oklch(0.2975 0.0018 286.3);
+  --color-chicago-200: oklch(0.3902 0.0036 264.5);
+  --color-chicago-300: oklch(0.4420 0.0035 264.5);
+  --color-chicago-400: oklch(0.5487 0.0048 271.3);
+  --color-chicago-500: oklch(0.6429 0.0019 247.9);
+  --color-chicago-600: oklch(0.8010 0.0018 247.8);
+  --color-chicago-700: oklch(0.8764 0.0014 286.4);
+  --color-chicago-800: oklch(0.9521 0.0000 0);
+  --color-chicago-900: oklch(0.9761 0.0000 0);
+  --color-chicago: oklch(0.6429 0.0019 247.9);
+
+  --color-bunker-50: oklch(0.2147 0.0058 285.9);
+  --color-bunker-100: oklch(0.2975 0.0018 286.3);
+  --color-bunker-200: oklch(0.3902 0.0036 264.5);
+  --color-bunker-300: oklch(0.4420 0.0035 264.5);
+  --color-bunker-400: oklch(0.5487 0.0048 271.3);
+  --color-bunker-500: oklch(0.8010 0.0018 247.8);
+  --color-bunker-600: oklch(0.8764 0.0014 286.4);
+  --color-bunker-700: oklch(0.9521 0.0000 0);
+  --color-bunker-800: oklch(0.9761 0.0000 0);
+  --color-bunker-900: oklch(1.0000 0.0000 0);
+  --color-bunker: oklch(0.9761 0.0000 0);
+}

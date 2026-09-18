@@ -58,11 +58,11 @@ export const DashboardPage = () => {
     return <PageLoader />;
   }
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-page">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
       </Helmet>
-      <div className="mx-auto flex flex-col text-white">
+      <div className="mx-auto flex flex-col text-foreground-inverse">
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={ProjectType.CertificateManager}
