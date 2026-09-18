@@ -50,13 +50,13 @@ export const ScimEvents = () => {
       if (event.eventType === ScimEvent.LIST_USERS)
         return `Number of users: ${event.event?.numberOfUsers}`;
 
-      return event.event?.email;
+      return event.event?.email ?? event.event?.detail;
     }
     if (event.eventType.includes("group")) {
       if (event.eventType === ScimEvent.LIST_GROUPS)
         return `Number of groups: ${event.event?.numberOfGroups}`;
 
-      return event.event?.groupName;
+      return event.event?.groupName ?? event.event?.detail;
     }
     return "";
   };
