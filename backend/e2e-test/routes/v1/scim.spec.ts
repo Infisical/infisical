@@ -984,6 +984,107 @@ describe("SCIM v1 Router", () => {
       expect(payload.Resources[0].userName).toBe(samlSubject);
     });
 
+    test("should exclude a user from `userName ne` when any of their aliases is the excluded one", async () => {
+      const db = getDb();
+      const label = `ne-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, externalId, actorUserId } = await seedScimUser(db, label);
+
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: `saml-subject-${label}`
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`userName ne "${externalId}"`)}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { Resources: { id: string }[] };
+
+      // The other alias must not smuggle the user back in.
+      expect(payload.Resources.map((r) => r.id)).not.toContain(membershipId);
+    });
+
+    test("should exclude a user from `not (userName eq)` through their newest alias", async () => {
+      const db = getDb();
+      const label = `not-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, actorUserId } = await seedScimUser(db, label);
+
+      const samlSubject = `saml-subject-${label}`;
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: samlSubject
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`not (userName eq "${samlSubject}")`)}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { Resources: { id: string }[] };
+
+      expect(payload.Resources.map((r) => r.id)).not.toContain(membershipId);
+    });
+
+    test("should keep a member with no alias in a `userName ne` result", async () => {
+      const db = getDb();
+      const [seedMembership] = await db(TableName.Membership)
+        .where({ scopeOrgId: ORG_ID, scope: AccessScope.Organization, actorUserId: seedData1.id })
+        .select("id");
+      await db(TableName.UserAliases).where({ userId: seedData1.id, orgId: ORG_ID, aliasType: "saml" }).del();
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`userName ne "nobody-${crypto.randomUUID()}"`)}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as { Resources: { id: string }[] };
+
+      // Before this was a set comparison, a NULL alias made `ne` silently drop the member.
+      expect(payload.Resources.map((r) => r.id)).toContain(seedMembership.id);
+    });
+
+    test("should match a user through either alias with `or` and still echo the alias asked for", async () => {
+      const db = getDb();
+      const label = `or-${crypto.randomUUID().slice(0, 8)}`;
+      const { membershipId, externalId, actorUserId } = await seedScimUser(db, label);
+
+      await db(TableName.UserAliases).insert({
+        userId: actorUserId,
+        orgId: ORG_ID,
+        aliasType: "saml",
+        externalId: `saml-subject-${label}`
+      });
+
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `userName eq "${externalId}" or userName eq "never-${label}"`
+        )}`,
+        headers: { authorization: `Bearer ${scimToken}` }
+      });
+
+      expect(res.statusCode).toBe(200);
+      const payload = JSON.parse(res.payload) as {
+        totalResults: number;
+        Resources: { id: string; userName: string }[];
+      };
+
+      expect(payload.totalResults).toBe(1);
+      expect(payload.Resources[0].id).toBe(membershipId);
+      expect(payload.Resources[0].userName).toBe(externalId);
+    });
+
     test("should report totalResults as the match count rather than the page size", async () => {
       const db = getDb();
       const suffix = crypto.randomUUID().slice(0, 8);
