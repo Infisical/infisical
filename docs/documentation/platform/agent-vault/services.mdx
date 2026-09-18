@@ -174,6 +174,8 @@ Some APIs need a header alongside the credential, such as an organization ID or 
 
 A custom header can't reuse the credential's own header name, because the credential would win and the custom header would do nothing. Infisical rejects the save. Headers the proxy sets itself, such as `Host`, `Content-Length`, and `Connection`, are rejected for the same reason.
 
+A header value can carry a substitution placeholder, which the proxy resolves before it goes out, so one substitution can stand in for a value reused across several headers.
+
 ## Substitutions
 
 When an agent already sends a fake value, a substitution swaps it for the real one on the way out. It works with any credential type, including pass-through, which is what makes a host reachable without attaching a credential of its own.
