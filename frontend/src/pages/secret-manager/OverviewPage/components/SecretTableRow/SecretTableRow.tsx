@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
@@ -112,6 +112,9 @@ type Props = {
   isBatchMode?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
   isSelectionDisabled?: boolean;
+  virtualIndex: number;
+  measureElement: (node: Element | null) => void;
+  onUnsavedChange?: (secretKey: string, hasUnsavedChanges: boolean) => void;
   onCopySecret?: (request: {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
@@ -147,9 +150,28 @@ export const SecretTableRow = ({
   isBatchMode,
   onBatchRevert,
   isSelectionDisabled,
+  virtualIndex,
+  measureElement,
+  onUnsavedChange,
   onCopySecret
 }: Props) => {
   const totalCols = environments.length + 2; // secret key row + icon
+  const rowRef = useRef<HTMLTableRowElement | null>(null);
+
+  const setRowRef = useCallback(
+    (node: HTMLTableRowElement | null) => {
+      rowRef.current = node;
+      measureElement(node);
+    },
+    [measureElement]
+  );
+
+  // A logical secret row spans one <tr> plus, when present, its override or expanded
+  // sibling <tr>; re-measure the whole group on every render so the virtualizer tracks
+  // the override/expanded toggles and the value input growing as the user types.
+  useLayoutEffect(() => {
+    if (rowRef.current) measureElement(rowRef.current);
+  });
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
@@ -218,6 +240,36 @@ export const SecretTableRow = ({
     }
   }, [creatingOverrideEnvs, getSecretByKey, secretKey]);
 
+  // A row can hold more than one editor (one per environment in the expanded multi-env view, plus
+  // override editors), so collapse them to a single answer for the virtualized parent.
+  const unsavedEditorIdsRef = useRef(new Set<string>());
+  const hasOverrideDraftRef = useRef(false);
+
+  const reportUnsavedChanges = useCallback(() => {
+    onUnsavedChange?.(
+      secretKey,
+      unsavedEditorIdsRef.current.size > 0 || hasOverrideDraftRef.current
+    );
+  }, [onUnsavedChange, secretKey]);
+
+  const handleEditorUnsavedChange = useCallback(
+    (id: string, hasUnsavedChanges: boolean) => {
+      if (hasUnsavedChanges) unsavedEditorIdsRef.current.add(id);
+      else unsavedEditorIdsRef.current.delete(id);
+      reportUnsavedChanges();
+    },
+    [reportUnsavedChanges]
+  );
+
+  // A freshly opened override row has an empty, clean form, so it reports nothing unsaved; the row
+  // still has to stay mounted or the draft row vanishes when the user scrolls past it.
+  useEffect(() => {
+    hasOverrideDraftRef.current = creatingOverrideEnvs.size > 0;
+    reportUnsavedChanges();
+  }, [creatingOverrideEnvs, reportUnsavedChanges]);
+
+  useEffect(() => () => onUnsavedChange?.(secretKey, false), [onUnsavedChange, secretKey]);
+
   const copyTokenToClipboard = () => {
     navigator.clipboard.writeText(secretKey);
     setIsSecNameCopied.on();
@@ -277,6 +329,8 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
+        ref={setRowRef}
+        data-index={virtualIndex}
         onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
         className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
       >
@@ -349,6 +403,8 @@ export const SecretTableRow = ({
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
+            unsavedChangeId={singleEnvSlug}
+            onUnsavedChange={handleEditorUnsavedChange}
             isBatchMode={isBatchMode}
             onBatchRevert={onBatchRevert}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
@@ -514,7 +570,10 @@ export const SecretTableRow = ({
           })}
       </TableRow>
       {isSingleEnvView && singleEnvShowOverride && (
-        <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+        <TableRow
+          data-index={virtualIndex}
+          className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
+        >
           <TableCell>
             <GitBranchIcon className="text-override" />
           </TableCell>
@@ -529,6 +588,8 @@ export const SecretTableRow = ({
           <TableCell>
             <SecretOverrideRow
               isSingleEnvView
+              unsavedChangeId={`${singleEnvSlug}-override`}
+              onUnsavedChange={handleEditorUnsavedChange}
               secretName={secretKey}
               environment={singleEnvSlug}
               secretPath={secretPath}
@@ -571,7 +632,7 @@ export const SecretTableRow = ({
         </Dialog>
       )}
       {!isSingleEnvView && isExpanded && (
-        <TableRow className="border-0 hover:bg-transparent">
+        <TableRow data-index={virtualIndex} className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
@@ -690,6 +751,8 @@ export const SecretTableRow = ({
                             className={hasOverride ? "border-b-border/50" : undefined}
                           >
                             <SecretEditTableRow
+                              unsavedChangeId={slug}
+                              onUnsavedChange={handleEditorUnsavedChange}
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
@@ -747,6 +810,8 @@ export const SecretTableRow = ({
                             />
                             <TableCell colSpan={2}>
                               <SecretOverrideRow
+                                unsavedChangeId={`${slug}-override`}
+                                onUnsavedChange={handleEditorUnsavedChange}
                                 secretName={secretKey}
                                 environment={slug}
                                 secretPath={secretPath}
