@@ -20,6 +20,7 @@ import {
   Badge,
   Checkbox,
   IconButton,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -369,8 +370,8 @@ export const SecretRotationTableRow = ({
             <div className="relative flex w-full items-center">
               <span className="truncate">{secretRotationName}</span>
               <Badge variant="neutral" className="mx-2.5">
-                <img
-                  src={`/images/integrations/${SECRET_ROTATION_MAP[singleEnvRotation.type].image}`}
+                <ProviderIcon
+                  icon={SECRET_ROTATION_MAP[singleEnvRotation.type].image}
                   style={{ width: "11px" }}
                   alt={`${SECRET_ROTATION_MAP[singleEnvRotation.type].name} logo`}
                 />
@@ -474,8 +475,8 @@ export const SecretRotationTableRow = ({
                             <div className="relative flex w-full flex-wrap items-center">
                               <span>{envName}</span>
                               <Badge variant="neutral" className="mx-2.5">
-                                <img
-                                  src={`/images/integrations/${image}`}
+                                <ProviderIcon
+                                  icon={image}
                                   style={{
                                     width: "11px"
                                   }}

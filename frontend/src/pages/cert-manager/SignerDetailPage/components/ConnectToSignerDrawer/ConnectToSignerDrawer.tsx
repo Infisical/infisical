@@ -252,7 +252,7 @@ export const ConnectToSignerDrawer = ({ signer, isOpen, onOpenChange }: Props) =
 
   const authNote =
     authMethod === AuthMethod.Token ? (
-      <p className="mt-2 text-xs text-yellow-600">
+      <p className="mt-2 text-xs text-warning">
         This uses your personal access token, which expires, so this setup is temporary. For
         unattended or CI/CD signing, use a machine identity instead.
       </p>

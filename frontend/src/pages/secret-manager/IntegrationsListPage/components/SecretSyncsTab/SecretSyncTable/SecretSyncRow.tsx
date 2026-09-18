@@ -30,6 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  ProviderIcon,
   TableCell,
   TableRow,
   Tooltip,
@@ -148,9 +149,9 @@ export const SecretSyncRow = ({
       )}
     >
       <TableCell>
-        <img
+        <ProviderIcon
           alt={`${destinationDetails.name} sync`}
-          src={`/images/integrations/${destinationDetails.image}`}
+          icon={destinationDetails.image}
           className="min-w-[26px] object-contain"
         />
       </TableCell>
@@ -267,7 +268,7 @@ export const SecretSyncRow = ({
                           <RefreshCwIcon />
                           Trigger Sync
                         </span>
-                        <InfoIcon className="size-3.5 text-label" />
+                        <InfoIcon className="size-3.5 text-label-secondary" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="left" sideOffset={20}>
@@ -298,7 +299,7 @@ export const SecretSyncRow = ({
                             <DownloadIcon />
                             Import Secrets
                           </span>
-                          <InfoIcon className="size-3.5 text-label" />
+                          <InfoIcon className="size-3.5 text-label-secondary" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={20}>
@@ -330,7 +331,7 @@ export const SecretSyncRow = ({
                             <EraserIcon />
                             Remove Secrets
                           </span>
-                          <InfoIcon className="size-3.5 text-label" />
+                          <InfoIcon className="size-3.5 text-label-secondary" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={20}>

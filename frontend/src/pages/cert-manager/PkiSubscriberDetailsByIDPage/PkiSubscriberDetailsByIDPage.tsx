@@ -72,7 +72,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
@@ -94,7 +94,7 @@ const Page = () => {
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                <div className="hover:text-project data-[state=open]:text-project">
                   <Tooltip content="More options">
                     <Button variant="outline_bg">More</Button>
                   </Tooltip>
@@ -109,7 +109,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:bg-red-500! hover:text-white!"
+                          ? "hover:bg-danger! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>
