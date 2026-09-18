@@ -63,9 +63,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findBypassersByPolicyId = async (policyId: string): Promise<PolicyBypasser[]> => {
+  const findBypassersByPolicyId = async (policyId: string, tx?: Knex): Promise<PolicyBypasser[]> => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const rows = (await dbInstance(TableName.ApprovalPolicyBypassers)
         .where({ policyId })
         .select("userId", "groupId")) as { userId: string | null; groupId: string | null }[];
@@ -261,6 +261,132 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Single-query check: is the user (directly, or via any of their groups) an approver
+  // on any policy in the project? Used to gate approver-only UI.
+  const isProjectApprover = async (args: {
+    projectId: string;
+    userId: string;
+    groupIds: string[];
+    type?: string;
+    scopeType?: string;
+  }): Promise<boolean> => {
+    try {
+      const dbInstance = db.replicaNode();
+
+      const query = dbInstance(TableName.ApprovalPolicies)
+        .where(`${TableName.ApprovalPolicies}.projectId`, args.projectId)
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .innerJoin(
+          TableName.ApprovalPolicyStepApprovers,
+          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+          `${TableName.ApprovalPolicySteps}.id`
+        );
+
+      if (typeof args.type === "string") {
+        void query.where(`${TableName.ApprovalPolicies}.type`, args.type);
+      }
+      if (typeof args.scopeType === "string") {
+        void query.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
+      }
+
+      void query.where((qb) => {
+        void qb.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+        if (args.groupIds.length) {
+          void qb.orWhereIn(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupIds);
+        }
+      });
+
+      const row = (await query.select(`${TableName.ApprovalPolicies}.id`).first()) as { id: string } | undefined;
+      return Boolean(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Check project approver" });
+    }
+  };
+
+  // Of the given scopes, return those whose policy actually has at least one approver configured.
+  // A policy row with no approvers does not count as "configured".
+  const findScopeIdsWithApprovers = async (args: {
+    type: string;
+    scopeType: string;
+    scopeIds: string[];
+  }): Promise<string[]> => {
+    try {
+      if (!args.scopeIds.length) return [];
+      const dbInstance = db.replicaNode();
+
+      const rows = (await dbInstance(TableName.ApprovalPolicies)
+        .where(`${TableName.ApprovalPolicies}.type`, args.type)
+        .where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType)
+        .whereIn(`${TableName.ApprovalPolicies}.scopeId`, args.scopeIds)
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .innerJoin(
+          TableName.ApprovalPolicyStepApprovers,
+          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`,
+          `${TableName.ApprovalPolicySteps}.id`
+        )
+        .distinct(`${TableName.ApprovalPolicies}.scopeId`)
+        .select<{ scopeId: string | null }[]>(`${TableName.ApprovalPolicies}.scopeId`)) as {
+        scopeId: string | null;
+      }[];
+
+      return rows.map((r) => r.scopeId).filter((id): id is string => Boolean(id));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find scope ids with approvers" });
+    }
+  };
+
+  const deleteBypassersBySubject = async (
+    args: {
+      projectId: string;
+      scopeType?: string;
+      scopeId?: string;
+      userId?: string;
+      groupId?: string;
+    },
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      if (!args.userId && !args.groupId) return;
+
+      const conn = tx || db;
+
+      const policyIdsQuery = conn(TableName.ApprovalPolicies).where(
+        `${TableName.ApprovalPolicies}.projectId`,
+        args.projectId
+      );
+
+      if (typeof args.scopeType === "string") {
+        void policyIdsQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
+        if (typeof args.scopeId === "string") {
+          void policyIdsQuery.where(`${TableName.ApprovalPolicies}.scopeId`, args.scopeId);
+        }
+      }
+
+      const policyIds = (await policyIdsQuery.select<{ id: string }[]>(`${TableName.ApprovalPolicies}.id`)).map(
+        (p) => p.id
+      );
+      if (policyIds.length === 0) return;
+
+      const deleteQuery = conn(TableName.ApprovalPolicyBypassers).whereIn("policyId", policyIds);
+      if (args.userId) {
+        void deleteQuery.andWhere("userId", args.userId);
+      } else if (args.groupId) {
+        void deleteQuery.andWhere("groupId", args.groupId);
+      }
+      await deleteQuery.delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete bypassers by subject" });
+    }
+  };
+
   const deleteStepApproversBySubject = async (
     args: {
       projectId: string;
@@ -330,6 +456,34 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteUserStepApproversInProjects = async (
+    args: { projectIds: string[]; userIds: string[]; scopeTypes: string[] },
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      if (!args.projectIds.length || !args.userIds.length || !args.scopeTypes.length) return;
+
+      const conn = tx || db;
+
+      const stepIds = conn(TableName.ApprovalPolicies)
+        .whereIn(`${TableName.ApprovalPolicies}.projectId`, args.projectIds)
+        .whereIn(`${TableName.ApprovalPolicies}.scopeType`, args.scopeTypes)
+        .innerJoin(
+          TableName.ApprovalPolicySteps,
+          `${TableName.ApprovalPolicySteps}.policyId`,
+          `${TableName.ApprovalPolicies}.id`
+        )
+        .select(`${TableName.ApprovalPolicySteps}.id`);
+
+      await conn(TableName.ApprovalPolicyStepApprovers)
+        .whereIn("policyStepId", stepIds)
+        .whereIn("userId", args.userIds)
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete user step approvers in projects" });
+    }
+  };
+
   return {
     ...orm,
     findStepsByPolicyId,
@@ -337,7 +491,11 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findBypassersByPolicyIds,
     findByProjectId,
     findPoliciesWhereSubjectIsApprover,
-    deleteStepApproversBySubject
+    isProjectApprover,
+    findScopeIdsWithApprovers,
+    deleteStepApproversBySubject,
+    deleteBypassersBySubject,
+    deleteUserStepApproversInProjects
   };
 };
 

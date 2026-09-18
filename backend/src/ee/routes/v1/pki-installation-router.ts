@@ -15,7 +15,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiInstallations],
@@ -78,7 +78,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiInstallations],
@@ -102,7 +102,12 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
                 notAfter: z.date().nullable().optional(),
                 status: z.string().nullable().optional(),
                 friendlyName: z.string().nullable().optional(),
-                fingerprintSha256: z.string().nullable().optional()
+                fingerprintSha256: z.string().nullable().optional(),
+                subjectOrganization: z.string().nullable().optional(),
+                subjectOrganizationalUnit: z.string().nullable().optional(),
+                subjectCountry: z.string().nullable().optional(),
+                subjectState: z.string().nullable().optional(),
+                subjectLocality: z.string().nullable().optional()
               })
             )
             .optional()
@@ -140,7 +145,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiInstallations],
@@ -188,7 +193,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiInstallations],

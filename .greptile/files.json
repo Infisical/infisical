@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "DESIGN.md",
+      "description": "Frontend design system (v3): color tokens, typography, component inventory (Button, Card, Table, Sheet, Dialog, Badge, etc.), layout principles, voice/tone for UI copy. Reference for all frontend/UI changes."
+    },
+    {
+      "path": "docs/STYLE_GUIDE.md",
+      "description": "Documentation style guide: writing for users (not implementers), cross-referencing, Mintlify components (Steps, Tabs, Cards, Accordions, callouts, diagrams), page structure by type (guides, concepts, overviews, references), FAQs, prerequisites, terminology consistency. Reference for all docs/ changes."
+    },
+    {
+      "path": "backend/CODE_QUALITY.md",
+      "description": "Backend code quality floor: error messages users can understand and no pointless 500s, explicit validation on every API input (length bounds, allowed characters), correct pagination when calling third-party APIs (app connections, secret syncs), avoiding deadlock conditions on a small connection pool (thread the transaction handle through every query inside a transaction, keep transactions short and free of network calls), and REST-aligned API interface design. A deliberately non-exhaustive minimum, not a complete standard. Reference for all backend/ changes."
+    }
+  ]
+}

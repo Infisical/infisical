@@ -14,6 +14,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
@@ -31,6 +32,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus } from "../certificate-authority-enums";
 import {
   buildCrlDistributionPointUrls,
+  createDistinguishedName,
   createSerialNumber,
   getCaCertChain,
   getCaCredentials,
@@ -124,7 +126,7 @@ export const InternalCertificateAuthorityFns = ({
       : x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${subscriber.commonName}`,
+      name: createDistinguishedName({ commonName: subscriber.commonName }),
       keys: leafKeys,
       signingAlgorithm: alg,
       extensions: [new x509.KeyUsagesExtension(csrKeyUsages)],
@@ -179,7 +181,7 @@ export const InternalCertificateAuthorityFns = ({
 
     if (subscriber.extendedKeyUsages.length) {
       const extendedKeyUsagesExtension = new x509.ExtendedKeyUsageExtension(
-        subscriber.extendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku as CertExtendedKeyUsage]),
+        subscriber.extendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku as CertExtendedKeyUsage]),
         true
       );
       extensions.push(extendedKeyUsagesExtension);
@@ -377,7 +379,7 @@ export const InternalCertificateAuthorityFns = ({
       : x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${commonName}`,
+      name: createDistinguishedName({ commonName }),
       keys: leafKeys,
       signingAlgorithm: alg,
       extensions: [new x509.KeyUsagesExtension(templateCsrKeyUsages)],
@@ -467,7 +469,7 @@ export const InternalCertificateAuthorityFns = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );

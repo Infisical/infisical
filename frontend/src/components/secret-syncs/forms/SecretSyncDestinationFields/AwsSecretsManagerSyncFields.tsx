@@ -37,10 +37,33 @@ export const AwsSecretsManagerSyncFields = () => {
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Region</FieldLabel>
+            <FieldLabel
+              id="secret-sync-aws-secrets-manager-region-label"
+              htmlFor="secret-sync-aws-secrets-manager-region"
+            >
+              Region
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  If the app connection being used has a custom STS endpoint configured, the
+                  selected region must match the STS region configured on the app connection.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FieldContent>
-              <AwsRegionSelect value={value} onChange={onChange} />
-              <FieldError errors={[error]} />
+              <AwsRegionSelect
+                id="secret-sync-aws-secrets-manager-region"
+                value={value}
+                onChange={onChange}
+                isError={Boolean(error)}
+                aria-labelledby="secret-sync-aws-secrets-manager-region-label"
+                aria-describedby={
+                  error ? "secret-sync-aws-secrets-manager-region-error" : undefined
+                }
+              />
+              <FieldError id="secret-sync-aws-secrets-manager-region-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -64,14 +87,14 @@ export const AwsSecretsManagerSyncFields = () => {
                     <p>Specify how Infisical should map secrets to AWS Secrets Manager:</p>
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       <li>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">One-To-One</span>: Each
+                        <p className="text-label">
+                          <span className="font-medium text-foreground-soft">One-To-One</span>: Each
                           Infisical secret will be mapped to a separate AWS Secrets Manager secret.
                         </p>
                       </li>
                       <li>
-                        <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">Many-To-One</span>: All
+                        <p className="text-label">
+                          <span className="font-medium text-foreground-soft">Many-To-One</span>: All
                           Infisical secrets will be mapped to a single AWS Secrets Manager secret.
                         </p>
                       </li>

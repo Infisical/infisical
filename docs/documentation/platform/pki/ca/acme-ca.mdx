@@ -5,7 +5,7 @@ description: "Learn how to connect Infisical to an ACME-compatible CA to issue c
 
 ## Concept
 
-Infisical can connect to any upstream ACME-compatible CA (e.g. Lets's Encrypt, DigiCert, etc.) supporting the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) to issue certificates back to your end-entities. This integration uses the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method as part of the ACME domain validation challenge workflow for a requested certificate.
+Infisical can connect to any upstream ACME-compatible CA (e.g. Let's Encrypt, DigiCert, etc.) supporting the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) to issue certificates back to your end-entities. This integration uses the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method as part of the ACME domain validation challenge workflow for a requested certificate.
 
 The upstream ACME-compatible CA integration lets you connect Infisical to providers by specifying
 their **ACME Directory URL** such as:
@@ -45,7 +45,7 @@ A typical workflow for using Infisical with an external ACME-compatible CA consi
 
 Once this is complete, you can create a [certificate profile](/documentation/platform/pki/settings/profiles) linked to the External CA and proceed to request a certificate against it.
 
-## Guide to Connecting Infisical to an ACME-compatible CA
+## Guide to connecting Infisical to an ACME-compatible CA
 
 In the following steps, we explore how to connect Infisical to an ACME-compatible CA.
 
@@ -137,7 +137,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
     <Step title="Register an ACME-compatible CA">
         <Tabs>
           <Tab title="Infisical UI">
-              To register an ACME-compatible CA, in **Certificate Manager** go to **Settings → Certificate Authorities**, scroll to External Certificate Authorities, and click **Create CA**.
+              To register an ACME-compatible CA, in **Certificate Manager** go to **Certificate Authorities**, scroll to External Certificate Authorities, and click **Create CA**.
 
               Set the **CA Type** to **ACME** and fill out the following fields:
 
@@ -269,18 +269,18 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
   </Accordion>
 </AccordionGroup>
 
-## What's Next
+## What's next
 
 Now that your ACME-compatible CA is configured, set up the infrastructure to issue certificates:
 
 <CardGroup cols={2}>
-  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+  <Card title="Certificate Profiles" icon="file-badge" href="/documentation/platform/pki/settings/profiles">
     Create a profile that references your ACME CA.
   </Card>
-  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+  <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
     Create an Application, attach a profile, and configure enrollment.
   </Card>
-  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Choose how certificates are requested — API, ACME, EST, or SCEP.
   </Card>
   <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">

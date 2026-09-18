@@ -3,6 +3,7 @@ import z from "zod";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { CloudflareR2Jurisdiction } from "@app/services/app-connection/cloudflare/cloudflare-connection-enum";
 import {
   CreateCloudflareConnectionSchema,
   SanitizedCloudflareConnectionSchema,
@@ -42,7 +43,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -70,7 +71,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -99,12 +100,74 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
       const zones = await server.services.appConnection.cloudflare.listZones(connectionId, req.permission);
       return zones;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-permission-groups`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listCloudflarePermissionGroups",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            scopes: z.string().array()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const permissionGroups = await server.services.appConnection.cloudflare.listPermissionGroups(
+        connectionId,
+        req.permission
+      );
+      return permissionGroups;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-r2-buckets`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listCloudflareR2Buckets",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            name: z.string(),
+            jurisdiction: z.nativeEnum(CloudflareR2Jurisdiction)
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const buckets = await server.services.appConnection.cloudflare.listR2Buckets(connectionId, req.permission);
+      return buckets;
     }
   });
 };

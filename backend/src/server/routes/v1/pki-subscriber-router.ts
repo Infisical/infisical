@@ -1,7 +1,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SUBSCRIBERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -11,6 +10,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { validateAltNameField } from "@app/services/certificate-authority/certificate-authority-validators";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
@@ -39,7 +39,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.getSubscriber({
         subscriberName: req.params.subscriberName,
@@ -202,7 +202,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
@@ -240,7 +240,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "updatePkiSubscriber",
@@ -423,7 +423,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         200: sanitizedPkiSubscriber
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberName: req.params.subscriberName,
@@ -456,7 +456,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "orderPkiSubscriberCertificate",
@@ -519,7 +519,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "issuePkiSubscriberCertificate",
@@ -592,7 +592,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "signPkiSubscriberCertificate",
@@ -689,7 +689,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
         await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
@@ -747,12 +747,12 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema),
+          certificates: z.array(SanitizedCertificateSchema),
           totalCount: z.number()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { totalCount, certificates } = await server.services.pkiSubscriber.listSubscriberCerts({
         subscriberName: req.params.subscriberName,

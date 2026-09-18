@@ -7,7 +7,8 @@ import { OAuthCallbackPage } from "./OauthCallbackPage";
 const GitHubOAuthCallbackPageQueryParamsSchema = z.object({
   code: z.coerce.string().catch(""),
   state: z.string().catch(""),
-  installation_id: z.coerce.string().optional().catch("")
+  installation_id: z.coerce.string().optional().catch(""),
+  setup_action: z.string().optional().catch("")
 });
 
 export const Route = createFileRoute(
@@ -16,6 +17,6 @@ export const Route = createFileRoute(
   component: OAuthCallbackPage,
   validateSearch: zodValidator(GitHubOAuthCallbackPageQueryParamsSchema),
   search: {
-    middlewares: [stripSearchParams({ state: "", installation_id: "" })]
+    middlewares: [stripSearchParams({ state: "", installation_id: "", setup_action: "" })]
   }
 });

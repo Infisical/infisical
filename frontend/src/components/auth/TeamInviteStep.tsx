@@ -1,126 +1,174 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
-import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  FieldError,
+  Field,
+  FieldFeedback,
   TextArea
 } from "@app/components/v3";
+import { emailListSchema, parseEmailList } from "@app/helpers/email";
 import { useAddUsersToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { waitForMinimumDuration } from "@app/lib/fn/promise";
 
-import { EmailServiceSetupModal } from "../v2";
+import { AuthPagePanel } from "./AuthPagePanel";
+import { EmailServiceSetupModal } from "./EmailServiceSetupModal";
 
-/**
- * This is the last step of the signup flow. People can optionally invite their teammates here.
- */
-export default function TeamInviteStep(): JSX.Element {
+interface TeamInviteStepProps {
+  emails: string;
+  onEmailsChange: (emails: string) => void;
+  onBack: () => void;
+  productName?: string;
+  /** Signup-created projects the invitees get member access to. */
+  projectIds?: string[];
+  /** Also grant access to the org's PAM product (org-scoped, no project id). */
+  grantPamAccess?: boolean;
+  grantAgentVaultAccess?: boolean;
+  onComplete: () => void;
+}
+
+export default function TeamInviteStep({
+  emails,
+  onEmailsChange,
+  onBack,
+  productName,
+  projectIds,
+  grantPamAccess,
+  grantAgentVaultAccess,
+  onComplete
+}: TeamInviteStepProps): JSX.Element {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [emails, setEmails] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const { data: serverDetails } = useFetchServerStatus();
 
-  const { mutateAsync, isPending } = useAddUsersToOrg();
+  const { mutateAsync } = useAddUsersToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   const orgId = String(localStorage.getItem("orgData.id"));
+  const grantCount =
+    (projectIds?.length ?? 0) + (grantPamAccess ? 1 : 0) + (grantAgentVaultAccess ? 1 : 0);
 
-  // Redirect user to the getting started page
-  const redirectToHome = async () => {
-    navigate({
-      to: orgId ? ("/organizations/$orgId/projects" as const) : "/",
-      params: { orgId }
-    });
-  };
-
-  const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {
-    const parsed = inviteEmails
-      .split(",")
-      .map((email) => email.trim())
-      .filter(Boolean);
-
-    if (parsed.length === 0) {
-      setValidationError("Please enter at least one email address.");
+  const inviteUsersAndContinue = async () => {
+    if (isSending) return;
+    const result = emailListSchema.safeParse(emails);
+    if (!result.success) {
+      setValidationError(result.error.issues[0].message);
       return;
     }
 
-    const invalid = parsed.filter((email) => !z.string().email().safeParse(email).success);
-    if (invalid.length > 0) {
-      setValidationError(`Invalid email${invalid.length > 1 ? "s" : ""}: ${invalid.join(", ")}`);
-      return;
-    }
-
+    const parsed = Array.from(new Set(parseEmailList(result.data)));
     setValidationError("");
+    const startedAt = Date.now();
+    setIsSending(true);
 
-    await Promise.all(
-      parsed.map((email) =>
-        mutateAsync({
-          inviteeEmails: [email],
-          organizationId: orgId,
-          organizationRoleSlug: "member"
-        })
-      )
-    );
+    try {
+      const { data } = await mutateAsync({
+        inviteeEmails: parsed,
+        organizationId: orgId,
+        organizationRoleSlug: "member",
+        ...(projectIds?.length ? { projectIds } : {}),
+        ...(grantPamAccess ? { grantPamAccess } : {}),
+        ...(grantAgentVaultAccess ? { grantAgentVaultAccess } : {})
+      });
 
-    await redirectToHome();
+      await waitForMinimumDuration(startedAt, 500);
+
+      // Product grants are best-effort server-side: the invites went out, so continue,
+      // but don't let the inviter believe access was granted when it wasn't.
+      if (data.grantFailures) {
+        createNotification({
+          type: "warning",
+          text: "Invites were sent, but some product access could not be granted. Grant access from each product's Access Control page."
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: `${parsed.length} invitation${parsed.length === 1 ? "" : "s"} sent`
+        });
+      }
+    } catch {
+      // The global mutation error handler already surfaces a toast; stay on this step.
+      setIsSending(false);
+      return;
+    }
+
+    onEmailsChange("");
+    onComplete();
   };
 
   return (
-    <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
+      <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             {t("signup.step5-invite-team")}
           </CardTitle>
+          <CardDescription className="text-sm text-label">
+            Bring in the people who&apos;ll work with {productName ?? "Infisical"} day to day.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-y-4">
-          <div className="w-full">
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={Boolean(validationError)}>
             <TextArea
+              aria-describedby="signup-invite-feedback"
+              variant="outlined"
               className="min-h-20"
               value={emails}
+              disabled={isSending}
               onChange={(e) => {
-                setEmails(e.target.value);
+                onEmailsChange(e.target.value);
                 if (validationError) setValidationError("");
               }}
               placeholder="email1@example.com, email2@example.com"
+              isError={Boolean(validationError)}
             />
-            {validationError && <FieldError>{validationError}</FieldError>}
-          </div>
-          <Button
-            onClick={() => {
-              if (serverDetails?.emailConfigured) {
-                inviteUsers({ emails });
-              } else {
-                handlePopUpOpen("setUpEmail");
+            <FieldFeedback
+              id="signup-invite-feedback"
+              error={validationError}
+              description={
+                grantCount > 0 ? (
+                  <>
+                    They&apos;ll join your organization and get access to the{" "}
+                    {grantCount > 1 ? "products" : "product"} you just set up.
+                  </>
+                ) : undefined
               }
-            }}
-            variant="project"
-            size="lg"
-            isFullWidth
-            isPending={isPending}
-          >
-            {t("signup.step5-send-invites") ?? ""}
-          </Button>
-
-          <Button
-            onClick={redirectToHome}
-            isDisabled={isPending}
-            variant="outline"
-            size="lg"
-            isFullWidth
-          >
-            {t("signup.step5-skip") ?? "Skip"}
-          </Button>
+            />
+          </Field>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button variant="neutral" onClick={onBack} isDisabled={isSending}>
+              Back
+            </Button>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <Button onClick={() => onComplete()} isDisabled={isSending} variant="ghost">
+                Skip for now
+              </Button>
+              <Button
+                onClick={() => {
+                  if (serverDetails?.emailConfigured) {
+                    inviteUsersAndContinue();
+                  } else {
+                    handlePopUpOpen("setUpEmail");
+                  }
+                }}
+                variant="project"
+                isPending={isSending}
+                isDisabled={!emails.trim()}
+              >
+                Send invites
+              </Button>
+            </div>
+          </div>
         </CardContent>
-      </Card>
+      </AuthPagePanel>
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}

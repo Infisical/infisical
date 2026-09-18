@@ -15,14 +15,41 @@ export const secretSyncKeys = {
   list: (projectId: string) => [...secretSyncKeys.all, "list", projectId] as const,
   byId: (destination: SecretSync, syncId: string) =>
     [...secretSyncKeys.all, destination, "by-id", syncId] as const,
-  duplicateCheck: (destination: SecretSync, destinationConfig: unknown, excludeSyncId?: string) =>
+  duplicateCheck: (
+    destination: SecretSync,
+    destinationConfig: unknown,
+    connectionId?: string,
+    excludeSyncId?: string
+  ) =>
     [
       ...secretSyncKeys.all,
       destination,
       "duplicate-check",
       destinationConfig,
+      connectionId,
       excludeSyncId
+    ] as const,
+  recursiveConflicts: (
+    destination: SecretSync,
+    projectId: string,
+    environment?: string,
+    secretPath?: string,
+    keySchema?: string
+  ) =>
+    [
+      ...secretSyncKeys.all,
+      destination,
+      "recursive-conflicts",
+      projectId,
+      environment,
+      secretPath,
+      keySchema
     ] as const
+};
+
+export type TSecretSyncRecursiveConflict = {
+  key: string;
+  paths: string[];
 };
 
 export const useSecretSyncOptions = (
@@ -102,6 +129,7 @@ export const useCheckDuplicateDestination = (
   destinationConfig: unknown,
   projectId: string,
   excludeSyncId?: string,
+  connectionId?: string,
   options?: Omit<
     UseQueryOptions<
       { hasDuplicate: boolean; duplicateProjectId?: string },
@@ -113,13 +141,19 @@ export const useCheckDuplicateDestination = (
   >
 ) => {
   return useQuery({
-    queryKey: secretSyncKeys.duplicateCheck(destination, destinationConfig, excludeSyncId),
+    queryKey: secretSyncKeys.duplicateCheck(
+      destination,
+      destinationConfig,
+      connectionId,
+      excludeSyncId
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
         hasDuplicate: boolean;
         duplicateProjectId?: string;
       }>(`/api/v1/secret-syncs/${destination}/check-destination`, {
         destinationConfig,
+        connectionId,
         excludeSyncId,
         projectId
       });
@@ -127,6 +161,43 @@ export const useCheckDuplicateDestination = (
       return data;
     },
     enabled: Boolean(destinationConfig) && Object.keys(destinationConfig || {}).length > 0,
+    ...options
+  });
+};
+
+export const useCheckRecursiveConflicts = (
+  destination: SecretSync,
+  projectId: string,
+  environment?: string,
+  secretPath?: string,
+  keySchema?: string,
+  options?: Omit<
+    UseQueryOptions<
+      { conflicts: TSecretSyncRecursiveConflict[] },
+      unknown,
+      { conflicts: TSecretSyncRecursiveConflict[] },
+      ReturnType<typeof secretSyncKeys.recursiveConflicts>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretSyncKeys.recursiveConflicts(
+      destination,
+      projectId,
+      environment,
+      secretPath,
+      keySchema
+    ),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ conflicts: TSecretSyncRecursiveConflict[] }>(
+        `/api/v1/secret-syncs/${destination}/recursive-conflicts`,
+        { projectId, environment, secretPath, keySchema }
+      );
+
+      return data;
+    },
+    enabled: Boolean(environment) && Boolean(secretPath),
     ...options
   });
 };

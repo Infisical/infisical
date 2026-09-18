@@ -37,16 +37,17 @@ export type TProjectKmipClientList = {
 };
 
 export type TGenerateKmipClientCertificate = {
-  keyAlgorithm: CertKeyAlgorithm;
+  keyAlgorithm?: CertKeyAlgorithm;
   ttl: string;
   clientId: string;
+  csr?: string;
 };
 
 export type KmipClientCertificate = {
   serialNumber: string;
   certificate: string;
   certificateChain: string;
-  privateKey: string;
+  privateKey?: string;
 };
 
 export type TDeleteKmipClient = KeyRef & ProjectRef;

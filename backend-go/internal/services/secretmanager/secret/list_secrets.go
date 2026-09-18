@@ -133,10 +133,7 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		return nil, errutil.DatabaseErr("Failed to load secrets").WithErrf("ListSecrets: %w", err)
 	}
 
-	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
-		Type:      kms.DataKeyProject,
-		ProjectID: opts.ProjectID,
-	})
+	cipherPair, err := s.kmsService.CreateCipherPairWithProjectDataKey(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("ListSecrets: %w", err)
 	}

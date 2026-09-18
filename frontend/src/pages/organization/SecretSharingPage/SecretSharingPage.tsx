@@ -2,13 +2,12 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ShareSecretSection } from "./ShareSecretSection";
 
 export const SecretSharingPage = () => {
   const { t } = useTranslation();
-  const { isSubOrganization } = useOrganization();
   return (
     <>
       <Helmet>
@@ -19,9 +18,9 @@ export const SecretSharingPage = () => {
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
+        <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
-            scope={isSubOrganization ? "namespace" : "org"}
+            scope={ProjectType.SecretManager}
             title="Secret Sharing"
             description="Share secrets securely using a shareable link"
           />

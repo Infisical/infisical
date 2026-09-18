@@ -1,11 +1,14 @@
 import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
+import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
+  AgentVaultProxyActor,
   EstAccountActor,
   GatewayActor,
   IdentityActor,
   KmipClientActor,
+  KmipServerActor,
   PlatformActor,
   RelayActor,
   ScepAccountActor,
@@ -14,12 +17,14 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
-import { PamParentType } from "@app/ee/services/pam-account/pam-account-enums";
+import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
+import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -32,6 +37,10 @@ export enum PostHogEventTypes {
   SecretDeleted = "secrets deleted",
   AdminInit = "admin initialization",
   UserSignedUp = "User Signed Up",
+  SignupProductSelected = "Signup Product Selected",
+  SignupProductsSubmitted = "Signup Products Submitted",
+  SignupLaunchDestinationSelected = "Signup Launch Destination Selected",
+  SignupAttributionProvided = "Signup Attribution Provided",
   UserLoginV2 = "User Login V2",
   SecretRotated = "secrets rotated",
   SecretScannerFull = "historical cloud secret scan",
@@ -55,10 +64,6 @@ export enum PostHogEventTypes {
   TelemetryInstanceStats = "Self Hosted Instance Stats",
   SecretRequestCreated = "Secret Request Created",
   SecretRequestDeleted = "Secret Request Deleted",
-  SignSshKey = "Sign SSH Key",
-  IssueSshCreds = "Issue SSH Credentials",
-  IssueSshHostUserCert = "Issue SSH Host User Certificate",
-  IssueSshHostHostCert = "Issue SSH Host Host Certificate",
   SignCert = "Sign PKI Certificate",
   IssueCert = "Issue PKI Certificate",
   InvalidateCache = "Invalidate Cache",
@@ -74,6 +79,7 @@ export enum PostHogEventTypes {
   AccessApprovalRequestCreated = "Access Approval Request Created",
   AccessApprovalRequestReviewed = "Access Approval Request Reviewed",
   SecretSyncCreated = "Secret Sync Created",
+  SecretSyncUpdated = "Secret Sync Updated",
   SecretSyncDeleted = "Secret Sync Deleted",
   DynamicSecretCreated = "Dynamic Secret Created",
   DynamicSecretDeleted = "Dynamic Secret Deleted",
@@ -92,25 +98,43 @@ export enum PostHogEventTypes {
   AppConnectionCreated = "App Connection Created",
   AppConnectionDeleted = "App Connection Deleted",
   SecretRotationV2Created = "Secret Rotation V2 Created",
+  SecretRotationV2Updated = "Secret Rotation V2 Updated",
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
-  GatewayUpdated = "Gateway Updated",
-  GatewayDeleted = "Gateway Deleted",
-  PamResourceCreated = "PAM Resource Created",
-  PamResourceDeleted = "PAM Resource Deleted",
+  PamAccountTemplateCreated = "PAM Account Template Created",
+  PamAccountTemplateUpdated = "PAM Account Template Updated",
+  PamAccountTemplateDeleted = "PAM Account Template Deleted",
+  PamFolderCreated = "PAM Folder Created",
+  PamFolderUpdated = "PAM Folder Updated",
+  PamFolderDeleted = "PAM Folder Deleted",
   PamAccountCreated = "PAM Account Created",
+  PamAccountUpdated = "PAM Account Updated",
   PamAccountDeleted = "PAM Account Deleted",
   PamAccountAccessed = "PAM Account Accessed",
-  PamAccountRotated = "PAM Account Rotated",
-  PamSessionStarted = "PAM Session Started",
-  PamSessionEnded = "PAM Session Ended",
-  PamWebAccessStarted = "PAM Web Access Started",
   PamDiscoverySourceCreated = "PAM Discovery Source Created",
+  PamDiscoverySourceUpdated = "PAM Discovery Source Updated",
   PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
   PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
-  PamRotationRuleCreated = "PAM Rotation Rule Created",
-  PamRotationRuleDeleted = "PAM Rotation Rule Deleted",
+  PamDiscoveredAccountsImported = "PAM Discovered Accounts Imported",
+  PamSessionStarted = "PAM Session Started",
+  PamSessionEnded = "PAM Session Ended",
+  PamSessionTerminated = "PAM Session Terminated",
+  PamProductMemberAdded = "PAM Product Member Added",
+  PamProductMemberUpdated = "PAM Product Member Updated",
+  PamProductMemberRemoved = "PAM Product Member Removed",
+  PamFolderMemberAdded = "PAM Folder Member Added",
+  PamFolderMemberUpdated = "PAM Folder Member Updated",
+  PamFolderMemberRemoved = "PAM Folder Member Removed",
+  PamAccountMemberAdded = "PAM Account Member Added",
+  PamAccountMemberUpdated = "PAM Account Member Updated",
+  PamAccountMemberRemoved = "PAM Account Member Removed",
+  PamAccountRotationConfigured = "PAM Account Rotation Configured",
+  PamAccountRotated = "PAM Account Rotated",
+  PamAccessRequestCreated = "PAM Access Request Created",
+  PamAccessRequestReviewed = "PAM Access Request Reviewed",
+  PamAccessRequestBrokeGlass = "PAM Access Request Broke Glass",
+  PamAccessGrantRevoked = "PAM Access Grant Revoked",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
   ResourceAuthMethodUpdated = "Resource Auth Method Updated",
@@ -123,38 +147,62 @@ export enum PostHogEventTypes {
 
   // PKI / Certificate Manager events
   CaCreated = "CA Created",
+  CaUpdated = "CA Updated",
   CaDeleted = "CA Deleted",
   CaRenewed = "CA Renewed",
   CertificatePolicyCreated = "Certificate Policy Created",
+  CertificatePolicyUpdated = "Certificate Policy Updated",
   CertificatePolicyDeleted = "Certificate Policy Deleted",
   CertificateProfileCreated = "Certificate Profile Created",
+  CertificateProfileUpdated = "Certificate Profile Updated",
   CertificateProfileDeleted = "Certificate Profile Deleted",
   PkiApplicationCreated = "PKI Application Created",
+  PkiApplicationUpdated = "PKI Application Updated",
   PkiApplicationDeleted = "PKI Application Deleted",
   PkiApplicationMemberAdded = "PKI Application Member Added",
+  PkiApplicationMemberUpdated = "PKI Application Member Updated",
+  PkiApplicationMemberRemoved = "PKI Application Member Removed",
   PkiApplicationProfileAttached = "PKI Application Profile Attached",
+  PkiApplicationProfileDetached = "PKI Application Profile Detached",
   EnrollmentMethodConfigured = "Enrollment Method Configured",
   EnrollmentMethodRemoved = "Enrollment Method Removed",
   CertificateRevoked = "Certificate Revoked",
   CertificateRenewed = "Certificate Renewed",
   CertificateAutoRenewalFailed = "Certificate Auto-Renewal Failed",
+  CertificateUpdated = "Certificate Updated",
   CertificateDeleted = "Certificate Deleted",
   CertificateExported = "Certificate Exported",
+  CertManagerProjectExported = "Cert Manager Project Exported",
+  CertificateImported = "Certificate Imported",
+  CertificatePrivateKeyDownloaded = "Certificate Private Key Downloaded",
   CertificateRequestCreated = "Certificate Request Created",
   PkiSyncCreated = "PKI Sync Created",
+  PkiSyncUpdated = "PKI Sync Updated",
   PkiSyncDeleted = "PKI Sync Deleted",
   PkiSyncExecuted = "PKI Sync Executed",
   PkiAlertCreated = "PKI Alert Created",
+  PkiAlertUpdated = "PKI Alert Updated",
   PkiAlertDeleted = "PKI Alert Deleted",
   PkiApprovalPolicyCreated = "PKI Approval Policy Created",
+  PkiApprovalPolicyUpdated = "PKI Approval Policy Updated",
+  PkiApprovalPolicyDeleted = "PKI Approval Policy Deleted",
+  PkiApprovalRequestCreated = "PKI Approval Request Created",
   PkiApprovalRequestReviewed = "PKI Approval Request Reviewed",
   PkiDiscoveryCreated = "PKI Discovery Created",
+  PkiDiscoveryUpdated = "PKI Discovery Updated",
   PkiDiscoveryScanTriggered = "PKI Discovery Scan Triggered",
+  PkiDiscoveryScanCompleted = "PKI Discovery Scan Completed",
   PkiDiscoveryDeleted = "PKI Discovery Deleted",
   SignerCreated = "Signer Created",
+  SignerUpdated = "Signer Updated",
   SignerDeleted = "Signer Deleted",
+  SignerMemberAdded = "Signer Member Added",
+  SignerMemberUpdated = "Signer Member Updated",
+  SignerMemberRemoved = "Signer Member Removed",
   CodeSigningOperation = "Code Signing Operation",
-  CertManagerIdentityAdded = "Cert Manager Identity Added",
+  CertManagerMemberAdded = "Cert Manager Member Added",
+  CertManagerMemberUpdated = "Cert Manager Member Updated",
+  CertManagerMemberRemoved = "Cert Manager Member Removed",
   CertificateCleanupConfigured = "Certificate Cleanup Configured",
   CertificateCleanupCompleted = "Certificate Cleanup Completed",
 
@@ -204,6 +252,9 @@ export enum PostHogEventTypes {
   KmipClientDeleted = "KMIP Client Deleted",
   KmipOperation = "KMIP Operation",
 
+  // Audit Logs
+  AuditLogsViewed = "Audit Logs Viewed",
+
   // Audit Log Streams
   AuditLogStreamCreated = "Audit Log Stream Created",
   AuditLogStreamUpdated = "Audit Log Stream Updated",
@@ -243,7 +294,42 @@ export enum PostHogEventTypes {
   DynamicSecretLeaseRevoked = "Dynamic Secret Lease Revoked",
   SecretApprovalPolicyUpdated = "Secret Approval Policy Updated",
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
-  SecretRotationV2Failed = "Secret Rotation V2 Failed"
+  SecretRotationV2Failed = "Secret Rotation V2 Failed",
+
+  // Billing
+  BillingCheckoutSessionCreated = "Billing Checkout Session Created",
+  BillingProductActivated = "Billing Product Activated",
+  BillingPlanUpgraded = "Billing Plan Upgraded",
+
+  // Agent Proxy
+  ProxiedServiceCreated = "Proxied Service Created",
+
+  // Agent Vault
+  AgentVaultAccessBundleCreated = "Agent Vault Access Bundle Created",
+  AgentVaultAccessBundleUpdated = "Agent Vault Access Bundle Updated",
+  AgentVaultAccessBundleDeleted = "Agent Vault Access Bundle Deleted",
+  AgentVaultServiceCreated = "Agent Vault Service Created",
+  AgentVaultServiceUpdated = "Agent Vault Service Updated",
+  AgentVaultServiceDeleted = "Agent Vault Service Deleted",
+  AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
+  AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
+  AgentVaultSessionCreated = "Agent Vault Session Created",
+  AgentVaultSessionRevoked = "Agent Vault Session Revoked",
+  AgentVaultProxyRegistered = "Agent Vault Proxy Registered",
+  AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
+  AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
+  AgentVaultProxyAccessRevoked = "Agent Vault Proxy Access Revoked",
+  AgentVaultProxyEnrollmentTokenReissued = "Agent Vault Proxy Enrollment Token Reissued",
+  AgentVaultProxyEnrolled = "Agent Vault Proxy Enrolled",
+  AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
+  AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
+  AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
+
+  // Billing trials. Cloud-only: the self-hosted license backend rejects startTrial outright.
+  // "awaiting_card" gets its own event rather than an outcome property on TrialStarted, because it
+  // does NOT grant a trial; a "Trial Started" that never started would poison every funnel built on it.
+  TrialStarted = "Trial Started",
+  TrialCardRequired = "Trial Card Required"
 }
 
 export type TSecretModifiedEvent = {
@@ -275,7 +361,9 @@ export type TSecretModifiedEvent = {
       | EstAccountActor
       | ScepAccountActor
       | GatewayActor
-      | RelayActor;
+      | RelayActor
+      | KmipServerActor
+      | AgentVaultProxyActor;
   };
 };
 
@@ -289,13 +377,74 @@ export type TAdminInitEvent = {
   };
 };
 
+/**
+ * Where a signup came from, as a value the analytics layer can group on. `attributionSource` stays
+ * as-is for the historical queries built on it, including its `"Team Invite"` sentinel.
+ */
+export enum SignupSource {
+  TeamInvite = "team_invite",
+  SelfServe = "self_serve"
+}
+
+/**
+ * How we know the attribution: `UserProvided` is an answer the person typed, `SystemDerived` is one
+ * the signup flow already knew. Without it the two are only separable by matching the sentinel, so
+ * every attribution measure has to exclude invites instead of counting them.
+ */
+export enum SignupAttributionType {
+  UserProvided = "user_provided",
+  SystemDerived = "system_derived"
+}
+
 export type TUserSignedUpEvent = {
   event: PostHogEventTypes.UserSignedUp;
   properties: {
     username: string;
     email: string;
     attributionSource?: string;
+    attributionType?: SignupAttributionType;
+    signupSource?: SignupSource;
     signupMethod?: string;
+  };
+};
+
+export type TSignupProductSelectedEvent = {
+  event: PostHogEventTypes.SignupProductSelected;
+  properties: {
+    product: string;
+  };
+};
+
+/**
+ * One summary event per signup (TSignupProductSelectedEvent is the per-product breakdown).
+ * $set_once mirrors the selection onto the person record for cohorting.
+ */
+export type TSignupProductsSubmittedEvent = {
+  event: PostHogEventTypes.SignupProductsSubmitted;
+  properties: {
+    products: string[];
+    productCount: number;
+    isExploring: boolean;
+    $set_once: {
+      signupProducts: string[];
+      signupProductCount: number;
+      signupIsExploring: boolean;
+    };
+  };
+};
+
+export type TSignupLaunchDestinationSelectedEvent = {
+  event: PostHogEventTypes.SignupLaunchDestinationSelected;
+  properties: {
+    launchDestination: string;
+  };
+};
+
+export type TSignupAttributionProvidedEvent = {
+  event: PostHogEventTypes.SignupAttributionProvided;
+  properties: {
+    attributionSource: string;
+    attributionType?: SignupAttributionType;
   };
 };
 
@@ -490,11 +639,47 @@ export type TTelemetryInstanceStatsEvent = {
     integrations: number;
     certificateAuthorities: number;
     certificates: number;
+    certificatePolicies: number;
+    certificateProfiles: number;
+    pkiApplications: number;
+    pkiSyncs: number;
+    pkiSigners: number;
+    pkiDiscoveryConfigs: number;
+    pkiAlerts: number;
+    pkiEnrollmentMethods: number;
+    pkiEnrollmentMethodBreakdown: Record<string, number>;
+    pkiSyncBreakdown: Record<string, number>;
     dynamicSecrets: number;
     identityAuthMethods: number;
+    identityAuthMethodBreakdown: Record<string, number>;
     groups: number;
     secretApprovalPolicies: number;
     activeGateways: number;
+    samlConfigs: number;
+    oidcConfigs: number;
+    ldapConfigs: number;
+    scimTokens: number;
+    auditLogStreams: number;
+    secretRotations: number;
+    webhooks: number;
+    customProjectRoles: number;
+    customOrgRoles: number;
+    kmipClients: number;
+    pamResources: number;
+    pamAccounts: number;
+    accessApprovalPolicies: number;
+    honeyTokens: number;
+    proxiedServices: number;
+    proxiedServicesUsedLast7Days: number;
+    agentVaultProxies: number;
+    activeAgentVaultProxies: number;
+    agentVaultAccessBundles: number;
+    agentVaultServices: number;
+    integrationBreakdown: Record<string, number>;
+    projectTypeBreakdown: Record<string, number>;
+    secretSyncBreakdown: Record<string, number>;
+    organizationBreakdown: { orgId: string; name: string; users: number; projects: number }[];
+    infisicalVersion?: string;
   };
 };
 
@@ -515,44 +700,6 @@ export type TSecretRequestDeletedEvent = {
   };
 };
 
-export type TSignSshKeyEvent = {
-  event: PostHogEventTypes.SignSshKey;
-  properties: {
-    certificateTemplateId: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshCredsEvent = {
-  event: PostHogEventTypes.IssueSshCreds;
-  properties: {
-    certificateTemplateId: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshHostUserCertEvent = {
-  event: PostHogEventTypes.IssueSshHostUserCert;
-  properties: {
-    sshHostId: string;
-    hostname: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshHostHostCertEvent = {
-  event: PostHogEventTypes.IssueSshHostHostCert;
-  properties: {
-    sshHostId: string;
-    hostname: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
 export type TSignCertificateEvent = {
   event: PostHogEventTypes.SignCert;
   properties: {
@@ -570,8 +717,14 @@ export type TIssueCertificateEvent = {
     caId?: string;
     certificateTemplateId?: string;
     subscriberId?: string;
-    commonName: string;
+    commonName?: string;
     userAgent?: string;
+    orgId?: string;
+    projectId?: string;
+    profileId?: string;
+    applicationId?: string;
+    enrollmentType?: string;
+    operation?: CertificateIssuanceOperation;
   };
 };
 
@@ -708,6 +861,7 @@ export type TSecretApprovalRequestSubmittedEvent = {
     environment: string;
     secretPath: string;
     numberOfCommits: number;
+    actorType: string;
   };
 };
 
@@ -783,6 +937,20 @@ export type TSecretSyncCreatedEvent = {
   properties: {
     syncDestination: string;
     syncId: string;
+    orgId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isAutoSyncEnabled: boolean;
+  };
+};
+
+export type TSecretSyncUpdatedEvent = {
+  event: PostHogEventTypes.SecretSyncUpdated;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -795,6 +963,7 @@ export type TSecretSyncDeletedEvent = {
   properties: {
     syncDestination: string;
     syncId: string;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -887,6 +1056,18 @@ export type TSecretRotationV2CreatedEvent = {
   };
 };
 
+export type TSecretRotationV2UpdatedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Updated;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    orgId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
 export type TSecretRotationV2DeletedEvent = {
   event: PostHogEventTypes.SecretRotationV2Deleted;
   properties: {
@@ -919,102 +1100,168 @@ export type TGatewayCertExchangedEvent = {
   };
 };
 
-export type TGatewayUpdatedEvent = {
-  event: PostHogEventTypes.GatewayUpdated;
+export type TPamAccountTemplateEvent = {
+  event:
+    | PostHogEventTypes.PamAccountTemplateCreated
+    | PostHogEventTypes.PamAccountTemplateUpdated
+    | PostHogEventTypes.PamAccountTemplateDeleted;
   properties: {
-    gatewayId: string;
+    accountType: string;
+    orgId: string;
   };
 };
 
-export type TGatewayDeletedEvent = {
-  event: PostHogEventTypes.GatewayDeleted;
+export type TPamFolderEvent = {
+  event: PostHogEventTypes.PamFolderCreated | PostHogEventTypes.PamFolderUpdated | PostHogEventTypes.PamFolderDeleted;
   properties: {
-    gatewayId: string;
-  };
-};
-
-export type TPamResourceEvent = {
-  event: PostHogEventTypes.PamResourceCreated | PostHogEventTypes.PamResourceDeleted;
-  properties: {
-    resourceType: string;
-    projectId: string;
+    orgId: string;
   };
 };
 
 export type TPamAccountEvent = {
-  event: PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountDeleted;
+  event:
+    | PostHogEventTypes.PamAccountCreated
+    | PostHogEventTypes.PamAccountUpdated
+    | PostHogEventTypes.PamAccountDeleted;
   properties: {
-    parentType: PamParentType;
-    projectId: string;
-  };
-};
-
-export type TPamAccountAccessedEvent = {
-  event: PostHogEventTypes.PamAccountAccessed;
-  properties: {
-    resourceType: string;
-    projectId: string;
-    duration: number;
-  };
-};
-
-export type TPamAccountRotatedEvent = {
-  event: PostHogEventTypes.PamAccountRotated;
-  properties: {
-    parentType: PamParentType;
-    projectId: string;
-  };
-};
-
-export type TPamSessionStartedEvent = {
-  event: PostHogEventTypes.PamSessionStarted;
-  properties: {
-    projectId: string;
-  };
-};
-
-export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded;
-  properties: {
-    resourceType: string;
-    projectId: string;
-    durationMs?: number;
-  };
-};
-
-export type TPamWebAccessStartedEvent = {
-  event: PostHogEventTypes.PamWebAccessStarted;
-  properties: {
-    projectId: string;
+    accountType: string;
+    orgId: string;
   };
 };
 
 export type TPamDiscoveryEvent = {
   event:
     | PostHogEventTypes.PamDiscoverySourceCreated
+    | PostHogEventTypes.PamDiscoverySourceUpdated
     | PostHogEventTypes.PamDiscoverySourceDeleted
     | PostHogEventTypes.PamDiscoveryScanTriggered;
   properties: {
     discoveryType: string;
-    projectId: string;
+    orgId: string;
   };
 };
 
-export type TPamRotationRuleCreatedEvent = {
-  event: PostHogEventTypes.PamRotationRuleCreated;
+export type TPamDiscoveredAccountsImportedEvent = {
+  event: PostHogEventTypes.PamDiscoveredAccountsImported;
   properties: {
-    resourceType: string;
-    projectId: string;
-    enabled: boolean;
-    hasSchedule: boolean;
+    orgId: string;
+    importedCount: number;
   };
 };
 
-export type TPamRotationRuleDeletedEvent = {
-  event: PostHogEventTypes.PamRotationRuleDeleted;
+export type TPamAccountAccessedEvent = {
+  event: PostHogEventTypes.PamAccountAccessed;
   properties: {
-    resourceType: string;
-    projectId: string;
+    accountType: string;
+    orgId: string;
+    duration: number;
+    accessMethod: string;
+  };
+};
+
+export type TPamSessionStartedEvent = {
+  event: PostHogEventTypes.PamSessionStarted;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamSessionEndedEvent = {
+  event: PostHogEventTypes.PamSessionEnded;
+  properties: {
+    accountType: string;
+    orgId: string;
+    durationMs?: number;
+    endReason: PamSessionEndReason;
+    accessMethod: string;
+  };
+};
+
+export type TPamSessionTerminatedEvent = {
+  event: PostHogEventTypes.PamSessionTerminated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamProductMemberEvent = {
+  event:
+    | PostHogEventTypes.PamProductMemberAdded
+    | PostHogEventTypes.PamProductMemberUpdated
+    | PostHogEventTypes.PamProductMemberRemoved;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPamFolderMemberEvent = {
+  event:
+    | PostHogEventTypes.PamFolderMemberAdded
+    | PostHogEventTypes.PamFolderMemberUpdated
+    | PostHogEventTypes.PamFolderMemberRemoved;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPamAccountMemberEvent = {
+  event:
+    | PostHogEventTypes.PamAccountMemberAdded
+    | PostHogEventTypes.PamAccountMemberUpdated
+    | PostHogEventTypes.PamAccountMemberRemoved;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPamAccountRotationConfiguredEvent = {
+  event: PostHogEventTypes.PamAccountRotationConfigured;
+  properties: {
+    accountType: string;
+    orgId: string;
+    hasRotationAccount: boolean;
+    scheduledRotationEnabled: boolean;
+  };
+};
+
+export type TPamAccountRotatedEvent = {
+  event: PostHogEventTypes.PamAccountRotated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamAccessRequestCreatedEvent = {
+  event: PostHogEventTypes.PamAccessRequestCreated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamAccessRequestReviewedEvent = {
+  event: PostHogEventTypes.PamAccessRequestReviewed;
+  properties: {
+    orgId: string;
+    status: string;
+  };
+};
+
+export type TPamAccessRequestBrokeGlassEvent = {
+  event: PostHogEventTypes.PamAccessRequestBrokeGlass;
+  properties: {
+    orgId: string;
+    accountType: string;
+  };
+};
+
+export type TPamAccessGrantRevokedEvent = {
+  event: PostHogEventTypes.PamAccessGrantRevoked;
+  properties: {
+    orgId: string;
   };
 };
 
@@ -1024,7 +1271,7 @@ export type TResourceAuthMethodEvent = {
     resourceType: "gateway";
     resourceId: string;
     orgId: string;
-    method: "aws" | "token";
+    method: "aws" | "kubernetes" | "token";
   };
 };
 
@@ -1075,12 +1322,25 @@ export type THoneyTokenTriggeredEvent = {
 
 // PKI / Certificate Manager event types
 
+export type TCertManagerMemberType = "user" | "group" | "identity";
+
 export type TCaCreatedEvent = {
   event: PostHogEventTypes.CaCreated;
   properties: {
     caType: string;
     caKeyAlgorithm?: string;
     orgId: string;
+    projectId: string;
+  };
+};
+
+export type TCaUpdatedEvent = {
+  event: PostHogEventTypes.CaUpdated;
+  properties: {
+    caType: string;
+    orgId: string;
+    projectId: string;
+    status?: string;
   };
 };
 
@@ -1089,6 +1349,7 @@ export type TCaDeletedEvent = {
   properties: {
     caType: string;
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1097,6 +1358,7 @@ export type TCaRenewedEvent = {
   properties: {
     caType: string;
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1104,6 +1366,15 @@ export type TCertificatePolicyCreatedEvent = {
   event: PostHogEventTypes.CertificatePolicyCreated;
   properties: {
     orgId: string;
+    projectId: string;
+  };
+};
+
+export type TCertificatePolicyUpdatedEvent = {
+  event: PostHogEventTypes.CertificatePolicyUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
   };
 };
 
@@ -1111,6 +1382,7 @@ export type TCertificatePolicyDeletedEvent = {
   event: PostHogEventTypes.CertificatePolicyDeleted;
   properties: {
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1118,7 +1390,17 @@ export type TCertificateProfileCreatedEvent = {
   event: PostHogEventTypes.CertificateProfileCreated;
   properties: {
     orgId: string;
+    projectId: string;
     issuerType: string;
+  };
+};
+
+export type TCertificateProfileUpdatedEvent = {
+  event: PostHogEventTypes.CertificateProfileUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    profileId: string;
   };
 };
 
@@ -1126,6 +1408,7 @@ export type TCertificateProfileDeletedEvent = {
   event: PostHogEventTypes.CertificateProfileDeleted;
   properties: {
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1133,6 +1416,17 @@ export type TPkiApplicationCreatedEvent = {
   event: PostHogEventTypes.PkiApplicationCreated;
   properties: {
     orgId: string;
+    projectId: string;
+    applicationId?: string;
+  };
+};
+
+export type TPkiApplicationUpdatedEvent = {
+  event: PostHogEventTypes.PkiApplicationUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId?: string;
   };
 };
 
@@ -1140,22 +1434,30 @@ export type TPkiApplicationDeletedEvent = {
   event: PostHogEventTypes.PkiApplicationDeleted;
   properties: {
     orgId: string;
+    projectId: string;
+    applicationId?: string;
   };
 };
 
-export type TPkiApplicationMemberAddedEvent = {
-  event: PostHogEventTypes.PkiApplicationMemberAdded;
+export type TPkiApplicationMemberEvent = {
+  event:
+    | PostHogEventTypes.PkiApplicationMemberAdded
+    | PostHogEventTypes.PkiApplicationMemberUpdated
+    | PostHogEventTypes.PkiApplicationMemberRemoved;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
-    role: string;
+    memberType: TCertManagerMemberType;
+    role?: string;
   };
 };
 
-export type TPkiApplicationProfileAttachedEvent = {
-  event: PostHogEventTypes.PkiApplicationProfileAttached;
+export type TPkiApplicationProfileEvent = {
+  event: PostHogEventTypes.PkiApplicationProfileAttached | PostHogEventTypes.PkiApplicationProfileDetached;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
   };
 };
@@ -1164,6 +1466,7 @@ export type TEnrollmentMethodConfiguredEvent = {
   event: PostHogEventTypes.EnrollmentMethodConfigured;
   properties: {
     orgId: string;
+    projectId: string;
     enrollmentMethod: string;
   };
 };
@@ -1172,6 +1475,7 @@ export type TEnrollmentMethodRemovedEvent = {
   event: PostHogEventTypes.EnrollmentMethodRemoved;
   properties: {
     orgId: string;
+    projectId: string;
     enrollmentMethod: string;
   };
 };
@@ -1180,7 +1484,9 @@ export type TCertificateRevokedEvent = {
   event: PostHogEventTypes.CertificateRevoked;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
+    revocationReason?: string;
   };
 };
 
@@ -1188,6 +1494,7 @@ export type TCertificateRenewedEvent = {
   event: PostHogEventTypes.CertificateRenewed;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
     profileId?: string;
   };
@@ -1197,7 +1504,18 @@ export type TCertificateAutoRenewalFailedEvent = {
   event: PostHogEventTypes.CertificateAutoRenewalFailed;
   properties: {
     orgId: string;
+    projectId: string;
     profileId?: string;
+  };
+};
+
+export type TCertificateUpdatedEvent = {
+  event: PostHogEventTypes.CertificateUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId?: string;
+    updatedField: "certificate" | "renewal-config";
   };
 };
 
@@ -1205,6 +1523,7 @@ export type TCertificateDeletedEvent = {
   event: PostHogEventTypes.CertificateDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
   };
 };
@@ -1213,7 +1532,37 @@ export type TCertificateExportedEvent = {
   event: PostHogEventTypes.CertificateExported;
   properties: {
     orgId: string;
+    projectId: string;
     format?: string;
+  };
+};
+
+export type TCertManagerProjectExportedEvent = {
+  event: PostHogEventTypes.CertManagerProjectExported;
+  properties: {
+    orgId: string;
+    sourceProjectId: string;
+    destinationProjectId: string;
+    numberOfCertificateAuthorities: number;
+    numberOfCertificatePolicies: number;
+    numberOfCertificateProfiles: number;
+  };
+};
+
+export type TCertificateImportedEvent = {
+  event: PostHogEventTypes.CertificateImported;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId?: string;
+  };
+};
+
+export type TCertificatePrivateKeyDownloadedEvent = {
+  event: PostHogEventTypes.CertificatePrivateKeyDownloaded;
+  properties: {
+    orgId: string;
+    projectId: string;
   };
 };
 
@@ -1221,6 +1570,7 @@ export type TCertificateRequestCreatedEvent = {
   event: PostHogEventTypes.CertificateRequestCreated;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
     profileId?: string;
   };
@@ -1230,6 +1580,17 @@ export type TPkiSyncCreatedEvent = {
   event: PostHogEventTypes.PkiSyncCreated;
   properties: {
     orgId: string;
+    projectId: string;
+    destination: string;
+    isAutoSyncEnabled?: boolean;
+  };
+};
+
+export type TPkiSyncUpdatedEvent = {
+  event: PostHogEventTypes.PkiSyncUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
     destination: string;
     isAutoSyncEnabled?: boolean;
   };
@@ -1239,6 +1600,7 @@ export type TPkiSyncDeletedEvent = {
   event: PostHogEventTypes.PkiSyncDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     destination: string;
   };
 };
@@ -1247,6 +1609,7 @@ export type TPkiSyncExecutedEvent = {
   event: PostHogEventTypes.PkiSyncExecuted;
   properties: {
     orgId: string;
+    projectId: string;
     destination: string;
     success: boolean;
   };
@@ -1256,8 +1619,18 @@ export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
     alertType?: string;
+  };
+};
+
+export type TPkiAlertUpdatedEvent = {
+  event: PostHogEventTypes.PkiAlertUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId: string;
   };
 };
 
@@ -1265,6 +1638,7 @@ export type TPkiAlertDeletedEvent = {
   event: PostHogEventTypes.PkiAlertDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
   };
 };
@@ -1273,7 +1647,35 @@ export type TPkiApprovalPolicyCreatedEvent = {
   event: PostHogEventTypes.PkiApprovalPolicyCreated;
   properties: {
     orgId: string;
+    projectId: string;
     policyType: string;
+  };
+};
+
+export type TPkiApprovalPolicyUpdatedEvent = {
+  event: PostHogEventTypes.PkiApprovalPolicyUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    policyType?: string;
+  };
+};
+
+export type TPkiApprovalPolicyDeletedEvent = {
+  event: PostHogEventTypes.PkiApprovalPolicyDeleted;
+  properties: {
+    orgId: string;
+    projectId: string;
+    policyType?: string;
+  };
+};
+
+export type TPkiApprovalRequestCreatedEvent = {
+  event: PostHogEventTypes.PkiApprovalRequestCreated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    policyType?: string;
   };
 };
 
@@ -1281,6 +1683,7 @@ export type TPkiApprovalRequestReviewedEvent = {
   event: PostHogEventTypes.PkiApprovalRequestReviewed;
   properties: {
     orgId: string;
+    projectId: string;
     decision: string;
   };
 };
@@ -1289,7 +1692,16 @@ export type TPkiDiscoveryCreatedEvent = {
   event: PostHogEventTypes.PkiDiscoveryCreated;
   properties: {
     orgId: string;
+    projectId: string;
     discoveryType: string;
+  };
+};
+
+export type TPkiDiscoveryUpdatedEvent = {
+  event: PostHogEventTypes.PkiDiscoveryUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
   };
 };
 
@@ -1297,6 +1709,19 @@ export type TPkiDiscoveryScanTriggeredEvent = {
   event: PostHogEventTypes.PkiDiscoveryScanTriggered;
   properties: {
     orgId: string;
+    projectId: string;
+  };
+};
+
+export type TPkiDiscoveryScanCompletedEvent = {
+  event: PostHogEventTypes.PkiDiscoveryScanCompleted;
+  properties: {
+    orgId: string;
+    projectId: string;
+    status: string;
+    certificatesFound: number;
+    installationsFound: number;
+    durationMs?: number;
   };
 };
 
@@ -1304,6 +1729,7 @@ export type TPkiDiscoveryDeletedEvent = {
   event: PostHogEventTypes.PkiDiscoveryDeleted;
   properties: {
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1311,6 +1737,18 @@ export type TSignerCreatedEvent = {
   event: PostHogEventTypes.SignerCreated;
   properties: {
     orgId: string;
+    projectId: string;
+    signerId: string;
+  };
+};
+
+export type TSignerUpdatedEvent = {
+  event: PostHogEventTypes.SignerUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    signerId: string;
+    status?: string;
   };
 };
 
@@ -1318,6 +1756,22 @@ export type TSignerDeletedEvent = {
   event: PostHogEventTypes.SignerDeleted;
   properties: {
     orgId: string;
+    projectId: string;
+    signerId: string;
+  };
+};
+
+export type TSignerMemberEvent = {
+  event:
+    | PostHogEventTypes.SignerMemberAdded
+    | PostHogEventTypes.SignerMemberUpdated
+    | PostHogEventTypes.SignerMemberRemoved;
+  properties: {
+    orgId: string;
+    projectId: string;
+    signerId: string;
+    memberType: TCertManagerMemberType;
+    role?: string;
   };
 };
 
@@ -1325,14 +1779,20 @@ export type TCodeSigningOperationEvent = {
   event: PostHogEventTypes.CodeSigningOperation;
   properties: {
     orgId: string;
+    projectId: string;
     signerId: string;
   };
 };
 
-export type TCertManagerIdentityAddedEvent = {
-  event: PostHogEventTypes.CertManagerIdentityAdded;
+export type TCertManagerMemberEvent = {
+  event:
+    | PostHogEventTypes.CertManagerMemberAdded
+    | PostHogEventTypes.CertManagerMemberUpdated
+    | PostHogEventTypes.CertManagerMemberRemoved;
   properties: {
     orgId: string;
+    projectId: string;
+    memberType: TCertManagerMemberType;
     role?: string;
   };
 };
@@ -1341,6 +1801,7 @@ export type TCertificateCleanupConfiguredEvent = {
   event: PostHogEventTypes.CertificateCleanupConfigured;
   properties: {
     orgId: string;
+    projectId: string;
     isEnabled: boolean;
   };
 };
@@ -1620,6 +2081,21 @@ export type TKmipOperationEvent = {
   };
 };
 
+export type TAuditLogsViewedEvent = {
+  event: PostHogEventTypes.AuditLogsViewed;
+  properties: {
+    orgId: string;
+    projectId?: string;
+    resultCount: number;
+    dateRangeStart?: string;
+    dateRangeEnd?: string;
+    // Only the non-sensitive actor type is included; the actor id is already
+    // carried by the event's distinctId. Sending the full actor object would
+    // export identity auth metadata (OIDC claims, AWS ARN/account) to PostHog.
+    actorType?: string;
+  };
+};
+
 // Audit Log Stream event
 export type TAuditLogStreamCreatedEvent = {
   event: PostHogEventTypes.AuditLogStreamCreated;
@@ -1718,6 +2194,7 @@ export type TSecretValidationRuleCreatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -1726,6 +2203,7 @@ export type TSecretValidationRuleUpdatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -1734,6 +2212,7 @@ export type TSecretValidationRuleDeletedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -1867,6 +2346,224 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
+export type TProxiedServiceCreatedEvent = {
+  event: PostHogEventTypes.ProxiedServiceCreated;
+  properties: {
+    projectId: string;
+    headerRewriteCount: number;
+    substitutionCount: number;
+    substitutionSurfaces: ProxiedServiceSubstitutionSurface[];
+    hostPatternCount: number;
+    usesDynamicSecret: boolean;
+    usesBasicAuth: boolean;
+    isEnabled: boolean;
+  };
+};
+
+export type TBillingCheckoutSessionCreatedEvent = {
+  event: PostHogEventTypes.BillingCheckoutSessionCreated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+  };
+};
+
+export type TBillingProductActivatedEvent = {
+  event: PostHogEventTypes.BillingProductActivated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+    subscriptionId?: string;
+  };
+};
+
+export type TBillingPlanUpgradedEvent = {
+  event: PostHogEventTypes.BillingPlanUpgraded;
+  properties: {
+    productId: string;
+    fromPlan?: string;
+    toPlan: string;
+    subscriptionId?: string;
+  };
+};
+
+type TAgentVaultEventBase = {
+  orgId: string;
+  channel: string;
+  actorType: string;
+};
+
+type TAgentVaultMemberType = "user" | "group" | "identity";
+
+export type TAgentVaultAccessBundleCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleCreated;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleUpdated;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultServiceCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceCreated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    serviceId: string;
+    credentialType: AgentVaultCredentialType;
+    hostPatternCount: number;
+  };
+};
+
+export type TAgentVaultServiceUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceUpdated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    serviceId: string;
+    credentialType: AgentVaultCredentialType;
+    hostPatternCount: number;
+  };
+};
+
+export type TAgentVaultServiceDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+};
+
+export type TAgentVaultAccessBundleMemberAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded;
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+};
+
+export type TAgentVaultAccessBundleMemberRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved;
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+};
+
+export type TAgentVaultSessionCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionCreated;
+  properties: TAgentVaultEventBase & {
+    sessionId: string;
+    accessBundleId: string;
+    ttlSeconds: number | null;
+  };
+};
+
+export type TAgentVaultSessionRevokedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionRevoked;
+  properties: TAgentVaultEventBase & { sessionId: string };
+};
+
+export type TAgentVaultProxyRegisteredEvent = {
+  event: PostHogEventTypes.AgentVaultProxyRegistered;
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    trafficPolicy: AgentVaultTrafficPolicy;
+    allowedHostCount: number;
+  };
+};
+
+export type TAgentVaultProxyUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyUpdated;
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    trafficPolicy: AgentVaultTrafficPolicy;
+    allowedHostCount: number;
+  };
+};
+
+export type TAgentVaultProxyDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyDeleted;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyAccessRevokedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyAccessRevoked;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyEnrollmentTokenReissuedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyEnrolledEvent = {
+  event: PostHogEventTypes.AgentVaultProxyEnrolled;
+  properties: {
+    orgId: string;
+    channel: string;
+    proxyId: string;
+    replacedExistingCa: boolean;
+  };
+};
+
+export type TAgentVaultProductMemberAddedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberAdded;
+  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+};
+
+export type TAgentVaultProductMemberUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberUpdated;
+  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+};
+
+export type TAgentVaultProductMemberRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberRemoved;
+  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType };
+};
+
+export type TAgentVaultPostHogEvent =
+  | TAgentVaultAccessBundleCreatedEvent
+  | TAgentVaultAccessBundleUpdatedEvent
+  | TAgentVaultAccessBundleDeletedEvent
+  | TAgentVaultServiceCreatedEvent
+  | TAgentVaultServiceUpdatedEvent
+  | TAgentVaultServiceDeletedEvent
+  | TAgentVaultAccessBundleMemberAddedEvent
+  | TAgentVaultAccessBundleMemberRemovedEvent
+  | TAgentVaultSessionCreatedEvent
+  | TAgentVaultSessionRevokedEvent
+  | TAgentVaultProxyRegisteredEvent
+  | TAgentVaultProxyUpdatedEvent
+  | TAgentVaultProxyDeletedEvent
+  | TAgentVaultProxyAccessRevokedEvent
+  | TAgentVaultProxyEnrollmentTokenReissuedEvent
+  | TAgentVaultProxyEnrolledEvent
+  | TAgentVaultProductMemberAddedEvent
+  | TAgentVaultProductMemberUpdatedEvent
+  | TAgentVaultProductMemberRemovedEvent;
+
+export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultProxyEnrolledEvent>;
+
+// A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
+// (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at
+// most once per (org, product) for the lifetime of the org. TrialCardRequired carries no such
+// guarantee: abandoning the card-setup checkout grants nothing and retrying is safe, so the same org
+// can emit it repeatedly for one product. Anything consuming these downstream must account for that.
+// `plan` is recorded on both anyway. It doesn't gate, but it says which tier they actually wanted.
+export type TTrialStartedEvent = {
+  event: PostHogEventTypes.TrialStarted;
+  properties: {
+    productId: string;
+    plan: string;
+  };
+};
+
+export type TTrialCardRequiredEvent = {
+  event: PostHogEventTypes.TrialCardRequired;
+  properties: {
+    productId: string;
+    plan: string;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -1881,10 +2578,24 @@ export type TPostHogEvent = {
    * person record is suppressed.
    */
   anonymous?: boolean;
+  /**
+   * Optional per-event deduplication. When set, the event is captured at most
+   * once per `key` within `ttlSeconds` (enforced atomically via the key store).
+   * Use for events fired on read/poll-heavy paths (e.g. Audit Logs Viewed) to
+   * avoid flooding while still marking the actor active for the window.
+   */
+  dedup?: {
+    key: string;
+    ttlSeconds: number;
+  };
 } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
+  | TSignupProductSelectedEvent
+  | TSignupProductsSubmittedEvent
+  | TSignupLaunchDestinationSelectedEvent
+  | TSignupAttributionProvidedEvent
   | TUserLoginV2Event
   | TSecretScannerEvent
   | TUserOrgInvitedEvent
@@ -1902,10 +2613,6 @@ export type TPostHogEvent = {
   | TTelemetryInstanceStatsEvent
   | TSecretRequestCreatedEvent
   | TSecretRequestDeletedEvent
-  | TSignSshKeyEvent
-  | TIssueSshCredsEvent
-  | TIssueSshHostUserCertEvent
-  | TIssueSshHostHostCertEvent
   | TSignCertificateEvent
   | TIssueCertificateEvent
   | TInvalidateCacheEvent
@@ -1921,6 +2628,7 @@ export type TPostHogEvent = {
   | TAccessApprovalRequestCreatedEvent
   | TAccessApprovalRequestReviewedEvent
   | TSecretSyncCreatedEvent
+  | TSecretSyncUpdatedEvent
   | TSecretSyncDeletedEvent
   | TDynamicSecretCreatedEvent
   | TDynamicSecretDeletedEvent
@@ -1939,21 +2647,28 @@ export type TPostHogEvent = {
   | TAppConnectionCreatedEvent
   | TAppConnectionDeletedEvent
   | TSecretRotationV2CreatedEvent
+  | TSecretRotationV2UpdatedEvent
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
-  | TGatewayUpdatedEvent
-  | TGatewayDeletedEvent
-  | TPamResourceEvent
+  | TPamAccountTemplateEvent
+  | TPamFolderEvent
   | TPamAccountEvent
+  | TPamDiscoveryEvent
+  | TPamDiscoveredAccountsImportedEvent
   | TPamAccountAccessedEvent
-  | TPamAccountRotatedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
-  | TPamWebAccessStartedEvent
-  | TPamDiscoveryEvent
-  | TPamRotationRuleCreatedEvent
-  | TPamRotationRuleDeletedEvent
+  | TPamSessionTerminatedEvent
+  | TPamProductMemberEvent
+  | TPamFolderMemberEvent
+  | TPamAccountMemberEvent
+  | TPamAccountRotationConfiguredEvent
+  | TPamAccountRotatedEvent
+  | TPamAccessRequestCreatedEvent
+  | TPamAccessRequestReviewedEvent
+  | TPamAccessRequestBrokeGlassEvent
+  | TPamAccessGrantRevokedEvent
   | TResourceAuthMethodEvent
   | THoneyTokenCreatedEvent
   | THoneyTokenUpdatedEvent
@@ -1961,38 +2676,55 @@ export type TPostHogEvent = {
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
   | TCaCreatedEvent
+  | TCaUpdatedEvent
   | TCaDeletedEvent
   | TCaRenewedEvent
   | TCertificatePolicyCreatedEvent
+  | TCertificatePolicyUpdatedEvent
   | TCertificatePolicyDeletedEvent
   | TCertificateProfileCreatedEvent
+  | TCertificateProfileUpdatedEvent
   | TCertificateProfileDeletedEvent
   | TPkiApplicationCreatedEvent
+  | TPkiApplicationUpdatedEvent
   | TPkiApplicationDeletedEvent
-  | TPkiApplicationMemberAddedEvent
-  | TPkiApplicationProfileAttachedEvent
+  | TPkiApplicationMemberEvent
+  | TPkiApplicationProfileEvent
   | TEnrollmentMethodConfiguredEvent
   | TEnrollmentMethodRemovedEvent
   | TCertificateRevokedEvent
   | TCertificateRenewedEvent
   | TCertificateAutoRenewalFailedEvent
+  | TCertificateUpdatedEvent
   | TCertificateDeletedEvent
   | TCertificateExportedEvent
+  | TCertManagerProjectExportedEvent
+  | TCertificateImportedEvent
+  | TCertificatePrivateKeyDownloadedEvent
   | TCertificateRequestCreatedEvent
   | TPkiSyncCreatedEvent
+  | TPkiSyncUpdatedEvent
   | TPkiSyncDeletedEvent
   | TPkiSyncExecutedEvent
   | TPkiAlertCreatedEvent
+  | TPkiAlertUpdatedEvent
   | TPkiAlertDeletedEvent
   | TPkiApprovalPolicyCreatedEvent
+  | TPkiApprovalPolicyUpdatedEvent
+  | TPkiApprovalPolicyDeletedEvent
+  | TPkiApprovalRequestCreatedEvent
   | TPkiApprovalRequestReviewedEvent
   | TPkiDiscoveryCreatedEvent
+  | TPkiDiscoveryUpdatedEvent
   | TPkiDiscoveryScanTriggeredEvent
+  | TPkiDiscoveryScanCompletedEvent
   | TPkiDiscoveryDeletedEvent
   | TSignerCreatedEvent
+  | TSignerUpdatedEvent
   | TSignerDeletedEvent
+  | TSignerMemberEvent
   | TCodeSigningOperationEvent
-  | TCertManagerIdentityAddedEvent
+  | TCertManagerMemberEvent
   | TCertificateCleanupConfiguredEvent
   | TCertificateCleanupCompletedEvent
   | TCustomRoleCreatedEvent
@@ -2028,6 +2760,7 @@ export type TPostHogEvent = {
   | TKmipClientUpdatedEvent
   | TKmipClientDeletedEvent
   | TKmipOperationEvent
+  | TAuditLogsViewedEvent
   | TAuditLogStreamCreatedEvent
   | TAuditLogStreamUpdatedEvent
   | TAuditLogStreamDeletedEvent
@@ -2057,4 +2790,11 @@ export type TPostHogEvent = {
   | TSecretApprovalPolicyUpdatedEvent
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
+  | TProxiedServiceCreatedEvent
+  | TBillingCheckoutSessionCreatedEvent
+  | TBillingProductActivatedEvent
+  | TBillingPlanUpgradedEvent
+  | TAgentVaultPostHogEvent
+  | TTrialStartedEvent
+  | TTrialCardRequiredEvent
 );

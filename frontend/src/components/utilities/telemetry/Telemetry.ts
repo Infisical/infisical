@@ -10,10 +10,10 @@ class Capturer {
     this.api = initPostHog()!;
   }
 
-  capture(item: string) {
+  capture(item: string, properties?: Record<string, unknown>) {
     if (envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) {
       try {
-        this.api.capture(item);
+        this.api.capture(item, properties);
       } catch (error) {
         console.error("PostHog", error);
       }

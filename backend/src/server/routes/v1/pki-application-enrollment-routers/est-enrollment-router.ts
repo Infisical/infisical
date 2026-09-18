@@ -32,7 +32,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setEstEnrollment({
         actor: req.permission.type,
@@ -55,6 +55,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
           type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId,
             disableBootstrapCaValidation: result.est.disableBootstrapCaValidation
           }
@@ -65,8 +66,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "est",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "est"
         }
       });
 
@@ -88,7 +90,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.clearEstEnrollment({
         actor: req.permission.type,
@@ -104,7 +106,11 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT,
-          metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+          metadata: {
+            applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
+            profileId: req.params.profileId
+          }
         }
       });
       await server.services.telemetry.sendPostHogEvents({
@@ -112,8 +118,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "est",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "est"
         }
       });
 

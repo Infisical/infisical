@@ -1,8 +1,19 @@
 import Select, { GroupBase, Props } from "react-select";
 
-import { ClearIndicator, DropdownIndicator, Group, MultiValueRemove, Option } from "./components";
+import {
+  ClearIndicator,
+  DropdownIndicator,
+  Group,
+  MenuList,
+  MultiValueRemove,
+  Option
+} from "./components";
 import { getSelectClassNames, selectClassNames, selectStyles } from "./styles";
 
+/**
+ * @deprecated Migrate searchable single- and multi-select callsites to `Combobox` when its
+ * contract fits. Creatable, grouped, and advanced compatibility consumers remain supported.
+ */
 export const FilterableSelect = <T,>({
   isMulti,
   closeMenuOnSelect,
@@ -11,6 +22,9 @@ export const FilterableSelect = <T,>({
   getGroupHeaderLabel = null,
   options = [],
   isError,
+  components,
+  menuPortalTarget = typeof document === "undefined" ? undefined : document.body,
+  menuPosition = "fixed",
   ...props
 }: Props<T, boolean, GroupBase<T>> & {
   groupBy?: string | null;
@@ -49,14 +63,17 @@ export const FilterableSelect = <T,>({
       unstyled
       options={processedOptions}
       tabSelectsValue={tabSelectsValue}
+      menuPortalTarget={menuPortalTarget}
+      menuPosition={menuPosition}
       styles={selectStyles as any}
       components={{
         DropdownIndicator,
         ClearIndicator,
+        MenuList,
         MultiValueRemove,
         Option,
         Group,
-        ...props.components
+        ...components
       }}
       classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}
       {...props}

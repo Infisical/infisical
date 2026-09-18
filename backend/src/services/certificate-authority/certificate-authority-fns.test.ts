@@ -1,8 +1,14 @@
+import * as x509 from "@peculiar/x509";
 import { describe, expect, it } from "vitest";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
-import { buildCrlDistributionPointUrls, signatureAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import {
+  buildCrlDistributionPointUrls,
+  createDistinguishedName,
+  extractDnParts,
+  signatureAlgorithmToAlgCfg
+} from "./certificate-authority-fns";
 
 // Helper to access properties on the union return type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -235,5 +241,77 @@ describe("buildCrlDistributionPointUrls", () => {
   it("should include managed URL when disableManagedUrl is undefined", () => {
     const result = buildCrlDistributionPointUrls(managedUrl, null, undefined);
     expect(result).toEqual([managedUrl]);
+  });
+});
+
+describe("createDistinguishedName", () => {
+  it("should build a DN with only the standard attributes", () => {
+    const dn = createDistinguishedName({ commonName: "example.com", organization: "Acme" });
+    expect(dn).toBe("O=Acme, CN=example.com");
+  });
+
+  it("should encode the domain component chain root first, ahead of the other attributes", () => {
+    const dn = createDistinguishedName({
+      commonName: "auth-AD-MANAGER02-CA",
+      domainComponents: ["app", "example", "auth"]
+    });
+    expect(dn).toBe("DC=auth, DC=example, DC=app, CN=auth-AD-MANAGER02-CA");
+  });
+
+  it("should skip empty domain component values", () => {
+    const dn = createDistinguishedName({
+      commonName: "host",
+      domainComponents: ["app", "", "auth"]
+    });
+    expect(dn).toBe("DC=auth, DC=app, CN=host");
+  });
+
+  it("should omit DC RDNs when no domain components are provided", () => {
+    const dn = createDistinguishedName({ commonName: "host" });
+    expect(dn).toBe("CN=host");
+  });
+});
+
+describe("extractDnParts", () => {
+  const parse = (dn: string) => extractDnParts(new x509.Name(dn));
+
+  it("should read a root-first chain in display order", () => {
+    expect(parse("DC=com, DC=example, DC=corp, CN=host").domainComponents).toEqual(["corp", "example", "com"]);
+  });
+
+  it("should read a chain encoded leaf first as the chain those bytes denote", () => {
+    expect(parse("CN=host, DC=corp, DC=example, DC=com").domainComponents).toEqual(["com", "example", "corp"]);
+  });
+
+  it("should read a chain carrying no other attributes as root first", () => {
+    expect(parse("DC=com, DC=example, DC=corp").domainComponents).toEqual(["corp", "example", "com"]);
+  });
+
+  it("should read a chain sitting before the organization attributes as root first", () => {
+    expect(parse("DC=com, DC=corp, O=Acme, OU=Eng").domainComponents).toEqual(["corp", "com"]);
+  });
+
+  it("should read a single component the same either way", () => {
+    expect(parse("DC=com, CN=host").domainComponents).toEqual(["com"]);
+    expect(parse("CN=host, DC=com").domainComponents).toEqual(["com"]);
+  });
+
+  it("should round-trip a chain through createDistinguishedName", () => {
+    const domainComponents = ["corp", "example", "com"];
+    expect(parse(createDistinguishedName({ commonName: "host", domainComponents })).domainComponents).toEqual(
+      domainComponents
+    );
+  });
+
+  it("should leave domain components undefined when the DN carries none", () => {
+    expect(parse("CN=host, O=Acme").domainComponents).toBeUndefined();
+  });
+
+  it("should read the remaining attributes alongside the chain", () => {
+    const parts = parse("DC=com, DC=corp, O=Acme, OU=Eng, CN=host");
+    expect(parts.commonName).toBe("host");
+    expect(parts.organization).toBe("Acme");
+    expect(parts.ou).toBe("Eng");
+    expect(parts.domainComponents).toEqual(["corp", "com"]);
   });
 });

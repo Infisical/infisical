@@ -53,7 +53,8 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
             .optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-          allowedSelfApprovals: z.boolean().default(true)
+          allowedSelfApprovals: z.boolean().default(true),
+          bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
@@ -115,6 +116,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
+        bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),
       response: {
@@ -197,7 +199,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
@@ -241,7 +243,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
         actor: req.permission.type,
@@ -277,7 +279,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
         actor: req.permission.type,

@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
-import { SessionStorageKeys } from "@app/const";
+import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 
+import { adminQueryKeys } from "../admin";
 import { organizationKeys } from "../organization/queries";
 import { projectKeys } from "../projects";
 import { TGenerateAuthenticationOptionsResponse, TVerifyAuthenticationDTO } from "../webauthn";
@@ -26,11 +27,13 @@ import {
   ResetUserPasswordV2DTO,
   SendMfaTokenDTO,
   SetupPasswordDTO,
+  SignupOnboardingDTO,
   TOauthTokenExchangeDTO,
   UserAgentType,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
-  VerifySignupInviteDTO
+  VerifySignupInviteDTO,
+  VerifySignupInviteRes
 } from "./types";
 
 export const authKeys = {
@@ -80,27 +83,24 @@ export const useSelectOrganization = () => {
       // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
       if (!details.userAgent && !data.isMfaEnabled) {
         SecurityClient.setToken(data.token);
+
+        queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
+        queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+        await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+        await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
       }
 
+      // Check for a stored redirect URL from before login (e.g., deep links)
       if (data.token && !data.isMfaEnabled) {
-        // We check if there is a pending callback after organization login success and redirect to it if valid
-        const loginRedirectInfo = sessionStorage.getItem(
-          SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL
-        );
-        sessionStorage.removeItem(SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL);
-
-        if (loginRedirectInfo) {
-          const { expiry, data: redirectUrl } = JSON.parse(loginRedirectInfo);
-          if (new Date() < new Date(expiry)) {
-            window.location.assign(redirectUrl);
-          }
+        const redirectUrl = consumeLoginRedirectUrl();
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
         }
       }
 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: authKeys.getAuthToken });
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
     }
@@ -146,6 +146,12 @@ export const useCompleteAccountSignup = () => {
   return useMutation({
     mutationFn: completeAccountSignup
   });
+};
+
+/** Fire-and-forget onboarding telemetry; callers must never block the signup flow on it. */
+export const submitSignupOnboarding = async (details: SignupOnboardingDTO) => {
+  const { data } = await apiRequest.post("/api/v3/signup/onboarding", details);
+  return data;
 };
 
 export const useSendMfaToken = () => {
@@ -195,16 +201,19 @@ export const verifyRecoveryCode = async (recoveryCode: string) => {
 };
 
 export const verifySignupInvite = async (details: VerifySignupInviteDTO) => {
-  const { data } = await apiRequest.post("/api/v1/invite-org/verify", details);
+  const { data } = await apiRequest.post<VerifySignupInviteRes>(
+    "/api/v1/invite-org/verify",
+    details
+  );
   return data;
 };
 
 export const useSendVerificationEmail = () => {
   return useMutation({
-    mutationFn: async ({ email }: { email: string }) => {
+    mutationFn: async ({ email, captchaToken }: { email: string; captchaToken?: string }) => {
       const { data } = await apiRequest.post<{ message: string; cooldownSeconds: number }>(
         "/api/v3/signup/email/signup",
-        { email }
+        { email, captchaToken }
       );
 
       return data;

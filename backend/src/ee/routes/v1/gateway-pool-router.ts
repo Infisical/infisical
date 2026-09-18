@@ -18,8 +18,11 @@ const SanitizedGatewayPoolSchema = GatewayPoolsSchema.pick({
 const SanitizedPoolMemberSchema = GatewaysV2Schema.pick({
   id: true,
   name: true,
+  relayId: true,
   heartbeat: true,
-  heartbeatTTL: true
+  heartbeatTTL: true,
+  directAddress: true,
+  directHeartbeat: true
 });
 
 export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
@@ -78,7 +81,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.gatewayPool.listGatewayPools(req.permission);
     }
@@ -100,7 +103,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.gatewayPool.getGatewayPoolById({
         poolId: req.params.poolId,
@@ -307,32 +310,6 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
               projectName: z.string().nullable()
             })
           ),
-          pamDomains: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string().nullable()
-            })
-          ),
-          pamResources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              resourceType: z.string(),
-              projectName: z.string().nullable()
-            })
-          ),
-          pamDiscoverySources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              discoveryType: z.string(),
-              projectName: z.string().nullable()
-            })
-          ),
           appConnections: z.array(
             z.object({
               id: z.string(),
@@ -357,7 +334,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.gatewayPool.getConnectedResources({
         poolId: req.params.poolId,

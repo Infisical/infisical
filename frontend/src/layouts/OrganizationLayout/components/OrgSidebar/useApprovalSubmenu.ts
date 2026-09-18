@@ -2,6 +2,7 @@ import { DoorOpen, FileKey, Shield } from "lucide-react";
 
 import { useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import type { Submenu } from "./types";
 
@@ -11,9 +12,15 @@ export const useApprovalSubmenu = (): {
 } => {
   const { currentProject, projectId } = useProject();
 
-  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ projectId });
+  const isSecretManager = currentProject.type === ProjectType.SecretManager;
+
+  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
+    projectId,
+    options: { enabled: isSecretManager }
+  });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
-    projectSlug: currentProject?.slug || ""
+    projectSlug: currentProject?.slug || "",
+    options: { enabled: isSecretManager }
   });
 
   const pendingRequestsCount =

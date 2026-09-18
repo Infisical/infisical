@@ -44,6 +44,8 @@ export const AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION = {
   destination: PkiSync.AwsCertificateManager,
   canImportCertificates: false,
   canRemoveCertificates: true,
+  canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "Infisical-{{certificateId}}",
   forbiddenCharacters: AWS_CERTIFICATE_MANAGER_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: AWS_CERTIFICATE_MANAGER_CERTIFICATE_NAMING.ALLOWED_CHARACTER_PATTERN,

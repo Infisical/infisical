@@ -2,7 +2,8 @@ export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
   EMAIL = "email",
-  URI = "uri"
+  URI = "uri",
+  UPN = "upn"
 }
 
 export enum CertKeyUsageType {
@@ -23,7 +24,9 @@ export enum CertExtendedKeyUsageType {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   OCSP_SIGNING = "ocsp_signing",
-  TIME_STAMPING = "time_stamping"
+  SMART_CARD_LOGON = "smart_card_logon",
+  TIME_STAMPING = "time_stamping",
+  ANY_PURPOSE = "any_purpose"
 }
 
 export enum CertAttributeRule {
@@ -45,6 +48,7 @@ export enum CertPolicyState {
 }
 
 export enum CertDurationUnit {
+  HOURS = "hours",
   DAYS = "days",
   MONTHS = "months",
   YEARS = "years"
@@ -56,7 +60,8 @@ export enum CertSubjectAttributeType {
   ORGANIZATIONAL_UNIT = "organizational_unit",
   COUNTRY = "country",
   STATE = "state",
-  LOCALITY = "locality"
+  LOCALITY = "locality",
+  DOMAIN_COMPONENT = "domain_component"
 }
 
 export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
@@ -69,6 +74,8 @@ export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
       return "Email";
     case CertSubjectAlternativeNameType.URI:
       return "URI";
+    case CertSubjectAlternativeNameType.UPN:
+      return "UPN";
     default:
       return type;
   }
@@ -99,24 +106,19 @@ export const formatKeyUsage = (usage: CertKeyUsageType): string => {
   }
 };
 
-export const formatExtendedKeyUsage = (usage: CertExtendedKeyUsageType): string => {
-  switch (usage) {
-    case CertExtendedKeyUsageType.CLIENT_AUTH:
-      return "Client Auth";
-    case CertExtendedKeyUsageType.SERVER_AUTH:
-      return "Server Auth";
-    case CertExtendedKeyUsageType.CODE_SIGNING:
-      return "Code Signing";
-    case CertExtendedKeyUsageType.EMAIL_PROTECTION:
-      return "Email Protection";
-    case CertExtendedKeyUsageType.OCSP_SIGNING:
-      return "OCSP Signing";
-    case CertExtendedKeyUsageType.TIME_STAMPING:
-      return "Time Stamping";
-    default:
-      return usage;
-  }
+export const EXTENDED_KEY_USAGE_LABELS: Record<CertExtendedKeyUsageType, string> = {
+  [CertExtendedKeyUsageType.CLIENT_AUTH]: "Client Auth",
+  [CertExtendedKeyUsageType.SERVER_AUTH]: "Server Auth",
+  [CertExtendedKeyUsageType.CODE_SIGNING]: "Code Signing",
+  [CertExtendedKeyUsageType.EMAIL_PROTECTION]: "Email Protection",
+  [CertExtendedKeyUsageType.OCSP_SIGNING]: "OCSP Signing",
+  [CertExtendedKeyUsageType.SMART_CARD_LOGON]: "Smart Card Logon",
+  [CertExtendedKeyUsageType.TIME_STAMPING]: "Time Stamping",
+  [CertExtendedKeyUsageType.ANY_PURPOSE]: "Any Extended Key Usage"
 };
+
+export const formatExtendedKeyUsage = (usage: CertExtendedKeyUsageType): string =>
+  EXTENDED_KEY_USAGE_LABELS[usage] ?? usage;
 
 export const formatSubjectAttributeType = (type: CertSubjectAttributeType): string => {
   switch (type) {
@@ -132,6 +134,8 @@ export const formatSubjectAttributeType = (type: CertSubjectAttributeType): stri
       return "State/Province (ST)";
     case CertSubjectAttributeType.LOCALITY:
       return "Locality (L)";
+    case CertSubjectAttributeType.DOMAIN_COMPONENT:
+      return "Domain Component (DC)";
     default:
       return type;
   }
@@ -173,6 +177,7 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 
 export enum CertSubjectAttributeInclude {
+  REQUIRED = "required",
   OPTIONAL = "optional",
   PROHIBIT = "prohibit"
 }
@@ -325,3 +330,137 @@ export const ALGORITHM_FAMILIES = {
     key: ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"] as const
   }
 } as const;
+
+export enum CertExtensionInclude {
+  ALLOWED = "allowed",
+  REQUIRED = "required",
+  DENIED = "denied"
+}
+
+export const CUSTOM_EXTENSION_INCLUDE_LABELS: Record<CertExtensionInclude, string> = {
+  [CertExtensionInclude.ALLOWED]: "Allowed",
+  [CertExtensionInclude.REQUIRED]: "Required",
+  [CertExtensionInclude.DENIED]: "Denied"
+};
+
+export enum CertExtensionCriticality {
+  CRITICAL = "critical",
+  NOT_CRITICAL = "not_critical"
+}
+
+const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
+const OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
+const SID_PATTERN = /^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$/;
+const TEMPLATE_INFORMATION_PATTERN = new RegExp(
+  `^(${OID_PATTERN_SOURCE}):(0|[1-9][0-9]{0,4})(\\.(0|[1-9][0-9]{0,4}))?$`
+);
+
+export const CUSTOM_EXTENSION_PRESETS: Record<
+  string,
+  {
+    label: string;
+    placeholder: string;
+    critical: boolean;
+    validate: (value: string) => string | null;
+  }
+> = {
+  "1.3.6.1.4.1.311.25.2": {
+    critical: false,
+    label: "AD SID security extension",
+    placeholder: "S-1-5-21-...",
+    validate: (value) =>
+      SID_PATTERN.test(value)
+        ? null
+        : "Value must be a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103"
+  },
+  "1.3.6.1.4.1.311.20.2": {
+    critical: false,
+    label: "Certificate template name",
+    placeholder: "Machine",
+    validate: (value) => {
+      if (value.length > 64) return "Template name cannot exceed 64 characters";
+      return Array.from(value).some((character) => (character.codePointAt(0) ?? 0) > 0xffff)
+        ? "Template name cannot contain characters outside the basic multilingual plane"
+        : null;
+    }
+  },
+  "1.3.6.1.4.1.311.21.7": {
+    critical: false,
+    label: "Certificate template information",
+    placeholder: "1.3.6.1.4.1.311.21.8.1.2:100.3",
+    validate: (value) =>
+      TEMPLATE_INFORMATION_PATTERN.test(value)
+        ? null
+        : "Value must be the template OID, a colon, then the version, for example 1.3.6.1.4.1.311.21.8.1.2:100.3"
+  }
+};
+
+const getCustomExtensionPreset = (oid: string) =>
+  Object.prototype.hasOwnProperty.call(CUSTOM_EXTENSION_PRESETS, oid)
+    ? CUSTOM_EXTENSION_PRESETS[oid]
+    : undefined;
+
+export const getPresetExtensionCriticality = (oid: string): CertExtensionCriticality | null => {
+  const preset = getCustomExtensionPreset(oid);
+  if (!preset) return null;
+  return preset.critical
+    ? CertExtensionCriticality.CRITICAL
+    : CertExtensionCriticality.NOT_CRITICAL;
+};
+
+export const isPresetExtensionOid = (oid: string) => Boolean(getCustomExtensionPreset(oid));
+
+export const customExtensionLabelFor = (oid: string, label?: string | null) =>
+  label?.trim() || getCustomExtensionPreset(oid)?.label || oid;
+
+export const validateCustomExtensionValue = (oid: string, value: string): string | null => {
+  const preset = getCustomExtensionPreset(oid);
+  if (preset) return preset.validate(value);
+  return new TextEncoder().encode(value).length > MAX_CUSTOM_EXTENSION_VALUE_BYTES
+    ? `Value cannot exceed ${MAX_CUSTOM_EXTENSION_VALUE_BYTES} bytes`
+    : null;
+};
+
+export const getCustomExtensionValuePlaceholder = (oid: string) =>
+  getCustomExtensionPreset(oid)?.placeholder ?? "Value";
+
+export type TCustomExtensionRow = {
+  oid: string;
+  label?: string;
+  critical?: CertExtensionCriticality | "";
+  include: CertExtensionInclude;
+  value: string;
+};
+
+export const groupCustomExtensionRows = (rows?: TCustomExtensionRow[] | null) => {
+  const byOid = new Map<
+    string,
+    {
+      oid: string;
+      label?: string;
+      critical?: CertExtensionCriticality;
+      allowed: string[];
+      required: string[];
+      denied: string[];
+    }
+  >();
+
+  (rows ?? [])
+    .filter((row) => row.oid.trim())
+    .forEach((row) => {
+      const oid = row.oid.trim();
+      const existing = byOid.get(oid) ?? { oid, allowed: [], required: [], denied: [] };
+      const label = row.label?.trim();
+      if (label) existing.label = label;
+      if (row.critical) existing.critical = row.critical;
+      existing[row.include].push(row.value.trim() || "*");
+      byOid.set(oid, existing);
+    });
+
+  return [...byOid.values()].map(({ allowed, required, denied, ...rest }) => ({
+    ...rest,
+    ...(allowed.length && { allowed }),
+    ...(required.length && { required }),
+    ...(denied.length && { denied })
+  }));
+};

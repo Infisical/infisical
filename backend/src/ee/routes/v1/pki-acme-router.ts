@@ -39,7 +39,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     schema?: TSchema;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
     return server.services.pkiAcme.validateExistingAccountJwsPayload({
-      url: new URL(req.url, `${req.protocol}://${req.hostname}`),
+      url: new URL(req.url, `${req.protocol}://${req.host}`),
       profileId: (req.params as { profileId: string }).profileId,
       rawJwsPayload: req.body as TRawJwsPayload,
       schema,
@@ -144,7 +144,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
       res.header("Replay-Nonce", nonce);
       res.header("Cache-Control", "no-store");
-      return res.status(204).send();
+      return res.status(204).send("");
     }
   });
 
@@ -168,7 +168,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload({
-        url: new URL(req.url, `${req.protocol}://${req.hostname}`),
+        url: new URL(req.url, `${req.protocol}://${req.host}`),
         rawJwsPayload: req.body
       });
       const { alg, jwk } = protectedHeader;
@@ -513,7 +513,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload({
-        url: new URL(req.url, `${req.protocol}://${req.hostname}`),
+        url: new URL(req.url, `${req.protocol}://${req.host}`),
         rawJwsPayload: req.body
       });
       const { alg, jwk } = protectedHeader;

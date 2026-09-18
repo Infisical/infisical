@@ -13,6 +13,10 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
+import {
+  isValidAllowedSubjectAltNameEntry,
+  parseAllowedSubjectAltNames
+} from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-fns";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -26,6 +30,42 @@ const validateCommonNames = z
       .map((i) => i.trim())
       .join(",")
   );
+
+const MAX_ALLOWED_SUBJECT_ALT_NAMES_LENGTH = 4096;
+
+const validateSubjectAltNames = z
+  .string()
+  .trim()
+  .min(1, "Subject alternative name entries cannot be empty")
+  .array()
+  .superRefine((entries, ctx) => {
+    const invalidEntries = entries.filter((entry) => !isValidAllowedSubjectAltNameEntry(entry));
+
+    if (invalidEntries.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid subject alternative name ${
+          invalidEntries.length > 1 ? "entries" : "entry"
+        }: ${invalidEntries.join(", ")}. Prefix non-DNS values with their type (e.g. "URI:spiffe://...", "IP:10.0.0.1", "EMAIL:svc@example.com").`
+      });
+    }
+
+    if (JSON.stringify(entries).length > MAX_ALLOWED_SUBJECT_ALT_NAMES_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Allowed subject alternative names must not exceed ${MAX_ALLOWED_SUBJECT_ALT_NAMES_LENGTH} characters in total.`
+      });
+    }
+  });
+
+const IdentityTlsCertAuthResponseSchema = IdentityTlsCertAuthsSchema.extend({
+  allowedSubjectAltNames: z.string().array().nullable()
+});
+
+const toTlsCertAuthResponse = <T extends { allowedSubjectAltNames?: string | null }>(auth: T) => ({
+  ...auth,
+  allowedSubjectAltNames: auth.allowedSubjectAltNames ? parseAllowedSubjectAltNames(auth.allowedSubjectAltNames) : null
+});
 
 const validateCaCertificate = (caCert: string) => {
   if (!caCert) return true;
@@ -176,12 +216,20 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .optional()
             .nullable()
             .describe(TLS_CERT_AUTH.ATTACH.allowedCommonNames),
+          allowedSubjectAltNames: validateSubjectAltNames
+            .optional()
+            .nullable()
+            .describe(TLS_CERT_AUTH.ATTACH.allowedSubjectAltNames),
           caCertificate: z
             .string()
             .min(1)
             .max(10240)
             .refine(validateCaCertificate, "Invalid CA Certificate.")
             .describe(TLS_CERT_AUTH.ATTACH.caCertificate),
+          verifyClientCertificateChain: z
+            .boolean()
+            .default(false)
+            .describe(TLS_CERT_AUTH.ATTACH.verifyClientCertificateChain),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -217,7 +265,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          identityTlsCertAuth: IdentityTlsCertAuthsSchema
+          identityTlsCertAuth: IdentityTlsCertAuthResponseSchema
         })
       }
     },
@@ -232,6 +280,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
+      const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
@@ -240,6 +290,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           metadata: {
             identityId: identityTlsCertAuth.identityId,
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
+            allowedSubjectAltNames: tlsCertAuthResponse.allowedSubjectAltNames,
+            verifyClientCertificateChain: identityTlsCertAuth.verifyClientCertificateChain,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -263,7 +315,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
         });
 
-      return { identityTlsCertAuth };
+      return { identityTlsCertAuth: tlsCertAuthResponse };
     }
   });
 
@@ -296,10 +348,18 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .refine(validateCaCertificate, "Invalid CA Certificate.")
             .optional()
             .describe(TLS_CERT_AUTH.UPDATE.caCertificate),
+          verifyClientCertificateChain: z
+            .boolean()
+            .optional()
+            .describe(TLS_CERT_AUTH.UPDATE.verifyClientCertificateChain),
           allowedCommonNames: validateCommonNames
             .optional()
             .nullable()
             .describe(TLS_CERT_AUTH.UPDATE.allowedCommonNames),
+          allowedSubjectAltNames: validateSubjectAltNames
+            .optional()
+            .nullable()
+            .describe(TLS_CERT_AUTH.UPDATE.allowedSubjectAltNames),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -335,7 +395,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          identityTlsCertAuth: IdentityTlsCertAuthsSchema
+          identityTlsCertAuth: IdentityTlsCertAuthResponseSchema
         })
       }
     },
@@ -346,8 +406,11 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
+
+      const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -357,6 +420,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           metadata: {
             identityId: identityTlsCertAuth.identityId,
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
+            allowedSubjectAltNames: tlsCertAuthResponse.allowedSubjectAltNames,
+            verifyClientCertificateChain: identityTlsCertAuth.verifyClientCertificateChain,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -380,7 +445,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
         });
 
-      return { identityTlsCertAuth };
+      return { identityTlsCertAuth: tlsCertAuthResponse };
     }
   });
 
@@ -390,7 +455,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getTlsCertAuth",
@@ -406,7 +471,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          identityTlsCertAuth: IdentityTlsCertAuthsSchema.extend({
+          identityTlsCertAuth: IdentityTlsCertAuthResponseSchema.extend({
             caCertificate: z.string()
           })
         })
@@ -421,6 +486,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorAuthMethod: req.permission.authMethod
       });
 
+      const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
@@ -431,7 +498,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           }
         }
       });
-      return { identityTlsCertAuth };
+      return { identityTlsCertAuth: tlsCertAuthResponse };
     }
   });
 
@@ -457,7 +524,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          identityTlsCertAuth: IdentityTlsCertAuthsSchema
+          identityTlsCertAuth: IdentityTlsCertAuthResponseSchema
         })
       }
     },
@@ -467,8 +534,11 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
+
+      const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -496,7 +566,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
           logger.error(error, `Failed to send telemetry event [identityId=${identityTlsCertAuth.identityId}]`);
         });
 
-      return { identityTlsCertAuth };
+      return { identityTlsCertAuth: tlsCertAuthResponse };
     }
   });
 };

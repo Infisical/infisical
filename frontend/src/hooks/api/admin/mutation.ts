@@ -11,7 +11,10 @@ import {
   RootKeyEncryptionStrategy,
   TAdminCreateEmailDomainDTO,
   TCreateAdminUserDTO,
+  TCreatedEncryptionKeyRotation,
   TCreateOrganizationDTO,
+  TDeleteExpiringEncryptionKeyDTO,
+  TDeleteStagedEncryptionKeyDTO,
   TInvalidateCacheDTO,
   TResendOrgInviteDTO,
   TServerConfig,
@@ -37,10 +40,13 @@ export const useCreateAdminUser = () => {
   });
 };
 
-export const useUpdateServerConfig = () => {
+export const useUpdateServerConfig = ({
+  handledErrorCodes
+}: { handledErrorCodes?: string[] } = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<TServerConfig, object, TUpdateServerConfigDTO>({
+    meta: handledErrorCodes?.length ? { handledErrorCodes } : undefined,
     mutationFn: async (opt) => {
       const { data } = await apiRequest.patch<{ config: TServerConfig }>(
         "/api/v1/admin/config",
@@ -184,6 +190,51 @@ export const useUpdateServerEncryptionStrategy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
+    }
+  });
+};
+
+export const useCreateEncryptionKeyRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ replaceStaged }: { replaceStaged?: boolean } = {}) => {
+      const { data } = await apiRequest.post<{ rotation: TCreatedEncryptionKeyRotation }>(
+        "/api/v1/admin/encryption/root-key/rotations",
+        { replaceStaged: Boolean(replaceStaged) }
+      );
+
+      return data.rotation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionRootKey() });
+    }
+  });
+};
+
+export const useDeleteStagedEncryptionKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ label }: TDeleteStagedEncryptionKeyDTO) => {
+      await apiRequest.delete("/api/v1/admin/encryption/root-key/staged", { data: { label } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionRootKey() });
+    }
+  });
+};
+
+export const useDeleteExpiringEncryptionKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ label, force }: TDeleteExpiringEncryptionKeyDTO) => {
+      await apiRequest.delete("/api/v1/admin/encryption/root-key/expiring", {
+        data: { label, force: Boolean(force) }
+      });
+    },
+    // Removing the expiring key retires its history row, so the rotations table is stale too.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionRootKey() });
+      queryClient.invalidateQueries({ queryKey: ["server-encryption-key-rotations"] });
     }
   });
 };

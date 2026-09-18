@@ -7,36 +7,52 @@ Infisical Relay is a secure routing layer that allows Infisical to connect to yo
 The relay acts as an intermediary, forwarding encrypted traffic between Infisical and your deployed gateways. This ensures that your sensitive data remains protected and never leaves your network unencrypted.
 With this architecture, you can achieve secure, firewall-friendly access across network boundaries, making it possible for Infisical to interact with resources even in highly restricted environments.
 
-Before diving in, it's important to determine whether you actually need to deploy your own relay server or if you can use Infisical's managed infrastructure.
+Before diving in, work out whether you need a relay at all, and if you do, whether you can use Infisical's managed infrastructure.
 
-## Do You Need to Deploy a Relay?
+## Do you need a relay at all?
 
-Not all users need to deploy their own relay servers. Infisical provides managed relay infrastructure in US/EU regions for Infisical Cloud users, which requires no setup or maintenance. You only need to deploy a relay if you:
+If you self-host Infisical and it can reach your gateway host at a stable address, you can skip relays entirely. Deploy the gateway in [direct listen mode](/documentation/platform/gateways/gateway-deployment#choose-a-connection-mode) instead, and Infisical connects to it.
+
+A relay is what you need when:
+
+- The gateway sits behind NAT or a firewall you can't open for inbound connections
+- You're on Infisical Cloud, which runs outside your network and has no route into it, so a gateway there can't be dialed
+- PAM CLI users connect from outside the gateway's network, since the CLI dials the gateway from their own machine
+
+A gateway can also run both. See [Running both modes](/documentation/platform/gateways/gateway-deployment#running-both-modes).
+
+## Do you need to deploy your own relay?
+
+Infisical provides managed relay infrastructure in US/EU regions for Infisical Cloud users, which requires no setup or maintenance. You only need to deploy your own relay if you:
 
 - Are self-hosting Infisical
 - Have a dedicated enterprise instance of Infisical (managed by Infisical)
 - Require closer geographic proximity to target resources than managed relays provide for lower latency and reduced network congestion when accessing resources through the relay
 - Need full control over relay infrastructure and traffic routing
 
-If you are using Infisical Cloud and do not have specific requirements, you can use the managed relays provided by Infisical and skip the rest of this guide.
+If you're using Infisical Cloud and don't have specific requirements, you can use the managed relays provided by Infisical and skip the rest of this guide.
 
-## Deployment Steps
+## Host requirements
+
+Relays forward traffic between Infisical and your gateways. Each relay requires a minimum of 2 vCPUs and 1 GB of memory, and relays under heavier throughput require additional resources.
+
+## Deployment steps
 
 To successfully deploy an Infisical Relay for use, follow these steps in order.
 
 <Steps>
    <Step title="Provision a Server">
-    Provision a server or virtual machine where you plan to deploy the relay. This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
+    Provision a server or virtual machine where you plan to deploy the relay, sized as described in [Host requirements](#host-requirements). This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
    </Step>
 
    <Step title="Create the Relay in the UI">
     1. Navigate to **Organization Settings > Networking > Relays**.
-    2. Click **Create Relay**.
+    2. Select **Create Relay**.
     3. Enter a name and host address (the static IP or DNS name of the server from Step 1).
-    4. (Optional) Open the new relay's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
+    4. (Optional) Open the new relay's detail page and select the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the relay.
         - **AWS**: the relay authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
-    5. Click **Show deploy command** and copy the generated CLI command.
+    5. Select **Show deploy command** and copy the generated CLI command.
    </Step>
 
    <Step title="Install the Infisical CLI">
@@ -71,12 +87,11 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
         <Tabs>
           <Tab title="Linux (Production)">
             ```bash
-            sudo infisical relay systemd install \
-              --name=<relay-name> \
+            sudo infisical relay systemd install <relay-name> \
               --enroll-method=token \
               --token=<enrollment-token> \
               --domain=<your-infisical-domain>
-            sudo systemctl start infisical-relay
+            sudo systemctl start <relay-name>
             ```
           </Tab>
           <Tab title="Foreground">
@@ -96,12 +111,11 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
         <Tabs>
           <Tab title="Linux (Production)">
             ```bash
-            sudo infisical relay systemd install \
-              --name=<relay-name> \
+            sudo infisical relay systemd install <relay-name> \
               --enroll-method=aws \
               --relay-id=<relay-id> \
               --domain=<your-infisical-domain>
-            sudo systemctl start infisical-relay
+            sudo systemctl start <relay-name>
             ```
           </Tab>
           <Tab title="Foreground">
@@ -134,17 +148,17 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
    <Step title="Verify Your Relay Deployment">
     After deployment, verify your relay is working:
     1. **Check logs** for "Relay server started successfully" message.
-    2. **Verify registration** in the Infisical UI. Navigate to **Networking > Relays** and click on your relay to confirm it shows a "Healthy" status.
+    2. **Verify registration** in the Infisical UI. Navigate to **Networking > Relays** and select your relay to confirm it shows a "Healthy" status.
     3. **Test connectivity** by deploying a gateway that routes through this relay.
    </Step>
 
 </Steps>
 
-## Frequently Asked Questions
+## Frequently asked questions
 
 <AccordionGroup>
 <Accordion title="Can the relay servers decrypt traffic going through them?">
-No, relay servers cannot decrypt any traffic passing through them due to end-to-end encryption:
+No, relay servers can't decrypt any traffic passing through them due to end-to-end encryption:
 
 - **Client-to-Gateway mTLS (via TLS-pinned tunnel)**: Clients connect via a proxy that establishes a TLS-pinned tunnel to the gateway; mTLS between the client and gateway is negotiated inside this tunnel, encrypting all application traffic
 - **SSH tunnel encryption**: The mTLS-encrypted traffic is then transmitted through SSH reverse tunnels to relay servers
@@ -172,7 +186,7 @@ Organization-deployed relays give you complete control over your secure communic
 <Accordion title="How do I troubleshoot connectivity issues?">
 For detailed troubleshooting:
 
-**Platform cannot connect to relay:**
+**Platform can't connect to relay:**
 
 - Check firewall rules allow inbound TCP with TLS on port 8443
 - Test connectivity: `openssl s_client -connect <relay-ip>:8443`
@@ -191,8 +205,9 @@ openssl s_client -connect <relay-ip>:8443
 <Accordion title="What happens if my relay server goes down?">
 Relay server outages affect gateway connectivity:
 
-- **Gateway reconnection**: Gateways will automatically attempt to reconnect when the relay comes back online
-- **Service interruption**: While the relay is down, the Infisical platform cannot reach gateways through that relay. As a result, any secrets or resources accessed via those gateways will be temporarily unavailable until connectivity is restored.
+- **Automatic failover**: Gateways configured with automatic relay selection will switch to a different healthy relay if the current one becomes unreachable
+- **Gateway reconnection**: Gateways connected to a specific relay will automatically attempt to reconnect when the relay comes back online
+- **Service interruption**: While the relay is down, the Infisical platform can't reach gateways through that relay. As a result, any secrets or resources accessed via those gateways will be temporarily unavailable until connectivity is restored.
 - **Multiple relays**: Deploy multiple relay servers for redundancy and high availability
 - **Automatic restart**: Use systemd or container orchestration to automatically restart failed relay services
 

@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import { cva, type VariantProps } from "cva";
 import { AlertCircle, Check } from "lucide-react";
@@ -93,7 +91,7 @@ const indicatorVariants = cva(
       status: {
         complete: "border-success bg-success/10 text-success",
         current: "border-warning bg-warning/10 text-warning ring-3 ring-warning/20",
-        pending: "border-border bg-mineshaft-800 text-muted",
+        pending: "border-border bg-surface-raised text-muted",
         error: "border-danger bg-danger/10 text-danger"
       }
     },

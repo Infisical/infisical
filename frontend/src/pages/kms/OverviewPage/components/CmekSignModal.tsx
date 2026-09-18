@@ -74,9 +74,8 @@ const SignForm = ({ cmek }: FormProps) => {
   };
 
   const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA"))
-      return (a as string) === (cmek.encryptionAlgorithm as string);
-    if (cmek?.encryptionAlgorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
+    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
     return a.toLowerCase().startsWith("ecdsa");
   });
 
@@ -124,7 +123,7 @@ const SignForm = ({ cmek }: FormProps) => {
                 <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
                   Data is Base64 encoded{" "}
                   <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                   </Tooltip>
                 </Switch>
               )}

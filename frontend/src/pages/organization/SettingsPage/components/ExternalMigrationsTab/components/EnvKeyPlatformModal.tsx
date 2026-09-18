@@ -99,7 +99,7 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
       <div className="flex items-center gap-2 pt-2">
         <Button
           type="submit"
-          variant="project"
+          variant="org"
           isPending={isLoading || isSubmitting}
           isDisabled={!isDirty || isSubmitting || isLoading || !isValid}
         >

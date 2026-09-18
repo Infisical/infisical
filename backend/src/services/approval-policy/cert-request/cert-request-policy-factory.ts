@@ -45,7 +45,7 @@ export const certRequestPolicyFactory: TApprovalResourceFactory<
   };
 
   const canAccess: TApprovalRequestFactoryCanAccess<TCertRequestPolicyInputs> = async () => {
-    return false;
+    return null;
   };
 
   const validateConstraints: TApprovalRequestFactoryValidateConstraints<

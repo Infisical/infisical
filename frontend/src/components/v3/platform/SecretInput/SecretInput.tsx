@@ -1,12 +1,12 @@
 /* eslint-disable react/no-danger */
 import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
 
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useToggle } from "@app/hooks";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { cn } from "../../utils";
 
-const REGEX = /(\${([a-zA-Z0-9-_. ]+)})/g;
+const REGEX = /(\${([@a-zA-Z0-9-_. ]+)})/g;
 
 const syntaxHighlight = (
   content?: string | null,
@@ -37,42 +37,44 @@ const syntaxHighlight = (
       const part = el;
       const innerContent = el.slice(2, -1);
       const parts = innerContent.split(".");
+      const isCrossProjectRef = parts[0]?.startsWith("@");
 
       return (
-        <span className="ph-no-capture relative z-10 text-yellow" key={`secret-value-${i + 1}`}>
+        <span className="ph-no-capture relative z-10 text-secret" key={`secret-value-${i + 1}`}>
           &#36;&#123;
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
             const isHovered = hoveredPart === segmentKey;
-            const shouldShowHoverStyle = isHovered && isCmdOrCtrlPressed;
+            const isInteractive = isCmdOrCtrlPressed && !isCrossProjectRef;
+            const shouldShowHoverStyle = isHovered && isInteractive;
 
             return (
               <span key={segmentKey}>
                 <span
                   role="button"
-                  tabIndex={isCmdOrCtrlPressed ? 0 : -1}
+                  tabIndex={isInteractive ? 0 : -1}
                   className={cn(
-                    "ph-no-capture text-yellow-200/80",
-                    isCmdOrCtrlPressed ? "pointer-events-auto" : "pointer-events-none",
-                    shouldShowHoverStyle && "cursor-pointer underline decoration-yellow-400"
+                    "ph-no-capture text-secret/80",
+                    isInteractive ? "pointer-events-auto" : "pointer-events-none",
+                    shouldShowHoverStyle && "cursor-pointer underline decoration-secret"
                   )}
                   onMouseEnter={() => onHoverPart?.(segmentKey)}
                   onMouseLeave={() => onHoverPart?.("")}
                   onMouseDown={(e) => {
-                    if (isCmdOrCtrlPressed) {
+                    if (isInteractive) {
                       e.preventDefault();
                       e.stopPropagation();
                     }
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isCmdOrCtrlPressed) {
+                    if (isInteractive) {
                       e.preventDefault();
                       onClickSegment?.(segment, parts);
                     }
                   }}
                   onKeyDown={(e) => {
-                    if (isCmdOrCtrlPressed && (e.key === "Enter" || e.key === " ")) {
+                    if (isInteractive && (e.key === "Enter" || e.key === " ")) {
                       e.preventDefault();
                       e.stopPropagation();
                       onClickSegment?.(segment, parts);
@@ -82,7 +84,7 @@ const syntaxHighlight = (
                   {segment}
                 </span>
                 {segmentIndex < parts.length - 1 && (
-                  <span className="ph-no-capture pointer-events-none text-yellow-200/80">.</span>
+                  <span className="ph-no-capture pointer-events-none text-secret/80">.</span>
                 )}
               </span>
             );
@@ -105,8 +107,11 @@ const syntaxHighlight = (
   );
 };
 
+export type SecretInputVariant = "default" | "plain";
+
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
+  variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
   isImport?: boolean;
@@ -116,16 +121,18 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
+  isError?: boolean;
   onClickSegment?: (segment: string, allSegments: string[]) => void;
 };
 
 const commonClassName =
-  "text-sm leading-[1.45rem] caret-white border-none outline-hidden w-full break-all";
+  "w-full border-none text-sm leading-5 break-all caret-foreground outline-hidden";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
       value,
+      variant = "default",
       isVisible,
       isImport,
       valueAlwaysHidden,
@@ -137,6 +144,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       canEditButNotView,
       isLoadingValue,
       isErrorLoadingValue,
+      isError,
       onClickSegment,
       placeholder,
       ...props
@@ -175,27 +183,39 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       };
     }, []);
 
+    const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
+    const shouldBindRealValue = isVisible || isSecretFocused;
+    const shouldShowMask =
+      !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
+
     return (
       <div
+        data-slot="secret-input"
+        data-variant={variant}
+        data-invalid={isError}
         className={cn(
-          "no-scrollbar min-h-9 w-full overflow-auto rounded-md border border-border bg-transparent transition-[color,box-shadow]",
-          "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+          "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
+          variant === "default" &&
+            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
-        <div className="relative overflow-hidden px-3 pt-[6px] pb-[4px]">
+        <div
+          className={cn("relative w-full overflow-hidden", variant === "default" && "px-2.5 py-1")}
+        >
           <div
             aria-hidden
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
-              !value && "text-muted"
+              !value && "text-muted",
+              shouldShowMask && "tracking-normal"
             )}
           >
             {syntaxHighlight(
               value,
-              isVisible || (isSecretFocused && !valueAlwaysHidden),
+              shouldRevealValue,
               isImport,
               isLoadingValue,
               isErrorLoadingValue,
@@ -214,7 +234,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             aria-label="secret value"
             ref={ref}
             className={cn(
-              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent px-3 py-1 text-transparent focus:border-0",
+              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
+              variant === "default" && "px-2.5 py-1",
               commonClassName
             )}
             onFocus={(evt) => {
@@ -239,8 +260,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onMouseLeave={() => {
               setHoveredPart(undefined);
             }}
-            value={value || ""}
+            value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
+            aria-invalid={isError || props["aria-invalid"]}
             readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>

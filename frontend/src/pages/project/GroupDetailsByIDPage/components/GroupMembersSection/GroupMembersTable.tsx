@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ChevronDownIcon, FilterIcon, HardDriveIcon, UserIcon } from "lucide-react";
+import { ChevronDownIcon, FilterIcon, HardDriveIcon, SearchIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal, Lottie } from "@app/components/v2";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -16,23 +15,26 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
   TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
+import { useProject } from "@app/context";
+import { supportsAssumePrivileges } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useAssumeProjectPrivileges } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
@@ -52,6 +54,8 @@ type Props = {
 
 export const GroupMembersTable = ({ groupMembership }: Props) => {
   const navigate = useNavigate();
+  const { currentProject } = useProject();
+  const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
   const {
     search,
     setSearch,
@@ -91,9 +95,6 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     setUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
-
   const { data: groupMemberships, isPending } = useListGroupMembers({
     id: groupMembership.group.id,
     groupSlug: groupMembership.group.slug,
@@ -115,38 +116,6 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     setPage
   });
 
-  const assumePrivileges = useAssumeProjectPrivileges();
-
-  const handleAssumePrivileges = async () => {
-    const { actorId, actorType } = popUp?.assumePrivileges?.data as {
-      actorId: string;
-      actorType: ActorType;
-    };
-    assumePrivileges.mutate(
-      {
-        actorId,
-        actorType,
-        projectId: currentProject.id
-      },
-      {
-        onSuccess: () => {
-          createNotification({
-            type: "success",
-            text:
-              actorType === ActorType.IDENTITY
-                ? "Machine identity privilege assumption has started"
-                : "User privilege assumption has started"
-          });
-
-          const url = getProjectHomePage(currentProject.type, currentProject.environments);
-          window.location.assign(
-            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
-          );
-        }
-      }
-    );
-  };
-
   const filterOptions = [
     {
       icon: <UserIcon size={16} />,
@@ -160,27 +129,26 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     }
   ];
 
-  if (isPending) {
-    return (
-      // scott: todo proper loader
-      <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="mb-5 flex gap-2.5">
-        {/* TODO(scott): add input group with icon once component added */}
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search group members..."
-        />
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search group members..."
+            aria-label="Search group members"
+          />
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton variant={memberTypeFilter.length ? "project" : "outline"}>
+            <IconButton
+              variant={memberTypeFilter.length ? "project" : "outline"}
+              aria-label="Filter group members"
+            >
               <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
@@ -201,18 +169,25 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                   setPage(1);
                 }}
               >
+                {option.icon}
                 {option.label}
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {members.length > 0 ? (
+      {isPending || members.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-5" />
-              <TableHead className="w-1/2" onClick={toggleOrderDirection}>
+              <TableHead className="w-5">
+                <span className="sr-only">Member Type</span>
+              </TableHead>
+              <TableHead
+                className="w-1/2"
+                aria-sort={orderDirection === OrderByDirection.ASC ? "ascending" : "descending"}
+                onClick={toggleOrderDirection}
+              >
                 Name
                 <ChevronDownIcon
                   className={twMerge(
@@ -222,35 +197,60 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                 />
               </TableHead>
               <TableHead>Joined Group</TableHead>
-              <TableHead className="w-5" />
+              {canAssumePrivileges && (
+                <TableHead className="w-5">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groupMemberships?.members?.map((userGroupMembership) => {
-              return userGroupMembership.type === GroupMemberType.USER ? (
-                <GroupMembershipUserRow
-                  key={`user-group-membership-${userGroupMembership.id}`}
-                  user={userGroupMembership}
-                  onAssumePrivileges={(userId) =>
-                    handlePopUpOpen("assumePrivileges", {
-                      actorId: userId,
-                      actorType: ActorType.USER
-                    })
-                  }
-                />
-              ) : (
-                <GroupMembershipIdentityRow
-                  key={`identity-group-membership-${userGroupMembership.id}`}
-                  identity={userGroupMembership}
-                  onAssumePrivileges={(identityId) =>
-                    handlePopUpOpen("assumePrivileges", {
-                      actorId: identityId,
-                      actorType: ActorType.IDENTITY
-                    })
-                  }
-                />
-              );
-            })}
+            {isPending
+              ? Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={`member-skeleton-${index + 1}`}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    {canAssumePrivileges && (
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              : groupMemberships?.members?.map((userGroupMembership) => {
+                  return userGroupMembership.type === GroupMemberType.USER ? (
+                    <GroupMembershipUserRow
+                      key={`user-group-membership-${userGroupMembership.id}`}
+                      user={userGroupMembership}
+                      canAssumePrivileges={canAssumePrivileges}
+                      onAssumePrivileges={(userId) =>
+                        handlePopUpOpen("assumePrivileges", {
+                          actorId: userId,
+                          actorType: ActorType.USER
+                        })
+                      }
+                    />
+                  ) : (
+                    <GroupMembershipIdentityRow
+                      key={`identity-group-membership-${userGroupMembership.id}`}
+                      identity={userGroupMembership}
+                      canAssumePrivileges={canAssumePrivileges}
+                      onAssumePrivileges={(identityId) =>
+                        handlePopUpOpen("assumePrivileges", {
+                          actorId: identityId,
+                          actorType: ActorType.IDENTITY
+                        })
+                      }
+                    />
+                  );
+                })}
           </TableBody>
         </Table>
       ) : (
@@ -258,18 +258,18 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
           <EmptyHeader>
             <EmptyTitle>
               {isFiltered
-                ? "No group members match this search"
+                ? "No group members match your filters"
                 : "This group doesn't have any members"}
             </EmptyTitle>
             <EmptyDescription>
               {isFiltered
-                ? "Adjust search filters to view group members."
+                ? "Adjust your search or filters to view group members."
                 : "Assign members from organization access control or contact an organization admin."}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}
-      {Boolean(totalCount) && (
+      {!isPending && Boolean(totalCount) && (
         <Pagination
           count={totalCount}
           page={page}
@@ -278,14 +278,11 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
           onChangePerPage={handlePerPageChange}
         />
       )}
-      <ConfirmActionModal
+      <AssumePrivilegesDialog
         isOpen={popUp.assumePrivileges.isOpen}
-        confirmKey="assume"
-        title={`Do you want to assume privileges of this ${popUp.assumePrivileges?.data?.actorType === ActorType.IDENTITY ? "machine identity" : "user"}?`}
-        subTitle={`This will set your privileges to those of the ${popUp.assumePrivileges?.data?.actorType === ActorType.IDENTITY ? "machine identity" : "user"} for the next hour.`}
-        onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
-        onConfirmed={handleAssumePrivileges}
-        buttonText="Confirm"
+        onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
+        actorType={(popUp.assumePrivileges.data as { actorType: ActorType })?.actorType}
+        actorId={(popUp.assumePrivileges.data as { actorId: string })?.actorId}
       />
     </>
   );

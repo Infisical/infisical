@@ -24,6 +24,11 @@ import {
   SanitizedSplunkProviderSchema,
   UpdateSplunkProviderLogStreamSchema
 } from "@app/ee/services/audit-log-stream/splunk/splunk-provider-schemas";
+import {
+  CreateSumoLogicProviderLogStreamSchema,
+  SanitizedSumoLogicProviderSchema,
+  UpdateSumoLogicProviderLogStreamSchema
+} from "@app/ee/services/audit-log-stream/sumo-logic/sumo-logic-provider-schemas";
 
 import { registerAuditLogStreamEndpoints } from "./audit-log-stream-endpoints";
 
@@ -74,6 +79,15 @@ export const AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP: Record<LogProvider, (server: 
         sanitizedResponseSchema: SanitizedCriblProviderSchema,
         createSchema: CreateCriblProviderLogStreamSchema,
         updateSchema: UpdateCriblProviderLogStreamSchema
+      });
+    },
+    [LogProvider.SumoLogic]: async (server: FastifyZodProvider) => {
+      registerAuditLogStreamEndpoints({
+        server,
+        provider: LogProvider.SumoLogic,
+        sanitizedResponseSchema: SanitizedSumoLogicProviderSchema,
+        createSchema: CreateSumoLogicProviderLogStreamSchema,
+        updateSchema: UpdateSumoLogicProviderLogStreamSchema
       });
     }
   };

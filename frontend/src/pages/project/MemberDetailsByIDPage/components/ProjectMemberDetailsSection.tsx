@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { CheckIcon, ClipboardListIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -12,7 +11,10 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -59,18 +61,23 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             <DetailLabel>ID</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               {membership.user.id}
-              <Tooltip content="Copy user ID to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(userId);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label={isCopyingId ? "User ID copied" : "Copy user ID to clipboard"}
+                    onClick={() => {
+                      navigator.clipboard.writeText(userId);
+                      setCopyTextId("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isCopyingId ? "User ID copied" : "Copy user ID to clipboard"}
+                </TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -78,18 +85,25 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             <DetailLabel>Email</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               {email}
-              <Tooltip content="Copy user email to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(email);
-                    setCopyEmail("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
-                  {isCopyingEmail ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label={
+                      isCopyingEmail ? "User email copied" : "Copy user email to clipboard"
+                    }
+                    onClick={() => {
+                      navigator.clipboard.writeText(email);
+                      setCopyEmail("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    {isCopyingEmail ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isCopyingEmail ? "User email copied" : "Copy user email to clipboard"}
+                </TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>

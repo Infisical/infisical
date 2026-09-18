@@ -256,7 +256,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getMachineIdentityById",
@@ -315,7 +315,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listMachineIdentities",
@@ -366,7 +366,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "searchMachineIdentities",
@@ -435,7 +435,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               description: true
             }).optional(),
             identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
-              authMethods: z.array(z.string())
+              authMethods: z.array(z.string()),
+              activeLockoutAuthMethods: z.array(z.string())
             })
           }).array(),
           totalCount: z.number()
@@ -466,7 +467,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getMachineIdentityMemberships",
       description: "List project memberships that machine identity with id is part of",

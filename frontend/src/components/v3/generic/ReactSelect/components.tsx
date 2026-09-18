@@ -3,6 +3,7 @@ import {
   components,
   DropdownIndicatorProps,
   GroupProps,
+  MenuListProps,
   MultiValueRemoveProps,
   OptionProps
 } from "react-select";
@@ -33,7 +34,7 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
   <components.Option isSelected={isSelected} {...props}>
     <div className="flex cursor-pointer flex-row items-center justify-between">
       <p className="truncate">{children}</p>
-      {isSelected && <CheckIcon className="ml-2 size-4" />}
+      {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
     </div>
   </components.Option>
 );
@@ -41,3 +42,10 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
 export const Group = <T,>(props: GroupProps<T>) => {
   return <components.Group {...props} />;
 };
+
+export const MenuList = <T,>({ innerProps, ...props }: MenuListProps<T>) => (
+  <components.MenuList
+    {...props}
+    innerProps={{ ...innerProps, onWheel: (event) => event.stopPropagation() }}
+  />
+);

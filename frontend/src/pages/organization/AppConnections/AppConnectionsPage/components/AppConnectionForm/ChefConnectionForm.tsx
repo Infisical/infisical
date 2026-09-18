@@ -1,20 +1,32 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { ChefConnectionMethod, TChefConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -50,68 +62,125 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Chef,
-      method: ChefConnectionMethod.UserKey
+      method: ChefConnectionMethod.UserKey,
+      gatewayId: null,
+      gatewayPoolId: null
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control, setValue, watch } = form;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
 
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.AttachGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          {(isAllowed) => (
+            <Field className="mb-4">
+              <FieldLabel>Gateway</FieldLabel>
+              {isAllowed ? (
+                <GatewayPicker
+                  isDisabled={!isAllowed}
+                  value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                  onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                    setValue("gatewayId", newGwId, { shouldDirty: true });
+                    setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                  }}
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GatewayPicker
+                        isDisabled={!isAllowed}
+                        value={{
+                          gatewayId: gatewayId ?? null,
+                          gatewayPoolId: gatewayPoolId ?? null
+                        }}
+                        onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                          setValue("gatewayId", newGwId, { shouldDirty: true });
+                          setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Restricted access. You don&apos;t have permission to attach gateways to
+                    resources.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </Field>
+          )}
+        </OrgPermissionCan>
         <Controller
           name="credentials.serverUrl"
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Chef Server URL (optional)"
-              tooltipText="Will default to Chef Cloud if not specified."
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="server-url">
+                Chef Server URL (optional)
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Will default to Chef Cloud if not specified.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
+                id="server-url"
                 placeholder="https://api.chef.io"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.Chef].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(ChefConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.Chef].name}. This field cannot be changed
+                    after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(ChefConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}{" "}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -120,18 +189,17 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Organization Short Name"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="org-name">Organization Short Name</FieldLabel>
               <Input
-                className="border border-mineshaft-500 bg-mineshaft-900"
+                id="org-name"
                 placeholder="your-org"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -139,18 +207,17 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="User Name"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="user-name">User Name</FieldLabel>
               <Input
-                className="border border-mineshaft-500 bg-mineshaft-900"
+                id="user-name"
                 placeholder="your-username"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -158,37 +225,32 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Private Key"
-              tooltipText="Your Chef user's private key (.pem file)"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="private-key">
+                Private Key
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Your Chef user&apos;s private key (.pem file)
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <SecretInput
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                aria-describedby={error ? "private-key-error" : undefined}
+                id="private-key"
+                isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-            </FormControl>
+              <FieldError id="private-key-error" errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Chef"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Chef"}
+        />
       </form>
     </FormProvider>
   );

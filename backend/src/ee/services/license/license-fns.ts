@@ -1,10 +1,8 @@
-import axios, { AxiosError } from "axios";
+import { Knex } from "knex";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { LicenseType, TFeatureSet, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-types";
@@ -58,30 +56,28 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   tier: -1,
   workspaceLimit: null,
   workspacesUsed: 0,
+  dynamicSecret: false,
   memberLimit: null,
-  membersUsed: 0,
+  identityLimit: null,
+  subOrganization: false,
   environmentLimit: null,
   environmentsUsed: 0,
-  identityLimit: null,
-  identitiesUsed: 0,
-  dynamicSecret: false,
   secretVersioning: true,
   pitRecovery: false,
   ipAllowlisting: false,
   rbac: false,
-  githubOrgSync: false,
   customRateLimits: false,
-  subOrganization: false,
   customAlerts: false,
-  secretAccessInsights: false,
   auditLogs: false,
   auditLogsRetentionDays: 0,
   auditLogStreams: false,
   auditLogStreamLimit: 3,
+  githubOrgSync: false,
   samlSSO: false,
   enforceGoogleSSO: false,
   hsm: false,
   oidcSSO: false,
+  secretAccessInsights: false,
   scim: false,
   ldap: false,
   groups: false,
@@ -90,7 +86,6 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   has_used_trial: true,
   secretApproval: false,
   secretRotation: false,
-  caCrl: false,
   instanceUserManagement: false,
   externalKms: false,
   rateLimits: {
@@ -98,111 +93,79 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     writeLimit: 200,
     secretsLimit: 40
   },
-  pkiEst: false,
-  pkiAcme: true,
-  pkiScep: false,
-  pkiPqc: false,
   kmsPqc: false,
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
   gateway: false,
   gatewayPool: false,
-  sshHostGroups: false,
+  pamSlackNotifications: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,
-  enterpriseCertificateSyncs: false,
   enterpriseAppConnections: false,
+  machineIdentityAuthTemplates: false,
   fips: false,
   eventSubscriptions: false,
-  machineIdentityAuthTemplates: false,
-  pkiLegacyTemplates: false,
   secretShareExternalBranding: false,
   honeyTokens: false,
-  honeyTokenLimit: 0
+  honeyTokenLimit: 0,
+  secretsBrokering: true,
+  secretSyncLimit: null,
+  maxPamAccounts: null,
+  // PKI / Cert Manager
+  pkiAcme: true,
+  pkiEst: false,
+  pkiScep: false,
+  pkiPqc: false,
+  caCrl: true,
+  pkiEnterpriseCaIntegrations: false,
+  pkiExternalIntermediateCa: false,
+  pkiDiscovery: false,
+  pkiEnterpriseAlerting: false,
+  pkiApprovals: false,
+  pkiSyncs: false,
+  pkiLegacyTemplates: false,
+  pkiCodeSigning: false,
+  maxCas: 1,
+  maxInternalCas: null,
+  maxCertificates: null,
+  maxWildcardCertificates: null,
+  maxSansPerCertificate: null,
+  // product gating
+  pam: null,
+  certManager: null,
+  secretsTemporaryAccess: null,
+  enterprisePamAccount: null,
+  crossProjectSecretSharing: false,
+  secretsFolderRbac: false
 });
 
-export const setupLicenseRequestWithStore = (
-  baseURL: string,
-  refreshUrl: string,
-  licenseKey: string,
-  region?: string
-) => {
-  let token: string;
-  const licenseReq = axios.create({
-    baseURL,
-    timeout: 35 * 1000,
-    headers: {
-      "x-region": region
-    }
-  });
-
-  const refreshLicense = async () => {
-    const appCfg = getConfig();
-    const {
-      data: { token: authToken }
-    } = await request.post<{ token: string }>(
-      refreshUrl,
-      {},
-      {
-        baseURL: appCfg.LICENSE_SERVER_URL,
-        headers: {
-          "X-API-KEY": licenseKey
-        }
-      }
-    );
-    token = authToken;
-    return token;
-  };
-
-  licenseReq.interceptors.request.use(
-    (config) => {
-      if (token && config.headers) {
-        // eslint-disable-next-line no-param-reassign
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (err) => Promise.reject(err)
-  );
-
-  licenseReq.interceptors.response.use(
-    (response) => response,
-    async (err) => {
-      const originalRequest = (err as AxiosError).config;
-      const errStatusCode = Number((err as AxiosError)?.response?.status);
-      logger.error((err as AxiosError)?.response?.data, "License server call error");
-      // eslint-disable-next-line
-      if ((errStatusCode === 401 || errStatusCode === 403) && !(originalRequest as any)._retry) {
-        // eslint-disable-next-line
-        (originalRequest as any)._retry = true; // injected
-
-        // refresh
-        await refreshLicense();
-
-        licenseReq.defaults.headers.common.Authorization = `Bearer ${token}`;
-        return licenseReq(originalRequest!);
-      }
-
-      return Promise.reject(err);
-    }
-  );
-
-  return { request: licenseReq, refreshLicense };
+export const getEnforcedIdentityLimit = (plan: TFeatureSet): number | null => {
+  const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+  if (isEnterpriseBypass) return null;
+  return plan?.identityLimit ?? null;
 };
 
-export const throwOnPlanSeatLimitReached = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
-  orgId: string,
-  type?: UserAliasType
-) => {
-  const plan = await licenseService.getPlan(orgId);
-  const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+export const throwOnPlanSeatLimitReached = async ({
+  licenseService,
+  orgId,
+  identityLimit,
+  tx,
+  aliasType
+}: {
+  licenseService: Pick<TLicenseServiceFactory, "getOrgSeatUsage">;
+  orgId: string;
+  identityLimit: number | null;
+  tx: Knex;
+  aliasType?: UserAliasType;
+}) => {
+  if (!identityLimit) return;
 
-  if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+  const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
+  if (identitiesUsed >= identityLimit) {
     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
     throw new BadRequestError({
-      message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
+      message: `Failed to create new member${aliasType ? ` via ${aliasType.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
     });
   }
 };

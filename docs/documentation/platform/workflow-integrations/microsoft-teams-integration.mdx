@@ -1,5 +1,5 @@
 ---
-title: "Microsoft Teams Integration"
+title: "Microsoft Teams integration"
 description: "Learn how to setup the Microsoft Teams integration"
 ---
 
@@ -15,7 +15,7 @@ This guide will provide step by step instructions on how to configure Microsoft 
     <MicrosoftTeamsWorkflowIntegration />
   </Tab>
   <Tab title="Self-hosted setup">
-    ### Configure Azure Resources
+    ### Configure Azure resources
     To create a Microsoft Teams bot, you must first create an Azure Bot from the Azure Marketplace, an app registration, and a Microsoft Teams app. The steps below document in detail how to create and configure these resources.
 
     <Steps>
@@ -151,14 +151,17 @@ This guide will provide step by step instructions on how to configure Microsoft 
         </Step>
     </Steps>
 
-    ### Configure Microsoft Teams Bot in Infisical
+    ### Configure Microsoft Teams bot in Infisical
 
     After creating the Microsoft Teams App and Bot, you are ready to configure the Microsoft Teams integration in Infisical.
     Please note that you must be an instance admin in order to configure the Microsoft Teams instance-wide settings.
 
     <Steps>
-      <Step title="Navigate to the Integrations tab in your Server Admin Console settings">
+      <Step title="Open Integrations in the Server Console">
+        Select **Server Console**, then go to **Integrations**.
         ![server-admin-console-tab](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-server-admin-console-tab.png)
+
+        Expand **Microsoft Teams**.
         ![infisical-instance-configure-microsoft-teams](/images/platform/workflow-integrations/microsoft-teams-integration/infisical-instance-configure-microsoft-teams.png)
 
         Enter the values you saved from the earlier steps into the respective fields.
@@ -167,7 +170,7 @@ This guide will provide step by step instructions on how to configure Microsoft 
         - **Client Secret**: The Client Secret of the App Registration from the previous steps.
         - **Microsoft Teams App ID**: The App ID of the Microsoft Teams App from the previous steps.
 
-        Once completed, press the "Save" button to save your changes.
+        Once completed, select **Save**.
 
       </Step>
     </Steps>
@@ -186,7 +189,7 @@ This guide will provide step by step instructions on how to configure Microsoft 
   The workflow integration can get stuck on Pending if you created the workflow integration before the Infisical Microsoft Teams bot was installed in the tenant.
   To resolve this, make sure you have installed the Infisical Microsoft Teams app in your tenant.
 
-  You can manually recheck the installation status by pressing the "Check Installation Status" button in the workflow organization settings.
+  You can manually recheck the installation status by selecting **Check Installation Status** on the workflow integration in your organization.
 
   ![microsoft-teams-check-installation-status](/images/platform/workflow-integrations/microsoft-teams-integration/microsoft-teams-check-installation-status.png)
 </Accordion>

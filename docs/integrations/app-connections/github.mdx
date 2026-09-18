@@ -1,5 +1,6 @@
 ---
-title: "GitHub Connection"
+title: "GitHub connection"
+sidebarTitle: "GitHub"
 description: "Learn how to configure a GitHub Connection for Infisical."
 ---
 
@@ -15,7 +16,7 @@ Infisical supports three methods for connecting to GitHub.
 
             <Steps>
                 <Step title="Create an application on GitHub">
-                    Navigate to the GitHub app settings [here](https://github.com/settings/apps). Click **New GitHub App**.
+                    Navigate to the GitHub App settings [here](https://github.com/settings/apps). Click **New GitHub App**.
 
                     ![integrations github app create](/images/integrations/github/app/self-hosted-github-app-create.png)
 
@@ -35,7 +36,7 @@ Infisical supports three methods for connecting to GitHub.
                     Similarly, set the organization permissions as follows: Secrets: Read and write.
                     ![integrations github app organization](/images/integrations/github/app/self-hosted-github-app-organization.png)
 
-                    Create the Github application.
+                    Create the GitHub application.
                     ![integrations github app create confirm](/images/integrations/github/app/self-hosted-github-app-create-confirm.png)
 
                     <Note>
@@ -47,10 +48,10 @@ Infisical supports three methods for connecting to GitHub.
                     Generate a new **Client Secret** for your GitHub application.
                     ![integrations github app create secret](/images/integrations/github/app/self-hosted-github-app-secret.png)
 
-                    Generate a new **Private Key** for your Github application.
+                    Generate a new **Private Key** for your GitHub application.
                     ![integrations github app create private key](/images/integrations/github/app/self-hosted-github-app-private-key.png)
 
-                    Obtain the necessary Github application credentials. This would be the application slug, client ID, app ID, client secret, and private key.
+                    Obtain the necessary GitHub application credentials. This would be the application slug, client ID, app ID, client secret, and private key.
                     ![integrations github app credentials](/images/integrations/github/app/self-hosted-github-app-credentials.png)
 
                     Back in your Infisical instance, you can configure the GitHub App credentials in one of two ways:
@@ -75,13 +76,18 @@ Infisical supports three methods for connecting to GitHub.
                     - `INF_APP_CONNECTION_GITHUB_APP_SLUG`: The **Slug** of your GitHub application. This is the one found in the URL.
                     - `INF_APP_CONNECTION_GITHUB_APP_ID`: The **App ID** of your GitHub application.
                     - `INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY`: The **Private Key** of your GitHub application.
+                    - `INF_APP_CONNECTION_GITHUB_APP_HOST` *(GitHub Enterprise Server only)*: The hostname of the GitHub instance where the shared GitHub App is registered (e.g. `github.mycompany.com`). Only required when the shared app is registered on a GHES instance. Defaults to `github.com`.
+
+                    <Note>
+                        If your shared GitHub App is registered on a GitHub Enterprise Server instance, you must set `INF_APP_CONNECTION_GITHUB_APP_HOST` to that instance's hostname. Without it, the OAuth exchange will be directed to `github.com` instead of your GHES host.
+                    </Note>
 
                     Once configured, you can use the GitHub integration via app authentication. If you configured the credentials using environment variables, restart your Infisical instance for the changes to take effect. If you configured them through the server admin panel, allow approximately 5 minutes for the changes to propagate.
                 </Step>
             </Steps>
         </Accordion>
 
-        ## Setup GitHub Connection in Infisical
+        ## Setup GitHub connection in Infisical
 
         <Steps>
             <Step title="Navigate to App Connections">
@@ -93,23 +99,40 @@ Infisical supports three methods for connecting to GitHub.
                 ![Select GitHub Connection](/images/app-connections/github/select-github-connection.png)
             </Step>
             <Step title="Authorize Connection">
-                Select the **GitHub App** method and click **Connect to GitHub**.
+                Select the **GitHub App** method.
 
-                You may optionally configure GitHub Enterprise options:
-                - **Gateway:** The gateway connected to your private network
-                - **Hostname:** The hostname at which to access your GitHub Enterprise instance
+                Choose which GitHub App to use for the connection:
+                - **Instance** — the instance-default GitHub App configured by your Infisical server admin.
+                - **Private** — a GitHub App registered under your organization. Select an existing one from the list, or click the gear to manage your private apps.
 
-                ![Connect via GitHub App](/images/app-connections/github/create-github-app-method.png)
+                <Note>
+                    GitHub Apps are scoped to where they were created: apps created from the organization's App Connections page are available to organization-level connections and to every project, while apps created from a project's App Connections page are only available within that project. The shared instance-default app is available in both scopes.
+                </Note>
+
+                ![Select GitHub App](/images/app-connections/github/select-github-app.png)
+
+                When managing your apps, you can inspect them on GitHub, delete existing apps, or click **Create New GitHub App** to register a new app directly from Infisical using GitHub’s App Manifest flow. New apps are automatically configured with the required permissions and callback URLs.
+
+                ![Manage GitHub Apps](/images/app-connections/github/manage-github-app.png)
+
+                ![Create New GitHub App](/images/app-connections/github/create-new-github-app.png)
+
+                You may optionally enable **GitHub Enterprise** to configure enterprise-specific options:
+                - **Instance Type:** Enterprise Cloud or Enterprise Server
+                - **Instance Hostname:** The hostname of your GitHub Enterprise instance (e.g. `github.mycompany.com`)
+                - **Gateway:** The gateway connected to your private network (Enterprise Server only)
+
+                Click **Connect to GitHub** when ready.
+
             </Step>
             <Step title="Install GitHub App">
-                You will then be redirected to the GitHub app installation page.
+                You will then be redirected to the GitHub App installation page.
 
                 Install and authorize the GitHub application. This will redirect you back to Infisical's App Connections page.
                 ![Install GitHub App](/images/app-connections/github/install-github-app.png)
             </Step>
             <Step title="Connection Created">
                 Your **GitHub Connection** is now available for use.
-                ![Assume Role AWS Connection](/images/app-connections/github/github-app-connection.png)
             </Step>
         </Steps>
     </Tab>
@@ -152,7 +175,7 @@ Infisical supports three methods for connecting to GitHub.
             </Steps>
         </Accordion>
 
-        ## Setup GitHub Connection in Infisical
+        ## Setup GitHub connection in Infisical
 
         <Steps>
             <Step title="Navigate to App Connections">
@@ -181,7 +204,7 @@ Infisical supports three methods for connecting to GitHub.
     <Tab title="Personal Access Token">
         Infisical will use a Personal Access Token to connect to GitHub.
 
-        ## Create a Personal Access Token
+        ## Create a personal access token
             <Steps>
                 <Step title="Create a Personal Access Token in GitHub">
                     Navigate to your user Settings > Developer settings > Personal Access Tokens to create a new Personal Access Token.
@@ -217,7 +240,7 @@ Infisical supports three methods for connecting to GitHub.
                 </Step>
             </Steps>
 
-        ## Setup GitHub Connection in Infisical
+        ## Setup GitHub connection in Infisical
 
         <Steps>
             <Step title="Navigate to App Connections">

@@ -11,6 +11,7 @@ export type TInventoryViewFilters = {
   profileIds?: string[];
   applicationIds?: string[];
   source?: string | string[];
+  metadata?: Array<{ key: string; value?: string }>;
 };
 
 export type TCertificateInventoryView = {

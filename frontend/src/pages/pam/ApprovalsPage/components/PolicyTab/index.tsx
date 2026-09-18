@@ -1,1 +1,0 @@
-export { PolicyTab } from "./PolicyTab";

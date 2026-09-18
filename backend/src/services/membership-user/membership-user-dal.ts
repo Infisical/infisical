@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, AccessScopeData, MembershipsSchema, OrgMembershipRole, TableName } from "@app/db/schemas";
-import { BadRequestError, DatabaseError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
@@ -316,23 +316,15 @@ export const membershipUserDALFactory = (db: TDbClient) => {
   };
 
   const countActiveAdmins = async ({
-    scope,
     scopeOrgId,
-    scopeProjectId,
     excludeMembershipIds,
     tx
   }: {
-    scope: AccessScope;
     scopeOrgId: string;
-    scopeProjectId?: string;
     excludeMembershipIds?: string[];
     tx?: Knex;
   }): Promise<number> => {
     try {
-      if (scope === AccessScope.Project && !scopeProjectId) {
-        throw new InternalServerError({ message: "scopeProjectId required for project scope admin count" });
-      }
-
       // Always read from primary — this powers a safety guard against zero-admin state, so
       // replica lag cannot be tolerated.
       const query = (tx || db)(TableName.Membership)
@@ -341,12 +333,8 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.isActive`, true)
         .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
         .where(`${TableName.MembershipRole}.isTemporary`, false)
-        .where(`${TableName.Membership}.scope`, scope)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, scopeOrgId);
-
-      if (scope === AccessScope.Project) {
-        void query.where(`${TableName.Membership}.scopeProjectId`, scopeProjectId as string);
-      }
 
       if (excludeMembershipIds?.length) {
         void query.whereNotIn(`${TableName.Membership}.id`, excludeMembershipIds);

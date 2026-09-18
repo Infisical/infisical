@@ -9,7 +9,7 @@ By integrating [Infisical CLI](../../cli/overview) with Gradle, you can configur
 
 This documentation provides an overview of how to use Infisical with [Gradle](https://gradle.org/).
 
-## Basic Usage
+## Basic usage
 
 To run a Gradle task with Infisical, you can use the `run` command. The basic structure is:
 
@@ -36,9 +36,9 @@ infisical run -- gradle generateFile
 With this command, Infisical will automatically inject the environment variables associated with the current Infisical project into the Gradle process. 
 Your Gradle script can then access these variables using `System.getenv('VARIABLE_NAME')`.
 
-## More Examples
+## More examples
 
-### 1. Building a Project with a Specific Profile
+### 1. Building a project with a specific profile
 
 Assuming you have different build profiles (e.g., 'development', 'production'), you can use Infisical to switch between them:
 
@@ -54,7 +54,7 @@ if (System.getenv('PROFILE') == 'production') {
 }
 ```
 
-### 2. Running Tests with Different Database Configurations
+### 2. Running tests with different database configurations
 
 If you want to run tests against different database configurations:
 
@@ -70,7 +70,7 @@ test {
 }
 ```
 
-### 3. Generating Artifacts with Versioning
+### 3. Generating artifacts with versioning
 
 For automated CI/CD pipelines, you might want to inject a build number or version:
 
@@ -84,7 +84,7 @@ And in `build.gradle`:
 version = System.getenv('BUILD_NUMBER') ?: '1.0.0-SNAPSHOT'
 ```
 
-## Advantages of Using Infisical with Gradle
+## Advantages of using Infisical with Gradle
 
 1. **Flexibility**: Easily adapt your Gradle builds to different environments without modifying the build scripts or setting environment variables manually.
 2. **Reproducibility**: Ensure consistent builds by leveraging the environment variables from the related Infisical project.

@@ -44,7 +44,7 @@ const sanitizeLink = (link: string | null | undefined): string | null => {
 
 type TAnnouncementServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "ttl">;
 };
 
 export type TAnnouncementServiceFactory = ReturnType<typeof announcementServiceFactory>;

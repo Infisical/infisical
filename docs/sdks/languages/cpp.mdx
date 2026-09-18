@@ -1,6 +1,7 @@
 ---
 title: "Infisical C++ SDK"
 sidebarTitle: "C++"
+description: "Fetch and manage secrets in a C++ application with the official Infisical C++ SDK."
 icon: "/images/sdks/languages/cpp.svg"
 ---
 
@@ -12,7 +13,7 @@ The Infisical C++ SDK is compatible with C++ 17 capable compilers. This implies 
 ## Dependencies
 - `cURL`: Used internally for crafting HTTP requests.
 
-## CMake Installation
+## CMake installation
 
 ```bash
 cmake_minimum_required(VERSION 3.14)
@@ -44,7 +45,7 @@ target_link_libraries(my_app PRIVATE infisical OpenSSL::SSL OpenSSL::Crypto)
 target_include_directories(my_app PRIVATE ${infisical_SOURCE_DIR}/include)
 ```
 
-## Manual Installation
+## Manual installation
 If you're unable to use the recommended CMake installation approach, you can choose to manually build the library and use it in your project.
 
 ```bash
@@ -54,7 +55,7 @@ cmake ..
 make
 ```
 
-## Quick-Start Example
+## Quick-start example
 
 Below you'll find an example that uses the Infisical SDK to fetch a secret with the key `API_KEY` using [Machine Identity Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth)
 
@@ -94,7 +95,7 @@ int main() {
 }
 ```
 
-## JSON Serialization
+## JSON serialization
 The SDK uses [nlohmann/json](https://github.com/nlohmann/json) internally to serialize/deserialize JSON data. This SDK makes no assumptions about which JSON library you use in your project, and you aren't constrained to `nlohmann/json` in any way. Data returned by the SDK is returned as a class, which exposes Getter methods for getting fields such as the secret value or secret key.
 
 
@@ -103,7 +104,7 @@ The Infisical C++ SDK follows a builder pattern for all types of input. Below is
 
 Everything related to the Infisical SDK lives inside the `Infisical` namespace.
 
-### InfisicalClient Class
+### InfisicalClient class
 `InfisicalClient(Config &config)`
 
 ```cpp
@@ -119,7 +120,7 @@ Everything related to the Infisical SDK lives inside the `Infisical` namespace.
 
 Config is created through the `ConfigBuilder` class. See below for more details
 
-### Config Class
+### Config class
 
 `Config` defines the configuration of the Infisical Client itself, such as authentication.
 
@@ -139,7 +140,7 @@ Infisical::InfisicalClient client(config);
 - `withAuthentication(Infisical::Authentication)`: Configure the authentication that will be used by the SDK. See [Authentication Class](#authentication-class) for more details.
 - `build()`: Returns the `Config` object with the options you configured.
 
-### Authentication Class
+### Authentication class
 ```cpp
 Infisical::Authentication auth = Infisical::AuthenticationBuilder()
                                   .withUniversalAuth(clientId, clientSecret)
@@ -153,7 +154,7 @@ Infisical::Config config = Infisical::ConfigBuilder()
 - `withUniversalAuth(string, string)`: Specify the Universal Auth Client ID and Client Secret that will be used for authentication.
 - `build()`: Returns the `Authentication` object with the options you specified. 
 
-### TSecret Class
+### TSecret class
 The `TSecret` class is the class that's returned by all secret methods (get/list/delete/update/create). It can come in the form of a `std::vector` or a single instance. 
 
 **Available getter methods:**
@@ -173,7 +174,7 @@ The `TSecret` class is the class that's returned by all secret methods (get/list
 
 ### Secrets
 
-#### Create Secret
+#### Create secret
 ```cpp
 const auto createSecretOptions = Infisical::Input::CreateSecretOptionsBuilder()
                                   .withEnvironment("<env-slug>")
@@ -201,7 +202,7 @@ const auto secret = client.secrets().createSecret(createSecretOptions);
 **Returns**: 
 - Returns the created secret as a `TSecret` class. Read more in the [TSecret Class](#tsecret-class) documentation.
 
-#### Update Secret
+#### Update secret
 
 ```cpp
   const auto updateSecretOptions = Infisical::Input::UpdateSecretOptionsBuilder()
@@ -236,7 +237,7 @@ const auto updatedSecret = client.secrets().updateSecret(updateSecretOptions);
 **Returns**:
 - Returns the updated secret as a `TSecret` class. Read more in the [TSecret Class](#tsecret-class) documentation.
 
-#### Get Secret
+#### Get secret
 ```cpp
 const auto getSecretOptions = Infisical::Input::GetSecretOptionsBuilder()
                                 .withEnvironment("<env-slug>")
@@ -262,7 +263,7 @@ const auto secret = client.secrets().getSecret(getSecretOptions);
 **Returns**:
 - Returns the secret as a `TSecret` class. Read more in the [TSecret Class](#tsecret-class) documentation.
 
-#### Delete Secret
+#### Delete secret
 
 ```cpp
 const auto deleteSecretOptions = Infisical::Input::DeleteSecretOptionsBuilder()
@@ -288,7 +289,7 @@ const auto deletedSecret = client.secrets().deleteSecret(deleteSecretOptions);
 - Returns the deleted secret as a `TSecret` class. Read more in the [TSecret Class](#tsecret-class) documentation.
 
 
-#### List Secrets
+#### List secrets
 ```cpp
 const auto listSecretsOptions = Infisical::Input::ListSecretOptionsBuilder()
                                   .withProjectId(projectId)

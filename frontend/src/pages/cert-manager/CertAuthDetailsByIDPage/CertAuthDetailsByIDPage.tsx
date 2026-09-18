@@ -2,18 +2,19 @@ import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  PageHeader
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -24,11 +25,11 @@ import {
 } from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
-import { CaModal } from "../CertificateAuthoritiesPage/components/CaModal";
 import {
   CaCertDetailsSection,
   CaCertificatesSection,
@@ -36,6 +37,7 @@ import {
   CaDetailsSection,
   CaDistributionPointsSection,
   CaGenerateRootCertModal,
+  CaIssuerUrlSection,
   CaRenewalModal,
   CaSigningConfigSection
 } from "./components";
@@ -48,6 +50,14 @@ const Page = () => {
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
   });
   const { caId } = params as { caId: string };
+  const search = useSearch({
+    from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
+  }) as {
+    from?: "settings" | "profile";
+    profileId?: string;
+    profileFrom?: "settings" | "application";
+    profileApplicationName?: string;
+  };
   const { data } = useGetCa({
     caId,
     type: CaType.INTERNAL
@@ -55,10 +65,15 @@ const Page = () => {
 
   const projectId = currentProject?.id || "";
 
+  const cameFromProfile = search.from === "profile" && Boolean(search.profileId);
+
+  const { data: sourceProfile } = useGetCertificateProfileById({
+    profileId: cameFromProfile && search.profileId ? search.profileId : ""
+  });
+
   const { mutateAsync: deleteCa } = useDeleteCa();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "ca",
     "deleteCa",
     "installCaCert",
     "renewCa",
@@ -80,19 +95,19 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
+      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
       params: {
         orgId: currentOrg.id,
         projectId
-      },
-      search: { selectedTab: "certificate-authorities" }
+      }
     });
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionCertificateAuthorityActions.Read}
           a={subject(ProjectPermissionSub.CertificateAuthorities, {
             name: data.name
@@ -100,20 +115,38 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
-                  params={{
-                    orgId: currentOrg.id,
-                    projectId
-                  }}
-                  search={{ selectedTab: "certificate-authorities" }}
-                  className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                >
-                  <FontAwesomeIcon icon={faChevronLeft} />
-                  Certificate Authorities
-                </Link>
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
                 <PageHeader
+                  backLink={
+                    cameFromProfile && search.profileId ? (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId,
+                          profileId: search.profileId
+                        }}
+                        search={{
+                          from: search.profileFrom,
+                          applicationName: search.profileApplicationName
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        {sourceProfile?.slug || "Certificate Profile"}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        Certificate Authorities
+                      </Link>
+                    )
+                  }
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate authority"
                   title={data.name}
@@ -157,20 +190,16 @@ const Page = () => {
                       caName={data.name}
                       handlePopUpOpen={handlePopUpOpen}
                     />
+                    <CaIssuerUrlSection caId={data.id} />
                     <CaCrlsSection caId={data.id} />
                     <CaDistributionPointsSection caId={data.id} />
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}
-      <CaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaGenerateRootCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

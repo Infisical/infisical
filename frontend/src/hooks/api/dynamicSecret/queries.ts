@@ -7,6 +7,10 @@ import {
   TDetailsDynamicSecretDTO,
   TDynamicSecret,
   TGetDynamicSecretsByEnvsDTO,
+  TGetEntraIdUsersDTO,
+  TGetIbmApiConnectOrgAppsDTO,
+  TGetIbmApiConnectOrgCatalogsDTO,
+  TGetIbmApiConnectOrgsDTO,
   TListDynamicSecretDTO
 } from "./types";
 
@@ -20,7 +24,48 @@ export const dynamicSecretKeys = {
   details: ({ path, environmentSlug, projectSlug, name }: TDetailsDynamicSecretDTO) =>
     [{ projectSlug, path, environmentSlug, name }, "dynamic-secret-details"] as const,
   sshCaPublicKey: (dynamicSecretId: string) =>
-    [{ dynamicSecretId }, "dynamic-secret-ssh-ca-public-key"] as const
+    [{ dynamicSecretId }, "dynamic-secret-ssh-ca-public-key"] as const,
+  entraIdUsers: ({ projectSlug, tenantId, applicationId, clientSecret }: TGetEntraIdUsersDTO) =>
+    [
+      { projectSlug, tenantId, applicationId, clientSecret },
+      "dynamic-secret-entra-id-users"
+    ] as const,
+  ibmApiConnectOrgs: ({
+    projectSlug,
+    instanceUrl,
+    apiKey,
+    clientId,
+    clientSecret
+  }: TGetIbmApiConnectOrgsDTO) =>
+    [
+      { projectSlug, instanceUrl, apiKey, clientId, clientSecret },
+      "dynamic-secret-ibm-api-connect-orgs"
+    ] as const,
+  ibmApiConnectOrgCatalogs: ({
+    projectSlug,
+    instanceUrl,
+    apiKey,
+    clientId,
+    clientSecret,
+    orgId
+  }: TGetIbmApiConnectOrgCatalogsDTO) =>
+    [
+      { projectSlug, instanceUrl, apiKey, clientId, clientSecret, orgId },
+      "dynamic-secret-ibm-api-connect-org-catalogs"
+    ] as const,
+  ibmApiConnectOrgApps: ({
+    projectSlug,
+    instanceUrl,
+    apiKey,
+    clientId,
+    clientSecret,
+    orgId,
+    catalogId
+  }: TGetIbmApiConnectOrgAppsDTO) =>
+    [
+      { projectSlug, instanceUrl, apiKey, clientId, clientSecret, orgId, catalogId },
+      "dynamic-secret-ibm-api-connect-org-apps"
+    ] as const
 };
 
 export const useGetDynamicSecrets = ({
@@ -77,24 +122,118 @@ export const useGetDynamicSecretProviderData = ({
   tenantId,
   applicationId,
   clientSecret,
+  projectSlug,
   enabled
-}: {
-  tenantId: string;
-  applicationId: string;
-  clientSecret: string;
-  enabled: boolean;
-}) => {
+}: TGetEntraIdUsersDTO & { enabled: boolean }) => {
   return useQuery({
-    queryKey: ["users"],
+    queryKey: dynamicSecretKeys.entraIdUsers({
+      projectSlug,
+      tenantId,
+      applicationId,
+      clientSecret
+    }),
     queryFn: async () => {
       const { data } = await apiRequest.post<{ id: string; email: string; name: string }[]>(
         "/api/v1/dynamic-secrets/entra-id/users",
         {
           tenantId,
           applicationId,
-          clientSecret
+          clientSecret,
+          projectSlug
         }
       );
+      return data;
+    },
+    enabled
+  });
+};
+
+export const useGetIbmApiConnectOrgs = ({
+  instanceUrl,
+  apiKey,
+  clientId,
+  clientSecret,
+  projectSlug,
+  enabled
+}: TGetIbmApiConnectOrgsDTO & { enabled: boolean }) => {
+  return useQuery({
+    queryKey: dynamicSecretKeys.ibmApiConnectOrgs({
+      projectSlug,
+      instanceUrl,
+      apiKey,
+      clientId,
+      clientSecret
+    }),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
+        "/api/v1/dynamic-secrets/ibm-api-connect/orgs",
+        { instanceUrl, apiKey, clientId, clientSecret, projectSlug }
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
+export const useGetIbmApiConnectOrgCatalogs = ({
+  instanceUrl,
+  apiKey,
+  clientId,
+  clientSecret,
+  orgId,
+  projectSlug,
+  enabled
+}: TGetIbmApiConnectOrgCatalogsDTO & { enabled: boolean }) => {
+  return useQuery({
+    queryKey: dynamicSecretKeys.ibmApiConnectOrgCatalogs({
+      projectSlug,
+      instanceUrl,
+      apiKey,
+      clientId,
+      clientSecret,
+      orgId
+    }),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
+        `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgId}/catalogs`,
+        { instanceUrl, apiKey, clientId, clientSecret, projectSlug }
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
+export const useGetIbmApiConnectOrgApps = ({
+  instanceUrl,
+  apiKey,
+  clientId,
+  clientSecret,
+  orgId,
+  catalogId,
+  projectSlug,
+  enabled
+}: TGetIbmApiConnectOrgAppsDTO & { enabled: boolean }) => {
+  return useQuery({
+    queryKey: dynamicSecretKeys.ibmApiConnectOrgApps({
+      projectSlug,
+      instanceUrl,
+      apiKey,
+      clientId,
+      clientSecret,
+      orgId,
+      catalogId
+    }),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<
+        { name: string; title: string; id: string; consumerOrgId: string }[]
+      >(`/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgId}/catalogs/${catalogId}/apps`, {
+        instanceUrl,
+        apiKey,
+        clientId,
+        clientSecret,
+        projectSlug
+      });
       return data;
     },
     enabled

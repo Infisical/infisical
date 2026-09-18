@@ -27,11 +27,21 @@ export const DatadogConnectionApiKeyCredentialsSchema = z.object({
     .describe(AppConnections.CREDENTIALS.DATADOG.applicationKey)
 });
 
+export const DatadogConnectionTokenCredentialsSchema = DatadogConnectionApiKeyCredentialsSchema.pick({
+  url: true
+}).extend({
+  token: z.string().trim().min(1, "Token required").describe(AppConnections.CREDENTIALS.DATADOG.token)
+});
+
 const BaseDatadogConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.Datadog)
 });
 
 export const DatadogConnectionSchema = z.discriminatedUnion("method", [
+  BaseDatadogConnectionSchema.extend({
+    method: z.literal(DatadogConnectionMethod.Token),
+    credentials: DatadogConnectionTokenCredentialsSchema
+  }),
   BaseDatadogConnectionSchema.extend({
     method: z.literal(DatadogConnectionMethod.ApiKey),
     credentials: DatadogConnectionApiKeyCredentialsSchema
@@ -40,12 +50,22 @@ export const DatadogConnectionSchema = z.discriminatedUnion("method", [
 
 export const SanitizedDatadogConnectionSchema = z.discriminatedUnion("method", [
   BaseDatadogConnectionSchema.extend({
+    method: z.literal(DatadogConnectionMethod.Token),
+    credentials: DatadogConnectionTokenCredentialsSchema.pick({ url: true })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Datadog]} (Service Access Token)` })),
+  BaseDatadogConnectionSchema.extend({
     method: z.literal(DatadogConnectionMethod.ApiKey),
     credentials: DatadogConnectionApiKeyCredentialsSchema.pick({ url: true })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Datadog]} (API Key)` }))
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Datadog]} (Application Keys)` }))
 ]);
 
 export const ValidateDatadogConnectionCredentialsSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z.literal(DatadogConnectionMethod.Token).describe(AppConnections.CREATE(AppConnection.Datadog).method),
+    credentials: DatadogConnectionTokenCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.Datadog).credentials
+    )
+  }),
   z.object({
     method: z.literal(DatadogConnectionMethod.ApiKey).describe(AppConnections.CREATE(AppConnection.Datadog).method),
     credentials: DatadogConnectionApiKeyCredentialsSchema.describe(
@@ -60,9 +80,10 @@ export const CreateDatadogConnectionSchema = ValidateDatadogConnectionCredential
 
 export const UpdateDatadogConnectionSchema = z
   .object({
-    credentials: DatadogConnectionApiKeyCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.Datadog).credentials
-    )
+    credentials: z
+      .union([DatadogConnectionApiKeyCredentialsSchema, DatadogConnectionTokenCredentialsSchema])
+      .optional()
+      .describe(AppConnections.UPDATE(AppConnection.Datadog).credentials)
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Datadog));
 

@@ -1,41 +1,57 @@
 import { useMemo, useState } from "react";
 import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faFileShield,
-  faFilter,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+  ChevronDownIcon,
+  CircleAlertIcon,
+  FilterIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon
+} from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  AccessRestrictedNotice,
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  type TableSortDirection,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import {
+  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   TProjectPermission,
   useProject,
@@ -61,6 +77,7 @@ import { Project, TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
 import { ApprovalPolicyRow } from "./components/ApprovalPolicyRow";
+import { EnvironmentFilterSelect } from "./components/EnvironmentFilterSelect";
 import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModal";
 
 interface IProps {
@@ -80,26 +97,34 @@ type PolicyFilters = {
 };
 
 const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Project) => {
-  const { data: accessPolicies, isPending: isAccessPoliciesLoading } = useGetAccessApprovalPolicies(
-    {
-      projectSlug: currentProject?.slug as string,
-      options: {
-        enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentProject?.slug
-      }
-    }
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
   );
-  const { data: secretPolicies, isPending: isSecretPoliciesLoading } = useGetSecretApprovalPolicies(
-    {
-      projectId: currentProject?.id as string,
-      options: {
-        enabled:
-          permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentProject?.id
-      }
+  const {
+    data: accessPolicies,
+    isPending: isAccessPoliciesLoading,
+    isError: isAccessPoliciesError,
+    isFetching: isAccessPoliciesFetching,
+    refetch: refetchAccessPolicies
+  } = useGetAccessApprovalPolicies({
+    projectSlug: currentProject?.slug as string,
+    options: {
+      enabled: canReadPolicies && !!currentProject?.slug
     }
-  );
+  });
+  const {
+    data: secretPolicies,
+    isPending: isSecretPoliciesLoading,
+    isError: isSecretPoliciesError,
+    isFetching: isSecretPoliciesFetching,
+    refetch: refetchSecretPolicies
+  } = useGetSecretApprovalPolicies({
+    projectId: currentProject?.id as string,
+    options: {
+      enabled: canReadPolicies && !!currentProject?.id
+    }
+  });
 
   // merge data sorted by updatedAt
   const policies = [
@@ -112,7 +137,11 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
 
   return {
     policies,
-    isLoading: isAccessPoliciesLoading || isSecretPoliciesLoading
+    isLoading: canReadPolicies && (isAccessPoliciesLoading || isSecretPoliciesLoading),
+    isError: isAccessPoliciesError || isSecretPoliciesError,
+    isRetrying: isAccessPoliciesFetching || isSecretPoliciesFetching,
+    refetchAccessPolicies,
+    refetchSecretPolicies
   };
 };
 
@@ -126,13 +155,60 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
 
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
-  const { data: groups } = useListWorkspaceGroups(currentProject?.id || "");
-
-  const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(
-    permission,
-    currentProject
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
   );
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canEditPolicies = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canDeletePolicies = permission.can(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.SecretApproval
+  );
+
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
+  const canReadGroups = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups);
+
+  const {
+    data: members,
+    isError: isMembersError,
+    isFetching: isMembersFetching,
+    refetch: refetchMembers
+  } = useGetWorkspaceUsers(projectId, true, undefined, {
+    enabled: canReadMembers && Boolean(projectId)
+  });
+  const {
+    data: groups,
+    isError: isGroupsError,
+    isFetching: isGroupsFetching,
+    refetch: refetchGroups
+  } = useListWorkspaceGroups(currentProject?.id || "", undefined, {
+    enabled: canReadGroups && Boolean(currentProject?.id)
+  });
+
+  const {
+    policies,
+    isLoading: isPoliciesLoading,
+    isError: isPoliciesError,
+    isRetrying: isPoliciesRetrying,
+    refetchAccessPolicies,
+    refetchSecretPolicies
+  } = useApprovalPolicies(permission, currentProject);
+
+  const isApproverOptionsError =
+    (canReadMembers && isMembersError) || (canReadGroups && isGroupsError);
+  const isApproverOptionsRetrying =
+    (canReadMembers && isMembersFetching) || (canReadGroups && isGroupsFetching);
+  const addPolicyDisabledReason = canCreatePolicies ? undefined : "Access restricted";
 
   const [filters, setFilters] = useState<PolicyFilters>({
     type: null,
@@ -150,8 +226,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     orderDirection,
     orderBy,
     setOrderBy,
-    setOrderDirection,
-    toggleOrderDirection
+    setOrderDirection
   } = usePagination<PolicyOrderBy>(PolicyOrderBy.Name, {
     initPerPage: getUserTablePreference("approvalPoliciesTable", PreferenceKey.PerPage, 20)
   });
@@ -220,264 +295,295 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     setPage
   });
 
-  const isTableFiltered = filters.type !== null || Boolean(filters.environmentIds.length);
-
-  const handleSort = (column: PolicyOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
-      return;
-    }
-
+  const handleSort = (column: PolicyOrderBy, direction: TableSortDirection) => {
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
   };
 
-  const getClassName = (col: PolicyOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getSortDirection = (column: PolicyOrderBy): TableSortDirection => {
+    if (orderBy !== column) return "none";
 
-  const getColSortIcon = (col: PolicyOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+    return orderDirection === OrderByDirection.DESC ? "descending" : "ascending";
+  };
+
+  const getSortIconClassName = (column: PolicyOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
 
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Policies</p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pr-workflows" />
-            </div>
-            <p className="text-sm text-bunker-300">
-              Implement granular policies for access requests and secrets management
-            </p>
-          </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.SecretApproval}
-          >
-            {(isAllowed) => (
-              <Button
-                onClick={() => {
-                  if (subscription && !subscription?.secretApproval) {
-                    handlePopUpOpen("upgradePlan");
-                    return;
-                  }
-                  handlePopUpOpen("policyForm");
-                }}
-                colorSchema="secondary"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                isDisabled={!isAllowed}
-              >
-                Create Policy
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
-        <div className="mb-4 flex items-center gap-2">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            placeholder="Search policies by name, type, environment or secret path..."
-            className="flex-1"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                ariaLabel="Filter findings"
-                variant="plain"
-                size="sm"
-                className={twMerge(
-                  "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                  isTableFiltered && "border-primary/50 text-primary"
-                )}
-              >
-                <FontAwesomeIcon icon={faFilter} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="max-h-[70vh] thin-scrollbar overflow-y-auto"
-              align="end"
-            >
-              <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    type: null
-                  }))
-                }
-                icon={!filters && <FontAwesomeIcon icon={faCheckCircle} />}
-                iconPos="right"
-              >
-                All
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    type: PolicyType.AccessPolicy
-                  }))
-                }
-                icon={
-                  filters.type === PolicyType.AccessPolicy && (
-                    <FontAwesomeIcon icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
-              >
-                Access Policy
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    type: PolicyType.ChangePolicy
-                  }))
-                }
-                icon={
-                  filters.type === PolicyType.ChangePolicy && (
-                    <FontAwesomeIcon icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
-              >
-                Change Policy
-              </DropdownMenuItem>
-              <DropdownMenuLabel>Environment</DropdownMenuLabel>
-              {currentProject.environments.map((env) => (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setFilters((prev) => ({
-                      ...prev,
-                      environmentIds: prev.environmentIds.includes(env.id)
-                        ? prev.environmentIds.filter((i) => i !== env.id)
-                        : [...prev.environmentIds, env.id]
-                    }));
-                  }}
-                  key={env.id}
-                  icon={
-                    filters.environmentIds.includes(env.id) && (
-                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
-                >
-                  <span className="capitalize">{env.name}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>
-                  <div className="flex items-center">
-                    Name
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Policies
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pr-workflows" />
+          </CardTitle>
+          <CardDescription>
+            Implement granular policies for access requests and secrets management
+          </CardDescription>
+          <CardAction>
+            <Tooltip open={addPolicyDisabledReason ? undefined : false}>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button
+                    onClick={() => {
+                      if (subscription && !subscription?.secretApproval) {
+                        handlePopUpOpen("upgradePlan");
+                        return;
+                      }
+                      handlePopUpOpen("policyForm");
+                    }}
+                    variant="project"
+                    isDisabled={Boolean(addPolicyDisabledReason)}
+                  >
+                    <PlusIcon />
+                    Add Policy
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{addPolicyDisabledReason}</TooltipContent>
+            </Tooltip>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="@container flex flex-col gap-4">
+          {!canReadPolicies ? (
+            <AccessRestrictedNotice title="Access Restricted" />
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+                <InputGroup className="min-w-48 flex-[3]">
+                  <InputGroupAddon>
+                    <SearchIcon />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search policies by name, type, environment or secret path..."
+                    aria-label="Search approval policies"
+                  />
+                </InputGroup>
+                <EnvironmentFilterSelect
+                  environments={currentProject.environments}
+                  selectedEnvironmentIds={filters.environmentIds}
+                  onChange={(environmentIds) => setFilters((prev) => ({ ...prev, environmentIds }))}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <IconButton
-                      variant="plain"
-                      className={getClassName(PolicyOrderBy.Name)}
-                      ariaLabel="sort"
-                      onClick={() => handleSort(PolicyOrderBy.Name)}
+                      aria-label="Filter policies"
+                      variant={filters.type !== null ? "project" : "outline"}
                     >
-                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Name)} />
+                      <FilterIcon />
                     </IconButton>
-                  </div>
-                </Th>
-                <Th>
-                  <div className="flex items-center">
-                    Environment
-                    <IconButton
-                      variant="plain"
-                      className={getClassName(PolicyOrderBy.Environment)}
-                      ariaLabel="sort"
-                      onClick={() => handleSort(PolicyOrderBy.Environment)}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+                    align="end"
+                  >
+                    <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={filters.type ?? "all"}
+                      onValueChange={(value) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          type: value === "all" ? null : (value as PolicyType)
+                        }))
+                      }
                     >
-                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Environment)} />
-                    </IconButton>
-                  </div>
-                </Th>
-                <Th>
-                  <div className="flex items-center">
-                    Secret Path
-                    <IconButton
-                      variant="plain"
-                      className={getClassName(PolicyOrderBy.SecretPath)}
-                      ariaLabel="sort"
-                      onClick={() => handleSort(PolicyOrderBy.SecretPath)}
+                      <DropdownMenuRadioItem value="all">All Policies</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value={PolicyType.AccessPolicy}>
+                        Access Policy
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value={PolicyType.ChangePolicy}>
+                        Change Policy
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {isPoliciesError && (
+                <Alert variant="danger">
+                  <CircleAlertIcon />
+                  <AlertTitle>Could not load all approval policies</AlertTitle>
+                  <AlertDescription>
+                    <span>Retry to restore the complete policy list.</span>
+                    <Button
+                      size="xs"
+                      variant="danger"
+                      isPending={isPoliciesRetrying}
+                      isDisabled={isPoliciesRetrying}
+                      onClick={() => {
+                        refetchAccessPolicies().catch(() => undefined);
+                        refetchSecretPolicies().catch(() => undefined);
+                      }}
                     >
-                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.SecretPath)} />
-                    </IconButton>
-                  </div>
-                </Th>
-                <Th>
-                  <div className="flex items-center">
-                    Type
-                    <IconButton
-                      variant="plain"
-                      className={getClassName(PolicyOrderBy.Type)}
-                      ariaLabel="sort"
-                      onClick={() => handleSort(PolicyOrderBy.Type)}
+                      <RefreshCwIcon />
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isApproverOptionsError && (
+                <Alert variant="danger">
+                  <CircleAlertIcon />
+                  <AlertTitle>Could not load all approver suggestions</AlertTitle>
+                  <AlertDescription>
+                    <span>Enter an exact project member email or retry.</span>
+                    <Button
+                      size="xs"
+                      variant="danger"
+                      isPending={isApproverOptionsRetrying}
+                      isDisabled={isApproverOptionsRetrying}
+                      onClick={() => {
+                        if (canReadMembers) refetchMembers().catch(() => undefined);
+                        if (canReadGroups) refetchGroups().catch(() => undefined);
+                      }}
                     >
-                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Type)} />
-                    </IconButton>
-                  </div>
-                </Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPoliciesLoading && (
-                <TableSkeleton
-                  columns={5}
-                  innerKey="secret-policies"
-                  className="bg-mineshaft-700"
+                      <RefreshCwIcon />
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {(isPoliciesLoading || filteredPolicies.length > 0) && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.Name)}
+                        onSortChange={(direction) => handleSort(PolicyOrderBy.Name, direction)}
+                      >
+                        Name
+                        <ChevronDownIcon className={getSortIconClassName(PolicyOrderBy.Name)} />
+                      </TableHead>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.Environment)}
+                        onSortChange={(direction) =>
+                          handleSort(PolicyOrderBy.Environment, direction)
+                        }
+                      >
+                        Environment
+                        <ChevronDownIcon
+                          className={getSortIconClassName(PolicyOrderBy.Environment)}
+                        />
+                      </TableHead>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.SecretPath)}
+                        onSortChange={(direction) =>
+                          handleSort(PolicyOrderBy.SecretPath, direction)
+                        }
+                      >
+                        Secret Path
+                        <ChevronDownIcon
+                          className={getSortIconClassName(PolicyOrderBy.SecretPath)}
+                        />
+                      </TableHead>
+                      <TableHead
+                        sortDirection={getSortDirection(PolicyOrderBy.Type)}
+                        onSortChange={(direction) => handleSort(PolicyOrderBy.Type, direction)}
+                      >
+                        Type
+                        <ChevronDownIcon className={getSortIconClassName(PolicyOrderBy.Type)} />
+                      </TableHead>
+                      <TableHead variant="action" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isPoliciesLoading &&
+                      Array.from({ length: 5 }).map((_, idx) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <TableRow key={`policy-skeleton-${idx}`}>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    {!isPoliciesLoading &&
+                      !!currentProject &&
+                      filteredPolicies
+                        ?.slice(offset, perPage * page)
+                        .map((policy) => (
+                          <ApprovalPolicyRow
+                            policy={policy}
+                            key={policy.id}
+                            members={members}
+                            groups={groups}
+                            canEdit={canEditPolicies}
+                            canDelete={canDeletePolicies}
+                            onEdit={() => handlePopUpOpen("policyForm", policy)}
+                            onDelete={() => handlePopUpOpen("deletePolicy", policy)}
+                          />
+                        ))}
+                  </TableBody>
+                </Table>
+              )}
+              {!isPoliciesLoading && !isPoliciesError && !policies?.length && (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>No Policies Found</EmptyTitle>
+                    <EmptyDescription>
+                      Create a policy to require approval for secret changes and access requests.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+              {Boolean(
+                !filteredPolicies.length &&
+                  policies.length &&
+                  !isPoliciesLoading &&
+                  !isPoliciesError
+              ) && (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>No Policies Match Search</EmptyTitle>
+                    <EmptyDescription>Try adjusting your search or filters.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+              {Boolean(filteredPolicies.length) && (
+                <Pagination
+                  count={filteredPolicies.length}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={setPage}
+                  onChangePerPage={handlePerPageChange}
                 />
               )}
-              {!isPoliciesLoading && !policies?.length && (
-                <Tr>
-                  <Td colSpan={5}>
-                    <EmptyState title="No Policies Found" icon={faFileShield} />
-                  </Td>
-                </Tr>
-              )}
-              {!!currentProject &&
-                filteredPolicies
-                  ?.slice(offset, perPage * page)
-                  .map((policy) => (
-                    <ApprovalPolicyRow
-                      policy={policy}
-                      key={policy.id}
-                      members={members}
-                      groups={groups}
-                      onEdit={() => handlePopUpOpen("policyForm", policy)}
-                      onDelete={() => handlePopUpOpen("deletePolicy", policy)}
-                    />
-                  ))}
-            </TBody>
-          </Table>
-          {Boolean(!filteredPolicies.length && policies.length && !isPoliciesLoading) && (
-            <EmptyState title="No Policies Match Search" icon={faSearch} />
+            </>
           )}
-          {Boolean(filteredPolicies.length) && (
-            <Pagination
-              count={filteredPolicies.length}
-              page={page}
-              perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={handlePerPageChange}
-            />
-          )}
-        </TableContainer>
-      </div>
+        </CardContent>
+      </Card>
       <AccessPolicyForm
         projectId={currentProject.id}
         projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
         members={members}
+        groups={groups}
+        hasApproverOptionsError={isApproverOptionsError}
+        isRetryingApproverOptions={isApproverOptionsRetrying}
+        onRetryApproverOptions={() => {
+          if (canReadMembers) refetchMembers().catch(() => undefined);
+          if (canReadGroups) refetchGroups().catch(() => undefined);
+        }}
         editValues={popUp.policyForm.data as TAccessApprovalPolicy}
       />
       {popUp.deletePolicy.data && (
@@ -489,6 +595,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         />
       )}
       <UpgradePlanModal
+        paywallKey="secret-manager.approval-policy-list"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Adding secret approval policies can be unlocked if you upgrade to Infisical Pro plan."

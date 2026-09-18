@@ -51,6 +51,7 @@ export type TUpdateLdapAuthDTO = {
   lockoutThreshold?: number;
   lockoutDurationSeconds?: number;
   lockoutCounterResetSeconds?: number;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetLdapAuthDTO = {
@@ -64,6 +65,7 @@ export type TLoginLdapAuthDTO = {
 
 export type TRevokeLdapAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TClearLdapAuthLockoutsDTO = {

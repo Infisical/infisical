@@ -8,7 +8,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TDigitalOceanAppPlatformSyncWithCredentials } from "./digital-ocean-app-platform-sync-types";
 
 export const DigitalOceanAppPlatformSyncFns = {
@@ -16,7 +16,8 @@ export const DigitalOceanAppPlatformSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  async syncSecrets(secretSync: TDigitalOceanAppPlatformSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TDigitalOceanAppPlatformSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -55,7 +56,8 @@ export const DigitalOceanAppPlatformSyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TDigitalOceanAppPlatformSyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TDigitalOceanAppPlatformSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const config = secretSync.destinationConfig;
 
     try {

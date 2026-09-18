@@ -13,36 +13,35 @@ import {
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
+import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityJwtAuthDALFactory } from "./identity-jwt-auth-dal";
@@ -60,14 +59,18 @@ type TIdentityJwtAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -77,6 +80,7 @@ export const identityJwtAuthServiceFactory = ({
   identityDAL,
   identityJwtAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   permissionService,
   licenseService,
   identityAccessTokenDAL,
@@ -85,6 +89,7 @@ export const identityJwtAuthServiceFactory = ({
   identityAccessTokenService
 }: TIdentityJwtAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginJwtAuthDTO) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
     if (!identityJwtAuth) {
@@ -243,9 +248,9 @@ export const identityJwtAuthServiceFactory = ({
         }
 
         if (
-          !identityJwtAuth.boundAudiences
-            .split(", ")
-            .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+          !splitCommaSeparatedPolicyValues(identityJwtAuth.boundAudiences).some((policyValue) =>
+            doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue)
+          )
         ) {
           throw new UnauthorizedError({
             message: "Access denied: token audience not allowed",
@@ -277,7 +282,11 @@ export const identityJwtAuthServiceFactory = ({
           }
 
           // handle both single and multi-valued claims
-          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
+          if (
+            !splitCommaSeparatedPolicyValues(claimValue).some((claimEntry) =>
+              doesFieldValueMatchJwtPolicy(value, claimEntry)
+            )
+          ) {
             throw new UnauthorizedError({
               message: `Access denied: claim mismatch for field ${claimKey}`,
               detail: {
@@ -321,26 +330,11 @@ export const identityJwtAuthServiceFactory = ({
         }
       }
 
-      await identityJwtAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH
       });
 
       const subOrgDetails =
@@ -377,6 +371,13 @@ export const identityJwtAuthServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.JWT_AUTH,
+        result: AuthAttemptAuthResult.SUCCESS,
+        orgId: org.id
+      });
+
       return { accessToken, identityJwtAuth, identityAccessToken, identity };
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -391,6 +392,14 @@ export const identityJwtAuthServiceFactory = ({
           "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.JWT_AUTH,
+        result: AuthAttemptAuthResult.FAILURE,
+        orgId: org.id,
+        error
+      });
       throw error;
     }
   };
@@ -415,8 +424,6 @@ export const identityJwtAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachJwtAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -428,6 +435,7 @@ export const identityJwtAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add JWT Auth to already configured identity"
@@ -449,7 +457,7 @@ export const identityJwtAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -463,10 +471,27 @@ export const identityJwtAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add jwt auth to identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -525,6 +550,7 @@ export const identityJwtAuthServiceFactory = ({
 
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.JWT_AUTH);
     return { ...identityJwtAuth, orgId: identityMembershipOrg.scopeOrgId, jwksCaCert, publicKeys };
   };
 
@@ -545,7 +571,8 @@ export const identityJwtAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateJwtAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -585,7 +612,7 @@ export const identityJwtAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -598,8 +625,28 @@ export const identityJwtAuthServiceFactory = ({
         actorOrgId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update jwt auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
@@ -665,6 +712,7 @@ export const identityJwtAuthServiceFactory = ({
       .toString()
       .split(",");
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.JWT_AUTH);
     return {
       ...updatedJwtAuth,
       orgId: identityMembershipOrg.scopeOrgId,
@@ -738,7 +786,14 @@ export const identityJwtAuthServiceFactory = ({
     };
   };
 
-  const revokeJwtAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TRevokeJwtAuthDTO) => {
+  const revokeJwtAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    isActorSuperAdmin
+  }: TRevokeJwtAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -784,38 +839,24 @@ export const identityJwtAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
         orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke jwt auth of identity with more privileged role",
+        actor,
+        actorId,
         actorAuthMethod,
         actorOrgId
-      });
+      }
+    );
 
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke jwt auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
-    }
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityJwtAuth = await identityJwtAuthDAL.transaction(async (tx) => {
       const deletedJwtAuth = await identityJwtAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.JWT_AUTH }, tx);
@@ -830,6 +871,7 @@ export const identityJwtAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.JWT_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.JWT_AUTH);
 
     return revokedIdentityJwtAuth;
   };

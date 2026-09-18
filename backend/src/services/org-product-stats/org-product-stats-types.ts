@@ -25,7 +25,12 @@ export type TOrgProductStats = {
   };
   pam: {
     accountsCount: number;
-    resourcesCount: number;
-    projectsCount: number;
+    accountTemplatesCount: number;
+    foldersCount: number;
+  };
+  agentVault: {
+    accessBundlesCount: number;
+    servicesCount: number;
+    proxiesCount: number;
   };
 };

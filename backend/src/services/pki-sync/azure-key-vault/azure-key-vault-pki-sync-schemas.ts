@@ -1,32 +1,44 @@
-import RE2 from "re2";
 import { z } from "zod";
 
+import { isValidAzureKeyVaultUrl } from "@app/lib/validator";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  HostCommandSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { AZURE_KEY_VAULT_CERTIFICATE_NAMING } from "./azure-key-vault-pki-sync-constants";
 
 export const AzureKeyVaultPkiSyncConfigSchema = z.object({
-  vaultBaseUrl: z.string().url()
+  vaultBaseUrl: z.string().url("Invalid vault base URL format").refine(isValidAzureKeyVaultUrl, {
+    message: "Vault base URL must be a valid Azure Key Vault URL (https://<vault-name>.vault.azure.net)"
+  })
 });
 
-const AzureKeyVaultPkiSyncOptionsSchema = z.object({
+export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   enableVersioning: z.boolean().default(true),
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
+          return false;
+        }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = AZURE_KEY_VAULT_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -36,7 +48,7 @@ const AzureKeyVaultPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters and hyphens (a-z, A-Z, 0-9, -) and be 1-127 characters long when compiled for Azure Key Vault. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
@@ -49,25 +61,27 @@ export const AzureKeyVaultPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
-  syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional().default({}),
+  syncOptions: AzureKeyVaultPkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateAzureKeyVaultPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema.optional(),
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const AzureKeyVaultPkiSyncListItemSchema = z.object({

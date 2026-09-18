@@ -51,10 +51,7 @@ func (s *Service) GetSecretByName(ctx context.Context, opts *GetSecretByNameOpts
 		return nil, errutil.NotFound("Folder not found")
 	}
 
-	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
-		Type:      kms.DataKeyProject,
-		ProjectID: opts.ProjectID,
-	})
+	cipherPair, err := s.kmsService.CreateCipherPairWithProjectDataKey(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("GetSecretByName: %w", err)
 	}

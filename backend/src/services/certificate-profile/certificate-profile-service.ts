@@ -16,7 +16,7 @@ import {
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
-import { generateRaCertificate } from "@app/ee/services/pki-scep/pki-scep-fns";
+import { generateAndEncryptScepRaCertificate, resolveScepRaSigning } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
@@ -27,9 +27,27 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertStatus } from "../certificate/certificate-types";
+import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
-import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CaCapability, CaType } from "../certificate-authority/certificate-authority-enums";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "../certificate-authority/certificate-authority-maps";
+import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
+import {
+  MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE,
+  MAX_CUSTOM_EXTENSIONS_PER_PROFILE
+} from "../certificate-common/certificate-constants";
+import {
+  describeReservedExtensionOid,
+  isReservedExtensionOid,
+  resolveCustomExtensions,
+  TCustomExtensionRule
+} from "../certificate-common/certificate-extension-fns";
+import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
@@ -43,6 +61,7 @@ import {
 } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
+import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -88,6 +107,29 @@ const validateIssuerTypeConstraints = (
   }
 };
 
+/**
+ * A default the issuing CA cannot sign is worse than an invalid request: it is stored, and then every
+ * request that omits a signature algorithm inherits it and fails at issuance.
+ */
+const validateDefaultSignatureAlgorithmAgainstCa = async (
+  signatureAlgorithm: string | undefined,
+  caId: string | null | undefined,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+) => {
+  if (!signatureAlgorithm || !caId) return;
+
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  const caKeyAlgorithm = ca?.internalCa?.keyAlgorithm;
+  // External CAs pick their own signing key, so there is nothing to check against here.
+  if (!caKeyAlgorithm) return;
+
+  if (!isSignatureAlgorithmCompatibleWithCaKey(signatureAlgorithm, caKeyAlgorithm)) {
+    throw new BadRequestError({
+      message: `Default signature algorithm ${signatureAlgorithm} is not compatible with the certificate authority's ${caKeyAlgorithm} key`
+    });
+  }
+};
+
 const validateTemplateByExternalCaType = (
   externalCaType: CaType | undefined,
   externalConfigs: Record<string, unknown> | null | undefined
@@ -99,6 +141,14 @@ const validateTemplateByExternalCaType = (
       if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
         throw new ForbiddenRequestError({
           message: "Azure ADCS Certificate Authority requires a template to be specified in external configs"
+        });
+      }
+      break;
+    case CaType.ADCS:
+      if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
+        throw new ForbiddenRequestError({
+          message:
+            "Active Directory Certificate Service Certificate Authority requires a template to be specified in external configs"
         });
       }
       break;
@@ -284,7 +334,10 @@ type TCertificateProfileServiceFactoryDep = {
   scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "deleteByConfigId">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
+  hsmConnectorService: THsmConnectorServiceFactory;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
@@ -321,6 +374,19 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
   } as TCertificateProfile;
 };
 
+const requiresIssueCertForEnrollmentConfig = (data: {
+  enrollmentType?: EnrollmentType;
+  estConfig?: unknown;
+  acmeConfig?: unknown;
+  scepConfig?: unknown;
+}): boolean =>
+  data.enrollmentType === EnrollmentType.EST ||
+  data.enrollmentType === EnrollmentType.ACME ||
+  data.enrollmentType === EnrollmentType.SCEP ||
+  data.estConfig !== undefined ||
+  data.acmeConfig !== undefined ||
+  data.scepConfig !== undefined;
+
 export const certificateProfileServiceFactory = ({
   certificateProfileDAL,
   certificatePolicyDAL,
@@ -333,6 +399,9 @@ export const certificateProfileServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  certificateAuthorityCertDAL,
+  hsmConnectorService,
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
@@ -340,6 +409,65 @@ export const certificateProfileServiceFactory = ({
   resourceMetadataDAL,
   pkiApplicationProfileDAL
 }: TCertificateProfileServiceFactoryDep) => {
+  const validateProfileCustomExtensions = async ({
+    certificatePolicyId,
+    caId,
+    defaults
+  }: {
+    certificatePolicyId?: string | null;
+    caId?: string | null;
+    defaults?: TCertificateProfileDefaults | null;
+  }) => {
+    const declarations = defaults?.customExtensions;
+    if (!declarations?.length) return;
+
+    if (declarations.length > MAX_CUSTOM_EXTENSIONS_PER_PROFILE) {
+      throw new BadRequestError({
+        message: `A profile cannot declare more than ${MAX_CUSTOM_EXTENSIONS_PER_PROFILE} custom extensions`
+      });
+    }
+
+    const seenOids = new Set<string>();
+    for (const declaration of declarations) {
+      if (seenOids.has(declaration.oid)) {
+        throw new BadRequestError({
+          message: `Duplicate custom extension for OID '${declaration.oid}'. Each OID must appear only once.`
+        });
+      }
+      seenOids.add(declaration.oid);
+
+      if (isReservedExtensionOid(declaration.oid)) {
+        throw new BadRequestError({ message: describeReservedExtensionOid(declaration.oid) });
+      }
+    }
+
+    const policy = certificatePolicyId ? await certificatePolicyDAL.findById(certificatePolicyId) : null;
+    const { errors } = resolveCustomExtensions({
+      declarations,
+      rules: policy?.customExtensions as TCustomExtensionRule[] | null | undefined,
+      skipRequired: true
+    });
+    if (errors.length) {
+      throw new BadRequestError({ message: errors.join(" ") });
+    }
+
+    if (caId) {
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+      const caType = (ca?.externalCa?.type ?? CaType.INTERNAL) as CaType;
+      if (!caSupportsCapability(caType, CaCapability.CUSTOM_EXTENSIONS)) {
+        throw new BadRequestError({
+          message: `${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType] ?? caType} certificate authorities cannot carry custom extensions, so this profile cannot declare any. Use an internal certificate authority, ${CERTIFICATE_AUTHORITIES_TYPE_MAP[CaType.ADCS]}, or ${CERTIFICATE_AUTHORITIES_TYPE_MAP[CaType.AWS_PCA]} instead.`
+        });
+      }
+
+      if (caType === CaType.AWS_PCA && declarations.length > MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE) {
+        throw new BadRequestError({
+          message: `AWS Private CA accepts at most ${MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE} custom extensions on a certificate, so this profile cannot declare ${declarations.length}.`
+        });
+      }
+    }
+  };
+
   const createProfile = async ({
     actor,
     actorId,
@@ -369,6 +497,15 @@ export const certificateProfileServiceFactory = ({
         slug: data.slug
       })
     );
+
+    if (requiresIssueCertForEnrollmentConfig(data)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        subject(ProjectPermissionSub.CertificateProfiles, {
+          slug: data.slug
+        })
+      );
+    }
 
     const enrollmentType = data.enrollmentType ?? EnrollmentType.API;
 
@@ -410,6 +547,7 @@ export const certificateProfileServiceFactory = ({
           country: data.defaults.country,
           state: data.defaults.state,
           locality: data.defaults.locality,
+          domainComponents: data.defaults.domainComponents,
           keyUsages: data.defaults.keyUsages,
           extendedKeyUsages: data.defaults.extendedKeyUsages,
           signatureAlgorithm: data.defaults.signatureAlgorithm,
@@ -423,6 +561,18 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
+
+    await validateProfileCustomExtensions({
+      certificatePolicyId: data.certificatePolicyId,
+      caId: data.caId,
+      defaults: data.defaults
+    });
+
+    await validateDefaultSignatureAlgorithmAgainstCa(
+      data.defaults?.signatureAlgorithm,
+      data.caId,
+      certificateAuthorityDAL
+    );
 
     // Validate external configs
     await validateExternalConfigs(
@@ -452,20 +602,37 @@ export const certificateProfileServiceFactory = ({
           allowCertBasedRenewal: boolean;
           dynamicChallengeExpiryMinutes: number | null;
           dynamicChallengeMaxPending: number | null;
+          signRaWithCa: boolean;
         }
       | undefined;
 
     if (enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
-      const raCert = await generateRaCertificate(data.slug);
+      if (data.scepConfig.challengeType === ScepChallengeType.MICROSOFT_INTUNE) {
+        throw new BadRequestError({
+          message:
+            "Microsoft Intune SCEP validation must be configured through an application's enrollment method, not directly on a certificate profile."
+        });
+      }
 
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId,
-        projectDAL,
-        kmsService
+      const { signRaWithCa } = await resolveScepRaSigning({
+        caId: data.caId,
+        requestedSignRaWithCa: data.scepConfig.signRaWithCa,
+        certificateAuthorityDAL
       });
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-      const { cipherTextBlob: encryptedRaPrivateKey } = await kmsEncryptor({
-        plainText: Buffer.from(raCert.privateKeyDer)
+
+      const raCert = await generateAndEncryptScepRaCertificate({
+        slug: data.slug,
+        caId: data.caId,
+        signRaWithCa,
+        projectId,
+        deps: {
+          certificateAuthorityDAL,
+          certificateAuthoritySecretDAL,
+          certificateAuthorityCertDAL,
+          projectDAL,
+          kmsService,
+          hsmConnectorService
+        }
       });
 
       const challengeType = (data.scepConfig.challengeType as ScepChallengeType) || ScepChallengeType.STATIC;
@@ -479,13 +646,14 @@ export const certificateProfileServiceFactory = ({
       }
 
       precomputedScepConfig = {
-        encryptedRaPrivateKey,
+        encryptedRaPrivateKey: raCert.encryptedPrivateKey,
         raCertificatePem: raCert.certificatePem,
         raCertExpiresAt: raCert.expiresAt,
         hashedChallengePassword,
         challengeType,
         includeCaCertInResponse: data.scepConfig.includeCaCertInResponse ?? true,
         allowCertBasedRenewal: data.scepConfig.allowCertBasedRenewal ?? true,
+        signRaWithCa,
         dynamicChallengeExpiryMinutes:
           challengeType === ScepChallengeType.DYNAMIC ? (data.scepConfig.dynamicChallengeExpiryMinutes ?? 60) : null,
         dynamicChallengeMaxPending:
@@ -555,6 +723,7 @@ export const certificateProfileServiceFactory = ({
             challengeType: precomputedScepConfig.challengeType,
             includeCaCertInResponse: precomputedScepConfig.includeCaCertInResponse,
             allowCertBasedRenewal: precomputedScepConfig.allowCertBasedRenewal,
+            signRaWithCa: precomputedScepConfig.signRaWithCa,
             dynamicChallengeExpiryMinutes: precomputedScepConfig.dynamicChallengeExpiryMinutes,
             dynamicChallengeMaxPending: precomputedScepConfig.dynamicChallengeMaxPending
           },
@@ -619,6 +788,15 @@ export const certificateProfileServiceFactory = ({
         slug: existingProfile.slug
       })
     );
+
+    if (requiresIssueCertForEnrollmentConfig(data)) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        subject(ProjectPermissionSub.CertificateProfiles, {
+          slug: existingProfile.slug
+        })
+      );
+    }
 
     if (data.certificatePolicyId) {
       const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
@@ -692,6 +870,7 @@ export const certificateProfileServiceFactory = ({
           country: data.defaults.country,
           state: data.defaults.state,
           locality: data.defaults.locality,
+          domainComponents: data.defaults.domainComponents,
           keyUsages: data.defaults.keyUsages,
           extendedKeyUsages: data.defaults.extendedKeyUsages,
           signatureAlgorithm: data.defaults.signatureAlgorithm,
@@ -705,6 +884,20 @@ export const certificateProfileServiceFactory = ({
         }
       }
     }
+
+    await validateProfileCustomExtensions({
+      certificatePolicyId:
+        data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId,
+      caId: data.caId !== undefined ? data.caId : existingProfile.caId,
+      defaults:
+        data.defaults !== undefined ? data.defaults : (existingProfile.defaults as TCertificateProfileDefaults | null)
+    });
+
+    await validateDefaultSignatureAlgorithmAgainstCa(
+      data.defaults?.signatureAlgorithm,
+      finalCaId,
+      certificateAuthorityDAL
+    );
 
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
@@ -964,6 +1157,7 @@ export const certificateProfileServiceFactory = ({
         profile.estConfig.caChain = "";
       }
     }
+
     if (profile.enrollmentType === EnrollmentType.ACME && profile.acmeConfig) {
       profile.acmeConfig.directoryUrl = buildUrl(profile.id, "/directory");
       if (profile.acmeConfig.encryptedEabSecret) {
@@ -1295,7 +1489,7 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
     offset?: number;
     limit?: number;
-    status?: "active" | "expired" | "revoked";
+    status?: CertStatus;
     search?: string;
   }): Promise<TCertificateProfileCertificate[]> => {
     const profile = await certificateProfileDAL.findById(profileId);
@@ -1419,11 +1613,9 @@ export const certificateProfileServiceFactory = ({
     const certObj = new x509.X509Certificate(decryptedCert);
     const certificate = certObj.toString("pem");
 
-    const decryptedCertChain = await kmsDecryptor({
-      cipherTextBlob: certBody.encryptedCertificateChain!
-    });
-
-    const certificateChain = decryptedCertChain.toString();
+    const certificateChain = certBody.encryptedCertificateChain
+      ? (await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificateChain })).toString()
+      : "";
 
     let privateKey = null;
     try {

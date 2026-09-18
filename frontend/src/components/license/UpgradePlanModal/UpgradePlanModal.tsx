@@ -1,14 +1,28 @@
-import { INFISICAL_SCHEDULE_DEMO_LINK } from "@app/const/links";
-import { useOrganization, useSubscription } from "@app/context";
-import { useGetOrgTrialUrl } from "@app/hooks/api";
+import { useEffect, useRef } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { SparklesIcon } from "lucide-react";
 
-import { Button } from "../../v2/Button";
-import { Modal, ModalContent } from "../../v2/Modal";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Separator
+} from "@app/components/v3";
+import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 type Props = {
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
+  paywallKey: string;
   text: string;
+  // akhilmhdh: We will come back to this late. Otherwise would need to change in a lot of places.
+  // eslint-disable-next-line
   isEnterpriseFeature?: boolean;
 };
 
@@ -16,86 +30,80 @@ export const UpgradePlanModal = ({
   text,
   isOpen,
   onOpenChange,
-  isEnterpriseFeature = false
+  paywallKey,
+  isEnterpriseFeature
 }: Props): JSX.Element => {
-  const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
-  const { mutateAsync, isPending } = useGetOrgTrialUrl();
+  const scopeVariant = useScopeVariant();
+  const route = useRouterState({
+    select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
+  });
+  const eventPropertiesRef = useRef<{
+    paywallKey: string;
+    paywallText: string;
+    route: string;
+    isEnterpriseFeature: boolean;
+  } | null>(null);
 
-  const getLink = () => {
-    // self-hosting
-    if (!subscription || subscription.slug === null) {
-      return INFISICAL_SCHEDULE_DEMO_LINK;
+  useEffect(() => {
+    if (isOpen) {
+      const eventProperties = {
+        paywallKey,
+        paywallText: text,
+        route,
+        isEnterpriseFeature: Boolean(isEnterpriseFeature)
+      };
+      eventPropertiesRef.current = eventProperties;
+      analytics.captureForOrganization(
+        AnalyticsEvent.PaywallViewed,
+        currentOrg.id,
+        eventProperties
+      );
+    } else {
+      eventPropertiesRef.current = null;
     }
+    // The event should fire once per closed-to-open transition, not when copy or route context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
-    // Infisical cloud
-    if (isEnterpriseFeature) {
-      return "https://infisical.com/talk-to-us";
-    }
+  const handleUpgradeClick = () => {
+    const eventProperties = eventPropertiesRef.current;
+    if (!eventProperties) return;
 
-    return "/organization/billing" as const;
-  };
-
-  const link = getLink();
-
-  const handleUpgradeBtnClick = async () => {
-    try {
-      if (!subscription || !currentOrg) return;
-
-      if (!subscription.has_used_trial && !isEnterpriseFeature) {
-        // direct user to start pro trial
-
-        const url = await mutateAsync({
-          orgId: currentOrg.id,
-          success_url: window.location.href
-        });
-
-        window.location.href = url;
-      } else {
-        // direct user to upgrade their plan
-        window.location.href = link;
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  const getUpgradePlanLabel = () => {
-    if (subscription) {
-      if (isEnterpriseFeature) {
-        return "Talk to Us";
-      }
-      if (!subscription.has_used_trial) {
-        return "Start Pro Free Trial";
-      }
-    }
-    return "Upgrade Plan";
+    analytics.captureForOrganization(
+      AnalyticsEvent.PaywallUpgradeClicked,
+      currentOrg.id,
+      eventProperties
+    );
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Unleash Infisical's Full Power">
-        <p className="mb-2 text-bunker-300">{text}</p>
-        <p className="text-bunker-300">
-          Upgrade and get access to this, as well as to other powerful enhancements.
-        </p>
-        <div className="mt-8 flex items-center">
-          <Button
-            isLoading={isPending}
-            colorSchema="primary"
-            onClick={handleUpgradeBtnClick}
-            className="mr-4"
-          >
-            {getUpgradePlanLabel()}
-          </Button>
-          <Button
-            colorSchema="secondary"
-            variant="plain"
-            onClick={() => onOpenChange && onOpenChange(false)}
-          >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      {/* Keep upgrade prompts above the dialog or sheet that triggered them. */}
+      <DialogContent className="z-[70] sm:max-w-xl" overlayClassName="z-[70]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2.5">
+            <SparklesIcon className="size-5 text-muted" />
+            Unleash Infisical&apos;s Full Power
+          </DialogTitle>
+          <DialogDescription>
+            Upgrade and get access to this, as well as to other powerful enhancements.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Separator />
+        <p className="text-sm leading-relaxed text-foreground">{text}</p>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange?.(false)}>
             Cancel
           </Button>
-        </div>
-      </ModalContent>
-    </Modal>
+          <Link to="/organizations/$orgId/billing" params={{ orgId: currentOrg.id }}>
+            <Button variant={scopeVariant} onClick={handleUpgradeClick}>
+              Upgrade Plan
+            </Button>
+          </Link>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

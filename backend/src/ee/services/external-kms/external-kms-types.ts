@@ -1,6 +1,6 @@
 import { TOrgPermission } from "@app/lib/types";
 
-import { TExternalKmsInputSchema, TExternalKmsInputUpdateSchema } from "./providers/model";
+import { TExternalKmsGcpSchema, TExternalKmsInputSchema, TExternalKmsInputUpdateSchema } from "./providers/model";
 
 export type TCreateExternalKmsDTO = {
   name?: string;
@@ -28,3 +28,6 @@ export type TGetExternalKmsByIdDTO = {
 export type TGetExternalKmsBySlugDTO = {
   name: string;
 } & Omit<TOrgPermission, "orgId">;
+
+export type TFetchGcpKmsKeysDTO = Pick<TExternalKmsGcpSchema, "credential" | "gcpRegion"> &
+  Omit<TOrgPermission, "orgId">;

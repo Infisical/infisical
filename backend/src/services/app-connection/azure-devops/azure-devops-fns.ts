@@ -317,11 +317,12 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
       }
 
     case AzureDevOpsConnectionMethod.ClientSecret:
-      const { tenantId, clientId, clientSecret, orgName } = inputCredentials as {
+      const { tenantId, clientId, clientSecret, orgName, clientSecretKeyId } = inputCredentials as {
         tenantId: string;
         clientId: string;
         clientSecret: string;
         orgName: string;
+        clientSecretKeyId?: string;
       };
 
       try {
@@ -357,6 +358,7 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
           clientId,
           clientSecret,
           orgName,
+          clientSecretKeyId,
           accessToken: clientData.access_token,
           expiresAt: Date.now() + clientData.expires_in * 1000
         };

@@ -1,8 +1,8 @@
-import { Modal, ModalContent } from "@app/components/v2";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@app/components/v3";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 
 import { AppConnectionForm } from "./AppConnectionForm";
+import { AppConnectionHeader } from "./AppConnectionHeader";
 
 type Props = {
   isOpen: boolean;
@@ -18,16 +18,21 @@ export const EditAppConnectionCredentialsModal = ({
   if (!appConnection) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title="Edit Connection Credentials"
-        subTitle={`Update the credentials for this ${
-          appConnection ? APP_CONNECTION_MAP[appConnection.app].name : "App"
-        } Connection.`}
-      >
-        <AppConnectionForm onComplete={() => onOpenChange(false)} appConnection={appConnection} />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-2xl">
+        <SheetHeader className="border-b">
+          <SheetTitle>
+            <AppConnectionHeader app={appConnection.app} isConnected />
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <AppConnectionForm
+            appConnection={appConnection}
+            onComplete={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -19,7 +19,7 @@ export const HoverObject = ({ text, icon, color }: Props): JSX.Element => (
     </HoverCard.Trigger>
     <HoverCard.Portal>
       <HoverCard.Content className="HoverCardContent z-300" sideOffset={5}>
-        <div className="rounded-md border border-mineshaft-600 bg-bunker-700 p-2 text-bunker-300 drop-shadow-xl">
+        <div className="rounded-md border border-border-control bg-surface-sunken p-2 text-label-secondary drop-shadow-xl">
           <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             <div>
               <div className="Text bold">{text}</div>
@@ -27,7 +27,7 @@ export const HoverObject = ({ text, icon, color }: Props): JSX.Element => (
           </div>
         </div>
 
-        <HoverCard.Arrow className="border-mineshaft-600" />
+        <HoverCard.Arrow className="border-border-control" />
       </HoverCard.Content>
     </HoverCard.Portal>
   </HoverCard.Root>

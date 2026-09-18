@@ -45,6 +45,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -315,8 +316,12 @@ export const secretScanningV2ServiceFactory = ({
             ...createdDataSource,
             connection
           } as TSecretScanningDataSourceWithConnection);
-        } catch {
-          // silently fail, don't want to block creation, they'll try scanning when they don't see anything and get the error
+        } catch (error) {
+          // Deliberately non-fatal — a scan that can't be queued shouldn't block creating the data source.
+          logger.error(
+            error,
+            `secretScanningV2Service: Failed to queue initial full scan on data source creation [dataSourceId=${createdDataSource.id}] [projectId=${payload.projectId}]`
+          );
         }
       }
 

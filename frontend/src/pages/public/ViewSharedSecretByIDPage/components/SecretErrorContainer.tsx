@@ -1,6 +1,6 @@
 import { TriangleAlertIcon } from "lucide-react";
 
-import { Alert, AlertTitle } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 
@@ -24,8 +24,14 @@ export const SecretErrorContainer = ({ error, brandingTheme }: Props) => {
         style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
       />
       <AlertTitle style={brandingTheme ? { color: brandingTheme.textColor } : undefined}>
-        {error || "The secret you are looking for is missing or has expired"}
+        Unable to view shared secret
       </AlertTitle>
+      <AlertDescription
+        className="break-words"
+        style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
+      >
+        {error || "The secret you are looking for is missing or has expired"}
+      </AlertDescription>
     </Alert>
   );
 };

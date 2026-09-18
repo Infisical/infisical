@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import slugify from "@sindresorhus/slugify";
-import { AlertTriangleIcon, CircleXIcon, InfoIcon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, CircleXIcon, InfoIcon, LockIcon, UploadIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -37,6 +37,7 @@ import {
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AsymmetricKeyAlgorithm,
+  HmacAlgorithm,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
   useBulkImportCmekKeys
@@ -44,12 +45,17 @@ import {
 
 type ParsedKey = {
   name: string;
-  keyType: "encrypt-decrypt" | "sign-verify";
+  keyType: KmsKeyUsage;
   algorithm: string;
   keyMaterial?: string;
   privateKey?: string;
   publicKey?: string;
+  isExportable?: boolean;
+  hasDeleteProtection?: boolean;
 };
+
+const MIN_HMAC_KEY_BYTE_LENGTH = 16;
+const MAX_HMAC_KEY_BYTE_LENGTH = 1024;
 
 type ValidationError = {
   index: number;
@@ -101,16 +107,26 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
       message: '"name" can only contain lowercase letters, numbers, and hyphens'
     };
   }
-  if (e.keyType !== "encrypt-decrypt" && e.keyType !== "sign-verify") {
+  if (
+    e.keyType !== KmsKeyUsage.ENCRYPT_DECRYPT &&
+    e.keyType !== KmsKeyUsage.SIGN_VERIFY &&
+    e.keyType !== KmsKeyUsage.GENERATE_VERIFY_MAC
+  ) {
     return {
       index,
-      message: '"keyType" must be "encrypt-decrypt" or "sign-verify"'
+      message: '"keyType" must be "encrypt-decrypt", "sign-verify" or "generate-verify-mac"'
     };
   }
   if (!e.algorithm || typeof e.algorithm !== "string") {
     return { index, message: '"algorithm" is required' };
   }
-  if (e.keyType === "encrypt-decrypt") {
+  if (e.isExportable !== undefined && typeof e.isExportable !== "boolean") {
+    return { index, message: '"isExportable" must be a boolean' };
+  }
+  if (e.hasDeleteProtection !== undefined && typeof e.hasDeleteProtection !== "boolean") {
+    return { index, message: '"hasDeleteProtection" must be a boolean' };
+  }
+  if (e.keyType === KmsKeyUsage.ENCRYPT_DECRYPT) {
     const validSymmetric = Object.values(SymmetricKeyAlgorithm) as string[];
     if (!validSymmetric.includes(e.algorithm)) {
       return {
@@ -136,7 +152,7 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
       };
     }
   }
-  if (e.keyType === "sign-verify") {
+  if (e.keyType === KmsKeyUsage.SIGN_VERIFY) {
     const validAsymmetric = Object.values(AsymmetricKeyAlgorithm) as string[];
     if (!validAsymmetric.includes(e.algorithm)) {
       return {
@@ -152,6 +168,35 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
     }
     if (!isBase64(e.privateKey)) {
       return { index, message: '"privateKey" must be base64 encoded' };
+    }
+  }
+  if (e.keyType === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+    const validHmac = Object.values(HmacAlgorithm) as string[];
+    if (!validHmac.includes(e.algorithm)) {
+      return {
+        index,
+        message: `"algorithm" must be one of ${validHmac.join(", ")} for generate-verify-mac keys`
+      };
+    }
+    if (!e.keyMaterial || typeof e.keyMaterial !== "string") {
+      return {
+        index,
+        message: '"keyMaterial" is required for generate-verify-mac keys'
+      };
+    }
+    if (!isBase64(e.keyMaterial)) {
+      return { index, message: '"keyMaterial" must be base64 encoded' };
+    }
+    const actualLength = getBase64ByteLength(e.keyMaterial);
+    if (
+      actualLength === null ||
+      actualLength < MIN_HMAC_KEY_BYTE_LENGTH ||
+      actualLength > MAX_HMAC_KEY_BYTE_LENGTH
+    ) {
+      return {
+        index,
+        message: `"keyMaterial" must decode to between ${MIN_HMAC_KEY_BYTE_LENGTH} and ${MAX_HMAC_KEY_BYTE_LENGTH} bytes (got ${actualLength ?? "invalid"})`
+      };
     }
   }
   return null;
@@ -237,9 +282,12 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
         projectId,
         keys: parsedKeys.map((k) => ({
           name: k.name,
-          keyUsage: k.keyType as KmsKeyUsage,
-          encryptionAlgorithm: k.algorithm as never,
-          keyMaterial: k.keyType === "sign-verify" ? (k.privateKey ?? "") : (k.keyMaterial ?? "")
+          keyUsage: k.keyType,
+          algorithm: k.algorithm as never,
+          keyMaterial:
+            k.keyType === KmsKeyUsage.SIGN_VERIFY ? (k.privateKey ?? "") : (k.keyMaterial ?? ""),
+          isExportable: k.isExportable,
+          hasDeleteProtection: k.hasDeleteProtection
         }))
       });
       if (errors.length === 0) {
@@ -257,8 +305,11 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
     }
   };
 
-  const encryptCount = parsedKeys?.filter((k) => k?.keyType === "encrypt-decrypt").length ?? 0;
-  const signCount = parsedKeys?.filter((k) => k?.keyType === "sign-verify").length ?? 0;
+  const encryptCount =
+    parsedKeys?.filter((k) => k?.keyType === KmsKeyUsage.ENCRYPT_DECRYPT).length ?? 0;
+  const signCount = parsedKeys?.filter((k) => k?.keyType === KmsKeyUsage.SIGN_VERIFY).length ?? 0;
+  const macCount =
+    parsedKeys?.filter((k) => k?.keyType === KmsKeyUsage.GENERATE_VERIFY_MAC).length ?? 0;
   const errorByIndex = new Map(validationErrors.map((err) => [err.index, err.message]));
   const hasErrors = validationErrors.length > 0;
 
@@ -354,7 +405,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "name": "...",
   "keyType": "encrypt-decrypt",
   "algorithm": "...",
-  "keyMaterial": "<base64>"
+  "keyMaterial": "<base64>",
+  "isExportable": true  // optional, default: true
 }
 
 // Sign/Verify key
@@ -363,8 +415,23 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "keyType": "sign-verify",
   "algorithm": "...",
   "privateKey": "<base64>",
-  "publicKey": "<base64>"
+  "publicKey": "<base64>",
+  "isExportable": true  // optional, default: true
+}
+
+// Generate/Verify MAC (HMAC) key
+{
+  "name": "...",
+  "keyType": "generate-verify-mac",
+  "algorithm": "HMAC_SHA_256",
+  "keyMaterial": "<base64>",
+  "isExportable": true  // optional, default: true
 }`}</pre>
+                <p className="mt-2">
+                  Set <code className="rounded bg-card px-1 py-0.5">isExportable</code> to{" "}
+                  <code className="rounded bg-card px-1 py-0.5">false</code> to permanently prevent
+                  the key material from being exported. This cannot be changed after import.
+                </p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -395,6 +462,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
               <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Algorithm
               </TableHead>
+              <TableHead className="w-5 bg-container shadow-[inset_0_-1px_0_var(--color-border)]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -434,6 +502,16 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
                   </TableCell>
                   <TableCell isTruncatable className="w-1/4 max-w-0 uppercase">
                     <p className="truncate">{renderFieldValue(key.algorithm)}</p>
+                  </TableCell>
+                  <TableCell>
+                    {key.isExportable === false && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <LockIcon className="size-4 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>Non-exportable</TooltipContent>
+                      </Tooltip>
+                    )}
                   </TableCell>
                 </TableRow>
               );
@@ -482,7 +560,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
     if (parsedKeys) {
       return {
         title: "Review & Import Keys",
-        description: `${parsedKeys.length} key${parsedKeys.length !== 1 ? "s" : ""} found — ${encryptCount} encrypt/decrypt, ${signCount} sign/verify.`
+        description: `${parsedKeys.length} key${parsedKeys.length !== 1 ? "s" : ""} found — ${encryptCount} encrypt/decrypt, ${signCount} sign/verify, ${macCount} generate/verify MAC.`
       };
     }
     return {

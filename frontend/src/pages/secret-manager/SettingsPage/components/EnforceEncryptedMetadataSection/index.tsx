@@ -1,1 +1,0 @@
-export { EnforceEncryptedMetadataSection } from "./EnforceEncryptedMetadataSection";

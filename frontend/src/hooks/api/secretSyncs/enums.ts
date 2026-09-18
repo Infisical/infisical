@@ -40,7 +40,14 @@ export enum SecretSync {
   Devin = "devin",
   Ona = "ona",
   TravisCI = "travis-ci",
-  Snowflake = "snowflake"
+  Snowflake = "snowflake",
+  TriggerDev = "trigger-dev",
+  Rundeck = "rundeck",
+  HasuraCloud = "hasura-cloud",
+  Qovery = "qovery",
+  Cloud66 = "cloud-66",
+  Spacelift = "spacelift",
+  Daytona = "daytona"
 }
 
 export enum SecretSyncStatus {

@@ -49,6 +49,7 @@ export type TListPkiApplicationsDTO = {
   search?: string;
   limit?: number;
   offset?: number;
+  applicationIds?: string[];
 } & TProjectPermission;
 
 export type TDeletePkiApplicationDTO = {

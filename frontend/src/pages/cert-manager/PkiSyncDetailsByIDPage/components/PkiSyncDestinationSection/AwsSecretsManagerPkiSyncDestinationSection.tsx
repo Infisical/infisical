@@ -1,11 +1,5 @@
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TAwsSecretsManagerPkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
-
-const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="mb-4">
-    <p className="text-sm font-medium text-mineshaft-300">{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
-  </div>
-);
 
 type Props = {
   pkiSync: TPkiSync;
@@ -17,11 +11,15 @@ export const AwsSecretsManagerPkiSyncDestinationSection = ({ pkiSync }: Props) =
 
   return (
     <>
-      <GenericFieldLabel label="AWS Region">
-        {destinationConfig.region || "us-east-1"}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>AWS Region</DetailLabel>
+        <DetailValue>{destinationConfig.region || "us-east-1"}</DetailValue>
+      </Detail>
       {destinationConfig.keyId && (
-        <GenericFieldLabel label="KMS Key">{destinationConfig.keyId}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>KMS Key</DetailLabel>
+          <DetailValue>{destinationConfig.keyId}</DetailValue>
+        </Detail>
       )}
     </>
   );

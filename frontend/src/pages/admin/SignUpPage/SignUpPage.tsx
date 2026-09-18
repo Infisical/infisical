@@ -1,179 +1,168 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { Controller, useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
+import { useNavigate, useRouter } from "@tanstack/react-router";
+import axios from "axios";
+import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
-// TODO(akhilmhdh): rewrite this into module functions in lib
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { OnboardingPageLayout } from "@app/components/auth/OnboardingPageLayout";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
-import { useServerConfig } from "@app/context";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  Input
+} from "@app/components/v3";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
+import { GenericResourceNameSchema } from "@app/lib/schemas";
 
-const formSchema = z
-  .object({
-    email: z.string().email().trim(),
-    firstName: z.string().trim(),
-    lastName: z.string().trim().optional(),
-    password: z.string().trim().min(14).max(100),
-    confirmPassword: z.string().trim()
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Password don't match",
-    path: ["confirmPassword"]
-  });
+import { AdminSignUpForm } from "./components/AdminSignUpForm";
+import { AdminSignUpFormData } from "./adminSignUpSchema";
 
-type TFormSchema = z.infer<typeof formSchema>;
+enum BootstrapStep {
+  Account,
+  Organization
+}
+
+const organizationSchema = z.object({
+  organizationName: GenericResourceNameSchema
+});
+
+type TOrganizationForm = z.infer<typeof organizationSchema>;
+
+const stepContent = {
+  [BootstrapStep.Account]: {
+    title: "Create your Super Admin account",
+    description: "Use this account to manage your Infisical instance."
+  },
+  [BootstrapStep.Organization]: {
+    title: "Create your organization",
+    description: "Set up the first workspace for your projects, secrets, and team."
+  }
+} satisfies Record<BootstrapStep, { title: string; description: string }>;
 
 export const SignUpPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
+  const router = useRouter();
+  const [activeStep, setActiveStep] = useState(BootstrapStep.Account);
+  const [accountData, setAccountData] = useState<AdminSignUpFormData>();
+  const [formError, setFormError] = useState<string>();
+  const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
+  const { mutateAsync: selectOrganization } = useSelectOrganization();
   const {
-    control,
+    formState: { errors },
     handleSubmit,
-    formState: { isSubmitting }
-  } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema)
+    register
+  } = useForm<TOrganizationForm>({
+    resolver: zodResolver(organizationSchema),
+    defaultValues: {
+      organizationName: ""
+    }
   });
 
-  const { config } = useServerConfig();
-  const { mutateAsync: createAdminUser } = useCreateAdminUser();
-  const { mutateAsync: selectOrganization } = useSelectOrganization();
-
-  const handleFormSubmit = async ({ email, password, firstName, lastName }: TFormSchema) => {
-    // avoid multi submission
-    if (isSubmitting) return;
-    const res = await createAdminUser({
-      email,
-      password,
-      firstName,
-      lastName
-    });
-
-    SecurityClient.setToken(res.token);
-    await selectOrganization({ organizationId: res.organization.id });
-
-    // TODO(akhilmhdh): This is such a confusing pattern and too unreliable
-    // Will be refactored in next iteration to make it url based rather than local storage ones
-    // Part of migration to nextjs 14
-    localStorage.setItem("orgData.id", res.organization.id);
-    navigate({ to: "/admin" });
+  const handleAccountContinue = (values: AdminSignUpFormData) => {
+    setAccountData(values);
+    setFormError(undefined);
+    setActiveStep(BootstrapStep.Organization);
   };
 
-  if (config?.initialized) {
-    return (
-      <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <ContentLoader text="Redirecting to admin page..." />
-      </div>
-    );
-  }
+  const handleOrganizationSubmit = handleSubmit(async ({ organizationName }) => {
+    if (!accountData) {
+      setActiveStep(BootstrapStep.Account);
+      return;
+    }
+
+    setFormError(undefined);
+
+    try {
+      const result = await createAdminUser({
+        email: accountData.email,
+        password: accountData.password,
+        firstName: accountData.firstName,
+        lastName: accountData.lastName || undefined,
+        organizationName
+      });
+
+      SecurityClient.setToken(result.token);
+      await selectOrganization({ organizationId: result.organization.id });
+      localStorage.setItem("orgData.id", result.organization.id);
+      await router.invalidate();
+      await navigate({ to: "/admin/setup" });
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      setFormError(message || "Unable to create the instance. Please try again.");
+    }
+  });
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <OnboardingPageLayout currentStep={activeStep + 1} totalSteps={4}>
       <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
+        <title>Set up your instance | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup.og-title") ?? ""} />
-        <meta name="og:description" content={t("signup.og-description") ?? ""} />
       </Helmet>
-      <div className="flex items-center justify-center">
-        <AnimatePresence mode="wait">
-          <motion.div
-            className="text-mineshaft-200"
-            key="panel-1"
-            transition={{ duration: 0.15 }}
-            initial={{ opacity: 0, translateX: 30 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            exit={{ opacity: 0, translateX: 30 }}
-          >
-            <div className="flex flex-col items-center space-y-2 text-center">
-              <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-              <div className="pt-4 text-4xl">Welcome to Infisical</div>
-              <div className="pb-4 text-bunker-300">Create your first Super Admin Account</div>
-            </div>
-            <form onSubmit={handleSubmit(handleFormSubmit)}>
-              <div className="mt-8">
-                <div className="flex items-center space-x-4">
-                  <Controller
-                    control={control}
-                    name="firstName"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="First name"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <Input isFullWidth size="md" {...field} />
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="lastName"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Last name"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <Input isFullWidth size="md" {...field} />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl label="Email" errorText={error?.message} isError={Boolean(error)}>
-                      <Input isFullWidth size="md" {...field} />
-                    </FormControl>
-                  )}
+      <AuthPagePanel>
+        <CardHeader className="mb-6 gap-2">
+          <CardTitle className="font-alliance text-2xl font-normal">
+            {stepContent[activeStep].title}
+          </CardTitle>
+          <CardDescription className="font-alliance text-base">
+            {stepContent[activeStep].description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {activeStep === BootstrapStep.Account ? (
+            <AdminSignUpForm defaultValues={accountData} onContinue={handleAccountContinue} />
+          ) : (
+            <form className="flex flex-col gap-6" noValidate onSubmit={handleOrganizationSubmit}>
+              {formError && (
+                <Alert variant="danger">
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+              <Field data-invalid={Boolean(errors.organizationName)}>
+                <Input
+                  variant="outlined"
+                  {...register("organizationName")}
+                  id="admin-signup-organization"
+                  aria-label="Organization name"
+                  placeholder="Organization name"
+                  autoComplete="organization"
+                  autoFocus
+                  isError={Boolean(errors.organizationName)}
                 />
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Password"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Input isFullWidth size="md" type="password" {...field} />
-                    </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="confirmPassword"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Confirm password"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Input isFullWidth size="md" type="password" {...field} />
-                    </FormControl>
-                  )}
-                />
+                {errors.organizationName ? (
+                  <FieldError>{errors.organizationName.message}</FieldError>
+                ) : null}
+              </Field>
+              <div className="flex justify-between gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveStep(BootstrapStep.Account)}
+                >
+                  <ChevronLeft />
+                  Back
+                </Button>
+                <Button type="submit" variant="project" isPending={isPending}>
+                  Create organization
+                </Button>
               </div>
-              <Button
-                type="submit"
-                colorSchema="primary"
-                variant="outline_bg"
-                isFullWidth
-                className="mt-4"
-                isLoading={isSubmitting}
-              >
-                Continue
-              </Button>
             </form>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
+          )}
+        </CardContent>
+      </AuthPagePanel>
+    </OnboardingPageLayout>
   );
 };

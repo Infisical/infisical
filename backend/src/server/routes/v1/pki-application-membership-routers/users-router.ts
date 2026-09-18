@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -52,7 +51,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(ApplicationMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.pkiApplicationMembership.listMembers({
         actor: req.permission.type,
@@ -85,7 +84,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       hide: false,
       operationId: "addPkiApplicationUserMembers",
       description:
-        "Add user members to an application by userId, email, or username. Bootstraps org and project membership for users not already present, then attaches them to the application.",
+        "Add user members to an application by userId, email, or username. Only users who are already members of the project can be added.",
       tags: [ApiDocsTags.PkiApplications],
       params: ApplicationIdParamsSchema,
       body: AddUsersBodySchema,
@@ -95,33 +94,6 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { emails } = req.body;
-
-      if (emails.length > 0) {
-        const bootstrapForApplication = {
-          applicationId: req.params.applicationId,
-          projectId
-        };
-
-        await server.services.membershipUser.createMembership({
-          permission: req.permission,
-          scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
-          data: {
-            roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
-            usernames: emails
-          },
-          bootstrapForApplication
-        });
-
-        await server.services.membershipUser.createMembership({
-          permission: req.permission,
-          scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
-          data: {
-            roles: [{ isTemporary: false, role: ProjectMembershipRole.Member }],
-            usernames: emails
-          },
-          bootstrapForApplication
-        });
-      }
 
       const result = await server.services.pkiApplicationMembership.addUserMembers({
         actor: req.permission.type,
@@ -161,6 +133,8 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
           properties: {
             applicationId: req.params.applicationId,
             orgId: req.permission.orgId,
+            projectId,
+            memberType: "user",
             role: req.body.role
           }
         });
@@ -214,6 +188,19 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "user",
+          role: req.body.role
+        }
+      });
+
       return { membership };
     }
   });
@@ -255,6 +242,18 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
             userId: result.actorUserId ?? undefined,
             userName: result.details?.email ?? result.details?.username ?? result.details?.name ?? undefined
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "user"
         }
       });
 

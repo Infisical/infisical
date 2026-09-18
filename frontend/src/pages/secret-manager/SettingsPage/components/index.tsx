@@ -1,6 +1,4 @@
-export { AutoCapitalizationSection } from "./AutoCapitalizationSection";
-export { BackfillSecretReferenceSecretion } from "./BackfillSecretReferenceSection";
-export { EnforceEncryptedMetadataSection } from "./EnforceEncryptedMetadataSection";
 export { EnvironmentSection } from "./EnvironmentSection";
+export { PreferencesSection } from "./PreferencesSection";
 export { SecretTagsSection } from "./SecretTagsSection";
 export { SecretValidationRulesSection } from "./SecretValidationRulesSection";

@@ -1,17 +1,34 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
+import { PkiSync, PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
 import { pkiSyncKeys } from "@app/hooks/api/pkiSyncs/queries";
 import {
   TCreatePkiSyncDTO,
   TDeletePkiSyncDTO,
   TPkiSync,
+  TPkiSyncFilterPreview,
+  TPkiSyncFilters,
+  TPkiSyncHealthCheckResult,
   TTriggerPkiSyncImportCertificatesDTO,
   TTriggerPkiSyncRemoveCertificatesDTO,
   TTriggerPkiSyncSyncCertificatesDTO,
   TUpdatePkiSyncDTO
 } from "@app/hooks/api/pkiSyncs/types";
+import { ApiErrorTypes } from "@app/hooks/api/types";
+
+const PICKUP_BRIDGE_MS = 2000;
+const PICKUP_BRIDGE_ATTEMPTS = 8;
+
+const bridgeUntilPickedUp = (invalidate: () => void) => {
+  let attempts = 0;
+  const tick = () => {
+    invalidate();
+    attempts += 1;
+    if (attempts < PICKUP_BRIDGE_ATTEMPTS) setTimeout(tick, PICKUP_BRIDGE_MS);
+  };
+  setTimeout(tick, PICKUP_BRIDGE_MS);
+};
 
 export const useCreatePkiSync = () => {
   const queryClient = useQueryClient();
@@ -44,6 +61,7 @@ export const useUpdatePkiSync = () => {
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.certificates(syncId) });
     }
   });
 };
@@ -64,6 +82,75 @@ export const useDeletePkiSync = () => {
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+    }
+  });
+};
+
+export const useTestPkiSyncHealthCheck = () => {
+  return useMutation({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    mutationFn: async ({
+      destination,
+      connectionId,
+      applicationId,
+      syncId,
+      certificateIds,
+      filters,
+      destinationConfig,
+      syncOptions
+    }: {
+      destination: PkiSync;
+      connectionId: string;
+      applicationId?: string;
+      syncId?: string;
+      certificateIds?: string[];
+      filters?: TPkiSyncFilters | null;
+      destinationConfig: Record<string, unknown>;
+      syncOptions: Record<string, unknown>;
+    }) => {
+      const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
+        `/api/v1/cert-manager/syncs/${destination}/test-health-check`,
+        {
+          connectionId,
+          applicationId,
+          syncId,
+          certificateIds,
+          filters,
+          destinationConfig,
+          syncOptions
+        }
+      );
+
+      return data.healthCheck;
+    }
+  });
+};
+
+export const useRunPkiSyncHealthCheck = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    mutationFn: async ({
+      syncId,
+      destination
+    }: {
+      syncId: string;
+      destination: PkiSync;
+      projectId: string;
+    }) => {
+      const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/run-health-check`
+      );
+
+      return data.healthCheck;
+    },
+    onSuccess: (_, { syncId, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      });
     }
   });
 };
@@ -102,10 +189,12 @@ export const useTriggerPkiSyncSyncCertificates = () => {
         });
       }
 
-      setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      }, 2000); // Wait 2 seconds before refetching
+      });
     },
     onError: (_, { syncId, projectId }, context) => {
       if (context?.previousPkiSync) {
@@ -149,10 +238,12 @@ export const useTriggerPkiSyncImportCertificates = () => {
         });
       }
 
-      setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      }, 2000); // Wait 2 seconds before refetching
+      });
     },
     onError: (_, { syncId, projectId }, context) => {
       if (context?.previousPkiSync) {
@@ -196,15 +287,36 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
         });
       }
 
-      setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      bridgeUntilPickedUp(() => {
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
         queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      }, 2000); // Wait 2 seconds before refetching
+      });
     },
     onError: (_, { syncId, projectId }, context) => {
       if (context?.previousPkiSync) {
         queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), context.previousPkiSync);
       }
+    }
+  });
+};
+
+export const usePreviewPkiSyncFilters = () => {
+  return useMutation({
+    mutationFn: async ({
+      pkiSyncId,
+      filters
+    }: {
+      pkiSyncId: string;
+      filters?: TPkiSyncFilters | null;
+    }) => {
+      const { data } = await apiRequest.post<TPkiSyncFilterPreview>(
+        "/api/v1/cert-manager/syncs/certificates/search",
+        { pkiSyncId, filters: filters ?? null }
+      );
+
+      return data;
     }
   });
 };

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import * as React from "react";
 import { CheckboxIndicator, Root as CheckboxPrimitive } from "@radix-ui/react-checkbox";
 import { cva, VariantProps } from "cva";
@@ -19,7 +18,7 @@ const checkboxVariants = cva(
     variants: {
       variant: {
         outline:
-          "data-[state=checked]:border-border data-[state=checked]:bg-foreground/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
+          "data-[state=checked]:border-foreground/25 data-[state=checked]:bg-foreground/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
         neutral:
           "data-[state=checked]:border-neutral/25 data-[state=checked]:bg-neutral/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-neutral/15 data-[state=checked]:hover:border-neutral/30",
         project:
@@ -27,6 +26,7 @@ const checkboxVariants = cva(
         org: "data-[state=checked]:border-org/25 data-[state=checked]:bg-org/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-org/15 data-[state=checked]:hover:border-org/30",
         "sub-org":
           "data-[state=checked]:border-sub-org/25 data-[state=checked]:bg-sub-org/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-sub-org/15 data-[state=checked]:hover:border-sub-org/30",
+        av: "data-[state=checked]:border-product-av/25 data-[state=checked]:bg-product-av/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-product-av/15 data-[state=checked]:hover:border-product-av/30",
         success:
           "data-[state=checked]:border-success/25 data-[state=checked]:bg-success/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-success/15 data-[state=checked]:hover:border-success/30",
         info: "data-[state=checked]:border-info/25 data-[state=checked]:bg-info/10 data-[state=checked]:text-foreground data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",

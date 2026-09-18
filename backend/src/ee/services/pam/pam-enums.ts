@@ -1,0 +1,103 @@
+export enum PamAccountType {
+  SSH = "ssh",
+  Postgres = "postgres",
+  MySQL = "mysql",
+  MsSQL = "mssql",
+  OracleDB = "oracledb",
+  MongoDB = "mongodb",
+  Redis = "redis",
+  Snowflake = "snowflake",
+  Kubernetes = "kubernetes",
+  AwsIam = "aws-iam",
+  GcpServiceAccount = "gcp-service-account",
+  AzureCli = "azure-cli",
+  Windows = "windows",
+  WindowsAd = "windows-ad"
+}
+
+export enum PamResourceRole {
+  Admin = "admin",
+  Operator = "operator",
+  Connector = "connector",
+  Auditor = "auditor"
+}
+
+export enum PamProductRole {
+  Admin = "admin",
+  Member = "member"
+}
+
+export enum PamHeartbeatStatus {
+  Healthy = "healthy",
+  InvalidCredentials = "invalid-credentials",
+  CannotCheck = "cannot-check",
+  Unknown = "unknown"
+}
+
+export enum PamSessionStatus {
+  Starting = "starting",
+  Active = "active",
+  Ended = "ended",
+  Terminated = "terminated"
+}
+
+export enum PamSessionEndReason {
+  Completed = "completed",
+  Expired = "expired"
+}
+
+export enum PamSnowflakeAuthMethod {
+  KeyPair = "key-pair",
+  ProgrammaticAccessToken = "programmatic-access-token",
+  Password = "password"
+}
+
+export enum GcpServiceAccountAuthMethod {
+  Impersonation = "impersonation",
+  StaticKey = "static-key"
+}
+
+export enum PamAccessMethod {
+  Web = "web",
+  Cli = "cli"
+}
+
+export enum PamSshAuthMethod {
+  Password = "password",
+  PublicKey = "public-key",
+  Certificate = "certificate"
+}
+
+export enum PamPostgresAuthMethod {
+  Password = "password",
+  AwsIam = "aws-iam"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
+}
+
+// The caller's just-in-time approval state for an account gated behind an access request flow
+export enum PamAccessStatus {
+  None = "none",
+  Pending = "pending",
+  Granted = "granted"
+}
+
+export enum PamMemberKind {
+  User = "user",
+  Group = "group",
+  Identity = "identity"
+}
+
+// Events a folder's chat notification config can subscribe to
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied",
+  AccessRequestBypassed = "access-request-bypassed"
+}
+
+// Best-effort: the tunnel is torn down either way.
+export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;

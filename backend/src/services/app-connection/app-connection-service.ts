@@ -7,8 +7,6 @@ import { chefConnectionService } from "@app/ee/services/app-connections/chef/che
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -23,12 +21,15 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
+  decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
   enterpriseAppCheck,
@@ -37,12 +38,15 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
 import { onePassConnectionService } from "./1password/1password-connection-service";
+import { ValidateADCSConnectionCredentialsSchema } from "./adcs/adcs-connection-schemas";
+import { adcsConnectionService } from "./adcs/adcs-connection-service";
 import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
@@ -81,13 +85,17 @@ import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCircleCIConnectionCredentialsSchema } from "./circleci";
 import { circleciConnectionService } from "./circleci/circleci-connection-service";
+import { ValidateCloud66ConnectionCredentialsSchema } from "./cloud-66";
+import { cloud66ConnectionService } from "./cloud-66/cloud-66-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
+import { ValidateConvexConnectionCredentialsSchema } from "./convex";
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDatadogConnectionCredentialsSchema } from "./datadog";
 import { datadogConnectionService } from "./datadog/datadog-connection-service";
+import { ValidateDaytonaConnectionCredentialsSchema } from "./daytona";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
@@ -101,25 +109,37 @@ import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-co
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
+import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
+import { ValidateFireworksConnectionCredentialsSchema } from "./fireworks";
+import { fireworksConnectionService } from "./fireworks/fireworks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
-import { ValidateGitHubConnectionCredentialsSchema } from "./github";
+import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
 import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
+import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
+import { ValidateHasuraCloudConnectionCredentialsSchema } from "./hasura-cloud";
+import { hasuraCloudConnectionService } from "./hasura-cloud/hasura-cloud-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
 import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
+import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmaster-connection-service";
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
+import { ldapConnectionService } from "./ldap/ldap-connection-service";
+import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
+import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
+import { ValidateMicrosoftIntuneConnectionCredentialsSchema } from "./microsoft-intune";
 import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
@@ -128,6 +148,10 @@ import { netlifyConnectionService } from "./netlify/netlify-connection-service";
 import { ValidateNetScalerConnectionCredentialsSchema } from "./netscaler";
 import { ValidateNorthflankConnectionCredentialsSchema } from "./northflank";
 import { northflankConnectionService } from "./northflank/northflank-connection-service";
+import {
+  nutanixPrismCentralConnectionService,
+  ValidateNutanixPrismCentralConnectionCredentialsSchema
+} from "./nutanix-prism-central";
 import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-deploy";
 import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
@@ -135,18 +159,26 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateOnaConnectionCredentialsSchema } from "./ona";
 import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
+import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
+import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
+import { qoveryConnectionService } from "./qovery/qovery-connection-service";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
+import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
+import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
+import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
@@ -156,6 +188,8 @@ import { ValidateTerraformCloudConnectionCredentialsSchema } from "./terraform-c
 import { terraformCloudConnectionService } from "./terraform-cloud/terraform-cloud-connection-service";
 import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
 import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
+import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
+import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
@@ -163,6 +197,7 @@ import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
+import { ValidateWinRMConnectionCredentialsSchema } from "./winrm/winrm-connection-schemas";
 import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
 import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
 
@@ -171,17 +206,17 @@ export type TAppConnectionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -195,6 +230,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.AzureDevOps]: ValidateAzureDevOpsConnectionCredentialsSchema,
   [AppConnection.AzureADCS]: ValidateAzureADCSConnectionCredentialsSchema,
+  [AppConnection.ADCS]: ValidateADCSConnectionCredentialsSchema,
+  [AppConnection.WinRM]: ValidateWinRMConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
   [AppConnection.TerraformCloud]: ValidateTerraformCloudConnectionCredentialsSchema,
@@ -213,9 +250,11 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
   [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
+  [AppConnection.HasuraCloud]: ValidateHasuraCloudConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.LaravelForge]: ValidateLaravelForgeConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
+  [AppConnection.TriggerDev]: ValidateTriggerDevConnectionCredentialsSchema,
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
@@ -230,6 +269,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.OpenRouter]: ValidateOpenRouterConnectionCredentialsSchema,
+  [AppConnection.OpenAI]: ValidateOpenAIConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
@@ -238,21 +278,34 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Dbt]: ValidateDbtConnectionCredentialsSchema,
   [AppConnection.SMB]: ValidateSmbConnectionCredentialsSchema,
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
+  [AppConnection.Cloud66]: ValidateCloud66ConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
+  [AppConnection.MicrosoftIntune]: ValidateMicrosoftIntuneConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.VenafiTpp]: ValidateVenafiTppConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
   [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
+  [AppConnection.KempLoadMaster]: ValidateKempLoadMasterConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
   [AppConnection.OVH]: ValidateOvhConnectionCredentialsSchema,
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
   [AppConnection.Ona]: ValidateOnaConnectionCredentialsSchema,
   [AppConnection.DigiCert]: ValidateDigiCertConnectionCredentialsSchema,
+  [AppConnection.GoDaddy]: ValidateGoDaddyConnectionCredentialsSchema,
   [AppConnection.TravisCI]: ValidateTravisCIConnectionCredentialsSchema,
   [AppConnection.Salesforce]: ValidateSalesforceConnectionCredentialsSchema,
   [AppConnection.Snowflake]: ValidateSnowflakeConnectionCredentialsSchema,
-  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema
+  [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
+  [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
+  [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
+  [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
+  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
+  [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
+  [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
+  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
+  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
+  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -260,14 +313,14 @@ export const appConnectionServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
-  gatewayDAL,
   gatewayV2DAL,
   projectDAL,
   appConnectionCredentialRotationService,
-  identityUaDAL
+  identityUaDAL,
+  gitHubAppDAL,
+  keyStore
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -425,6 +478,23 @@ export const appConnectionServiceFactory = ({
     return decryptAppConnection(appConnection, kmsService);
   };
 
+  // In project scope, an org-managed GitHub App can only be referenced by actors who can also
+  // connect org-level app connections — everyone else is limited to the project's own apps and
+  // the shared instance app.
+  const checkGitHubAppScopeAccess = async (
+    gitHubAppId: string,
+    orgId: string,
+    orgPermission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"]
+  ) => {
+    const gitHubApp = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
+    if (gitHubApp && !gitHubApp.projectId) {
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.Connect,
+        OrgPermissionSubjects.AppConnections
+      );
+    }
+  };
+
   const createAppConnection = async (
     {
       method,
@@ -453,9 +523,9 @@ export const appConnectionServiceFactory = ({
       scope: OrganizationActionScope.Any
     });
 
-    if (projectId) {
-      const project = await projectDAL.findProjectById(projectId);
+    const project = projectId ? await projectDAL.findProjectById(projectId) : null;
 
+    if (projectId) {
       if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
 
       const { permission } = await permissionService.getProjectPermission({
@@ -492,12 +562,9 @@ export const appConnectionServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
-        });
+      if (!gatewayV2) {
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
     }
 
@@ -509,12 +576,6 @@ export const appConnectionServiceFactory = ({
       });
     }
 
-    let validationGatewayId: string | null | undefined = gatewayId;
-    if (gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-      validationGatewayId = picked.id;
-    }
-
     await enterpriseAppCheck(
       licenseService,
       app,
@@ -522,20 +583,39 @@ export const appConnectionServiceFactory = ({
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
-    const validatedCredentials = await validateAppConnectionCredentials(
-      {
-        app,
-        credentials,
-        method,
-        orgId: actor.orgId,
-        projectId,
-        version: 2,
-        gatewayId: validationGatewayId
-      } as TAppConnectionConfig,
-      gatewayService,
-      gatewayV2Service,
-      { identityUaDAL }
-    );
+    if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && projectId) {
+      const { gitHubAppId } = credentials as { gitHubAppId?: string | null };
+      if (gitHubAppId) {
+        await checkGitHubAppScopeAccess(gitHubAppId, actor.orgId, orgPermission);
+      }
+    }
+
+    const runValidation = (validationGatewayId: string | null | undefined) =>
+      validateAppConnectionCredentials(
+        {
+          app,
+          credentials,
+          method,
+          orgId: actor.orgId,
+          projectId,
+          version: 2,
+          gatewayId: validationGatewayId,
+          projectType: project?.type
+        } as TAppConnectionConfig,
+        gatewayV2Service,
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+      );
+
+    // Validation only dials the target and reads back, so retrying it on another member is safe.
+    let validationGatewayId: string | null | undefined = gatewayId;
+    let validatedCredentials: Awaited<ReturnType<typeof runValidation>>;
+    if (gatewayPoolId) {
+      const outcome = await gatewayPoolService.runWithPoolFailover({ poolId: gatewayPoolId }, runValidation);
+      validatedCredentials = outcome.result;
+      validationGatewayId = outcome.gatewayId;
+    } else {
+      validatedCredentials = await runValidation(gatewayId);
+    }
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
@@ -581,6 +661,19 @@ export const appConnectionServiceFactory = ({
             );
           }
 
+          // Which GitHub App the connection references is mirrored from the encrypted credentials
+          // into github_app_connections so usage can be counted (and deletes blocked) without
+          // decrypting, and so the FK rejects creates racing an app deletion.
+          if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+            await gitHubAppDAL.upsertConnectionLink(
+              {
+                appConnectionId: appConnection.id,
+                githubAppId: (connectionCredentials as { gitHubAppId?: string | null }).gitHubAppId ?? null
+              },
+              tx
+            );
+          }
+
           return appConnection;
         });
       };
@@ -597,7 +690,6 @@ export const appConnectionServiceFactory = ({
             gatewayId: validationGatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
-          gatewayService,
           gatewayV2Service
         );
       } else {
@@ -613,6 +705,14 @@ export const appConnectionServiceFactory = ({
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
+      }
+
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        // the github_app_connections link FK — the referenced GitHub App was deleted concurrently
+        throw new BadRequestError({ message: "The selected GitHub App no longer exists. Please try again." });
       }
 
       throw err;
@@ -684,12 +784,9 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
-        const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-        if (!gateway && !gatewayV2) {
-          throw new NotFoundError({
-            message: `Gateway with ID ${gatewayId} not found for org`
-          });
+        if (!gatewayV2) {
+          throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
       }
     }
@@ -732,20 +829,43 @@ export const appConnectionServiceFactory = ({
     }
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
-    let validationGatewayId: string | null | undefined;
 
     const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+    let validationGatewayIdForUpdate: string | null | undefined = effectiveGatewayIdForUpdate;
 
     if (credentials) {
-      validationGatewayId = effectiveGatewayIdForUpdate;
-      if (effectiveGatewayPoolIdForUpdate) {
-        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
-        validationGatewayId = picked.id;
+      // Only checked when the caller explicitly selects an app — merged-in existing credentials
+      // (gitHubAppId undefined) keep already-configured connections editable.
+      if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && appConnection.projectId) {
+        const requestedGitHubAppId = (credentials as { gitHubAppId?: string | null }).gitHubAppId;
+        if (requestedGitHubAppId) {
+          await checkGitHubAppScopeAccess(requestedGitHubAppId, actor.orgId, orgPermission);
+        }
       }
+
+      let credentialsToValidate = credentials;
+
+      if (
+        app === AppConnection.GitHub &&
+        method === GitHubConnectionMethod.App &&
+        (credentials as { gitHubAppId?: string | null }).gitHubAppId === undefined
+      ) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        });
+        const existingGitHubAppId = (existingCredentials as { gitHubAppId?: string | null }).gitHubAppId;
+        if (existingGitHubAppId) {
+          credentialsToValidate = { ...credentials, gitHubAppId: existingGitHubAppId } as typeof credentials;
+        }
+      }
+
       if (
         !VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[app].safeParse({
           method,
-          credentials
+          credentials: credentialsToValidate
         }).success
       )
         throw new BadRequestError({
@@ -754,20 +874,35 @@ export const appConnectionServiceFactory = ({
           } Connection with method ${getAppConnectionMethodName(method)}`
         });
 
-      updatedCredentials = await validateAppConnectionCredentials(
-        {
-          app,
-          orgId: actor.orgId,
-          projectId: appConnection.projectId,
-          version: appConnection.version,
-          credentials,
-          method,
-          gatewayId: validationGatewayId
-        } as TAppConnectionConfig,
-        gatewayService,
-        gatewayV2Service,
-        { identityUaDAL }
-      );
+      const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
+
+      const runUpdateValidation = (validationGatewayId: string | null | undefined) =>
+        validateAppConnectionCredentials(
+          {
+            app,
+            orgId: actor.orgId,
+            projectId: appConnection.projectId,
+            version: appConnection.version,
+            credentials: credentialsToValidate,
+            method,
+            gatewayId: validationGatewayId,
+            projectType: updateProject?.type
+          } as TAppConnectionConfig,
+          gatewayV2Service,
+          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+        );
+
+      // Validation only dials the target and reads back, so retrying it on another member is safe.
+      if (effectiveGatewayPoolIdForUpdate) {
+        const outcome = await gatewayPoolService.runWithPoolFailover(
+          { poolId: effectiveGatewayPoolIdForUpdate },
+          runUpdateValidation
+        );
+        updatedCredentials = outcome.result;
+        validationGatewayIdForUpdate = outcome.gatewayId;
+      } else {
+        updatedCredentials = await runUpdateValidation(effectiveGatewayIdForUpdate);
+      }
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
@@ -834,14 +969,25 @@ export const appConnectionServiceFactory = ({
               orgId: actor.orgId,
               credentials: updatedCredentials,
               method,
-              gatewayId: validationGatewayId
+              gatewayId: validationGatewayIdForUpdate
             } as TAppConnectionConfig,
             (platformCredentials) => updateConnection(platformCredentials, tx),
-            gatewayService,
             gatewayV2Service
           );
         } else {
           connection = await updateConnection(updatedCredentials, tx);
+        }
+
+        // Keep the github_app_connections link in sync with the (re-validated) credentials — see
+        // the matching block in createAppConnection.
+        if (updatedCredentials && app === AppConnection.GitHub && method === GitHubConnectionMethod.App) {
+          await gitHubAppDAL.upsertConnectionLink(
+            {
+              appConnectionId: connectionId,
+              githubAppId: (updatedCredentials as { gitHubAppId?: string | null }).gitHubAppId ?? null
+            },
+            tx
+          );
         }
 
         // Handle rotation updates
@@ -910,6 +1056,14 @@ export const appConnectionServiceFactory = ({
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
       }
 
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        // the github_app_connections link FK — the referenced GitHub App was deleted concurrently
+        throw new BadRequestError({ message: "The selected GitHub App no longer exists. Please try again." });
+      }
+
       throw err;
     }
   };
@@ -954,6 +1108,10 @@ export const appConnectionServiceFactory = ({
 
     // TODO (scott): add option to delete all dependencies
 
+    // Note: for GitHub App connections we intentionally do NOT uninstall the app installation on
+    // GitHub or delete the underlying GitHub App — both are reusable across connections and are
+    // managed separately (the app via the GitHub Apps settings page, the installation on GitHub).
+
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
 
@@ -974,20 +1132,16 @@ export const appConnectionServiceFactory = ({
   };
 
   const connectAppConnectionById = async <T extends TAppConnection>(
-    app: AppConnection,
+    app: AppConnection | AppConnection[],
     connectionId: string,
     actor: OrgServiceActor
   ) => {
+    const allowedApps = Array.isArray(app) ? app : [app];
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    await enterpriseAppCheck(
-      licenseService,
-      app,
-      actor.orgId,
-      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
-    );
+    const connectionApp = appConnection.app as AppConnection;
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -1019,20 +1173,33 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    if (appConnection.app !== app)
+    if (!allowedApps.includes(connectionApp))
       throw new BadRequestError({
         message: `${
-          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+          APP_CONNECTION_NAME_MAP[connectionApp]
+        } Connection with ID ${connectionId} cannot be used to connect to ${allowedApps
+          .map((allowedApp) => APP_CONNECTION_NAME_MAP[allowedApp])
+          .join(" or ")}`
       });
+
+    await enterpriseAppCheck(
+      licenseService,
+      connectionApp,
+      actor.orgId,
+      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
+    );
+
+    const connectionProject = appConnection.projectId
+      ? await projectDAL.findProjectById(appConnection.projectId)
+      : null;
 
     const connection = await decryptAppConnection(appConnection, kmsService);
 
-    return connection as T;
+    return { ...connection, projectType: connectionProject?.type } as unknown as T;
   };
 
   const validateAppConnectionUsageById = async (
-    app: AppConnection,
+    app: AppConnection | AppConnection[],
     { connectionId, projectId }: TValidateAppConnectionUsageByIdDTO,
     actor: OrgServiceActor
   ) => {
@@ -1186,47 +1353,59 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
     triggerCredentialRotation,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
+    github: githubConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, {
+      gitHubAppDAL,
+      kmsService
+    }),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     aws: awsConnectionService(connectAppConnectionById),
+    kempLoadMaster: kempLoadMasterConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     humanitec: humanitecConnectionService(connectAppConnectionById),
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     vercel: vercelConnectionService(connectAppConnectionById),
+    qovery: qoveryConnectionService(connectAppConnectionById),
     ona: onaConnectionService(connectAppConnectionById),
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
-    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
+    cloud66: cloud66ConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
+    triggerDev: triggerDevConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
+    adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
+    hasuraCloud: hasuraCloudConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
+    rundeck: rundeckConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),
     externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     datadog: datadogConnectionService(connectAppConnectionById),
+    openai: openaiConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
-    chef: chefConnectionService(connectAppConnectionById, licenseService),
+    chef: chefConnectionService(connectAppConnectionById, licenseService, gatewayV2Service, gatewayPoolService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
@@ -1234,6 +1413,14 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    litellm: liteLLMConnectionService(connectAppConnectionById),
+    fireworks: fireworksConnectionService(connectAppConnectionById),
+    nutanixPrismCentral: nutanixPrismCentralConnectionService(
+      connectAppConnectionById,
+      gatewayV2Service,
+      gatewayPoolService
+    ),
+    spacelift: spaceliftConnectionService(connectAppConnectionById)
   };
 };

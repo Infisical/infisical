@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
+import { GCP_MAX_CERTIFICATES_PER_MAP_ENTRY } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
+
 import {
   AwsCertificateManagerPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema
@@ -25,9 +29,33 @@ import {
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema
 } from "./cloudflare-custom-certificate-pki-sync-destination-schema";
 import {
+  F5BigIpPkiSyncDestinationSchema,
+  UpdateF5BigIpPkiSyncDestinationSchema
+} from "./f5-big-ip-pki-sync-destination-schema";
+import {
+  GcpCertificateManagerPkiSyncDestinationSchema,
+  UpdateGcpCertificateManagerPkiSyncDestinationSchema
+} from "./gcp-certificate-manager-pki-sync-destination-schema";
+import {
+  KempLoadMasterPkiSyncDestinationSchema,
+  UpdateKempLoadMasterPkiSyncDestinationSchema
+} from "./kemp-loadmaster-pki-sync-destination-schema";
+import {
+  LinuxServerPkiSyncDestinationSchema,
+  UpdateLinuxServerPkiSyncDestinationSchema
+} from "./linux-server-pki-sync-destination-schema";
+import {
   NetScalerPkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema
 } from "./netscaler-pki-sync-destination-schema";
+import {
+  NutanixPrismCentralPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
+} from "./nutanix-prism-central-pki-sync-destination-schema";
+import {
+  UpdateWindowsServerPkiSyncDestinationSchema,
+  WindowsServerPkiSyncDestinationSchema
+} from "./windows-server-pki-sync-destination-schema";
 
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
@@ -36,7 +64,13 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsSecretsManagerPkiSyncDestinationSchema,
   ChefPkiSyncDestinationSchema,
   CloudflareCustomCertificatePkiSyncDestinationSchema,
-  NetScalerPkiSyncDestinationSchema
+  GcpCertificateManagerPkiSyncDestinationSchema,
+  NetScalerPkiSyncDestinationSchema,
+  F5BigIpPkiSyncDestinationSchema,
+  KempLoadMasterPkiSyncDestinationSchema,
+  LinuxServerPkiSyncDestinationSchema,
+  WindowsServerPkiSyncDestinationSchema,
+  NutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
@@ -46,12 +80,70 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAwsSecretsManagerPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema,
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
-  UpdateNetScalerPkiSyncDestinationSchema
+  UpdateGcpCertificateManagerPkiSyncDestinationSchema,
+  UpdateNetScalerPkiSyncDestinationSchema,
+  UpdateF5BigIpPkiSyncDestinationSchema,
+  UpdateKempLoadMasterPkiSyncDestinationSchema,
+  UpdateLinuxServerPkiSyncDestinationSchema,
+  UpdateWindowsServerPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
-export const PkiSyncFormSchema = PkiSyncUnionSchema;
+const refineTargetHost = (data: unknown, ctx: z.RefinementCtx) => {
+  const { connection, destinationConfig } = data as {
+    connection?: { app?: AppConnection };
+    destinationConfig?: { host?: string };
+  };
 
-export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema;
+  if (!connection?.app) return;
+
+  if (connection.app === AppConnection.LDAP && !destinationConfig?.host) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "host"],
+      message: "A target host is required when using an LDAP connection"
+    });
+    return;
+  }
+
+  if (connection.app !== AppConnection.LDAP && destinationConfig?.host) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "host"],
+      message: "A target host cannot be set when the connection already targets a single host"
+    });
+  }
+};
+
+export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
+  if (
+    data.destination === PkiSync.GcpCertificateManager &&
+    data.destinationConfig?.certificateMapBinding &&
+    (data.filters?.certificateOrderIds?.length ?? 0) > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["destinationConfig", "certificateMapBinding"],
+      message: `Certificate map binding supports up to ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY} certificate orders, which is the GCP limit for one certificate map entry.`
+    });
+  }
+
+  if (
+    (data.destination === PkiSync.WindowsServer || data.destination === PkiSync.LinuxServer) &&
+    data.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
+    !data.credentials?.exportPassword
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["credentials", "exportPassword"],
+      message: "A password is required for PKCS#12 exports"
+    });
+  }
+
+  refineTargetHost(data, ctx);
+});
+
+export const UpdatePkiSyncFormSchema = UpdatePkiSyncUnionSchema.superRefine(refineTargetHost);
 
 export type TPkiSyncForm = z.infer<typeof PkiSyncFormSchema>;
 

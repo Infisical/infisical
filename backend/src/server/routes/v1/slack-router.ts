@@ -131,7 +131,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: sanitizedSlackIntegrationSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const slackIntegrations = await server.services.slack.getSlackIntegrationsByOrg({
         actor: req.permission.type,
@@ -209,7 +209,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: sanitizedSlackIntegrationSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const slackIntegration = await server.services.slack.getSlackIntegrationById({
         actor: req.permission.type,
@@ -259,7 +259,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const slackChannels = await server.services.slack.getSlackIntegrationChannels({
         actor: req.permission.type,
@@ -338,8 +338,18 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         failureAsync: async () => {
           return res.redirect(appCfg.SITE_URL as string);
         },
-        successAsync: async () => {
-          return res.redirect(`${appCfg.SITE_URL}/organization/settings?selectedTab=workflow-integrations`);
+        successAsync: async (installation) => {
+          const metadata = JSON.parse(installation.metadata || "{}") as { orgId?: string };
+
+          // Fall back to the site root (like the failure path) if orgId is missing, rather than
+          // redirecting to a broken /organizations/undefined/settings page.
+          if (!metadata.orgId) {
+            return res.redirect(appCfg.SITE_URL as string);
+          }
+
+          return res.redirect(
+            `${appCfg.SITE_URL}/organizations/${metadata.orgId}/settings?selectedTab=workflow-integrations`
+          );
         }
       });
     }

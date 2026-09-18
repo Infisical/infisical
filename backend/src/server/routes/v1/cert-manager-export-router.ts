@@ -3,8 +3,10 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const ExportResultSchema = z.object({
   sourceProjectId: z.string(),
@@ -78,6 +80,20 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
             skippedCertificateProfiles: result.skippedCertificateProfiles,
             renamedCertificateProfiles: result.renamedCertificateProfiles
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerProjectExported,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          sourceProjectId: result.sourceProjectId,
+          destinationProjectId: result.destinationProjectId,
+          numberOfCertificateAuthorities: result.exportedCertificateAuthorities,
+          numberOfCertificatePolicies: result.exportedCertificatePolicies,
+          numberOfCertificateProfiles: result.exportedCertificateProfiles
         }
       });
 

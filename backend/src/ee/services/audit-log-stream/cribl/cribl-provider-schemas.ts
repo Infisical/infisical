@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LogProvider } from "../audit-log-stream-enums";
+import { LogProvider, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const CriblProviderCredentialsSchema = z.object({
@@ -30,5 +30,6 @@ export const CreateCriblProviderLogStreamSchema = z.object({
 });
 
 export const UpdateCriblProviderLogStreamSchema = z.object({
-  credentials: CriblProviderCredentialsSchema
+  credentials: CriblProviderCredentialsSchema,
+  streamMode: z.nativeEnum(StreamMode).optional()
 });

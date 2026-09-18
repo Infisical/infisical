@@ -6,6 +6,12 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
+import {
+  TCustomExtensionRule,
+  TProfileCustomExtension,
+  TRequestCustomExtension,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 
 export type TBasicConstraintsIsCAPolicy = CertPolicyState;
 
@@ -14,13 +20,24 @@ export interface TBasicConstraints {
   maxPathLength?: number; // -1 = unlimited, 0+ = specific limit, undefined = not constrained
 }
 
+export type TSingleValuedSubjectAttributeType = Exclude<
+  CertSubjectAttributeType,
+  CertSubjectAttributeType.DOMAIN_COMPONENT
+>;
+
+/**
+ * A domain component rule's values are comma-joined ordered sequences ("corp,example,com"), one per
+ * entry, matched position by position. Every other attribute type takes plain patterns.
+ */
+export interface TSubjectRule {
+  type: CertSubjectAttributeType;
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
+}
+
 export interface TTemplateV2Policy {
-  subject?: Array<{
-    type: CertSubjectAttributeType;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: CertSubjectAlternativeNameType;
     allowed?: string[];
@@ -44,6 +61,7 @@ export interface TTemplateV2Policy {
   validity?: {
     max?: string;
   };
+  customExtensions?: TCustomExtensionRule[];
 }
 
 export type TCertificatePolicy = TPkiCertificatePolicies & {
@@ -54,35 +72,34 @@ export type TCertificatePolicy = TPkiCertificatePolicies & {
   algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[];
 };
 
 export type TCertificatePolicyInsert = TPkiCertificatePoliciesInsert & {
-  subject?: TTemplateV2Policy["subject"];
-  sans?: TTemplateV2Policy["sans"];
-  keyUsages?: TTemplateV2Policy["keyUsages"];
-  extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
-  algorithms?: TTemplateV2Policy["algorithms"];
-  validity?: TTemplateV2Policy["validity"];
+  subject?: TTemplateV2Policy["subject"] | null;
+  sans?: TTemplateV2Policy["sans"] | null;
+  keyUsages?: TTemplateV2Policy["keyUsages"] | null;
+  extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"] | null;
+  algorithms?: TTemplateV2Policy["algorithms"] | null;
+  validity?: TTemplateV2Policy["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
 };
 
-export type TCertificatePolicyUpdate = Partial<
-  Pick<
-    TCertificatePolicy,
-    | "name"
-    | "description"
-    | "subject"
-    | "sans"
-    | "keyUsages"
-    | "extendedKeyUsages"
-    | "algorithms"
-    | "validity"
-    | "basicConstraints"
-  >
->;
+export type TCertificatePolicyUpdate = Partial<Pick<TCertificatePolicy, "name" | "description">> & {
+  subject?: TTemplateV2Policy["subject"] | null;
+  sans?: TTemplateV2Policy["sans"] | null;
+  keyUsages?: TTemplateV2Policy["keyUsages"] | null;
+  extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"] | null;
+  algorithms?: TTemplateV2Policy["algorithms"] | null;
+  validity?: TTemplateV2Policy["validity"] | null;
+  basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
+};
 
 export interface TCertificateRequest {
   commonName?: string;
+  domainComponents?: string[];
   organization?: string;
   organizationalUnit?: string;
   locality?: string;
@@ -108,10 +125,17 @@ export interface TCertificateRequest {
     isCA: boolean;
     pathLength?: number;
   };
+  customExtensions?: TRequestCustomExtension[];
+}
+
+export interface TPolicyValidationOptions {
+  skipRequired?: boolean;
+  profileCustomExtensions?: TProfileCustomExtension[] | null;
 }
 
 export interface TPolicyValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+  resolvedCustomExtensions?: TResolvedCustomExtension[];
 }

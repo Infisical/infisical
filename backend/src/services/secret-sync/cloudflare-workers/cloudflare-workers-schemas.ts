@@ -25,11 +25,19 @@ const CloudflareWorkersSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.scriptId)
 });
 
+const CloudflareWorkersSyncAdditionalOptionsSchema = z.object({
+  syncNonSecretBindings: z
+    .boolean()
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.CLOUDFLARE_WORKERS.syncNonSecretBindings)
+});
+
 const CloudflareWorkersSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 export const CloudflareWorkersSyncSchema = BaseSecretSyncSchema(
   SecretSync.CloudflareWorkers,
-  CloudflareWorkersSyncOptionsConfig
+  CloudflareWorkersSyncOptionsConfig,
+  CloudflareWorkersSyncAdditionalOptionsSchema
 )
   .extend({
     destination: z.literal(SecretSync.CloudflareWorkers),
@@ -39,14 +47,16 @@ export const CloudflareWorkersSyncSchema = BaseSecretSyncSchema(
 
 export const CreateCloudflareWorkersSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.CloudflareWorkers,
-  CloudflareWorkersSyncOptionsConfig
+  CloudflareWorkersSyncOptionsConfig,
+  CloudflareWorkersSyncAdditionalOptionsSchema
 ).extend({
   destinationConfig: CloudflareWorkersSyncDestinationConfigSchema
 });
 
 export const UpdateCloudflareWorkersSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.CloudflareWorkers,
-  CloudflareWorkersSyncOptionsConfig
+  CloudflareWorkersSyncOptionsConfig,
+  CloudflareWorkersSyncAdditionalOptionsSchema
 ).extend({
   destinationConfig: CloudflareWorkersSyncDestinationConfigSchema.optional()
 });

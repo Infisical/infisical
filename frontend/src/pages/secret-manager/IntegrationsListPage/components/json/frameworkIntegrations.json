@@ -3,90 +3,160 @@
         "name": "React",
         "slug": "react",
         "image": "React",
+        "category": "Frontend",
+        "description": "Inject environment variables and secrets into your React app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/react"
     },
     {
         "name": "Vue",
         "slug": "vue",
         "image": "Vue",
+        "category": "Frontend",
+        "description": "Inject environment variables and secrets into your Vue.js app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/vue"
     },
     {
         "name": "Express",
         "slug": "express",
         "image": "Express",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your Express app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/express"
     },
     {
         "name": "Next.js",
         "slug": "nextjs",
         "image": "Next.js",
+        "category": "Full-Stack",
+        "description": "Inject environment variables and secrets into your Next.js app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/nextjs"
     },
     {
         "name": "SvelteKit",
         "slug": "sveltekit",
         "image": "SvelteKit",
+        "category": "Full-Stack",
+        "description": "Inject environment variables and secrets into your SvelteKit app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/sveltekit"
     },
     {
         "name": "Django",
         "slug": "django",
         "image": "Django",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your Django app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/django"
     },
     {
         "name": "NestJS",
         "slug": "nestjs",
         "image": "NestJS",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your NestJS app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/nestjs"
     },
     {
         "name": "Nuxt",
         "slug": "nuxt",
         "image": "Nuxt",
+        "category": "Full-Stack",
+        "description": "Inject environment variables and secrets into your Nuxt app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/nuxt"
     },
     {
         "name": "Gatsby",
         "slug": "gatsby",
         "image": "Gatsby",
+        "category": "Frontend",
+        "description": "Inject environment variables and secrets into your Gatsby app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/gatsby"
     },
     {
         "name": "Remix",
         "slug": "remix",
         "image": "Remix",
+        "category": "Full-Stack",
+        "description": "Inject environment variables and secrets into your Remix app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/remix"
     },
     {
         "name": "Vite",
         "slug": "vite",
         "image": "Vite",
+        "category": "Build Tool",
+        "description": "Inject environment variables and secrets into your Vite app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/vite"
     },
     {
         "name": "Fiber",
         "slug": "fiber",
         "image": "Fiber",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your Fiber app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/fiber"
     },
     {
         "name": "Flask",
         "slug": "flask",
         "image": "Flask",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your Flask app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/flask"
     },
     {
         "name": "Laravel",
         "slug": "laravel",
         "image": "Laravel",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your Laravel app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/laravel"
     },
     {
         "name": "Rails",
         "slug": "rails",
         "image": "Rails",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your Ruby on Rails app.",
         "docsLink": "https://infisical.com/docs/integrations/frameworks/rails"
+    },
+    {
+        "name": ".NET",
+        "slug": "dotnet",
+        "image": "DotNet",
+        "category": "Backend",
+        "description": "Inject environment variables and secrets into your .NET app.",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/dotnet"
+    },
+    {
+        "name": "Spring Boot",
+        "slug": "spring-boot",
+        "image": "Spring Boot",
+        "category": "Backend",
+        "description": "Inject environment variables into your Java Spring Boot app.",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/spring-boot-maven"
+    },
+    {
+        "name": "Gradle",
+        "slug": "gradle",
+        "image": "Gradle",
+        "category": "Build Tool",
+        "description": "Inject environment variables into your Gradle builds.",
+        "docsLink": "https://infisical.com/docs/integrations/build-tools/gradle"
+    },
+    {
+        "name": "Ab Initio",
+        "slug": "ab-initio",
+        "image": "Ab Initio",
+        "category": "Data",
+        "description": "Use Infisical secrets in your Ab Initio data workflows.",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/ab-initio"
+    },
+    {
+        "name": "PM2",
+        "slug": "pm2",
+        "image": "PM2",
+        "category": "Process Manager",
+        "description": "Inject environment variables and secrets into Node.js apps managed by PM2.",
+        "docsLink": "https://infisical.com/docs/integrations/platforms/pm2"
     }
 ]

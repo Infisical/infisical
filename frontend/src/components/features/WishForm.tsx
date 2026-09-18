@@ -1,23 +1,24 @@
 import { useForm } from "react-hook-form";
-import { faRocketchat } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MessageCircleIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Popover,
   PopoverContent,
   PopoverTrigger,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useToggle } from "@app/hooks";
 import { useCreateUserWish } from "@app/hooks/api/userEngagement";
 
 const formSchema = z.object({
-  text: z.string().trim().min(1)
+  text: z.string().trim().min(1, "Enter a feature request.")
 });
 
 type TFormData = z.infer<typeof formSchema>;
@@ -40,58 +41,38 @@ export const WishForm = () => {
     });
 
     createNotification({
-      text: "Your wish has been sent to the Infisical team!",
+      text: "Feature request sent.",
       type: "success"
     });
 
+    reset();
     setIsOpen.off();
   };
 
   return (
-    <Popover
-      onOpenChange={() => {
-        setIsOpen.toggle();
-        reset();
-      }}
-      open={isOpen}
-    >
+    <Popover onOpenChange={(open) => (open ? setIsOpen.on() : setIsOpen.off())} open={isOpen}>
       <PopoverTrigger asChild>
-        <div className="mb-3 w-full cursor-pointer pl-5 text-sm whitespace-nowrap text-mineshaft-400 duration-200 hover:text-mineshaft-200">
-          <FontAwesomeIcon icon={faRocketchat} className="mr-2" />
+        <Button variant="outline" size="sm">
+          <MessageCircleIcon />
           Request a feature
-        </div>
+        </Button>
       </PopoverTrigger>
-      <PopoverContent
-        hideCloseBtn
-        align="end"
-        alignOffset={20}
-        className="mb-1 w-auto border border-mineshaft-600 bg-mineshaft-900 p-4 drop-shadow-2xl"
-        sticky="always"
-      >
+      <PopoverContent align="end" className="w-72 sm:w-96">
         <form onSubmit={handleSubmit(createWish)}>
-          <FormControl
-            className="mb-0"
-            isError={Boolean(errors?.text)}
-            errorText={errors?.text?.message}
-          >
+          <Field data-invalid={Boolean(errors.text)}>
+            <FieldLabel htmlFor="feature-request">Feature request</FieldLabel>
             <TextArea
-              className="border border-mineshaft-600 bg-black/10 text-sm focus:ring-0"
-              variant="outline"
-              placeholder="Wish for anything! Help us improve the platform."
-              reSize="none"
+              id="feature-request"
+              placeholder="Describe what would improve your workflow."
+              className="resize-none"
               rows={6}
-              cols={40}
+              aria-invalid={Boolean(errors.text)}
               {...register("text")}
             />
-          </FormControl>
+            <FieldError errors={[errors.text]} />
+          </Field>
           <div className="flex justify-end pt-2">
-            <Button
-              className="w-min"
-              colorSchema="secondary"
-              type="submit"
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
-            >
+            <Button variant="neutral" type="submit" isPending={isSubmitting}>
               Send
             </Button>
           </div>

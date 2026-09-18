@@ -3,7 +3,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useAddIncidentContact } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -55,42 +67,48 @@ export const AddOrgIncidentContactModal = ({
   };
 
   return (
-    <Modal
-      isOpen={popUp?.addContact?.isOpen}
+    <Dialog
+      open={popUp?.addContact?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addContact", isOpen);
         reset();
       }}
     >
-      <ModalContent
-        title="Add an Incident Contact"
-        subTitle="This contact will be notified in the unlikely event of a severe incident."
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add an Incident Contact</DialogTitle>
+          <DialogDescription>
+            This contact will be notified in the unlikely event of a severe incident.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
           <Controller
             control={control}
             defaultValue=""
             name="email"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="incident-contact-email">Email</FieldLabel>
+                <Input
+                  id="incident-contact-email"
+                  placeholder="contact@acme.com"
+                  isError={Boolean(error)}
+                  {...field}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div className="mt-8 flex items-center space-x-4">
-            <Button size="sm" type="submit" isLoading={isPending} isDisabled={isPending}>
-              Add Incident Contact
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpClose("addContact")}
-            >
+          <DialogFooter>
+            <Button variant="ghost" type="button" onClick={() => handlePopUpClose("addContact")}>
               Cancel
             </Button>
-          </div>
+            <Button variant="org" type="submit" isPending={isPending} isDisabled={isPending}>
+              Add Incident Contact
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -41,7 +41,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const organizations = await server.services.appConnection.laravelForge.listOrganizations(
@@ -76,7 +76,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { organizationSlug } = req.query;
@@ -114,7 +114,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { organizationSlug, serverId } = req.query;

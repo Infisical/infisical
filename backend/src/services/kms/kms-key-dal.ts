@@ -62,6 +62,8 @@ export const kmskeyDALFactory = (db: TDbClient) => {
           db.ref("kmsEncryptedDataKey").withSchema(TableName.Organization).as("orgKmsEncryptedDataKey")
         );
 
+      if (!result) return undefined;
+
       const data = {
         ...KmsKeysSchema.parse(result),
         isExternal: Boolean(result?.externalKmsId),

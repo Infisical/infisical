@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Checkbox } from "../Checkbox";
 import { Input } from "../Input";
-import { Switch } from "../Switch";
+import { Toggle } from "../Toggle";
 import {
   Field,
   FieldContent,
@@ -26,6 +26,9 @@ import {
  * The `orientation` prop on `Field` switches between `vertical` (default — stacked),
  * `horizontal` (label left, control right), and `responsive` (vertical on narrow
  * containers, horizontal on wider ones).
+ *
+ * `FieldDescription` keeps its content mounted inside `AnimatedCollapse`. Pass
+ * `isOpen` when helper text should expand or collapse in response to field state.
  */
 const meta = {
   title: "Generic/Field",
@@ -116,7 +119,7 @@ export const Horizontal: Story = {
           Require a second factor when signing in from a new device.
         </FieldDescription>
       </FieldContent>
-      <Switch defaultChecked />
+      <Toggle defaultChecked />
     </Field>
   )
 };

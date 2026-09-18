@@ -1,57 +1,148 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TSecretValidationRules } from "@app/db/schemas";
 
-export enum SecretValidationRuleType {
-  StaticSecrets = "static-secrets"
-}
+import {
+  TDynamicSecretsRuleConfig,
+  TDynamicSecretsValidationRule,
+  TDynamicSecretsValidationRuleInput,
+  TDynamicSecretsValidationRuleUpdate
+} from "./dynamic-secrets";
+import {
+  TSecretRotationsRuleConfig,
+  TSecretRotationsValidationRule,
+  TSecretRotationsValidationRuleInput,
+  TSecretRotationsValidationRuleUpdate
+} from "./secret-rotations";
+import {
+  DynamicSecretRuleProvider,
+  SecretRotationRuleProvider,
+  SecretValidationRuleType
+} from "./secret-validation-rule-enums";
+import { TConstraints, TValueConstraints } from "./secret-validation-rule-schemas";
+import {
+  TStaticSecretsRuleConfig,
+  TStaticSecretsValidationRule,
+  TStaticSecretsValidationRuleInput,
+  TStaticSecretsValidationRuleUpdate
+} from "./static-secrets";
 
-export enum ConstraintType {
-  MinLength = "min-length",
-  MaxLength = "max-length",
-  RegexPattern = "regex-pattern",
-  RequiredPrefix = "required-prefix",
-  RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse"
-}
+export type TSecretValidationRule =
+  | TStaticSecretsValidationRule
+  | TDynamicSecretsValidationRule
+  | TSecretRotationsValidationRule;
 
-export enum ConstraintTarget {
-  SecretKey = "key",
-  SecretValue = "value"
-}
+export type TSecretValidationRuleInput =
+  | TStaticSecretsValidationRuleInput
+  | TDynamicSecretsValidationRuleInput
+  | TSecretRotationsValidationRuleInput;
 
-export type TConstraint = {
-  type: ConstraintType;
-  appliesTo: ConstraintTarget;
-  value: string;
-};
+export type TSecretValidationRuleUpdate =
+  | TStaticSecretsValidationRuleUpdate
+  | TDynamicSecretsValidationRuleUpdate
+  | TSecretRotationsValidationRuleUpdate;
 
-export type TStaticSecretsInputs = {
-  constraints: TConstraint[];
-};
+export type TSecretValidationRuleConfig =
+  | TStaticSecretsRuleConfig
+  | TDynamicSecretsRuleConfig
+  | TSecretRotationsRuleConfig;
 
-export type TSecretValidationRuleInputs = TStaticSecretsInputs;
+export type TGeneratedCredentialProvider = DynamicSecretRuleProvider | SecretRotationRuleProvider;
 
-export type TCreateSecretValidationRuleDTO = {
+type TRuleScopeCreateFields = {
   name: string;
+  projectId: string;
   description?: string | null;
-  environmentSlug?: string;
+  environment?: string;
   secretPath: string;
-  type: SecretValidationRuleType;
-  inputs: TSecretValidationRuleInputs;
-} & TProjectPermission;
+  isActive?: boolean;
+};
 
-export type TUpdateSecretValidationRuleDTO = {
-  ruleId: string;
+type TRuleScopeUpdateFields = {
   name?: string;
   description?: string | null;
-  environmentSlug?: string | null;
+  environment?: string | null;
   secretPath?: string;
-  type?: SecretValidationRuleType;
-  inputs?: TSecretValidationRuleInputs;
   isActive?: boolean;
-} & TProjectPermission;
+};
+
+/**
+ * Every config field any rule type accepts, all optional. The service is type-agnostic, so it takes
+ * the widest shape and hands it to that type's config schema, which narrows it and rejects the rest.
+ */
+type TAnyRuleConfigFields = {
+  keyConstraints?: TValueConstraints;
+  valueConstraints?: TValueConstraints;
+  providers?: TGeneratedCredentialProvider[];
+  passwordConstraints?: TConstraints;
+};
+
+/** The same fields on update, where null clears an optional constraint target. */
+type TAnyRuleConfigPatch = {
+  [K in keyof TAnyRuleConfigFields]: TAnyRuleConfigFields[K] | null;
+};
+
+export type TSecretValidationRuleWithEnv = TSecretValidationRules & {
+  type: SecretValidationRuleType;
+  envId: string | null;
+  environment: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+};
+
+export type TListSecretValidationRulesDTO = {
+  projectId: string;
+  type?: SecretValidationRuleType;
+};
+
+export type TFindSecretValidationRuleByIdDTO = {
+  ruleId: string;
+  type: SecretValidationRuleType;
+};
+
+export type TCreateSecretValidationRuleDTO = TRuleScopeCreateFields &
+  TAnyRuleConfigFields & {
+    type: SecretValidationRuleType;
+  };
+
+export type TUpdateSecretValidationRuleDTO = TRuleScopeUpdateFields &
+  TAnyRuleConfigPatch & {
+    ruleId: string;
+    type: SecretValidationRuleType;
+  };
 
 export type TDeleteSecretValidationRuleDTO = {
   ruleId: string;
-} & TProjectPermission;
+  type: SecretValidationRuleType;
+};
 
-export type TListSecretValidationRulesDTO = TProjectPermission;
+/** A secret about to be written, as the static-secret rules see it. */
+export type TSecretToValidate = {
+  key: string;
+  value?: string;
+  secretId?: string;
+};
+
+export type TValidateSecretsDTO = {
+  projectId: string;
+  environment: string;
+  envId: string;
+  secretPath: string;
+  secrets: TSecretToValidate[];
+};
+
+export type TFindConstraintsForGeneratedSecretDTO = {
+  projectId: string;
+  envId: string;
+  secretPath: string;
+  type: SecretValidationRuleType.DynamicSecrets | SecretValidationRuleType.SecretRotations;
+  provider: TGeneratedCredentialProvider;
+};
+
+/** The constraints a generated credential has to satisfy, and the rules that asked for them. */
+export type TGeneratedPasswordValidation = {
+  constraints: TConstraints;
+  ruleNames: string[];
+};
+
+export type { TConstraints, TValueConstraints };

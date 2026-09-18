@@ -1,0 +1,32 @@
+version: v0.162.1
+releasedAt: 2026-07-08T15:58:09+04:00
+sourceTag: v0.162.1
+previousTag: v0.162.0
+impactLevel: low
+summary: Adds a startup database migration for PAM credential rotation metadata.
+  No config or deployment changes require operator updates.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM rotation metadata migration
+    description: Adds nullable PAM account columns for rotation account linkage,
+      next rotation scheduling, and staged pending credentials. Existing rows
+      remain compatible.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260701093214_pam-credential-rotation.ts
+        path: backend/src/db/migrations/20260701093214_pam-credential-rotation.ts
+        description: Adds nullable PAM rotation columns and indexes
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-08T12:46:23.178Z
+  sourceRange:
+    from: v0.162.0
+    to: v0.162.1

@@ -44,7 +44,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -78,7 +78,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { spaceId } = req.query;
@@ -149,7 +149,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { spaceId, projectId } = req.query;

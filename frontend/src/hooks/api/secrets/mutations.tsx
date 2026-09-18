@@ -10,7 +10,6 @@ import {
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { PendingAction } from "../secretFolders/types";
-import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "./queries";
 import {
   TCreateSecretBatchDTO,
@@ -68,12 +67,6 @@ export const useCreateSecretV3 = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
@@ -149,12 +142,6 @@ export const useUpdateSecretV3 = ({
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -203,12 +190,6 @@ export const useDeleteSecretV3 = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -252,12 +233,6 @@ export const useCreateSecretBatch = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
@@ -310,12 +285,6 @@ export const useUpdateSecretBatch = ({
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -361,12 +330,6 @@ export const useDeleteSecretBatch = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
@@ -447,20 +410,6 @@ export const useMoveSecrets = ({
         })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          environment: sourceEnvironment,
-          projectId,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          environment: sourceEnvironment,
-          projectId,
-          directory: sourceSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({
           projectId,
           environment: sourceEnvironment,
@@ -518,20 +467,6 @@ export const useDuplicateSecret = ({
         })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          environment: destinationEnvironment,
-          projectId,
-          directory: destinationSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          environment: destinationEnvironment,
-          projectId,
-          directory: destinationSecretPath
-        })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({
           projectId,
           environment: destinationEnvironment,
@@ -563,16 +498,6 @@ export const createSecret = async (dto: TCreateSecretsV3DTO) => {
   );
   return data;
 };
-
-export const useBackfillSecretReference = () =>
-  useMutation<{ message: string }, object, { projectId: string }>({
-    mutationFn: async ({ projectId }) => {
-      const { data } = await apiRequest.post("/api/v4/secrets/backfill-secret-references", {
-        projectId
-      });
-      return data.message;
-    }
-  });
 
 export const useCreateCommit = () => {
   const queryClient = useQueryClient();
@@ -666,12 +591,6 @@ export const useCreateCommit = () => {
         predicate: (query) =>
           query.queryKey[0] === "secret-reference-tree" &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })

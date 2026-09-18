@@ -18,7 +18,10 @@ import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
+import { QoverySyncOptionsSection } from "./QoverySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
+import { SpaceliftSyncOptionsSection } from "./SpaceliftSyncOptionsSection";
+import { TriggerDevSyncOptionsSection } from "./TriggerDevSyncOptionsSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -48,6 +51,12 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Flyio:
       AdditionalSyncOptionsComponent = <FlyioSyncOptionsSection secretSync={secretSync} />;
+      break;
+    case SecretSync.TriggerDev:
+      AdditionalSyncOptionsComponent = <TriggerDevSyncOptionsSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Qovery:
+      AdditionalSyncOptionsComponent = <QoverySyncOptionsSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
@@ -87,7 +96,14 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Ona:
     case SecretSync.TravisCI:
     case SecretSync.Snowflake:
+    case SecretSync.Rundeck:
+    case SecretSync.HasuraCloud:
+    case SecretSync.Cloud66:
+    case SecretSync.Daytona:
       AdditionalSyncOptionsComponent = null;
+      break;
+    case SecretSync.Spacelift:
+      AdditionalSyncOptionsComponent = <SpaceliftSyncOptionsSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
@@ -116,14 +132,14 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
                 )}
               </Detail>
               {AdditionalSyncOptionsComponent}
-              {disableSecretDeletion && (
-                <Detail>
-                  <DetailLabel>Secret Deletion</DetailLabel>
-                  <DetailValue>
-                    <Badge variant="neutral">Disabled</Badge>
-                  </DetailValue>
-                </Detail>
-              )}
+              <Detail>
+                <DetailLabel>Secret Deletion Protection</DetailLabel>
+                <DetailValue>
+                  <Badge variant={disableSecretDeletion ? "success" : "neutral"}>
+                    {disableSecretDeletion ? "Enabled" : "Disabled"}
+                  </Badge>
+                </DetailValue>
+              </Detail>
             </DetailGroup>
           </AccordionContent>
         </AccordionItem>

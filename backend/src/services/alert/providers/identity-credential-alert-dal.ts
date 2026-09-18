@@ -1,0 +1,145 @@
+import { Knex } from "knex";
+
+import { TDbClient } from "@app/db";
+import { AccessScope, TableName } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
+import { MAX_UA_CLIENT_SECRET_TTL_SECONDS } from "@app/services/identity-ua/identity-ua-types";
+
+export type TIdentityCredentialAlertDALFactory = ReturnType<typeof identityCredentialAlertDALFactory>;
+
+export type TExpiringUaClientSecret = {
+  id: string;
+  description: string;
+  clientSecretPrefix: string;
+  identityId: string;
+  identityName: string;
+  expiresAt: Date;
+};
+
+export const identityCredentialAlertDALFactory = (db: TDbClient) => {
+  const findExpiringUaClientSecrets = async (
+    {
+      orgId,
+      projectId,
+      identityId,
+      alertBeforeInterval,
+      leadInterval,
+      asOf
+    }: {
+      orgId: string;
+      projectId?: string | null;
+      identityId?: string | null;
+      alertBeforeInterval: string;
+      leadInterval: string;
+      asOf: Date;
+    },
+    tx?: Knex
+  ): Promise<TExpiringUaClientSecret[]> => {
+    try {
+      // The clamp has to live in the expression, not in a `clientSecretTTL > 0` style guard to avoid overflow
+      const expiresAtSql = `${TableName.IdentityUaClientSecret}."createdAt" + make_interval(secs => LEAST(GREATEST(${TableName.IdentityUaClientSecret}."clientSecretTTL", 0), ${MAX_UA_CLIENT_SECRET_TTL_SECONDS}))`;
+
+      const query = (tx || db.replicaNode())(TableName.IdentityUaClientSecret)
+        .join(
+          TableName.IdentityUniversalAuth,
+          `${TableName.IdentityUaClientSecret}.identityUAId`,
+          `${TableName.IdentityUniversalAuth}.id`
+        )
+        .join(
+          TableName.Membership,
+          `${TableName.IdentityUniversalAuth}.identityId`,
+          `${TableName.Membership}.actorIdentityId`
+        )
+        .join(TableName.Identity, `${TableName.IdentityUniversalAuth}.identityId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.IdentityUaClientSecret}.isClientSecretRevoked`, false)
+        .where(`${TableName.IdentityUaClientSecret}.clientSecretTTL`, ">", 0)
+        .whereRaw(`${expiresAtSql} > ?::timestamptz`, [asOf])
+        .whereRaw(`${expiresAtSql} <= ?::timestamptz + ?::interval + ?::interval`, [
+          asOf,
+          alertBeforeInterval,
+          leadInterval
+        ])
+        .orderByRaw(`${expiresAtSql} asc`);
+
+      if (projectId) {
+        void query
+          .join(
+            { projectMembership: TableName.Membership },
+            `${TableName.IdentityUniversalAuth}.identityId`,
+            "projectMembership.actorIdentityId"
+          )
+          .where("projectMembership.scope", AccessScope.Project)
+          .where("projectMembership.scopeProjectId", projectId)
+          .where(
+            (bd) =>
+              void bd.whereNull(`${TableName.Identity}.projectId`).orWhere(`${TableName.Identity}.projectId`, projectId)
+          );
+      } else {
+        void query.whereNull(`${TableName.Identity}.projectId`);
+      }
+
+      if (identityId) {
+        void query.where(`${TableName.IdentityUniversalAuth}.identityId`, identityId);
+      }
+
+      const rows = (await query.select(
+        db.ref("id").withSchema(TableName.IdentityUaClientSecret),
+        db.ref("description").withSchema(TableName.IdentityUaClientSecret),
+        db.ref("clientSecretPrefix").withSchema(TableName.IdentityUaClientSecret),
+        db.ref("identityId").withSchema(TableName.IdentityUniversalAuth),
+        db.ref("name").withSchema(TableName.Identity).as("identityName"),
+        db.raw(`${expiresAtSql} as "expiresAt"`)
+      )) as TExpiringUaClientSecret[];
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindExpiringUaClientSecrets" });
+    }
+  };
+
+  const findIdentityInOrg = async (
+    identityId: string,
+    orgId: string,
+    tx?: Knex
+  ): Promise<{ projectId: string | null } | undefined> => {
+    try {
+      const row = (await (tx || db.replicaNode())(TableName.Membership)
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Membership}.actorIdentityId`, identityId)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .select(db.ref("projectId").withSchema(TableName.Identity))
+        .first()) as { projectId: string | null } | undefined;
+      return row;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindIdentityInOrg" });
+    }
+  };
+
+  const isIdentityInProject = async (identityId: string, projectId: string, tx?: Knex): Promise<boolean> => {
+    try {
+      const row = (await (tx || db.replicaNode())(TableName.Membership)
+        .where({ actorIdentityId: identityId, scopeProjectId: projectId, scope: AccessScope.Project })
+        .first()) as { id: string } | undefined;
+      return Boolean(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "IsIdentityInProject" });
+    }
+  };
+
+  const getProjectType = async (projectId: string, tx?: Knex): Promise<string | null> => {
+    try {
+      const row = (await (tx || db.replicaNode())(TableName.Project)
+        .where({ id: projectId })
+        .select("type")
+        .first()) as { type: string } | undefined;
+      return row?.type ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetProjectType" });
+    }
+  };
+
+  return { findExpiringUaClientSecrets, findIdentityInOrg, isIdentityInProject, getProjectType };
+};

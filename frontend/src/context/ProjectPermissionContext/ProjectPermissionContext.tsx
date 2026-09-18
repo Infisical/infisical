@@ -6,14 +6,18 @@ import { useParams } from "@tanstack/react-router";
 
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
+import { useImplicitProjectId } from "@app/hooks/useImplicitProjectId";
 
 import { ProjectPermissionSet } from "./types";
 
 export const useProjectPermission = () => {
-  const projectId = useParams({
-    strict: false,
-    select: (el) => el?.projectId
+  const params = useParams({
+    strict: false
   });
+
+  const implicitProjectId = useImplicitProjectId();
+
+  const projectId = params.projectId ?? implicitProjectId;
 
   if (!projectId) {
     throw new Error("useProjectPermission to be used within <ProjectPermissionContext>");
@@ -41,7 +45,7 @@ export const useProjectPermission = () => {
   const hasProjectRole = useCallback(
     (role: string) =>
       memberships?.some((membership) => membership.roles.some((el) => role === el.role)),
-    []
+    [memberships]
   );
 
   return { permission, memberships, hasProjectRole, assumedPrivilegeDetails };

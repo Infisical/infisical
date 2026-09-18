@@ -1,11 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-// eslint-disable @typescript-eslint/no-unsafe-assignment
-
-// TODO(akhilmhdh): With tony find out the api structure and fill it here
-
-import { ForbiddenError } from "@casl/ability";
-import { AxiosError } from "axios";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 
@@ -13,57 +5,52 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
+import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { UserIdentities } from "@app/services/license-client";
+import { projectV2ToFeatureSet } from "@app/services/license-client/entitlement-projection";
+import { TLicenseClientFactory } from "@app/services/license-client/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { BillingPlanRows, BillingPlanTableHead } from "./licence-enums";
 import { TLicenseDALFactory } from "./license-dal";
-import { getDefaultOnPremFeatures, getLicenseKeyConfig, setupLicenseRequestWithStore } from "./license-fns";
+import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
 import {
   InstanceType,
   LicenseType,
-  TAddOrgPmtMethodDTO,
-  TAddOrgTaxIdDTO,
-  TCreateOrgPortalSession,
-  TDelOrgPmtMethodDTO,
-  TDelOrgTaxIdDTO,
   TFeatureSet,
-  TGetOrgBillInfoDTO,
-  TGetOrgTaxIdDTO,
   TOfflineLicense,
   TOfflineLicenseContents,
-  TOrgInvoiceDTO,
-  TOrgLicensesDTO,
   TOrgPlanDTO,
-  TOrgPlansTableDTO,
-  TOrgPmtMethodsDTO,
-  TPlanBillingInfo,
-  TStartOrgTrialDTO,
-  TUpdateOrgBillingDetailsDTO
+  TOrgSeatUsage
 } from "./license-types";
 
 type TLicenseServiceFactoryDep = {
-  envConfig: Pick<
-    TEnvConfig,
-    "LICENSE_SERVER_URL" | "LICENSE_SERVER_KEY" | "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "INTERNAL_REGION" | "SITE_URL"
-  >;
-  orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
+  envConfig: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "LICENSE_SERVER_V2_SERVICE_KEY" | "isCloud">;
+  orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDAL: TLicenseDALFactory;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
-  projectDAL: TProjectDALFactory;
+  licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItems" | "deleteItem">;
+  projectDAL: Pick<TProjectDALFactory, "countOfBillableOrgProjects">;
+  licenseClient?: Pick<
+    TLicenseClientFactory,
+    "getEntitlements" | "getSubscription" | "refreshEntitlements" | "cancelSubscription" | "invalidateEntitlements"
+  >;
+  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit" | "reconcile">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 
-const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
-const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
+// A self-hosted v2 license is single-tenant: the license key identifies the tenant, so entitlement
+// reads carry no real org id. This fixed id only keys the local entitlement cache for the instance.
+const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
+
+const jitteredLicenseCloudPlanTtl = () => applyJitter(KeyStoreTtls.LicenseCloudPlanInSeconds, 90);
 
 export const licenseServiceFactory = ({
   orgDAL,
@@ -71,86 +58,60 @@ export const licenseServiceFactory = ({
   licenseDAL,
   keyStore,
   projectDAL,
-  envConfig
+  envConfig,
+  licenseClient,
+  usageMeteringService
 }: TLicenseServiceFactoryDep) => {
-  let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
   let selfHostedLicense: TOfflineLicense | null = null;
   const licenseKeyConfig = getLicenseKeyConfig(envConfig);
 
-  const licenseServerCloudApi = setupLicenseRequestWithStore(
-    envConfig.LICENSE_SERVER_URL || "",
-    LICENSE_SERVER_CLOUD_LOGIN,
-    envConfig.LICENSE_SERVER_KEY || "",
-    envConfig.INTERNAL_REGION
-  );
-
-  const onlineLicenseKey =
-    licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online ? licenseKeyConfig.licenseKey : "";
-
-  const licenseServerOnPremApi = setupLicenseRequestWithStore(
-    envConfig.LICENSE_SERVER_URL || "",
-    LICENSE_SERVER_ON_PREM_LOGIN,
-    onlineLicenseKey,
-    envConfig.INTERNAL_REGION
-  );
-
-  const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
-    logger.info("Start syncing license key features");
+  // Self-hosted online license: project the license's entitlements (from License Server v2) into the v1
+  // feature shape and refresh the instance-wide onPremFeatures.
+  const syncSelfHostedFeatures = async (shouldThrow: boolean = false) => {
+    logger.info("Start syncing self-hosted license features from License Server v2");
     try {
-      const {
-        data: { currentPlan }
-      } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
-
-      const workspacesUsed = await projectDAL.countOfOrgProjects(null);
-      currentPlan.workspacesUsed = workspacesUsed;
-
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
-      if (usedIdentitySeats !== currentPlan.identitiesUsed) {
-        const usedSeats = await licenseDAL.countOfOrgMembers(null);
-        await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-          usedSeats,
-          usedIdentitySeats
-        });
-        currentPlan.identitiesUsed = usedIdentitySeats;
-        currentPlan.membersUsed = usedSeats;
+      if (!licenseClient) {
+        throw new BadRequestError({ message: "License Server v2 client is not configured" });
       }
 
+      const entitlements = await licenseClient.getEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
+      if (!entitlements) {
+        throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
+      }
+      const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+
       onPremFeatures = currentPlan;
-      logger.info("Successfully synchronized license key features");
+      logger.info("Successfully synced self-hosted license features from License Server v2");
     } catch (error) {
-      logger.error(error, "Failed to synchronize license key features");
+      logger.error(error, "Failed to sync self-hosted license features from License Server v2");
       if (shouldThrow) throw error;
     }
   };
 
   const init = async () => {
     try {
-      if (envConfig.LICENSE_SERVER_KEY) {
-        const token = await licenseServerCloudApi.refreshLicense();
-        if (token) instanceType = InstanceType.Cloud;
+      if (envConfig.LICENSE_SERVER_V2_SERVICE_KEY) {
+        instanceType = InstanceType.Cloud;
         logger.info(`Instance type: ${InstanceType.Cloud}`);
-        isValidLicense = true;
         return;
       }
 
+      // Self-hosted online license: features resolve from License Server v2. The key authenticates via
+      // the token endpoint (handled inside the license client); a successful entitlements sync validates it.
       if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online) {
-        const token = await licenseServerOnPremApi.refreshLicense();
-        if (token) {
-          await syncLicenseKeyOnPremFeatures(true);
-          instanceType = InstanceType.EnterpriseOnPrem;
-          logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
-          isValidLicense = true;
-        }
+        await syncSelfHostedFeatures(true);
+        instanceType = InstanceType.EnterpriseOnPrem;
+        logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
         return;
       }
 
       if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline) {
         let isValidOfflineLicense = true;
-        const contents: TOfflineLicenseContents = JSON.parse(
+        const contents = JSON.parse(
           Buffer.from(licenseKeyConfig.licenseKey, "base64").toString("utf8")
-        );
+        ) as TOfflineLicenseContents;
         const isVerified = await verifyOfflineLicense(JSON.stringify(contents.license), contents.signature);
 
         if (!isVerified) {
@@ -167,21 +128,28 @@ export const licenseServiceFactory = ({
         }
 
         if (isValidOfflineLicense) {
+          // v2 offline licenses carry License Server v2 entitlements; project them into the feature
+          // shape. A v1 feature set is a snapshot frozen when the key was issued, so it is layered over
+          // current defaults: otherwise every flag added since reads as undefined on an air-gapped
+          // instance, withdrawing features the license paid for.
+          const features =
+            contents.license.version === 2 && contents.license.entitlements
+              ? projectV2ToFeatureSet(getDefaultOnPremFeatures(), contents.license.entitlements)
+              : { ...getDefaultOnPremFeatures(), ...contents.license.features };
+
           onPremFeatures = {
-            ...contents.license.features,
-            slug: "enterprise"
+            ...features,
+            slug: "enterprise",
+            isOffline: true
           };
           instanceType = InstanceType.EnterpriseOnPremOffline;
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPremOffline}`);
-          isValidLicense = true;
           selfHostedLicense = contents.license;
-          return;
         }
       }
 
-      // this means this is the self-hosted oss version
-      // else it would reach catch statement
-      isValidLicense = true;
+      // anything that reaches here without setting an instance type is the self-hosted OSS version,
+      // which keeps the default onPremFeatures.
     } catch (error) {
       logger.error(error, `init-license: encountered an error when init license`);
     }
@@ -189,10 +157,77 @@ export const licenseServiceFactory = ({
 
   const initializeBackgroundSync = async () => {
     if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.Online) {
-      logger.info("Setting up background sync process for refresh onPremFeatures");
-      const job = new CronJob("*/10 * * * *", syncLicenseKeyOnPremFeatures);
+      logger.info("Setting up background sync process to refresh onPremFeatures from License Server v2");
+      const job = new CronJob("*/10 * * * *", () => syncSelfHostedFeatures());
       job.start();
       return job;
+    }
+  };
+
+  const getOrgSeatUsage = async (orgId: string, tx?: Knex): Promise<TOrgSeatUsage> => {
+    let scopedOrgId: string | null = null;
+    if (instanceType === InstanceType.Cloud) {
+      const org = tx
+        ? await orgDAL.findRootOrgDetails(orgId, tx)
+        : await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () => orgDAL.findRootOrgDetails(orgId));
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+      scopedOrgId = org.id;
+    }
+
+    const { users, identities } = await licenseDAL.countBillableOrgActors(scopedOrgId, tx);
+    return { membersUsed: users, identitiesUsed: users + identities };
+  };
+
+  // Fetches the org's cloud plan fresh (v2 entitlements projected into the v1 shape), enriches it with
+  // the live project count, writes it to the plan cache, and returns it. Throws on any failure — it
+  // never persists the free-tier fallback itself, so callers control that decision.
+  const fetchAndCacheCloudPlan = async (orgId: string): Promise<TFeatureSet> => {
+    const org = await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () =>
+      orgDAL.findRootOrgDetails(orgId)
+    );
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    const rootOrgId = org.id;
+
+    // Serve from the License Server, projected into the legacy plan shape so getPlan callers are unchanged.
+    if (!licenseClient) {
+      throw new BadRequestError({ message: "License Server client is not configured" });
+    }
+    const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
+    if (!entitlements) {
+      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
+    }
+    const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+
+    currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.LicenseCloudPlan(org.id),
+      jitteredLicenseCloudPlanTtl(),
+      JSON.stringify(currentPlan)
+    );
+
+    return currentPlan;
+  };
+
+  // Stale-while-revalidate refresh fired (fire-and-forget) when a cache hit carries the passThrough
+  // marker a billing mutation set. Single-flight via a self-expiring NX lock, which doubles as a
+  // throttle (at most one refresh per org per lock window). Recomputes and overwrites the plan cache
+  // only on success — it never deletes the existing valid plan first, so a transient License Server / DB
+  // failure can't downgrade a paid org to the free-tier fallback mid-refresh. Never throws.
+  const revalidatePlanInBackground = async (orgId: string) => {
+    try {
+      const acquired = await keyStore.setItemWithExpiryNX(
+        KeyStorePrefixes.LicenseCacheRevalidateLock(orgId),
+        KeyStoreTtls.LicenseCacheRevalidateLockInSeconds,
+        "1"
+      );
+      if (acquired !== "OK") {
+        return;
+      }
+
+      await fetchAndCacheCloudPlan(orgId);
+    } catch (error) {
+      logger.error(error, `getPlan: background revalidation failed [orgId=${orgId}]`);
     }
   };
 
@@ -200,49 +235,37 @@ export const licenseServiceFactory = ({
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = await keyStore.getItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
-        if (cachedPlan) {
-          logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
-          return JSON.parse(cachedPlan) as TFeatureSet;
-        }
+        // One MGET for the plan cache + the two markers instead of three separate round-trips.
+        const [cachedPlan, passThrough, reconcileMarker] = await keyStore.getItems([
+          KeyStorePrefixes.LicenseCloudPlan(orgId),
+          KeyStorePrefixes.LicenseCachePassThrough(orgId),
+          KeyStorePrefixes.LicenseUsageReconcileMarker(orgId)
+        ]);
 
-        const org = await orgDAL.findRootOrgDetails(orgId);
-        if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-        const rootOrgId = org.id;
-
-        const {
-          data: { currentPlan }
-        } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-          `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
-        );
-        const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
-        currentPlan.workspacesUsed = workspacesUsed;
-
-        const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
-        currentPlan.membersUsed = membersUsed;
-        const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
-
-        if (currentPlan?.identitiesUsed && currentPlan.identitiesUsed !== identityUsed) {
-          try {
-            await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-              quantity: membersUsed,
-              quantityIdentities: identityUsed
-            });
-          } catch (error) {
-            logger.error(
-              error,
-              `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
-            );
+        // Demand-driven usage reconciliation: for a billable org (a paid plan → non-null slug) that
+        // hasn't been reconciled this interval, re-emit its meters in the background. reconcile()
+        // self-throttles on the same marker, so this is a no-op on the vast majority of calls and never
+        // blocks the request. Free orgs (null slug) never enter the reconcile path.
+        const maybeReconcile = (plan: TFeatureSet) => {
+          if (!reconcileMarker && plan.slug) {
+            usageMeteringService?.reconcile(orgId);
           }
+        };
+
+        if (cachedPlan) {
+          // A billing mutation flagged this org: serve the cached plan now but kick a background refresh
+          // so the cache converges as the license server reconciles, instead of waiting out the TTL.
+          if (passThrough) {
+            void revalidatePlanInBackground(orgId);
+          }
+          const plan = JSON.parse(cachedPlan) as TFeatureSet;
+          maybeReconcile(plan);
+          logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
+          return plan;
         }
-        currentPlan.identitiesUsed = identityUsed;
 
-        await keyStore.setItemWithExpiry(
-          KeyStorePrefixes.LicenseCloudPlan(org.id),
-          KeyStoreTtls.LicenseCloudPlanInSeconds,
-          JSON.stringify(currentPlan)
-        );
-
+        const currentPlan = await fetchAndCacheCloudPlan(orgId);
+        maybeReconcile(currentPlan);
         return currentPlan;
       }
     } catch (error) {
@@ -252,7 +275,7 @@ export const licenseServiceFactory = ({
       );
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCloudPlan(orgId),
-        KeyStoreTtls.LicenseCloudPlanInSeconds,
+        jitteredLicenseCloudPlanTtl(),
         JSON.stringify(onPremFeatures)
       );
       return onPremFeatures;
@@ -268,28 +291,29 @@ export const licenseServiceFactory = ({
       await getPlan(orgId);
     }
     if (instanceType === InstanceType.EnterpriseOnPrem) {
-      await syncLicenseKeyOnPremFeatures(true);
+      // Bust the license server's cached entitlements (e.g. after a license change), then re-sync.
+      await licenseClient?.refreshEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
+      await syncSelfHostedFeatures(true);
     }
   };
 
-  const generateOrgCustomerId = async (orgName: string, email?: string | null) => {
-    if (instanceType === InstanceType.Cloud) {
-      const {
-        data: { customerId }
-      } = await licenseServerCloudApi.request.post<{ customerId: string }>(
-        "/api/license-server/v1/customers",
-        {
-          email: email ?? "",
-          name: orgName
-        },
-        { timeout: 5000, signal: AbortSignal.timeout(5000) }
-      );
-      return customerId;
+  // Called after an org is deleted so it stops billing. Cloud-only
+  const cancelOrgSubscription = async (orgId: string) => {
+    if (!envConfig.isCloud) {
+      return;
     }
-  };
 
-  const removeOrgCustomer = async (customerId: string) => {
-    await licenseServerCloudApi.request.delete(`/api/license-server/v1/customers/${customerId}`);
+    try {
+      await licenseClient?.cancelSubscription(orgId);
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        logger.info(`cancelOrgSubscription: no subscription to cancel [orgId=${orgId}]`);
+      } else {
+        throw error;
+      }
+    }
+
+    await licenseClient?.invalidateEntitlements(orgId);
   };
 
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
@@ -297,51 +321,14 @@ export const licenseServiceFactory = ({
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     const rootOrgId = org.id;
-    if (instanceType === InstanceType.Cloud) {
-      const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
-      if (org?.customerId) {
-        await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity,
-          quantityIdentities
-        });
-      }
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(rootOrgId));
-    } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
-      onPremFeatures.membersUsed = usedSeats;
-      onPremFeatures.identitiesUsed = usedIdentitySeats;
-      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-        usedSeats,
-        usedIdentitySeats
-      });
-    }
-    await refreshPlan(rootOrgId);
-  };
 
-  // below all are api calls
-  const getOrgPlansTableByBillCycle = async ({
-    orgId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    billingCycle
-  }: TOrgPlansTableDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-    const { data } = await licenseServerCloudApi.request.get(
-      `/api/license-server/v1/cloud-products?billing-cycle=${billingCycle}`
-    );
-    return data;
+    // This is the single "org member count changed" signal in the codebase (invite/signup, SSO/SCIM
+    // provisioning, member removal all call it), so emit the user-seat meter here. Fire-and-forget and
+    // no-op when no license server is configured; extra fires on identity-only changes re-count and
+    // report-only-if-changed, so they're harmless.
+    usageMeteringService?.emit(rootOrgId, UserIdentities.key);
+
+    await refreshPlan(rootOrgId);
   };
 
   const getOrgPlan = async ({
@@ -369,555 +356,6 @@ export const licenseServiceFactory = ({
     return plan;
   };
 
-  const startOrgTrial = async ({
-    orgId,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    success_url
-  }: TStartOrgTrialDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    await updateSubscriptionOrgMemberCount(orgId);
-
-    const {
-      data: { url }
-    } = await licenseServerCloudApi.request.post(
-      `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
-      { success_url }
-    );
-    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
-    return { url };
-  };
-
-  const createOrganizationPortalSession = async ({
-    orgId,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
-  }: TCreateOrgPortalSession) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: "Organization not found"
-      });
-    }
-
-    const {
-      data: { pmtMethods }
-    } = await licenseServerCloudApi.request.get<{ pmtMethods: string[] }>(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`
-    );
-
-    if (pmtMethods.length < 1) {
-      // case: organization has no payment method on file
-      // -> redirect to add payment method portal
-      const {
-        data: { url }
-      } = await licenseServerCloudApi.request.post(
-        `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`,
-        {
-          success_url: `${envConfig.SITE_URL}/organizations/${orgId}/billing`,
-          cancel_url: `${envConfig.SITE_URL}/organizations/${orgId}/billing`
-        }
-      );
-
-      return { url };
-    }
-    // case: organization has payment method on file
-    // -> redirect to billing portal
-    const {
-      data: { url }
-    } = await licenseServerCloudApi.request.post(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/billing-portal`,
-      {
-        return_url: `${envConfig.SITE_URL}/organizations/${orgId}/billing`
-      }
-    );
-
-    return { url };
-  };
-
-  const getUsageMetrics = async (orgId: string) => {
-    const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
-      orgDAL.countAllOrgMembers(orgId),
-      licenseDAL.countOfOrgIdentities(orgId),
-      projectDAL.countOfOrgProjects(orgId)
-    ]);
-
-    return {
-      orgMembersUsed,
-      identityUsed,
-      projectCount,
-      totalIdentities: identityUsed + orgMembersUsed
-    };
-  };
-
-  const getOrgBillingInfo = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-    if (instanceType === InstanceType.Cloud) {
-      const { data } = await licenseServerCloudApi.request.get<TPlanBillingInfo>(
-        `/api/license-server/v1/customers/${organization.customerId}/cloud-plan/billing`
-      );
-      const { identityUsed, orgMembersUsed } = await getUsageMetrics(orgId);
-
-      return {
-        ...data,
-        users: orgMembersUsed,
-        identities: identityUsed
-      };
-    }
-
-    return {
-      currentPeriodStart: selfHostedLicense?.issuedAt ? Date.parse(selfHostedLicense?.issuedAt) / 1000 : undefined,
-      currentPeriodEnd: selfHostedLicense?.expiresAt ? Date.parse(selfHostedLicense?.expiresAt) / 1000 : undefined,
-      interval: "month",
-      intervalCount: 1,
-      amount: 0,
-      quantity: 1,
-      users: 0,
-      identities: 0
-    };
-  };
-
-  const calculateUsageValue = (
-    rowName: string,
-    field: string,
-    projectCount: number,
-    totalIdentities: number
-  ): string => {
-    if (rowName === BillingPlanRows.WorkspaceLimit.name || field === BillingPlanRows.WorkspaceLimit.field) {
-      return projectCount.toString();
-    }
-    if (rowName === BillingPlanRows.IdentityLimit.name || field === BillingPlanRows.IdentityLimit.field) {
-      return totalIdentities.toString();
-    }
-    return "-";
-  };
-
-  const fetchPlanTableFromServer = async (customerId: string | null | undefined) => {
-    const baseUrl = `/api/license-server/v1/customers`;
-
-    if (instanceType === InstanceType.Cloud) {
-      if (!customerId) {
-        throw new NotFoundError({ message: "Organization customer ID is required for plan table retrieval" });
-      }
-      const { data } = await licenseServerCloudApi.request.get<{
-        head: { name: string }[];
-        rows: { name: string; allowed: boolean }[];
-      }>(`${baseUrl}/${customerId}/cloud-plan/table`);
-      return data;
-    }
-
-    if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const { data } = await licenseServerOnPremApi.request.get<{
-        head: { name: string }[];
-        rows: { name: string; allowed: boolean }[];
-      }>(`${baseUrl}/on-prem-plan/table`);
-      return data;
-    }
-
-    throw new Error(`Unsupported instance type for server-based plan table: ${instanceType}`);
-  };
-
-  // returns org current plan feature table
-  const getOrgPlanTable = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const { projectCount, totalIdentities } = await getUsageMetrics(orgId);
-
-    if (instanceType === InstanceType.Cloud || instanceType === InstanceType.EnterpriseOnPrem) {
-      const tableResponse = await fetchPlanTableFromServer(organization.customerId);
-
-      return {
-        head: tableResponse.head,
-        rows: tableResponse.rows.map((row) => ({
-          ...row,
-          used: calculateUsageValue(row.name, "", projectCount, totalIdentities)
-        }))
-      };
-    }
-
-    const mappedRows = Object.values(BillingPlanRows).map(({ name, field }) => ({
-      name,
-      allowed: onPremFeatures[field as keyof TFeatureSet] as boolean | number | null,
-      used: calculateUsageValue(name, field, projectCount, totalIdentities)
-    }));
-
-    return {
-      head: Object.values(BillingPlanTableHead),
-      rows: mappedRows
-    };
-  };
-
-  const getOrgBillingDetails = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const { data } = await licenseServerCloudApi.request.get(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details`
-    );
-    return data;
-  };
-
-  const updateOrgBillingDetails = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    orgId,
-    name,
-    email
-  }: TUpdateOrgBillingDetailsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-    const { data } = await licenseServerCloudApi.request.patch(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details`,
-      {
-        name,
-        email
-      }
-    );
-    return data;
-  };
-
-  const getOrgPmtMethods = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TOrgPmtMethodsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const {
-      data: { pmtMethods }
-    } = await licenseServerCloudApi.request.get(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`
-    );
-    return pmtMethods;
-  };
-
-  const addOrgPmtMethods = async ({
-    orgId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    success_url,
-    cancel_url
-  }: TAddOrgPmtMethodDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-    const {
-      data: { url }
-    } = await licenseServerCloudApi.request.post(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`,
-      {
-        success_url,
-        cancel_url
-      }
-    );
-    return { url };
-  };
-
-  const delOrgPmtMethods = async ({
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    orgId,
-    pmtMethodId
-  }: TDelOrgPmtMethodDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    try {
-      const { data } = await licenseServerCloudApi.request.delete(
-        `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods/${pmtMethodId}`
-      );
-      return data;
-    } catch (error) {
-      if (error instanceof AxiosError) {
-        throw new BadRequestError({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          message: `Failed to remove payment method: ${error.response?.data?.message}`
-        });
-      }
-      throw new BadRequestError({
-        message: "Unable to remove payment method"
-      });
-    }
-  };
-
-  const getOrgTaxIds = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgTaxIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-    const {
-      data: { tax_ids: taxIds }
-    } = await licenseServerCloudApi.request.get(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/tax-ids`
-    );
-    return taxIds;
-  };
-
-  const addOrgTaxId = async ({ actorId, actor, actorAuthMethod, actorOrgId, orgId, type, value }: TAddOrgTaxIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const { data } = await licenseServerCloudApi.request.post(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/tax-ids`,
-      {
-        type,
-        value
-      }
-    );
-    return data;
-  };
-
-  const delOrgTaxId = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId, taxId }: TDelOrgTaxIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const { data } = await licenseServerCloudApi.request.delete(
-      `/api/license-server/v1/customers/${organization.customerId}/billing-details/tax-ids/${taxId}`
-    );
-    return data;
-  };
-
-  const getOrgTaxInvoices = async ({ actorId, actor, actorOrgId, actorAuthMethod, orgId }: TOrgInvoiceDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const {
-      data: { invoices }
-    } = await licenseServerCloudApi.request.get(`/api/license-server/v1/customers/${organization.customerId}/invoices`);
-    return invoices;
-  };
-
-  const getOrgLicenses = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TOrgLicensesDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
-
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    const {
-      data: { licenses }
-    } = await licenseServerCloudApi.request.get(`/api/license-server/v1/customers/${organization.customerId}/licenses`);
-    return licenses;
-  };
-
   const invalidateGetPlan = async (orgId: string) => {
     await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
   };
@@ -933,12 +371,8 @@ export const licenseServiceFactory = ({
   };
 
   return {
-    generateOrgCustomerId,
-    removeOrgCustomer,
+    cancelOrgSubscription,
     init,
-    get isValidLicense() {
-      return isValidLicense;
-    },
     getInstanceType() {
       return instanceType;
     },
@@ -946,26 +380,12 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    getOrgSeatUsage,
     getCustomerId,
     getLicenseId,
     invalidateGetPlan,
     updateSubscriptionOrgMemberCount,
     getOrgPlan,
-    getOrgPlansTableByBillCycle,
-    startOrgTrial,
-    createOrganizationPortalSession,
-    getOrgBillingInfo,
-    getOrgPlanTable,
-    getOrgBillingDetails,
-    updateOrgBillingDetails,
-    addOrgPmtMethods,
-    delOrgPmtMethods,
-    getOrgPmtMethods,
-    getOrgLicenses,
-    getOrgTaxInvoices,
-    getOrgTaxIds,
-    addOrgTaxId,
-    delOrgTaxId,
     initializeBackgroundSync
   };
 };

@@ -18,6 +18,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
@@ -585,7 +586,7 @@ export const pkiSubscriberServiceFactory = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );

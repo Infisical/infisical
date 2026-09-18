@@ -6,6 +6,7 @@ export type TCreateSecretImportDTO = {
   data: {
     environment: string;
     path: string;
+    sourceProjectId?: string;
   };
   isReplication?: boolean;
 } & TProjectPermission;
@@ -70,5 +71,8 @@ export type FolderInfo = {
 export type EnvironmentInfo = {
   envName: string;
   envSlug: string;
+  projectName?: string;
+  projectSlug?: string;
+  projectId?: string;
   folders: FolderInfo[];
 };

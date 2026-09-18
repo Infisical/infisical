@@ -15,13 +15,15 @@ export const AdditionalPrivilegesSchema = z.object({
   temporaryRange: z.string().nullable().optional(),
   temporaryAccessStartTime: z.date().nullable().optional(),
   temporaryAccessEndTime: z.date().nullable().optional(),
-  permissions: z.unknown(),
+  permissions: z.unknown().nullable().optional(),
   actorUserId: z.string().uuid().nullable().optional(),
   actorIdentityId: z.string().uuid().nullable().optional(),
   orgId: z.string().uuid().nullable().optional(),
   projectId: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  folderId: z.string().uuid().nullable().optional(),
+  role: z.string().nullable().optional()
 });
 
 export type TAdditionalPrivileges = z.infer<typeof AdditionalPrivilegesSchema>;

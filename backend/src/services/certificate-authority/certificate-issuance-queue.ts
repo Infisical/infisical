@@ -13,25 +13,33 @@ import {
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import { CertificateIssuanceOperation, CertKeyAlgorithm } from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
-import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
+import {
+  DigiCertExternalMetadataSchema,
+  GoDaddyExternalMetadataSchema
+} from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
@@ -39,6 +47,11 @@ import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-applica
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
+import {
+  addRenewedCertificateToSyncs,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate
+} from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { runWithAcmeCancellation } from "./acme/acme-cancellation";
@@ -50,6 +63,7 @@ import {
   runWithAcmeOrderTimeout
 } from "./acme/acme-certificate-authority-errors";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
+import { ADCSCertificateAuthorityFns } from "./adcs/adcs-certificate-authority-fns";
 import { AcmPendingError } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-errors";
 import { AwsAcmPublicCaCertificateAuthorityFns } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
@@ -57,8 +71,10 @@ import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-cert
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
+import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
 
 const base64UrlToBase64 = (base64url: string): string => {
@@ -90,9 +106,28 @@ const ensureCsrPemFormat = (csr: string): string => {
   return `-----BEGIN CERTIFICATE REQUEST-----\n${base64Lines.join("\n")}\n-----END CERTIFICATE REQUEST-----`;
 };
 
+const extractProfileTemplate = async (
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById"> | undefined,
+  profileId: string | undefined
+): Promise<string | undefined> => {
+  if (!certificateProfileDAL || !profileId) return undefined;
+  try {
+    const profile = await certificateProfileDAL.findById(profileId);
+    if (profile?.externalConfigs && typeof profile.externalConfigs === "object" && profile.externalConfigs !== null) {
+      const { template } = profile.externalConfigs;
+      if (typeof template === "string") return template;
+    }
+  } catch (error) {
+    logger.warn(
+      `Failed to fetch profile ${profileId} for template extraction: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  return undefined;
+};
+
 export type TIssueCertificateFromProfileJobData = {
   certificateId: string;
-  profileId: string;
+  profileId?: string;
   caId: string;
   caType?: CaType;
   commonName?: string;
@@ -112,6 +147,8 @@ export type TIssueCertificateFromProfileJobData = {
   state?: string;
   locality?: string;
   applicationId?: string;
+  basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
+  customExtensions?: TResolvedCustomExtension[];
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -130,7 +167,15 @@ type TCertificateIssuanceQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    | "findPkiSyncIdsByCertificateId"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncMetadata"
+    | "primaryNode"
+  >;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestService?: Pick<
     TCertificateRequestServiceFactory,
@@ -146,6 +191,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -164,6 +210,7 @@ export const certificateIssuanceQueueFactory = ({
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
+  certificateSyncDAL,
   certificateProfileDAL,
   certificateRequestService,
   certificateRequestDAL,
@@ -172,7 +219,8 @@ export const certificateIssuanceQueueFactory = ({
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  telemetryService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -206,6 +254,21 @@ export const certificateIssuanceQueueFactory = ({
     certificateProfileDAL
   });
 
+  const adcsFns = ADCSCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL,
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
   const awsPcaFns = AwsPcaCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
@@ -220,6 +283,18 @@ export const certificateIssuanceQueueFactory = ({
   });
 
   const digicertFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
+  const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
     certificateAuthorityDAL,
@@ -262,52 +337,8 @@ export const certificateIssuanceQueueFactory = ({
   /**
    * Queue a certificate issuance job.
    */
-  const queueCertificateIssuance = async ({
-    certificateId,
-    profileId,
-    caId,
-    caType,
-    commonName,
-    altNames,
-    ttl,
-    signatureAlgorithm,
-    keyAlgorithm,
-    keyUsages,
-    extendedKeyUsages,
-    isRenewal,
-    originalCertificateId,
-    certificateRequestId,
-    csr,
-    organization,
-    organizationalUnit,
-    country,
-    state,
-    locality,
-    applicationId
-  }: TIssueCertificateFromProfileJobData) => {
-    const jobData: TIssueCertificateFromProfileJobData = {
-      certificateId,
-      profileId,
-      caId,
-      caType,
-      commonName,
-      altNames,
-      ttl,
-      signatureAlgorithm,
-      keyAlgorithm,
-      keyUsages,
-      extendedKeyUsages,
-      isRenewal,
-      originalCertificateId,
-      certificateRequestId,
-      csr,
-      organization,
-      organizationalUnit,
-      country,
-      state,
-      locality,
-      applicationId
-    };
+  const queueCertificateIssuance = async (jobData: TIssueCertificateFromProfileJobData) => {
+    const { caType, certificateId, certificateRequestId } = jobData;
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
     // IdempotencyToken, so we poll longer with a fixed backoff instead of exponential.
@@ -326,7 +357,8 @@ export const certificateIssuanceQueueFactory = ({
       }
     }
 
-    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    await queueService.queue(QueueName.CertificateIssuance, QueueJobs.CaIssueCertificateFromProfile, jobData as any, {
       jobId: `certificate-issuance-${jobIdSeed}`,
       ...queueOpts
     });
@@ -355,7 +387,9 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      basicConstraints,
+      customExtensions
     } = data;
 
     const setPending = async (message: string) => {
@@ -377,6 +411,10 @@ export const certificateIssuanceQueueFactory = ({
       );
     };
 
+    // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
+    // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
+    let certificateExistsAfterThisJob = true;
+
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
 
@@ -394,6 +432,10 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+      if (customExtensions?.length) {
+        assertCaSupportsCustomExtensions((ca.externalCa?.type ?? CaType.INTERNAL) as CaType, customExtensions.length);
+      }
 
       await setPending("Starting certificate issuance");
 
@@ -413,7 +455,12 @@ export const certificateIssuanceQueueFactory = ({
           const [, generatedCsr] = await acme.crypto.createCsr(
             {
               altNames: altNames ? altNames.map((san) => san.value) : [],
-              commonName: commonName || ""
+              commonName: commonName || "",
+              organization: organization || undefined,
+              organizationUnit: organizationalUnit || undefined,
+              country: country || undefined,
+              state: state || undefined,
+              locality: locality || undefined
             },
             skLeaf
           );
@@ -430,7 +477,7 @@ export const certificateIssuanceQueueFactory = ({
           acmeResult = await runWithAcmeCancellation(signal, () =>
             runWithAcmeOrderTimeout(
               (timeoutSignal) =>
-                acmeFns.orderCertificateFromProfile({
+                acmeFns.orderCertificate({
                   caId,
                   profileId,
                   commonName: commonName || "",
@@ -501,26 +548,7 @@ export const certificateIssuanceQueueFactory = ({
         }
       } else if (ca.externalCa?.type === CaType.AZURE_AD_CS) {
         await setPending("Submitting the request to Azure AD CS");
-        let template: string | undefined;
-        if (certificateProfileDAL) {
-          try {
-            const profile = await certificateProfileDAL.findById(profileId);
-            if (
-              profile?.externalConfigs &&
-              typeof profile.externalConfigs === "object" &&
-              profile.externalConfigs !== null
-            ) {
-              const configs = profile.externalConfigs;
-              if (typeof configs.template === "string") {
-                template = configs.template;
-              }
-            }
-          } catch (error) {
-            logger.warn(
-              `Failed to fetch profile ${profileId} for template extraction: ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }
+        const template = await extractProfileTemplate(certificateProfileDAL, profileId);
 
         const azureParams = {
           caId,
@@ -544,7 +572,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const azureResult = await azureAdCsFns.orderCertificateFromProfile(azureParams);
+        const azureResult = await azureAdCsFns.orderCertificate(azureParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
@@ -561,6 +589,76 @@ export const certificateIssuanceQueueFactory = ({
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
               certificateId: azureResult.certificateId
+            });
+
+            logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
+          } catch (attachError) {
+            logger.error(
+              attachError,
+              `Failed to attach certificate to request [certificateRequestId=${certificateRequestId}]`
+            );
+            try {
+              await certificateRequestService.updateCertificateRequestStatus({
+                certificateRequestId,
+                status: CertificateRequestStatus.FAILED,
+                errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
+              });
+            } catch (statusUpdateError) {
+              logger.error(
+                statusUpdateError,
+                `Failed to update certificate request status [certificateRequestId=${certificateRequestId}]`
+              );
+            }
+          }
+        }
+      } else if (ca.externalCa?.type === CaType.ADCS) {
+        await setPending("Submitting the request to Active Directory Certificate Service");
+        const template = await extractProfileTemplate(certificateProfileDAL, profileId);
+
+        const adcsParams = {
+          customExtensions,
+          caId,
+          profileId,
+          commonName: commonName || "",
+          altNames: altNames?.map((san) => san.value) || [],
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
+          validity: { ttl },
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          isRenewal,
+          originalCertificateId,
+          template,
+          ...(csr && { csr }),
+          isCancelled
+        };
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled before Active Directory Certificate Service order [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        const adcsResult = await adcsFns.orderCertificate(adcsParams);
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after Active Directory Certificate Service order [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        if (certificateRequestId && certificateRequestService && adcsResult?.certificateId) {
+          try {
+            await certificateRequestService.attachCertificateToRequest({
+              certificateRequestId,
+              certificateId: adcsResult.certificateId
+            });
+
+            await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
+              certificateRequestId,
+              certificateId: adcsResult.certificateId
             });
 
             logger.info(`Certificate attached to request [certificateRequestId=${certificateRequestId}]`);
@@ -612,7 +710,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmResult = await awsAcmPublicCaFns.orderCertificateFromProfile(acmParams);
+        const acmResult = await awsAcmPublicCaFns.orderCertificate(acmParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
@@ -656,6 +754,7 @@ export const certificateIssuanceQueueFactory = ({
         const awsPcaParams = {
           caId,
           profileId,
+          idempotencyKey: certificateId,
           commonName: commonName || "",
           altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
           keyUsages: keyUsages as CertKeyUsage[],
@@ -671,6 +770,8 @@ export const certificateIssuanceQueueFactory = ({
           country,
           state,
           locality,
+          basicConstraints,
+          customExtensions,
           isCancelled
         };
 
@@ -679,7 +780,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const awsPcaResult = await awsPcaFns.orderCertificateFromProfile(awsPcaParams);
+        const awsPcaResult = await awsPcaFns.orderCertificate(awsPcaParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
@@ -745,7 +846,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const digicertResult = await digicertFns.orderCertificateFromProfile({
+        const digicertResult = await digicertFns.orderCertificate({
           caId,
           commonName: commonName || "",
           altNames: altNames?.map((san) => san.value) || [],
@@ -831,17 +932,103 @@ export const certificateIssuanceQueueFactory = ({
               `DigiCert order issued immediately (pre-validated domains), attached certificate [certificateRequestId=${certificateRequestId}] [certificateId=${attachedCertificateId}]`
             );
           } catch (finaliseError) {
+            certificateExistsAfterThisJob = false;
             logger.error(
               finaliseError,
               `DigiCert immediate finalisation failed, will be retried by polling queue [certificateRequestId=${certificateRequestId}]`
             );
           }
         } else {
+          certificateExistsAfterThisJob = false;
           await setPending(`DigiCert is processing the request — order #${digicertResult.metadata.digicert.orderId}`);
           logger.info(
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
           );
         }
+      } else if (ca.externalCa?.type === CaType.GODADDY) {
+        if (!certificateRequestId || !certificateRequestDAL) {
+          throw new NotFoundError({
+            message: "GoDaddy issuance requires a certificate request and request DAL"
+          });
+        }
+
+        await setPending("Submitting the request to GoDaddy");
+
+        let renewalOfCertificateId: string | undefined;
+        if (isRenewal && originalCertificateId) {
+          const originalCert = await certificateDAL.findById(originalCertificateId);
+          const parsedMetadata = GoDaddyExternalMetadataSchema.safeParse(originalCert?.externalMetadata);
+          if (parsedMetadata.success) {
+            renewalOfCertificateId = parsedMetadata.data.certificateId;
+          } else {
+            logger.warn(
+              `GoDaddy renewal requested but previous certificate has no GoDaddy reference in externalMetadata — falling back to a new order [originalCertificateId=${originalCertificateId}]`
+            );
+          }
+        }
+
+        if (await isCancelled()) {
+          logger.info(`Cancelled before GoDaddy order [certificateRequestId=${certificateRequestId}]`);
+          return;
+        }
+
+        const godaddyResult = await godaddyFns.orderCertificate({
+          caId,
+          commonName: commonName || "",
+          altNames: altNames?.map((san) => san.value) || [],
+          signatureAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
+          ttl,
+          ...(csr && { csr }),
+          ...(renewalOfCertificateId && { renewalOfCertificateId })
+        });
+
+        if (await isCancelled()) {
+          logger.info(
+            `Cancelled after GoDaddy order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        let encryptedPrivateKey: Buffer | undefined;
+        if (godaddyResult.privateKey) {
+          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+            projectId: ca.projectId,
+            projectDAL,
+            kmsService
+          });
+          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(godaddyResult.privateKey) });
+          encryptedPrivateKey = cipherTextBlob;
+        }
+
+        const metadataWithRenewal = {
+          ...godaddyResult.metadata,
+          godaddy: {
+            ...godaddyResult.metadata.godaddy,
+            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
+          }
+        };
+
+        const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
+          metadata: JSON.stringify(metadataWithRenewal),
+          ...(encryptedPrivateKey && { encryptedPrivateKey })
+        });
+
+        if (!transitioned) {
+          logger.info(
+            `Skipping GoDaddy validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
+          );
+          return;
+        }
+
+        certificateExistsAfterThisJob = false;
+        await setPending(
+          `GoDaddy is processing the request — certificate ${godaddyResult.metadata.godaddy.certificateId}`
+        );
+        logger.info(
+          `GoDaddy order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [godaddyCertificateId=${godaddyResult.metadata.godaddy.certificateId}]`
+        );
       } else if (ca.externalCa?.type === CaType.VENAFI_TPP) {
         await setPending("Submitting the request to Venafi TPP");
         const venafiTppParams = {
@@ -870,7 +1057,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const venafiTppResult = await venafiTppFns.orderCertificateFromProfile(venafiTppParams);
+        const venafiTppResult = await venafiTppFns.orderCertificate(venafiTppParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Venafi TPP order [certificateRequestId=${certificateRequestId}]`);
@@ -916,16 +1103,18 @@ export const certificateIssuanceQueueFactory = ({
       );
 
       let scopedApplicationId: string | null = data.applicationId ?? null;
+      let issuedCertificateId: string | null | undefined;
       try {
         if (!scopedApplicationId && isRenewal && originalCertificateId) {
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
         }
-        if (scopedApplicationId && certificateRequestId && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId);
-          if (req?.certificateId) {
-            await certificateDAL.updateById(req.certificateId, { applicationId: scopedApplicationId });
-          }
+        issuedCertificateId =
+          certificateRequestId && certificateRequestDAL
+            ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
+            : certificateId;
+        if (scopedApplicationId && issuedCertificateId) {
+          await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
         }
       } catch (stampErr) {
         logger.warn(
@@ -935,28 +1124,25 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        if (scopedApplicationId && profileId && certificateProfileDAL && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId!);
-          if (req?.certificateId) {
-            const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-            if (profile) {
-              const effectiveApiConfig = await resolveEffectiveApiConfig({
-                applicationId: scopedApplicationId,
-                profileId,
-                profileApiConfig: profile.apiConfig,
-                pkiApplicationProfileDAL,
-                apiEnrollmentConfigDAL
-              });
-              const cert = await certificateDAL.findById(req.certificateId);
-              if (cert && !cert.renewBeforeDays) {
-                const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-                  { apiConfig: effectiveApiConfig },
-                  ttl,
-                  new Date(cert.notAfter)
-                );
-                if (finalRenewBeforeDays !== undefined) {
-                  await certificateDAL.updateById(req.certificateId, { renewBeforeDays: finalRenewBeforeDays });
-                }
+        if (scopedApplicationId && profileId && certificateProfileDAL && issuedCertificateId) {
+          const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+          if (profile) {
+            const effectiveApiConfig = await resolveEffectiveApiConfig({
+              applicationId: scopedApplicationId,
+              profileId,
+              profileApiConfig: profile.apiConfig,
+              pkiApplicationProfileDAL,
+              apiEnrollmentConfigDAL
+            });
+            const cert = await certificateDAL.findById(issuedCertificateId);
+            if (cert && !cert.renewBeforeDays) {
+              const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+                { apiConfig: effectiveApiConfig },
+                ttl,
+                new Date(cert.notAfter)
+              );
+              if (finalRenewBeforeDays !== undefined) {
+                await certificateDAL.updateById(issuedCertificateId, { renewBeforeDays: finalRenewBeforeDays });
               }
             }
           }
@@ -969,6 +1155,32 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
+        if (isRenewal && originalCertificateId && issuedCertificateId) {
+          await addRenewedCertificateToSyncs(originalCertificateId, issuedCertificateId, { certificateSyncDAL });
+          await triggerAutoSyncForCertificate(issuedCertificateId, {
+            certificateSyncDAL,
+            pkiSyncDAL,
+            pkiSyncQueue
+          });
+        }
+
+        if (issuedCertificateId && scopedApplicationId) {
+          await queueCertificateFilterReconcile(issuedCertificateId, scopedApplicationId, pkiSyncQueue);
+
+          if (isRenewal && originalCertificateId) {
+            await queueCertificateFilterReconcile(originalCertificateId, scopedApplicationId, pkiSyncQueue);
+          }
+        }
+      } catch (syncErr) {
+        logger.warn(
+          syncErr,
+          `Failed to link certificate to PKI syncs [isRenewal=${String(isRenewal)}] [originalCertificateId=${
+            originalCertificateId ?? "none"
+          }] [certificateRequestId=${certificateRequestId}]`
+        );
+      }
+
+      try {
         await pkiAlertV2Queue?.queueCertificateEvent({
           certificateId,
           projectId: ca.projectId,
@@ -977,6 +1189,20 @@ export const certificateIssuanceQueueFactory = ({
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      }
+
+      if (certificateExistsAfterThisJob) {
+        const telemetryProfile = profileId ? await certificateProfileDAL?.findById(profileId) : undefined;
+
+        await reportCertificateIssued({
+          telemetryService,
+          projectDAL,
+          projectId: ca.projectId,
+          profileId,
+          applicationId: scopedApplicationId,
+          enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
+          operation: isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
+        });
       }
     } catch (error: unknown) {
       if (error instanceof CertificateRequestCancelledError) {
@@ -1100,6 +1326,13 @@ export const certificateIssuanceQueueFactory = ({
 
   return {
     queueCertificateIssuance,
-    processCertificateIssuanceJobs
+    processCertificateIssuanceJobs,
+    acmeFns,
+    azureAdCsFns,
+    adcsFns,
+    awsPcaFns,
+    awsAcmPublicCaFns,
+    digicertFns,
+    venafiTppFns
   };
 };

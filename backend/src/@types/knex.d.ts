@@ -20,27 +20,39 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
-  TAiMcpActivityLogs,
-  TAiMcpActivityLogsInsert,
-  TAiMcpActivityLogsUpdate,
-  TAiMcpEndpoints,
-  TAiMcpEndpointServers,
-  TAiMcpEndpointServersInsert,
-  TAiMcpEndpointServersUpdate,
-  TAiMcpEndpointServerTools,
-  TAiMcpEndpointServerToolsInsert,
-  TAiMcpEndpointServerToolsUpdate,
-  TAiMcpEndpointsInsert,
-  TAiMcpEndpointsUpdate,
-  TAiMcpServers,
-  TAiMcpServersInsert,
-  TAiMcpServersUpdate,
-  TAiMcpServerTools,
-  TAiMcpServerToolsInsert,
-  TAiMcpServerToolsUpdate,
-  TAiMcpServerUserCredentials,
-  TAiMcpServerUserCredentialsInsert,
-  TAiMcpServerUserCredentialsUpdate,
+  TAgentVaultAccessBundles,
+  TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundlesUpdate,
+  TAgentVaultProxies,
+  TAgentVaultProxiesInsert,
+  TAgentVaultProxiesUpdate,
+  TAgentVaultServices,
+  TAgentVaultServicesInsert,
+  TAgentVaultServicesUpdate,
+  TAgentVaultSessionAccessBundles,
+  TAgentVaultSessionAccessBundlesInsert,
+  TAgentVaultSessionAccessBundlesUpdate,
+  TAgentVaultSessions,
+  TAgentVaultSessionsInsert,
+  TAgentVaultSessionsUpdate,
+  TAlertChannelMemberships,
+  TAlertChannelMembershipsInsert,
+  TAlertChannelMembershipsUpdate,
+  TAlertChannelRecipients,
+  TAlertChannelRecipientsInsert,
+  TAlertChannelRecipientsUpdate,
+  TAlertChannels,
+  TAlertChannelsInsert,
+  TAlertChannelsUpdate,
+  TAlertHistory,
+  TAlertHistoryInsert,
+  TAlertHistoryTarget,
+  TAlertHistoryTargetInsert,
+  TAlertHistoryTargetUpdate,
+  TAlertHistoryUpdate,
+  TAlerts,
+  TAlertsInsert,
+  TAlertsUpdate,
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
@@ -80,6 +92,9 @@ import {
   TAuditLogStreamsInsert,
   TAuditLogStreamsUpdate,
   TAuditLogsUpdate,
+  TAuditReports,
+  TAuditReportsInsert,
+  TAuditReportsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
   TAuthTokenSessionsInsert,
@@ -182,6 +197,12 @@ import {
   TGitAppOrg,
   TGitAppOrgInsert,
   TGitAppOrgUpdate,
+  TGithubAppConnections,
+  TGithubAppConnectionsInsert,
+  TGithubAppConnectionsUpdate,
+  TGithubApps,
+  TGithubAppsInsert,
+  TGithubAppsUpdate,
   TGithubOrgSyncConfigs,
   TGithubOrgSyncConfigsInsert,
   TGithubOrgSyncConfigsUpdate,
@@ -200,6 +221,9 @@ import {
   THoneyTokenSecretMappingsUpdate,
   THoneyTokensInsert,
   THoneyTokensUpdate,
+  THsmConnectors,
+  THsmConnectorsInsert,
+  THsmConnectorsUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -265,6 +289,9 @@ import {
   TInternalCertificateAuthoritiesUpdate,
   TInternalKms,
   TInternalKmsInsert,
+  TInternalKmsKeyVersion,
+  TInternalKmsKeyVersionInsert,
+  TInternalKmsKeyVersionUpdate,
   TInternalKmsUpdate,
   TKeyValueStore,
   TKeyValueStoreInsert,
@@ -281,12 +308,21 @@ import {
   TKmipOrgServerCertificates,
   TKmipOrgServerCertificatesInsert,
   TKmipOrgServerCertificatesUpdate,
+  TKmipServers,
+  TKmipServersInsert,
+  TKmipServersUpdate,
+  TKmsKekHistory,
+  TKmsKekHistoryInsert,
+  TKmsKekHistoryUpdate,
   TKmsKeys,
   TKmsKeysInsert,
   TKmsKeysUpdate,
   TKmsKeyVersions,
   TKmsKeyVersionsInsert,
   TKmsKeyVersionsUpdate,
+  TKmsLegacyEncryptionKeys,
+  TKmsLegacyEncryptionKeysInsert,
+  TKmsLegacyEncryptionKeysUpdate,
   TKmsRootConfig,
   TKmsRootConfigInsert,
   TKmsRootConfigUpdate,
@@ -302,9 +338,15 @@ import {
   TMemberships,
   TMembershipsInsert,
   TMembershipsUpdate,
+  TOauthClients,
+  TOauthClientsInsert,
+  TOauthClientsUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
+  TOrgAgentProxyConfig,
+  TOrgAgentProxyConfigInsert,
+  TOrgAgentProxyConfigUpdate,
   TOrganizationAssets,
   TOrganizationAssetsInsert,
   TOrganizationAssetsUpdate,
@@ -407,6 +449,9 @@ import {
   TPkiScepTransactions,
   TPkiScepTransactionsInsert,
   TPkiScepTransactionsUpdate,
+  TPkiSignerCertificateIssuanceJobs,
+  TPkiSignerCertificateIssuanceJobsInsert,
+  TPkiSignerCertificateIssuanceJobsUpdate,
   TPkiSigners,
   TPkiSignersInsert,
   TPkiSignersUpdate,
@@ -428,6 +473,9 @@ import {
   TProjectEnvironments,
   TProjectEnvironmentsInsert,
   TProjectEnvironmentsUpdate,
+  TProjectFolderGrants,
+  TProjectFolderGrantsInsert,
+  TProjectFolderGrantsUpdate,
   TProjectGateways,
   TProjectGatewaysInsert,
   TProjectGatewaysUpdate,
@@ -442,9 +490,6 @@ import {
   TProjectSplitBackfillIds,
   TProjectSplitBackfillIdsInsert,
   TProjectSplitBackfillIdsUpdate,
-  TProjectSshConfigs,
-  TProjectSshConfigsInsert,
-  TProjectSshConfigsUpdate,
   TProjectsUpdate,
   TProjectTemplateGroupMemberships,
   TProjectTemplateGroupMembershipsInsert,
@@ -458,6 +503,12 @@ import {
   TProjectTemplateUserMemberships,
   TProjectTemplateUserMembershipsInsert,
   TProjectTemplateUserMembershipsUpdate,
+  TProxiedServiceCredentials,
+  TProxiedServiceCredentialsInsert,
+  TProxiedServiceCredentialsUpdate,
+  TProxiedServices,
+  TProxiedServicesInsert,
+  TProxiedServicesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
@@ -470,6 +521,9 @@ import {
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
+  TResourceKubernetesAuths,
+  TResourceKubernetesAuthsInsert,
+  TResourceKubernetesAuthsUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -605,39 +659,12 @@ import {
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
+  TSignupOnboardingResponses,
+  TSignupOnboardingResponsesInsert,
+  TSignupOnboardingResponsesUpdate,
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
-  TSshCertificateAuthorities,
-  TSshCertificateAuthoritiesInsert,
-  TSshCertificateAuthoritiesUpdate,
-  TSshCertificateAuthoritySecrets,
-  TSshCertificateAuthoritySecretsInsert,
-  TSshCertificateAuthoritySecretsUpdate,
-  TSshCertificateBodies,
-  TSshCertificateBodiesInsert,
-  TSshCertificateBodiesUpdate,
-  TSshCertificates,
-  TSshCertificatesInsert,
-  TSshCertificatesUpdate,
-  TSshCertificateTemplates,
-  TSshCertificateTemplatesInsert,
-  TSshCertificateTemplatesUpdate,
-  TSshHostGroupMemberships,
-  TSshHostGroupMembershipsInsert,
-  TSshHostGroupMembershipsUpdate,
-  TSshHostGroups,
-  TSshHostGroupsInsert,
-  TSshHostGroupsUpdate,
-  TSshHostLoginUserMappings,
-  TSshHostLoginUserMappingsInsert,
-  TSshHostLoginUserMappingsUpdate,
-  TSshHostLoginUsers,
-  TSshHostLoginUsersInsert,
-  TSshHostLoginUsersUpdate,
-  TSshHosts,
-  TSshHostsInsert,
-  TSshHostsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -659,7 +686,13 @@ import {
   TUserGroupMembership,
   TUserGroupMembershipInsert,
   TUserGroupMembershipUpdate,
+  TUserMfaRecoveryCodes,
+  TUserMfaRecoveryCodesInsert,
+  TUserMfaRecoveryCodesUpdate,
   TUsers,
+  TUserSecretActivation,
+  TUserSecretActivationInsert,
+  TUserSecretActivationUpdate,
   TUsersInsert,
   TUsersUpdate,
   TVaultExternalMigrationConfigs,
@@ -716,22 +749,17 @@ import {
   TPamAccountPoliciesInsert,
   TPamAccountPoliciesUpdate
 } from "@app/db/schemas/pam-account-policies";
+import {
+  TPamAccountTemplates,
+  TPamAccountTemplatesInsert,
+  TPamAccountTemplatesUpdate
+} from "@app/db/schemas/pam-account-templates";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import {
-  TPamDiscoverySourceAccounts,
-  TPamDiscoverySourceAccountsInsert,
-  TPamDiscoverySourceAccountsUpdate
-} from "@app/db/schemas/pam-discovery-source-accounts";
-import {
-  TPamDiscoverySourceDependencies,
-  TPamDiscoverySourceDependenciesInsert,
-  TPamDiscoverySourceDependenciesUpdate
-} from "@app/db/schemas/pam-discovery-source-dependencies";
-import {
-  TPamDiscoverySourceResources,
-  TPamDiscoverySourceResourcesInsert,
-  TPamDiscoverySourceResourcesUpdate
-} from "@app/db/schemas/pam-discovery-source-resources";
+  TPamDiscoveredAccounts,
+  TPamDiscoveredAccountsInsert,
+  TPamDiscoveredAccountsUpdate
+} from "@app/db/schemas/pam-discovered-accounts";
 import {
   TPamDiscoverySourceRuns,
   TPamDiscoverySourceRunsInsert,
@@ -743,6 +771,11 @@ import {
   TPamDiscoverySourcesUpdate
 } from "@app/db/schemas/pam-discovery-sources";
 import { TPamDomains, TPamDomainsInsert, TPamDomainsUpdate } from "@app/db/schemas/pam-domains";
+import {
+  TPamFolderNotificationConfigs,
+  TPamFolderNotificationConfigsInsert,
+  TPamFolderNotificationConfigsUpdate
+} from "@app/db/schemas/pam-folder-notification-configs";
 import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
 import {
   TPamProjectRecordingConfigs,
@@ -815,53 +848,12 @@ declare module "knex" {
 declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
+    [TableName.UserSecretActivation]: KnexOriginal.CompositeTableType<
+      TUserSecretActivation,
+      TUserSecretActivationInsert,
+      TUserSecretActivationUpdate
+    >;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
-    [TableName.SshHostGroup]: KnexOriginal.CompositeTableType<
-      TSshHostGroups,
-      TSshHostGroupsInsert,
-      TSshHostGroupsUpdate
-    >;
-    [TableName.SshHostGroupMembership]: KnexOriginal.CompositeTableType<
-      TSshHostGroupMemberships,
-      TSshHostGroupMembershipsInsert,
-      TSshHostGroupMembershipsUpdate
-    >;
-    [TableName.SshHost]: KnexOriginal.CompositeTableType<TSshHosts, TSshHostsInsert, TSshHostsUpdate>;
-    [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
-      TSshCertificateAuthorities,
-      TSshCertificateAuthoritiesInsert,
-      TSshCertificateAuthoritiesUpdate
-    >;
-    [TableName.SshCertificateAuthoritySecret]: KnexOriginal.CompositeTableType<
-      TSshCertificateAuthoritySecrets,
-      TSshCertificateAuthoritySecretsInsert,
-      TSshCertificateAuthoritySecretsUpdate
-    >;
-    [TableName.SshCertificateTemplate]: KnexOriginal.CompositeTableType<
-      TSshCertificateTemplates,
-      TSshCertificateTemplatesInsert,
-      TSshCertificateTemplatesUpdate
-    >;
-    [TableName.SshCertificate]: KnexOriginal.CompositeTableType<
-      TSshCertificates,
-      TSshCertificatesInsert,
-      TSshCertificatesUpdate
-    >;
-    [TableName.SshCertificateBody]: KnexOriginal.CompositeTableType<
-      TSshCertificateBodies,
-      TSshCertificateBodiesInsert,
-      TSshCertificateBodiesUpdate
-    >;
-    [TableName.SshHostLoginUser]: KnexOriginal.CompositeTableType<
-      TSshHostLoginUsers,
-      TSshHostLoginUsersInsert,
-      TSshHostLoginUsersUpdate
-    >;
-    [TableName.SshHostLoginUserMapping]: KnexOriginal.CompositeTableType<
-      TSshHostLoginUserMappings,
-      TSshHostLoginUserMappingsInsert,
-      TSshHostLoginUserMappingsUpdate
-    >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
       TCertificateAuthoritiesInsert,
@@ -1048,6 +1040,11 @@ declare module "knex/types/tables" {
       TPkiDiscoveryScanHistoryUpdate
     >;
     [TableName.PkiSigners]: KnexOriginal.CompositeTableType<TPkiSigners, TPkiSignersInsert, TPkiSignersUpdate>;
+    [TableName.PkiSignerCertificateIssuanceJobs]: KnexOriginal.CompositeTableType<
+      TPkiSignerCertificateIssuanceJobs,
+      TPkiSignerCertificateIssuanceJobsInsert,
+      TPkiSignerCertificateIssuanceJobsUpdate
+    >;
     [TableName.PkiSigningOperations]: KnexOriginal.CompositeTableType<
       TPkiSigningOperations,
       TPkiSigningOperationsInsert,
@@ -1096,13 +1093,13 @@ declare module "knex/types/tables" {
       TIncidentContactsUpdate
     >;
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
+    [TableName.SignupOnboardingResponse]: KnexOriginal.CompositeTableType<
+      TSignupOnboardingResponses,
+      TSignupOnboardingResponsesInsert,
+      TSignupOnboardingResponsesUpdate
+    >;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
-    [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<
-      TProjectSshConfigs,
-      TProjectSshConfigsInsert,
-      TProjectSshConfigsUpdate
-    >;
     [TableName.Environment]: KnexOriginal.CompositeTableType<
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
@@ -1152,6 +1149,11 @@ declare module "knex/types/tables" {
       TSecretImports,
       TSecretImportsInsert,
       TSecretImportsUpdate
+    >;
+    [TableName.ProjectFolderGrant]: KnexOriginal.CompositeTableType<
+      TProjectFolderGrants,
+      TProjectFolderGrantsInsert,
+      TProjectFolderGrantsUpdate
     >;
     [TableName.Integration]: KnexOriginal.CompositeTableType<TIntegrations, TIntegrationsInsert, TIntegrationsUpdate>;
     [TableName.Webhook]: KnexOriginal.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;
@@ -1357,6 +1359,7 @@ declare module "knex/types/tables" {
     >;
     [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
+    [TableName.OauthClient]: KnexOriginal.CompositeTableType<TOauthClients, TOauthClientsInsert, TOauthClientsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;
     [TableName.LdapConfig]: KnexOriginal.CompositeTableType<TLdapConfigs, TLdapConfigsInsert, TLdapConfigsUpdate>;
     [TableName.LdapGroupMap]: KnexOriginal.CompositeTableType<
@@ -1371,6 +1374,7 @@ declare module "knex/types/tables" {
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
+    [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
       TGitAppInstallSessionsInsert,
@@ -1436,7 +1440,22 @@ declare module "knex/types/tables" {
       TKmsRootConfigInsert,
       TKmsRootConfigUpdate
     >;
+    [TableName.KmsLegacyEncryptionKey]: KnexOriginal.CompositeTableType<
+      TKmsLegacyEncryptionKeys,
+      TKmsLegacyEncryptionKeysInsert,
+      TKmsLegacyEncryptionKeysUpdate
+    >;
+    [TableName.KmsKekHistory]: KnexOriginal.CompositeTableType<
+      TKmsKekHistory,
+      TKmsKekHistoryInsert,
+      TKmsKekHistoryUpdate
+    >;
     [TableName.InternalKms]: KnexOriginal.CompositeTableType<TInternalKms, TInternalKmsInsert, TInternalKmsUpdate>;
+    [TableName.InternalKmsKeyVersion]: KnexOriginal.CompositeTableType<
+      TInternalKmsKeyVersion,
+      TInternalKmsKeyVersionInsert,
+      TInternalKmsKeyVersionUpdate
+    >;
     [TableName.ExternalKms]: KnexOriginal.CompositeTableType<TExternalKms, TExternalKmsInsert, TExternalKmsUpdate>;
     [TableName.KmsKey]: KnexOriginal.CompositeTableType<TKmsKeys, TKmsKeysInsert, TKmsKeysUpdate>;
     [TableName.KmsKeyVersion]: KnexOriginal.CompositeTableType<
@@ -1495,10 +1514,37 @@ declare module "knex/types/tables" {
       TResourceMetadataInsert,
       TResourceMetadataUpdate
     >;
+    [TableName.Alert]: KnexOriginal.CompositeTableType<TAlerts, TAlertsInsert, TAlertsUpdate>;
+    [TableName.AlertChannel]: KnexOriginal.CompositeTableType<
+      TAlertChannels,
+      TAlertChannelsInsert,
+      TAlertChannelsUpdate
+    >;
+    [TableName.AlertChannelRecipient]: KnexOriginal.CompositeTableType<
+      TAlertChannelRecipients,
+      TAlertChannelRecipientsInsert,
+      TAlertChannelRecipientsUpdate
+    >;
+    [TableName.AlertChannelMembership]: KnexOriginal.CompositeTableType<
+      TAlertChannelMemberships,
+      TAlertChannelMembershipsInsert,
+      TAlertChannelMembershipsUpdate
+    >;
+    [TableName.AlertHistory]: KnexOriginal.CompositeTableType<TAlertHistory, TAlertHistoryInsert, TAlertHistoryUpdate>;
+    [TableName.AlertHistoryTarget]: KnexOriginal.CompositeTableType<
+      TAlertHistoryTarget,
+      TAlertHistoryTargetInsert,
+      TAlertHistoryTargetUpdate
+    >;
     [TableName.AppConnection]: KnexOriginal.CompositeTableType<
       TAppConnections,
       TAppConnectionsInsert,
       TAppConnectionsUpdate
+    >;
+    [TableName.HsmConnector]: KnexOriginal.CompositeTableType<
+      THsmConnectors,
+      THsmConnectorsInsert,
+      THsmConnectorsUpdate
     >;
     [TableName.SecretSync]: KnexOriginal.CompositeTableType<TSecretSyncs, TSecretSyncsInsert, TSecretSyncsUpdate>;
     [TableName.KmipClient]: KnexOriginal.CompositeTableType<TKmipClients, TKmipClientsInsert, TKmipClientsUpdate>;
@@ -1517,6 +1563,7 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesInsert,
       TKmipClientCertificatesUpdate
     >;
+    [TableName.KmipServer]: KnexOriginal.CompositeTableType<TKmipServers, TKmipServersInsert, TKmipServersUpdate>;
     [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
     [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
       TProjectGateways,
@@ -1527,6 +1574,21 @@ declare module "knex/types/tables" {
       TOrgGatewayConfig,
       TOrgGatewayConfigInsert,
       TOrgGatewayConfigUpdate
+    >;
+    [TableName.OrgAgentProxyConfig]: KnexOriginal.CompositeTableType<
+      TOrgAgentProxyConfig,
+      TOrgAgentProxyConfigInsert,
+      TOrgAgentProxyConfigUpdate
+    >;
+    [TableName.ProxiedService]: KnexOriginal.CompositeTableType<
+      TProxiedServices,
+      TProxiedServicesInsert,
+      TProxiedServicesUpdate
+    >;
+    [TableName.ProxiedServiceCredential]: KnexOriginal.CompositeTableType<
+      TProxiedServiceCredentials,
+      TProxiedServiceCredentialsInsert,
+      TProxiedServiceCredentialsUpdate
     >;
     [TableName.SecretRotationV2]: KnexOriginal.CompositeTableType<
       TSecretRotationsV2,
@@ -1552,6 +1614,12 @@ declare module "knex/types/tables" {
       TSecretReminderRecipients,
       TSecretReminderRecipientsInsert,
       TSecretReminderRecipientsUpdate
+    >;
+    [TableName.GitHubApp]: KnexOriginal.CompositeTableType<TGithubApps, TGithubAppsInsert, TGithubAppsUpdate>;
+    [TableName.GitHubAppConnection]: KnexOriginal.CompositeTableType<
+      TGithubAppConnections,
+      TGithubAppConnectionsInsert,
+      TGithubAppConnectionsUpdate
     >;
     [TableName.GithubOrgSyncConfig]: KnexOriginal.CompositeTableType<
       TGithubOrgSyncConfigs,
@@ -1667,6 +1735,11 @@ declare module "knex/types/tables" {
       TResourceAwsAuthsInsert,
       TResourceAwsAuthsUpdate
     >;
+    [TableName.ResourceKubernetesAuth]: KnexOriginal.CompositeTableType<
+      TResourceKubernetesAuths,
+      TResourceKubernetesAuthsInsert,
+      TResourceKubernetesAuthsUpdate
+    >;
     [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
     [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<
       TGatewayPoolMemberships,
@@ -1683,7 +1756,17 @@ declare module "knex/types/tables" {
       TKeyValueStoreInsert,
       TKeyValueStoreUpdate
     >;
+    [TableName.PamAccountTemplate]: KnexOriginal.CompositeTableType<
+      TPamAccountTemplates,
+      TPamAccountTemplatesInsert,
+      TPamAccountTemplatesUpdate
+    >;
     [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
+    [TableName.PamFolderNotificationConfig]: KnexOriginal.CompositeTableType<
+      TPamFolderNotificationConfigs,
+      TPamFolderNotificationConfigsInsert,
+      TPamFolderNotificationConfigsUpdate
+    >;
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
     [TableName.PamResourceFavorite]: KnexOriginal.CompositeTableType<
       TPamResourceFavorites,
@@ -1692,6 +1775,31 @@ declare module "knex/types/tables" {
     >;
     [TableName.PamDomain]: KnexOriginal.CompositeTableType<TPamDomains, TPamDomainsInsert, TPamDomainsUpdate>;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.AgentVaultAccessBundle]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundles,
+      TAgentVaultAccessBundlesInsert,
+      TAgentVaultAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultService]: KnexOriginal.CompositeTableType<
+      TAgentVaultServices,
+      TAgentVaultServicesInsert,
+      TAgentVaultServicesUpdate
+    >;
+    [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessions,
+      TAgentVaultSessionsInsert,
+      TAgentVaultSessionsUpdate
+    >;
+    [TableName.AgentVaultSessionAccessBundle]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionAccessBundles,
+      TAgentVaultSessionAccessBundlesInsert,
+      TAgentVaultSessionAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultProxy]: KnexOriginal.CompositeTableType<
+      TAgentVaultProxies,
+      TAgentVaultProxiesInsert,
+      TAgentVaultProxiesUpdate
+    >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,
       TPamAccountPoliciesInsert,
@@ -1723,20 +1831,10 @@ declare module "knex/types/tables" {
       TPamDiscoverySourceRunsInsert,
       TPamDiscoverySourceRunsUpdate
     >;
-    [TableName.PamDiscoverySourceResource]: KnexOriginal.CompositeTableType<
-      TPamDiscoverySourceResources,
-      TPamDiscoverySourceResourcesInsert,
-      TPamDiscoverySourceResourcesUpdate
-    >;
-    [TableName.PamDiscoverySourceAccount]: KnexOriginal.CompositeTableType<
-      TPamDiscoverySourceAccounts,
-      TPamDiscoverySourceAccountsInsert,
-      TPamDiscoverySourceAccountsUpdate
-    >;
-    [TableName.PamDiscoverySourceDependency]: KnexOriginal.CompositeTableType<
-      TPamDiscoverySourceDependencies,
-      TPamDiscoverySourceDependenciesInsert,
-      TPamDiscoverySourceDependenciesUpdate
+    [TableName.PamDiscoveredAccount]: KnexOriginal.CompositeTableType<
+      TPamDiscoveredAccounts,
+      TPamDiscoveredAccountsInsert,
+      TPamDiscoveredAccountsUpdate
     >;
     [TableName.PamAccountDependency]: KnexOriginal.CompositeTableType<
       TPamAccountDependencies,
@@ -1771,36 +1869,10 @@ declare module "knex/types/tables" {
       TWebauthnCredentialsInsert,
       TWebauthnCredentialsUpdate
     >;
-    [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
-    [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<
-      TAiMcpServerTools,
-      TAiMcpServerToolsInsert,
-      TAiMcpServerToolsUpdate
-    >;
-    [TableName.AiMcpEndpoint]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpoints,
-      TAiMcpEndpointsInsert,
-      TAiMcpEndpointsUpdate
-    >;
-    [TableName.AiMcpEndpointServer]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpointServers,
-      TAiMcpEndpointServersInsert,
-      TAiMcpEndpointServersUpdate
-    >;
-    [TableName.AiMcpEndpointServerTool]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpointServerTools,
-      TAiMcpEndpointServerToolsInsert,
-      TAiMcpEndpointServerToolsUpdate
-    >;
-    [TableName.AiMcpServerUserCredential]: KnexOriginal.CompositeTableType<
-      TAiMcpServerUserCredentials,
-      TAiMcpServerUserCredentialsInsert,
-      TAiMcpServerUserCredentialsUpdate
-    >;
-    [TableName.AiMcpActivityLog]: KnexOriginal.CompositeTableType<
-      TAiMcpActivityLogs,
-      TAiMcpActivityLogsInsert,
-      TAiMcpActivityLogsUpdate
+    [TableName.UserMfaRecoveryCode]: KnexOriginal.CompositeTableType<
+      TUserMfaRecoveryCodes,
+      TUserMfaRecoveryCodesInsert,
+      TUserMfaRecoveryCodesUpdate
     >;
     [TableName.ApprovalPolicies]: KnexOriginal.CompositeTableType<
       TApprovalPolicies,

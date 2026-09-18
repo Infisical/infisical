@@ -1,11 +1,5 @@
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
-
-const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="mb-4">
-    <p className="text-sm font-medium text-mineshaft-300">{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
-  </div>
-);
 
 type Props = {
   pkiSync: TPkiSync;
@@ -17,5 +11,10 @@ export const AwsCertificateManagerPkiSyncDestinationSection = ({ pkiSync }: Prop
       ? pkiSync.destinationConfig.region
       : undefined;
 
-  return <GenericFieldLabel label="AWS Region">{region || "Not specified"}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>AWS Region</DetailLabel>
+      <DetailValue>{region || "Not specified"}</DetailValue>
+    </Detail>
+  );
 };

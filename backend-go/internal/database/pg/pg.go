@@ -134,10 +134,28 @@ func openPool(ctx context.Context, connURI, dbRootCert string) (*pgxpool.Pool, e
 	return pool, nil
 }
 
-// parseSslConfig mirrors the Node.js parseSslConfig function.
-// It returns a potentially modified URI (sslmode stripped) and TLS config.
+// parseSslConfig mirrors the Node.js parseSslConfig function and additionally
+// normalizes the node-postgres-specific "no-verify" sslmode, which pgx/libpq
+// reject ("sslmode is invalid"). It returns a possibly modified URI and an
+// optional TLS config.
+//
+// sslmode is stripped from the URI whenever we configure TLS ourselves, because
+// pgx applies TLS through ConnConfig.TLSConfig rather than the URI.
+//   - dbRootCert set: trust that CA; verify the server cert only for verify-ca
+//     and verify-full, otherwise skip verification (InsecureSkipVerify).
+//   - dbRootCert empty + sslmode=no-verify: encrypt but skip verification,
+//     matching node-postgres semantics.
+//   - dbRootCert empty + any other sslmode: leave the URI untouched and let pgx
+//     configure TLS natively.
 func parseSslConfig(connURI, dbRootCert string) (string, *tls.Config, error) {
+	sslMode := sslModeOf(connURI)
+
 	if dbRootCert == "" {
+		// pgx does not understand the node-postgres "no-verify" value. Translate
+		// it to an encrypted, unverified connection so pgx can parse the URI.
+		if strings.EqualFold(sslMode, "no-verify") {
+			return stripSslMode(connURI), &tls.Config{InsecureSkipVerify: true}, nil
+		}
 		return connURI, nil, nil
 	}
 
@@ -157,21 +175,37 @@ func parseSslConfig(connURI, dbRootCert string) (string, *tls.Config, error) {
 	}
 
 	modifiedURI := connURI
+	if sslMode != "" && !strings.EqualFold(sslMode, "disable") {
+		modifiedURI = stripSslMode(connURI)
 
-	parsed, err := url.Parse(connURI)
-	if err == nil {
-		sslMode := parsed.Query().Get("sslmode")
-		if sslMode != "" && !strings.EqualFold(sslMode, "disable") {
-			q := parsed.Query()
-			q.Del("sslmode")
-			parsed.RawQuery = q.Encode()
-			modifiedURI = parsed.String()
-
-			if strings.EqualFold(sslMode, "verify-ca") || strings.EqualFold(sslMode, "verify-full") {
-				tlsCfg.InsecureSkipVerify = false
-			}
+		if strings.EqualFold(sslMode, "verify-ca") || strings.EqualFold(sslMode, "verify-full") {
+			tlsCfg.InsecureSkipVerify = false
 		}
 	}
 
 	return modifiedURI, tlsCfg, nil
+}
+
+// sslModeOf returns the sslmode query parameter of a connection URI, or "" if
+// the URI cannot be parsed or has no sslmode.
+func sslModeOf(connURI string) string {
+	parsed, err := url.Parse(connURI)
+	if err != nil {
+		return ""
+	}
+	return parsed.Query().Get("sslmode")
+}
+
+// stripSslMode removes the sslmode query parameter from a connection URI. pgx
+// applies TLS via ConnConfig.TLSConfig rather than the URI, so once we build our
+// own tls.Config the param is redundant (and "no-verify" is invalid in pgx).
+func stripSslMode(connURI string) string {
+	parsed, err := url.Parse(connURI)
+	if err != nil {
+		return connURI
+	}
+	q := parsed.Query()
+	q.Del("sslmode")
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
 }

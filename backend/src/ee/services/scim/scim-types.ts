@@ -105,9 +105,9 @@ export type TCreateScimGroupDTO = {
   displayName: string;
   orgId: string;
   members?: {
-    // TODO: account for members with value and display (is this optional?)
     value: string;
-    display: string;
+    // Optional per SCIM (RFC 7643 §4.2); some IdPs (e.g. Authentik) omit it.
+    display?: string;
   }[];
 };
 
@@ -123,7 +123,8 @@ export type TUpdateScimGroupNamePutDTO = {
   displayName: string;
   members: {
     value: string;
-    display: string;
+    // Optional per SCIM (RFC 7643 §4.2); some IdPs (e.g. Authentik) omit it.
+    display?: string;
   }[];
 };
 

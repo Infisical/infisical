@@ -17,9 +17,7 @@ export const SuperAdminSchema = z.object({
   updatedAt: z.date(),
   allowedSignUpDomain: z.string().nullable().optional(),
   instanceId: z.string().uuid().default("00000000-0000-0000-0000-000000000000"),
-  trustSamlEmails: z.boolean().default(false).nullable().optional(),
   trustLdapEmails: z.boolean().default(false).nullable().optional(),
-  trustOidcEmails: z.boolean().default(false).nullable().optional(),
   defaultAuthOrgId: z.string().uuid().nullable().optional(),
   enabledLoginMethods: z.string().array().nullable().optional(),
   encryptedSlackClientId: zodBuffer.nullable().optional(),
@@ -36,7 +34,8 @@ export const SuperAdminSchema = z.object({
   encryptedGitHubAppConnectionId: zodBuffer.nullable().optional(),
   encryptedGitHubAppConnectionPrivateKey: zodBuffer.nullable().optional(),
   encryptedEnvOverrides: zodBuffer.nullable().optional(),
-  fipsEnabled: z.boolean().default(false)
+  fipsEnabled: z.boolean().default(false),
+  onboardingCompleted: z.boolean().default(false)
 });
 
 export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;

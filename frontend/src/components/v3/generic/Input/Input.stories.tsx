@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { Button } from "../Button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "../Field";
 import { Input } from "./Input";
 
@@ -11,7 +13,8 @@ import { Input } from "./Input";
  * Use the native `type` attribute for browser-native UX (email keyboards, password
  * masking, native date pickers, file selectors). For labels, helper text, and
  * validation errors, compose with `Field` / `FieldLabel` / `FieldDescription` /
- * `FieldError` from `../Field` rather than re-inventing the layout.
+ * `FieldError` from `../Field` rather than re-inventing the layout. Input helper
+ * text inherits `FieldDescription`'s default animated-collapse behavior.
  *
  * The component fills its parent's width by design — let the parent (`Field`,
  * `FieldGroup`, or a custom container) decide how wide the input should be.
@@ -27,6 +30,10 @@ const meta = {
     type: {
       control: "select",
       options: ["text", "email", "password", "number", "date", "url", "search", "tel", "file"]
+    },
+    variant: {
+      control: "select",
+      options: ["default", "outlined"]
     },
     isError: {
       control: "boolean"
@@ -46,6 +53,7 @@ const meta = {
   },
   args: {
     type: "text",
+    variant: "default",
     placeholder: "Enter text...",
     isError: false,
     disabled: false,
@@ -77,17 +85,31 @@ export const Default: Story = {
   }
 };
 
+export const Outlined: Story = {
+  args: {
+    variant: "outlined"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
+      }
+    }
+  }
+};
+
 export const Disabled: Story = {
   name: "State: Disabled",
   args: {
-    defaultValue: "Read-only via disabled",
+    defaultValue: "Unavailable input",
     disabled: true
   },
   parameters: {
     docs: {
       description: {
         story:
-          "`disabled` removes the input from the tab order, dims it, and signals non-interactivity through the cursor. Use for fields that aren't editable in the current state — but prefer `readOnly` when the value is still meaningful and copy-able."
+          "`disabled` removes the input from the tab order and pointer interaction while softening its border and text. Use for fields that aren't available in the current state — but prefer `readOnly` when the value is still meaningful and copy-able."
       }
     }
   }
@@ -103,7 +125,7 @@ export const Readonly: Story = {
     docs: {
       description: {
         story:
-          "`readOnly` keeps the input focusable and selectable but blocks edits. It looks visually identical to a normal input — that's intentional, since the value is still part of the form. Use for derived or immutable values (e.g. account email)."
+          "`readOnly` keeps the input focusable and selectable but blocks edits. Only its border is softened; the value remains full-strength because it is still meaningful and part of the form. Use for derived or immutable values (e.g. account email)."
       }
     }
   }
@@ -182,6 +204,51 @@ export const WithValidationError: Story = {
       <FieldError>Enter a valid email address.</FieldError>
     </Field>
   )
+};
+
+export const ErrorAnimation: Story = {
+  name: "Example: Error Animation",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Submit the form to transition the input into its invalid state. The shell shakes once while the error message appears below it. Reset the example before submitting again to replay the transition."
+      }
+    }
+  },
+  render: function ErrorAnimationRender() {
+    const [isError, setIsError] = useState(false);
+
+    return (
+      <form
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setIsError(true);
+        }}
+      >
+        <Field data-invalid={isError}>
+          <FieldLabel htmlFor="input-error-animation">Email</FieldLabel>
+          <Input
+            id="input-error-animation"
+            type="email"
+            defaultValue="not-an-email"
+            isError={isError}
+          />
+          <FieldError isOpen={isError}>Enter a valid email address.</FieldError>
+        </Field>
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" isDisabled={isError}>
+            Trigger Error
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setIsError(false)}>
+            Reset
+          </Button>
+        </div>
+      </form>
+    );
+  }
 };
 
 export const InFieldGroup: Story = {

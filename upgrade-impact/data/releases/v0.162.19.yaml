@@ -1,0 +1,33 @@
+version: v0.162.19
+releasedAt: 2026-08-10T20:00:22-03:00
+sourceTag: v0.162.19
+previousTag: v0.162.18
+impactLevel: low
+summary: Adds a startup migration for PAM sessions to store machine identity actors.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM session identity column
+    description: Adds nullable identityId to pam_sessions with a foreign key to
+      identities and a partial index. Existing rows remain valid.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260803120000_add-pam-session-identity-id.ts
+        path: backend/src/db/migrations/20260803120000_add-pam-session-identity-id.ts
+      - type: file
+        ref: backend/src/db/schemas/pam-sessions.ts
+        path: backend/src/db/schemas/pam-sessions.ts
+        description: Schema includes nullable identityId
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-10T23:47:04.042Z
+  sourceRange:
+    from: v0.162.18
+    to: v0.162.19

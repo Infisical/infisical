@@ -274,7 +274,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                 <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
               </SheetTitle>
             </SheetHeader>
-            <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
+            <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
               <SSOModalHeader
                 providerDetails={
                   ssoAuthProviders.find((provider) => provider.value === authProvider)!

@@ -1,41 +1,85 @@
-import { faBan } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 
-import { Button } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import { useRevokeMySessions } from "@app/hooks/api";
 
 import { SessionsTable } from "./SessionsTable";
 
 export const SessionsSection = () => {
-  const { mutateAsync } = useRevokeMySessions();
+  const [isRevokeAllOpen, setIsRevokeAllOpen] = useState(false);
+  const { mutateAsync, isPending } = useRevokeMySessions();
 
   const onRevokeAllSessionsClick = async () => {
     try {
       await mutateAsync();
+      setIsRevokeAllOpen(false);
       window.location.href = "/login";
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // MutationCache.onError handles the error notification.
     }
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-8 flex justify-between">
-        <h2 className="flex-1 text-xl font-medium text-mineshaft-100">Sessions</h2>
-        <Button
-          colorSchema="secondary"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faBan} />}
-          onClick={onRevokeAllSessionsClick}
-        >
-          Revoke all
-        </Button>
-      </div>
-      <p className="mb-8 text-gray-400">
-        Logging into Infisical via browser or CLI creates a session. Revoking all sessions logs your
-        account out all active sessions across all browsers and CLIs.
-      </p>
-      <SessionsTable />
-    </div>
+    <>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Sessions</CardTitle>
+          <CardDescription>
+            Review browser and CLI sessions with access to your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 pb-6">
+          <SessionsTable />
+        </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <Button variant="neutral" size="sm" onClick={() => setIsRevokeAllOpen(true)}>
+            Sign out everywhere
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <AlertDialog
+        open={isRevokeAllOpen}
+        onOpenChange={(open) => !isPending && setIsRevokeAllOpen(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out everywhere?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This signs your account out of every browser and CLI, including this session. You will
+              need to sign in again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              isPending={isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                onRevokeAllSessionsClick();
+              }}
+            >
+              Sign out everywhere
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

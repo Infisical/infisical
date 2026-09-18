@@ -11,9 +11,8 @@ import {
   DialogTitle
 } from "@app/components/v3/generic/Dialog";
 import { Input } from "@app/components/v3/generic/Input";
+import { Kbd, KbdGroup } from "@app/components/v3/generic/Kbd";
 import { Separator } from "@app/components/v3/generic/Separator";
-
-import { Kbd, KbdGroup } from "./ui/kbd";
 
 const SHORTCUT_KEY = "/";
 

@@ -279,7 +279,7 @@ export const WithAccordion: Story = {
                 </DropdownMenuContent>
               </DropdownMenu>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="p-6">
               <div className="grid grid-cols-2 gap-3">
                 <Detail>
                   <DetailLabel>Access Token TTL (seconds)</DetailLabel>
@@ -328,7 +328,7 @@ export const WithAccordion: Story = {
                 </DropdownMenuContent>
               </DropdownMenu>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="p-6">
               <div className="grid grid-cols-2 gap-3">
                 <Detail>
                   <DetailLabel>Kubernetes Host</DetailLabel>
@@ -376,7 +376,7 @@ export const WithAccordion: Story = {
                 </DropdownMenuContent>
               </DropdownMenu>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="p-6">
               <div className="grid grid-cols-2 gap-3">
                 <Detail>
                   <DetailLabel>Discovery URL</DetailLabel>
@@ -548,7 +548,7 @@ export const DetailPanel: Story = {
                 <EditIcon />
               </IconButton>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="p-6">
               <DetailGroup>
                 <Detail>
                   <DetailLabel>Gateway</DetailLabel>
@@ -608,7 +608,7 @@ export const DetailPanel: Story = {
                 <EditIcon />
               </IconButton>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="p-6">
               <DetailGroup>
                 <Detail>
                   <DetailLabel>Username</DetailLabel>

@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   AsteriskIcon,
   CheckIcon,
@@ -17,7 +16,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   DropdownMenu,
@@ -26,14 +24,18 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TableCell,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { useToggle } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
-import { CrededentialRotationStatusBadge } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/CrededentialRotationBadge";
+import { CredentialRotationStatusBadge } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm/shared/CredentialRotationBadge";
 
 type Props = {
   appConnection: TAppConnection;
@@ -73,23 +75,21 @@ export const AppConnectionRow = ({
 
   const methodDetails = getAppConnectionMethodDetails(method);
   const connectionDetails = APP_CONNECTION_MAP[app];
+  const MethodIcon = methodDetails.icon;
+  const ConnectionIcon = connectionDetails.icon;
 
   return (
     <TableRow key={`app-connection-${id}`}>
       <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <img
+            <ProviderIcon
               alt={`${connectionDetails.name} integration`}
-              src={`/images/integrations/${connectionDetails.image}`}
+              icon={connectionDetails.image}
               className="mr-0.5 w-5"
             />
-            {connectionDetails.icon && (
-              <FontAwesomeIcon
-                icon={connectionDetails.icon}
-                size="xs"
-                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
-              />
+            {ConnectionIcon && (
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-project" />
             )}
           </div>
           <span>{connectionDetails.name}</span>
@@ -99,32 +99,40 @@ export const AppConnectionRow = ({
         <div className="flex items-center gap-1.5">
           <span className="truncate">{name}</span>
           {description && (
-            <Tooltip content={description}>
-              <InfoIcon className="text-accent" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="text-accent" />
+              </TooltipTrigger>
+              <TooltipContent>{description}</TooltipContent>
             </Tooltip>
           )}
         </div>
       </TableCell>
       <TableCell isTruncatable>
         <div className="flex items-center gap-1.5">
-          <FontAwesomeIcon icon={methodDetails.icon} className="text-accent" />
+          <MethodIcon className="size-3.5 text-accent" />
           <span className="truncate">{methodDetails.name}</span>
         </div>
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
           {isPlatformManagedCredentials && (
-            <Tooltip side="left" content="This connection's credentials are managed by Infisical.">
-              <div>
-                <Badge variant="info">
-                  <ServerIcon />
-                  Platform Managed
-                </Badge>
-              </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Badge variant="info">
+                    <ServerIcon />
+                    Platform Managed
+                  </Badge>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                This connection&apos;s credentials are managed by Infisical.
+              </TooltipContent>
             </Tooltip>
           )}
           {appConnection.rotation && (
-            <CrededentialRotationStatusBadge appConnection={appConnection} />
+            <CredentialRotationStatusBadge appConnection={appConnection} />
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

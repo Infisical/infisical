@@ -10,7 +10,6 @@ import { z } from "zod";
 import { Button } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
-import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { GtmHead } from "@app/hooks/useGtm";
 
@@ -53,8 +52,8 @@ export const AuthConsentWrapper = () => {
     <>
       <GtmHead />
       {config.authConsentContent && !hasConsented && (
-        <div className="bg-opacity-90 fixed inset-0 z-50 flex items-center justify-center bg-mineshaft-700/80">
-          <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-bunker-800 p-6 text-white">
+        <div className="bg-opacity-90 fixed inset-0 z-50 flex items-center justify-center bg-surface-hover/80">
+          <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-page p-6 text-foreground-inverse">
             <ReactMarkdown rehypePlugins={[rehypeRaw]}>
               {DOMPurify.sanitize(config.authConsentContent)}
             </ReactMarkdown>
@@ -82,12 +81,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/admin/signup" });
     }
 
-    const data = await context.queryClient
-      .ensureQueryData({
-        queryKey: authKeys.getAuthToken,
-        queryFn: fetchAuthToken
-      })
-      .catch(() => null);
+    const data = context.authToken;
     if (!data) return;
 
     setAuthToken(data.token);
@@ -102,10 +96,14 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       if (isOnSelectOrg || (!data.organizationId && location.pathname.endsWith("verify-email")))
         return;
 
+      // org_id makes the select-org page auto-select, so a CLI login must not inherit
+      // this browser's org: it would skip the picker the user is waiting on.
+      const inheritedOrgId = search?.callback_port ? undefined : data.organizationId;
+
       throw redirect({
         to: "/login/select-organization",
         search: {
-          org_id: search?.org_id || data.organizationId,
+          org_id: search?.org_id || inheritedOrgId,
           callback_port: search?.callback_port
         }
       });

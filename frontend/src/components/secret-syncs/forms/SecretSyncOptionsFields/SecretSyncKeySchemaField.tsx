@@ -10,7 +10,7 @@ import {
   FieldLabel,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 
@@ -83,10 +83,10 @@ export const SecretSyncKeySchemaField = () => {
           <Label htmlFor="customize-key-names">Customize key names</Label>
           <FieldDescription>
             Add a prefix or suffix so Infisical can identify which keys in {destinationName} it
-            manages — anything else is left untouched.
+            manages. Anything else is left untouched.
           </FieldDescription>
         </FieldContent>
-        <Switch
+        <Toggle
           id="customize-key-names"
           variant="project"
           checked={isEnabled}
@@ -116,11 +116,11 @@ export const SecretSyncKeySchemaField = () => {
               {!error && (
                 <FieldDescription>
                   Provide a template to rewrite each key — use{" "}
-                  <code className="rounded bg-mineshaft-800/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
+                  <code className="rounded bg-surface-raised/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
                     {"{{secretKey}}"}
                   </code>{" "}
                   as a placeholder, and optionally include{" "}
-                  <code className="rounded bg-mineshaft-800/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
+                  <code className="rounded bg-surface-raised/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
                     {"{{environment}}"}
                   </code>
                   .{" "}

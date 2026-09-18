@@ -1,6 +1,4 @@
 import { AppConnection } from "../appConnections/enums";
-import { SshCaStatus } from "../sshCa";
-import { SshCertTemplateStatus } from "../sshCertificateTemplates";
 import { AcmeDnsProvider, CaCapability, CaStatus, CaType, InternalCaType } from "./enums";
 
 export const caTypeToNameMap: { [K in InternalCaType]: string } = {
@@ -32,7 +30,8 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
   [CaType.INTERNAL]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.ACME]: [
     CaCapability.ISSUE_CERTIFICATES,
@@ -40,10 +39,17 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
     CaCapability.RENEW_CERTIFICATES
   ],
   [CaType.AZURE_AD_CS]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.ADCS]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
+  ],
   [CaType.AWS_PCA]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.CUSTOM_EXTENSIONS
   ],
   [CaType.DIGICERT]: [
     CaCapability.ISSUE_CERTIFICATES,
@@ -55,16 +61,23 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
     CaCapability.REVOKE_CERTIFICATES,
     CaCapability.RENEW_CERTIFICATES
   ],
-  [CaType.VENAFI_TPP]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES]
+  [CaType.VENAFI_TPP]: [CaCapability.ISSUE_CERTIFICATES, CaCapability.RENEW_CERTIFICATES],
+  [CaType.GODADDY]: [
+    CaCapability.ISSUE_CERTIFICATES,
+    CaCapability.REVOKE_CERTIFICATES,
+    CaCapability.RENEW_CERTIFICATES
+  ]
 };
 
 export const EXTERNAL_CA_TYPE_NAME_MAP: Record<string, string> = {
   [CaType.ACME]: "ACME",
-  [CaType.AZURE_AD_CS]: "Active Directory Certificate Services (AD CS)",
+  [CaType.AZURE_AD_CS]: "Azure ADCS (Web Enrollment)",
+  [CaType.ADCS]: "Microsoft ADCS",
   [CaType.AWS_PCA]: "AWS Private CA (PCA)",
   [CaType.DIGICERT]: "DigiCert CertCentral",
   [CaType.AWS_ACM_PUBLIC_CA]: "AWS ACM Public CA",
-  [CaType.VENAFI_TPP]: "Venafi TPP"
+  [CaType.VENAFI_TPP]: "Venafi TPP",
+  [CaType.GODADDY]: "GoDaddy"
 };
 
 /**
@@ -75,7 +88,7 @@ export const caSupportsCapability = (caType: CaType, capability: CaCapability): 
   return capabilities.includes(capability);
 };
 
-export const getCaStatusBadgeVariant = (status: CaStatus | SshCaStatus | SshCertTemplateStatus) => {
+export const getCaStatusBadgeVariant = (status: CaStatus) => {
   switch (status) {
     case CaStatus.ACTIVE:
       return "success";

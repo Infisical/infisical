@@ -27,10 +27,11 @@ export const gatewayPoolsQueryKeys = {
   })
 };
 
-export const useListGatewayPools = (options?: { refetchInterval?: number }) => {
+export const useListGatewayPools = (options?: { refetchInterval?: number; enabled?: boolean }) => {
   return useQuery({
     ...gatewayPoolsQueryKeys.list(),
-    refetchInterval: options?.refetchInterval
+    refetchInterval: options?.refetchInterval,
+    enabled: options?.enabled
   });
 };
 

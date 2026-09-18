@@ -40,7 +40,7 @@ export const SecretDashboardPathBreadcrumb = ({
           <span
             className={twMerge(
               "text-sm transition-all",
-              isCopying ? "text-bunker-200" : "text-bunker-300"
+              isCopying ? "text-foreground-soft" : "text-label-secondary"
             )}
           >
             {folderName}
@@ -59,7 +59,7 @@ export const SecretDashboardPathBreadcrumb = ({
                   type: "info"
                 });
               }}
-              className="opacity-0 transition duration-75 group-hover:opacity-100 hover:bg-bunker-100/10"
+              className="opacity-0 transition duration-75 group-hover:opacity-100 hover:bg-foreground-default/10"
             >
               <FontAwesomeIcon
                 icon={!isCopying ? faCopy : faCheck}
@@ -71,16 +71,19 @@ export const SecretDashboardPathBreadcrumb = ({
         </div>
       ) : (
         <Link
-          to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+          to="/organizations/$orgId/projects/secret-management/$projectId/overview"
           params={{
             orgId: currentOrg.id,
-            projectId,
-            envSlug: environmentSlug
+            projectId
           }}
-          search={(query) => ({ ...query, secretPath: newSecretPath })}
+          search={(query) => ({
+            ...query,
+            secretPath: newSecretPath,
+            environments: [environmentSlug]
+          })}
           className={twMerge(
-            "text-sm transition-all hover:text-primary",
-            isCopying && "text-primary"
+            "text-sm transition-all hover:text-project",
+            isCopying && "text-project"
           )}
         >
           {folderName}

@@ -3,6 +3,7 @@ import { z } from "zod";
 export enum TableName {
   Users = "users",
   EmailDomains = "email_domains",
+  // ssh_* tables were dropped with the SSH product; members kept for historical migrations
   SshHostGroup = "ssh_host_groups",
   SshHostGroupMembership = "ssh_host_group_memberships",
   SshHost = "ssh_hosts",
@@ -44,6 +45,12 @@ export enum TableName {
   PkiAlertHistoryCertificate = "pki_alert_history_certificate",
   PkiCollection = "pki_collections",
   PkiCollectionItem = "pki_collection_items",
+  Alert = "alerts",
+  AlertChannel = "alert_channels",
+  AlertChannelRecipient = "alert_channel_recipients",
+  AlertChannelMembership = "alert_channel_memberships",
+  AlertHistory = "alert_history",
+  AlertHistoryTarget = "alert_history_target",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
@@ -61,8 +68,11 @@ export enum TableName {
   OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
+  UserSecretActivation = "user_secret_activation",
+  SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
+  // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -85,6 +95,7 @@ export enum TableName {
   SecretFolder = "secret_folders",
   SecretFolderVersion = "secret_folder_versions",
   SecretImport = "secret_imports",
+  ProjectFolderGrant = "project_folder_grants",
   Snapshot = "secret_snapshots",
   SnapshotSecret = "secret_snapshot_secrets",
   SnapshotFolder = "secret_snapshot_folders",
@@ -140,6 +151,7 @@ export enum TableName {
   LdapGroupMap = "ldap_group_maps",
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
+  AuditLogStreamOutbox = "audit_log_stream_outbox",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -155,7 +167,9 @@ export enum TableName {
   ProjectSplitBackfillIds = "project_split_backfill_ids",
   UserNotifications = "user_notifications",
   ScimEvents = "scim_events",
-  // Gateway
+  // Gateway v1. Retired: nothing reads or writes these tables, or the gatewayId columns on
+  // dynamic_secrets / identity_kubernetes_auths / identity_auth_templates that point at them.
+  // They are kept populated so the removal can be reverted without data loss.
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
   ProjectGateway = "project_gateways",
@@ -166,12 +180,15 @@ export enum TableName {
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
+  KmsLegacyEncryptionKey = "kms_legacy_encryption_keys",
+  KmsKekHistory = "kms_kek_history",
   KmsKey = "kms_keys",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
   InternalKmsKeyVersion = "internal_kms_key_version",
   TotpConfig = "totp_configs",
   WebAuthnCredential = "webauthn_credentials",
+  UserMfaRecoveryCode = "user_mfa_recovery_codes",
   // @depreciated
   KmsKeyVersion = "kms_key_versions",
   WorkflowIntegrations = "workflow_integrations",
@@ -179,6 +196,7 @@ export enum TableName {
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
   AppConnectionCredentialRotation = "app_connection_credential_rotations",
+  HsmConnector = "hsm_connectors",
   SecretSync = "secret_syncs",
   PkiSync = "pki_syncs",
   CertificateSync = "certificate_syncs",
@@ -186,12 +204,15 @@ export enum TableName {
   KmipOrgConfig = "kmip_org_configs",
   KmipOrgServerCertificates = "kmip_org_server_certificates",
   KmipClientCertificates = "kmip_client_certificates",
+  KmipServer = "kmip_servers",
   SecretRotationV2 = "secret_rotations_v2",
   SecretRotationV2SecretMapping = "secret_rotation_v2_secret_mappings",
   MicrosoftTeamsIntegrations = "microsoft_teams_integrations",
   ProjectMicrosoftTeamsConfigs = "project_microsoft_teams_configs",
   SecretReminderRecipients = "secret_reminder_recipients", // TODO(Carlos): Remove this in the future after migrating to the new reminder recipients table
   GithubOrgSyncConfig = "github_org_sync_configs",
+  GitHubApp = "github_apps",
+  GitHubAppConnection = "github_app_connections",
   FolderCommit = "folder_commits",
   FolderCommitChanges = "folder_commit_changes",
   FolderCheckpoint = "folder_checkpoints",
@@ -223,6 +244,7 @@ export enum TableName {
   GatewayV2 = "gateways_v2",
   ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
+  ResourceKubernetesAuth = "resource_kubernetes_auths",
   ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
@@ -230,7 +252,9 @@ export enum TableName {
   KeyValueStore = "key_value_store",
 
   // PAM
+  PamAccountTemplate = "pam_account_templates",
   PamFolder = "pam_folders",
+  PamFolderNotificationConfig = "pam_folder_notification_configs",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
@@ -239,6 +263,7 @@ export enum TableName {
   PamProjectRecordingConfig = "pam_project_recording_configs",
   PamDiscoverySource = "pam_discovery_sources",
   PamDiscoverySourceRun = "pam_discovery_source_runs",
+  PamDiscoveredAccount = "pam_discovered_accounts",
   PamDiscoverySourceResource = "pam_discovery_source_resources",
   PamDiscoverySourceAccount = "pam_discovery_source_accounts",
   PamDiscoverySourceDependency = "pam_discovery_source_dependencies",
@@ -247,6 +272,11 @@ export enum TableName {
   PamResourceFavorite = "pam_resource_favorites",
   PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
+  AgentVaultAccessBundle = "agent_vault_access_bundles",
+  AgentVaultService = "agent_vault_services",
+  AgentVaultSession = "agent_vault_sessions",
+  AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
+  AgentVaultProxy = "agent_vault_proxies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
@@ -271,7 +301,7 @@ export enum TableName {
   // PKI Inventory Views
   CertificateInventoryView = "certificate_inventory_views",
 
-  // AI
+  // AI (ai_mcp_* tables were dropped with Agent Sentinel; members kept for historical migrations)
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",
   AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
@@ -293,16 +323,28 @@ export enum TableName {
 
   // Code Signing
   PkiSigners = "pki_signers",
+  PkiSignerCertificateIssuanceJobs = "pki_signer_certificate_issuance_jobs",
   PkiSigningOperations = "pki_signing_operations",
 
   CaSigningConfig = "ca_signing_configs",
   SecretValidationRule = "secret_validation_rules",
+
+  // OAuth 2.0 authorization server (Infisical as an OAuth provider)
+  OauthClient = "oauth_clients",
 
   // Honey Tokens
   HoneyTokenConfig = "honey_token_configs",
   HoneyToken = "honey_tokens",
   HoneyTokenEvent = "honey_token_events",
   HoneyTokenSecretMapping = "honey_token_secret_mappings",
+
+  // Audit Reports (exportable compliance reports)
+  AuditReport = "audit_reports",
+
+  // Secrets Brokering (Agent Proxy)
+  OrgAgentProxyConfig = "org_agent_proxy_config",
+  ProxiedService = "proxied_services",
+  ProxiedServiceCredential = "proxied_service_credentials",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
@@ -348,21 +390,33 @@ export enum ProjectMembershipRole {
   Custom = "custom",
   Viewer = "viewer",
   NoAccess = "no-access",
-  // ssh
-  SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
   KmsCryptographicOperator = "cryptographic-operator"
 }
 
-export enum ApplicationMembershipRole {
+export enum ResourceMembershipRole {
   Admin = "admin",
   Operator = "operator",
   Auditor = "auditor",
   Custom = "custom"
 }
 
+// Stored in additional_privileges.role for folder-scoped grants. The tiers are cumulative: each is
+// a superset of the one above it.
+export enum SecretFolderRole {
+  List = "list",
+  Read = "read",
+  Edit = "edit",
+  Manage = "manage",
+  FullAccess = "full-access"
+}
+
 export enum ResourceType {
-  CertificateApplication = "certificate-application"
+  CertificateApplication = "certificate-application",
+  Signer = "pki-signer",
+  PamFolder = "pam-folder",
+  PamAccount = "pam-account",
+  AgentVaultAccessBundle = "agent-vault-access-bundle"
 }
 
 export enum SecretEncryptionAlgo {
@@ -412,20 +466,30 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh",
   SecretScanning = "secret-scanning",
   PAM = "pam",
-  AI = "ai"
+  AgentVault = "agent-vault"
 }
+
+// These products resolve every non-admin slug to their member rule set, so a viewer, no-access or
+// custom role would promise less access than it grants. Write paths reject those roles outright;
+// rows written before a product joined this list are not re-validated.
+const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
+};
+
+export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
+  projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
 
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
-  SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
-  AI = ProjectType.AI,
+  AgentVault = ProjectType.AgentVault,
   // project operations that happen on all types
   Any = "any"
 }

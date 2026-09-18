@@ -12,7 +12,7 @@ export interface TMembershipUserScopeFactory {
   ) => Promise<{ signUpTokens: { email: string; link: string }[] }>;
 
   onUpdateMembershipUserGuard: (arg: TUpdateMembershipUserDTO) => Promise<void>;
-  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO | TBulkDeleteMembershipByUsernameDTO) => Promise<void>;
+  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO) => Promise<void>;
 
   onListMembershipUserGuard: (arg: TListMembershipUserDTO) => Promise<void>;
   onGetMembershipUserByUserIdGuard: (arg: TGetMembershipUserByUserIdDTO) => Promise<void>;
@@ -37,7 +37,6 @@ export type TCreateMembershipUserDTO = {
       temporaryAccessStartTime?: string;
     }[];
   };
-  bootstrapForApplication?: { applicationId: string; projectId: string };
 };
 
 export type TUpdateMembershipUserDTO = {
@@ -75,14 +74,6 @@ export type TDeleteMembershipUserDTO = {
   scopeData: AccessScopeData;
   selector: {
     userId: string;
-  };
-};
-
-export type TBulkDeleteMembershipByUsernameDTO = {
-  permission: OrgServiceActor;
-  scopeData: AccessScopeData;
-  data: {
-    usernames: string[];
   };
 };
 

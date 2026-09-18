@@ -12,7 +12,7 @@ import (
 type TrustedIP struct {
 	IPAddress string `json:"ipAddress"`
 	Type      string `json:"type"`
-	Prefix    int    `json:"prefix,omitempty"`
+	Prefix    *int   `json:"prefix,omitempty"` // nil = plain IP, non-nil = CIDR notation
 }
 
 // parseTrustedIPs parses the JSON string from the DB into a slice of TrustedIP.
@@ -46,8 +46,10 @@ func checkIPAgainstBlocklist(ipAddress string, trustedIPs []TrustedIP) error {
 			continue
 		}
 
-		if tip.Prefix > 0 {
-			_, cidr, err := net.ParseCIDR(tip.IPAddress + "/" + strconv.Itoa(tip.Prefix))
+		// If Prefix is set (including 0 for /0), use CIDR matching
+		// Otherwise, do exact IP comparison
+		if tip.Prefix != nil {
+			_, cidr, err := net.ParseCIDR(tip.IPAddress + "/" + strconv.Itoa(*tip.Prefix))
 			if err != nil {
 				continue
 			}

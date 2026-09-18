@@ -10,11 +10,14 @@ import {
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { MfaMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserServiceFactory } from "../user/user-service";
 import { TWebAuthnCredentialDALFactory } from "./webauthn-credential-dal";
 import {
   TDeleteWebAuthnCredentialDTO,
@@ -31,6 +34,7 @@ type TWebAuthnServiceFactoryDep = {
   webAuthnCredentialDAL: TWebAuthnCredentialDALFactory;
   tokenService: TAuthTokenServiceFactory;
   keyStore: TKeyStoreFactory;
+  userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };
 
 export type TWebAuthnServiceFactory = ReturnType<typeof webAuthnServiceFactory>;
@@ -39,7 +43,8 @@ export const webAuthnServiceFactory = ({
   userDAL,
   webAuthnCredentialDAL,
   tokenService,
-  keyStore
+  keyStore,
+  userService
 }: TWebAuthnServiceFactoryDep) => {
   const storeChallenge = async (userId: string, challenge: string) => {
     const challengeKey = KeyStorePrefixes.WebAuthnChallenge(userId);
@@ -62,6 +67,13 @@ export const webAuthnServiceFactory = ({
   const RP_NAME = "Infisical";
   const RP_ID = new URL(appCfg.SITE_URL || "http://localhost:8080").hostname;
   const ORIGIN = appCfg.SITE_URL || "http://localhost:8080";
+  // ES256/RS256 only. The library default also offers/accepts EdDSA (-8), which
+  // Ed25519-capable authenticators (e.g. modern YubiKeys) pick first, but Ed25519
+  // cannot be verified under FIPS mode (the OpenSSL FIPS provider rejects the key
+  // import with "Invalid keyData"), so such a credential enrolls and then always
+  // fails MFA. ES256 is mandatory for FIDO2 authenticators, so nothing is excluded
+  // in practice.
+  const SUPPORTED_COSE_ALGORITHM_IDS = [-7, -257];
   /**
    * Generate registration options for a new passkey
    * This is the first step in passkey registration
@@ -85,6 +97,7 @@ export const webAuthnServiceFactory = ({
       userName: user.email || "",
       userDisplayName: user.email || "",
       attestationType: "none",
+      supportedAlgorithmIDs: SUPPORTED_COSE_ALGORITHM_IDS,
       excludeCredentials: existingCredentials.map((cred) => ({
         id: cred.credentialId,
         transports: cred.transports as AuthenticatorTransportFuture[]
@@ -134,7 +147,8 @@ export const webAuthnServiceFactory = ({
         expectedChallenge,
         expectedOrigin: ORIGIN,
         expectedRPID: RP_ID,
-        requireUserVerification: true
+        requireUserVerification: true,
+        supportedAlgorithmIDs: SUPPORTED_COSE_ALGORITHM_IDS
       });
     } catch (error: unknown) {
       await clearChallenge(userId);
@@ -308,15 +322,18 @@ export const webAuthnServiceFactory = ({
   const getUserWebAuthnCredentials = async ({ userId }: TGetUserWebAuthnCredentialsDTO) => {
     const credentials = await webAuthnCredentialDAL.find({ userId });
 
-    // Don't return sensitive data like public keys
-    return credentials.map((cred) => ({
-      id: cred.id,
-      credentialId: cred.credentialId,
-      name: cred.name,
-      transports: cred.transports,
-      createdAt: cred.createdAt,
-      lastUsedAt: cred.lastUsedAt
-    }));
+    return {
+      fipsEnabled: crypto.isFipsModeEnabled(),
+      // Don't return sensitive data like public keys
+      credentials: credentials.map((cred) => ({
+        id: cred.id,
+        credentialId: cred.credentialId,
+        name: cred.name,
+        transports: cred.transports,
+        createdAt: cred.createdAt,
+        lastUsedAt: cred.lastUsedAt
+      }))
+    };
   };
 
   /**
@@ -337,7 +354,16 @@ export const webAuthnServiceFactory = ({
       });
     }
 
-    await webAuthnCredentialDAL.deleteById(credential.id);
+    const userCredentials = await webAuthnCredentialDAL.find({ userId });
+    const replacementMfaMethod =
+      userCredentials.length === 1 ? await userService.resolveMfaMethodAfterRemoval(userId, MfaMethod.WEBAUTHN) : null;
+
+    await webAuthnCredentialDAL.transaction(async (tx) => {
+      await webAuthnCredentialDAL.deleteById(credential.id, tx);
+      if (replacementMfaMethod) {
+        await userDAL.updateById(userId, { selectedMfaMethod: replacementMfaMethod }, tx);
+      }
+    });
 
     return {
       success: true

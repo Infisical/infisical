@@ -20,4 +20,4 @@ export type TValidateGitHubConnectionCredentialsSchema = typeof ValidateGitHubCo
 export type TGitHubConnectionConfig = DiscriminativePick<
   TGitHubConnectionInput,
   "method" | "app" | "credentials" | "gatewayId" | "gatewayPoolId"
->;
+> & { orgId: string; projectId?: string | null };

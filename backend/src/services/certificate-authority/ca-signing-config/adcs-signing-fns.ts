@@ -5,6 +5,7 @@ import RE2 from "re2";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { createAdcsHttpClient } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
+import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_POLL_ATTEMPTS = 120;
@@ -16,7 +17,6 @@ const RE_BASE64_WRAP = new RE2("(.{64})", "g");
 const RE_CSR_BEGIN = new RE2("-----BEGIN CERTIFICATE REQUEST-----", "g");
 const RE_CSR_END = new RE2("-----END CERTIFICATE REQUEST-----", "g");
 const RE_CSR_NEWLINES = new RE2("\\r?\\n", "g");
-const RE_PEM_CERT = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----");
 const RE_ESCAPED_CRLF = new RE2("\\\\r\\\\n", "g");
 const RE_ESCAPED_CR = new RE2("\\\\r", "g");
 const RE_CRLF = new RE2("[\\r\\n]", "g");
@@ -153,9 +153,9 @@ export const submitCsrToAdcs = async (params: {
   }
 
   // Check for immediate certificate issuance
-  const certMatch = responseText.match(RE_PEM_CERT);
+  const [certMatch] = splitPemChain(responseText);
   if (certMatch) {
-    certificate = certMatch[0].replace(RE_ESCAPED_CRLF, "\n").replace(RE_ESCAPED_CR, "\n").trim();
+    certificate = certMatch.replace(RE_ESCAPED_CRLF, "\n").replace(RE_ESCAPED_CR, "\n").trim();
     status = "issued";
   }
 

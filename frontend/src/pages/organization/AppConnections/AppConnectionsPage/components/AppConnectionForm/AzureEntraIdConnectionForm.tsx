@@ -1,15 +1,34 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { useScopeVariant } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AzureEntraIdConnectionMethod,
   TAzureEntraIdConnection
 } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -21,7 +40,8 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
   credentials: z.object({
     tenantId: z.string().trim().min(1, "Tenant ID is required"),
     clientId: z.string().trim().min(1, "Client ID is required"),
-    clientSecret: z.string().trim().min(1, "Client Secret is required")
+    clientSecret: z.string().trim().min(1, "Client Secret is required"),
+    clientSecretKeyId: z.string().trim().optional()
   })
 });
 
@@ -34,6 +54,15 @@ type Props = {
 
 export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { onCancel } = useAppConnectionForm();
+
+  const defaultRotation = {
+    rotationInterval: 30,
+    rotateAtUtc: {
+      hours: 0,
+      minutes: 0
+    }
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -43,6 +72,8 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
           description: appConnection.description,
           app: AppConnection.AzureEntraId,
           method: AzureEntraIdConnectionMethod.ClientSecret,
+          isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+          rotation: appConnection.rotation ?? defaultRotation,
           credentials: {
             tenantId: appConnection.credentials.tenantId,
             clientId: appConnection.credentials.clientId,
@@ -52,6 +83,8 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
       : {
           app: AppConnection.AzureEntraId,
           method: AzureEntraIdConnectionMethod.ClientSecret,
+          isAutoRotationEnabled: false,
+          rotation: defaultRotation,
           credentials: {
             tenantId: "",
             clientId: "",
@@ -66,6 +99,10 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
     formState: { isSubmitting, isDirty }
   } = form;
 
+  useAppConnectionFormDirtyState(isDirty);
+
+  const scopeVariant = useScopeVariant();
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -75,31 +112,36 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.AzureEntraId].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(AzureEntraIdConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.AzureEntraId].name}. This field cannot be
+                    changed after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger id="method" className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(AzureEntraIdConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -107,14 +149,26 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
           name="credentials.tenantId"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              tooltipText="The Azure Active Directory (Entra ID) Tenant ID."
-              isError={Boolean(error?.message)}
-              label="Tenant ID"
-              errorText={error?.message}
-            >
-              <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials.tenantId">
+                Tenant ID
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Azure Active Directory (Entra ID) Tenant ID.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                {...field}
+                id="credentials.tenantId"
+                placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -122,14 +176,26 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
           name="credentials.clientId"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              tooltipText="The Application (Client) ID of the Azure App Registration."
-              isError={Boolean(error?.message)}
-              label="Client ID"
-              errorText={error?.message}
-            >
-              <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials.clientId">
+                Client ID
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Application (Client) ID of the Azure App Registration.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                {...field}
+                id="credentials.clientId"
+                placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -137,34 +203,74 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
           name="credentials.clientSecret"
           control={control}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              tooltipText="The client secret of the Azure App Registration."
-              isError={Boolean(error?.message)}
-              label="Client Secret"
-              errorText={error?.message}
-            >
-              <Input {...field} type="password" placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="credentials.clientSecret">
+                Client Secret
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The client secret of the Azure App Registration.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                {...field}
+                id="credentials.clientSecret"
+                type="password"
+                placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
-        <div className="mt-8 flex items-center">
+        <CredentialRotationForm>
+          <Controller
+            name="credentials.clientSecretKeyId"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="credentials.clientSecretKeyId">
+                  Client Secret Key ID
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The Key ID of the client secret provided above. Found in Azure Portal under
+                      App Registrations &gt; Certificates &amp; Secrets. Required so Infisical can
+                      revoke the original secret after rotation.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="credentials.clientSecretKeyId"
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </CredentialRotationForm>
+
+        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button
-            className="mr-4"
-            size="sm"
             type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
+            variant={scopeVariant}
+            isPending={isSubmitting}
             isDisabled={isSubmitting || (!isUpdate && !isDirty)}
           >
             {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
           </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+          <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+            Cancel
+          </Button>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

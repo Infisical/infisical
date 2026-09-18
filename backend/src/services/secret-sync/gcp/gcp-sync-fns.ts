@@ -8,13 +8,35 @@ import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
+import { TPreSaveTransformDestinationConfigFn, TSecretMap } from "../secret-sync-types";
 import {
   GCPLatestSecretVersionAccess,
   GCPSecret,
   GCPSMListSecretsRes,
   TGcpSyncWithCredentials
 } from "./gcp-sync-types";
+
+export const gcpPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async ({
+  destinationConfig
+}) => {
+  if (!destinationConfig) return destinationConfig;
+  if (destinationConfig.scope !== GcpSyncScope.Global) return destinationConfig;
+  if (!destinationConfig.locationId) return destinationConfig;
+
+  const { locationId, ...rest } = destinationConfig;
+  return rest;
+};
+
+const getGlobalReplication = (userReplicaLocationIds?: string[], locationId?: string) => {
+  // eslint-disable-next-line no-nested-ternary
+  const locations = userReplicaLocationIds ?? (locationId ? [locationId] : []);
+
+  if (locations.length) {
+    return { userManaged: { replicas: locations.map((location) => ({ location })) } };
+  }
+  return { automatic: {} };
+};
 
 const getProjectUrl = (secretSync: TGcpSyncWithCredentials) => {
   const { destinationConfig } = secretSync;
@@ -102,7 +124,8 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
 };
 
 export const GcpSyncFns = {
-  syncSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 
@@ -123,9 +146,7 @@ export const GcpSyncFns = {
             {
               replication:
                 destinationConfig.scope === GcpSyncScope.Global
-                  ? {
-                      automatic: {}
-                    }
+                  ? getGlobalReplication(destinationConfig.userReplicaLocationIds, destinationConfig.locationId)
                   : undefined
             },
             {
@@ -217,7 +238,8 @@ export const GcpSyncFns = {
     return Object.fromEntries(Object.entries(gcpSecrets).map(([key, value]) => [key, { value: value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 

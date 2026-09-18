@@ -106,7 +106,14 @@ export const RequestSecretForm = () => {
             <FieldLabel>
               Name <span className="text-xs text-muted italic">- Optional</span>
             </FieldLabel>
-            <Input {...field} placeholder="API Key" type="text" isError={Boolean(error)} />
+            <Input
+              {...field}
+              placeholder="API Key"
+              type="text"
+              isError={Boolean(error)}
+              autoComplete="off"
+              name="secret-request-name"
+            />
             {error && <FieldError>{error.message}</FieldError>}
           </Field>
         )}
@@ -178,7 +185,7 @@ export const RequestSecretForm = () => {
         )}
       />
       <div className="flex w-full justify-end">
-        <Button variant="org" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
           Create Request Link
         </Button>
       </div>
@@ -200,7 +207,7 @@ export const RequestSecretForm = () => {
           {isCopyingSecret ? <Check className="size-4" /> : <Copy className="size-4" />}
         </IconButton>
       </div>
-      <Button className="w-full" variant="org" size="lg" onClick={() => setSecretLink("")}>
+      <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink("")}>
         Request Another Secret
         <ReplyIcon />
       </Button>

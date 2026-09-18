@@ -77,6 +77,7 @@ export enum IntegrationUrls {
   RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2",
   FLYIO_API_URL = "https://api.fly.io/graphql",
   FLYIO_MACHINES_API_URL = "https://api.machines.dev/v1",
+  TRIGGER_DEV_API_URL = "https://api.trigger.dev",
   CIRCLECI_API_URL = "https://circleci.com/api",
   TRAVISCI_API_URL = "https://api.travis-ci.com",
   SUPABASE_API_URL = "https://api.supabase.com",
@@ -100,11 +101,16 @@ export enum IntegrationUrls {
   HUMANITEC_API_URL = "https://api.humanitec.io",
   CAMUNDA_API_URL = "https://api.cloud.camunda.io",
   DEVIN_API_URL = "https://api.devin.ai",
+  DAYTONA_API_URL = "https://app.daytona.io/api",
   DIGICERT_SERVICES_API_URL = "https://www.digicert.com/services/v2",
-  DIGICERT_SERVICES_API_URL_EU = "https://api-eu.digicert.com/services/v2",
+  DIGICERT_SERVICES_API_URL_EU = "https://certcentral.digicert.eu/services/v2",
+
+  GODADDY_API_URL = "https://api.godaddy.com",
 
   GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com",
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
+  GCP_CERTIFICATE_MANAGER_SERVICE_NAME = "certificatemanager.googleapis.com",
+  GCP_CERTIFICATE_MANAGER_URL = `https://${GCP_CERTIFICATE_MANAGER_SERVICE_NAME}`,
   GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com",
   GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform",
 
@@ -360,7 +366,7 @@ export const getIntegrationOptions = async () => {
       name: "Codefresh",
       slug: "codefresh",
       image: "Codefresh.png",
-      isAvailable: true,
+      isAvailable: false,
       type: "pat",
       clientId: "",
       docsLink: ""

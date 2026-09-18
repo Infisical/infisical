@@ -36,6 +36,9 @@ export type TOauthLoginDTO = {
   callbackPort?: number;
   orgSlug?: string;
   providerUserId: string;
+  // whether the OAuth provider itself guarantees the email is verified (Google email_verified,
+  // GitHub verified email, GitLab confirmed_at) — when true we skip our own email verification
+  isEmailVerifiedByProvider: boolean;
   ip: string;
   userAgent: string;
 };

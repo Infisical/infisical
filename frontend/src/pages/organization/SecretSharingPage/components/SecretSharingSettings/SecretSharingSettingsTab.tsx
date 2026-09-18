@@ -19,6 +19,7 @@ export const SecretSharingSettingsTab = withPermission(
   },
   {
     action: OrgPermissionSecretShareAction.ManageSettings,
-    subject: OrgPermissionSubjects.SecretShare
+    subject: OrgPermissionSubjects.SecretShare,
+    accessRestrictedMode: "dialog"
   }
 );

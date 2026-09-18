@@ -7,33 +7,31 @@ import RE2 from "re2";
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOciAuthDALFactory } from "./identity-oci-auth-dal";
@@ -51,12 +49,16 @@ type TIdentityOciAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -67,12 +69,14 @@ export const identityOciAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityOciAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   licenseService,
   permissionService,
   orgDAL,
   identityAccessTokenService
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid, organizationSlug }: TLoginOciAuthDTO) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
     if (!identityOciAuth) {
@@ -170,26 +174,11 @@ export const identityOciAuthServiceFactory = ({
       }
 
       // Generate the token
-      await identityOciAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH
       });
 
       const subOrgDetails =
@@ -226,6 +215,13 @@ export const identityOciAuthServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.OCI_AUTH,
+        result: AuthAttemptAuthResult.SUCCESS,
+        orgId: org.id
+      });
+
       return {
         identityOciAuth,
         accessToken,
@@ -245,6 +241,14 @@ export const identityOciAuthServiceFactory = ({
           "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.OCI_AUTH,
+        result: AuthAttemptAuthResult.FAILURE,
+        orgId: org.id,
+        error
+      });
       throw error;
     }
   };
@@ -263,8 +267,6 @@ export const identityOciAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachOciAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -298,7 +300,7 @@ export const identityOciAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -311,10 +313,27 @@ export const identityOciAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add OCI auth to identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -350,6 +369,7 @@ export const identityOciAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
     return { ...identityOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -364,7 +384,8 @@ export const identityOciAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateOciAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -404,7 +425,7 @@ export const identityOciAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -416,8 +437,28 @@ export const identityOciAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update OCI auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -448,6 +489,7 @@ export const identityOciAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
     return { ...updatedOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -505,7 +547,8 @@ export const identityOciAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeOciAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -518,6 +561,7 @@ export const identityOciAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have OCI auth"
@@ -548,38 +592,24 @@ export const identityOciAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-        orgDAL.findById(actorOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke OCI auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke OCI auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);
@@ -595,6 +625,7 @@ export const identityOciAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.OCI_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
 
     return revokedIdentityOciAuth;
   };

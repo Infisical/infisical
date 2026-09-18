@@ -4,31 +4,29 @@ import { requestContext } from "@fastify/request-context";
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAzureAuthDALFactory } from "./identity-azure-auth-dal";
@@ -48,13 +46,17 @@ type TIdentityAzureAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -64,6 +66,7 @@ export const identityAzureAuthServiceFactory = ({
   identityDAL,
   identityAzureAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   identityAccessTokenDAL,
   permissionService,
   licenseService,
@@ -71,6 +74,7 @@ export const identityAzureAuthServiceFactory = ({
   identityAccessTokenService
 }: TIdentityAzureAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: azureJwt, organizationSlug }: TLoginAzureAuthDTO) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
     if (!identityAzureAuth) {
@@ -162,26 +166,11 @@ export const identityAzureAuthServiceFactory = ({
         }
       }
 
-      await identityAzureAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH
       });
 
       const subOrgDetails =
@@ -218,6 +207,13 @@ export const identityAzureAuthServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.AZURE_AUTH,
+        result: AuthAttemptAuthResult.SUCCESS,
+        orgId: org.id
+      });
+
       return { accessToken, identityAzureAuth, identityAccessToken, identity };
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -232,6 +228,14 @@ export const identityAzureAuthServiceFactory = ({
           "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.AZURE_AUTH,
+        result: AuthAttemptAuthResult.FAILURE,
+        orgId: org.id,
+        error
+      });
       throw error;
     }
   };
@@ -251,8 +255,6 @@ export const identityAzureAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachAzureAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -285,7 +287,7 @@ export const identityAzureAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -298,10 +300,27 @@ export const identityAzureAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add azure auth to identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
@@ -337,6 +356,7 @@ export const identityAzureAuthServiceFactory = ({
 
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AZURE_AUTH);
     return { ...identityAzureAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -352,7 +372,8 @@ export const identityAzureAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateAzureAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -365,6 +386,7 @@ export const identityAzureAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AZURE_AUTH)) {
       throw new BadRequestError({
         message: "Failed to update Azure Auth"
@@ -391,7 +413,7 @@ export const identityAzureAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -403,8 +425,28 @@ export const identityAzureAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update azure auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
@@ -435,6 +477,7 @@ export const identityAzureAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AZURE_AUTH);
     return {
       ...updatedAzureAuth,
       orgId: identityMembershipOrg.scopeOrgId
@@ -494,7 +537,8 @@ export const identityAzureAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeAzureAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -507,6 +551,7 @@ export const identityAzureAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AZURE_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have azure auth"
@@ -536,37 +581,24 @@ export const identityAzureAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
         orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke azure auth of identity with more privileged role",
+        actor,
+        actorId,
         actorAuthMethod,
         actorOrgId
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke azure auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
-    }
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityAzureAuth = await identityAzureAuthDAL.transaction(async (tx) => {
       const deletedAzureAuth = await identityAzureAuthDAL.delete({ identityId }, tx);
@@ -582,6 +614,7 @@ export const identityAzureAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.AZURE_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AZURE_AUTH);
 
     return revokedIdentityAzureAuth;
   };

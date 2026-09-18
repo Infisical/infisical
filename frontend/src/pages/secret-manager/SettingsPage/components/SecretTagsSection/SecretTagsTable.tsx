@@ -3,11 +3,11 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   MoreHorizontalIcon,
+  PencilIcon,
   SearchIcon,
   TrashIcon
 } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,12 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -39,18 +44,13 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useGetWsTags } from "@app/hooks/api/tags";
+import { WsTag } from "@app/hooks/api/tags/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteTagConfirmation"]>,
-    {
-      name,
-      id
-    }: {
-      name: string;
-      id: string;
-    }
+    popUpName: keyof UsePopUpState<["deleteTagConfirmation", "editSecretTag"]>,
+    data: { name: string; id: string } | WsTag
   ) => void;
 };
 
@@ -60,6 +60,7 @@ enum TagsOrderBy {
 
 export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { data: tags = [], isPending } = useGetWsTags(currentProject?.id ?? "");
 
   const {
@@ -157,48 +158,62 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTags.slice(offset, perPage * page).map(({ id, slug }) => (
-                <TableRow key={id}>
-                  <TableCell>{slug}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end">
-                      <ProjectPermissionCan
-                        I={ProjectPermissionActions.Delete}
-                        a={ProjectPermissionSub.Tags}
-                      >
-                        {(isAllowed) => (
+              {filteredTags.slice(offset, perPage * page).map((tag) => {
+                const { id, slug } = tag;
+
+                return (
+                  <TableRow key={id}>
+                    <TableCell>{slug}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end">
+                        {permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags) ||
+                        permission.can(
+                          ProjectPermissionActions.Delete,
+                          ProjectPermissionSub.Tags
+                        ) ? (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild disabled={!isAllowed}>
-                              <IconButton
-                                aria-label="Tag options"
-                                variant="ghost"
-                                size="xs"
-                                isDisabled={!isAllowed}
-                              >
+                            <DropdownMenuTrigger asChild>
+                              <IconButton aria-label="Tag options" variant="ghost" size="xs">
                                 <MoreHorizontalIcon className="size-4" />
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() =>
-                                  handlePopUpOpen("deleteTagConfirmation", {
-                                    name: slug,
-                                    id
-                                  })
-                                }
-                              >
-                                <TrashIcon />
-                                Delete tag
-                              </DropdownMenuItem>
+                              {permission.can(
+                                ProjectPermissionActions.Edit,
+                                ProjectPermissionSub.Tags
+                              ) && (
+                                <DropdownMenuItem
+                                  onClick={() => handlePopUpOpen("editSecretTag", tag)}
+                                >
+                                  <PencilIcon />
+                                  Edit Tag
+                                </DropdownMenuItem>
+                              )}
+                              {permission.can(
+                                ProjectPermissionActions.Delete,
+                                ProjectPermissionSub.Tags
+                              ) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={() =>
+                                    handlePopUpOpen("deleteTagConfirmation", {
+                                      name: slug,
+                                      id
+                                    })
+                                  }
+                                >
+                                  <TrashIcon />
+                                  Delete Tag
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        )}
-                      </ProjectPermissionCan>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           <Pagination

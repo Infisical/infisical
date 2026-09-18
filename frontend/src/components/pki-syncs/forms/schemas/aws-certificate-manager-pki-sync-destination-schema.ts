@@ -11,18 +11,26 @@ const AwsCertificateManagerSyncOptionsSchema = z.object({
   preserveArn: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (val) => {
-        // For AWS Certificate Manager, {{certificateId}} is always required if certificateNameSchema is provided
-        if (!val) return true;
-
-        if (!val.includes("{{certificateId}}")) {
+        // For AWS Certificate Manager, {{certificateId}} or {{shortCertificateId}} is always required
+        if (!val.includes("{{certificateId}}") && !val.includes("{{shortCertificateId}}")) {
           return false;
         }
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
-        const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+        const allowedOptionalPlaceholders = [
+          "{{profileId}}",
+          "{{applicationId}}",
+          "{{applicationName}}",
+          "{{commonName}}"
+        ];
+        const allowedPlaceholdersRegexPart = [
+          "{{certificateId}}",
+          "{{shortCertificateId}}",
+          ...allowedOptionalPlaceholders
+        ]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
           .join("|");
 
@@ -34,7 +42,7 @@ const AwsCertificateManagerSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include {{certificateId}} placeholder for AWS Certificate Manager."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder for AWS Certificate Manager. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders."
       }
     )
 });

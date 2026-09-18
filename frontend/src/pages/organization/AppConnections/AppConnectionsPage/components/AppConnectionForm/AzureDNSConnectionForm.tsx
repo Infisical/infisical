@@ -1,21 +1,30 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
-  Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  ModalClose,
   SecretInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { TAzureDNSConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -37,35 +46,48 @@ const formSchema = z.discriminatedUnion("method", [
       tenantId: z.string().trim().min(1, "Tenant ID required"),
       clientId: z.string().trim().min(1, "Client ID required"),
       clientSecret: z.string().trim().min(1, "Client Secret required"),
-      subscriptionId: z.string().trim().min(1, "Subscription ID required")
+      subscriptionId: z.string().trim().min(1, "Subscription ID required"),
+      clientSecretKeyId: z.string().trim().optional()
     })
   })
 ]);
 
 type FormData = z.infer<typeof formSchema>;
 
+const defaultRotation = {
+  rotationInterval: 30,
+  rotateAtUtc: {
+    hours: 0,
+    minutes: 0
+  }
+};
+
 export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: appConnection ?? {
-      app: AppConnection.AzureDNS,
-      method: AzureDNSConnectionMethod.ClientSecret,
-      credentials: {
-        tenantId: "",
-        clientId: "",
-        clientSecret: "",
-        subscriptionId: ""
-      }
-    }
+    defaultValues: appConnection
+      ? {
+          ...appConnection,
+          isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+          rotation: appConnection.rotation ?? defaultRotation
+        }
+      : {
+          app: AppConnection.AzureDNS,
+          method: AzureDNSConnectionMethod.ClientSecret,
+          isAutoRotationEnabled: false,
+          rotation: defaultRotation,
+          credentials: {
+            tenantId: "",
+            clientId: "",
+            clientSecret: "",
+            subscriptionId: ""
+          }
+        }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -75,31 +97,36 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              tooltipText={`The method you would like to use to connect with ${
-                APP_CONNECTION_MAP[AppConnection.AzureDNS].name
-              }. This field cannot be changed after creation.`}
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Method"
-            >
-              <Select
-                isDisabled={isUpdate}
-                value={value}
-                onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                dropdownContainerClassName="max-w-none"
-              >
-                {Object.values(AzureDNSConnectionMethod).map((method) => {
-                  return (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
-                    </SelectItem>
-                  );
-                })}
+            <Field className="mb-4">
+              <FieldLabel>
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The method you would like to use to connect with ${
+                      APP_CONNECTION_MAP[AppConnection.AzureDNS].name
+                    }. This field cannot be changed after creation.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(AzureDNSConnectionMethod).map((method) => {
+                    return (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}{" "}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -107,17 +134,17 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Tenant ID"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="tenant-id">Tenant ID</FieldLabel>
               <Input
+                id="tenant-id"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -125,17 +152,17 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client ID"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="client-id">Client ID</FieldLabel>
               <Input
+                id="client-id"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -143,18 +170,18 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Client Secret"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="client-secret">Client Secret</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "client-secret-error" : undefined}
+                id="client-secret"
+                isError={Boolean(error)}
                 placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-            </FormControl>
+              <FieldError id="client-secret-error" errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -162,36 +189,53 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Subscription ID"
-            >
+            <Field className="mb-4">
+              <FieldLabel htmlFor="subscription-id">Subscription ID</FieldLabel>
               <Input
+                id="subscription-id"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder="00000000-0000-0000-0000-000000000000"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Azure DNS"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <CredentialRotationForm>
+          <Controller
+            name="credentials.clientSecretKeyId"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="credentials.clientSecretKeyId">
+                  Client Secret Key ID
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The Key ID of the client secret provided above. Found in Azure Portal under
+                      App Registrations &gt; Certificates &amp; Secrets. Required so Infisical can
+                      revoke the original secret after rotation.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  id="credentials.clientSecretKeyId"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </CredentialRotationForm>
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Azure DNS"}
+        />
       </form>
     </FormProvider>
   );

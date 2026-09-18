@@ -64,7 +64,6 @@ export async function seed(knex: Knex): Promise<void> {
         isAccepted: true,
         isEmailVerified: true,
         isMfaEnabled: false,
-        mfaMethods: null,
         devices: null
       }
     ])

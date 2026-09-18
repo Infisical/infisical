@@ -10,9 +10,10 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { RolesUpdateBodySchema } from "./schemas";
 
@@ -47,7 +48,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "GET",
     url: "/groups",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listCertManagerGroups",
       response: { 200: z.object({ groupMemberships: z.array(certManagerGroupMembershipSchema) }) }
@@ -73,7 +74,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "GET",
     url: "/groups/:groupId",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
@@ -105,7 +106,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
       operationId: "addCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
       body: z.object({
-        role: z.string().trim().min(1).default(ProjectMembershipRole.NoAccess).optional(),
+        role: z.string().trim().min(1).default(ProjectMembershipRole.Member).optional(),
         roles: z
           .array(
             z.union([
@@ -132,7 +133,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         req.body.roles ??
         (req.body.role
           ? [{ role: req.body.role, isTemporary: false }]
-          : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
+          : [{ role: ProjectMembershipRole.Member, isTemporary: false }]);
       await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: { groupId: req.params.groupId, roles },
@@ -153,6 +154,17 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
             membershipId: full.id,
             roles: roles.map((r) => r.role)
           }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "group",
+          role: roles.map((r) => r.role).join(",")
         }
       });
       return {
@@ -196,6 +208,16 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "group"
+        }
+      });
       return {
         roles: groupMembership.roles.map((el) => ({ ...el, projectMembershipId: groupMembership.id }))
       };
@@ -220,19 +242,10 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      const { membership: groupMembership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
-        projectId,
-        actorKind: ApplicationMemberKind.Group,
-        actorId: req.params.groupId,
-        performDelete: (tx) =>
-          server.services.membershipGroup.deleteMembership(
-            {
-              permission: req.permission,
-              selector: { groupId: req.params.groupId },
-              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
-            },
-            tx
-          )
+      const { membership: groupMembership } = await server.services.membershipGroup.deleteMembership({
+        permission: req.permission,
+        selector: { groupId: req.params.groupId },
+        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId }
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -240,6 +253,16 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         event: {
           type: EventType.REMOVE_CERT_MANAGER_GROUP,
           metadata: { groupId: req.params.groupId, membershipId: groupMembership.id }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "group"
         }
       });
       return {

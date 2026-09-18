@@ -5,6 +5,7 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgGatewayPoolPermissionActions,
+  OrgKmipServerPermissionActions,
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
   OrgPermissionAppConnectionActions,
@@ -16,8 +17,10 @@ import {
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
@@ -76,6 +79,18 @@ const kmipPermissionSchema = z
   .array(z.object({ [OrgPermissionKmipActions.Proxy]: z.boolean().optional() }))
   .optional();
 
+const memberPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionMemberActions.Read]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Create]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Edit]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Delete]: z.boolean().optional(),
+      [OrgPermissionMemberActions.GrantPrivileges]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const identityPermissionSchema = z
   .array(
     z.object({
@@ -85,6 +100,7 @@ const identityPermissionSchema = z
       [OrgPermissionIdentityActions.Create]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
       [OrgPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+      [OrgPermissionIdentityActions.EditAuth]: z.boolean().optional(),
       [OrgPermissionIdentityActions.CreateToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GetToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -143,6 +159,18 @@ const orgRelayPermissionSchema = z
   )
   .optional();
 
+const orgKmipServerPermissionSchema = z
+  .array(
+    z.object({
+      [OrgKmipServerPermissionActions.ListKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.EditKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.DeleteKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.CreateKmipServers]: z.boolean().optional(),
+      [OrgKmipServerPermissionActions.RevokeKmipServerAccess]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const machineIdentityAuthTemplatePermissionSchema = z
   .array(
     z.object({
@@ -180,6 +208,16 @@ const honeyTokenPermissionSchema = z
   .array(z.object({ [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional() }))
   .optional();
 
+const secretsManagementInsightsPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const projectPermissionSchema = z
   .array(
     z.object({
@@ -203,7 +241,7 @@ const ssoPermissionSchema = z
 
 export const formSchema = z.object({
   name: z.string().trim(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
   slug: z
     .string()
     .trim()
@@ -212,7 +250,7 @@ export const formSchema = z.object({
     .object({
       project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
-      member: generalPermissionSchema,
+      member: memberPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
@@ -234,11 +272,13 @@ export const formSchema = z.object({
       gateway: orgGatewayPermissionSchema,
       "gateway-pool": orgGatewayPoolPermissionSchema,
       relay: orgRelayPermissionSchema,
+      [OrgPermissionSubjects.KmipServer]: orgKmipServerPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
       "email-domains": emailDomainPermissionSchema,
-      "honey-tokens": honeyTokenPermissionSchema
+      "honey-tokens": honeyTokenPermissionSchema,
+      [OrgPermissionSubjects.SecretsManagementInsights]: secretsManagementInsightsPermissionSchema
     })
     .optional()
     .superRefine((permissions, ctx) => {
@@ -300,24 +340,29 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     description: "Manage organization member access and role assignments",
     actions: [
       {
-        value: OrgPermissionActions.Read,
+        value: OrgPermissionMemberActions.Read,
         label: "View all members",
         description: "View organization members and their roles"
       },
       {
-        value: OrgPermissionActions.Create,
+        value: OrgPermissionMemberActions.Create,
         label: "Invite members",
         description: "Invite new users to join the organization"
       },
       {
-        value: OrgPermissionActions.Edit,
+        value: OrgPermissionMemberActions.Edit,
         label: "Edit members",
-        description: "Modify member roles and access settings"
+        description: "Update member attributes and activation status"
       },
       {
-        value: OrgPermissionActions.Delete,
+        value: OrgPermissionMemberActions.Delete,
         label: "Remove members",
         description: "Remove members from the organization"
+      },
+      {
+        value: OrgPermissionMemberActions.GrantPrivileges,
+        label: "Grant privileges",
+        description: "Assign and change the roles held by organization members"
       }
     ]
   },
@@ -518,7 +563,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.ProjectTemplates]: {
-    title: "Project Templates",
+    title: "Secrets Management Project Templates",
     description: "Manage reusable templates applied when creating new projects",
     actions: [
       {
@@ -605,11 +650,20 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Delete Identities",
         description: "Delete machine identities"
       },
-      { value: OrgPermissionIdentityActions.GrantPrivileges, label: "Grant Privileges" },
+      {
+        value: OrgPermissionIdentityActions.GrantPrivileges,
+        label: "Grant Privileges",
+        description: "Assign roles and additional privileges to machine identities"
+      },
       {
         value: OrgPermissionIdentityActions.RevokeAuth,
         label: "Revoke Auth",
         description: "Revoke authentication for a machine identity"
+      },
+      {
+        value: OrgPermissionIdentityActions.EditAuth,
+        label: "Configure Auth",
+        description: "Add or update authentication methods for a machine identity"
       },
       {
         value: OrgPermissionIdentityActions.CreateToken,
@@ -652,7 +706,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Delete Groups",
         description: "Delete groups"
       },
-      { value: OrgPermissionGroupActions.GrantPrivileges, label: "Grant Privileges" },
+      {
+        value: OrgPermissionGroupActions.GrantPrivileges,
+        label: "Grant Privileges",
+        description: "Assign roles and additional privileges to groups"
+      },
       {
         value: OrgPermissionGroupActions.AddMembers,
         label: "Add Members",
@@ -703,7 +761,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.Gateway]: {
     title: "Gateways",
-    description: "Manage gateways used for private network access",
+    description: "Manage gateways that securely connect Infisical to your infrastructure",
     actions: [
       {
         value: OrgGatewayPermissionActions.ListGateways,
@@ -713,7 +771,8 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       {
         value: OrgGatewayPermissionActions.CreateGateways,
         label: "Create Gateways",
-        description: "Register new gateways for private network access"
+        description:
+          "Register new gateways that securely proxy Infisical traffic into your infrastructure"
       },
       {
         value: OrgGatewayPermissionActions.EditGateways,
@@ -799,6 +858,37 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
+  [OrgPermissionSubjects.KmipServer]: {
+    title: "KMIP Servers",
+    description: "Manage KMIP servers that proxy KMIP requests to Infisical KMS",
+    actions: [
+      {
+        value: OrgKmipServerPermissionActions.ListKmipServers,
+        label: "List KMIP Servers",
+        description: "View available KMIP servers"
+      },
+      {
+        value: OrgKmipServerPermissionActions.CreateKmipServers,
+        label: "Create KMIP Servers",
+        description: "Add new KMIP servers"
+      },
+      {
+        value: OrgKmipServerPermissionActions.EditKmipServers,
+        label: "Edit KMIP Servers",
+        description: "Update KMIP server configuration and auth method"
+      },
+      {
+        value: OrgKmipServerPermissionActions.DeleteKmipServers,
+        label: "Delete KMIP Servers",
+        description: "Remove KMIP servers"
+      },
+      {
+        value: OrgKmipServerPermissionActions.RevokeKmipServerAccess,
+        label: "Revoke KMIP Server Access",
+        description: "Revoke access to KMIP servers"
+      }
+    ]
+  },
   [OrgPermissionSubjects.Billing]: {
     title: "Billing",
     description: "View and manage billing details, invoices, and payment methods",
@@ -842,7 +932,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.SecretShare]: {
-    title: "Secret Share",
+    title: "Secrets Management Secret Sharing",
     description: "Configure settings for sharing secrets externally",
     actions: [
       {
@@ -852,8 +942,29 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
+  [OrgPermissionSubjects.SecretsManagementInsights]: {
+    title: "Secrets Management Insights",
+    description: "View organization-wide secrets management insights and reports",
+    actions: [
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.Read,
+        label: "Read",
+        description: "View secrets management insights"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.GenerateReport,
+        label: "Generate Report",
+        description: "Generate new secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
+        label: "Delete Report",
+        description: "Delete secrets management insight reports"
+      }
+    ]
+  },
   [OrgPermissionSubjects.HoneyTokens]: {
-    title: "Honey Tokens",
+    title: "Secrets Management Honey Tokens",
     description: "Configure honey token setup for the organization",
     actions: [
       {
@@ -926,17 +1037,9 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
-  [OrgPermissionSubjects.Kmip]: {
-    title: "KMIP",
-    description: "Proxy KMIP requests to organization key management infrastructure",
-    actions: [
-      {
-        value: OrgPermissionKmipActions.Proxy,
-        label: "Proxy KMIP requests",
-        description: "Route KMIP requests to organization key management infrastructure"
-      }
-    ]
-  },
+  // NOTE: The "KMIP" (proxy) org permission is deprecated — KMIP servers now authenticate via
+  // enrollment-based access tokens, so the permission is no longer needed and is intentionally
+  // not surfaced here. The schema still accepts it so existing roles that carry it keep working.
   [OrgPermissionSubjects.SubOrganization]: {
     title: "Sub-Organizations",
     description: "Create and manage namespaces within the organization",

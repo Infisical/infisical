@@ -103,5 +103,10 @@ export const validateAndMapAltNameType = (name: string): TAltNameMapping | null 
   if (isValidIp(name)) {
     return { type: TAltNameType.IP, value: name };
   }
+  // Fall back to DNS for any other non-empty value (e.g. bare "*" wildcards) instead of rejecting it.
+  // This matches detectSanType's behavior so CA-issued and self-signed certs handle SANs consistently.
+  if (name.length > 0) {
+    return { type: TAltNameType.DNS, value: name };
+  }
   return null;
 };

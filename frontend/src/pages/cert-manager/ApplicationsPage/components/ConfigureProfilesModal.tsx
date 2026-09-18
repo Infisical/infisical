@@ -91,7 +91,7 @@ export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Pr
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-visible">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Configure Profiles</DialogTitle>
           <DialogDescription>
@@ -107,15 +107,14 @@ export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Pr
             placeholder="Select profiles..."
           />
           {!profilesLoading && !profileOptions.length && (
-            <p className="mt-3 text-xs text-yellow-500">
+            <p className="mt-3 text-xs text-warning">
               No certificate profiles available.{" "}
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
+                to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
                 params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                search={{ selectedTab: "certificate-profiles" }}
-                className="underline hover:text-yellow-400"
+                className="underline hover:text-warning"
               >
-                Create one in Settings
+                Create one in Certificate Profiles
               </Link>
             </p>
           )}

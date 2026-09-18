@@ -185,6 +185,40 @@ type TFolderCommitServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
 };
 
+const pluralizeResource = (count: number, resource: string) => `${count} ${resource}${count === 1 ? "" : "s"}`;
+
+const buildDefaultCommitMessage = (changes: TCommitResourceChangeDTO[]) => {
+  const counts = {
+    created: { secret: 0, folder: 0 },
+    updated: { secret: 0, folder: 0 },
+    deleted: { secret: 0, folder: 0 }
+  };
+
+  changes.forEach((change) => {
+    let resource: "secret" | "folder" | undefined;
+    if (change.folderVersionId) resource = "folder";
+    else if (change.secretVersionId) resource = "secret";
+    if (!resource) return;
+
+    if (change.type === CommitType.DELETE) counts.deleted[resource] += 1;
+    else if (change.isUpdate) counts.updated[resource] += 1;
+    else counts.created[resource] += 1;
+  });
+
+  const segments: string[] = [];
+  (["created", "updated", "deleted"] as const).forEach((action) => {
+    const resources: string[] = [];
+    if (counts[action].secret > 0) resources.push(pluralizeResource(counts[action].secret, "secret"));
+    if (counts[action].folder > 0) resources.push(pluralizeResource(counts[action].folder, "folder"));
+    if (resources.length) segments.push(`${action} ${resources.join(" and ")}`);
+  });
+
+  if (!segments.length) return undefined;
+
+  const summary = segments.join(", ");
+  return `${summary.charAt(0).toUpperCase()}${summary.slice(1)}`;
+};
+
 export const folderCommitServiceFactory = ({
   folderCommitDAL,
   folderCommitChangesDAL,
@@ -918,7 +952,7 @@ export const folderCommitServiceFactory = ({
         {
           actorMetadata: metadata,
           actorType: data.actor.type,
-          message: data.message,
+          message: data.message?.trim() || buildDefaultCommitMessage(changes),
           folderId: data.folderId,
           envId: folder.envId
         },
@@ -1066,7 +1100,6 @@ export const folderCommitServiceFactory = ({
                 reminderRepeatDays: secretVersion.reminderRepeatDays,
                 userId: secretVersion.userId,
                 actorType: actorInfo.actorType,
-                envId: secretVersion.envId,
                 metadata: metadata ? JSON.stringify(metadata) : null,
                 secretValueBlindIndex: secretVersion.secretValueBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
@@ -1146,7 +1179,6 @@ export const folderCommitServiceFactory = ({
                 userId: secretVersion.userId,
                 metadata: JSON.stringify(metadata),
                 actorType: actorInfo.actorType,
-                envId: secretVersion.envId,
                 folderId,
                 secretId: secretVersion.secretId,
                 secretValueBlindIndex: secretVersion.secretValueBlindIndex,
@@ -1499,7 +1531,8 @@ export const folderCommitServiceFactory = ({
     offset = 0,
     limit = 20,
     search,
-    sort = "desc"
+    sort = "desc",
+    authorFilter
   }: {
     actor: ActorType;
     actorId: string;
@@ -1512,6 +1545,7 @@ export const folderCommitServiceFactory = ({
     limit: number;
     search?: string;
     sort: "asc" | "desc";
+    authorFilter?: { actorId?: string; actorType?: string };
   }) => {
     await checkProjectCommitReadPermission({
       actor,
@@ -1525,16 +1559,56 @@ export const folderCommitServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) {
       throw new NotFoundError({
-        message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
+        message: `Folder not found for path '${path}' in environment '${environment}'`
       });
     }
     const folderCommits = await folderCommitDAL.findByFolderIdPaginated(folder.id, {
       offset,
       limit,
       search,
-      sort
+      sort,
+      actorId: authorFilter?.actorId,
+      actorType: authorFilter?.actorType
     });
     return folderCommits;
+  };
+
+  /**
+   * Get the distinct set of users, identities and platform actors that have committed to a folder
+   */
+  const getCommitAuthorsForFolder = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    environment,
+    path
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    environment: string;
+    path: string;
+  }) => {
+    await checkProjectCommitReadPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId,
+      environment,
+      secretPath: path
+    });
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder not found for path '${path}' in environment '${environment}'`
+      });
+    }
+    return folderCommitDAL.findCommitAuthorsByFolderId(folder.id);
   };
 
   const getCommitsCount = async ({
@@ -2244,6 +2318,7 @@ export const folderCommitServiceFactory = ({
     deepCompareFolder,
     reconstructFolderState,
     getCommitsForFolder,
+    getCommitAuthorsForFolder,
     revertCommitChanges
   };
 };

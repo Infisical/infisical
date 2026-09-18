@@ -209,17 +209,17 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
     >
       <ModalContent title={getModalTitle()}>
         {hasRenewalError && (
-          <div className="mb-6 rounded-md border border-red-600 bg-red-900/20 p-4">
+          <div className="mb-6 rounded-md border border-danger bg-danger/20 p-4">
             <div className="flex items-start gap-3">
-              <div className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600">
+              <div className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger">
                 <span className="text-xs font-bold text-white">!</span>
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-red-400">Automatic Renewal Failed</h3>
-                <p className="mt-1 text-sm text-red-300">
+                <h3 className="font-medium text-danger">Automatic Renewal Failed</h3>
+                <p className="mt-1 text-sm text-danger">
                   The last automatic renewal attempt failed: {certificateData.renewalError}
                 </p>
-                <p className="mt-2 text-sm text-red-300">
+                <p className="mt-2 text-sm text-danger">
                   You can reconfigure auto-renewal below or disable it completely.
                 </p>
               </div>

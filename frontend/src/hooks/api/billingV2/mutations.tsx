@@ -1,0 +1,271 @@
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { apiRequest } from "@app/config/request";
+
+import { subscriptionQueryKeys } from "../subscriptions/queries";
+import { billingV2Keys } from "./queries";
+import {
+  BillingV2CheckoutResult,
+  BillingV2MutationResult,
+  BillingV2Preview,
+  BillingV2TrialCancelResult,
+  BillingV2TrialResult,
+  BillingV2UpgradeResult,
+  TAddBillingV2PaymentMethodDTO,
+  TBillingV2LifecycleDTO,
+  TBuyBillingV2ProductDTO,
+  TCancelBillingV2TrialDTO,
+  TChangeBillingV2CommitmentDTO,
+  TCreateBillingV2PortalSessionDTO,
+  TPreviewBillingV2ChangeDTO,
+  TRemoveBillingV2ProductDTO,
+  TStartBillingV2TrialDTO,
+  TUpgradeBillingV2ProductDTO
+} from "./types";
+
+// The catalog's trialable/upgradeable flags are org-aware, so any mutation that changes what the org
+// holds invalidates it alongside the overview; otherwise both CTAs stay stale after the action that
+// changed them.
+const invalidateBillingV2 = (queryClient: QueryClient, orgId: string) => {
+  queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+  queryClient.invalidateQueries({ queryKey: billingV2Keys.catalog(orgId) });
+};
+
+export const useCreateBillingV2PortalSession = () => {
+  return useMutation({
+    mutationFn: async ({ orgId, returnPath }: TCreateBillingV2PortalSessionDTO) => {
+      const {
+        data: { url }
+      } = await apiRequest.post<{ url: string }>(
+        `/api/v1/organizations/${orgId}/billing/v2/portal-session`,
+        { returnPath }
+      );
+
+      return url;
+    }
+  });
+};
+
+// Buy/add one product. The server self-selects appending to a live subscription vs opening a hosted
+// Checkout, so the caller never branches on subscription state. Commitment is a separate step.
+export const useBuyBillingV2Product = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orgId,
+      productId,
+      plan,
+      cadence,
+      quantities,
+      returnPath
+    }: TBuyBillingV2ProductDTO) => {
+      const { data } = await apiRequest.post<BillingV2CheckoutResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/products`,
+        { productId, plan, cadence, quantities, returnPath }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+export const useAddBillingV2PaymentMethod = () => {
+  return useMutation({
+    mutationFn: async ({ orgId, returnPath }: TAddBillingV2PaymentMethodDTO) => {
+      const {
+        data: { url }
+      } = await apiRequest.post<{ url: string }>(
+        `/api/v1/organizations/${orgId}/billing/v2/payment-method`,
+        { returnPath }
+      );
+
+      return url;
+    }
+  });
+};
+
+// Preview-only: never mutates, so it does not invalidate the overview. The caller shows the result
+// in a confirmation dialog before committing the add/remove.
+export const usePreviewBillingV2Change = () => {
+  return useMutation({
+    mutationFn: async ({
+      orgId,
+      addProductId,
+      plan,
+      cadence,
+      quantities,
+      removeProductId,
+      commitmentChanges,
+      upgradeProductId,
+      upgradePlan
+    }: TPreviewBillingV2ChangeDTO) => {
+      const {
+        data: { preview }
+      } = await apiRequest.post<{ preview: BillingV2Preview }>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/preview`,
+        {
+          addProductId,
+          plan,
+          cadence,
+          quantities,
+          removeProductId,
+          commitmentChanges,
+          upgradeProductId,
+          upgradePlan
+        }
+      );
+
+      return preview;
+    }
+  });
+};
+
+// Move a held product onto a higher plan. expectedPlanVersionId comes from the preview and is what
+// turns a price published in between into a clean conflict instead of an unexpected charge.
+export const useUpgradeBillingV2Product = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orgId,
+      productId,
+      plan,
+      expectedPlanVersionId,
+      prorationDate
+    }: TUpgradeBillingV2ProductDTO) => {
+      const { data } = await apiRequest.post<BillingV2UpgradeResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/upgrade`,
+        { productId, plan, expectedPlanVersionId, prorationDate }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+// Start / change annual commitments across dimensions in one atomic call.
+export const useChangeBillingV2Commitment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, changes, productId }: TChangeBillingV2CommitmentDTO) => {
+      const { data } = await apiRequest.put<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
+        { changes, productId }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+// Start a plan-scoped self-serve trial. The trial is granted immediately; cardSetupUrl (when present)
+// is a best-effort Stripe setup checkout the caller redirects to for adding a card.
+export const useStartBillingV2Trial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId, plan }: TStartBillingV2TrialDTO) => {
+      const { data } = await apiRequest.post<BillingV2TrialResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial`,
+        { productId, plan }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+// Cancel an in-progress trial for a product (product drops to free; the trial never converts).
+export const useCancelBillingV2Trial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId }: TCancelBillingV2TrialDTO) => {
+      const { data } = await apiRequest.post<BillingV2TrialCancelResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial/cancel`,
+        { productId }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+export const useRemoveBillingV2Product = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId }: TRemoveBillingV2ProductDTO) => {
+      const { data } = await apiRequest.delete<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/products/${encodeURIComponent(productId)}`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+export const useCancelBillingV2Subscription = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId }: TBillingV2LifecycleDTO) => {
+      const { data } = await apiRequest.post<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/cancel`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+export const useResumeBillingV2Subscription = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId }: TBillingV2LifecycleDTO) => {
+      const { data } = await apiRequest.post<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/resume`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      invalidateBillingV2(queryClient, orgId);
+    }
+  });
+};
+
+// Force the server to recompute entitlements from the license server and drop its cache, then refetch
+// the overview so the freshly-pulled entitlements land in the query cache.
+export const useRefreshBillingV2Entitlements = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId }: TBillingV2LifecycleDTO) => {
+      const { data } = await apiRequest.post<{ success: boolean }>(
+        `/api/v1/organizations/${orgId}/billing/v2/overview/refresh`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      queryClient.invalidateQueries({ queryKey: subscriptionQueryKeys.getOrgSubsription(orgId) });
+    }
+  });
+};

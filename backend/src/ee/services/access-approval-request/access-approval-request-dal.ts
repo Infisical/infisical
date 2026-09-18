@@ -105,6 +105,8 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         note?: string | null | undefined;
         privilegeDeletedAt?: Date | null | undefined;
         expiresAt?: Date | null | undefined;
+        approvedAt?: Date | null | undefined;
+        revokedAt?: Date | null | undefined;
         reviewers: {
           userId: string;
           status: string;

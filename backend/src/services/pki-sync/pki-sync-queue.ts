@@ -1,54 +1,71 @@
 /* eslint-disable no-await-in-loop */
-import opentelemetry from "@opentelemetry/api";
-import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
-import handlebars from "handlebars";
 
-import { TCertificates } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
+import { hydratePkiSyncCredentials } from "@app/services/pki-sync/pki-sync-credentials-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { getCertificateCredentials } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
-import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
-import { extractRootCaFromChain, removeRootCaFromChain } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
+import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
+import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import { PkiSyncStatus } from "./pki-sync-enums";
+import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
-import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns } from "./pki-sync-fns";
+import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
+import { withPkiSyncFilterLock } from "./pki-sync-filter-reconcile-fns";
+import {
+  getPkiSyncProviderCapabilities,
+  parsePkiSyncErrorMessage,
+  PkiSyncFns,
+  truncateSyncMessage
+} from "./pki-sync-fns";
+import {
+  buildHealthCheckCommandFailureMessage,
+  didHealthCheckFail,
+  getHealthCheckCommand,
+  THealthCheckCommandResult
+} from "./pki-sync-health-check-command-fns";
+import {
+  buildPostSyncCommandFailureMessage,
+  getPostSyncCommand,
+  TPostSyncCommandResult
+} from "./pki-sync-post-sync-command-fns";
+import { getPkiSyncTargetHost } from "./pki-sync-target-host-fns";
 import {
   TCertificateMap,
   TPkiSyncImportCertificatesDTO,
   TPkiSyncRaw,
   TPkiSyncRemoveCertificatesDTO,
   TPkiSyncSyncCertificatesDTO,
-  TPkiSyncWithCredentials,
   TQueuePkiSyncImportCertificatesByIdDTO,
+  TQueuePkiSyncLinkMatchingCertificatesDTO,
+  TQueuePkiSyncReconcileFiltersDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "./pki-sync-types";
+import { reconcileCertificateAgainstMatchingSyncs, reconcileSyncFilters } from "./pki-sync-utils";
 
 export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
 
@@ -59,18 +76,25 @@ type TPkiSyncQueueFactoryDep = {
     "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
-  pkiSyncDAL: Pick<TPkiSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete" | "getItem" | "setItemWithExpiry"
+  >;
+  pkiSyncDAL: Pick<
+    TPkiSyncDALFactory,
+    "findById" | "find" | "updateById" | "deleteById" | "update" | "findFailureNotificationRecipients" | "primaryNode"
+  >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
-  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -80,9 +104,10 @@ type PkiSyncActionJob = Job<
 >;
 
 const JITTER_MS = 10 * 1000;
+const HOST_SERIALISATION_LOCK_TTL_MS = 5 * 60 * 1000;
+
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 30;
-const CONNECTION_CONCURRENCY_LIMIT = 3;
 
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
@@ -97,8 +122,9 @@ export const pkiSyncQueueFactory = ({
   keyStore,
   pkiSyncDAL,
   auditLogService,
+  notificationService,
+  pkiApplicationDAL,
   projectDAL,
-  licenseService,
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -111,7 +137,7 @@ export const pkiSyncQueueFactory = ({
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
-  const integrationMeter = opentelemetry.metrics.getMeter("PkiSyncs");
+  const integrationMeter = highCardinalityMeter("PkiSyncs");
   const syncCertificatesErrorHistogram = integrationMeter.createHistogram("pki_sync_sync_certificates_errors", {
     description: "PKI Sync - sync certificates errors",
     unit: "1"
@@ -125,240 +151,23 @@ export const pkiSyncQueueFactory = ({
     unit: "1"
   });
 
-  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+  const $tryAdmitConnectionConcurrency = (connectionId: string, targetHost?: string) =>
+    tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
 
-    if (!concurrencyCount) return false;
+  const $releaseConnectionConcurrency = (connectionId: string, targetHost?: string) =>
+    releasePkiSyncConcurrency(keyStore, connectionId, targetHost);
 
-    const count = Number.parseInt(concurrencyCount, 10);
-
-    if (Number.isNaN(count)) return false;
-
-    return count >= CONNECTION_CONCURRENCY_LIMIT;
-  };
-
-  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
-    );
-  };
-
-  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
-  };
-
-  const $getInfisicalCertificates = async (
-    pkiSync: TPkiSyncRaw | TPkiSyncWithCredentials
-  ): Promise<{ certificateMap: TCertificateMap; certificateMetadata: Map<string, { id: string; name: string }> }> => {
-    const { projectId, subscriberId, id: pkiSyncId } = pkiSync;
-
-    const certificateMap: TCertificateMap = {};
-    const certificateMetadata = new Map<string, { id: string; name: string }>();
-    let certificates: Array<{ id: string; projectId: string; caCertId?: string | null }> = [];
-
-    try {
-      if (subscriberId) {
-        const subscriberCertificates = await certificateDAL.findAllActiveCertsForSubscriber({
-          subscriberId
-        });
-        certificates.push(...subscriberCertificates);
-      }
-
-      const certificateIds = await certificateSyncDAL.findCertificateIdsByPkiSyncId(pkiSyncId);
-      if (certificateIds.length > 0) {
-        const directCertificates = await certificateDAL.findActiveCertificatesByIds(certificateIds);
-        certificates.push(...directCertificates);
-      }
-
-      const uniqueCertificates = certificates.filter(
-        (cert, index, self) => self.findIndex((c) => c.id === cert.id) === index
-      );
-
-      const activeCertificates = uniqueCertificates.filter((cert) => {
-        const typedCert = cert as TCertificates;
-        return !typedCert.renewedByCertificateId;
-      });
-
-      if (activeCertificates.length === 0) {
-        return { certificateMap, certificateMetadata };
-      }
-
-      certificates = activeCertificates;
-
-      for (const certificate of certificates) {
-        const cert = certificate as TCertificates;
-        try {
-          // Get the certificate body and decrypt the certificate data
-          const certBody = await certificateBodyDAL.findOne({ certId: certificate.id });
-
-          if (certBody) {
-            const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-              projectId: certificate.projectId,
-              projectDAL,
-              kmsService
-            });
-
-            const kmsDecryptor = await kmsService.decryptWithKmsKey({
-              kmsId: certificateManagerKeyId
-            });
-
-            const decryptedCert = await kmsDecryptor({
-              cipherTextBlob: certBody.encryptedCertificate
-            });
-
-            const certObj = new x509.X509Certificate(decryptedCert);
-            const certificatePem = certObj.toString("pem");
-
-            // Get private key using getCertificateCredentials - handle cases where private key doesn't exist
-            let certPrivateKey: string | undefined;
-            try {
-              const credentials = await getCertificateCredentials({
-                certId: certificate.id,
-                projectId: certificate.projectId,
-                certificateSecretDAL,
-                projectDAL,
-                kmsService
-              });
-              certPrivateKey = credentials.certPrivateKey;
-            } catch (credError) {
-              logger.warn(
-                { certificateId: certificate.id, subscriberId, error: credError },
-                "Certificate private key not found - certificate may be imported or key was not stored"
-              );
-              // Continue without private key - some providers may only need the certificate
-              certPrivateKey = undefined;
-            }
-
-            let certificateChain: string | undefined;
-            let caCertificate: string | undefined;
-            try {
-              if (certBody.encryptedCertificateChain) {
-                const decryptedCertChain = await kmsDecryptor({
-                  cipherTextBlob: certBody.encryptedCertificateChain
-                });
-                certificateChain = decryptedCertChain.toString();
-              }
-              if (certificate.caCertId) {
-                const { caCert, caCertChain } = await getCaCertChain({
-                  caCertId: certificate.caCertId,
-                  certificateAuthorityDAL,
-                  certificateAuthorityCertDAL,
-                  projectDAL,
-                  kmsService
-                });
-                if (!certBody.encryptedCertificateChain) {
-                  certificateChain = `${caCert}\n${caCertChain}`.trim();
-                }
-                caCertificate = certificateChain ? extractRootCaFromChain(certificateChain) : caCert;
-              }
-            } catch (chainError) {
-              logger.warn(
-                { certificateId: certificate.id, subscriberId, error: chainError },
-                "Certificate chain not found or could not be decrypted - certificate may be imported or chain was not stored"
-              );
-              // Continue without certificate chain
-              certificateChain = undefined;
-              caCertificate = undefined;
-            }
-
-            let certificateName: string;
-            const syncOptions = pkiSync.syncOptions as
-              | {
-                  certificateNameSchema?: string;
-                  includeRootCa?: boolean;
-                }
-              | undefined;
-            const certificateNameSchema = syncOptions?.certificateNameSchema;
-
-            if (certificateNameSchema) {
-              const environment = "global";
-              const templateData = {
-                certificateId: certificate.id.replace(/-/g, ""),
-                profileId: cert.profileId?.replace(/-/g, "") || certificate.id.replace(/-/g, ""),
-                commonName: cert.commonName || "",
-                friendlyName: cert.friendlyName || "",
-                environment
-              };
-              certificateName = handlebars.compile(certificateNameSchema)(templateData);
-            } else {
-              const stableId = cert.profileId
-                ? `${cert.profileId.replace(/-/g, "")}-${(cert.commonName || "").replace(/[^a-zA-Z0-9]/g, "")}`
-                : certificate.id.replace(/-/g, "");
-              certificateName = `Infisical-${stableId}`;
-            }
-
-            const alternativeNames: string[] = [];
-
-            const legacyName = `Infisical-${certificate.id.replace(/-/g, "")}`;
-            if (legacyName !== certificateName) {
-              alternativeNames.push(legacyName);
-            }
-
-            if (cert.renewedFromCertificateId) {
-              const originalLegacyName = `Infisical-${cert.renewedFromCertificateId.replace(/-/g, "")}`;
-              alternativeNames.push(originalLegacyName);
-            }
-
-            let processedCertificateChain = certificateChain;
-            if (certificateChain && syncOptions?.includeRootCa === false) {
-              processedCertificateChain = removeRootCaFromChain(certificateChain);
-            }
-
-            certificateMap[certificateName] = {
-              cert: certificatePem,
-              privateKey: certPrivateKey || "",
-              certificateChain: processedCertificateChain,
-              caCertificate,
-              alternativeNames,
-              certificateId: certificate.id
-            };
-
-            certificateMetadata.set(certificateName, {
-              id: certificate.id,
-              name: certificateName
-            });
-          } else {
-            logger.warn({ certificateId: certificate.id, subscriberId }, "Certificate body not found for certificate");
-          }
-        } catch (error) {
-          logger.error(
-            { error, subscriberId, certificateId: certificate.id },
-            "Failed to decrypt certificate for PKI sync"
-          );
-          // Continue with other certificates
-        }
-      }
-    } catch (error) {
-      logger.error(
-        error,
-        `Failed to fetch certificate for subscriber [subscriberId=${subscriberId}] [projectId=${projectId}]`
-      );
-      throw new PkiSyncError({
-        message: `Failed to fetch certificate for PKI subscriber: ${error instanceof Error ? error.message : String(error)}`,
-        shouldRetry: true
-      });
-    }
-
-    return { certificateMap, certificateMetadata };
-  };
+  const $certificatesForSync = (pkiSync: TPkiSyncRaw) =>
+    buildCertificateMap(pkiSync, {
+      certificateDAL,
+      certificateBodyDAL,
+      certificateSecretDAL,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      certificateSyncDAL,
+      projectDAL,
+      kmsService
+    });
 
   const queuePkiSyncSyncCertificatesById = async (payload: TQueuePkiSyncSyncCertificatesByIdDTO) =>
     queueService.queue(QueueName.PkiSync, QueueJobs.PkiSyncSyncCertificates, payload, {
@@ -369,6 +178,30 @@ export const pkiSyncQueueFactory = ({
         delay: 3000
       },
       jobId: randomUUID(),
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+
+  const queuePkiSyncLinkMatchingCertificates = async (payload: TQueuePkiSyncLinkMatchingCertificatesDTO) =>
+    queueService.queue(QueueName.PkiSync, QueueJobs.PkiSyncLinkMatchingCertificates, payload, {
+      attempts: 5,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      },
+      jobId: `pki-sync-link-${payload.certificateId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+
+  const queuePkiSyncReconcileFilters = async (payload: TQueuePkiSyncReconcileFiltersDTO) =>
+    queueService.queue(QueueName.PkiSync, QueueJobs.PkiSyncReconcileFilters, payload, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      },
+      jobId: `pki-sync-reconcile-filters-${payload.syncId}`,
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -406,13 +239,6 @@ export const pkiSyncQueueFactory = ({
       data: { syncId, auditLogInfo }
     } = job;
 
-    await enterprisePkiSyncCheck(
-      licenseService,
-      pkiSync.connection.orgId,
-      pkiSync.destination,
-      "Failed to sync certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
-
     await pkiSyncDAL.updateById(syncId, {
       syncStatus: PkiSyncStatus.Running
     });
@@ -422,35 +248,25 @@ export const pkiSyncQueueFactory = ({
     );
 
     let isSynced = false;
+    let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
+    let partialFailure = false;
+    let postSyncCommandResult: TPostSyncCommandResult | undefined;
+    let healthCheckResult: THealthCheckCommandResult | undefined;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
+    const configuredPostSyncCommand = getPostSyncCommand(pkiSync.syncOptions);
+    const configuredHealthCheckCommand = getHealthCheckCommand(pkiSync.syncOptions);
+
     try {
-      const {
-        connection: { id: connectionId, orgId, projectId: appConnectionProjectId }
-      } = pkiSync;
-
-      const appConnection = await appConnectionDAL.findById(connectionId);
-      if (!appConnection) {
-        throw new Error(`App connection not found: ${connectionId}`);
-      }
-
-      const credentials = await decryptAppConnectionCredentials({
-        orgId,
-        encryptedCredentials: appConnection.encryptedCredentials,
-        kmsService,
-        projectId: appConnectionProjectId
+      const pkiSyncWithCredentials = await hydratePkiSyncCredentials({
+        pkiSync,
+        appConnectionDAL,
+        projectDAL,
+        kmsService
       });
 
-      const pkiSyncWithCredentials = {
-        ...pkiSync,
-        connection: {
-          ...pkiSync.connection,
-          credentials
-        }
-      } as TPkiSyncWithCredentials;
-
-      const { certificateMap, certificateMetadata } = await $getInfisicalCertificates(pkiSync);
+      const { certificateMap, certificateMetadata } = await $certificatesForSync(pkiSync);
 
       const statusUpdates = Array.from(certificateMetadata.entries()).map(([, metadata]) => ({
         pkiSyncId: pkiSync.id,
@@ -469,7 +285,8 @@ export const pkiSyncQueueFactory = ({
         certificateDAL,
         certificateSyncDAL,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        keyStore
       });
 
       logger.info(
@@ -533,8 +350,83 @@ export const pkiSyncQueueFactory = ({
         }
       }
 
+      if (syncResult.details?.skippedCertificates) {
+        for (const skip of syncResult.details.skippedCertificates) {
+          const metadata = certificateMetadata.get(skip.name);
+          if (metadata) {
+            const updateIndex = postSyncUpdates.findIndex((u) => u.certificateId === metadata.id);
+            if (updateIndex >= 0) {
+              postSyncUpdates[updateIndex] = {
+                pkiSyncId: pkiSync.id,
+                certificateId: metadata.id,
+                status: CertificateSyncStatus.Failed,
+                message: `Certificate skipped: ${skip.reason}`
+              };
+            }
+          }
+        }
+      }
+
       if (postSyncUpdates.length > 0) {
         await certificateSyncDAL.bulkUpdateSyncStatus(postSyncUpdates);
+      }
+
+      const failedCertificateCount = postSyncUpdates.filter(
+        (update) => update.status === CertificateSyncStatus.Failed
+      ).length;
+      certSyncFailureCount = failedCertificateCount + (syncResult.failedRemovals ?? 0);
+
+      const processedCertificateIds = new Set(Array.from(certificateMetadata.values()).map((meta) => meta.id));
+      const nonTerminalStatuses = new Set<string>([
+        CertificateSyncStatus.Pending,
+        CertificateSyncStatus.Running,
+        CertificateSyncStatus.Syncing
+      ]);
+      const trackedRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+      const strandedCertificateIds = trackedRecords
+        .filter(
+          (record) =>
+            record.certificateId &&
+            !processedCertificateIds.has(record.certificateId) &&
+            nonTerminalStatuses.has(record.syncStatus ?? "")
+        )
+        .map((record) => record.certificateId)
+        .filter((id): id is string => typeof id === "string");
+      if (strandedCertificateIds.length > 0) {
+        const stillEligible = await certificateDAL.findActiveCertificatesByIds(strandedCertificateIds);
+        if (stillEligible.length > 0) {
+          await certificateSyncDAL.bulkUpdateSyncStatus(
+            stillEligible.map((cert) => ({
+              pkiSyncId: pkiSync.id,
+              certificateId: cert.id,
+              status: CertificateSyncStatus.Failed,
+              message:
+                "Certificate could not be prepared for syncing (its data could not be loaded, or it resolved to the same file name as another certificate)"
+            }))
+          );
+          certSyncFailureCount += stillEligible.length;
+        }
+      }
+
+      postSyncCommandResult = syncResult.postSyncCommand;
+      partialFailure = Boolean(syncResult.partialFailureMessage);
+      healthCheckResult = syncResult.healthCheck;
+
+      const reasons =
+        healthCheckResult && didHealthCheckFail(healthCheckResult)
+          ? [buildHealthCheckCommandFailureMessage(healthCheckResult)]
+          : [
+              certSyncFailureCount > 0
+                ? `${certSyncFailureCount} certificate(s) failed to sync to the destination`
+                : null,
+              syncResult.partialFailureMessage ?? null,
+              postSyncCommandResult?.status === PkiSyncStatus.Failed
+                ? buildPostSyncCommandFailureMessage(postSyncCommandResult)
+                : null
+            ].filter(Boolean);
+
+      if (reasons.length > 0) {
+        syncMessage = truncateSyncMessage(reasons.join(". "));
       }
 
       isSynced = true;
@@ -565,7 +457,14 @@ export const pkiSyncQueueFactory = ({
       }
     } finally {
       const ranAt = new Date();
-      const syncStatus = isSynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
+      const postSyncCommandFailed = postSyncCommandResult?.status === PkiSyncStatus.Failed;
+      const fullySynced =
+        isSynced &&
+        certSyncFailureCount === 0 &&
+        !postSyncCommandFailed &&
+        !partialFailure &&
+        !didHealthCheckFail(healthCheckResult);
+      const syncStatus = fullySynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
 
       await auditLogService.createAuditLog({
         projectId: pkiSync.projectId,
@@ -581,17 +480,45 @@ export const pkiSyncQueueFactory = ({
             syncId: pkiSync.id,
             syncMessage,
             jobId: job.id!,
-            jobRanAt: ranAt
+            jobRanAt: ranAt,
+            healthCheck: configuredHealthCheckCommand
+              ? { command: configuredHealthCheckCommand, result: healthCheckResult }
+              : undefined,
+            postSyncCommand: configuredPostSyncCommand
+              ? { command: configuredPostSyncCommand, result: postSyncCommandResult }
+              : undefined
           }
         }
       });
 
       if (isSynced || isFinalAttempt) {
+        if (!fullySynced) {
+          let failureKind = PkiSyncFailureKind.Sync;
+          if (didHealthCheckFail(healthCheckResult)) failureKind = PkiSyncFailureKind.HealthCheck;
+          else if (postSyncCommandFailed) failureKind = PkiSyncFailureKind.PostSyncCommand;
+
+          await notifyPkiSyncFailure(
+            { pkiSync, kind: failureKind, message: syncMessage ?? "The sync did not complete." },
+            { pkiSyncDAL, projectDAL, pkiApplicationDAL, notificationService }
+          );
+        }
+
         await pkiSyncDAL.updateById(pkiSync.id, {
           syncStatus,
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
-          lastSyncedAt: isSynced ? ranAt : undefined
+          lastSyncedAt: fullySynced ? ranAt : undefined,
+          ...(healthCheckResult
+            ? {
+                lastHealthCheckRanAt: ranAt,
+                lastHealthCheckStatus: didHealthCheckFail(healthCheckResult)
+                  ? PkiSyncStatus.Failed
+                  : PkiSyncStatus.Succeeded,
+                lastHealthCheckMessage: didHealthCheckFail(healthCheckResult)
+                  ? truncateSyncMessage(buildHealthCheckCommandFailureMessage(healthCheckResult))
+                  : null
+              }
+            : {})
         });
 
         await telemetryService.sendPostHogEvents({
@@ -600,8 +527,9 @@ export const pkiSyncQueueFactory = ({
           organizationId: pkiSync.connection.orgId,
           properties: {
             orgId: pkiSync.connection.orgId,
+            projectId: pkiSync.projectId,
             destination: pkiSync.destination,
-            success: isSynced
+            success: fullySynced
           }
         });
       }
@@ -690,15 +618,8 @@ export const pkiSyncQueueFactory = ({
 
   const $handleRemoveCertificatesJob = async (job: TPkiSyncRemoveCertificatesDTO, pkiSync: TPkiSyncRaw) => {
     const {
-      data: { syncId, auditLogInfo, deleteSyncOnComplete }
+      data: { syncId, auditLogInfo, deleteSyncOnComplete, certificateIds: certificateIdsToRemove }
     } = job;
-
-    await enterprisePkiSyncCheck(
-      licenseService,
-      pkiSync.connection.orgId,
-      pkiSync.destination,
-      "Failed to remove certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
 
     await pkiSyncDAL.updateById(syncId, {
       removeStatus: PkiSyncStatus.Running
@@ -713,43 +634,32 @@ export const pkiSyncQueueFactory = ({
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
     try {
-      const {
-        connection: { id: connectionId, orgId, projectId: appConnectionProjectId }
-      } = pkiSync;
-
-      const appConnection = await appConnectionDAL.findById(connectionId);
-      if (!appConnection) {
-        throw new Error(`App connection not found: ${connectionId}`);
-      }
-
-      const credentials = await decryptAppConnectionCredentials({
-        orgId,
-        encryptedCredentials: appConnection.encryptedCredentials,
-        kmsService,
-        projectId: appConnectionProjectId
+      const pkiSyncWithCredentials = await hydratePkiSyncCredentials({
+        pkiSync,
+        appConnectionDAL,
+        projectDAL,
+        kmsService
       });
 
-      const { certificateMap } = await $getInfisicalCertificates(pkiSync);
+      const certificateMap: TCertificateMap = certificateIdsToRemove?.length
+        ? Object.fromEntries(
+            certificateIdsToRemove.map((certId, index) => [
+              `certificate-${index}`,
+              { cert: "", privateKey: "", certificateId: certId }
+            ])
+          )
+        : (await $certificatesForSync(pkiSync)).certificateMap;
 
-      await PkiSyncFns.removeCertificates(
-        {
-          ...pkiSync,
-          connection: {
-            ...pkiSync.connection,
-            credentials
-          }
-        } as TPkiSyncWithCredentials,
-        Object.keys(certificateMap),
-        {
-          appConnectionDAL,
-          kmsService,
-          certificateSyncDAL,
-          certificateDAL,
-          certificateMap,
-          gatewayV2Service,
-          gatewayPoolService
-        }
-      );
+      await PkiSyncFns.removeCertificates(pkiSyncWithCredentials, Object.keys(certificateMap), {
+        appConnectionDAL,
+        kmsService,
+        certificateSyncDAL,
+        certificateDAL,
+        certificateMap,
+        gatewayV2Service,
+        gatewayPoolService,
+        keyStore
+      });
 
       isSuccess = true;
     } catch (err) {
@@ -823,6 +733,10 @@ export const pkiSyncQueueFactory = ({
         const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueuePkiSyncSyncCertificatesByIdDTO;
 
         if (failedToAcquireLockCount < REQUEUE_LIMIT) {
+          const current = await pkiSyncDAL.findById(syncId);
+          if (current?.syncStatus !== PkiSyncStatus.Running) {
+            await pkiSyncDAL.updateById(syncId, { syncStatus: PkiSyncStatus.Pending, lastSyncMessage: null });
+          }
           await queuePkiSyncSyncCertificatesById({ ...rest, failedToAcquireLockCount: failedToAcquireLockCount + 1 });
           return;
         }
@@ -847,6 +761,16 @@ export const pkiSyncQueueFactory = ({
         break;
       }
       case QueueJobs.PkiSyncRemoveCertificates: {
+        const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueuePkiSyncRemoveCertificatesByIdDTO;
+
+        if (failedToAcquireLockCount < REQUEUE_LIMIT) {
+          await queuePkiSyncRemoveCertificatesById({
+            ...rest,
+            failedToAcquireLockCount: failedToAcquireLockCount + 1
+          });
+          return;
+        }
+
         await pkiSyncDAL.updateById(syncId, {
           removeStatus: PkiSyncStatus.Failed,
           lastRemoveMessage:
@@ -862,7 +786,43 @@ export const pkiSyncQueueFactory = ({
   };
 
   queueService.start(QueueName.PkiSync, async (job) => {
-    const { syncId } = job.data;
+    if (job.name === QueueJobs.PkiSyncLinkMatchingCertificates) {
+      const { certificateId, applicationId } = job.data as TQueuePkiSyncLinkMatchingCertificatesDTO;
+      try {
+        await reconcileCertificateAgainstMatchingSyncs(certificateId, applicationId, {
+          certificateDAL,
+          certificateSyncDAL,
+          pkiSyncDAL,
+          pkiSyncQueue: { queuePkiSyncSyncCertificatesById, queuePkiSyncRemoveCertificatesById },
+          auditLogService,
+          pkiApplicationDAL,
+          withSyncFilterLock: (syncId, run) => withPkiSyncFilterLock(keyStore, syncId, run)
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to reconcile certificate against matching PKI syncs [certificateId=${certificateId}] [applicationId=${applicationId}]`
+        );
+        throw error;
+      }
+      return;
+    }
+
+    if (job.name === QueueJobs.PkiSyncReconcileFilters) {
+      const { syncId: reconcileSyncId } = job.data as TQueuePkiSyncReconcileFiltersDTO;
+      await reconcileSyncFilters(reconcileSyncId, {
+        certificateDAL,
+        certificateSyncDAL,
+        pkiSyncDAL,
+        pkiSyncQueue: { queuePkiSyncSyncCertificatesById, queuePkiSyncRemoveCertificatesById },
+        auditLogService,
+        pkiApplicationDAL,
+        withSyncFilterLock: (lockSyncId, run) => withPkiSyncFilterLock(keyStore, lockSyncId, run)
+      });
+      return;
+    }
+
+    const { syncId } = job.data as PkiSyncActionJob["data"];
 
     const pkiSync = await pkiSyncDAL.findById(syncId);
 
@@ -870,14 +830,35 @@ export const pkiSyncQueueFactory = ({
 
     const { connectionId } = pkiSync;
 
-    if (job.name === QueueJobs.PkiSyncSyncCertificates) {
-      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
+    const needsConnectionSlot = job.name === QueueJobs.PkiSyncSyncCertificates;
 
-      if (isConcurrentLimitReached) {
+    const needsHostSerialisation =
+      needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand;
+
+    const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
+
+    let connectionLock: Awaited<ReturnType<typeof keyStore.acquireLock>> | null = null;
+    if (needsHostSerialisation) {
+      connectionLock = await keyStore
+        .acquireLock(
+          [KeyStorePrefixes.AppConnectionCommandLock(connectionId, targetHost)],
+          HOST_SERIALISATION_LOCK_TTL_MS,
+          PKI_SYNC_CONNECTION_LOCK_RETRY
+        )
+        .catch(() => null);
+
+      if (!connectionLock) {
         await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
         return;
       }
+    }
+
+    if (needsConnectionSlot && !(await $tryAdmitConnectionConcurrency(connectionId, targetHost))) {
+      await connectionLock?.release();
+      await $handleAcquireLockFailure(job as PkiSyncActionJob);
+
+      return;
     }
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
@@ -889,6 +870,8 @@ export const pkiSyncQueueFactory = ({
         5 * 60 * 1000
       );
     } catch (e) {
+      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId, targetHost);
+      await connectionLock?.release();
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
       return;
@@ -897,7 +880,6 @@ export const pkiSyncQueueFactory = ({
     try {
       switch (job.name) {
         case QueueJobs.PkiSyncSyncCertificates: {
-          await $incrementConnectionConcurrencyCount(connectionId);
           await $handleSyncCertificatesJob(job as TPkiSyncSyncCertificatesDTO, pkiSync);
           break;
         }
@@ -911,15 +893,15 @@ export const pkiSyncQueueFactory = ({
           throw new Error(`Unhandled PKI Sync Job ${String(job.name)}`);
       }
     } finally {
-      if (job.name === QueueJobs.PkiSyncSyncCertificates) {
-        await $decrementConnectionConcurrencyCount(connectionId);
-      }
+      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId, targetHost);
 
-      await lock.release();
+      await Promise.allSettled([lock.release(), connectionLock?.release()]);
     }
   });
 
   return {
+    queuePkiSyncLinkMatchingCertificates,
+    queuePkiSyncReconcileFilters,
     queuePkiSyncSyncCertificatesById,
     queuePkiSyncImportCertificatesById,
     queuePkiSyncRemoveCertificatesById

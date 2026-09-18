@@ -8,6 +8,8 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { CertStatus } from "@app/services/certificate/certificate-types";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 import {
   EnrollmentType,
@@ -21,6 +23,18 @@ import {
 } from "./certificate-profile-types";
 
 export type TCertificateProfileDALFactory = ReturnType<typeof certificateProfileDALFactory>;
+
+// DigiCert pins one product per CA, and that product constrains what a request may ask for
+// (ssl_wildcard rejects a non-wildcard common name, for instance). Surface it so the request
+// form can show which product it is ordering against.
+const extractProductNameId = (externalCaType: unknown, configuration: unknown): string | undefined => {
+  if (externalCaType !== CaType.DIGICERT || typeof configuration !== "object" || configuration === null) {
+    return undefined;
+  }
+
+  const { productNameId } = configuration as { productNameId?: unknown };
+  return typeof productNameId === "string" ? productNameId : undefined;
+};
 
 export const certificateProfileDALFactory = (db: TDbClient) => {
   const certificateProfileOrm = ormify(db, TableName.PkiCertificateProfile);
@@ -78,13 +92,19 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteById = async (id: string, tx?: Knex): Promise<TCertificateProfile> => {
+  const deleteById = async (id: string, tx?: Knex): Promise<TCertificateProfile | undefined> => {
     try {
-      const [certificateProfile] = (await (tx || db)(TableName.PkiCertificateProfile)
-        .where({ id })
-        .del()
-        .returning("*")) as [TCertificateProfile];
-      return certificateProfile;
+      const [certificateProfile] = await (tx || db)(TableName.PkiCertificateProfile).where({ id }).del().returning("*");
+
+      if (!certificateProfile) return undefined;
+
+      return {
+        ...certificateProfile,
+        externalConfigs: certificateProfile.externalConfigs
+          ? (JSON.parse(certificateProfile.externalConfigs) as Record<string, unknown>)
+          : null,
+        defaults: (certificateProfile.defaults as TCertificateProfileDefaults) ?? null
+      } as TCertificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete certificate profile" });
     }
@@ -140,6 +160,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.ExternalCertificateAuthority}.caId`
         )
         .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .leftJoin(
           TableName.PkiCertificatePolicy,
           `${TableName.PkiCertificateProfile}.certificatePolicyId`,
           `${TableName.PkiCertificatePolicy}.id`
@@ -174,6 +199,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
           db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalCaType"),
+          db.ref("configuration").withSchema(TableName.ExternalCertificateAuthority).as("externalCaConfiguration"),
+          db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("internalCaKeyAlgorithm"),
           db.ref("id").withSchema(TableName.PkiCertificatePolicy).as("policyId"),
           db.ref("projectId").withSchema(TableName.PkiCertificatePolicy).as("policyProjectId"),
           db.ref("name").withSchema(TableName.PkiCertificatePolicy).as("policyName"),
@@ -270,7 +297,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             status: result.caStatus,
             name: result.caName,
             isExternal: !!result.externalCaId,
-            externalType: result.externalCaType as string | undefined
+            externalType: result.externalCaType as string | undefined,
+            productNameId: extractProductNameId(result.externalCaType, result.externalCaConfiguration),
+            keyAlgorithm: result.internalCaKeyAlgorithm as string | null
           } as TCertificateProfileWithConfigs["certificateAuthority"])
         : undefined;
 
@@ -398,6 +427,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.ExternalCertificateAuthority}.caId`
         )
         .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .leftJoin(
           TableName.PkiEstEnrollmentConfig,
           `${TableName.PkiCertificateProfile}.estConfigId`,
           `${TableName.PkiEstEnrollmentConfig}.id`
@@ -424,6 +458,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
           db.ref("type").withSchema(TableName.ExternalCertificateAuthority).as("externalCaType"),
+          db.ref("configuration").withSchema(TableName.ExternalCertificateAuthority).as("externalCaConfiguration"),
+          db.ref("keyAlgorithm").withSchema(TableName.InternalCertificateAuthority).as("internalCaKeyAlgorithm"),
           db.ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estId"),
           db
             .ref("disableBootstrapCaValidation")
@@ -518,7 +554,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
               name: result.caName as string,
               status: result.caStatus as string,
               isExternal: !!result.externalCaId,
-              externalType: result.externalCaType as string | undefined
+              externalType: result.externalCaType as string | undefined,
+              productNameId: extractProductNameId(result.externalCaType, result.externalCaConfiguration),
+              keyAlgorithm: result.internalCaKeyAlgorithm as string | null
             }
           : undefined;
 
@@ -631,7 +669,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     options: {
       offset?: number;
       limit?: number;
-      status?: "active" | "expired" | "revoked";
+      status?: CertStatus;
       search?: string;
     } = {},
     tx?: Knex
@@ -652,13 +690,16 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (status) {
         switch (status) {
-          case "active":
-            query = query.where("notAfter", ">", now).whereNull("revokedAt");
+          case CertStatus.ACTIVE:
+            query = query.where("notAfter", ">", now).whereNull("revokedAt").whereNull("renewedByCertificateId");
             break;
-          case "expired":
+          case CertStatus.RENEWED:
+            query = query.where("notAfter", ">", now).whereNull("revokedAt").whereNotNull("renewedByCertificateId");
+            break;
+          case CertStatus.EXPIRED:
             query = query.where("notAfter", "<=", now).whereNull("revokedAt");
             break;
-          case "revoked":
+          case CertStatus.REVOKED:
             query = query.whereNotNull("revokedAt");
             break;
           default:

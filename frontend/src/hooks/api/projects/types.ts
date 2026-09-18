@@ -12,10 +12,9 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh",
   SecretScanning = "secret-scanning",
   PAM = "pam",
-  AI = "ai"
+  AgentVault = "agent-vault"
 }
 
 export enum ProjectUserMembershipTemporaryMode {
@@ -45,7 +44,10 @@ export type Project = {
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
   enforceEncryptedSecretManagerSecretMetadata: boolean;
+  isLegacyAdditionalPrivilegesEnabled: boolean;
 };
+
+export type TProjectNavigation = Pick<Project, "id" | "orgId" | "name" | "slug" | "type">;
 
 export type ProjectEnv = {
   id: string;
@@ -195,6 +197,13 @@ export type TListProjectIdentitiesDTO = {
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }
+
+export enum SearchProjectSortBy {
+  Name = "name",
+  Description = "description",
+  CreatedAt = "createdAt"
+}
+
 export type TSearchProjectsDTO = {
   name?: string;
   limit?: number;
@@ -202,23 +211,8 @@ export type TSearchProjectsDTO = {
   projectIds?: string[];
   type?: ProjectType;
   options?: { enabled?: boolean };
-  orderBy?: ProjectIdentityOrderBy;
+  orderBy?: SearchProjectSortBy;
   orderDirection?: OrderByDirection;
-};
-
-export type TProjectSshConfig = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  projectId: string;
-  defaultUserSshCaId: string | null;
-  defaultHostSshCaId: string | null;
-};
-
-export type TUpdateProjectSshConfigDTO = {
-  projectId: string;
-  defaultUserSshCaId?: string;
-  defaultHostSshCaId?: string;
 };
 
 export type TPermissionAuditSourceType = "role" | "group_role" | "additional_privilege";

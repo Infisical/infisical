@@ -1,6 +1,9 @@
 export {
   useGetAccessibleSecrets,
+  useGetFoldersMoveDestinationEligibility,
+  useGetFoldersMoveEligibility,
   useGetProjectSecretsDetails,
   useGetProjectSecretsOverview,
-  useGetProjectSecretsQuickSearch
+  useGetProjectSecretsQuickSearch,
+  useSearchSecretsByMetadata
 } from "./queries";

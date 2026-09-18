@@ -1,36 +1,66 @@
-import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
+import { ArrowLeftIcon, CompassIcon, HouseIcon, MapPinOffIcon } from "lucide-react";
+
+import { Button } from "@app/components/v3";
+
+import { ErrorPageFrame, useErrorPageTimestamp } from "../ErrorPage/components";
 
 export const NotFoundPage = () => {
+  const occurredAt = useErrorPageTimestamp();
+
+  const monoRows: [string, string][] = [
+    ["route", window.location.pathname],
+    ["time", occurredAt]
+  ];
+
+  const report = [
+    `route: ${window.location.pathname}`,
+    "error: 404 Not Found",
+    `time: ${occurredAt}`
+  ].join("\n");
+
   return (
-    <div className="flex flex-col justify-between bg-bunker-800 [#root>&]:h-screen">
-      <Helmet>
-        <title>Infisical | Page Not Found</title>
-      </Helmet>
-      <div className="flex h-full w-full flex-col items-center justify-center text-gray-200">
-        <p className="mt-32 text-4xl">Oops, something went wrong</p>
-        <p className="mt-2 mb-1 text-lg">
-          Think this is a mistake? Email{" "}
-          <a
-            className="text-primary underline underline-offset-4"
-            href="mailto:support@infisical.com"
-          >
-            support@infisical.com
-          </a>{" "}
-          and we`ll fix it!{" "}
-        </p>
-        <Link to="/">
-          <div className="diration-200 mt-8 cursor-default rounded-md bg-mineshaft-500 px-4 py-2 font-medium hover:bg-primary hover:text-black">
-            Go to Dashboard
-          </div>
-        </Link>
-        <img
-          src="/images/dragon-404.svg"
-          height={554}
-          width={942}
-          alt="infisical dragon - page not found"
-        />
-      </div>
-    </div>
+    <ErrorPageFrame
+      helmetTitle="Infisical | Page Not Found"
+      badgeIcon={<CompassIcon />}
+      badgeText="404 · Not Found"
+      heading={
+        <>
+          Some things stay hidden on purpose.
+          <br />
+          <span className="text-2xl">This page isn&rsquo;t one of them.</span>
+        </>
+      }
+      description={
+        <>
+          We couldn&rsquo;t find the page you&rsquo;re looking for. It may have moved, or the link
+          may be broken.
+        </>
+      }
+      actions={
+        <>
+          <Button variant="project" asChild>
+            <Link to="/">
+              <HouseIcon />
+              Back to Home
+            </Link>
+          </Button>
+          <Button variant="outline" onClick={() => window.history.back()}>
+            <ArrowLeftIcon />
+            Go Back
+          </Button>
+        </>
+      }
+      statusRows={[
+        {
+          icon: <MapPinOffIcon />,
+          label: "This page",
+          state: "Not found",
+          tone: "warning"
+        }
+      ]}
+      monoRows={monoRows}
+      report={report}
+    />
   );
 };

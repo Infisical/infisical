@@ -1,0 +1,25 @@
+{{- if .Values.postgres.cnpg.enabled }}
+# PostgreSQL provisioned by the NKP CloudNativePG (CNPG) operator.
+# CNPG auto-creates a "{{ include "infisical.fullname" . }}-db-app" Secret
+# containing a ready-to-use "uri" key that Infisical consumes.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "infisical.fullname" . }}-db
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+spec:
+  instances: {{ .Values.postgres.cnpg.instances }}
+  {{- with .Values.postgres.cnpg.imageName }}
+  imageName: {{ . }}
+  {{- end }}
+  storage:
+    size: {{ .Values.postgres.cnpg.storageSize }}
+    {{- with .Values.postgres.cnpg.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.cnpg.database }}
+      owner: {{ .Values.postgres.cnpg.owner }}
+{{- end }}

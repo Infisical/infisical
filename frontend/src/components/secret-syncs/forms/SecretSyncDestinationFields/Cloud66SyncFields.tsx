@@ -1,0 +1,92 @@
+import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { TriangleAlert } from "lucide-react";
+
+import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel
+} from "@app/components/v3";
+import { useCloud66ConnectionListStacks } from "@app/hooks/api/appConnections/cloud-66/queries";
+import { SecretSync } from "@app/hooks/api/secretSyncs";
+
+import { TSecretSyncForm } from "../schemas";
+
+export const Cloud66SyncFields = () => {
+  const { control, setValue } = useFormContext<
+    TSecretSyncForm & { destination: SecretSync.Cloud66 }
+  >();
+
+  const connectionId = useWatch({ name: "connection.id", control });
+
+  const { data: stacks, isLoading: isStacksLoading } = useCloud66ConnectionListStacks(
+    connectionId,
+    {
+      enabled: Boolean(connectionId)
+    }
+  );
+
+  return (
+    <FieldGroup>
+      <SecretSyncConnectionField
+        onChange={() => {
+          setValue("destinationConfig.stackId", "");
+          setValue("destinationConfig.stackName", "");
+        }}
+      />
+
+      <Controller
+        name="destinationConfig.stackId"
+        control={control}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel
+              id="secret-sync-cloud66-stack-id-label"
+              htmlFor="secret-sync-cloud66-stack-id"
+            >
+              Stack
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-cloud66-stack-id-label"
+                aria-describedby={error ? "secret-sync-cloud66-stack-id-error" : undefined}
+                id="secret-sync-cloud66-stack-id"
+                isError={Boolean(error)}
+                isLoading={isStacksLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={stacks?.find((stack) => stack.id === value) ?? null}
+                onValueChange={(option) => {
+                  const selectedStack = option;
+                  onChange(selectedStack?.id ?? "");
+                  setValue("destinationConfig.stackName", selectedStack?.name ?? "");
+                }}
+                options={stacks}
+                placeholder="Select a stack..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldError id="secret-sync-cloud66-stack-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
+      />
+
+      <Alert variant="warning">
+        <TriangleAlert />
+        <AlertTitle>Hyphens are not supported in keys</AlertTitle>
+        <AlertDescription>
+          Cloud 66 does not allow environment variable names containing hyphens (-). Secrets whose
+          keys contain a hyphen will be skipped during sync.
+        </AlertDescription>
+      </Alert>
+    </FieldGroup>
+  );
+};

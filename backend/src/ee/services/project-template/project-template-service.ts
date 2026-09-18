@@ -18,6 +18,7 @@ import {
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -154,12 +155,9 @@ export const projectTemplateServiceFactory = ({
     );
 
     return [
-      ...(type && type !== ProjectType.SSH
+      ...(type
         ? [getDefaultProjectTemplate(actor.orgId, type)]
-        : Object.values(ProjectType)
-            // Filter out SSH since we're deprecating
-            .filter((projectType) => projectType !== ProjectType.SSH)
-            .map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
+        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
       ...templatesWithMembers
     ];
   };
@@ -265,8 +263,18 @@ export const projectTemplateServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
 
-    if (type === ProjectType.AI) {
-      throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
+    // Template roles are materialized into project custom roles (rendered by the same permission
+    // templating), so validate them the same way role creation does.
+    roles.forEach((role) => {
+      validateHandlebarTemplate("Project Template Role", JSON.stringify(role.permissions || []), {
+        allowedExpressions: (val) => val.includes("identity."),
+        allowedHelpers: ["stripPrefix", "trimSuffix"],
+        rejectUnescaped: true
+      });
+    });
+
+    if (type === ProjectType.CertificateManager) {
+      throw new BadRequestError({ message: "Certificate Manager project templates are not supported" });
     }
 
     if (environments && type !== ProjectType.SecretManager) {
@@ -505,6 +513,19 @@ export const projectTemplateServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+
+    if (roles) {
+      // Template roles are materialized into project custom roles, so validate them the same way
+      // role update does.
+      roles.forEach((role) => {
+        validateHandlebarTemplate("Project Template Role", JSON.stringify(role.permissions || []), {
+          allowedExpressions: (val) => val.includes("identity."),
+          allowedHelpers: ["stripPrefix", "trimSuffix"],
+          rejectUnescaped: true
+        });
+      });
+    }
+
     if (projectTemplate.type !== ProjectType.SecretManager && environments)
       throw new BadRequestError({ message: "Cannot configure environments for non-SecretManager project templates" });
 

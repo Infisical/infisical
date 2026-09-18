@@ -1,3 +1,54 @@
+import RE2 from "re2";
+import { z } from "zod";
+
+import { ms } from "@app/lib/ms";
+
+/**
+ * Knex's `t.string(col)` maps to `varchar(255)`, which is what every PKI table uses for its
+ * free-form text columns. Validate against the same bound at the API edge so an over-long value
+ * fails as a 422 ValidationFailure instead of reaching Postgres and surfacing as a `22001`
+ * (string_data_right_truncation) wrapped in a 500.
+ */
+export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
+
+export const PKI_ALT_NAMES_COLUMN_MAX_LENGTH = 4096;
+
+const MAX_CERTIFICATE_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * Free-form description of a PKI resource. Bounded to the `varchar(255)` description column shared
+ * by pki_certificate_profiles, pki_certificate_policies, pki_syncs, and
+ * pki_discovery_configs.
+ */
+export const pkiDescriptionSchema = z
+  .string()
+  .trim()
+  .max(PKI_TEXT_COLUMN_MAX_LENGTH, `Description cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`);
+
+export const subjectAttributeSchema = z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH);
+
+export const domainComponentSchema = z
+  .string()
+  .trim()
+  .min(1, "Domain component cannot be empty")
+  .max(255)
+  .refine((value) => !value.includes(","), { message: "Domain component cannot contain a comma" });
+
+export const MAX_DOMAIN_COMPONENTS = 50;
+
+/**
+ * Domain components are persisted comma-joined into a single `varchar(255)` column
+ * (certificate_requests.domainComponents, certificates.subjectDomainComponents), so the combined
+ * length is what has to fit — bounding each component individually is not enough.
+ */
+export const domainComponentsSchema = z
+  .array(domainComponentSchema)
+  .max(MAX_DOMAIN_COMPONENTS)
+  .refine(
+    (components) => components.join(",").length <= PKI_TEXT_COLUMN_MAX_LENGTH,
+    `Domain components cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters in total`
+  );
+
 export enum CertificateRequestStatus {
   PENDING_APPROVAL = "pending_approval",
   PENDING = "pending",
@@ -7,12 +58,52 @@ export enum CertificateRequestStatus {
   REJECTED = "rejected"
 }
 
+export enum CertificateIssuanceOperation {
+  ISSUE = "issue",
+  SIGN = "sign",
+  ORDER = "order",
+  RENEW = "renew"
+}
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
   EMAIL = "email",
-  URI = "uri"
+  URI = "uri",
+  UPN = "upn"
 }
+
+export enum TAltNameType {
+  EMAIL = "email",
+  DNS = "dns",
+  IP = "ip",
+  URL = "url",
+  UPN = "upn"
+}
+
+export const CERT_SUBJECT_ALTERNATIVE_NAMES: Record<
+  CertSubjectAlternativeNameType,
+  { generalNameType: TAltNameType; otherNameOid?: string }
+> = {
+  [CertSubjectAlternativeNameType.DNS_NAME]: { generalNameType: TAltNameType.DNS },
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: { generalNameType: TAltNameType.IP },
+  [CertSubjectAlternativeNameType.EMAIL]: { generalNameType: TAltNameType.EMAIL },
+  [CertSubjectAlternativeNameType.URI]: { generalNameType: TAltNameType.URL },
+  [CertSubjectAlternativeNameType.UPN]: {
+    generalNameType: TAltNameType.UPN,
+    otherNameOid: "1.3.6.1.4.1.311.20.2.3"
+  }
+};
+
+export const SUPPORTED_GENERAL_NAME_TYPES: ReadonlySet<string> = new Set<string>(
+  Object.values(CERT_SUBJECT_ALTERNATIVE_NAMES).map(({ generalNameType }) => generalNameType)
+);
+
+export const GENERAL_NAME_TYPES_WITH_OTHER_NAME: ReadonlySet<string> = new Set<string>(
+  Object.values(CERT_SUBJECT_ALTERNATIVE_NAMES)
+    .filter(({ otherNameOid }) => otherNameOid)
+    .map(({ generalNameType }) => generalNameType)
+);
 
 export enum CertKeyUsageType {
   DIGITAL_SIGNATURE = "digital_signature",
@@ -32,7 +123,20 @@ export enum CertExtendedKeyUsageType {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   OCSP_SIGNING = "ocsp_signing",
-  TIME_STAMPING = "time_stamping"
+  SMART_CARD_LOGON = "smart_card_logon",
+  TIME_STAMPING = "time_stamping",
+  ANY_PURPOSE = "any_purpose"
+}
+
+export enum CertExtendedKeyUsage {
+  CLIENT_AUTH = "clientAuth",
+  SERVER_AUTH = "serverAuth",
+  CODE_SIGNING = "codeSigning",
+  EMAIL_PROTECTION = "emailProtection",
+  TIMESTAMPING = "timeStamping",
+  OCSP_SIGNING = "ocspSigning",
+  SMART_CARD_LOGON = "smartCardLogon",
+  ANY_PURPOSE = "anyExtendedKeyUsage"
 }
 
 export enum CertIncludeType {
@@ -70,7 +174,8 @@ export enum CertSubjectAttributeType {
   COUNTRY = "country",
   STATE = "state",
   LOCALITY = "locality",
-  ORGANIZATIONAL_UNIT = "organizational_unit"
+  ORGANIZATIONAL_UNIT = "organizational_unit",
+  DOMAIN_COMPONENT = "domain_component"
 }
 
 export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {
@@ -98,82 +203,58 @@ export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {
   }
 };
 
+const KEY_USAGE_BY_ALIAS = new Map<string, CertKeyUsageType>(
+  Object.values(CertKeyUsageType).flatMap((standard) => [
+    [mapKeyUsageToLegacy(standard), standard] as const,
+    [standard, standard] as const
+  ])
+);
+
 export const mapLegacyKeyUsageToStandard = (usage: string): CertKeyUsageType => {
-  switch (usage) {
-    case "digitalSignature":
-    case "digital_signature":
-      return CertKeyUsageType.DIGITAL_SIGNATURE;
-    case "keyEncipherment":
-    case "key_encipherment":
-      return CertKeyUsageType.KEY_ENCIPHERMENT;
-    case "nonRepudiation":
-    case "non_repudiation":
-      return CertKeyUsageType.NON_REPUDIATION;
-    case "dataEncipherment":
-    case "data_encipherment":
-      return CertKeyUsageType.DATA_ENCIPHERMENT;
-    case "keyAgreement":
-    case "key_agreement":
-      return CertKeyUsageType.KEY_AGREEMENT;
-    case "keyCertSign":
-    case "key_cert_sign":
-      return CertKeyUsageType.KEY_CERT_SIGN;
-    case "cRLSign":
-    case "crl_sign":
-      return CertKeyUsageType.CRL_SIGN;
-    case "encipherOnly":
-    case "encipher_only":
-      return CertKeyUsageType.ENCIPHER_ONLY;
-    case "decipherOnly":
-    case "decipher_only":
-      return CertKeyUsageType.DECIPHER_ONLY;
-    default:
-      throw new Error(`Unknown key usage: ${usage}`);
+  const standard = KEY_USAGE_BY_ALIAS.get(usage);
+  if (!standard) {
+    throw new Error(`Unknown key usage: ${usage}`);
   }
+  return standard;
 };
 
-export const mapExtendedKeyUsageToLegacy = (usage: CertExtendedKeyUsageType): string => {
-  switch (usage) {
-    case CertExtendedKeyUsageType.CLIENT_AUTH:
-      return "clientAuth";
-    case CertExtendedKeyUsageType.SERVER_AUTH:
-      return "serverAuth";
-    case CertExtendedKeyUsageType.CODE_SIGNING:
-      return "codeSigning";
-    case CertExtendedKeyUsageType.EMAIL_PROTECTION:
-      return "emailProtection";
-    case CertExtendedKeyUsageType.OCSP_SIGNING:
-      return "ocspSigning";
-    case CertExtendedKeyUsageType.TIME_STAMPING:
-      return "timeStamping";
-    default:
-      return usage;
-  }
+export const CERT_EXTENDED_KEY_USAGES: Record<
+  CertExtendedKeyUsageType,
+  { oid: string; legacyName: CertExtendedKeyUsage }
+> = {
+  [CertExtendedKeyUsageType.CLIENT_AUTH]: { oid: "1.3.6.1.5.5.7.3.2", legacyName: CertExtendedKeyUsage.CLIENT_AUTH },
+  [CertExtendedKeyUsageType.SERVER_AUTH]: { oid: "1.3.6.1.5.5.7.3.1", legacyName: CertExtendedKeyUsage.SERVER_AUTH },
+  [CertExtendedKeyUsageType.CODE_SIGNING]: { oid: "1.3.6.1.5.5.7.3.3", legacyName: CertExtendedKeyUsage.CODE_SIGNING },
+  [CertExtendedKeyUsageType.EMAIL_PROTECTION]: {
+    oid: "1.3.6.1.5.5.7.3.4",
+    legacyName: CertExtendedKeyUsage.EMAIL_PROTECTION
+  },
+  [CertExtendedKeyUsageType.OCSP_SIGNING]: { oid: "1.3.6.1.5.5.7.3.9", legacyName: CertExtendedKeyUsage.OCSP_SIGNING },
+  [CertExtendedKeyUsageType.SMART_CARD_LOGON]: {
+    oid: "1.3.6.1.4.1.311.20.2.2",
+    legacyName: CertExtendedKeyUsage.SMART_CARD_LOGON
+  },
+  [CertExtendedKeyUsageType.TIME_STAMPING]: { oid: "1.3.6.1.5.5.7.3.8", legacyName: CertExtendedKeyUsage.TIMESTAMPING },
+  [CertExtendedKeyUsageType.ANY_PURPOSE]: { oid: "2.5.29.37.0", legacyName: CertExtendedKeyUsage.ANY_PURPOSE }
 };
+
+const EXTENDED_KEY_USAGE_BY_ALIAS = new Map<string, CertExtendedKeyUsageType>(
+  Object.entries(CERT_EXTENDED_KEY_USAGES).flatMap(([standard, { legacyName }]) => [
+    // accepted in both the legacy camelCase form and the current snake_case form
+    [legacyName, standard as CertExtendedKeyUsageType],
+    [standard, standard as CertExtendedKeyUsageType]
+  ])
+);
+
+export const mapExtendedKeyUsageToLegacy = (usage: CertExtendedKeyUsageType): string =>
+  CERT_EXTENDED_KEY_USAGES[usage]?.legacyName ?? usage;
 
 export const mapLegacyExtendedKeyUsageToStandard = (usage: string): CertExtendedKeyUsageType => {
-  switch (usage) {
-    case "clientAuth":
-    case "client_auth":
-      return CertExtendedKeyUsageType.CLIENT_AUTH;
-    case "serverAuth":
-    case "server_auth":
-      return CertExtendedKeyUsageType.SERVER_AUTH;
-    case "codeSigning":
-    case "code_signing":
-      return CertExtendedKeyUsageType.CODE_SIGNING;
-    case "emailProtection":
-    case "email_protection":
-      return CertExtendedKeyUsageType.EMAIL_PROTECTION;
-    case "ocspSigning":
-    case "ocsp_signing":
-      return CertExtendedKeyUsageType.OCSP_SIGNING;
-    case "timeStamping":
-    case "time_stamping":
-      return CertExtendedKeyUsageType.TIME_STAMPING;
-    default:
-      throw new Error(`Unknown extended key usage: ${usage}`);
+  const standard = EXTENDED_KEY_USAGE_BY_ALIAS.get(usage);
+  if (!standard) {
+    throw new Error(`Unknown extended key usage: ${usage}`);
   }
+  return standard;
 };
 
 export enum CertKeyAlgorithm {
@@ -246,6 +327,28 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
 
+/**
+ * Certificates we mint just-in-time are verified by gateways, relays, and agents on hosts whose
+ * clocks we do not control. A notBefore of "now" makes a fresh certificate look not-yet-valid to a
+ * host running behind us, and a notAfter of "issuance + ttl" makes a short-lived one look already
+ * expired to a host running ahead of us, so widen the window by this tolerance at both ends.
+ *
+ * Lives here rather than next to the getNotBefore/getNotAfter helpers in certificate-authority-fns
+ * so `@app/lib/ssh` can read it without importing that module and closing an import cycle.
+ */
+export const CERT_CLOCK_SKEW_MS = 2 * 60 * 1000;
+
+export const ALGORITHM_FAMILIES = {
+  ECDSA: {
+    signature: ["SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"],
+    key: ["ECDSA-P256", "ECDSA-P384", "ECDSA-P521"]
+  },
+  RSA: {
+    signature: ["SHA256-RSA", "SHA384-RSA", "SHA512-RSA"],
+    key: ["RSA-2048", "RSA-3072", "RSA-4096"]
+  }
+} as const;
+
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);
@@ -257,3 +360,156 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
+
+export enum CertExtensionCriticality {
+  CRITICAL = "critical",
+  NOT_CRITICAL = "not_critical"
+}
+
+export const CUSTOM_EXTENSION_PRESET_OIDS = {
+  NTDS_SID: "1.3.6.1.4.1.311.25.2",
+  MS_CERTIFICATE_TEMPLATE_NAME: "1.3.6.1.4.1.311.20.2",
+  MS_CERTIFICATE_TEMPLATE_INFORMATION: "1.3.6.1.4.1.311.21.7"
+} as const;
+
+export const MAX_CUSTOM_EXTENSIONS_PER_PROFILE = 10;
+
+/**
+ * AWS Private CA accepts at most 3 entries in ApiPassthrough.Extensions.CustomExtensions and rejects the
+ * request with an unexplained ValidationException past that, so the limit is enforced before we call them.
+ */
+export const MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE = 3;
+export const MAX_CUSTOM_EXTENSION_RULES_PER_POLICY = 20;
+export const CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE =
+  "Custom extensions cannot be supplied alongside a certificate signing request. Include them in the request itself, or let Infisical generate the key.";
+export const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
+
+/**
+ * AWS Private CA caps ObjectIdentifier at 64 characters and it is the strictest CA we integrate with,
+ * so bounding here turns a too-long OID into a 422 from us rather than an opaque error from them.
+ */
+export const MAX_CERT_EXTENSION_OID_LENGTH = 64;
+
+export const RESERVED_CERT_EXTENSION_OID_PREFIXES = ["2.5.29."] as const;
+
+export const RESERVED_CERT_EXTENSION_OID_MESSAGES: Record<string, string> = {
+  "1.3.6.1.5.5.7.1.1":
+    "OID 1.3.6.1.5.5.7.1.1 is the authority information access extension, which Infisical manages, so it cannot be used as a custom extension.",
+  "1.3.6.1.4.1.311.20.2.3":
+    "Use a UPN subject alternative name instead of declaring OID 1.3.6.1.4.1.311.20.2.3 as a custom extension."
+};
+
+export const CERT_EXTENSION_OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
+
+const CERT_EXTENSION_OID_PATTERN = new RE2(`^${CERT_EXTENSION_OID_PATTERN_SOURCE}$`);
+
+export const certificateExtensionOidSchema = z
+  .string()
+  .trim()
+  .max(MAX_CERT_EXTENSION_OID_LENGTH, `OID cannot exceed ${MAX_CERT_EXTENSION_OID_LENGTH} characters`)
+  .superRefine((oid, ctx) => {
+    if (!CERT_EXTENSION_OID_PATTERN.test(oid)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "OID must be dot-separated integers, for example 1.3.6.1.4.1.311.25.2"
+      });
+      return;
+    }
+
+    const [first, second] = oid.split(".");
+    if (first !== "2" && Number(second) > 39) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "When an OID starts with 0 or 1, its second arc must be 39 or lower"
+      });
+    }
+  });
+
+export const customExtensionLabelSchema = z
+  .string()
+  .trim()
+  .min(1, "Name cannot be empty")
+  .max(64, "Name cannot exceed 64 characters");
+
+export const customExtensionValueSchema = z
+  .string()
+  .trim()
+  .min(1, "Value cannot be empty")
+  .max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH, "Value is too large");
+
+export const resolvedCustomExtensionSchema = z.object({
+  oid: z.string().max(MAX_CERT_EXTENSION_OID_LENGTH),
+  critical: z.boolean(),
+  value: z.string().max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH),
+  displayValue: z.string().max(PKI_ALT_NAMES_COLUMN_MAX_LENGTH).optional()
+});
+
+export const subjectAlternativeNameSchema = z.object({
+  type: z.nativeEnum(CertSubjectAlternativeNameType),
+  value: z
+    .string()
+    .trim()
+    .min(1, "SAN value cannot be empty")
+    .max(PKI_TEXT_COLUMN_MAX_LENGTH, `SAN value cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`)
+});
+
+export const certificateAttributesSchema = z.object({
+  commonName: subjectAttributeSchema.nullish(),
+  organization: subjectAttributeSchema.nullish(),
+  organizationalUnit: subjectAttributeSchema.nullish(),
+  country: subjectAttributeSchema.nullish(),
+  state: subjectAttributeSchema.nullish(),
+  locality: subjectAttributeSchema.nullish(),
+  domainComponents: domainComponentsSchema.nullish(),
+  keyUsages: z.nativeEnum(CertKeyUsageType).array().max(20).optional(),
+  extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().max(20).optional(),
+  altNames: z
+    .array(subjectAlternativeNameSchema)
+    .max(100, "Cannot exceed 100 subject alternative names")
+    .refine(
+      (names) => names.map((san) => san.value).join(",").length <= PKI_ALT_NAMES_COLUMN_MAX_LENGTH,
+      `Subject alternative names cannot exceed ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} characters in total`
+    )
+    .optional(),
+  signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+  keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+  ttl: z
+    .string()
+    .trim()
+    .max(32)
+    .refine((val) => {
+      if (!val) return true;
+      const parsed = ms(val);
+      return parsed > 0 && parsed <= MAX_CERTIFICATE_TTL_MS;
+    }, "TTL must be a positive duration that ends within 100 years")
+    .optional(),
+  basicConstraints: z
+    .object({
+      isCA: z.boolean(),
+      pathLength: z.number().int().min(0).max(255).optional()
+    })
+    .optional(),
+  customExtensions: z
+    .array(
+      z.object({
+        oid: certificateExtensionOidSchema,
+        value: customExtensionValueSchema.optional(),
+        critical: z.boolean().optional()
+      })
+    )
+    .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
+    .superRefine((extensions, ctx) => {
+      const seen = new Set<string>();
+      extensions.forEach((extension, index) => {
+        if (seen.has(extension.oid)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "oid"],
+            message: `Duplicate custom extension for OID '${extension.oid}'. Each OID must appear only once.`
+          });
+        }
+        seen.add(extension.oid);
+      });
+    })
+    .optional()
+});

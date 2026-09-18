@@ -216,7 +216,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.accessApprovalPolicy.getAccessApprovalPolicyByProjectSlug({
         actor: req.permission.type,
@@ -245,7 +245,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }
     },
 
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { count } = await server.services.accessApprovalPolicy.getAccessPolicyCountByEnvSlug({
         actor: req.permission.type,
@@ -410,7 +410,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 type: z.nativeEnum(ApproverType),
                 id: z.string().nullable().optional(),
                 name: z.string().nullable().optional(),
-                approvalsRequired: z.number().nullable().optional()
+                approvalsRequired: z.number().nullable().optional(),
+                sequence: z.number().nullable().optional()
               })
               .array()
               .nullable()
@@ -430,7 +431,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.accessApprovalPolicy.getAccessApprovalPolicyById({
         actor: req.permission.type,

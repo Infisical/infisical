@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { normalizeEmail } from "@app/lib/validator";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { UserEncryption } from "@app/services/user/user-types";
 
@@ -11,13 +12,17 @@ export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) 
     url: "/send-email",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) => {
+          const email = (req.body as { email?: string })?.email;
+          return email ? normalizeEmail(email).substring(0, 100) : req.realIp;
+        }
       })
     },
     schema: {
       operationId: "sendAccountRecoveryEmail",
       body: z.object({
-        email: z.string().email().trim()
+        email: z.string().trim().email().max(255),
+        captchaToken: z.string().trim().max(5000).optional()
       }),
       response: {
         200: z.object({
@@ -26,7 +31,11 @@ export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      await server.services.accountRecovery.sendRecoveryEmail(req.body.email);
+      await server.services.accountRecovery.sendRecoveryEmail({
+        email: req.body.email,
+        ip: req.realIp,
+        captchaToken: req.body.captchaToken
+      });
 
       return {
         message: "If an account exists with this email, a recovery link has been sent"
@@ -39,14 +48,17 @@ export const registerAccountRecoveryRouter = async (server: FastifyZodProvider) 
     url: "/verify-email",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.body as { email?: string })?.email?.trim().substring(0, 100) || req.realIp
+        keyGenerator: (req) => {
+          const email = (req.body as { email?: string })?.email;
+          return email ? normalizeEmail(email).substring(0, 100) : req.realIp;
+        }
       })
     },
     schema: {
       operationId: "verifyAccountRecoveryEmail",
       body: z.object({
-        email: z.string().email().trim(),
-        code: z.string().trim()
+        email: z.string().trim().email().max(255),
+        code: z.string().trim().min(1).max(100)
       }),
       response: {
         200: z.object({

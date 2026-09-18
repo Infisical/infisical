@@ -8,8 +8,10 @@ import {
   CertExtendedKeyUsageType,
   CertKeyAlgorithm,
   CertKeyUsageType,
-  CertSignatureAlgorithm
+  CertSignatureAlgorithm,
+  CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { TProfileCustomExtension } from "../certificate-common/certificate-extension-fns";
 
 export enum EnrollmentType {
   API = "api",
@@ -36,6 +38,9 @@ export type TCertificateProfileDefaults = {
   country?: string;
   state?: string;
   locality?: string;
+  subjectAltNames?: { type: CertSubjectAlternativeNameType; value: string }[];
+  domainComponents?: string[];
+  customExtensions?: TProfileCustomExtension[];
 };
 
 export type TCertificateProfile = Omit<
@@ -101,6 +106,8 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     name: string;
     isExternal?: boolean;
     externalType?: string;
+    productNameId?: string;
+    keyAlgorithm?: string | null;
   };
   certificatePolicy?: {
     id: string;

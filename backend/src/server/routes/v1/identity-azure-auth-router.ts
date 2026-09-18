@@ -297,7 +297,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -342,7 +343,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getAzureAuth",
@@ -418,7 +419,8 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

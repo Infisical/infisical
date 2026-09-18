@@ -999,6 +999,34 @@ describe("Validate Permission Boundary: inverted (deny) rule overlap", () => {
     expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
   });
 
+  test("Folder read in the child does not raise its privilege above a parent without it", () => {
+    const parentPermission = createMongoAbility([{ action: ["create", "edit", "delete"], subject: "secret-folders" }]);
+    const childPermission = createMongoAbility([
+      { action: ["read", "create", "edit", "delete"], subject: "secret-folders" }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
+  });
+
+  test("Folder read in the child is ignored even when the child holds no other folder action", () => {
+    const parentPermission = createMongoAbility([{ action: "read", subject: "secrets" }]);
+    const childPermission = createMongoAbility([
+      {
+        action: "read",
+        subject: "secret-folders",
+        conditions: { environment: { [PermissionConditionOperators.$EQ]: "prod" } }
+      }
+    ]);
+    expect(validatePermissionBoundary(parentPermission, childPermission).isValid).toBeTruthy();
+  });
+
+  test("Folder write in the child is still bounded by the parent", () => {
+    const parentPermission = createMongoAbility([{ action: ["read", "create"], subject: "secret-folders" }]);
+    const childPermission = createMongoAbility([{ action: ["read", "delete"], subject: "secret-folders" }]);
+    const result = validatePermissionBoundary(parentPermission, childPermission);
+    expect(result.isValid).toBeFalsy();
+    expect(result.missingPermissions).toEqual([{ action: "delete", subject: "secret-folders" }]);
+  });
+
   test("Unconditional inverted rule denies all subsets", () => {
     const parentPermission = createMongoAbility([
       { action: "read", subject: "secrets" },

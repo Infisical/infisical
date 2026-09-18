@@ -199,6 +199,9 @@ type Config struct {
 	SecretScanningOrgWhitelist  string
 	SecretScanningGitAppSlug    string
 
+	// Cross-project secret sharing
+	CrossProjectSecretSharing string
+
 	// License
 	LicenseServerURL  string
 	LicenseServerKey  string
@@ -247,11 +250,7 @@ type Config struct {
 	HSMSlot     int
 
 	// Gateway
-	GatewayInfisicalStaticIPAddress string
-	GatewayRelayAddress             string
-	GatewayRelayRealm               string
-	GatewayRelayAuthSecret          string
-	RelayAuthSecret                 string
+	RelayAuthSecret string
 
 	// Dynamic Secrets
 	DynamicSecretAllowInternalIP    bool
@@ -562,6 +561,9 @@ func LoadConfig() (*Config, error) {
 		Optional(&cfg.SecretScanningOrgWhitelist, "SECRET_SCANNING_ORG_WHITELIST", "").
 		Optional(&cfg.SecretScanningGitAppSlug, "SECRET_SCANNING_GIT_APP_SLUG", "infisical-radar").
 
+		// Cross-project secret sharing
+		Optional(&cfg.CrossProjectSecretSharing, "CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST", "").
+
 		// License
 		Optional(&cfg.LicenseServerURL, "LICENSE_SERVER_URL", "https://portal.infisical.com").
 		Optional(&cfg.LicenseServerKey, "LICENSE_SERVER_KEY", "").
@@ -610,10 +612,6 @@ func LoadConfig() (*Config, error) {
 		OptionalInt(&cfg.HSMSlot, "HSM_SLOT", 0).
 
 		// Gateway
-		Optional(&cfg.GatewayInfisicalStaticIPAddress, "GATEWAY_INFISICAL_STATIC_IP_ADDRESS", "").
-		Optional(&cfg.GatewayRelayAddress, "GATEWAY_RELAY_ADDRESS", "").
-		Optional(&cfg.GatewayRelayRealm, "GATEWAY_RELAY_REALM", "").
-		Optional(&cfg.GatewayRelayAuthSecret, "GATEWAY_RELAY_AUTH_SECRET", "").
 		Optional(&cfg.RelayAuthSecret, "RELAY_AUTH_SECRET", "").
 
 		// Dynamic Secrets

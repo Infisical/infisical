@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   IconButton,
@@ -31,8 +32,10 @@ const Content = ({ secretValue, onClose }: ContentProps) => {
 
   return (
     <>
-      <div className="relative flex items-center justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
-        <p className="mr-4 break-all">{secretValue}</p>
+      <div className="relative flex items-start justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
+        <p className="mr-4 max-h-128 thin-scrollbar min-w-0 overflow-y-auto break-all">
+          {secretValue}
+        </p>
         <Tooltip>
           <TooltipTrigger asChild>
             <IconButton
@@ -56,11 +59,11 @@ const Content = ({ secretValue, onClose }: ContentProps) => {
         </Tooltip>
       </div>
 
-      <div className="flex w-full justify-end">
+      <DialogFooter>
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 };

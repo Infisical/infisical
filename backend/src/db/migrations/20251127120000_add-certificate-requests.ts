@@ -36,9 +36,9 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["certificateId"]);
       t.index(["createdAt"]);
     });
-  }
 
-  await createOnUpdateTrigger(knex, TableName.CertificateRequests);
+    await createOnUpdateTrigger(knex, TableName.CertificateRequests);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {

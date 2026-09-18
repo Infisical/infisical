@@ -1,30 +1,99 @@
-// Resources
-export enum PamResourceType {
+export enum PamAccountType {
+  SSH = "ssh",
   Postgres = "postgres",
   MySQL = "mysql",
-  SSH = "ssh",
-  Kubernetes = "kubernetes",
-  OracleDB = "oracledb",
-  SQLite = "sqlite",
   MsSQL = "mssql",
-  MCP = "mcp",
-  Redis = "redis",
+  OracleDB = "oracledb",
   MongoDB = "mongodb",
-  WebApp = "webapp",
-  Cassandra = "cassandra",
-  CockroachDB = "cockroachdb",
-  Elasticsearch = "elasticsearch",
+  Redis = "redis",
   Snowflake = "snowflake",
-  DynamoDB = "dynamodb",
+  Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
-  Windows = "windows"
+  GcpServiceAccount = "gcp-service-account",
+  AzureCli = "azure-cli",
+  Windows = "windows",
+  WindowsAd = "windows-ad"
 }
 
-export enum PamResourceOrderBy {
-  Name = "name"
+export enum PamDiscoveryType {
+  ActiveDirectory = "active-directory",
+  Unix = "unix",
+  Postgres = "postgres"
 }
 
-// Sessions
+export enum PamDiscoverySchedule {
+  Manual = "manual",
+  Daily = "daily",
+  Weekly = "weekly"
+}
+
+export const ROTATABLE_PAM_ACCOUNT_TYPES = [
+  PamAccountType.Postgres,
+  PamAccountType.MySQL,
+  PamAccountType.MsSQL,
+  PamAccountType.OracleDB,
+  PamAccountType.Windows,
+  PamAccountType.WindowsAd
+];
+
+export const isRotatablePamAccountType = (type: PamAccountType | string) =>
+  (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
+
+// Mirrors ORACLE_MAX_PASSWORD_LENGTH in backend/src/ee/services/pam-account/pam-account-schemas.ts, which is
+// what actually rejects a longer one. Change both together.
+export const ORACLE_MAX_PASSWORD_LENGTH = 30;
+
+export const maxGeneratedPasswordLength = (type: PamAccountType | string | undefined) =>
+  type === PamAccountType.OracleDB ? ORACLE_MAX_PASSWORD_LENGTH : 250;
+
+export enum PamHeartbeatStatus {
+  Healthy = "healthy",
+  InvalidCredentials = "invalid-credentials",
+  CannotCheck = "cannot-check",
+  Unknown = "unknown"
+}
+
+export enum PamRotationStatus {
+  Success = "success",
+  Failed = "failed"
+}
+
+export const PAM_ROTATION_INTERVAL_OPTIONS: { seconds: number; label: string }[] = [
+  { seconds: 3600, label: "1 hour" },
+  { seconds: 43200, label: "12 hours" },
+  { seconds: 86400, label: "24 hours" },
+  { seconds: 604800, label: "7 days" },
+  { seconds: 2592000, label: "30 days" }
+];
+
+export const formatRotationInterval = (seconds: number | null | undefined): string => {
+  if (seconds == null) return "Manual only";
+  const preset = PAM_ROTATION_INTERVAL_OPTIONS.find((option) => option.seconds === seconds);
+  if (preset) return preset.label;
+  const hours = Math.round(seconds / 3600);
+  if (hours % 24 === 0) {
+    const days = hours / 24;
+    return days === 1 ? "1 day" : `${days} days`;
+  }
+  return hours === 1 ? "1 hour" : `${hours} hours`;
+};
+
+export enum PamPolicyType {
+  RequiresApproval = "requires-approval",
+  AllowBreakGlass = "allow-break-glass",
+  RequireMfa = "require-mfa",
+  RequireReason = "require-reason",
+  MaxSessionDuration = "max-session-duration",
+  CommandBlocking = "command-blocking"
+}
+
+export enum SessionChannelType {
+  Terminal = "terminal",
+  Exec = "exec",
+  Sftp = "sftp",
+  Rdp = "rdp"
+}
+
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
@@ -32,13 +101,6 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
-export enum SessionChannelType {
-  Terminal = "terminal",
-  Exec = "exec",
-  Sftp = "sftp"
-}
-
-// Accounts
 export enum PamAccountOrderBy {
   Name = "name"
 }
@@ -48,9 +110,70 @@ export enum PamAccountView {
   Nested = "nested"
 }
 
-export enum PamAccountRotationStatus {
-  Rotating = "rotating",
-  Success = "success",
-  PartialSuccess = "partial-success",
-  Failed = "failed"
+export enum PamResourcePermissionSub {
+  PamResource = "pam-resource"
+}
+
+export enum PamResourcePermissionActions {
+  ReadFolder = "read-folder",
+  EditFolder = "edit-folder",
+  DeleteFolder = "delete-folder",
+  ReadAccounts = "read-accounts",
+  CreateAccounts = "create-accounts",
+  EditAccounts = "edit-accounts",
+  DeleteAccounts = "delete-accounts",
+  LaunchSessions = "launch-sessions",
+  ViewSessions = "view-sessions",
+  TerminateSessions = "terminate-sessions",
+  ViewCredentials = "view-credentials",
+  ApproveRequests = "approve-requests",
+  RevokeGrants = "revoke-grants",
+  ManagePolicies = "manage-policies",
+  ManageRotation = "manage-rotation",
+  ManageMembers = "manage-members",
+  ViewAuditLogs = "view-audit-logs"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
+}
+
+// The caller's just-in-time approval state for an account gated behind an access request flow
+export enum PamAccessStatus {
+  None = "none",
+  Pending = "pending",
+  Granted = "granted"
+}
+
+export enum PamAccessRequestStatus {
+  Pending = "pending",
+  Approved = "approved",
+  Rejected = "rejected",
+  Expired = "expired",
+  Cancelled = "cancelled"
+}
+
+export enum PamAccessRequestDecision {
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
+export enum PamAccessGrantStatus {
+  Active = "active",
+  Expired = "expired",
+  Revoked = "revoked"
+}
+
+export enum PamApproverType {
+  User = "user",
+  Group = "group"
+}
+
+// Mirrors PamNotificationEvent in backend/src/ee/services/pam/pam-enums.ts
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied",
+  AccessRequestBypassed = "access-request-bypassed"
 }

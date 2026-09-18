@@ -9,7 +9,7 @@ export const SecretScanningDataSourceDetailsFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
+      <p className="mb-4 text-sm text-label-secondary">
         Provide a name and description for this Data Source.
       </p>
       <Controller
@@ -20,7 +20,14 @@ export const SecretScanningDataSourceDetailsFields = () => {
             errorText={error?.message}
             label="Name"
           >
-            <Input autoFocus value={value} onChange={onChange} placeholder="my-data-source" />
+            <Input
+              autoFocus
+              value={value}
+              onChange={onChange}
+              placeholder="my-data-source"
+              autoComplete="off"
+              name="secret-scanning-data-source-name"
+            />
           </FormControl>
         )}
         control={control}

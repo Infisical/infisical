@@ -6,26 +6,31 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent
-} from "@app/components/v2";
+  Combobox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   useCreateProjectIdentityMembership,
   useGetIdentityProjectMemberships,
   useGetProjectRoles,
-  useGetUserProjects,
-  useGetWorkspaceById
+  useGetUserProjects
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
     project: z.object({ name: z.string(), id: z.string(), type: z.string().optional() }),
-    role: z.object({ name: z.string(), slug: z.string() })
+    role: z.object({ name: z.string(), slug: z.string(), description: z.string().nullish() })
   })
   .required();
 
@@ -42,15 +47,17 @@ type Props = {
 
 // TODO: eventually refactor to support adding to multiple projects at once? would lose role granularity unique to project
 
-const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
+export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserProjects();
+  const scopeVariant = useScopeVariant();
+  const { data: workspaces = [], isPending: isWorkspacesLoading } = useGetUserProjects();
   const { mutateAsync: addIdentityToWorkspace } = useCreateProjectIdentityMembership();
 
   const {
     control,
     handleSubmit,
     reset,
+    resetField,
     formState: { isSubmitting },
     watch
   } = useForm<FormData>({
@@ -59,8 +66,7 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
 
   const projectId = watch("project")?.id;
   const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
-  const { data: project, isPending: isProjectLoading } = useGetWorkspaceById(projectId);
-  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(project?.id ?? "");
+  const { data: roles = [], isPending: isRolesLoading } = useGetProjectRoles(projectId ?? "");
 
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();
@@ -73,6 +79,11 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
       ({ id, orgId }) => !wsWorkspaceIds.has(id) && orgId === currentOrg?.id
     );
   }, [workspaces, projectMemberships]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    handlePopUpToggle("addIdentityToProject", isOpen);
+    if (!isOpen) reset();
+  };
 
   const onFormSubmit = async ({ project: selectedProject, role }: FormData) => {
     await addIdentityToWorkspace({
@@ -87,90 +98,105 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
       type: "success"
     });
 
-    reset();
-    handlePopUpToggle("addIdentityToProject", false);
+    handleOpenChange(false);
   };
 
   const isProjectSelected = Boolean(projectId);
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="project"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Project"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            className="mt-4"
-          >
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              options={filteredWorkspaces}
-              placeholder="Select project..."
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-              isLoading={isProjectSelected && isProjectLoading}
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="role"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Role"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            className="mt-4"
-          >
-            <FilterableSelect
-              isDisabled={!isProjectSelected}
-              value={value}
-              onChange={onChange}
-              options={roles}
-              isLoading={isProjectSelected && isRolesLoading}
-              placeholder="Select role..."
-              getOptionValue={(option) => option.slug}
-              getOptionLabel={(option) => option.name}
-            />
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          Add
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
-    </form>
-  );
-};
-
-export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle }: Props) => {
-  return (
-    <Modal
-      isOpen={popUp?.addIdentityToProject?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("addIdentityToProject", isOpen);
-      }}
-    >
-      <ModalContent bodyClassName="overflow-visible" title="Add Machine Identity to Project">
-        <Content identityId={identityId} handlePopUpToggle={handlePopUpToggle} />
-      </ModalContent>
-    </Modal>
+    <Dialog open={popUp?.addIdentityToProject?.isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Machine Identity to Project</DialogTitle>
+          <DialogDescription>
+            Select a project and the role this machine identity should have in it.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="project"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="add-identity-to-project-project">Project</FieldLabel>
+                <Combobox
+                  id="add-identity-to-project-project"
+                  value={value ?? null}
+                  onValueChange={(project) => {
+                    onChange(project);
+                    resetField("role");
+                  }}
+                  options={filteredWorkspaces}
+                  getOptionValue={(option) => option.id}
+                  getOptionLabel={(option) => option.name}
+                  placeholder="Select project..."
+                  searchPlaceholder="Search projects..."
+                  searchAriaLabel="Search projects"
+                  emptyMessage={
+                    filteredWorkspaces.length === 0
+                      ? "This identity is already a member of every project you can access."
+                      : "No projects found."
+                  }
+                  isLoading={isWorkspacesLoading}
+                  isError={Boolean(error)}
+                  modal
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="role"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="add-identity-to-project-role">Role</FieldLabel>
+                <Combobox
+                  id="add-identity-to-project-role"
+                  value={value ?? null}
+                  onValueChange={onChange}
+                  options={roles}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                  getOptionKeywords={(option) => (option.description ? [option.description] : [])}
+                  placeholder="Select role..."
+                  searchPlaceholder="Search roles..."
+                  searchAriaLabel="Search project roles"
+                  emptyMessage="No project roles found."
+                  isDisabled={!isProjectSelected}
+                  isLoading={isProjectSelected && isRolesLoading}
+                  isError={Boolean(error)}
+                  modal
+                  renderOption={(option) => (
+                    <div className="min-w-0">
+                      <p className="truncate">{option.name}</p>
+                      {option.description && (
+                        <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+                          {option.description}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant={scopeVariant}
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              Add to Project
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

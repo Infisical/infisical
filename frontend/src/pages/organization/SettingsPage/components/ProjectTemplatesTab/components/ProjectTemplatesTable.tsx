@@ -25,6 +25,7 @@ import {
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
 
 import { DeleteProjectTemplateModal } from "./DeleteProjectTemplateModal";
@@ -46,8 +47,10 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
 
   const filteredTemplates = useMemo(
     () =>
-      projectTemplates?.filter((template) =>
-        template.name.toLowerCase().includes(search.toLowerCase().trim())
+      projectTemplates?.filter(
+        (template) =>
+          template.type !== ProjectType.SecretManager &&
+          template.name.toLowerCase().includes(search.toLowerCase().trim())
       ) ?? [],
     [search, projectTemplates]
   );
@@ -102,7 +105,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               return (
                 <Tr
                   onClick={() => onEdit(template)}
-                  className="cursor-pointer hover:bg-mineshaft-700"
+                  className="cursor-pointer hover:bg-surface-hover"
                   key={id}
                 >
                   <Td>
@@ -111,7 +114,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       <Tooltip content={description}>
                         <FontAwesomeIcon
                           size="sm"
-                          className="ml-2 text-mineshaft-400"
+                          className="ml-2 text-muted"
                           icon={faCircleInfo}
                         />
                       </Tooltip>
@@ -132,7 +135,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       >
                         <FontAwesomeIcon
                           size="sm"
-                          className="ml-2 text-mineshaft-400"
+                          className="ml-2 text-muted"
                           icon={faCircleInfo}
                         />
                       </Tooltip>
@@ -152,7 +155,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       >
                         <FontAwesomeIcon
                           size="sm"
-                          className="ml-2 text-mineshaft-400"
+                          className="ml-2 text-muted"
                           icon={faCircleInfo}
                         />
                       </Tooltip>
@@ -172,7 +175,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       >
                         <FontAwesomeIcon
                           size="sm"
-                          className="ml-2 text-mineshaft-400"
+                          className="ml-2 text-muted"
                           icon={faCircleInfo}
                         />
                       </Tooltip>
@@ -198,7 +201,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       >
                         <FontAwesomeIcon
                           size="sm"
-                          className="ml-2 text-mineshaft-400"
+                          className="ml-2 text-muted"
                           icon={faCircleInfo}
                         />
                       </Tooltip>

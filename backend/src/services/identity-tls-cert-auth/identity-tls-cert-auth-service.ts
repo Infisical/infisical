@@ -4,39 +4,160 @@ import { requestContext } from "@fastify/request-context";
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
+import {
+  AuthAttemptAuthMethod,
+  AuthAttemptAuthResult,
+  authAttemptCounter,
+  recordAuthAttemptMetric
+} from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
+import {
+  findNameConstraintsProblem,
+  isSubjectAltNameAllowed,
+  parseAllowedSubjectAltNames,
+  parseSubjectDetails,
+  permitsClientAuth,
+  readSubjectAltNames,
+  serializeAllowedSubjectAltNames,
+  TNameConstraintsProblem,
+  TVerifyClientCertificateChainResult,
+  verifyClientCertificateChain,
+  verifyDirectlyIssuedClientCertificate
+} from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
+
+const CHAIN_FAILURE_MESSAGES: Record<
+  Extract<TVerifyClientCertificateChainResult, { ok: false }>["reasonCode"],
+  string
+> = {
+  ca_verification_failed: "Access denied: Certificate chain could not be validated against the provided CA.",
+  certificate_expired: "Access denied: Certificate has expired.",
+  certificate_not_yet_valid: "Access denied: Certificate not yet valid.",
+  issuer_certificate_expired: "Access denied: A CA certificate that issued the client certificate has expired.",
+  issuer_certificate_not_yet_valid:
+    "Access denied: A CA certificate that issued the client certificate is not yet valid.",
+  issuer_client_auth_usage_not_allowed:
+    "Access denied: A CA in the certificate chain is not permitted to issue client authentication certificates.",
+  name_constraint_violation:
+    "Access denied: The client certificate's name is outside the namespace its issuing CA is permitted to certify.",
+  path_length_exceeded: "Access denied: The certificate chain has more intermediate CAs than a CA in it permits.",
+  unsupported_name_constraint:
+    "Access denied: A CA in the certificate chain restricts a URI name that is not a fully qualified domain name, so no client certificate can satisfy it."
+};
+
+const normalizeCaCertificate = (caCertificate: string) => caCertificate.replace(/\s+/g, "");
+
+const nameConstraintsProblemMessage = (problem: TNameConstraintsProblem) => {
+  if (problem.kind === "unparseable_certificate")
+    return "CA certificate could not be decoded. Provide a PEM-encoded X.509 certificate that conforms to RFC 5280.";
+
+  if (problem.kind === "unreadable_extension")
+    return "CA certificate's name constraints extension is malformed, so the namespace it restricts cannot be honored and no certificate it issues could be used to log in. Provide a CA certificate whose name constraints are well-formed.";
+
+  return `CA certificate restricts the URI name "${problem.constraint}", which is not a fully qualified domain name, so no certificate it issues could be used to log in. A URI name constraint restricts the host only, such as "example.org". To restrict individual workload identities, use allowed subject alternative names instead.`;
+};
+
+// The chain arrives percent-encoded, since that is what a TLS-terminating proxy emits (nginx's
+// `$ssl_client_escaped_cert` and equivalents). A value that will not decode means a malformed
+// request, not an untrusted certificate, hence 400 rather than 401.
+const decodeClientCertificateHeader = (clientCertificate: string) => {
+  try {
+    return decodeURIComponent(clientCertificate);
+  } catch {
+    throw new BadRequestError({
+      message:
+        "Malformed client certificate header: the value is not valid URL-encoded data. The TLS-terminating proxy must URL-encode the certificate chain it forwards."
+    });
+  }
+};
+
+/**
+ * Denies rather than 500s on a certificate that carries the PEM markers but will not parse, since
+ * reading it is what would establish who the client is. Denying also keeps the attempt auditable:
+ * only `UnauthorizedError` is recorded, so a client probing with junk stays visible.
+ *
+ * The OpenSSL reason is logged rather than returned; it describes the encoding, not anything the
+ * caller can act on.
+ */
+const parsePresentedCertificate = (
+  pem: string,
+  role: "leaf" | "chain",
+  detail: { identityId: string; orgId: string; identityName: string }
+) => {
+  try {
+    return new crypto.nativeCrypto.X509Certificate(pem);
+  } catch (err) {
+    logger.warn(
+      err,
+      `TLS certificate auth: a presented certificate could not be decoded [role=${role}] [identityId=${detail.identityId}]`
+    );
+    throw new UnauthorizedError({
+      message:
+        role === "leaf"
+          ? "Access denied: the client certificate could not be decoded."
+          : "Access denied: a CA certificate in the presented chain could not be decoded.",
+      detail: { reasonCode: "certificate_decode_failed", ...detail }
+    });
+  }
+};
+
+/**
+ * Reject a CA certificate when it is configured, rather than at every login it would deny. Only
+ * conditions that can never authenticate anyone belong here: a not-yet-valid certificate is allowed
+ * through, since an operator may be pre-provisioning the next CA in a rotation.
+ */
+const validateCaCertificateUsable = (caCertificate: string) => {
+  let caCertificateX509: InstanceType<typeof crypto.nativeCrypto.X509Certificate>;
+  try {
+    caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
+  } catch {
+    throw new BadRequestError({
+      message: "CA certificate could not be read. Provide a PEM-encoded X.509 certificate."
+    });
+  }
+
+  const validTo = new Date(caCertificateX509.validTo);
+  if (validTo < new Date()) {
+    throw new BadRequestError({
+      message: `CA certificate expired on ${validTo.toISOString()}. Provide a CA certificate that is still valid.`
+    });
+  }
+
+  if (!permitsClientAuth(caCertificateX509)) {
+    throw new BadRequestError({
+      message:
+        "CA certificate's extended key usage does not include client authentication, so no certificate it issues could be used to log in. Provide a CA certificate that permits client authentication."
+    });
+  }
+
+  const nameConstraintsProblem = findNameConstraintsProblem(caCertificateX509);
+  if (nameConstraintsProblem)
+    throw new BadRequestError({ message: nameConstraintsProblemMessage(nameConstraintsProblem) });
+};
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -46,25 +167,18 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-};
-
-const parseSubjectDetails = (data: string) => {
-  const values: Record<string, string> = {};
-  data.split("\n").forEach((el) => {
-    const [key, value] = el.split("=");
-    if (key && value) {
-      values[key.trim()] = value.trim();
-    }
-  });
-  return values;
 };
 
 export const identityTlsCertAuthServiceFactory = ({
@@ -72,6 +186,7 @@ export const identityTlsCertAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityTlsCertAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   licenseService,
   permissionService,
   kmsService,
@@ -83,6 +198,7 @@ export const identityTlsCertAuthServiceFactory = ({
     clientCertificate,
     organizationSlug
   }) => {
+    const authMetricStartTime = performance.now();
     const appCfg = getConfig();
     const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
     if (!identityTlsCertAuth) {
@@ -117,31 +233,77 @@ export const identityTlsCertAuthServiceFactory = ({
         cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
       }).toString();
 
-      const leafCertificate = extractX509CertFromChain(decodeURIComponent(clientCertificate))?.[0];
+      const presentedCertificates = extractX509CertFromChain(decodeClientCertificateHeader(clientCertificate));
+      const leafCertificate = presentedCertificates?.[0];
       if (!leafCertificate) {
         throw new BadRequestError({ message: "Missing client certificate" });
       }
 
-      const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
+      const failureDetail = { identityId: identity.id, orgId: identity.orgId, identityName: identity.name };
+
+      const clientCertificateX509 = parsePresentedCertificate(leafCertificate, "leaf", failureDetail);
       const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
 
-      const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
-      if (!isValidCertificate)
-        throw new UnauthorizedError({
-          message: "Access denied: Certificate not issued by the provided CA.",
-          detail: {
-            reasonCode: "ca_verification_failed",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
+      if (identityTlsCertAuth.verifyClientCertificateChain) {
+        // Trust-anchor mode: the configured CA is a trust anchor. Build a path from the presented
+        // leaf through the presented intermediates up to the anchor (RFC 5280 path validation),
+        // rather than requiring the anchor to be the leaf's direct issuer. This supports issuers
+        // that rotate beneath a stable root (e.g. SPIRE X.509-SVID intermediates) by pinning the
+        // long-lived root while the client presents the current intermediate alongside its leaf.
+        const presentedChain = presentedCertificates
+          .slice(1)
+          .map((pem) => parsePresentedCertificate(pem, "chain", failureDetail));
+
+        const chainResult = await verifyClientCertificateChain({
+          leaf: clientCertificateX509,
+          presentedChain,
+          trustAnchor: caCertificateX509
         });
 
-      if (new Date(clientCertificateX509.validTo) < new Date()) {
+        if (!chainResult.ok) {
+          const message = CHAIN_FAILURE_MESSAGES[chainResult.reasonCode];
+          throw new UnauthorizedError({
+            message,
+            detail: {
+              reasonCode: chainResult.reasonCode,
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+      } else {
+        // Single-hop mode (default): the configured CA must be the direct issuer of the leaf.
+        const directResult = await verifyDirectlyIssuedClientCertificate({
+          leaf: clientCertificateX509,
+          ca: caCertificateX509
+        });
+
+        if (!directResult.ok) {
+          throw new UnauthorizedError({
+            message:
+              directResult.reasonCode === "ca_verification_failed"
+                ? "Access denied: Certificate not issued by the provided CA."
+                : CHAIN_FAILURE_MESSAGES[directResult.reasonCode],
+            detail: {
+              reasonCode: directResult.reasonCode,
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+      }
+
+      // Require an end-entity certificate issued by the configured CA, not the CA certificate
+      // itself. `.ca` covers certs marked CA:TRUE; the raw comparison also covers a self-signed CA
+      // that omits basic constraints.
+      const isClientCertACa = clientCertificateX509.ca || clientCertificateX509.raw.equals(caCertificateX509.raw);
+      if (isClientCertACa) {
         throw new UnauthorizedError({
-          message: "Access denied: Certificate has expired.",
+          message: "Access denied: a CA certificate cannot be used as a client certificate.",
           detail: {
-            reasonCode: "certificate_expired",
+            reasonCode: "ca_certificate_not_allowed",
             identityId: identity.id,
             orgId: identity.orgId,
             identityName: identity.name
@@ -149,11 +311,11 @@ export const identityTlsCertAuthServiceFactory = ({
         });
       }
 
-      if (new Date(clientCertificateX509.validFrom) > new Date()) {
+      if (!permitsClientAuth(clientCertificateX509)) {
         throw new UnauthorizedError({
-          message: "Access denied: Certificate not yet valid.",
+          message: "Access denied: the client certificate is not valid for client authentication.",
           detail: {
-            reasonCode: "certificate_not_yet_valid",
+            reasonCode: "client_auth_usage_not_allowed",
             identityId: identity.id,
             orgId: identity.orgId,
             identityName: identity.name
@@ -169,6 +331,24 @@ export const identityTlsCertAuthServiceFactory = ({
             message: "Access denied: TLS Certificate Auth common name not allowed.",
             detail: {
               reasonCode: "common_name_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+      }
+
+      if (identityTlsCertAuth.allowedSubjectAltNames) {
+        const isValidSubjectAltName = isSubjectAltNameAllowed(
+          parseAllowedSubjectAltNames(identityTlsCertAuth.allowedSubjectAltNames),
+          readSubjectAltNames(clientCertificateX509)
+        );
+        if (!isValidSubjectAltName) {
+          throw new UnauthorizedError({
+            message: "Access denied: TLS Certificate Auth subject alternative name not allowed.",
+            detail: {
+              reasonCode: "subject_alt_name_not_allowed",
               identityId: identity.id,
               orgId: identity.orgId,
               identityName: identity.name
@@ -208,26 +388,11 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       // Generate the token
-      await identityTlsCertAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH
       });
 
       const subOrgDetails =
@@ -265,6 +430,13 @@ export const identityTlsCertAuthServiceFactory = ({
         });
       }
 
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.TLS_CERT_AUTH,
+        result: AuthAttemptAuthResult.SUCCESS,
+        orgId: org.id
+      });
+
       return {
         identityTlsCertAuth,
         accessToken,
@@ -284,6 +456,14 @@ export const identityTlsCertAuthServiceFactory = ({
           "user_agent.original": requestContext.get(RequestContextKey.UserAgent)
         });
       }
+
+      recordAuthAttemptMetric({
+        startTime: authMetricStartTime,
+        method: AuthAttemptAuthMethod.TLS_CERT_AUTH,
+        result: AuthAttemptAuthResult.FAILURE,
+        orgId: org.id,
+        error
+      });
       throw error;
     }
   };
@@ -300,10 +480,10 @@ export const identityTlsCertAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin,
     caCertificate,
-    allowedCommonNames
+    allowedCommonNames,
+    allowedSubjectAltNames,
+    verifyClientCertificateChain: verifyClientCertificateChainOpt
   }) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -337,7 +517,7 @@ export const identityTlsCertAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -350,10 +530,27 @@ export const identityTlsCertAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add TLS Certificate auth to identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -373,6 +570,8 @@ export const identityTlsCertAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    validateCaCertificateUsable(caCertificate);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -384,8 +583,10 @@ export const identityTlsCertAuthServiceFactory = ({
           identityId: identityMembershipOrg.identity.id,
           accessTokenMaxTTL,
           allowedCommonNames,
+          allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
+          verifyClientCertificateChain: verifyClientCertificateChainOpt ?? false,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
         },
@@ -393,6 +594,7 @@ export const identityTlsCertAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...identityTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -400,6 +602,8 @@ export const identityTlsCertAuthServiceFactory = ({
     identityId,
     caCertificate,
     allowedCommonNames,
+    allowedSubjectAltNames,
+    verifyClientCertificateChain: verifyClientCertificateChainOpt,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -407,7 +611,8 @@ export const identityTlsCertAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -448,7 +653,7 @@ export const identityTlsCertAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -460,8 +665,28 @@ export const identityTlsCertAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update TLS Certificate auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -480,16 +705,25 @@ export const identityTlsCertAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
 
+    const storedCaCertificate = decryptor({
+      cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
+    }).toString();
+    if (caCertificate && normalizeCaCertificate(caCertificate) !== normalizeCaCertificate(storedCaCertificate)) {
+      validateCaCertificateUsable(caCertificate);
+    }
+
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
       allowedCommonNames,
+      allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
       encryptedCaCertificate: caCertificate
         ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
         : undefined,
+      verifyClientCertificateChain: verifyClientCertificateChainOpt,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -498,6 +732,7 @@ export const identityTlsCertAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...updatedTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -571,7 +806,8 @@ export const identityTlsCertAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -584,6 +820,7 @@ export const identityTlsCertAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TLS_CERT_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have TLS Certificate auth"
@@ -614,35 +851,24 @@ export const identityTlsCertAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission, memberships } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke TLS Certificate auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke TLS Certificate auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityTlsCertAuth = await identityTlsCertAuthDAL.transaction(async (tx) => {
       const deletedTlsCertAuth = await identityTlsCertAuthDAL.delete({ identityId }, tx);
@@ -658,6 +884,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.TLS_CERT_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
 
     return revokedIdentityTlsCertAuth;
   };

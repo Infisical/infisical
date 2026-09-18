@@ -5,6 +5,47 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+// Secrets registered here are torn down after the test that made them. Cleanup
+// used to sit at the end of each test body, so a failing assertion skipped it
+// and left secrets behind in the shared seeded project — which breaks the
+// exact-count assertions in this file (e.g. "List secret raw" expects exactly
+// 5) and any later spec reading the same environment.
+type TCreatedSecret = { path: string; key: string; endpoint: string };
+const createdSecrets: TCreatedSecret[] = [];
+
+// Several tests delete their secret as part of the assertions, so by teardown
+// time there is nothing left — a 404 here means "already gone", not a failure.
+const removeSecretIfPresent = async ({ path, key, endpoint }: TCreatedSecret) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `${endpoint}/${key}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.project.id,
+      environment: seedData1.environment.slug,
+      secretPath: path
+    }
+  });
+  if (res.statusCode !== 200 && res.statusCode !== 404) {
+    throw new Error(`cleanup: unexpected ${res.statusCode} deleting "${key}" at "${path}" — ${res.payload}`);
+  }
+};
+
+// Some tests create secrets with a direct or batch inject rather than the
+// helpers below, so they have to register what they made. Call this right after
+// the inject: if the request actually failed, nothing exists and the teardown
+// above no-ops on the 404.
+const trackSecret = (endpoint: string, path: string, ...keys: string[]) => {
+  createdSecrets.push(...keys.map((key) => ({ path, key, endpoint })));
+};
+
+afterEach(async () => {
+  const unique = new Map(createdSecrets.splice(0).map((el) => [`${el.endpoint}|${el.path}|${el.key}`, el]));
+  await Promise.all([...unique.values()].map(removeSecretIfPresent));
+});
+
 const createSecret = async (dto: {
   projectKey: string;
   path: string;
@@ -31,6 +72,7 @@ const createSecret = async (dto: {
   expect(createSecRes.statusCode).toBe(200);
   const createdSecretPayload = JSON.parse(createSecRes.payload);
   expect(createdSecretPayload).toHaveProperty("secret");
+  createdSecrets.push({ path: dto.path, key: dto.key, endpoint: "/api/v3/secrets" });
   return createdSecretPayload.secret;
 };
 
@@ -254,7 +296,6 @@ describe("Secret V3 Router", async () => {
         })
       ])
     );
-    await deleteSecret({ path, key: secret.key });
   });
 
   test.each(secretTestCases)("Get secret by name in path $path", async ({ secret, path }) => {
@@ -279,8 +320,6 @@ describe("Secret V3 Router", async () => {
     expect(decryptedSecret.key).toEqual(secret.key);
     expect(decryptedSecret.value).toEqual(secret.value);
     expect(decryptedSecret.comment).toEqual(secret.comment);
-
-    await deleteSecret({ path, key: secret.key });
   });
 
   test.each(secretTestCases)(
@@ -343,8 +382,6 @@ describe("Secret V3 Router", async () => {
         })
       ])
     );
-
-    await deleteSecret({ path, key: secret.key });
   });
 
   test.each(secretTestCases)("Update secret in path $path", async ({ path, secret }) => {
@@ -383,8 +420,6 @@ describe("Secret V3 Router", async () => {
         })
       ])
     );
-
-    await deleteSecret({ path, key: secret.key });
   });
 
   test.each(secretTestCases)("Delete secret in path $path", async ({ secret, path }) => {
@@ -429,7 +464,6 @@ describe("Secret V3 Router", async () => {
           })
         ])
       );
-      await deleteSecret({ path, key: secret.key });
     }
   );
 
@@ -450,6 +484,7 @@ describe("Secret V3 Router", async () => {
         }))
       }
     });
+    trackSecret("/api/v3/secrets", path, ...Array.from(Array(5)).map((_e, i) => `BULK-${secret.key}-${i + 1}`));
     expect(createSharedSecRes.statusCode).toBe(200);
     const createSharedSecPayload = JSON.parse(createSharedSecRes.payload);
     expect(createSharedSecPayload).toHaveProperty("secrets");
@@ -466,8 +501,6 @@ describe("Secret V3 Router", async () => {
         )
       )
     );
-
-    await Promise.all(Array.from(Array(5)).map((_e, i) => deleteSecret({ path, key: `BULK-${secret.key}-${i + 1}` })));
   });
 
   test.each(secretTestCases)("Bulk create fail on existing secret in path $path", async ({ secret, path }) => {
@@ -490,8 +523,6 @@ describe("Secret V3 Router", async () => {
       }
     });
     expect(createSharedSecRes.statusCode).toBe(400);
-
-    await deleteSecret({ path, key: `BULK-${secret.key}-1` });
   });
 
   test.each(secretTestCases)("Bulk update secrets in path $path", async ({ secret, path }) => {
@@ -534,7 +565,6 @@ describe("Secret V3 Router", async () => {
         )
       )
     );
-    await Promise.all(Array.from(Array(5)).map((_e, i) => deleteSecret({ path, key: `BULK-${secret.key}-${i + 1}` })));
   });
 
   test.each(secretTestCases)("Bulk delete secrets in path $path", async ({ secret, path }) => {
@@ -605,26 +635,8 @@ const createRawSecret = async (dto: {
   expect(createSecRes.statusCode).toBe(200);
   const createdSecretPayload = JSON.parse(createSecRes.payload);
   expect(createdSecretPayload).toHaveProperty("secret");
+  createdSecrets.push({ path: dto.path, key: dto.key, endpoint: "/api/v3/secrets/raw" });
   return createdSecretPayload.secret;
-};
-
-const deleteRawSecret = async (dto: { path: string; key: string }) => {
-  const deleteSecRes = await testServer.inject({
-    method: "DELETE",
-    url: `/api/v3/secrets/raw/${dto.key}`,
-    headers: {
-      authorization: `Bearer ${jwtAuthToken}`
-    },
-    body: {
-      workspaceId: seedData1.project.id,
-      environment: seedData1.environment.slug,
-      secretPath: dto.path
-    }
-  });
-  expect(deleteSecRes.statusCode).toBe(200);
-  const updatedSecretPayload = JSON.parse(deleteSecRes.payload);
-  expect(updatedSecretPayload).toHaveProperty("secret");
-  return updatedSecretPayload.secret;
 };
 
 // raw secret endpoints
@@ -817,6 +829,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
         },
         body: createSecretReqBody
       });
+      trackSecret("/api/v3/secrets/raw", path, secret.key);
       expect(createSecRes.statusCode).toBe(200);
       const createdSecretPayload = JSON.parse(createSecRes.payload);
       expect(createdSecretPayload).toHaveProperty("secret");
@@ -832,8 +845,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           })
         ])
       );
-
-      await deleteRawSecret({ path, key: secret.key });
     });
 
     test.each(testRawSecrets)("Get secret by name raw in path $path", async ({ secret, path }) => {
@@ -860,8 +871,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           secretValue: secret.value
         })
       );
-
-      await deleteRawSecret({ path, key: secret.key });
     });
 
     test.each(testRawSecrets)("List secret raw in path $path", async ({ secret, path }) => {
@@ -877,10 +886,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
             expect.objectContaining({ value: expect.any(String), key: `BULK-${secret.key}-${i + 1}` })
           )
         )
-      );
-
-      await Promise.all(
-        Array.from(Array(5)).map((_e, i) => deleteRawSecret({ path, key: `BULK-${secret.key}-${i + 1}` }))
       );
     });
 
@@ -918,8 +923,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           })
         ])
       );
-
-      await deleteRawSecret({ path, key: secret.key });
     });
 
     test.each(testRawSecrets)("Delete secret raw in path $path", async ({ path, secret }) => {
@@ -969,6 +972,7 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
         },
         body: createSecretReqBody
       });
+      trackSecret("/api/v3/secrets/raw", path, secret.key);
       expect(createSecRes.statusCode).toBe(200);
       const createdSecretPayload = JSON.parse(createSecRes.payload);
       expect(createdSecretPayload).toHaveProperty("secrets");
@@ -984,8 +988,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           })
         ])
       );
-
-      await deleteRawSecret({ path, key: secret.key });
     });
 
     test.each(testRawSecrets)("Bulk update secret raw in path $path", async ({ secret, path }) => {
@@ -1025,8 +1027,6 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
           })
         ])
       );
-
-      await deleteRawSecret({ path, key: secret.key });
     });
 
     test.each(testRawSecrets)("Bulk delete secret raw in path $path", async ({ path, secret }) => {

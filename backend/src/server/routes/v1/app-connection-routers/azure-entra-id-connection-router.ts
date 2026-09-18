@@ -41,7 +41,7 @@ export const registerAzureEntraIdConnectionRouter = async (server: FastifyZodPro
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { search } = req.query;

@@ -2,20 +2,21 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { ProjectAccessControlTabs } from "@app/types/project";
+import {
+  PamAccessControlPage,
+  PamAccessControlTab
+} from "@app/pages/pam/PamAccessControlPage/PamAccessControlPage";
 
-import { AccessControlPage } from "./AccessControlPage";
-
-const AccessControlPageQuerySchema = z.object({
-  selectedTab: z.nativeEnum(ProjectAccessControlTabs).catch(ProjectAccessControlTabs.Member),
+const PamAccessControlQuerySchema = z.object({
+  selectedTab: z.nativeEnum(PamAccessControlTab).catch(PamAccessControlTab.Members),
   requesterEmail: z.string().catch("")
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/access-management"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access-management"
 )({
-  component: AccessControlPage,
-  validateSearch: zodValidator(AccessControlPageQuerySchema),
+  component: PamAccessControlPage,
+  validateSearch: zodValidator(PamAccessControlQuerySchema),
   search: {
     middlewares: [stripSearchParams({ requesterEmail: "" })]
   },

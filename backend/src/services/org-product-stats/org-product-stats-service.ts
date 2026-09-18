@@ -22,7 +22,11 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       dataSourcesCount,
       secretScanningResourcesCount,
       accountsCount,
-      pamResourcesCount,
+      accountTemplatesCount,
+      foldersCount,
+      accessBundlesCount,
+      servicesCount,
+      proxiesCount,
       projectCounts
     ] = await Promise.all([
       orgProductStatsDAL.countSecretsForOrg(actorOrgId),
@@ -35,7 +39,11 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       orgProductStatsDAL.countDataSourcesForOrg(actorOrgId),
       orgProductStatsDAL.countSecretScanningResourcesForOrg(actorOrgId),
       orgProductStatsDAL.countPamAccountsForOrg(actorOrgId),
-      orgProductStatsDAL.countPamResourcesForOrg(actorOrgId),
+      orgProductStatsDAL.countPamAccountTemplatesForOrg(actorOrgId),
+      orgProductStatsDAL.countPamFoldersForOrg(actorOrgId),
+      orgProductStatsDAL.countAgentVaultAccessBundlesForOrg(actorOrgId),
+      orgProductStatsDAL.countAgentVaultServicesForOrg(actorOrgId),
+      orgProductStatsDAL.countAgentVaultProxiesForOrg(actorOrgId),
       orgProductStatsDAL.countProjectsByTypeForOrg(actorOrgId)
     ]);
 
@@ -62,8 +70,13 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       },
       pam: {
         accountsCount,
-        resourcesCount: pamResourcesCount,
-        projectsCount: projectCounts[ProjectType.PAM] || 0
+        accountTemplatesCount,
+        foldersCount
+      },
+      agentVault: {
+        accessBundlesCount,
+        servicesCount,
+        proxiesCount
       }
     };
   };

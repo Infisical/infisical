@@ -25,6 +25,14 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await dropOnUpdateTrigger(knex, TableName.WebAuthnCredential);
-  await knex.schema.dropTableIfExists(TableName.WebAuthnCredential);
+  // Mirror the conditional in up(): only drop the trigger when the table
+  // exists. dropOnUpdateTrigger emits `DROP TRIGGER IF EXISTS x ON table`
+  // — the `IF EXISTS` only swallows missing-trigger errors; Postgres still
+  // refuses to parse the `ON table` clause when the relation is gone, so
+  // rolling back on a DB that never ran up() (or that already dropped the
+  // table by another path) errors out.
+  if (await knex.schema.hasTable(TableName.WebAuthnCredential)) {
+    await dropOnUpdateTrigger(knex, TableName.WebAuthnCredential);
+    await knex.schema.dropTable(TableName.WebAuthnCredential);
+  }
 }

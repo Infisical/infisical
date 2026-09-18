@@ -204,6 +204,7 @@ export interface TAccessApprovalRequestServiceFactory {
     updatedAt: Date;
     projectId: string;
     policyId: string;
+    isBypass: boolean;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

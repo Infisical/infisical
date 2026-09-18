@@ -78,9 +78,9 @@ const logUnknownAppliedMigrations = ({
   const dateRange = getMigrationDateRange(unknownAppliedMigrationNames);
 
   const sections = [
-    `Database has migrations newer than this image [database=${databaseName}] [imageVersion=${imageVersion}].`,
-    `Skipping startup migrations.`,
-    `This is expected during rolling deployments when a peer instance on a newer image has already applied them.`
+    `Database has applied migrations that this image does not bundle [database=${databaseName}] [imageVersion=${imageVersion}].`,
+    `This image has nothing pending to apply, so startup migrations are skipped.`,
+    `This is expected during rolling deployments or rollbacks when a peer instance on a different image has already applied them.`
   ];
   if (dateRange) {
     sections.push(
@@ -399,6 +399,29 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
 export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClient, logger }: TArgs) => {
   const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
   const failOnSanitizedSchemaError = process.env.FAIL_ON_SANITIZED_SCHEMA_ERROR === "true";
+
+  // Only API should run migrations. Workers don't run them to prevent
+  // API nodes to fall behind the schema and start failing while they are not updated.
+  if (!getConfig().isApiRunModeEnabled) {
+    const bootState = await getMigrationBootState({ db: applicationDb, migrationConfig });
+
+    if (bootState.direction === "invalid") {
+      throwInvalidMigrationHistory({
+        databaseName: "application",
+        pendingMigrationNames: bootState.pendingMigrationNames,
+        unknownAppliedMigrationNames: bootState.unknownAppliedMigrationNames
+      });
+    }
+
+    if (bootState.direction === "behind") {
+      logger.warn(
+        `Skipping migrations: not an api run mode [direction=behind] [pendingCount=${bootState.pendingMigrationNames.length}]. Waiting on an api pod to apply them.`
+      );
+    } else {
+      logger.info(`Skipping migrations: not an api run mode [direction=${bootState.direction}]`);
+    }
+    return;
+  }
 
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this

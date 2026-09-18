@@ -10,14 +10,22 @@ const NetScalerSyncOptionsSchema = z.object({
   preserveItemOnRenewal: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (val) => {
-        if (!val) return true;
+        const allowedOptionalPlaceholders = [
+          "{{profileId}}",
+          "{{applicationId}}",
+          "{{applicationName}}",
+          "{{commonName}}"
+        ];
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
-
-        const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+        const allowedPlaceholdersRegexPart = [
+          "{{certificateId}}",
+          "{{shortCertificateId}}",
+          ...allowedOptionalPlaceholders
+        ]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
           .join("|");
 
@@ -26,17 +34,24 @@ const NetScalerSyncOptionsSchema = z.object({
         );
         const contentIsValid = allowedContentRegex.test(val);
 
-        if (val.trim()) {
-          const certificateIdRegex = /\{\{certificateId\}\}/;
-          const certificateIdIsPresent = certificateIdRegex.test(val);
-          return contentIsValid && certificateIdIsPresent;
-        }
+        // NetScaler caps certkey names at 63 chars. Full UUID placeholders resolve to 32 chars and
+        // {{shortCertificateId}} to 22
+        const compiledLength = val
+          .replace(/\{\{shortCertificateId\}\}/g, "0".repeat(22))
+          .replace(/\{\{certificateId\}\}/g, "0".repeat(32))
+          .replace(/\{\{profileId\}\}/g, "0".repeat(32))
+          .replace(/\{\{applicationId\}\}/g, "0".repeat(32))
+          .replace(/\{\{applicationName\}\}/g, "application-name")
+          .replace(/\{\{commonName\}\}/g, "common-name").length;
+        const lengthIsValid = compiledLength <= 63;
 
-        return contentIsValid;
+        const certificateIdIsPresent =
+          val.includes("{{certificateId}}") || val.includes("{{shortCertificateId}}");
+        return contentIsValid && certificateIdIsPresent && lengthIsValid;
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and periods (.) are allowed besides the placeholders."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and compile to at most 63 characters for NetScaler ({{certificateId}}, {{profileId}}, and {{applicationId}} count as 32 characters each; {{shortCertificateId}} counts as 22). It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and periods (.) are allowed besides the placeholders."
       }
     )
 });

@@ -6,6 +6,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Checkbox,
   Command,
   CommandEmpty,
   CommandGroup,
@@ -78,17 +79,26 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
 
   const handleSelectAll = () => setSelectedEnvs([]);
 
-  const handleSelectEnv = (envId: string) => {
+  const handleSwitchEnv = (envId: string) => {
     setSelectedEnvs((prev) => {
-      if (prev.map((env) => env.id).includes(envId)) {
-        return prev.filter((env) => env.id !== envId);
-      }
-
       const selectedEnv = projectEnvs.find((env) => env.id === envId);
 
-      if (selectedEnv) return [...prev, selectedEnv];
+      if (!selectedEnv) return prev;
 
-      return prev;
+      // switching to the sole selected environment clears back to all
+      return prev.length === 1 && prev[0].id === envId ? [] : [selectedEnv];
+    });
+  };
+
+  const handleToggleEnv = (envId: string) => {
+    setSelectedEnvs((prev) => {
+      const selectedEnv = projectEnvs.find((env) => env.id === envId);
+
+      if (!selectedEnv) return prev;
+
+      return prev.some((env) => env.id === envId)
+        ? prev.filter((env) => env.id !== envId)
+        : [...prev, selectedEnv];
     });
   };
 
@@ -105,6 +115,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
         }}
       />
       <UpgradePlanModal
+        paywallKey="secret-manager.environment-select"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
         text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
@@ -118,7 +129,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 role="combobox"
                 aria-expanded={isOpen}
                 disabled={isDisabled}
-                className="w-[180px] justify-between"
+                className="w-full max-w-[180px] min-w-28 justify-between"
               >
                 <span className="truncate">{label}</span>
                 <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -127,9 +138,13 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           </TooltipTrigger>
           <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
         </Tooltip>
-        <PopoverContent align="start" className="p-0">
-          <Command>
+        <PopoverContent
+          align="start"
+          className="w-80 max-w-[var(--radix-popover-content-available-width)] overflow-hidden p-0"
+        >
+          <Command className="min-w-0">
             <CommandInput
+              aria-label="Filter environments"
               value={inputValue}
               onValueChange={setInputValue}
               placeholder="Filter environments"
@@ -140,13 +155,13 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 <>
                   <CommandGroup>
                     <CommandItem forceMount keywords={[]} onSelect={handleSelectAll}>
+                      All Environments
                       <CheckIcon
                         className={cn(
-                          "h-4 w-4",
+                          "ml-auto h-4 w-4",
                           !selectedEnvs.length ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      All Environments
                     </CommandItem>
                   </CommandGroup>
                   <CommandSeparator />
@@ -155,24 +170,33 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
               <CommandGroup>
                 {projectEnvs.map((env) => (
                   <CommandItem
+                    className="min-w-0"
                     key={env.id}
                     value={env.id}
-                    onSelect={handleSelectEnv}
+                    onSelect={handleSwitchEnv}
                     keywords={[env.name, env.slug]}
                   >
-                    <CheckIcon
-                      className={cn(
-                        "h-4 w-4 shrink-0",
-                        selectedEnvs.map((e) => e.id).includes(env.id) ? "opacity-100" : "opacity-0"
-                      )}
-                    />
                     <Tooltip delayDuration={500} disableHoverableContent>
                       <TooltipTrigger asChild>
-                        <span className="truncate">{env.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{env.name}</span>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="max-w-2xl break-all">
                         {env.name}
                       </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-auto inline-flex shrink-0">
+                          <Checkbox
+                            variant="project"
+                            aria-label={`Select ${env.name}`}
+                            isChecked={selectedEnvs.some((e) => e.id === env.id)}
+                            onCheckedChange={() => handleToggleEnv(env.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Add/remove from view</TooltipContent>
                     </Tooltip>
                   </CommandItem>
                 ))}
@@ -197,6 +221,9 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                 )}
               </ProjectPermissionCan>
             </CommandGroup>
+            <div className="border-t border-border px-2 py-1.5 text-[10px] text-muted">
+              Use the checkboxes to select multiple environments.
+            </div>
           </Command>
         </PopoverContent>
       </Popover>

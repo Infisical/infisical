@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
 import { ConfirmActionModal } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -60,12 +61,7 @@ export const AccountRecoveryResetPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
-      <Link to="/">
-        <div className="mt-20 mb-4 flex justify-center">
-          <img src="/images/gradientLogo.svg" className="h-[90px] w-[120px]" alt="Infisical Logo" />
-        </div>
-      </Link>
+    <AuthPageLayout variant="focused" contentClassName="max-w-2xl">
       {step === Steps.ConfirmEmail && (
         <ConfirmEmailStep
           onComplete={(verifyToken, userEncryptionVersion, hasEmailAuth) => {
@@ -104,6 +100,6 @@ export const AccountRecoveryResetPage = () => {
         onConfirmed={handleEnableEmailAuth}
         buttonText="Enable"
       />
-    </div>
+    </AuthPageLayout>
   );
 };

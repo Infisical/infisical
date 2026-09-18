@@ -1,4 +1,5 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
+import { components, MenuListProps } from "react-select";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -12,9 +13,11 @@ import {
   PencilIcon,
   PlayIcon,
   PlusIcon,
+  Settings2Icon,
   Trash2Icon
 } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -54,6 +57,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProjectPermission, useSubscription } from "@app/context";
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   approvalPolicyQuery,
@@ -81,6 +89,7 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
+import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
 import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
 import {
@@ -89,16 +98,22 @@ import {
 } from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import { ConfigureEnrollmentModal } from "./ConfigureEnrollmentModal";
+import {
+  ConfigureEnrollmentModal,
+  EnrollmentMethod,
+  METHOD_LABELS
+} from "./ConfigureEnrollmentModal";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
 
+type TProfileOption = { value: string; label: string };
+
 const methodBadges = (p: TPkiApplicationProfile) => {
-  const methods: string[] = [];
-  if (p.apiConfigId) methods.push("API");
-  if (p.estConfigId) methods.push("EST");
-  if (p.acmeConfigId) methods.push("ACME");
-  if (p.scepConfigId) methods.push("SCEP");
+  const methods: EnrollmentMethod[] = [];
+  if (p.apiConfigId) methods.push("api");
+  if (p.estConfigId) methods.push("est");
+  if (p.acmeConfigId) methods.push("acme");
+  if (p.scepConfigId) methods.push("scep");
   return methods;
 };
 
@@ -290,7 +305,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
-          <span className="text-mineshaft-500">—</span>
+          <span className="text-surface-selected">—</span>
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -302,21 +317,21 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="left" className="max-w-sm">
-              <div className="text-xs text-mineshaft-300">
+              <div className="text-xs text-label">
                 {new Date(alert.lastRun.timestamp)
                   .toISOString()
                   .replace("T", " ")
                   .replace("Z", " UTC")}
               </div>
               {alert.lastRun.error ? (
-                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-red-400">
+                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-danger">
                   {alert.lastRun.error}
                 </div>
               ) : null}
             </TooltipContent>
           </Tooltip>
         ) : (
-          <span className="text-mineshaft-500">—</span>
+          <span className="text-surface-selected">—</span>
         )}
       </TableCell>
       <TableCell className="text-right">
@@ -394,18 +409,46 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     appAbility?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.PkiAlerts)
   );
   const [isAttachOpen, setIsAttachOpen] = useState(false);
-  const [profilesToAttach, setProfilesToAttach] = useState<{ value: string; label: string }[]>([]);
+  const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
+  const [profilesToAttach, setProfilesToAttach] = useState<TProfileOption[]>([]);
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
+  const [enrollmentMethodToOpen, setEnrollmentMethodToOpen] = useState<EnrollmentMethod>();
+
+  const openEnrollment = (profile: TPkiApplicationProfile, method?: EnrollmentMethod) => {
+    setEnrollmentMethodToOpen(method);
+    setProfileToConfigure(profile);
+  };
+
+  const { permission } = useProjectPermission();
+  const canCreateProfile = permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
 
   const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
   const detachMutation = useDetachPkiApplicationProfile();
 
+  const { subscription } = useSubscription();
+
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy"
+    "deletePolicy",
+    "upgradePlan"
   ] as const);
+
+  // Creation only; existing policies keep enforcing and their requests can still be approved.
+  const handleCreatePolicy = () => {
+    if (!subscription.pkiApprovals) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "Certificate approval policies are available on Infisical's Enterprise plan."
+      });
+      return;
+    }
+    handlePopUpOpen("policy");
+  };
   const deletePolicy = useDeleteApprovalPolicy();
 
   const { data: alertsData, isLoading: isAlertsLoading } = useGetPkiAlertsV2({
@@ -469,27 +512,41 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         .map((p) => ({ value: p.id, label: p.slug })),
     [profileList, attachedIds]
   );
-  const totalProfileCount = profileList?.certificateProfiles?.length ?? 0;
+  // Project-wide count, not the length of the fetched page. The list is paginated, so a page whose
+  // profiles happen to all be attached says nothing about whether the project has others left.
+  const totalProfileCount = profileList?.totalCount ?? 0;
+  const hasAttachableProfiles = totalProfileCount > profiles.length;
   let attachDisabledReason: ReactNode | null = null;
-  if (availableProfiles.length === 0) {
+  if (!hasAttachableProfiles && !canCreateProfile) {
     attachDisabledReason =
-      totalProfileCount === 0 ? (
-        <span>
-          No certificate profiles exist yet. Create one in{" "}
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
-            params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-            search={{ selectedTab: "certificate-profiles" }}
-            className="text-primary underline hover:text-primary/80"
-          >
-            Certificate Profiles
-          </Link>{" "}
-          first.
-        </span>
-      ) : (
-        "All certificate profiles are already attached."
-      );
+      totalProfileCount === 0
+        ? "No certificate profiles exist yet, and you do not have permission to create one."
+        : "All certificate profiles are already attached.";
   }
+
+  // Pinned above the scrolling option list, so creating a profile is not a selectable option
+  // masquerading as one.
+  const ProfileMenuList = useCallback(
+    (menuProps: MenuListProps<TProfileOption, true>) => (
+      <>
+        {canCreateProfile ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            isFullWidth
+            className="justify-start"
+            onClick={() => setIsCreateProfileOpen(true)}
+          >
+            <PlusIcon />
+            Add Certificate Profile
+          </Button>
+        ) : null}
+        <components.MenuList {...menuProps} />
+      </>
+    ),
+    [canCreateProfile]
+  );
 
   const handleAttach = async () => {
     if (profilesToAttach.length === 0) return;
@@ -556,9 +613,14 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Button variant="outline" onClick={() => setIsAttachOpen(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    hasAttachableProfiles ? setIsAttachOpen(true) : setIsCreateProfileOpen(true)
+                  }
+                >
                   <PlusIcon />
-                  Attach Profile
+                  {hasAttachableProfiles ? "Attach Profile" : "Create Profile"}
                 </Button>
               )}
             </CardAction>
@@ -570,8 +632,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No profiles attached</EmptyTitle>
                 <EmptyDescription>
-                  Attach a certificate profile, then configure how this application enrolls against
-                  it.
+                  {totalProfileCount === 0
+                    ? "Create a certificate profile, then configure how this application enrolls against it."
+                    : "Attach a certificate profile, then configure how this application enrolls against it."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -590,38 +653,53 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   const hasMethods = methods.length > 0;
                   return (
                     <TableRow key={p.profileId}>
-                      <TableCell className="font-mono">{p.profileSlug}</TableCell>
+                      <TableCell className="font-mono">
+                        <Link
+                          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                          params={{
+                            orgId: orgId ?? "",
+                            projectId: projectId ?? "",
+                            profileId: p.profileId
+                          }}
+                          search={{ from: "application", applicationName: application.name }}
+                          className="hover:underline"
+                        >
+                          {p.profileSlug}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         {/* eslint-disable-next-line no-nested-ternary */}
                         {canConfigureEnrollment ? (
-                          <button
-                            type="button"
-                            onClick={() => setProfileToConfigure(p)}
-                            className="group -mx-2 inline-flex items-center gap-2 rounded-sm px-2 py-1 text-left transition-colors hover:bg-mineshaft-700/50"
-                            aria-label={
-                              hasMethods
-                                ? `Edit enrollment for ${p.profileSlug}`
-                                : `Configure enrollment for ${p.profileSlug}`
-                            }
-                          >
+                          <div className="flex flex-wrap items-center gap-1.5">
                             {hasMethods ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {methods.map((m) => (
-                                  <Badge key={m} variant="neutral">
-                                    {m}
-                                  </Badge>
-                                ))}
-                              </div>
+                              methods.map((m) => (
+                                <Badge key={m} variant="neutral" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEnrollment(p, m)}
+                                    aria-label={`Edit ${METHOD_LABELS[m]} enrollment for ${p.profileSlug}`}
+                                  >
+                                    {METHOD_LABELS[m]}
+                                  </button>
+                                </Badge>
+                              ))
                             ) : (
-                              <span className="text-xs text-accent">Configure</span>
+                              <button
+                                type="button"
+                                onClick={() => openEnrollment(p)}
+                                aria-label={`Configure enrollment for ${p.profileSlug}`}
+                                className="flex cursor-pointer items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+                              >
+                                <Settings2Icon className="size-3.5" />
+                                Configure
+                              </button>
                             )}
-                            <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-                          </button>
+                          </div>
                         ) : hasMethods ? (
                           <div className="flex flex-wrap gap-1.5">
                             {methods.map((m) => (
                               <Badge key={m} variant="neutral">
-                                {m}
+                                {METHOD_LABELS[m]}
                               </Badge>
                             ))}
                           </div>
@@ -639,7 +717,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="min-w-48" align="end" sideOffset={2}>
                               {canConfigureEnrollment ? (
-                                <DropdownMenuItem onClick={() => setProfileToConfigure(p)}>
+                                <DropdownMenuItem onClick={() => openEnrollment(p)}>
                                   <PencilIcon />
                                   Configure Enrollment
                                 </DropdownMenuItem>
@@ -682,7 +760,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                 <span tabIndex={0}>
                   <Button
                     variant="outline"
-                    onClick={() => handlePopUpOpen("policy")}
+                    onClick={handleCreatePolicy}
                     isDisabled={!canManagePolicies}
                   >
                     <FontAwesomeIcon icon={faPlus} />
@@ -797,6 +875,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
       />
+      <UpgradePlanModal
+        paywallKey="cert-manager.application-settings"
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { text: string })?.text}
+      />
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="delete"
@@ -830,7 +914,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           if (!open) setProfilesToAttach([]);
         }}
       >
-        <DialogContent className="max-w-md overflow-visible">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Attach Profiles</DialogTitle>
             <DialogDescription>
@@ -841,10 +925,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <FilterableSelect
               isMulti
               value={profilesToAttach}
-              onChange={(val) =>
-                setProfilesToAttach((val ?? []) as { value: string; label: string }[])
-              }
+              onChange={(val) => setProfilesToAttach((val ?? []) as TProfileOption[])}
               options={availableProfiles}
+              components={{ MenuList: ProfileMenuList }}
               placeholder="Select profiles..."
             />
           </div>
@@ -875,13 +958,39 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         onDeleteApproved={handleDetach}
       />
 
+      <CreateProfileModal
+        isOpen={isCreateProfileOpen}
+        onClose={() => setIsCreateProfileOpen(false)}
+        onComplete={(createdProfile) => {
+          setIsCreateProfileOpen(false);
+          // Created from inside the attach dialog: add it to the pending selection so it is
+          // attached alongside whatever else was picked. Created straight from the card, there is
+          // no selection to submit, so attach it now.
+          if (isAttachOpen) {
+            setProfilesToAttach((prev) => [
+              ...prev,
+              { value: createdProfile.id, label: createdProfile.slug }
+            ]);
+            return;
+          }
+          attachMutation.mutate({
+            applicationId: application.id,
+            profileIds: [createdProfile.id]
+          });
+        }}
+      />
+
       <ConfigureEnrollmentModal
         isOpen={Boolean(profileToConfigure)}
         onOpenChange={(open) => {
-          if (!open) setProfileToConfigure(null);
+          if (!open) {
+            setProfileToConfigure(null);
+            setEnrollmentMethodToOpen(undefined);
+          }
         }}
         applicationId={application.id}
         profile={profileToConfigure}
+        initialMethod={enrollmentMethodToOpen}
       />
     </div>
   );

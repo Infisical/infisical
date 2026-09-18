@@ -15,7 +15,9 @@ export async function up(knex: Knex): Promise<void> {
     if (!columns.kmsProductEnabled) {
       t.boolean("kmsProductEnabled").defaultTo(true);
     }
-    if (!columns.sshProductEnabled) {
+    // "in" check: the sshProductEnabled column was dropped (with the SSH product) from the
+    // organizations schema type, so it can no longer be keyed on the typed columnInfo record
+    if (!("sshProductEnabled" in columns)) {
       t.boolean("sshProductEnabled").defaultTo(true);
     }
     if (!columns.scannerProductEnabled) {
@@ -40,7 +42,7 @@ export async function down(knex: Knex): Promise<void> {
     if (columns.kmsProductEnabled) {
       t.dropColumn("kmsProductEnabled");
     }
-    if (columns.sshProductEnabled) {
+    if ("sshProductEnabled" in columns) {
       t.dropColumn("sshProductEnabled");
     }
     if (columns.scannerProductEnabled) {

@@ -5,7 +5,8 @@ import { z } from "zod";
 import { CertificateDetailsByIDPage } from "./CertificateDetailsByIDPage";
 
 const CertificateDetailsByIDPageQuerySchema = z.object({
-  fromApplication: z.string().optional()
+  fromApplication: z.string().optional(),
+  fromHsmConnector: z.string().uuid().optional()
 });
 
 export const Route = createFileRoute(

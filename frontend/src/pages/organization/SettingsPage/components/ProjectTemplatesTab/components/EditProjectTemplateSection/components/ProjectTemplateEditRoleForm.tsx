@@ -14,6 +14,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import {
   GeneralPermissionPolicies,
+  PermissionScope,
   TPermissionAction
 } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -115,10 +116,10 @@ export const ProjectTemplateEditRoleForm = ({
   return (
     <form
       onSubmit={handleFormSubmit}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="w-full rounded-lg border border-border-control bg-surface-base p-4"
     >
       <FormProvider {...formMethods}>
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+        <div className="flex items-center justify-between border-b border-border-emphasis pb-2">
           <Button variant="ghost" disabled={isSubmitting} onClick={onGoBack}>
             <ChevronLeftIcon />
             {isDisabled ? "Back" : "Cancel"}
@@ -152,11 +153,11 @@ export const ProjectTemplateEditRoleForm = ({
             </div>
           )}
         </div>
-        <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
+        <div className="mt-2 border-b border-border-cool-subtle p-4 pt-2 first:rounded-t-md last:rounded-b-md">
           {isDisabled ? (
             <div className="flex flex-col">
               <span className="text-lg font-medium">{role?.name}</span>
-              <span className="text-mineshaft-400">{role?.slug}</span>
+              <span className="text-muted">{role?.slug}</span>
             </div>
           ) : (
             <div className="flex w-full gap-2">
@@ -170,7 +171,13 @@ export const ProjectTemplateEditRoleForm = ({
                     label="Name"
                     className="mb-0 flex-1"
                   >
-                    <Input {...field} autoFocus placeholder="Role name..." />
+                    <Input
+                      {...field}
+                      autoFocus
+                      placeholder="Role name..."
+                      autoComplete="off"
+                      name="project-template-role-name"
+                    />
                   </FormControl>
                 )}
               />
@@ -204,12 +211,16 @@ export const ProjectTemplateEditRoleForm = ({
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
                 <GeneralPermissionPolicies
                   subject={subject}
+                  subjectScope={PermissionScope.Project}
                   actions={PROJECT_PERMISSION_OBJECT[subject].actions as TPermissionAction[]}
                   title={PROJECT_PERMISSION_OBJECT[subject].title}
                   description={PROJECT_PERMISSION_OBJECT[subject].description}
                   key={`project-permission-${subject}`}
                   isDisabled={isDisabled}
                   isOpen={openPolicies.includes(subject)}
+                  onPolicyAdded={() =>
+                    setOpenPolicies((prev) => (prev.includes(subject) ? prev : [...prev, subject]))
+                  }
                   isConditional={isConditionalSubjects(subject)}
                 >
                   {renderConditionalComponents(subject, isDisabled)}

@@ -1,9 +1,11 @@
+import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -11,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   PageLoader
 } from "@app/components/v3";
 import {
@@ -20,7 +23,9 @@ import {
   useProject
 } from "@app/context";
 import {
-  PkiDiscoveryScanStatus,
+  isPkiDiscoveryScanInFlight,
+  pkiDiscoveryKeys,
+  pkiInstallationKeys,
   TPkiDiscovery,
   useDeletePkiDiscovery,
   useGetPkiDiscovery,
@@ -45,9 +50,24 @@ const Page = () => {
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId"
   });
 
+  const queryClient = useQueryClient();
   const { data: discovery, isLoading } = useGetPkiDiscovery({ discoveryId });
   const triggerScan = useTriggerPkiDiscoveryScan();
   const deleteDiscovery = useDeletePkiDiscovery();
+
+  const isScanRunning = isPkiDiscoveryScanInFlight(discovery?.lastScanStatus);
+  const wasScanRunningRef = useRef(isScanRunning);
+
+  // Once a scan finishes, refresh scan runs and installations so the final state is not stale
+  useEffect(() => {
+    if (wasScanRunningRef.current && !isScanRunning) {
+      queryClient.invalidateQueries({
+        queryKey: pkiDiscoveryKeys.scanHistoryByDiscovery(discoveryId)
+      });
+      queryClient.invalidateQueries({ queryKey: pkiInstallationKeys.list(projectId) });
+    }
+    wasScanRunningRef.current = isScanRunning;
+  }, [isScanRunning, discoveryId, projectId, queryClient]);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "editJob",
@@ -83,22 +103,19 @@ const Page = () => {
     }
   };
 
-  const isScanRunning =
-    discovery.lastScanStatus === PkiDiscoveryScanStatus.Running ||
-    discovery.lastScanStatus === PkiDiscoveryScanStatus.Pending;
-
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-          className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-        >
-          <ChevronLeftIcon size={16} />
-          Jobs
-        </Link>
+    <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
+          backLink={
+            <Link
+              to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
+              params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+            >
+              <ChevronLeftIcon size={16} />
+              Jobs
+            </Link>
+          }
           scope={ProjectType.CertificateManager}
           description="Certificate Discovery Job"
           title={
@@ -162,8 +179,13 @@ const Page = () => {
               onTriggerScan={handleTriggerScan}
               isTriggerDisabled={!discovery.isActive || isScanRunning}
               isTriggerPending={triggerScan.isPending}
+              isScanRunning={isScanRunning}
             />
-            <DiscoveryInstallationsSection discoveryId={discoveryId} projectId={projectId} />
+            <DiscoveryInstallationsSection
+              discoveryId={discoveryId}
+              projectId={projectId}
+              isScanRunning={isScanRunning}
+            />
           </div>
         </div>
       </div>

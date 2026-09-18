@@ -3,15 +3,26 @@ import { Knex } from "knex";
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -36,6 +47,18 @@ type TMembershipIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships"
+  >;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "insertOrgMembershipRevocationMarker" | "removeOrgMembershipRevocationMarkers" | "bumpIdentityRevocationVersion"
+  >;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -48,19 +71,27 @@ export const membershipIdentityServiceFactory = ({
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
-  licenseService
+  licenseService,
+  applicationMembershipCleanupService,
+  projectDAL,
+  keyStore,
+  usageMeteringService,
+  alertService,
+  identityAccessTokenService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
       orgDAL,
       permissionService,
-      identityDAL
+      identityDAL,
+      membershipIdentityDAL
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
       orgDAL,
       permissionService,
-      identityDAL
+      identityDAL,
+      projectDAL
     })
   };
 
@@ -87,6 +118,15 @@ export const membershipIdentityServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     await factory.onCreateMembershipIdentityGuard(dto);
@@ -168,9 +208,31 @@ export const membershipIdentityServiceFactory = ({
         }
       });
       await membershipRoleDAL.insertMany(roleDocs, tx);
+
+      // Re-adding an identity that was previously removed must lift the org-scoped
+      // token revocation, atomically with the membership insert.
+      if (scopeData.scope === AccessScope.Organization) {
+        await identityAccessTokenService.removeOrgMembershipRevocationMarkers({
+          identityId: dto.data.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return doc;
     });
 
+    if (scopeData.scope === AccessScope.Organization) {
+      // Post-commit, so cached membership denies re-check against the restored state.
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.data.identityId });
+    }
+
+    // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+    }
     return { membership };
   };
 
@@ -211,6 +273,15 @@ export const membershipIdentityServiceFactory = ({
       });
     }
 
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
+
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
       scope: scopeData.scope,
@@ -235,10 +306,34 @@ export const membershipIdentityServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    let shouldRevokeOrgTokens = false;
+    let shouldRestoreOrgTokens = false;
+
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      // The project advisory lock before the row lock, the order every other caller takes: a product-route
+      // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
+      const newRolesHavePermanentAdmin = data.roles.some(
+        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
+      );
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+      }
+      const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
+      if (!currentMembership) {
+        throw new BadRequestError({ message: "Identity doesn't have membership" });
+      }
+      shouldRevokeOrgTokens =
+        scopeData.scope === AccessScope.Organization && data.isActive === false && currentMembership.isActive !== false;
+      shouldRestoreOrgTokens =
+        scopeData.scope === AccessScope.Organization && data.isActive === true && currentMembership.isActive === false;
+
       const doc =
         typeof data.isActive === "undefined"
-          ? existingMembership
+          ? currentMembership
           : await membershipIdentityDAL.updateById(
               existingMembership.id,
               {
@@ -283,8 +378,29 @@ export const membershipIdentityServiceFactory = ({
         tx
       );
       const insertedRoleDocs = await membershipRoleDAL.insertMany(roleDocs, tx);
+
+      if (shouldRevokeOrgTokens) {
+        await identityAccessTokenService.insertOrgMembershipRevocationMarker({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
+      if (shouldRestoreOrgTokens) {
+        await identityAccessTokenService.removeOrgMembershipRevocationMarkers({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return { ...doc, roles: insertedRoleDocs };
     });
+
+    if (shouldRevokeOrgTokens || shouldRestoreOrgTokens) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
+    }
 
     return { membership: membershipDoc };
   };
@@ -313,6 +429,14 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const performDelete = async (tx: Knex) => {
+      if (scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,
@@ -322,12 +446,73 @@ export const membershipIdentityServiceFactory = ({
       );
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipIdentityDAL.deleteById(existingMembership.id, tx);
+
+      if (scopeData.scope === AccessScope.Project) {
+        const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
+        if (projectScopeFields.scopeProjectId) {
+          await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+            {
+              projectId: projectScopeFields.scopeProjectId,
+              actorKind: ApplicationMemberKind.Identity,
+              actorId: dto.selector.identityId
+            },
+            tx
+          );
+        }
+      }
+
+      // Durable deny atomic with the org-membership removal.
+      if (scopeData.scope === AccessScope.Organization) {
+        await identityAccessTokenService.insertOrgMembershipRevocationMarker({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
+      await alertService.deleteAlertsForResource(
+        {
+          orgId: scopeData.orgId,
+          ...(scopeData.scope === AccessScope.Project ? { projectId: scopeData.projectId } : {}),
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: dto.selector.identityId
+        },
+        tx
+      );
+
       return doc;
     };
 
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipIdentityDAL.transaction(performDelete);
+
+    // The version bump must run after the delete commits. When we own the tx it
+    // has already committed here; when the caller owns externalTx we cannot know when
+    // it commits, so we return the pending bump for the caller to run post-commit.
+    const needsRevocationBump = scopeData.scope === AccessScope.Organization;
+    if (needsRevocationBump && !externalTx) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
+    }
+
+    // Removing an identity from a project drops a direct member; removing it from the org cascades its
+    // project + group memberships. Either way the secret-manager and PAM identity meters change.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+    } else {
+      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+    }
+
+    if (needsRevocationBump && externalTx) {
+      return {
+        membership: membershipDoc,
+        revocationBumpPending: { identityId: dto.selector.identityId }
+      };
+    }
     return { membership: membershipDoc };
   };
 
@@ -353,7 +538,17 @@ export const membershipIdentityServiceFactory = ({
           : undefined
       }
     });
-    return { ...memberships, data: memberships.data.filter((el) => listFilter({ identityId: el.identity.id })) };
+    const filtered = memberships.data.filter((el) => listFilter({ identityId: el.identity.id }));
+    const withLockouts = await Promise.all(
+      filtered.map(async (el) => ({
+        ...el,
+        identity: {
+          ...el.identity,
+          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(el.identity.id, keyStore)
+        }
+      }))
+    );
+    return { ...memberships, data: withLockouts };
   };
 
   const getMembershipByIdentityId = async (dto: TGetMembershipIdentityByIdentityIdDTO) => {

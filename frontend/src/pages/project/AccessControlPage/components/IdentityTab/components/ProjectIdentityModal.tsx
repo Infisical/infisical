@@ -1,12 +1,10 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
 import {
   Button,
   Field,
@@ -14,29 +12,18 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
-import {
-  TProjectIdentity,
-  useCreateProjectIdentity,
-  useGetProjectRoles,
-  useUpdateProjectIdentity,
-  useUpdateProjectIdentityMembership
-} from "@app/hooks/api";
-import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
   hasDeleteProtection: z.boolean(),
-  role: z.object({ slug: z.string(), name: z.string() }).optional(),
   metadata: z
     .object({
       key: z.string().trim().min(1),
@@ -50,28 +37,14 @@ export type FormData = z.infer<typeof schema>;
 
 type ContentProps = {
   onClose: () => void;
-  identity?: TProjectIdentity;
+  identity: TProjectIdentity;
 };
 
 export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
-  const navigate = useNavigate();
-
   const { currentProject } = useProject();
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const accentVariant = currentProject.type === ProjectType.AgentVault ? "av" : "project";
 
-  const isUpdate = Boolean(identity);
-
-  // Roles list is sourced product-aware (cert-manager filters to Admin + Member server-side).
-  const { data: roles } = useGetProjectRoles(currentProject.id, currentProject.type);
-  // For cert-manager, default to Member instead of No Access (No Access is filtered out server-side).
-  const defaultRole = isCertManager
-    ? { slug: ProjectMembershipRole.Member, name: "Member" }
-    : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
-
-  const { mutateAsync: createMutateAsync } = useCreateProjectIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
-  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
-  const { mutateAsync: updateMembershipMutateAsync } = useUpdateProjectIdentityMembership();
 
   const {
     control,
@@ -83,8 +56,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
     defaultValues: {
       name: identity?.name ?? "",
       hasDeleteProtection: identity?.hasDeleteProtection ?? true,
-      metadata: identity?.metadata ?? [],
-      role: isUpdate ? undefined : defaultRole
+      metadata: identity?.metadata ?? []
     }
   });
 
@@ -93,78 +65,26 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
     name: "metadata"
   });
 
-  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
+  const onFormSubmit = async ({ name, metadata, hasDeleteProtection }: FormData) => {
     try {
-      if (identity) {
-        // update
-        await updateMutateAsync({
-          identityId: identity.id,
-          name,
-          hasDeleteProtection,
-          projectId: currentProject.id,
-          metadata
-        });
+      await updateMutateAsync({
+        identityId: identity.id,
+        name,
+        hasDeleteProtection,
+        projectId: currentProject.id,
+        metadata
+      });
 
-        onClose();
-      } else {
-        const created = await createMutateAsync({
-          name,
-          projectId: currentProject.id,
-          hasDeleteProtection,
-          metadata
-        });
-        const createdId = created.id;
-
-        if (role) {
-          await updateMembershipMutateAsync({
-            roles: [{ role: role.slug }],
-            identityId: createdId,
-            projectId: currentProject.id,
-            projectType: currentProject.type
-          });
-        }
-
-        await addMutateAsync({
-          projectId: currentProject.id,
-          identityId: createdId,
-          clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTTL: 2592000,
-          accessTokenMaxTTL: 2592000,
-          accessTokenNumUsesLimit: 0,
-          accessTokenPeriod: 0,
-          lockoutEnabled: true,
-          lockoutThreshold: 3,
-          lockoutDurationSeconds: 300,
-          lockoutCounterResetSeconds: 30
-        });
-
-        onClose();
-        navigate({
-          to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId`,
-          params: {
-            identityId: createdId
-          }
-        });
-      }
+      onClose();
 
       createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} machine identity`,
+        text: "Successfully updated machine identity",
         type: "success"
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${isUpdate ? "update" : "create"} machine identity`;
-
-      createNotification({
-        text,
-        type: "error"
-      });
+    } catch {
+      // Error is handled by the mutation's onError handler
     }
   };
 
@@ -178,44 +98,27 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <Input {...field} autoFocus placeholder="Machine 1" isError={Boolean(error)} />
+              <Input
+                {...field}
+                autoFocus
+                placeholder="Machine 1"
+                isError={Boolean(error)}
+                autoComplete="off"
+                name="project-identity-name"
+              />
             </FieldContent>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>
         )}
       />
-      {!isUpdate && (
-        <Controller
-          control={control}
-          name="role"
-          render={({ field: { onChange, value }, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel>Role</FieldLabel>
-              <FieldContent>
-                <FilterableSelect
-                  placeholder="Select role..."
-                  options={roles}
-                  onChange={onChange}
-                  value={value}
-                  getOptionValue={(option) => option.slug}
-                  getOptionLabel={(option) => option.name}
-                  components={{ Option: RoleOption }}
-                  isError={Boolean(error)}
-                />
-              </FieldContent>
-              {error && <FieldError>{error.message}</FieldError>}
-            </Field>
-          )}
-        />
-      )}
       <Controller
         control={control}
         name="hasDeleteProtection"
         render={({ field: { onChange, value } }) => (
           <Field orientation="horizontal">
-            <Switch
+            <Toggle
               id="delete-protection-enabled"
-              variant="project"
+              variant={accentVariant}
               checked={value}
               onCheckedChange={onChange}
             />
@@ -302,8 +205,13 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
-          {isUpdate ? "Update" : "Create"}
+        <Button
+          type="submit"
+          variant={accentVariant}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          Update
         </Button>
       </div>
     </form>

@@ -10,7 +10,6 @@ const (
 	RoleViewer                   = "viewer"
 	RoleNoAccess                 = "no-access"
 	RoleCustom                   = "custom"
-	RoleSshHostBootstrapper      = "ssh-host-bootstrapper"
 	RoleKmsCryptographicOperator = "cryptographic-operator"
 )
 
@@ -214,49 +213,6 @@ var (
 	WebhooksActionDelete = gocasl.DefineAction[WebhooksSubject]("delete")
 )
 
-// SSH actions
-
-// SshCertificateAuthorities actions
-var (
-	SshCaActionRead   = gocasl.DefineAction[SshCertificateAuthoritiesSubject]("read")
-	SshCaActionCreate = gocasl.DefineAction[SshCertificateAuthoritiesSubject]("create")
-	SshCaActionEdit   = gocasl.DefineAction[SshCertificateAuthoritiesSubject]("edit")
-	SshCaActionDelete = gocasl.DefineAction[SshCertificateAuthoritiesSubject]("delete")
-)
-
-// SshCertificates actions
-var (
-	SshCertActionRead   = gocasl.DefineAction[SshCertificatesSubject]("read")
-	SshCertActionCreate = gocasl.DefineAction[SshCertificatesSubject]("create")
-	SshCertActionEdit   = gocasl.DefineAction[SshCertificatesSubject]("edit")
-	SshCertActionDelete = gocasl.DefineAction[SshCertificatesSubject]("delete")
-)
-
-// SshCertificateTemplates actions
-var (
-	SshCertTemplateActionRead   = gocasl.DefineAction[SshCertificateTemplatesSubject]("read")
-	SshCertTemplateActionCreate = gocasl.DefineAction[SshCertificateTemplatesSubject]("create")
-	SshCertTemplateActionEdit   = gocasl.DefineAction[SshCertificateTemplatesSubject]("edit")
-	SshCertTemplateActionDelete = gocasl.DefineAction[SshCertificateTemplatesSubject]("delete")
-)
-
-// SshHost actions (ProjectPermissionSshHostActions)
-var (
-	SshHostActionRead          = gocasl.DefineAction[SshHostSubject]("read")
-	SshHostActionCreate        = gocasl.DefineAction[SshHostSubject]("create")
-	SshHostActionEdit          = gocasl.DefineAction[SshHostSubject]("edit")
-	SshHostActionDelete        = gocasl.DefineAction[SshHostSubject]("delete")
-	SshHostActionIssueHostCert = gocasl.DefineAction[SshHostSubject]("issue-host-cert")
-)
-
-// SshHostGroups actions
-var (
-	SshHostGroupsActionRead   = gocasl.DefineAction[SshHostGroupsSubject]("read")
-	SshHostGroupsActionCreate = gocasl.DefineAction[SshHostGroupsSubject]("create")
-	SshHostGroupsActionEdit   = gocasl.DefineAction[SshHostGroupsSubject]("edit")
-	SshHostGroupsActionDelete = gocasl.DefineAction[SshHostGroupsSubject]("delete")
-)
-
 // CertificateAuthority actions (ProjectPermissionCertificateAuthorityActions)
 var (
 	CaActionRead             = gocasl.DefineAction[CertificateAuthoritySubject]("read")
@@ -415,31 +371,6 @@ var (
 	AppConnectionActionDelete            = gocasl.DefineAction[AppConnectionSubject]("delete-app-connections")
 	AppConnectionActionConnect           = gocasl.DefineAction[AppConnectionSubject]("connect-app-connections")
 	AppConnectionActionRotateCredentials = gocasl.DefineAction[AppConnectionSubject]("rotate-credentials")
-)
-
-// McpEndpoint actions (ProjectPermissionMcpEndpointActions)
-var (
-	McpEndpointActionRead    = gocasl.DefineAction[McpEndpointSubject]("read")
-	McpEndpointActionCreate  = gocasl.DefineAction[McpEndpointSubject]("create")
-	McpEndpointActionEdit    = gocasl.DefineAction[McpEndpointSubject]("edit")
-	McpEndpointActionDelete  = gocasl.DefineAction[McpEndpointSubject]("delete")
-	McpEndpointActionConnect = gocasl.DefineAction[McpEndpointSubject]("connect")
-)
-
-// McpServers actions
-var (
-	McpServersActionRead   = gocasl.DefineAction[McpServersSubject]("read")
-	McpServersActionCreate = gocasl.DefineAction[McpServersSubject]("create")
-	McpServersActionEdit   = gocasl.DefineAction[McpServersSubject]("edit")
-	McpServersActionDelete = gocasl.DefineAction[McpServersSubject]("delete")
-)
-
-// McpActivityLogs actions
-var (
-	McpActivityLogsActionRead   = gocasl.DefineAction[McpActivityLogsSubject]("read")
-	McpActivityLogsActionCreate = gocasl.DefineAction[McpActivityLogsSubject]("create")
-	McpActivityLogsActionEdit   = gocasl.DefineAction[McpActivityLogsSubject]("edit")
-	McpActivityLogsActionDelete = gocasl.DefineAction[McpActivityLogsSubject]("delete")
 )
 
 // PamFolders actions

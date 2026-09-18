@@ -1,34 +1,65 @@
-import { useState } from "react";
-import {
-  faCheck,
-  faCheckCircle,
-  faChevronDown,
-  faCodeBranch,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
-import { GitMergeIcon, XIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import {
+  BanIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ClipboardCheckIcon,
+  EllipsisIcon,
+  EyeIcon,
+  GitMergeIcon,
+  GitPullRequestIcon,
+  HourglassIcon,
+  LucideIcon,
+  PlusIcon,
+  SearchIcon
+} from "lucide-react";
 
 import {
+  Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Combobox,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
-  Input,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
   Skeleton,
-  Tooltip
-} from "@app/components/v2";
-import { Badge, DocumentationLinkBadge } from "@app/components/v3";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  type TableSortDirection,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -42,10 +73,14 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  useGetSecretApprovalPolicies,
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import { SecretApprovalRequestOrderBy } from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
 
 import {
@@ -53,8 +88,20 @@ import {
   SecretApprovalRequestChanges
 } from "./components/SecretApprovalRequestChanges";
 
-export const SecretApprovalRequest = () => {
+enum ChangeRequestOrderBy {
+  Environment = SecretApprovalRequestOrderBy.Environment,
+  SecretPath = SecretApprovalRequestOrderBy.SecretPath,
+  Author = SecretApprovalRequestOrderBy.Author,
+  OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
+}
+
+type Props = {
+  onConfigurePolicies: () => void;
+};
+
+export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const { currentProject, projectId } = useProject();
+  const queryClient = useQueryClient();
 
   const navigate = useNavigate({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.path
@@ -64,6 +111,10 @@ export const SecretApprovalRequest = () => {
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
+  const [sort, setSort] = useState<{
+    column: ChangeRequestOrderBy;
+    direction: Exclude<TableSortDirection, "none">;
+  } | null>(null);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -95,7 +146,9 @@ export const SecretApprovalRequest = () => {
     committer: committerFilter,
     search: debouncedSearchFilter,
     limit,
-    offset
+    offset,
+    orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
+    orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
 
   const totalApprovalCount = data?.totalCount ?? 0;
@@ -107,276 +160,473 @@ export const SecretApprovalRequest = () => {
     setPage
   });
 
-  const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
-    useGetSecretApprovalRequestCount({ projectId });
+  const { data: secretApprovalRequestCount } = useGetSecretApprovalRequestCount({ projectId });
   const { user: userSession } = useUser();
   const search = useSearch({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.id
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
-  const { requestId } = search;
-  const isSecretApprovalScreen = Boolean(requestId);
+  const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
 
-  const handleGoBackSecretRequestDetail = () => {
-    navigate({ search: { requestId: "" } });
+  // Change requests are only ever created by change policies. When the project
+  // has none, point users at the Policies tab so the empty state is actionable.
+  // Listing policies requires Read, so a role with Create but not Read cannot
+  // check whether any exist; it can still create one, so always show the CTA.
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
+  const { data: secretPolicies, isSuccess: arePoliciesLoaded } = useGetSecretApprovalPolicies({
+    projectId,
+    options: { enabled: canCreatePolicies && canReadPolicies }
+  });
+  const showConfigurePoliciesCta =
+    canCreatePolicies && (!canReadPolicies || (arePoliciesLoaded && secretPolicies?.length === 0));
+
+  const { requestId } = search;
+  const handleCloseRequestDetail = () => {
+    navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
     refetch();
   };
 
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
-
   const isFiltered = Boolean(searchFilter || envFilter || committerFilter);
 
-  return isSecretApprovalScreen ? (
-    <SecretApprovalRequestChanges
-      approvalRequestId={requestId || ""}
-      onGoBack={handleGoBackSecretRequestDetail}
-    />
-  ) : (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Change Requests</p>
+  const environmentNamesBySlug = useMemo(
+    () =>
+      (currentProject?.environments ?? []).reduce<Record<string, string>>(
+        (prev, curr) => ({ ...prev, [curr.slug]: curr.name }),
+        {}
+      ),
+    [currentProject?.environments]
+  );
+  const environmentOptions = (currentProject?.environments ?? []).map((environment) => ({
+    value: environment.slug,
+    label: environment.name
+  }));
+  const authorOptions = (members ?? []).map(({ user }) => ({
+    value: user.id,
+    label: user.username
+  }));
+
+  const getSortDirection = (column: ChangeRequestOrderBy): TableSortDirection =>
+    sort?.column === column ? sort.direction : "none";
+
+  const handleSort = (column: ChangeRequestOrderBy, direction: TableSortDirection) => {
+    setSort(direction === "none" ? null : { column, direction });
+    setPage(1);
+  };
+
+  const getSortIconClassName = (column: ChangeRequestOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
+
+  useEffect(() => {
+    if (
+      envFilter &&
+      currentProject?.environments &&
+      !currentProject.environments.some(({ slug }) => slug === envFilter)
+    ) {
+      setEnvFilter(undefined);
+    }
+  }, [currentProject?.environments, envFilter]);
+
+  useEffect(() => {
+    if (
+      committerFilter &&
+      !areMembersPending &&
+      members &&
+      !members.some(({ user }) => user.id === committerFilter)
+    ) {
+      setCommitterFilter(undefined);
+    }
+  }, [areMembersPending, committerFilter, members]);
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Change Requests
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pr-workflows" />
-          </div>
-          <p className="text-sm text-bunker-300">Review pending and closed change requests</p>
-        </div>
-      </div>
-      <Input
-        value={searchFilter}
-        onChange={(e) => setSearchFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search change requests by author, environment, path, policy path or secret name..."
-        className="flex-1"
-        containerClassName="mb-4"
-      />
-      <div className="flex items-center space-x-8 rounded-t-md border-x border-t border-mineshaft-600 bg-mineshaft-800 px-8 py-3 text-sm">
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setStatusFilter("open")}
-          onKeyDown={(evt) => {
-            if (evt.key === "Enter") setStatusFilter("open");
-          }}
-          className={twMerge(
-            "font-medium",
-            statusFilter === "close" && "text-gray-500 duration-100 hover:text-gray-400"
-          )}
-        >
-          <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-          {isSecretApprovalReqCountSuccess && secretApprovalRequestCount?.open} Open
-        </div>
-        <div
-          className={twMerge(
-            "font-medium",
-            statusFilter === "open" && "text-gray-500 duration-100 hover:text-gray-400"
-          )}
-          role="button"
-          tabIndex={0}
-          onClick={() => setStatusFilter("close")}
-          onKeyDown={(evt) => {
-            if (evt.key === "Enter") setStatusFilter("close");
-          }}
-        >
-          <FontAwesomeIcon icon={faCheck} className="mr-2" />
-          {isSecretApprovalReqCountSuccess && secretApprovalRequestCount.closed} Closed
-        </div>
-        <div className="flex grow justify-end space-x-8">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="plain"
-                colorSchema="secondary"
-                className={envFilter ? "text-white" : "text-bunker-300"}
-                rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
-              >
-                Environments
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              sideOffset={1}
-              className="max-h-80 thin-scrollbar overflow-y-auto"
-            >
-              <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                Select an Environment
-              </DropdownMenuLabel>
-              {currentProject?.environments.map(({ slug, name }) => (
-                <DropdownMenuItem
-                  onClick={() => setEnvFilter((state) => (state === slug ? undefined : slug))}
-                  key={`request-filter-${slug}`}
-                  icon={envFilter === slug && <FontAwesomeIcon icon={faCheckCircle} />}
-                  iconPos="right"
-                >
-                  {name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {!!permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <Button
-                  variant="plain"
-                  colorSchema="secondary"
-                  className={committerFilter ? "text-white" : "text-bunker-300"}
-                  rightIcon={<FontAwesomeIcon icon={faChevronDown} size="sm" className="ml-2" />}
-                >
-                  Author
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={1}
-                className="max-h-80 thin-scrollbar overflow-y-auto"
-              >
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Select an Author
-                </DropdownMenuLabel>
-                {members?.map(({ user, id }) => (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      setCommitterFilter((state) => (state === user.id ? undefined : user.id))
-                    }
-                    key={`request-filter-member-${id}`}
-                    icon={committerFilter === user.id && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    {user.username}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      </div>
-      <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
-        {isRequestListEmpty && !isFiltered && (
-          <div className="py-12">
-            <EmptyState
-              title={`No ${statusFilter === "open" ? "Open" : "Closed"} Change Requests`}
-            />
-          </div>
-        )}
-        {secretApprovalRequests.map((secretApproval) => {
-          const {
-            id: reqId,
-            commits,
-            createdAt,
-            reviewers,
-            status,
-            committerUser,
-            hasMerged,
-            updatedAt,
-            policy
-          } = secretApproval;
-
-          const isMergable =
-            reviewers.filter(({ status: reviewStatus }) => reviewStatus === ApprovalStatus.APPROVED)
-              .length >= policy.approvals;
-
-          const requiresUserReview =
-            policy.approvers.find((approver) => approver.userId === userSession.id) &&
-            !reviewers.find(({ userId }) => userId === userSession.id);
-
-          return (
-            <div
-              key={reqId}
-              className="flex border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate({ search: { requestId: secretApproval.id } })}
-              onKeyDown={(evt) => {
-                if (evt.key === "Enter") navigate({ search: { requestId: secretApproval.id } });
+          </CardTitle>
+          <CardDescription>Review pending and closed change requests</CardDescription>
+        </CardHeader>
+        <CardContent className="@container flex flex-col">
+          <div className="mb-4 flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+            <InputGroup className="min-w-48 flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder="Search by author, environment, path or secret..."
+              />
+            </InputGroup>
+            <Tabs
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value as "open" | "close");
+                // Refetch both the lists and the open/closed counts on toggle so
+                // the table rows and the tab-label counts reflect changes made
+                // elsewhere. The target list is inactive here and the count query
+                // only polls every 30s, so type: "all" forces both immediately.
+                queryClient.refetchQueries({
+                  queryKey: secretApprovalRequestKeys.listAllForProject({ projectId }),
+                  type: "all"
+                });
+                queryClient.refetchQueries({
+                  queryKey: secretApprovalRequestKeys.count({ projectId }),
+                  type: "all"
+                });
               }}
             >
-              <div className="flex flex-col">
-                <div className="mb-1 text-sm">
-                  <FontAwesomeIcon
-                    icon={faCodeBranch}
-                    size="sm"
-                    className="mr-1.5 text-mineshaft-300"
-                  />
-                  {secretApproval.isReplicated
-                    ? `${commits.length} secret pending import`
-                    : generateCommitText(commits)}
-                  <span className="text-xs text-bunker-300"> #{secretApproval.slug}</span>
-                </div>
-                <span className="text-xs leading-3 text-gray-500">
-                  Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                  {committerUser ? (
-                    <>
-                      {committerUser?.firstName || ""} {committerUser?.lastName || ""} (
-                      {committerUser?.email})
-                    </>
-                  ) : (
-                    <span className="text-gray-600">Deleted User</span>
-                  )}
-                  {status === "open" &&
-                    // eslint-disable-next-line no-nested-ternary
-                    (isMergable
-                      ? " - Pending merge"
-                      : requiresUserReview
-                        ? " - Review required"
-                        : " - Review in progress")}
-                </span>
-              </div>
-              {status === "close" && (
-                <Tooltip content={updatedAt ? format(new Date(updatedAt), "M/dd/yyyy h:mm a") : ""}>
-                  <div className="my-auto ml-auto">
-                    <Badge variant={hasMerged ? "success" : "danger"}>
-                      {hasMerged ? (
-                        <>
-                          <GitMergeIcon />
-                          Merged
-                        </>
-                      ) : (
-                        <>
-                          <XIcon />
-                          Rejected
-                        </>
-                      )}
-                    </Badge>
-                  </div>
-                </Tooltip>
-              )}
+              <TabsList variant="filled">
+                <TabsTrigger value="open">
+                  <GitPullRequestIcon className="size-3.5" />
+                  Open {secretApprovalRequestCount?.open ?? 0}
+                </TabsTrigger>
+                <TabsTrigger value="close">
+                  <CheckIcon className="size-3.5" />
+                  Closed {secretApprovalRequestCount?.closed ?? 0}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="w-42 shrink-0">
+              <Combobox
+                aria-label="Filter environments"
+                className="w-full"
+                options={environmentOptions}
+                value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+                onValueChange={(option) => setEnvFilter(option.value)}
+                onClear={() => setEnvFilter(undefined)}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+                clearAriaLabel="Clear environment filter"
+                searchPlaceholder="Filter environments"
+                searchAriaLabel="Filter environments"
+                placeholder="All Environments"
+              />
             </div>
-          );
-        })}
-        {Boolean(!secretApprovalRequests.length && isFiltered && !isApprovalRequestLoading) && (
-          <div className="py-12">
-            <EmptyState title="No Requests Match Filters" icon={faSearch} />
-          </div>
-        )}
-        {Boolean(totalApprovalCount) && (
-          <Pagination
-            className="border-none"
-            count={totalApprovalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {isApprovalRequestLoading && (
-          <div>
-            {Array.apply(0, Array(3)).map((_x, index) => (
-              <div
-                key={`approval-request-loading-${index + 1}`}
-                className="flex flex-col px-8 py-4 hover:bg-mineshaft-700"
-              >
-                <div className="mb-2 flex items-center">
-                  <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-                  <Skeleton className="w-1/4 bg-mineshaft-600" />
-                </div>
-                <Skeleton className="w-1/2 bg-mineshaft-600" />
+            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+              <div className="w-42 shrink-0">
+                <Combobox
+                  aria-label="Filter authors"
+                  className="w-full"
+                  options={authorOptions}
+                  value={authorOptions.find((option) => option.value === committerFilter) ?? null}
+                  onValueChange={(option) => setCommitterFilter(option.value)}
+                  onClear={() => setCommitterFilter(undefined)}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  clearAriaLabel="Clear author filter"
+                  searchPlaceholder="Filter authors"
+                  searchAriaLabel="Filter authors"
+                  placeholder="All Authors"
+                />
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
-    </div>
+          {isRequestListEmpty && !isFiltered && (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
+                  No {statusFilter === "open" ? "Open" : "Closed"} Change Requests
+                </EmptyTitle>
+                <EmptyDescription>
+                  {statusFilter === "open"
+                    ? "Change requests awaiting review will appear here."
+                    : "Merged and rejected change requests will appear here."}
+                </EmptyDescription>
+              </EmptyHeader>
+              {showConfigurePoliciesCta && (
+                <EmptyContent>
+                  <Button variant="project" size="sm" onClick={onConfigurePolicies}>
+                    <PlusIcon />
+                    Configure Policy
+                  </Button>
+                </EmptyContent>
+              )}
+            </Empty>
+          )}
+          {Boolean(!secretApprovalRequests.length && isFiltered && !isApprovalRequestLoading) && (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No Requests Match Filters</EmptyTitle>
+                <EmptyDescription>
+                  No change requests match your current search or filters.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+          {(isApprovalRequestLoading || !!secretApprovalRequests.length) && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Change</TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Environment)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.Environment, direction)
+                    }
+                  >
+                    Environment
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Environment)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.SecretPath)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.SecretPath, direction)
+                    }
+                  >
+                    Secret Path
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.SecretPath)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Author)}
+                    onSortChange={(direction) => handleSort(ChangeRequestOrderBy.Author, direction)}
+                  >
+                    Author
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Author)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.OpenedAt)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.OpenedAt, direction)
+                    }
+                  >
+                    Opened
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.OpenedAt)}
+                    />
+                  </TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isApprovalRequestLoading &&
+                  Array.from({ length: 3 }).map((_, idx) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`change-request-skeleton-${idx}`}>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                      <TableCell variant="action">
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {secretApprovalRequests.map((secretApproval) => {
+                  const {
+                    id: reqId,
+                    commits,
+                    createdAt,
+                    reviewers,
+                    status,
+                    committerUser,
+                    committerUserId,
+                    committerIdentity,
+                    hasMerged,
+                    updatedAt,
+                    policy,
+                    environment,
+                    isReplicated
+                  } = secretApproval;
+
+                  const isMergable =
+                    reviewers.filter(
+                      ({ status: reviewStatus }) => reviewStatus === ApprovalStatus.APPROVED
+                    ).length >= policy.approvals;
+
+                  const requiresUserReview =
+                    policy.approvers.find((approver) => approver.userId === userSession.id) &&
+                    !reviewers.find(({ userId }) => userId === userSession.id);
+
+                  const environmentDisplayName = environmentNamesBySlug[environment] ?? environment;
+                  const committerName = committerUser
+                    ? [committerUser.firstName, committerUser.lastName].filter(Boolean).join(" ") ||
+                      committerUser.email
+                    : (committerIdentity?.name ?? null);
+
+                  let statusDisplay: {
+                    label: string;
+                    type: "success" | "danger" | "warning" | "info";
+                    icon: LucideIcon;
+                    tooltipContent?: string;
+                  };
+
+                  if (status === "close") {
+                    const closedAt = updatedAt
+                      ? format(new Date(updatedAt), "M/d/yyyy h:mm aa")
+                      : undefined;
+                    statusDisplay = hasMerged
+                      ? {
+                          label: "Merged",
+                          type: "success",
+                          icon: GitMergeIcon,
+                          tooltipContent: closedAt
+                        }
+                      : {
+                          label: "Rejected",
+                          type: "danger",
+                          icon: BanIcon,
+                          tooltipContent: closedAt
+                        };
+                  } else if (requiresUserReview) {
+                    statusDisplay = {
+                      label: "Review Required",
+                      type: "warning",
+                      icon: ClipboardCheckIcon
+                    };
+                  } else if (isMergable) {
+                    statusDisplay = { label: "Pending Merge", type: "info", icon: GitMergeIcon };
+                  } else {
+                    statusDisplay = {
+                      label: "Review in Progress",
+                      type: "warning",
+                      icon: HourglassIcon
+                    };
+                  }
+
+                  const StatusIcon = statusDisplay.icon;
+
+                  return (
+                    <TableRow
+                      key={reqId}
+                      tabIndex={0}
+                      onClick={() =>
+                        navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
+                      }
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter")
+                          navigate({ search: (prev) => ({ ...prev, requestId: reqId }) });
+                      }}
+                    >
+                      <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
+                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell title={policy.secretPath}>{policy.secretPath}</TableCell>
+                      <TableCell>
+                        {committerUser || committerIdentity ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-foreground">{committerName}</span>
+                            {committerUser && committerUserId === userSession.id && (
+                              <Badge variant="neutral">You</Badge>
+                            )}
+                            {committerIdentity && <Badge variant="neutral">Machine</Badge>}
+                          </div>
+                        ) : (
+                          <span className="text-muted">Deleted User</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>{formatDistance(new Date(createdAt), new Date())} ago</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {format(new Date(createdAt), "M/d/yyyy h:mm aa")}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        {statusDisplay.tooltipContent ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant={statusDisplay.type}>
+                                <StatusIcon />
+                                <span className="whitespace-nowrap">{statusDisplay.label}</span>
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>{statusDisplay.tooltipContent}</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Badge variant={statusDisplay.type}>
+                            <StatusIcon />
+                            <span className="whitespace-nowrap">{statusDisplay.label}</span>
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        variant="action"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton variant="ghost" size="xs" aria-label="Request actions">
+                              <EllipsisIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
+                              }
+                            >
+                              <EyeIcon />
+                              View Request
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+          {Boolean(totalApprovalCount) && (
+            <Pagination
+              count={totalApprovalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </CardContent>
+      </Card>
+      <SecretApprovalRequestChanges
+        approvalRequestId={requestId || ""}
+        isOpen={Boolean(requestId)}
+        onOpenChange={(open) => {
+          if (!open) handleCloseRequestDetail();
+        }}
+      />
+    </>
   );
 };

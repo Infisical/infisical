@@ -3,6 +3,7 @@ import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Code,
   Field,
   FieldContent,
   FieldError,
@@ -35,10 +36,33 @@ export const AwsParameterStoreSyncFields = () => {
         name="destinationConfig.region"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Region</FieldLabel>
+            <FieldLabel
+              id="secret-sync-aws-parameter-store-region-label"
+              htmlFor="secret-sync-aws-parameter-store-region"
+            >
+              Region
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  If the app connection being used has a custom STS endpoint configured, the
+                  selected region must match the STS region configured on the app connection.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FieldContent>
-              <AwsRegionSelect value={value} onChange={onChange} />
-              <FieldError errors={[error]} />
+              <AwsRegionSelect
+                id="secret-sync-aws-parameter-store-region"
+                value={value}
+                onChange={onChange}
+                isError={Boolean(error)}
+                aria-labelledby="secret-sync-aws-parameter-store-region-label"
+                aria-describedby={
+                  error ? "secret-sync-aws-parameter-store-region-error" : undefined
+                }
+              />
+              <FieldError id="secret-sync-aws-parameter-store-region-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -57,17 +81,17 @@ export const AwsParameterStoreSyncFields = () => {
                 <TooltipContent className="max-w-lg">
                   The path is required and will be prepended to the key schema. For example, if you
                   have a path of{" "}
-                  <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                  <Code className="bg-surface-active px-0.5 py-px text-sm text-label">
                     /demo/path/
-                  </code>{" "}
+                  </Code>{" "}
                   and a key schema of{" "}
-                  <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                  <Code className="bg-surface-active px-0.5 py-px text-sm text-label">
                     INFISICAL_{"{{secretKey}}"}
-                  </code>
+                  </Code>
                   , then the result will be{" "}
-                  <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                  <Code className="bg-surface-active px-0.5 py-px text-sm text-label">
                     /demo/path/INFISICAL_{"{{secretKey}}"}
-                  </code>
+                  </Code>
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>

@@ -14,16 +14,17 @@ import {
 
 const bitbucketConnectionKeys = {
   all: [...appConnectionKeys.all, "bitbucket"] as const,
-  listRepos: (connectionId: string, workspaceSlug: string) =>
-    [...bitbucketConnectionKeys.all, "repos", connectionId, workspaceSlug] as const,
-  listWorkspaces: (connectionId: string) =>
-    [...bitbucketConnectionKeys.all, "workspaces", connectionId] as const,
+  listRepos: (connectionId: string, workspaceSlug: string, search?: string) =>
+    [...bitbucketConnectionKeys.all, "repos", connectionId, workspaceSlug, { search }] as const,
+  listWorkspaces: (connectionId: string, search?: string) =>
+    [...bitbucketConnectionKeys.all, "workspaces", connectionId, { search }] as const,
   listEnvironments: (connectionId: string, workspaceSlug: string, repoSlug: string) =>
     [...bitbucketConnectionKeys.all, "environments", connectionId, workspaceSlug, repoSlug] as const
 };
 
 export const useBitbucketConnectionListWorkspaces = (
   connectionId: string,
+  search?: string,
   options?: Omit<
     UseQueryOptions<
       TBitbucketWorkspace[],
@@ -35,10 +36,15 @@ export const useBitbucketConnectionListWorkspaces = (
   >
 ) => {
   return useQuery({
-    queryKey: bitbucketConnectionKeys.listWorkspaces(connectionId),
+    queryKey: bitbucketConnectionKeys.listWorkspaces(connectionId, search),
     queryFn: async () => {
+      const params = new URLSearchParams();
+      if (search) {
+        params.set("search", search);
+      }
+      const query = params.toString();
       const { data } = await apiRequest.get<TBitbucketConnectionListWorkspacesResponse>(
-        `/api/v1/app-connections/bitbucket/${connectionId}/workspaces`
+        `/api/v1/app-connections/bitbucket/${connectionId}/workspaces${query ? `?${query}` : ""}`
       );
 
       return data.workspaces;
@@ -50,6 +56,7 @@ export const useBitbucketConnectionListWorkspaces = (
 export const useBitbucketConnectionListRepositories = (
   connectionId: string,
   workspaceSlug: string,
+  search?: string,
   options?: Omit<
     UseQueryOptions<
       TBitbucketRepo[],
@@ -61,10 +68,14 @@ export const useBitbucketConnectionListRepositories = (
   >
 ) => {
   return useQuery({
-    queryKey: bitbucketConnectionKeys.listRepos(connectionId, workspaceSlug),
+    queryKey: bitbucketConnectionKeys.listRepos(connectionId, workspaceSlug, search),
     queryFn: async () => {
+      const params = new URLSearchParams({ workspaceSlug });
+      if (search) {
+        params.set("search", search);
+      }
       const { data } = await apiRequest.get<TBitbucketConnectionListRepositoriesResponse>(
-        `/api/v1/app-connections/bitbucket/${connectionId}/repositories?workspaceSlug=${encodeURIComponent(workspaceSlug)}`
+        `/api/v1/app-connections/bitbucket/${connectionId}/repositories?${params.toString()}`
       );
 
       return data.repositories;

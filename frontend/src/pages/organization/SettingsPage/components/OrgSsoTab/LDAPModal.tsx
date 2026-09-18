@@ -5,7 +5,6 @@ import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Lottie } from "@app/components/v2/Lottie";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,13 +25,14 @@ import {
   FieldLabel,
   FieldTitle,
   Input,
+  Loader,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -284,7 +284,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
               </SheetTitle>
             </SheetHeader>
-            <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto px-4">
+            <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
               <FieldGroup className="mb-auto">
                 <Controller
                   control={control}
@@ -463,7 +463,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                           Enable to present a client certificate during the TLS handshake.
                         </FieldDescription>
                       </FieldContent>
-                      <Switch
+                      <Toggle
                         id="ldap-enable-mtls"
                         variant="org"
                         checked={field.value}
@@ -487,7 +487,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                             {...field}
                           />
                           <FieldError>{error?.message}</FieldError>
-                          <p className="mt-1 text-xs text-mineshaft-400">
+                          <p className="mt-1 text-xs text-muted">
                             PEM-encoded client certificate used for mutual TLS (mTLS).
                           </p>
                         </Field>
@@ -511,7 +511,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                             {...field}
                           />
                           <FieldError>{error?.message}</FieldError>
-                          <p className="mt-1 text-xs text-mineshaft-400">
+                          <p className="mt-1 text-xs text-muted">
                             PEM-encoded private key matching the Client Certificate. Stored
                             encrypted server-side and never returned to the browser after save.
                           </p>
@@ -531,7 +531,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 isDisabled={!watchUrl || !watchBindDN || !watchBindPass || testIsLoading}
               >
                 {testIsLoading ? (
-                  <Lottie icon="infisical_loading" isAutoPlay className="mr-2 h-6 w-6" />
+                  <Loader variant="brand" size="xs" className="mr-2 h-6 w-6" />
                 ) : (
                   "Test Connection"
                 )}

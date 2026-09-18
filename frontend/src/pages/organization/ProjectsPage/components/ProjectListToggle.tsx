@@ -13,7 +13,7 @@ type Props = {
 export const ProjectListToggle = ({ value, onChange }: Props) => {
   return (
     <Tabs value={value} onValueChange={(next) => onChange(next as ProjectListView)}>
-      <TabsList variant="filled">
+      <TabsList variant="filled" aria-label="Project list views">
         <TabsTrigger value={ProjectListView.MyProjects}>My Projects</TabsTrigger>
         <TabsTrigger value={ProjectListView.AllProjects}>All Projects</TabsTrigger>
       </TabsList>

@@ -1,3 +1,23 @@
+## 1.11.0 (September 17, 2026)
+Changes:
+* `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`. Helm's `default` function only substitutes on an empty value, so the non-empty `"default"` meant the template's documented fall back to the release namespace never applied. Every install that left this key alone wrote the root identity token to the `default` namespace and created the bootstrap Role and RoleBinding there, and the bootstrap Job still reported success. Fresh installs now place the secret and its RBAC in the release namespace.
+* To keep writing the secret to the `default` namespace, set `infisical.autoBootstrap.secretDestination.namespace: "default"` explicitly before upgrading.
+* **The new default applies to future bootstrap runs only, and upgrading does not move an existing secret.** The bootstrap Job is a `post-install` hook, and an instance can be bootstrapped only once, so the Job neither re-runs on upgrade nor can reissue the token. The upgrade relocates only the Role and RoleBinding, leaving `default/infisical-bootstrap-secret` behind with a valid instance admin token in a namespace the chart no longer manages, while automation looks for it in the release namespace. Treat that leftover token as exposed. See [Migrating from chart versions before 1.11.0](https://infisical.com/docs/self-hosting/guides/automated-bootstrapping) for the `kubectl` steps to copy the secret across, delete the original, and rotate the credentials.
+
+## 1.10.0 (July 3, 2026)
+Changes:
+* Added configurable `securityContext` via `infisical.podSecurityContext` and `infisical.containerSecurityContext`, with secure defaults so the Infisical Deployment and the auto-bootstrap Job run under the Kubernetes Pod Security "restricted" standard out of the box.
+* All hardening required by `restricted` lives in `containerSecurityContext`, so it applies only to Infisical's own containers. `podSecurityContext` sets just `fsGroup: 1001`, so your `extraContainers` and `extraInitContainers` keep their original user and are not forced to UID 1001.
+* `readOnlyRootFilesystem` stays `false` by default since the app writes temporary files. To enable it, mount `emptyDir` volumes for writable paths like `/tmp` via `infisical.extraVolumes` and `infisical.extraVolumeMounts`.
+* The bundled `ingress-nginx` subchart is not `restricted`-compliant by default. To run the whole release under `restricted`, disable it, move it to another namespace, or add your own restricted-safe controller overrides.
+* Backwards compatible. Upgrading triggers a one-time pod rollout. Set either key to `null` to omit its security context block.
+
+## 1.9.0 (May 28, 2026)
+Changes:
+* Added support for sidecar containers via `infisical.extraContainers`, enabling use cases like HSM PKCS#11 client sidecars (e.g., Entrust nShield).
+* Added support for init containers via `infisical.extraInitContainers`.
+* Documented `infisical.extraVolumes` and `infisical.extraVolumeMounts` in `values.yaml` with usage examples.
+
 ## 1.8.0 (April 6, 2026)
 Changes:
 * The bundled ingress-nginx controller now uses a dedicated IngressClass name (`infisical-nginx`) instead of the common `nginx` class. This prevents the bundled controller from unintentionally picking up other Ingress resources in your cluster, and avoids conflicts with existing ingress controllers.

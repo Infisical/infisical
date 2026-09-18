@@ -1,6 +1,7 @@
 /* eslint-disable no-unreachable-loop */
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -18,16 +19,17 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
+  throwIfMissingSecretReadValueOrDescribePermission,
+  validateSecretMovePermissions
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
+import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
-import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -37,6 +39,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
@@ -49,15 +52,19 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { ChangeType } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TCheckRevokedGrantsDTO } from "../project-folder-grant/project-folder-grant-types";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
@@ -93,6 +100,7 @@ import {
   TGetASecretDTO,
   TGetASecretRawDTO,
   TGetSecretAccessListDTO,
+  TGetSecretMetadataDTO,
   TGetSecretsDTO,
   TGetSecretsRawDTO,
   TGetSecretVersionsDTO,
@@ -111,8 +119,8 @@ type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
   secretTagDAL: TSecretTagDALFactory;
   secretVersionDAL: TSecretVersionDALFactory;
-  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findProjectBySlug" | "findById" | "find">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "updateById" | "findById" | "findByManySecretPath" | "find" | "findSecretPathByFolderIds"
@@ -120,7 +128,6 @@ type TSecretServiceFactoryDep = {
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<
     TSecretQueueFactory,
     "syncSecrets" | "handleSecretReminder" | "removeSecretReminder" | "startSecretV2Migration"
@@ -145,6 +152,8 @@ type TSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -156,7 +165,6 @@ export const secretServiceFactory = ({
   folderDAL,
   secretBlindIndexDAL,
   permissionService,
-  snapshotService,
   secretQueueService,
   projectDAL,
   projectBotService,
@@ -173,7 +181,9 @@ export const secretServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   userGroupMembershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  orgDAL,
+  projectFolderGrantDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -207,6 +217,8 @@ export const secretServiceFactory = ({
       });
     }
 
+    recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "blind_index" });
+    logger.info(`Legacy root key used for a v1 blind index [projectId=${projectId}]`);
     const secretBlindIndex = await buildSecretBlindIndexFromName({
       secretName,
       keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,
@@ -325,7 +337,6 @@ export const secretServiceFactory = ({
     );
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         actorId,
@@ -471,7 +482,6 @@ export const secretServiceFactory = ({
     );
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         orgId: actorOrgId,
@@ -587,7 +597,6 @@ export const secretServiceFactory = ({
     });
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         actorId,
@@ -915,7 +924,6 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -1039,7 +1047,6 @@ export const secretServiceFactory = ({
       }));
     });
 
-    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -1142,7 +1149,6 @@ export const secretServiceFactory = ({
       }));
     });
 
-    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -1424,6 +1430,10 @@ export const secretServiceFactory = ({
     });
 
     return secrets;
+  };
+
+  const getSecretMetadata = async (dto: TGetSecretMetadataDTO) => {
+    return secretV2BridgeService.getSecretMetadata(dto);
   };
 
   const getSecretsRaw = async ({
@@ -1733,11 +1743,11 @@ export const secretServiceFactory = ({
     }
 
     const policy =
-      actor === ActorType.USER && type === SecretType.Shared
+      type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
-      if (policy) {
+      if (shouldApplyPolicy(policy, actor)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
@@ -1811,7 +1821,7 @@ export const secretServiceFactory = ({
         key: botKey,
         keySize: SymmetricKeySize.Bits128
       });
-    if (policy) {
+    if (shouldApplyPolicy(policy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
@@ -1915,11 +1925,11 @@ export const secretServiceFactory = ({
     }
 
     const policy =
-      actor === ActorType.USER && type === SecretType.Shared
+      type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
-      if (policy) {
+      if (shouldApplyPolicy(policy, actor)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
@@ -2013,7 +2023,7 @@ export const secretServiceFactory = ({
         keySize: SymmetricKeySize.Bits128
       });
 
-    if (policy) {
+    if (shouldApplyPolicy(policy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
@@ -2075,7 +2085,6 @@ export const secretServiceFactory = ({
       secretCommentCiphertext: secretCommentEncrypted.ciphertext
     });
 
-    await snapshotService.performSnapshot(secret.folderId);
     return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
   };
 
@@ -2092,11 +2101,11 @@ export const secretServiceFactory = ({
   }: TDeleteSecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const policy =
-      actor === ActorType.USER && type === SecretType.Shared
+      type === SecretType.Shared
         ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
         : undefined;
     if (shouldUseSecretV2Bridge) {
-      if (policy) {
+      if (shouldApplyPolicy(policy, actor)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           actorAuthMethod,
@@ -2134,7 +2143,7 @@ export const secretServiceFactory = ({
         message: `Project bot for project with ID '${projectId}' not found. Please upgrade your project.`,
         name: "bot_not_found_error"
       });
-    if (policy) {
+    if (shouldApplyPolicy(policy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         actorAuthMethod,
@@ -2178,8 +2187,11 @@ export const secretServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     secretPath,
-    secrets: inputSecrets = []
-  }: TCreateManySecretRawDTO) => {
+    folder,
+    secrets: inputSecrets = [],
+    tx,
+    skipPostProcessing
+  }: TCreateManySecretRawDTO & { tx?: Knex; skipPostProcessing?: boolean }) => {
     if (!projectSlug && !optionalProjectId)
       throw new BadRequestError({ message: "Must provide either project slug or projectId" });
 
@@ -2192,15 +2204,19 @@ export const secretServiceFactory = ({
     }
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const policy =
-      actor === ActorType.USER
-        ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
-        : undefined;
+    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath, tx);
+
+    if (tx && !shouldUseSecretV2Bridge) {
+      throw new BadRequestError({
+        message:
+          "This operation requires an upgraded project. Upgrade the project from Project Settings before retrying."
+      });
+    }
 
     if (shouldUseSecretV2Bridge) {
-      const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-        projectDAL.findById(projectId)
-      );
+      const project = tx
+        ? await projectDAL.findById(projectId, tx)
+        : await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId));
       if (project.enforceCapitalization) {
         const caseViolatingSecretKeys = inputSecrets
           .filter((sec) => sec.secretKey !== sec.secretKey.toUpperCase())
@@ -2215,7 +2231,7 @@ export const secretServiceFactory = ({
         }
       }
 
-      if (policy) {
+      if (shouldApplyPolicy(policy, actor)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           secretPath,
@@ -2225,6 +2241,9 @@ export const secretServiceFactory = ({
           actorId,
           actorOrgId,
           actorAuthMethod,
+          folder,
+          trx: tx,
+          skipPostProcessing,
           data: {
             [SecretOperations.Create]: inputSecrets.map((el) => ({
               tagIds: el.tagIds,
@@ -2247,7 +2266,10 @@ export const secretServiceFactory = ({
         actorOrgId,
         actor,
         actorId,
-        secrets: inputSecrets
+        folder,
+        secrets: inputSecrets,
+        tx,
+        skipPostProcessing
       });
       return { secrets, type: SecretProtectionType.Direct as const };
     }
@@ -2299,7 +2321,7 @@ export const secretServiceFactory = ({
         };
       }
     );
-    if (policy) {
+    if (shouldApplyPolicy(policy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
@@ -2358,10 +2380,7 @@ export const secretServiceFactory = ({
     }
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const policy =
-      actor === ActorType.USER
-        ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
-        : undefined;
+    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
     if (shouldUseSecretV2Bridge) {
       const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
         projectDAL.findById(projectId)
@@ -2380,28 +2399,39 @@ export const secretServiceFactory = ({
         }
       }
 
-      if (policy) {
-        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
-          policy,
-          secretPath,
-          environment,
-          projectId,
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
-          data: {
-            [SecretOperations.Update]: inputSecrets.map((el) => ({
-              tagIds: el.tagIds,
-              secretValue: el.secretValue,
-              secretComment: el.secretComment,
-              skipMultilineEncoding: el.skipMultilineEncoding,
-              secretKey: el.secretKey,
-              secretMetadata: el.secretMetadata
-            }))
+      if (shouldApplyPolicy(policy, actor)) {
+        try {
+          const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+            policy,
+            secretPath,
+            environment,
+            projectId,
+            actor,
+            actorId,
+            actorOrgId,
+            actorAuthMethod,
+            updateMode: mode,
+            data: {
+              [SecretOperations.Update]: inputSecrets.map((el) => ({
+                tagIds: el.tagIds,
+                secretValue: el.secretValue,
+                secretComment: el.secretComment,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                secretKey: el.secretKey,
+                secretMetadata: el.secretMetadata
+              }))
+            }
+          });
+          return { type: SecretProtectionType.Approval as const, approval };
+        } catch (e) {
+          // If mode is ignore and an update where all secrets do not exist, this can cause the
+          // "empty commits" error. But since mode is to ignore, we swallow that error and return
+          // as it was a no-op operation.
+          if (mode === SecretUpdateMode.Ignore && e instanceof BadRequestError && e.message === "Empty commits") {
+            return { type: SecretProtectionType.Direct as const, secrets: [] };
           }
-        });
-        return { type: SecretProtectionType.Approval as const, approval };
+          throw e;
+        }
       }
       const secrets = await secretV2BridgeService.updateManySecret({
         secretPath,
@@ -2502,7 +2532,7 @@ export const secretServiceFactory = ({
         };
       }
     );
-    if (policy) {
+    if (shouldApplyPolicy(policy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         secretPath,
@@ -2560,12 +2590,9 @@ export const secretServiceFactory = ({
     }
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-    const policy =
-      actor === ActorType.USER
-        ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
-        : undefined;
+    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
     if (shouldUseSecretV2Bridge) {
-      if (policy) {
+      if (shouldApplyPolicy(policy, actor)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
           actorAuthMethod,
@@ -2600,7 +2627,7 @@ export const secretServiceFactory = ({
         name: "bot_not_found_error"
       });
 
-    if (policy) {
+    if (shouldApplyPolicy(policy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
         actorAuthMethod,
@@ -2780,7 +2807,6 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folder.id);
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
@@ -2892,7 +2918,6 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folder.id);
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
@@ -3064,64 +3089,32 @@ export const secretServiceFactory = ({
       });
     }
 
-    const sourceActions = [
-      ProjectPermissionSecretActions.Delete,
-      ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSecretActions.ReadValue
-    ] as const;
-    const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
+    // a move is delete-at-source + create/edit-at-destination. this is path-scoped, so it is checked
+    // once for the whole batch rather than per secret.
+    validateSecretMovePermissions(permission, {
+      sourceEnvironment,
+      sourceSecretPath,
+      destinationEnvironment,
+      destinationSecretPath
+    });
 
-    const decryptedSourceSecrets = sourceSecrets.map((secret) => {
-      const secretKey = crypto.encryption().symmetric().decrypt({
+    const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
+      ...secret,
+      secretKey: crypto.encryption().symmetric().decrypt({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
         key: botKey,
         keySize: SymmetricKeySize.Bits128
-      });
-
-      for (const destinationAction of destinationActions) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          destinationAction,
-          subject(ProjectPermissionSub.Secrets, {
-            environment: destinationEnvironment,
-            secretPath: destinationSecretPath
-          })
-        );
-      }
-
-      for (const sourceAction of sourceActions) {
-        if (
-          sourceAction === ProjectPermissionSecretActions.ReadValue ||
-          sourceAction === ProjectPermissionSecretActions.DescribeSecret
-        ) {
-          throwIfMissingSecretReadValueOrDescribePermission(permission, sourceAction, {
-            environment: sourceEnvironment,
-            secretPath: sourceSecretPath
-          });
-        } else {
-          ForbiddenError.from(permission).throwUnlessCan(
-            sourceAction,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: sourceEnvironment,
-              secretPath: sourceSecretPath
-            })
-          );
-        }
-      }
-
-      return {
-        ...secret,
-        secretKey,
-        secretValue: crypto.encryption().symmetric().decrypt({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key: botKey,
-          keySize: SymmetricKeySize.Bits128
-        })
-      };
-    });
+      }),
+      secretValue: crypto.encryption().symmetric().decrypt({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key: botKey,
+        keySize: SymmetricKeySize.Bits128
+      })
+    }));
 
     let isSourceUpdated = false;
     let isDestinationUpdated = false;
@@ -3198,7 +3191,7 @@ export const secretServiceFactory = ({
         destinationFolder.path
       );
 
-      if (destinationFolderPolicy && actor === ActorType.USER) {
+      if (shouldApplyPolicy(destinationFolderPolicy, actor)) {
         // if secret approval policy exists for destination, we create the secret approval request
         const localSecretsIds = decryptedDestinationSecrets.map(({ id }) => id);
         const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
@@ -3214,7 +3207,7 @@ export const secretServiceFactory = ({
             policyId: destinationFolderPolicy.id,
             status: "open",
             hasMerged: false,
-            committerUserId: actorId
+            ...getCommitterIds(actor, actorId)
           },
           tx
         );
@@ -3328,7 +3321,7 @@ export const secretServiceFactory = ({
         sourceFolder.path
       );
 
-      if (sourceFolderPolicy && actor === ActorType.USER) {
+      if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
         // if secret approval policy exists for source, we create the secret approval request
         const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
         const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
@@ -3339,7 +3332,7 @@ export const secretServiceFactory = ({
             policyId: sourceFolderPolicy.id,
             status: "open",
             hasMerged: false,
-            committerUserId: actorId
+            ...getCommitterIds(actor, actorId)
           },
           tx
         );
@@ -3388,7 +3381,6 @@ export const secretServiceFactory = ({
     });
 
     if (isDestinationUpdated) {
-      await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
         orgId: project.orgId,
@@ -3401,7 +3393,6 @@ export const secretServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
         orgId: project.orgId,
@@ -3585,7 +3576,7 @@ export const secretServiceFactory = ({
       destinationSecretPath
     );
 
-    if (destFolderPolicy && actor === ActorType.USER) {
+    if (shouldApplyPolicy(destFolderPolicy, actor)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
         projectId,
         environment: destinationEnvironment,
@@ -3667,7 +3658,6 @@ export const secretServiceFactory = ({
       });
     }
 
-    await snapshotService.performSnapshot(destinationFolder.id);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -3739,9 +3729,7 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const secrets = secretV2BridgeService.getSecretsByFolderMappings({ ...params, userId: actor.id }, permission);
-
-    return secrets;
+    return secretV2BridgeService.getSecretsByFolderMappings({ ...params, userId: actor.id }, permission);
   };
 
   const getChangeVersions = async (
@@ -3814,6 +3802,96 @@ export const secretServiceFactory = ({
     return secretV2BridgeService.redactSecretVersionValue({ versionId, ...rest });
   };
 
+  const getSecretsWithRevokedProjectFolderGrant = async ({
+    targetProjectId,
+    actorOrgId,
+    secrets
+  }: TCheckRevokedGrantsDTO): Promise<Set<string>> => {
+    const revokedSecretIds = new Set<string>();
+
+    const toRefKey = (ref: { targetProjectSlug: string; environment: string; secretPath: string }) =>
+      `${ref.targetProjectSlug}:${ref.environment}:${ref.secretPath}`;
+
+    type CrossProjectRef = { targetProjectSlug: string; environment: string; secretPath: string };
+    const secretRefMap = new Map<string, CrossProjectRef[]>();
+    for (const secret of secrets) {
+      if (!secret.secretValueHidden && secret.secretValue) {
+        const { nestedReferences } = getAllSecretReferences(secret.secretValue);
+        const crossProjectRefs = nestedReferences.filter((ref): ref is typeof ref & { targetProjectSlug: string } =>
+          Boolean(ref.targetProjectSlug)
+        );
+        if (crossProjectRefs.length > 0) secretRefMap.set(secret.id, crossProjectRefs);
+      }
+    }
+
+    if (secretRefMap.size === 0) return revokedSecretIds;
+
+    const org = await orgDAL.findOrgById(actorOrgId);
+    if (!(org?.allowCrossProjectSecretSharing ?? false)) {
+      return revokedSecretIds;
+    }
+
+    const uniqueRefs = new Map<string, CrossProjectRef>();
+    for (const refs of secretRefMap.values()) {
+      for (const ref of refs) {
+        const key = toRefKey(ref);
+        if (!uniqueRefs.has(key)) uniqueRefs.set(key, ref);
+      }
+    }
+
+    const uniqueSlugs = [...new Set([...uniqueRefs.values()].map((ref) => ref.targetProjectSlug))];
+    const resolvedProjects = await projectDAL.find({ orgId: actorOrgId, $in: { slug: uniqueSlugs } });
+    const slugToProjectId = new Map(resolvedProjects.map((p) => [p.slug, p.id]));
+
+    const resolvedProjectIds = [...new Set(resolvedProjects.map((p) => p.id))];
+    const envs = resolvedProjectIds.length ? await projectEnvDAL.find({ $in: { projectId: resolvedProjectIds } }) : [];
+    const envLookup = new Map(envs.map((e) => [`${e.projectId}:${e.slug}`, e.id]));
+
+    const refEntries = [...uniqueRefs.entries()];
+    const folderQueries: Array<{ envId: string; secretPath: string }> = [];
+    const refToQueryIndex = new Map<string, number>();
+
+    for (const [key, ref] of refEntries) {
+      const sourceProjectId = slugToProjectId.get(ref.targetProjectSlug);
+      if (!sourceProjectId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      const envId = envLookup.get(`${sourceProjectId}:${ref.environment}`);
+      if (!envId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      refToQueryIndex.set(key, folderQueries.length);
+      folderQueries.push({ envId, secretPath: ref.secretPath });
+    }
+
+    const folderResults = folderQueries.length ? await folderDAL.findByManySecretPath(folderQueries) : [];
+
+    const refKeyToFolderId = new Map<string, string | null>();
+    for (const [key] of refEntries) {
+      const idx = refToQueryIndex.get(key);
+      refKeyToFolderId.set(key, idx !== undefined ? (folderResults[idx]?.id ?? null) : null);
+    }
+
+    const folderIds = [...refKeyToFolderId.values()].filter((id): id is string => id !== null);
+    let grantedFolderIds = new Set<string>();
+    if (folderIds.length > 0) {
+      const grants = await projectFolderGrantDAL.find({ $in: { sourceFolderId: folderIds }, targetProjectId });
+      grantedFolderIds = new Set(grants.map((g) => g.sourceFolderId));
+    }
+
+    for (const [secretId, refs] of secretRefMap.entries()) {
+      const hasRevoked = refs.some((ref) => {
+        const folderId = refKeyToFolderId.get(toRefKey(ref));
+        return !folderId || !grantedFolderIds.has(folderId);
+      });
+      if (hasRevoked) revokedSecretIds.add(secretId);
+    }
+
+    return revokedSecretIds;
+  };
+
   return {
     attachTags,
     detachTags,
@@ -3846,9 +3924,11 @@ export const secretServiceFactory = ({
     getSecretAccessList,
     getSecretByIdRaw,
     getAccessibleSecrets,
+    getSecretMetadata,
     getSecretVersionsV2ByIds,
     getChangeVersions,
     redactSecretVersionValue,
-    getSecretReferenceDependencyTree
+    getSecretReferenceDependencyTree,
+    getSecretsWithRevokedProjectFolderGrant
   };
 };

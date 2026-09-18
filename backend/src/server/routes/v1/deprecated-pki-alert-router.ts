@@ -15,7 +15,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       tags: [ApiDocsTags.PkiAlerting],
       description: "Create PKI alert",
@@ -69,7 +69,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       tags: [ApiDocsTags.PkiAlerting],
       description: "Get PKI alert",
@@ -110,7 +110,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       tags: [ApiDocsTags.PkiAlerting],
       description: "Update PKI alert",
@@ -168,7 +168,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       tags: [ApiDocsTags.PkiAlerting],
       description: "Delete PKI alert",

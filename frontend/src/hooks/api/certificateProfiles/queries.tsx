@@ -15,6 +15,8 @@ import {
 } from "./types";
 
 export const certificateProfileKeys = {
+  all: ["certificate-profiles"] as const,
+  lists: () => [...certificateProfileKeys.all, "list"] as const,
   list: (params: {
     limit?: number;
     offset?: number;
@@ -23,23 +25,23 @@ export const certificateProfileKeys = {
     enrollmentType?: string;
     expiringDays?: number;
     applicationId?: string;
-  }) => ["certificate-profiles", "list", params],
-  getById: (profileId: string) => ["certificate-profiles", "get-by-id", profileId],
-  getBySlug: (slug: string) => ["certificate-profiles", "get-by-slug", slug],
+  }) => [...certificateProfileKeys.lists(), params],
+  getById: (profileId: string) => [...certificateProfileKeys.all, "get-by-id", profileId],
+  getBySlug: (slug: string) => [...certificateProfileKeys.all, "get-by-slug", slug],
   getCertificates: (profileId: string, params?: Omit<TGetProfileCertificatesDTO, "profileId">) => [
-    "certificate-profiles",
+    ...certificateProfileKeys.all,
     "certificates",
     profileId,
     params
   ],
   getMetrics: (profileId: string, params?: Omit<TGetProfileMetricsDTO, "profileId">) => [
-    "certificate-profiles",
+    ...certificateProfileKeys.all,
     "metrics",
     profileId,
     params
   ],
   revealAcmeEabSecret: (profileId: string) => [
-    "certificate-profiles",
+    ...certificateProfileKeys.all,
     "reveal-acme-eab-secret",
     profileId
   ]
@@ -51,7 +53,8 @@ export const useListCertificateProfiles = ({
   search,
   includeConfigs = false,
   enrollmentType,
-  applicationId
+  applicationId,
+  enabled = true
 }: TListCertificateProfilesDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.list({
@@ -77,7 +80,8 @@ export const useListCertificateProfiles = ({
         }
       });
       return data;
-    }
+    },
+    enabled
   });
 };
 

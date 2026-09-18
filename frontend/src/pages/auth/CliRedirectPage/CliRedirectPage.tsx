@@ -2,6 +2,8 @@ import { Helmet } from "react-helmet";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { IconButton, SecretInput } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useTimedReset } from "@app/hooks";
@@ -35,37 +37,27 @@ export const CliRedirectPage = () => {
   };
 
   return (
-    <div className="flex flex-col justify-between bg-bunker-800 md:h-screen">
+    <AuthPageLayout variant="focused" contentClassName="max-w-xl">
       <Helmet>
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="flex h-screen w-screen flex-col items-center justify-center space-y-4 text-gray-200">
-        <div className="mb-4 flex justify-center">
-          <img
-            src="/images/gradientLogo.svg"
-            style={{
-              height: "90px",
-              width: "120px"
-            }}
-            alt="Infisical Logo"
-          />
-        </div>
+      <AuthPagePanel className="flex flex-col items-center space-y-4 text-foreground-cool">
         {cliToken ? (
           <>
             <div className="pb-4">
-              <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
+              <p className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
                 Unable to reach CLI
               </p>
-              <p className="text-light mt-2 mb-1 text-center text-lg text-mineshaft-400">
+              <p className="text-light mt-2 mb-1 text-center text-lg text-muted">
                 Your login was successful but, Infisical couldn&apos;t automatically push your login
                 token to the CLI.
               </p>
-              <p className="text-light mb-1 text-center text-lg text-mineshaft-400">
+              <p className="text-light mb-1 text-center text-lg text-muted">
                 Please copy the token below and manually provide it to your CLI.
               </p>
             </div>
-            <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-mineshaft-700 bg-mineshaft-900 p-3">
+            <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-border-subtle bg-surface-base p-3">
               <SecretInput value={cliToken as string} />
               <div className="mx-1 flex">
                 <IconButton
@@ -83,15 +75,15 @@ export const CliRedirectPage = () => {
           </>
         ) : (
           <>
-            <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
+            <p className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
               Head back to your terminal
             </p>
-            <p className="text-light mb-1 text-lg text-mineshaft-400">
+            <p className="text-light mb-1 text-lg text-muted">
               You&apos;ve successfully logged in to the Infisical CLI
             </p>
           </>
         )}
-      </div>
-    </div>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };

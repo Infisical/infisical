@@ -20,7 +20,8 @@ export const registerAwsSecretsManagerPkiSyncRouter = async (
     updateSchema: UpdateAwsSecretsManagerPkiSyncSchema,
     syncOptions: {
       canImportCertificates: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

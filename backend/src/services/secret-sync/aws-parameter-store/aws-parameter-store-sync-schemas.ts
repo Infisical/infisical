@@ -52,7 +52,7 @@ const AwsParameterStoreSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.AWS_PARAMETER_STORE.path)
 });
 
-const AwsParameterStoreSyncOptionsSchema = z.object({
+export const AwsParameterStoreSyncOptionsSchema = z.object({
   keyId: z
     .string()
     .min(1, "Invalid KMS Key ID")
@@ -84,7 +84,7 @@ const AwsParameterStoreSyncOptionsSchema = z.object({
         .string()
         .max(256, "Resource tag value cannot exceed 256 characters")
         .refine(
-          (val) => tagFieldCharacterValidator(val),
+          (val) => !val || tagFieldCharacterValidator(val),
           "Invalid resource tag value: tag values can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
         )
     })

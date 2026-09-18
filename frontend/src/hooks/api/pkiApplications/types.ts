@@ -1,3 +1,6 @@
+import { CaType } from "@app/hooks/api/ca/enums";
+import { ScepChallengeType } from "@app/hooks/api/certificateProfiles/types";
+
 /**
  * Mirror of backend's `ResourcePermissionSub` for type-safe `permission.can(...)` checks
  * on the application's resource ability. Keep in sync with
@@ -28,6 +31,9 @@ export enum PkiApplicationResourceActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
+  SetPostSyncCommand = "set-post-sync-command",
+  SetTargetHost = "set-target-host",
+  SetHealthCheckCommand = "set-health-check-command",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
   RotateAcmeEabSecret = "rotate-acme-eab-secret",
   GenerateScepChallenge = "generate-scep-challenge",
@@ -85,7 +91,7 @@ export type TPkiApplicationMember = {
   details?: TPkiApplicationMemberDetails | null;
 };
 
-export type ScepChallengeType = "static" | "dynamic";
+export { ScepChallengeType };
 
 export type TPkiApplicationEnrollmentState = {
   applicationId: string;
@@ -113,7 +119,10 @@ export type TPkiApplicationEnrollmentState = {
     challengeEndpointUrl: string | null;
     raCertificatePem: string;
     raCertExpiresAt: string;
+    validationConnectionId: string | null;
+    signRaWithCa: boolean;
   } | null;
+  caType: CaType;
   estConfigured: boolean;
   acmeConfigured: boolean;
   scepConfigured: boolean;
@@ -165,6 +174,13 @@ export type TRemovePkiApplicationMemberDTO = {
   applicationId: string;
   kind: TPkiApplicationMemberKind;
   memberId: string;
+};
+
+export type TListPkiApplicationsParams = {
+  search?: string;
+  limit?: number;
+  offset?: number;
+  applicationIds?: string[];
 };
 
 export type TListPkiApplicationsResponse = {
@@ -219,4 +235,6 @@ export type TSetScepEnrollmentDTO = {
   allowCertBasedRenewal?: boolean;
   dynamicChallengeExpiryMinutes?: number;
   dynamicChallengeMaxPending?: number;
+  validationConnectionId?: string;
+  signRaWithCa?: boolean;
 };

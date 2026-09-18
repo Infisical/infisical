@@ -1,6 +1,6 @@
 ---
 title: "JBoss/WildFly with Certbot"
-sidebarTitle: "Set Up HTTPS for JBoss"
+sidebarTitle: "Set up HTTPS for JBoss"
 description: "Issue TLS certificates for JBoss/WildFly using ACME enrollment with Certbot."
 ---
 
@@ -22,7 +22,7 @@ Set up automatic TLS certificates for your [JBoss](https://www.jboss.org/)/[Wild
 
 <Steps>
     <Step title="Get ACME Credentials from Infisical">
-        In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile with ACME enrollment, then click **Reveal ACME EAB** to view the credentials:
+        In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Select **Configure** on the profile with ACME enrollment, then select **Reveal ACME EAB** to view the credentials:
 
         | Credential | Purpose |
         |------------|---------|
@@ -222,19 +222,19 @@ Set up automatic TLS certificates for your [JBoss](https://www.jboss.org/)/[Wild
 
 </Steps>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up ACME for Nginx web servers.
+  <Card title="NGINX with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up ACME for NGINX web servers.
   </Card>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to cloud destinations.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified when certificates are about to expire.
   </Card>
-  <Card title="ACME Enrollment" icon="robot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
+  <Card title="ACME Enrollment" icon="bot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
     Learn more about ACME enrollment configuration.
   </Card>
 </CardGroup>

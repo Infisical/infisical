@@ -6,13 +6,10 @@ import { groupMembershipsBase } from "@app/hooks/api/certManagerAccess";
 import { groupKeys } from "../groups/queries";
 import { TGroupMembership } from "../groups/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
+import { secretInsightsKeys } from "../secretInsights/queries";
 import { userKeys } from "../users/query-keys";
 import { projectKeys } from "./query-keys";
-import {
-  TProjectSshConfig,
-  TUpdateProjectSshConfigDTO,
-  TUpdateWorkspaceGroupRoleDTO
-} from "./types";
+import { TUpdateWorkspaceGroupRoleDTO } from "./types";
 
 const invalidateAuditForProject = (
   queryClient: ReturnType<typeof useQueryClient>,
@@ -153,7 +150,7 @@ export const useMigrateProjectToV3 = () => {
 
 export const useRequestProjectAccess = () => {
   const queryClient = useQueryClient();
-  return useMutation<object, object, { projectId: string; comment: string }>({
+  return useMutation<object, object, { projectId: string; comment?: string }>({
     mutationFn: ({ projectId, comment }) => {
       return apiRequest.post(`/api/v1/projects/${projectId}/project-access`, {
         comment
@@ -167,18 +164,18 @@ export const useRequestProjectAccess = () => {
   });
 };
 
-export const useUpdateProjectSshConfig = () => {
+export const useEnableSecretBlindIndex = () => {
   const queryClient = useQueryClient();
-  return useMutation<TProjectSshConfig, object, TUpdateProjectSshConfigDTO>({
-    mutationFn: ({ projectId, defaultUserSshCaId, defaultHostSshCaId }) => {
-      return apiRequest.patch(`/api/v1/projects/${projectId}/ssh-config`, {
-        defaultUserSshCaId,
-        defaultHostSshCaId
-      });
+  return useMutation<{ message: string }, object, { projectId: string }>({
+    mutationFn: async ({ projectId }) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/projects/${projectId}/secret-blind-index`
+      );
+      return data;
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectSshConfig(projectId)
+        queryKey: secretInsightsKeys.secretsDuplication({ projectId })
       });
     }
   });

@@ -28,7 +28,14 @@ const SecretReferenceNode = z.object({
   key: z.string(),
   value: z.string().optional(),
   environment: z.string(),
-  secretPath: z.string()
+  secretPath: z.string(),
+  project: z
+    .object({
+      id: z.string(),
+      slug: z.string(),
+      name: z.string()
+    })
+    .optional()
 });
 
 const DuplicateSecretAttributesSchema = z
@@ -166,16 +173,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
                   secretValueHidden: z.boolean(),
+                  secretPath: z.string().optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
                 })
                 .array()
             })
             .array()
             .optional()
-        })
+        }),
+        304: z.void()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       // just for delivery hero usecase
       let { secretPath, environment, projectId } = req.query;
@@ -281,7 +290,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretId } = req.params;
       const secret = await server.services.secret.getSecretByIdRaw({
@@ -336,7 +345,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       let { secretPath, environment, projectId } = req.query;
       if (req.auth.actor === ActorType.SERVICE) {
@@ -469,7 +478,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretOperation = await server.services.secret.createSecretRaw({
         actorId: req.permission.id,
@@ -633,7 +642,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretOperation = await server.services.secret.updateSecretRaw({
         actorId: req.permission.id,
@@ -780,7 +789,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretOperation = await server.services.secret.deleteSecretRaw({
         actorId: req.permission.id,
@@ -876,7 +891,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecrets({
         actorId: req.permission.id,
@@ -965,7 +980,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, results } = await server.services.secret.duplicateSecrets({
         actorId: req.permission.id,
@@ -1061,7 +1076,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { environment, secretPath, secrets: inputSecrets } = req.body;
 
@@ -1216,7 +1231,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { environment, secretPath, secrets: inputSecrets } = req.body;
 
@@ -1373,7 +1388,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { environment, secretPath, secrets: inputSecrets } = req.body;
 
@@ -1484,7 +1499,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;
@@ -1540,7 +1555,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;

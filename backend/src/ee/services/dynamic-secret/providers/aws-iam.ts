@@ -34,6 +34,22 @@ import { generateUsername } from "./templateUtils";
 // AWS STS duration constants (in seconds)
 const AWS_STS_MIN_DURATION = 900;
 
+// session policies restrict the assumed role's permissions to the intersection with the given policies; they can never expand them
+const getAssumeRoleSessionPolicyParams = (providerInputs: {
+  sessionPolicyArns?: string;
+  sessionPolicyDocument?: string;
+}) => {
+  const sessionPolicyArns = providerInputs.sessionPolicyArns
+    ?.split(",")
+    .map((arn) => arn.trim())
+    .filter(Boolean);
+
+  return {
+    Policy: providerInputs.sessionPolicyDocument || undefined,
+    PolicyArns: sessionPolicyArns?.length ? sessionPolicyArns.map((arn) => ({ arn })) : undefined
+  };
+};
+
 export const AwsIamProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretAwsIamSchema.parseAsync(inputs);
@@ -144,12 +160,14 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
                 : undefined
           });
 
+          // include session policies so malformed policy documents/ARNs fail at config time rather than on the first lease
           await stsClient.send(
             new AssumeRoleCommand({
               RoleArn: providerInputs.roleArn,
               RoleSessionName: `infisical-validation-${crypto.nativeCrypto.randomUUID()}`,
               DurationSeconds: AWS_STS_MIN_DURATION,
-              ExternalId: projectId
+              ExternalId: projectId,
+              ...getAssumeRoleSessionPolicyParams(providerInputs)
             })
           );
           return true;
@@ -247,7 +265,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
               RoleArn: providerInputs.roleArn,
               RoleSessionName: `infisical-temp-cred-${crypto.nativeCrypto.randomUUID()}`,
               DurationSeconds: durationSeconds,
-              ExternalId: metadata.projectId
+              ExternalId: metadata.projectId,
+              ...getAssumeRoleSessionPolicyParams(providerInputs)
             })
           );
 

@@ -1,22 +1,31 @@
 import { Controller, useForm } from "react-hook-form";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { TriangleAlertIcon } from "lucide-react";
 import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalClose,
-  ModalContent,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useUpdateAccessRequest } from "@app/hooks/api/accessApproval/mutation";
 import { accessApprovalKeys } from "@app/hooks/api/accessApproval/queries";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
@@ -71,7 +80,7 @@ const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
       ...form
     });
     await queryClient.refetchQueries({
-      queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+      queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
     });
 
     createNotification({
@@ -82,60 +91,60 @@ const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="mb-4 flex w-full items-start rounded-md border border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
-        <FontAwesomeIcon icon={faWarning} className="mt-1 mr-2.5 text-base text-yellow" />
-        Updating this access request will restart the review process and require all approvers to
-        re-approve it.
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <Alert variant="warning">
+        <TriangleAlertIcon />
+        <AlertTitle>Updating restarts the review process</AlertTitle>
+        <AlertDescription>
+          All approvers will be required to re-approve this access request.
+        </AlertDescription>
+      </Alert>
       <Controller
         control={control}
         defaultValue="1h"
         name="temporaryRange"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={<TtlFormLabel label="Access Duration" />}
-            isError={Boolean(error?.message)}
-            errorText={error?.message}
-            helperText={`Must be less than current access duration: ${accessRequest.isTemporary ? accessRequest.temporaryRange : "Permanent"}`}
-          >
-            <Input {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="temporaryRange">
+              <TtlFormLabel label="Access Duration" />
+            </FieldLabel>
+            <Input id="temporaryRange" {...field} isError={Boolean(error?.message)} />
+            {!error && (
+              <FieldDescription>
+                Must be less than current access duration:{" "}
+                {accessRequest.isTemporary ? accessRequest.temporaryRange : "Permanent"}
+              </FieldDescription>
+            )}
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="editNote"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Reason for Editing"
-            isError={Boolean(error?.message)}
-            errorText={error?.message}
-          >
+          <Field>
+            <FieldLabel htmlFor="editNote">Reason for Editing</FieldLabel>
             <TextArea
+              id="editNote"
               className="resize-none!"
               rows={4}
               {...field}
+              isError={Boolean(error?.message)}
               placeholder="Provide a reason for updating this request..."
             />
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
-      <div className="mt-4 flex gap-x-2">
-        <Button
-          type="submit"
-          variant="outline_bg"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline">Cancel</Button>
+        </DialogClose>
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
           Update Request
         </Button>
-        <ModalClose asChild>
-          <Button variant="plain" colorSchema="secondary">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
@@ -158,11 +167,12 @@ export const EditAccessRequestModal = ({
   if (!accessRequest) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Edit Access Request"
-        subTitle="Modify this access request for re-approval."
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Access Request</DialogTitle>
+          <DialogDescription>Modify this access request for re-approval.</DialogDescription>
+        </DialogHeader>
         <Content
           projectSlug={projectSlug}
           accessRequest={accessRequest}
@@ -171,7 +181,7 @@ export const EditAccessRequestModal = ({
             onOpenChange(false);
           }}
         />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

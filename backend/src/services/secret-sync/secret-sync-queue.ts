@@ -1,11 +1,9 @@
-import opentelemetry from "@opentelemetry/api";
-import { AxiosError } from "axios";
+import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -13,6 +11,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { highCardinalityMeter, recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -21,8 +20,11 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -32,7 +34,6 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
-import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import {
   SecretSync,
@@ -42,6 +43,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -51,6 +53,7 @@ import {
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO,
   TSecretMap,
+  TSecretSync,
   TSecretSyncImportSecretsDTO,
   TSecretSyncRaw,
   TSecretSyncRemoveSecretsDTO,
@@ -70,6 +73,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -89,7 +93,9 @@ type TSecretSyncQueueFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   folderDAL: TSecretFolderDALFactory;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "findByFolderId"
@@ -102,7 +108,7 @@ type TSecretSyncQueueFactoryDep = {
     | "deleteMany"
     | "invalidateSecretCacheByProjectId"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretSyncDAL: Pick<
     TSecretSyncDALFactory,
     "findById" | "find" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
@@ -122,7 +128,6 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -130,6 +135,8 @@ type TSecretSyncQueueFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 type SecretSyncActionJob = Job<
@@ -153,8 +160,10 @@ export const secretSyncQueueFactory = ({
   cronJob,
   kmsService,
   appConnectionDAL,
+  gitHubAppDAL,
   keyStore,
   folderDAL,
+  projectEnvDAL,
   secretV2BridgeDAL,
   secretImportDAL,
   secretSyncDAL,
@@ -173,18 +182,19 @@ export const secretSyncQueueFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   licenseService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
   notificationService,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
-  telemetryService
+  telemetryService,
+  projectFolderGrantDAL,
+  orgDAL
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
-  const integrationMeter = opentelemetry.metrics.getMeter("SecretSyncs");
+  const integrationMeter = highCardinalityMeter("SecretSyncs");
   const syncSecretsErrorHistogram = integrationMeter.createHistogram("secret_sync_sync_secrets_errors", {
     description: "Secret Sync - sync secrets errors",
     unit: "1"
@@ -266,12 +276,11 @@ export const secretSyncQueueFactory = ({
         shouldRetry: false
       });
 
-    const secretMap: TSecretMap = {};
-
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const actorOrgId = secretSync.connection.orgId;
 
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
@@ -281,71 +290,38 @@ export const secretSyncQueueFactory = ({
       secretDAL: secretV2BridgeDAL,
       folderDAL,
       projectId,
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
     });
 
-    const secrets = await secretV2BridgeDAL.findByFolderId({ folderId });
-
-    await Promise.allSettled(
-      secrets.map(async (secret) => {
-        const secretKey = secret.key;
-        const secretValue = decryptSecretValue(secret.encryptedValue);
-        const expandedSecretValue = await expandSecretReferences({
-          environment: environment.slug,
-          secretPath: folder.path,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
-          value: secretValue,
-          secretKey
-        });
-        secretMap[secretKey] = { value: expandedSecretValue || "", id: secret.id };
-
-        if (secret.encryptedComment) {
-          const commentValue = decryptSecretValue(secret.encryptedComment);
-          secretMap[secretKey].comment = commentValue;
-        }
-
-        secretMap[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-        secretMap[secretKey].secretMetadata = secret.secretMetadata.map((el) => ({
-          isEncrypted: Boolean(el.encryptedValue),
-          key: el.key,
-          value: el.encryptedValue ? decryptSecretValue(el.encryptedValue) : el.value || ""
-        }));
-      })
-    );
-
-    if (!includeImports) return secretMap;
-
-    const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
-
-    if (secretImports.length) {
-      const importedSecrets = await fnSecretsV2FromImports({
-        decryptor: decryptSecretValue,
+    return buildSyncPayload(
+      {
+        projectId,
+        environment: environment.slug,
+        sourcePath: folder.path,
+        sourceFolderId: folderId,
+        syncOptions: secretSync.syncOptions as TSecretSync["syncOptions"],
+        includeImports
+      },
+      {
         folderDAL,
-        secretDAL: secretV2BridgeDAL,
-        expandSecretReferences,
+        projectEnvDAL,
+        secretV2BridgeDAL,
         secretImportDAL,
-        secretImports,
-        hasSecretAccess: () => true,
-        viewSecretValue: true
-      });
-
-      for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
-        for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
-          const importedSecret = importedSecrets[i].secrets[j];
-          if (!secretMap[importedSecret.key]) {
-            secretMap[importedSecret.key] = {
-              skipMultilineEncoding: importedSecret.skipMultilineEncoding,
-              comment: importedSecret.secretComment,
-              value: importedSecret.secretValue || "",
-              id: importedSecret.id,
-              secretMetadata: importedSecret.secretMetadata
-            };
-          }
+        expandSecretReferences,
+        decryptSecretValue,
+        fnSecretsV2FromImportsDeps: {
+          projectFolderGrantDAL,
+          actorOrgId,
+          orgDAL,
+          kmsService
         }
       }
-    }
-
-    return secretMap;
+    );
   };
 
   const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) => {
@@ -424,8 +400,8 @@ export const secretSyncQueueFactory = ({
 
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
+      gitHubAppDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService
     });
@@ -452,7 +428,16 @@ export const secretSyncQueueFactory = ({
 
     const importedSecretMap: TSecretMap = {};
 
-    const secretMap = await $getInfisicalSecrets(secretSync, false);
+    // Import behavior is never combined with including subfolders, so this payload always covers
+    // exactly one folder. Comparison is against raw keys as returned by the destination
+    // (already schema-stripped), so entries come from `secrets` rather than the schema-applying flatten().
+    const payload = await $getInfisicalSecrets(secretSync, false);
+    const secretMap: TSecretMap = Object.fromEntries(
+      payload.secrets.map((entry) => [
+        entry.key,
+        { value: entry.value, id: entry.id, comment: entry.comment, secretMetadata: entry.secretMetadata }
+      ])
+    );
 
     const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];
     const secretsToUpdate: Parameters<typeof $updateManySecretsRawFn>[0]["secrets"] = [];
@@ -554,25 +539,25 @@ export const secretSyncQueueFactory = ({
         syncOptions: { initialSyncBehavior }
       } = secretSyncWithCredentials;
 
-      const secretMap = await $getInfisicalSecrets(secretSync);
+      let payload = await $getInfisicalSecrets(secretSync);
 
       if (!lastSyncedAt && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination) {
-        const importedSecretMap = await $importSecrets(
+        await $importSecrets(
           secretSyncWithCredentials,
           initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource
             ? SecretSyncImportBehavior.PrioritizeSource
             : SecretSyncImportBehavior.PrioritizeDestination
         );
 
-        Object.entries(importedSecretMap).forEach(([key, secretData]) => {
-          secretMap[key] = secretData;
-        });
+        // $importSecrets writes directly to the source folder, so the payload built above is
+        // stale. Re-read rather than merge in memory, since the payload is no longer a plain map.
+        payload = await $getInfisicalSecrets(secretSync);
       }
 
-      const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
+      const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, payload, {
         appConnectionDAL,
+        gitHubAppDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService
       });
@@ -581,8 +566,10 @@ export const secretSyncQueueFactory = ({
 
       isSynced = true;
     } catch (err) {
+      const axiosError = err instanceof SecretSyncError && isAxiosError(err.error) ? err.error : err;
+
       logger.error(
-        err,
+        isAxiosError(axiosError) ? axiosError.response?.data : err,
         `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
       );
 
@@ -609,6 +596,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const syncStatus = isSynced ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "sync",
+        outcome: isSynced ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
@@ -739,6 +733,13 @@ export const secretSyncQueueFactory = ({
       const ranAt = new Date();
       const importStatus = isSuccess ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
 
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "import",
+        outcome: isSuccess ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
+
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
         ...(auditLogInfo ?? {
@@ -822,7 +823,7 @@ export const secretSyncQueueFactory = ({
         projectId
       });
 
-      const secretMap = await $getInfisicalSecrets(secretSync);
+      const payload = await $getInfisicalSecrets(secretSync, true);
 
       await SecretSyncFns.removeSecrets(
         {
@@ -832,11 +833,13 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithCredentials,
-        secretMap,
+        // We don't care about duplicates when removing secrets: a duplicate name still maps to
+        // the same destination key we're deleting either way.
+        payload.dedupeConflicts(),
         {
           appConnectionDAL,
+          gitHubAppDAL,
           kmsService,
-          gatewayService,
           gatewayV2Service,
           gatewayPoolService
         }
@@ -868,6 +871,13 @@ export const secretSyncQueueFactory = ({
     } finally {
       const ranAt = new Date();
       const removeStatus = isSuccess ? SecretSyncStatus.Succeeded : SecretSyncStatus.Failed;
+
+      recordSecretSyncOutcomeMetric({
+        destination: secretSync.destination,
+        operation: "remove",
+        outcome: isSuccess ? "success" : "failure",
+        attemptsExhausted: isFinalAttempt
+      });
 
       await auditLogService.createAuditLog({
         projectId: secretSync.projectId,
@@ -1026,19 +1036,39 @@ export const secretSyncQueueFactory = ({
     await Promise.allSettled(notifications);
   };
 
+  // Takes a path rather than a folder, so it serves a write inside a folder and the deletion of the
+  // folder itself. The path need not still exist: the only thing the folder is needed for is the
+  // sync rooted exactly on it, and a deleted folder has no such sync left to find, because
+  // secret_syncs.folderId is SET NULL by its foreign key.
   const queueSecretSyncsSyncSecretsByPath = async ({
     secretPath,
     projectId,
     environmentSlug
   }: TQueueSecretSyncsByPathDTO) => {
+    const environment = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
+    if (!environment) return;
+
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
 
-    if (!folder)
-      throw new Error(
-        `Could not find folder at path "${secretPath}" for environment with slug "${environmentSlug}" in project with ID "${projectId}"`
-      );
+    const ancestorFolders = (
+      await folderDAL.findByManySecretPath(
+        getAncestorPaths(secretPath).map((path) => ({ envId: environment.id, secretPath: path }))
+      )
+    ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
-    const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isAutoSyncEnabled: true });
+    const candidateSyncs = await secretSyncDAL.find({
+      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])] },
+      isAutoSyncEnabled: true
+    });
+
+    // A sync on the path itself always matches, whether or not it includes subfolders. A sync on an
+    // ancestor folder only matches when it includes them, so a sync rooted above this path that does
+    // not is never triggered by a change it was never configured to cover.
+    const secretSyncs = candidateSyncs.filter(
+      (sync) =>
+        (folder && sync.folderId === folder.id) ||
+        Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
+    );
 
     await secretSyncDAL.update(
       {
@@ -1079,6 +1109,13 @@ export const secretSyncQueueFactory = ({
           lastSyncJobId: job.id
         });
 
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "sync",
+          outcome: "failure",
+          attemptsExhausted: true
+        });
+
         await $queueSendSecretSyncFailedNotifications({
           secretSync,
           action: SecretSyncAction.SyncSecrets,
@@ -1096,6 +1133,13 @@ export const secretSyncQueueFactory = ({
           lastImportJobId: job.id
         });
 
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "import",
+          outcome: "failure",
+          attemptsExhausted: true
+        });
+
         await $queueSendSecretSyncFailedNotifications({
           secretSync,
           action: SecretSyncAction.ImportSecrets,
@@ -1110,6 +1154,13 @@ export const secretSyncQueueFactory = ({
           lastRemoveMessage:
             "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastRemoveJobId: job.id
+        });
+
+        recordSecretSyncOutcomeMetric({
+          destination: secretSync.destination,
+          operation: "remove",
+          outcome: "failure",
+          attemptsExhausted: true
         });
 
         await $queueSendSecretSyncFailedNotifications({
@@ -1165,7 +1216,11 @@ export const secretSyncQueueFactory = ({
 
     const secretSync = await secretSyncDAL.findById(syncId);
 
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+    if (!secretSync) {
+      // skip rather than throw, so it doesn't retry-storm when a sync is deleted.
+      logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found (deleted?), skipping`);
+      return;
+    }
 
     const { connectionId } = secretSync;
 

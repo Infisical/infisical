@@ -43,7 +43,20 @@ export enum DynamicSecretProviders {
   Couchbase = "couchbase",
   Clickhouse = "clickhouse",
   Milvus = "milvus",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  IbmApiConnect = "ibm-api-connect",
+  Tailscale = "tailscale"
+}
+
+export enum TailscaleKeyAuthType {
+  AuthKeys = "auth_keys",
+  OAuthKeys = "oauth_keys",
+  FederatedKeys = "federated_keys"
+}
+
+export enum TailscaleAuthMethod {
+  ApiKey = "api_key",
+  OAuth = "oauth"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -138,6 +151,8 @@ export type TDynamicSecretProvider =
             policyDocument?: string;
             userGroups?: string;
             policyArns?: string;
+            sessionPolicyArns?: string;
+            sessionPolicyDocument?: string;
           }
         | {
             method: DynamicSecretAwsIamAuth.IRSA;
@@ -413,6 +428,7 @@ export type TDynamicSecretProvider =
       type: DynamicSecretProviders.GcpIam;
       inputs: {
         serviceAccountEmail: string;
+        tokenScopes: string[];
       };
     }
   | {
@@ -507,6 +523,58 @@ export type TDynamicSecretProvider =
         principals: string[];
         keyAlgorithm: string;
       };
+    }
+  | {
+      type: DynamicSecretProviders.IbmApiConnect;
+      inputs: {
+        clientId: string;
+        clientSecret: string;
+        instanceUrl: string;
+        apiKey: string;
+        orgId: string;
+        catalogId: string;
+        appId: string;
+        gatewayId?: string;
+        gatewayPoolId?: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Tailscale;
+      inputs:
+        | {
+            authType: TailscaleKeyAuthType.AuthKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            reusable: boolean;
+            preauthorized: boolean;
+          }
+        | {
+            authType: TailscaleKeyAuthType.OAuthKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            scopes: string[];
+          }
+        | {
+            authType: TailscaleKeyAuthType.FederatedKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            scopes: string[];
+            issuer: string;
+            subject: string;
+            audience?: string;
+          };
     };
 
 export type TCreateDynamicSecretDTO = {
@@ -563,4 +631,27 @@ export type TGetDynamicSecretsByEnvsDTO = {
   projectSlug: string;
   path: string;
   environmentSlugs: string[];
+};
+
+export type TGetEntraIdUsersDTO = {
+  projectSlug: string;
+  tenantId: string;
+  applicationId: string;
+  clientSecret: string;
+};
+
+export type TGetIbmApiConnectOrgsDTO = {
+  projectSlug: string;
+  instanceUrl: string;
+  apiKey: string;
+  clientId: string;
+  clientSecret: string;
+};
+
+export type TGetIbmApiConnectOrgCatalogsDTO = TGetIbmApiConnectOrgsDTO & {
+  orgId: string;
+};
+
+export type TGetIbmApiConnectOrgAppsDTO = TGetIbmApiConnectOrgCatalogsDTO & {
+  catalogId: string;
 };

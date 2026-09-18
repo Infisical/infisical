@@ -14,12 +14,19 @@ import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
-import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TRestoreEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import {
+  TCreateEnvDTO,
+  TDeleteEnvDTO,
+  TGetEnvBySlugDTO,
+  TGetEnvDTO,
+  TRestoreEnvDTO,
+  TUpdateEnvDTO
+} from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
@@ -212,7 +219,9 @@ export const projectEnvServiceFactory = ({
             await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
           }
         }
-        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        const updated = await projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        return updated;
       });
 
       await keyStore.setItemWithExpiry(
@@ -284,6 +293,7 @@ export const projectEnvServiceFactory = ({
             });
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+          await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
 
           return doc;
         }
@@ -321,6 +331,7 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
 
@@ -371,9 +382,16 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.deleteAfter === null) {
+        if (!target || target.projectId !== projectId || !target.deleteAfter) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "RestoreEnvironment"
+          });
+        }
+
+        if (new Date(target.deleteAfter).getTime() <= Date.now()) {
+          throw new BadRequestError({
+            message: "Cannot restore environment: its deletion grace period has already elapsed.",
             name: "RestoreEnvironment"
           });
         }
@@ -405,6 +423,7 @@ export const projectEnvServiceFactory = ({
             name: "RestoreEnvironment"
           });
 
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
 
@@ -438,11 +457,42 @@ export const projectEnvServiceFactory = ({
     return environment;
   };
 
+  const getEnvironmentBySlug = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    slug
+  }: TGetEnvBySlugDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+
+    const environment = await projectEnvDAL.findOne({ projectId, slug });
+
+    if (!environment) {
+      throw new NotFoundError({
+        message: `Environment with slug '${slug}' in project with ID '${projectId}' not found`
+      });
+    }
+
+    return environment;
+  };
+
   return {
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
     restoreEnvironment,
-    getEnvironmentById
+    getEnvironmentById,
+    getEnvironmentBySlug
   };
 };

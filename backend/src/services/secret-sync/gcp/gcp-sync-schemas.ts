@@ -19,7 +19,17 @@ const GcpSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   z
     .object({
       scope: z.literal(GcpSyncScope.Global).describe(SecretSyncs.DESTINATION_CONFIG.GCP.scope),
-      projectId: z.string().min(1, "Project ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GCP.projectId)
+      projectId: z.string().min(1, "Project ID is required").describe(SecretSyncs.DESTINATION_CONFIG.GCP.projectId),
+      locationId: z
+        .nativeEnum(GCPSecretManagerLocation)
+        .optional()
+        .describe(SecretSyncs.DESTINATION_CONFIG.GCP.locationId),
+      userReplicaLocationIds: z
+        .nativeEnum(GCPSecretManagerLocation)
+        .array()
+        .optional()
+        .default([])
+        .describe(SecretSyncs.DESTINATION_CONFIG.GCP.userReplicaLocationIds)
     })
     .describe(
       JSON.stringify({

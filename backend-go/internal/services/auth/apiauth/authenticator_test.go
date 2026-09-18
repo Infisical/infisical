@@ -9,144 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/infisical/api/internal/services/auth"
 )
-
-// =============================================================================
-// ClassifyToken Tests (no DB/backend needed)
-// =============================================================================
-
-func TestClassifyToken_ServiceToken(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		token    string
-		expected auth.AuthMode
-	}{
-		{
-			name:     "valid service token format",
-			token:    "st." + uuid.New().String() + ".secret123",
-			expected: auth.AuthModeServiceToken,
-		},
-		{
-			name:     "service token with only prefix and id",
-			token:    "st." + uuid.New().String(),
-			expected: auth.AuthModeServiceToken,
-		},
-		{
-			name:     "service token with empty parts after prefix",
-			token:    "st..",
-			expected: auth.AuthModeServiceToken,
-		},
-		{
-			name:     "wrong prefix sv",
-			token:    "sv." + uuid.New().String() + ".secret",
-			expected: "",
-		},
-		{
-			name:     "wrong prefix ST uppercase",
-			token:    "ST." + uuid.New().String() + ".secret",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := ClassifyToken(tt.token)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestClassifyToken_JWT(t *testing.T) {
-	t.Parallel()
-
-	// Build valid JWTs with different authTokenType values
-	// JWT format: header.payload.signature (base64url encoded)
-	// We only need the payload to have the authTokenType claim
-
-	tests := []struct {
-		name     string
-		token    string
-		expected auth.AuthMode
-	}{
-		{
-			name: "JWT with accessToken type",
-			// payload: {"authTokenType":"accessToken"}
-			token:    "eyJhbGciOiJIUzI1NiJ9.eyJhdXRoVG9rZW5UeXBlIjoiYWNjZXNzVG9rZW4ifQ.sig",
-			expected: auth.AuthModeJWT,
-		},
-		{
-			name: "JWT with identityAccessToken type",
-			// payload: {"authTokenType":"identityAccessToken"}
-			token:    "eyJhbGciOiJIUzI1NiJ9.eyJhdXRoVG9rZW5UeXBlIjoiaWRlbnRpdHlBY2Nlc3NUb2tlbiJ9.sig",
-			expected: auth.AuthModeIdentityAccessToken,
-		},
-		{
-			name: "JWT with refreshToken type returns empty",
-			// payload: {"authTokenType":"refreshToken"}
-			token:    "eyJhbGciOiJIUzI1NiJ9.eyJhdXRoVG9rZW5UeXBlIjoicmVmcmVzaFRva2VuIn0.sig",
-			expected: "",
-		},
-		{
-			name: "JWT with unknown type returns empty",
-			// payload: {"authTokenType":"unknownType"}
-			token:    "eyJhbGciOiJIUzI1NiJ9.eyJhdXRoVG9rZW5UeXBlIjoidW5rbm93blR5cGUifQ.sig",
-			expected: "",
-		},
-		{
-			name: "JWT without authTokenType returns empty",
-			// payload: {"sub":"1234567890"}
-			token:    "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig",
-			expected: "",
-		},
-		{
-			name:     "JWT with empty payload returns empty",
-			token:    "eyJhbGciOiJIUzI1NiJ9..sig",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := ClassifyToken(tt.token)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestClassifyToken_Malformed(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		token string
-	}{
-		{"empty token", ""},
-		{"single dot", "."},
-		{"two dots", ".."},
-		{"three dots only", "..."},
-		{"two parts only", "header.payload"},
-		{"four parts", "a.b.c.d"},
-		{"random string", "not-a-token-at-all"},
-		{"base64 garbage in payload", "eyJhbGciOiJIUzI1NiJ9.!!!invalid!!!.sig"},
-		{"only header valid base64", "eyJhbGciOiJIUzI1NiJ9"},
-		{"whitespace", "   "},
-		{"newlines", "header\n.payload\n.sig"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := ClassifyToken(tt.token)
-			assert.Equal(t, auth.AuthMode(""), result, "malformed token should return empty AuthMode")
-		})
-	}
-}
 
 // =============================================================================
 // ParseTrustedIPs Tests (no DB needed)
@@ -267,20 +130,20 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "CIDR match allows (Prefix field set)",
 			ipAddress:  "10.0.5.100",
-			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: 8}},
+			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: new(8)}},
 			wantErr:    false,
 		},
 		{
 			name:       "CIDR mismatch denies",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: 8}},
+			trustedIPs: []TrustedIP{{IPAddress: "10.0.0.0", Prefix: new(8)}},
 			wantErr:    true,
 		},
 		{
 			name:      "multiple entries - matches any",
 			ipAddress: "192.168.1.1",
 			trustedIPs: []TrustedIP{
-				{IPAddress: "10.0.0.0", Prefix: 8},
+				{IPAddress: "10.0.0.0", Prefix: new(8)},
 				{IPAddress: "192.168.1.1"},
 			},
 			wantErr: false,
@@ -288,19 +151,19 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "wildcard 0.0.0.0/0 allows any IPv4",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: 0}},
-			wantErr:    true, // Prefix 0 is not > 0, so it falls to exact match which fails
+			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: new(0)}},
+			wantErr:    false,
 		},
 		{
 			name:       "wildcard with Prefix 1 covers half of IPv4",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "128.0.0.0", Prefix: 1}},
+			trustedIPs: []TrustedIP{{IPAddress: "128.0.0.0", Prefix: new(1)}},
 			wantErr:    false,
 		},
 		{
 			name:       "invalid incoming IP denies",
 			ipAddress:  "not-an-ip",
-			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: 1}},
+			trustedIPs: []TrustedIP{{IPAddress: "0.0.0.0", Prefix: new(1)}},
 			wantErr:    true,
 		},
 		{
@@ -312,13 +175,13 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "IPv6 address with IPv4 CIDR denies",
 			ipAddress:  "2001:db8::1",
-			trustedIPs: []TrustedIP{{IPAddress: "192.168.0.0", Prefix: 16}},
+			trustedIPs: []TrustedIP{{IPAddress: "192.168.0.0", Prefix: new(16)}},
 			wantErr:    true,
 		},
 		{
 			name:       "IPv4 address with IPv6 CIDR denies",
 			ipAddress:  "192.168.1.1",
-			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: 32}},
+			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: new(32)}},
 			wantErr:    true,
 		},
 		{
@@ -330,7 +193,7 @@ func TestCheckIPAgainstBlocklist(t *testing.T) {
 		{
 			name:       "IPv6 CIDR match allows",
 			ipAddress:  "2001:db8::1",
-			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: 32}},
+			trustedIPs: []TrustedIP{{IPAddress: "2001:db8::", Prefix: new(32)}},
 			wantErr:    false,
 		},
 	}

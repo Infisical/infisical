@@ -32,9 +32,6 @@ const getTotalResourceCount = (resources: TGatewayPoolConnectedResources | undef
   return (
     resources.kubernetesAuths.length +
     resources.pkiDiscoveryConfigs.length +
-    resources.pamDomains.length +
-    resources.pamResources.length +
-    resources.pamDiscoverySources.length +
     resources.appConnections.length +
     resources.dynamicSecrets.length
   );
@@ -50,15 +47,15 @@ type ResourceRowProps = {
 
 const ResourceRow = ({ name, subtitle, to, params, isLast }: ResourceRowProps) => {
   const className = `flex items-center justify-between px-4 py-2.5 ${
-    to ? "transition-colors hover:bg-mineshaft-700/30" : ""
-  } ${!isLast ? "border-b border-mineshaft-600" : ""}`;
+    to ? "transition-colors hover:bg-surface-hover/30" : ""
+  } ${!isLast ? "border-b border-border-control" : ""}`;
   const inner = (
     <>
       <div className="flex flex-col gap-0.5">
-        <span className="text-sm text-mineshaft-100">{name}</span>
-        <span className="text-xs text-mineshaft-400">{subtitle}</span>
+        <span className="text-sm text-foreground">{name}</span>
+        <span className="text-xs text-muted">{subtitle}</span>
       </div>
-      {to ? <ExternalLinkIcon className="size-3.5 text-mineshaft-400" /> : null}
+      {to ? <ExternalLinkIcon className="size-3.5 text-muted" /> : null}
     </>
   );
 
@@ -82,9 +79,6 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
     [
       resources?.kubernetesAuths.length ? "kubernetes-auth" : null,
       resources?.pkiDiscoveryConfigs.length ? "pki-discovery" : null,
-      resources?.pamDomains.length ? "pam-domains" : null,
-      resources?.pamResources.length ? "pam-resources" : null,
-      resources?.pamDiscoverySources.length ? "pam-discovery" : null,
       resources?.appConnections.length ? "app-connections" : null,
       resources?.dynamicSecrets.length ? "dynamic-secrets" : null
     ] as (string | null)[]
@@ -93,19 +87,19 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto">
-        <SheetHeader className="border-b border-mineshaft-600">
+        <SheetHeader className="border-b border-border-control">
           <SheetTitle>Connected Resources</SheetTitle>
           <SheetDescription>{poolName}</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 px-4">
+        <div className="flex-1 p-4">
           {isPending ? (
             <div className="flex h-32 items-center justify-center">
               <Spinner size="lg" />
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-mineshaft-300">
+              <p className="text-sm text-label">
                 {totalCount > 0 ? (
                   <>
                     {totalCount} resource{totalCount !== 1 ? "s" : ""} connected
@@ -123,7 +117,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">Kubernetes Auth</span>
                         <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.kubernetesAuths.map((auth, idx) => (
                           <ResourceRow
                             key={auth.id}
@@ -147,7 +141,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">PKI Discovery</span>
                         <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.pkiDiscoveryConfigs.map((r, idx) => (
                           <ResourceRow
                             key={r.id}
@@ -160,70 +154,13 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                     </AccordionItem>
                   )}
 
-                  {(resources?.pamDomains.length ?? 0) > 0 && (
-                    <AccordionItem value="pam-domains">
-                      <AccordionTrigger>
-                        <span className="flex-1">PAM Domains</span>
-                        <Badge variant="neutral">{resources?.pamDomains.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.pamDomains.map((r, idx) => (
-                          <ResourceRow
-                            key={r.id}
-                            name={r.name}
-                            subtitle={r.projectName ? `Project: ${r.projectName}` : "PAM Domain"}
-                            isLast={idx === (resources?.pamDomains.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  {(resources?.pamResources.length ?? 0) > 0 && (
-                    <AccordionItem value="pam-resources">
-                      <AccordionTrigger>
-                        <span className="flex-1">PAM Resources</span>
-                        <Badge variant="neutral">{resources?.pamResources.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.pamResources.map((r, idx) => (
-                          <ResourceRow
-                            key={r.id}
-                            name={r.name}
-                            subtitle={`${r.resourceType}${r.projectName ? ` · ${r.projectName}` : ""}`}
-                            isLast={idx === (resources?.pamResources.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  {(resources?.pamDiscoverySources.length ?? 0) > 0 && (
-                    <AccordionItem value="pam-discovery">
-                      <AccordionTrigger>
-                        <span className="flex-1">PAM Discovery Sources</span>
-                        <Badge variant="neutral">{resources?.pamDiscoverySources.length}</Badge>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-0">
-                        {resources?.pamDiscoverySources.map((r, idx) => (
-                          <ResourceRow
-                            key={r.id}
-                            name={r.name}
-                            subtitle={`${r.discoveryType}${r.projectName ? ` · ${r.projectName}` : ""}`}
-                            isLast={idx === (resources?.pamDiscoverySources.length ?? 0) - 1}
-                          />
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
                   {(resources?.appConnections.length ?? 0) > 0 && (
                     <AccordionItem value="app-connections">
                       <AccordionTrigger>
                         <span className="flex-1">App Connections</span>
                         <Badge variant="neutral">{resources?.appConnections.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.appConnections.map((r, idx) => (
                           <ResourceRow
                             key={r.id}
@@ -242,7 +179,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">Dynamic Secrets</span>
                         <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.dynamicSecrets.map((r, idx) => (
                           <ResourceRow
                             key={r.id}

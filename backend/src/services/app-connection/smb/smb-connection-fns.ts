@@ -1,9 +1,8 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { verifyWindowsCredentials } from "@app/lib/smb-rpc";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -13,7 +12,7 @@ import { TSmbConnectionConfig } from "./smb-connection-types";
 
 export const getSmbConnectionListItem = () => {
   return {
-    name: "Windows" as const,
+    name: "Windows (SMB)" as const,
     app: AppConnection.SMB as const,
     methods: Object.values(SmbConnectionMethod) as [SmbConnectionMethod.Credentials]
   };
@@ -56,9 +55,7 @@ export const executeSmbWithPotentialGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
@@ -70,7 +67,6 @@ export const executeSmbWithPotentialGateway = async <T>(
 
 export const validateSmbConnectionCredentials = async (
   config: TSmbConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {

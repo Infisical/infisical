@@ -1,9 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
-import RE2 from "re2";
 
-import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -16,6 +14,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -32,63 +31,59 @@ import {
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import {
-  CertExtendedKeyUsage,
-  CertKeyAlgorithm,
-  CertKeyUsage,
-  CertSignatureAlgorithm,
-  CertStatus
-} from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
+import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
-  TCertificateAuthorityDALFactory,
-  TCertificateAuthorityWithAssociatedCa
-} from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  assertCaInProfileProject,
-  createDistinguishedName,
-  extractDnParts
-} from "@app/services/certificate-authority/certificate-authority-fns";
+  assertCaSupportsCustomExtensions,
+  caUsesExternalIssuanceQueue
+} from "@app/services/certificate-authority/certificate-authority-maps";
+import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
-  CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
-  mapExtendedKeyUsageToLegacy,
-  mapKeyUsageToLegacy,
-  mapLegacyExtendedKeyUsageToStandard,
-  mapLegacyKeyUsageToStandard
+  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE
 } from "../certificate-common/certificate-constants";
 import {
+  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
+import { assertAwsPcaCustomExtensionLimit } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
-  detectSanType,
   extractCertificateFromBuffer,
-  generateSelfSignedCertificate,
   getEffectiveAlgorithms,
-  isValidRenewalTiming,
   resolveEffectiveApiConfig,
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
+import {
+  assertCanEditCertificate,
+  assertCanEditCertificateResult
+} from "../certificate-common/certificate-permission-fns";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -98,41 +93,48 @@ import {
   mapEnumsForValidation,
   normalizeDateForApi,
   removeRootCaFromChain,
-  validatePqcLicense
+  validateCertificateRequestLicense
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import {
+  attachCertificateToPendingRequest,
+  markPendingRequestFailed
+} from "../certificate-request/certificate-request-fns";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import {
-  copyMetadataFromCertificate,
   insertMetadataForCertificate,
   insertMetadataForCertificateRequest
 } from "../resource-metadata/resource-metadata-fns";
+import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
+import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
 import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
-  TDisableRenewalConfigDTO,
-  TDisableRenewalResponse,
   TIssueCertificateFromProfileDTO,
   TOrderCertificateFromProfileDTO,
-  TRenewalConfigResponse,
-  TRenewCertificateDTO,
   TSignCertificateFromProfileDTO,
-  TUpdateCertificateDTO,
-  TUpdateRenewalConfigDTO
+  TUpdateCertificateDTO
 } from "./certificate-v3-types";
 
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
+    | "findOne"
+    | "findById"
+    | "updateById"
+    | "transaction"
+    | "create"
+    | "find"
+    | "getRequestEnrollmentTypeByCertId"
+    | "getOriginatingRequestByCertId"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -142,15 +144,22 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs" | "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest" | "getPolicyById">;
+  certificatePolicyService: Pick<
+    TCertificatePolicyServiceFactory,
+    "validateCertificateRequest" | "validateRequestAgainstPolicy" | "getPolicyById"
+  >;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+    | "findPkiSyncIdsByCertificateId"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncMetadata"
+    | "primaryNode"
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   kmsService: Pick<
     TKmsServiceFactory,
     "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
@@ -162,7 +171,10 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById" | "create" | "transaction">;
+  certificateRequestDAL: Pick<
+    TCertificateRequestDALFactory,
+    "updateById" | "findById" | "create" | "transaction" | "attachCertificate" | "transitionFromPending"
+  >;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
@@ -172,8 +184,15 @@ type TCertificateV3ServiceFactoryDep = {
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -284,389 +303,27 @@ const validateProfileAndPermissions = async ({
   return profile;
 };
 
-const validateRenewalEligibility = (
-  certificate: {
-    id: string;
-    status: string;
-    notBefore: Date;
-    notAfter: Date;
-    revokedAt?: Date | null;
-    renewedByCertificateId?: string | null;
-    profileId?: string | null;
-    caId?: string | null;
-    pkiSubscriberId?: string | null;
+// Builds the certificate permission subject from a persisted certificate record so the private-key
+// read permission is evaluated against the same fields the certificate read paths use. Includes every
+// field the certificate permission conditions support, so attribute-scoped grants match consistently.
+const buildCertificateReadPrivateKeySubject = (
+  certRecord: {
+    commonName?: string | null;
+    altNames?: string | null;
+    serialNumber?: string | null;
+    friendlyName?: string | null;
+    status?: string | null;
   },
-  ca: TCertificateAuthorityWithAssociatedCa
-) => {
-  const errors: string[] = [];
-
-  if (certificate.status !== CertStatus.ACTIVE) {
-    errors.push(`Certificate status is ${certificate.status}, must be ${CertStatus.ACTIVE}`);
-  }
-
-  const now = new Date();
-  if (certificate.notAfter <= now) {
-    errors.push("Certificate is already expired");
-  }
-
-  if (certificate.revokedAt) {
-    errors.push("Certificate is revoked and cannot be renewed");
-  }
-
-  const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
-  const isInternalCa = caType === CaType.INTERNAL;
-  const isConnectedExternalCa =
-    caType === CaType.ACME ||
-    caType === CaType.AZURE_AD_CS ||
-    caType === CaType.AWS_PCA ||
-    caType === CaType.AWS_ACM_PUBLIC_CA ||
-    caType === CaType.DIGICERT ||
-    caType === CaType.VENAFI_TPP;
-  const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
-
-  if (!isInternalCa && !isConnectedExternalCa) {
-    errors.push(`CA type ${String(caType)} does not support renewal`);
-  }
-
-  if (isImportedCertificate) {
-    errors.push("Externally imported certificates cannot be renewed");
-  }
-
-  if (ca.status !== CaStatus.ACTIVE) {
-    errors.push(`Certificate Authority is ${ca.status}, must be ${CaStatus.ACTIVE}`);
-  }
-
-  if (certificate.renewedByCertificateId) {
-    errors.push("Certificate has already been renewed");
-  }
-
-  const certificateTtlInDays = Math.ceil(
-    (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
-  );
-
-  if (ca.internalCa?.notAfter) {
-    const caExpiryDate = new Date(ca.internalCa.notAfter);
-    const proposedCertExpiryDate = new Date(now.getTime() + certificateTtlInDays * 24 * 60 * 60 * 1000);
-
-    if (proposedCertExpiryDate > caExpiryDate) {
-      errors.push(
-        `New certificate would expire (${proposedCertExpiryDate.toISOString()}) after its issuing CA (${caExpiryDate.toISOString()})`
-      );
-    }
-  }
-
-  return {
-    isEligible: errors.length === 0,
-    errors
-  };
-};
-
-const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
-  if (!keyUsages) return [];
-
-  const validKeyUsages = [...Object.values(CertKeyUsageType), ...Object.values(CertKeyUsage)] as string[];
-
-  const normalize = (usage: string): CertKeyUsageType | null => {
-    if (validKeyUsages.includes(usage)) {
-      return mapLegacyKeyUsageToStandard(usage as CertKeyUsageType);
-    }
-    return null;
-  };
-
-  let raw: string[];
-
-  if (Array.isArray(keyUsages)) {
-    raw = keyUsages.filter((u): u is string => typeof u === "string");
-  } else if (typeof keyUsages === "string") {
-    raw = keyUsages.split(",").map((u) => u.trim());
-  } else {
-    return [];
-  }
-
-  return raw.map((u) => normalize(u)).filter((u): u is CertKeyUsageType => u !== null);
-};
-
-const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsageType[] => {
-  if (!extendedKeyUsages) return [];
-
-  const validExtendedKeyUsages = [
-    ...Object.values(CertExtendedKeyUsageType),
-    ...Object.values(CertExtendedKeyUsage)
-  ] as string[];
-
-  const normalize = (usage: string): CertExtendedKeyUsageType | null => {
-    if (validExtendedKeyUsages.includes(usage)) {
-      return mapLegacyExtendedKeyUsageToStandard(usage as CertExtendedKeyUsageType);
-    }
-    return null;
-  };
-
-  let raw: string[];
-
-  if (Array.isArray(extendedKeyUsages)) {
-    raw = extendedKeyUsages.filter((u): u is string => typeof u === "string");
-  } else if (typeof extendedKeyUsages === "string") {
-    raw = extendedKeyUsages.split(",").map((u) => u.trim());
-  } else {
-    return [];
-  }
-
-  return raw.map((u) => normalize(u)).filter((u): u is CertExtendedKeyUsageType => u !== null);
-};
-
-const createSelfSignedCertificateRecord = async ({
-  selfSignedResult,
-  certificateRequest,
-  profile,
-  originalCert,
-  certificateDAL,
-  tx,
-  isRenewal = false
-}: {
-  selfSignedResult: Awaited<ReturnType<typeof generateSelfSignedCertificate>>;
-  certificateRequest: {
-    commonName?: string;
-    keyUsages?: CertKeyUsageType[];
-    extendedKeyUsages?: CertExtendedKeyUsageType[];
-  };
-  profile?: { id: string; projectId: string } | null;
-  originalCert?: {
-    id: string;
-    friendlyName?: string | null;
-    commonName?: string | null;
-    projectId: string;
-  };
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "updateById">;
-  tx: Parameters<TCertificateDALFactory["create"]>[1];
-  isRenewal?: boolean;
-}) => {
-  const subjectCommonName =
-    (selfSignedResult.certificateSubject.common_name as string) ||
-    certificateRequest.commonName ||
-    originalCert?.commonName ||
-    "";
-
-  const altNamesList = selfSignedResult.subjectAlternativeNames.map((san) => san.value).join(",");
-
-  const projectId = originalCert?.projectId || profile?.projectId;
-  if (!projectId) {
-    throw new BadRequestError({ message: "Project ID is required for certificate creation" });
-  }
-
-  const baseRecord = {
-    serialNumber: selfSignedResult.serialNumber,
-    friendlyName: originalCert?.friendlyName || subjectCommonName,
-    commonName: subjectCommonName,
-    altNames: altNamesList,
-    status: CertStatus.ACTIVE,
-    notBefore: selfSignedResult.notBefore,
-    notAfter: selfSignedResult.notAfter,
-    projectId,
-    keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
-    extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
-    profileId: profile?.id || null
-  };
-
-  const renewalRecord =
-    isRenewal && originalCert
-      ? {
-          renewedFromCertificateId: originalCert.id
-        }
-      : {};
-
-  // Extract certificate fields for storage
-  const parsedFields = extractCertificateFields(selfSignedResult.certificate);
-
-  return certificateDAL.create(
-    {
-      ...baseRecord,
-      ...renewalRecord,
-      ...parsedFields
-    },
-    tx
-  );
-};
-
-const createEncryptedCertificateData = async ({
-  certificateId,
-  certificate,
-  privateKey,
-  projectId,
-  certificateBodyDAL,
-  certificateSecretDAL,
-  kmsService,
-  projectDAL,
-  tx
-}: {
-  certificateId: string;
-  certificate: Buffer;
-  privateKey: Buffer;
-  projectId: string;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
-  projectDAL: TProjectDALFactory;
-  tx: Parameters<TCertificateBodyDALFactory["create"]>[1];
-}) => {
-  const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-    projectId,
-    projectDAL,
-    kmsService
+  metadata?: { key: string; value: string }[]
+) =>
+  subject(ProjectPermissionSub.Certificates, {
+    commonName: certRecord.commonName ?? undefined,
+    altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
+    serialNumber: certRecord.serialNumber ?? undefined,
+    friendlyName: certRecord.friendlyName ?? undefined,
+    status: certRecord.status ?? undefined,
+    metadata
   });
-
-  const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
-
-  const encryptedCertificate = await kmsEncryptor({
-    plainText: certificate
-  });
-
-  await certificateBodyDAL.create(
-    {
-      certId: certificateId,
-      encryptedCertificate: encryptedCertificate.cipherTextBlob
-    },
-    tx
-  );
-
-  const encryptedPrivateKey = await kmsEncryptor({
-    plainText: privateKey
-  });
-
-  await certificateSecretDAL.create(
-    {
-      certId: certificateId,
-      encryptedPrivateKey: encryptedPrivateKey.cipherTextBlob
-    },
-    tx
-  );
-};
-
-const parseTtlToMs = (ttl: string): number => {
-  const regex = new RE2("^(\\d+)(s|m|h|d)$");
-  const match = regex.exec(ttl);
-
-  if (!match) throw new Error(`Invalid TTL format: ${ttl}`);
-
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-
-  switch (unit) {
-    case "s":
-      return value * 1000;
-    case "m":
-      return value * 60 * 1000;
-    case "h":
-      return value * 60 * 60 * 1000;
-    case "d":
-      return value * 24 * 60 * 60 * 1000;
-    default:
-      throw new Error(`Unknown TTL unit: ${unit}`);
-  }
-};
-
-const processSelfSignedCertificate = async ({
-  certificateRequest,
-  policy,
-  profile,
-  originalCert,
-  effectiveAlgorithms,
-  certificateDAL,
-  certificateBodyDAL,
-  certificateSecretDAL,
-  kmsService,
-  projectDAL,
-  tx,
-  isRenewal = false
-}: {
-  certificateRequest: {
-    commonName?: string;
-    keyUsages?: CertKeyUsageType[];
-    extendedKeyUsages?: CertExtendedKeyUsageType[];
-    validity: { ttl: string };
-    notBefore?: Date;
-    notAfter?: Date;
-  };
-  policy?: {
-    subject?: Array<{
-      type: string;
-      allowed?: string[];
-      required?: string[];
-      denied?: string[];
-    }>;
-    sans?: Array<{
-      type: string;
-      allowed?: string[];
-      required?: string[];
-      denied?: string[];
-    }>;
-  } | null;
-  profile?: { id: string; projectId: string } | null;
-  originalCert?: {
-    id: string;
-    friendlyName?: string | null;
-    commonName?: string | null;
-    projectId: string;
-  };
-  effectiveAlgorithms: {
-    signatureAlgorithm: CertSignatureAlgorithm;
-    keyAlgorithm: CertKeyAlgorithm;
-  };
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "updateById">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
-  projectDAL: TProjectDALFactory;
-  tx: Parameters<TCertificateDALFactory["create"]>[1];
-  isRenewal?: boolean;
-}) => {
-  const projectId = originalCert?.projectId || profile?.projectId;
-  if (!projectId) {
-    throw new BadRequestError({ message: "Project ID is required for certificate creation" });
-  }
-
-  const selfSignedResult = await generateSelfSignedCertificate({
-    certificateRequest,
-    policy,
-    effectiveSignatureAlgorithm: effectiveAlgorithms.signatureAlgorithm,
-    effectiveKeyAlgorithm: effectiveAlgorithms.keyAlgorithm
-  });
-
-  const certificateData = await createSelfSignedCertificateRecord({
-    selfSignedResult,
-    certificateRequest,
-    profile,
-    originalCert,
-    certificateDAL,
-    tx,
-    isRenewal
-  });
-
-  await certificateDAL.updateById(
-    certificateData.id,
-    {
-      signatureAlgorithm: effectiveAlgorithms.signatureAlgorithm,
-      keyAlgorithm: effectiveAlgorithms.keyAlgorithm
-    },
-    tx
-  );
-
-  await createEncryptedCertificateData({
-    certificateId: certificateData.id,
-    certificate: selfSignedResult.certificate,
-    privateKey: selfSignedResult.privateKey,
-    projectId,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    projectDAL,
-    tx
-  });
-
-  return {
-    selfSignedResult,
-    certificateData
-  };
-};
 
 export const certificateV3ServiceFactory = ({
   certificateDAL,
@@ -693,9 +350,63 @@ export const certificateV3ServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
+  pkiApplicationDAL,
   apiEnrollmentConfigDAL,
-  licenseService
+  licenseService,
+  usageCounterDAL,
+  keyStore,
+  telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
+  const $quotaDeps = { projectDAL, licenseService, usageCounterDAL, keyStore };
+
+  // Called once the certificate row exists, never at the check.
+  const $recordQuotaUsage = async (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => {
+    if (usage?.isNewQuotaKey) await recordNewCertificateQuotaKey(usage.orgId, { keyStore }, usage.isWildcard);
+  };
+  const $reportCertificateIssued = async ({
+    orgId,
+    projectId,
+    profileId,
+    applicationId,
+    enrollmentType,
+    operation,
+    actor,
+    actorId
+  }: {
+    orgId?: string;
+    projectId: string;
+    profileId?: string | null;
+    applicationId?: string | null;
+    enrollmentType: EnrollmentType;
+    operation: CertificateIssuanceOperation;
+    actor?: ActorType;
+    actorId?: string;
+  }) => {
+    let distinctId: string | undefined;
+    try {
+      if (actor === ActorType.USER && actorId) {
+        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+        distinctId = user?.username ?? user?.email;
+      } else if (actor === ActorType.IDENTITY && actorId) {
+        distinctId = `identity-${actorId}`;
+      }
+    } catch (error) {
+      logger.debug({ error }, "Failed to resolve distinctId for certificate issuance telemetry");
+    }
+
+    await reportCertificateIssued({
+      telemetryService,
+      projectDAL,
+      orgId,
+      projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation,
+      distinctId
+    });
+  };
+
   const $resolveApplicationIdForProfile = async (
     profile: {
       id: string;
@@ -756,7 +467,6 @@ export const certificateV3ServiceFactory = ({
         actorContext.actor !== ActorType.EST_ACCOUNT &&
         actorContext.actor !== ActorType.SCEP_ACCOUNT &&
         actorContext.actorId &&
-        actorContext.actorAuthMethod &&
         actorContext.actorOrgId
       ) {
         const { permission } = await permissionService.getResourcePermission({
@@ -765,7 +475,7 @@ export const certificateV3ServiceFactory = ({
           projectId: profile.projectId,
           resourceType: ResourceType.CertificateApplication,
           resourceId: explicit,
-          actorAuthMethod: actorContext.actorAuthMethod,
+          actorAuthMethod: actorContext.actorAuthMethod ?? null,
           actorOrgId: actorContext.actorOrgId
         });
         ForbiddenError.from(permission).throwUnlessCan(
@@ -825,6 +535,12 @@ export const certificateV3ServiceFactory = ({
     return actor === ActorType.IDENTITY && policy?.bypassForMachineIdentities === true;
   };
 
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
@@ -856,23 +572,7 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
-
-    if (certificateRequest.keyAlgorithm) {
-      await validatePqcLicense({
-        keyAlgorithm: certificateRequest.keyAlgorithm,
-        projectId: profile.projectId,
-        projectDAL,
-        licenseService
-      });
-    }
-    if (certificateRequest.signatureAlgorithm) {
-      await validatePqcLicense({
-        keyAlgorithm: certificateRequest.signatureAlgorithm,
-        projectId: profile.projectId,
-        projectDAL,
-        licenseService
-      });
-    }
+    const applicationName = await $resolveApplicationName(applicationId);
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
@@ -884,13 +584,24 @@ export const certificateV3ServiceFactory = ({
       }
     )) as TCertRequestPolicy | null;
 
+    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+
+    const quotaUsage = await validateCertificateRequestLicense({
+      request: certificateRequestWithDefaults,
+      // This flow issues from altNames; the CSR flows below issue from subjectAlternativeNames.
+      altNames: (certificateRequestWithDefaults.altNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: $quotaDeps
+    });
+
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
 
-      const withDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
       const mappedCertificateRequestForValidation = mapEnumsForValidation({
-        ...withDefaults,
-        subjectAlternativeNames: withDefaults.altNames
+        ...certificateRequestWithDefaults,
+        subjectAlternativeNames: certificateRequestWithDefaults.altNames
       });
 
       const policy = await certificatePolicyService.getPolicyById({
@@ -907,7 +618,8 @@ export const certificateV3ServiceFactory = ({
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         profile.certificatePolicyId,
-        mappedCertificateRequestForValidation
+        mappedCertificateRequestForValidation,
+        { profileCustomExtensions: profile.defaults?.customExtensions }
       );
 
       if (!validationResult.isValid) {
@@ -934,25 +646,35 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
-            commonName: certificateRequest.commonName || null,
-            altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || null,
-            notBefore: certificateRequest.notBefore || null,
-            notAfter: certificateRequest.notAfter || null,
-            keyAlgorithm: certificateRequest.keyAlgorithm || null,
-            signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
+            commonName: certificateRequestWithDefaults.commonName || null,
+            altNames: certificateRequestWithDefaults.altNames
+              ? JSON.stringify(certificateRequestWithDefaults.altNames)
+              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || null,
+            extendedKeyUsages:
+              convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || null,
+            notBefore: certificateRequestWithDefaults.notBefore || null,
+            notAfter: certificateRequestWithDefaults.notAfter || null,
+            keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm || null,
+            signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm || null,
             ttl: resolvedTtl,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            organization: certificateRequest.organization || null,
-            organizationalUnit: certificateRequest.organizationalUnit || null,
-            country: certificateRequest.country || null,
-            state: certificateRequest.state || null,
-            locality: certificateRequest.locality || null,
-            basicConstraints: certificateRequest.basicConstraints
-              ? JSON.stringify(certificateRequest.basicConstraints)
+            customExtensions: validationResult.resolvedCustomExtensions
+              ? JSON.stringify(validationResult.resolvedCustomExtensions)
+              : null,
+            organization: certificateRequestWithDefaults.organization || null,
+            organizationalUnit: certificateRequestWithDefaults.organizationalUnit || null,
+            country: certificateRequestWithDefaults.country || null,
+            state: certificateRequestWithDefaults.state || null,
+            locality: certificateRequestWithDefaults.locality || null,
+            domainComponents: certificateRequestWithDefaults.domainComponents
+              ? certificateRequestWithDefaults.domainComponents.join(",")
+              : null,
+            basicConstraints: certificateRequestWithDefaults.basicConstraints
+              ? JSON.stringify(certificateRequestWithDefaults.basicConstraints)
               : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
@@ -973,21 +695,23 @@ export const certificateV3ServiceFactory = ({
           profileId,
           profileName: profile.slug,
           certificateRequest: {
-            commonName: certificateRequest.commonName,
-            organization: certificateRequest.organization,
-            organizationalUnit: certificateRequest.organizationalUnit,
-            country: certificateRequest.country,
-            state: certificateRequest.state,
-            locality: certificateRequest.locality,
-            keyUsages: certificateRequest.keyUsages,
-            extendedKeyUsages: certificateRequest.extendedKeyUsages,
-            altNames: certificateRequest.altNames,
-            validity: certificateRequest.validity,
-            notBefore: certificateRequest.notBefore?.toISOString(),
-            notAfter: certificateRequest.notAfter?.toISOString(),
-            signatureAlgorithm: certificateRequest.signatureAlgorithm,
-            keyAlgorithm: certificateRequest.keyAlgorithm,
-            basicConstraints: certificateRequest.basicConstraints
+            commonName: certificateRequestWithDefaults.commonName,
+            organization: certificateRequestWithDefaults.organization,
+            organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+            country: certificateRequestWithDefaults.country,
+            state: certificateRequestWithDefaults.state,
+            locality: certificateRequestWithDefaults.locality,
+            domainComponents: certificateRequestWithDefaults.domainComponents,
+            keyUsages: certificateRequestWithDefaults.keyUsages,
+            extendedKeyUsages: certificateRequestWithDefaults.extendedKeyUsages,
+            altNames: certificateRequestWithDefaults.altNames,
+            validity: certificateRequestWithDefaults.validity,
+            notBefore: certificateRequestWithDefaults.notBefore?.toISOString(),
+            notAfter: certificateRequestWithDefaults.notAfter?.toISOString(),
+            signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm,
+            keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm,
+            basicConstraints: certificateRequestWithDefaults.basicConstraints,
+            customExtensions: validationResult.resolvedCustomExtensions
           },
           certificateRequestId: certRequest.id
         };
@@ -1035,7 +759,9 @@ export const certificateV3ServiceFactory = ({
         message: "Certificate request requires approval",
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: certificateRequest.commonName
+        commonName: certificateRequest.commonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -1045,7 +771,6 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation({
       ...certificateRequestWithDefaults,
       subjectAlternativeNames: certificateRequestWithDefaults.altNames
@@ -1065,7 +790,8 @@ export const certificateV3ServiceFactory = ({
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedCertificateRequest
+      mappedCertificateRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
     if (!validationResult.isValid) {
@@ -1074,6 +800,8 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
+    const { resolvedCustomExtensions } = validationResult;
+
     const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
       | CertSignatureAlgorithm
       | undefined;
@@ -1081,13 +809,13 @@ export const certificateV3ServiceFactory = ({
 
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
-        message: "Key algorithm is required by template policy but not provided in request"
+        message: "Key algorithm is required by this policy but not provided in request"
       });
     }
 
     if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
       throw new BadRequestError({
-        message: "Signature algorithm is required by template policy but not provided in request"
+        message: "Signature algorithm is required by this policy but not provided in request"
       });
     }
 
@@ -1112,11 +840,12 @@ export const certificateV3ServiceFactory = ({
 
         const processResult = await processSelfSignedCertificate({
           certificateRequest: {
-            ...certificateRequest,
+            ...certificateRequestWithDefaults,
             validity: { ttl: resolvedTtl }
           },
           policy,
           profile,
+          customExtensions: resolvedCustomExtensions,
           effectiveAlgorithms,
           certificateDAL,
           certificateBodyDAL,
@@ -1146,13 +875,15 @@ export const certificateV3ServiceFactory = ({
           signatureAlgorithm: effectiveSignatureAlgorithm,
           status: CertificateRequestStatus.ISSUED,
           certificateId: processResult.certificateData.id,
+          customExtensions: resolvedCustomExtensions,
           ttl: resolvedTtl,
           enrollmentType: EnrollmentType.API,
           organization: certificateRequest.organization,
           organizationalUnit: certificateRequest.organizationalUnit,
           country: certificateRequest.country,
           state: certificateRequest.state,
-          locality: certificateRequest.locality
+          locality: certificateRequest.locality,
+          domainComponents: certificateRequest.domainComponents
         });
 
         if (metadata && metadata.length > 0) {
@@ -1235,7 +966,7 @@ export const certificateV3ServiceFactory = ({
       } else {
         canReadPrivateKey = permission.can(
           ProjectPermissionCertificateActions.ReadPrivateKey,
-          ProjectPermissionSub.Certificates
+          buildCertificateReadPrivateKeySubject(certificateData, metadata)
         );
       }
 
@@ -1252,6 +983,21 @@ export const certificateV3ServiceFactory = ({
         logger.debug("Failed to queue PKI issuance alert event");
       }
 
+      if (certificateData.id && applicationId) {
+        await queueCertificateFilterReconcile(certificateData.id, applicationId, pkiSyncQueue);
+      }
+
+      await $reportCertificateIssued({
+        orgId: profile.project?.orgId ?? actorOrgId,
+        projectId: profile.projectId,
+        profileId,
+        applicationId,
+        enrollmentType: EnrollmentType.API,
+        operation: CertificateIssuanceOperation.ISSUE,
+        actor,
+        actorId
+      });
+
       return {
         status: CertificateRequestStatus.ISSUED,
         certificate: selfSignedResult.certificate.toString("utf8"),
@@ -1263,7 +1009,9 @@ export const certificateV3ServiceFactory = ({
         certificateRequestId,
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: subjectCommonName
+        commonName: subjectCommonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -1310,6 +1058,7 @@ export const certificateV3ServiceFactory = ({
         friendlyName: certificateSubject.common_name || "Certificate",
         commonName: certificateSubject.common_name || "",
         altNames: subjectAlternativeNames,
+        altNameEntries: certificateRequestWithDefaults.altNames,
         basicConstraints: caBasicConstraints,
         pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
         ttl: resolveEffectiveTtl({
@@ -1330,6 +1079,8 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequestWithDefaults.country,
         state: certificateRequestWithDefaults.state,
         locality: certificateRequestWithDefaults.locality,
+        domainComponents: certificateRequestWithDefaults.domainComponents,
+        customExtensions: resolvedCustomExtensions,
         tx
       };
 
@@ -1394,6 +1145,7 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: effectiveSignatureAlgorithm,
         status: CertificateRequestStatus.ISSUED,
         certificateId: certResult.certificateId,
+        customExtensions: resolvedCustomExtensions,
         basicConstraints: certificateRequest.basicConstraints,
         ttl: certificateRequest.validity.ttl,
         enrollmentType: EnrollmentType.API,
@@ -1401,7 +1153,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        domainComponents: certificateRequest.domainComponents
       });
 
       if (metadata && metadata.length > 0) {
@@ -1456,7 +1209,7 @@ export const certificateV3ServiceFactory = ({
     } else {
       canReadPrivateKey = permission.can(
         ProjectPermissionCertificateActions.ReadPrivateKey,
-        ProjectPermissionSub.Certificates
+        buildCertificateReadPrivateKeySubject(cert, metadata)
       );
     }
 
@@ -1473,6 +1226,23 @@ export const certificateV3ServiceFactory = ({
       logger.debug("Failed to queue PKI issuance alert event");
     }
 
+    if (cert.id && applicationId) {
+      await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
+    }
+
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType: EnrollmentType.API,
+      operation: CertificateIssuanceOperation.ISSUE,
+      actor,
+      actorId
+    });
+
+    await $recordQuotaUsage(quotaUsage);
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: bufferToString(certificate),
@@ -1484,7 +1254,9 @@ export const certificateV3ServiceFactory = ({
       certificateRequestId,
       projectId: profile.projectId,
       profileName: profile.slug,
-      commonName: cert.commonName || ""
+      commonName: cert.commonName || "",
+      applicationId,
+      applicationName
     };
   };
 
@@ -1502,7 +1274,8 @@ export const certificateV3ServiceFactory = ({
     metadata,
     removeRootsFromChain,
     basicConstraints,
-    applicationId: explicitApplicationId
+    applicationId: explicitApplicationId,
+    acmeOrderId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1523,6 +1296,7 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       enrollmentType
     );
+    const applicationName = await $resolveApplicationName(applicationId);
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1562,6 +1336,17 @@ export const certificateV3ServiceFactory = ({
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
 
+    // Also the gate for the ACME and SCEP internal-CA branches, which sign through here. Their
+    // external-CA branches queue issuance instead and are gated in their own services.
+    const quotaUsage = await validateCertificateRequestLicense({
+      request: mappedCertificateRequest,
+      altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: $quotaDeps
+    });
+
     // When notAfter is explicitly provided, validate using date range (notAfter overrides TTL in cert generation).
     // Otherwise, validate using TTL. These are mutually exclusive to avoid "Cannot specify both" validation error.
     if (notAfter) {
@@ -1583,14 +1368,33 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: effectiveBasicConstraints?.pathLength }
       : effectiveBasicConstraints;
 
+    if (resolvedBasicConstraints) {
+      mappedCertificateRequest.basicConstraints = resolvedBasicConstraints;
+    }
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedCertificateRequest
+      mappedCertificateRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
     if (!validationResult.isValid) {
       throw new BadRequestError({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+      });
+    }
+
+    const { resolvedCustomExtensions } = validationResult;
+
+    validateAlgorithmCompatibility(ca, policy);
+
+    const policyIsCAState: CertPolicyState =
+      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
+      throw new BadRequestError({
+        message:
+          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
       });
     }
 
@@ -1619,11 +1423,15 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
             csr,
             commonName: mappedCertificateRequest.commonName || null,
             altNames: mappedCertificateRequest.subjectAlternativeNames
               ? JSON.stringify(mappedCertificateRequest.subjectAlternativeNames)
+              : null,
+            domainComponents: mappedCertificateRequest.domainComponents
+              ? mappedCertificateRequest.domainComponents.join(",")
               : null,
             keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages) || null,
             extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages) || null,
@@ -1635,6 +1443,7 @@ export const certificateV3ServiceFactory = ({
             enrollmentType,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
+            customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -1660,6 +1469,7 @@ export const certificateV3ServiceFactory = ({
             country: mappedCertificateRequest.country,
             state: mappedCertificateRequest.state,
             locality: mappedCertificateRequest.locality,
+            domainComponents: mappedCertificateRequest.domainComponents,
             keyUsages: mappedCertificateRequest.keyUsages,
             extendedKeyUsages: mappedCertificateRequest.extendedKeyUsages,
             altNames: mappedCertificateRequest.subjectAlternativeNames,
@@ -1668,7 +1478,8 @@ export const certificateV3ServiceFactory = ({
             notAfter: notAfter?.toISOString(),
             signatureAlgorithm: extractedSignatureAlgorithm,
             keyAlgorithm: extractedKeyAlgorithm,
-            basicConstraints: resolvedBasicConstraints
+            basicConstraints: resolvedBasicConstraints,
+            customExtensions: resolvedCustomExtensions
           },
           certificateRequestId: certRequest.id
         };
@@ -1716,24 +1527,14 @@ export const certificateV3ServiceFactory = ({
         message: "Certificate signing request requires approval",
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: mappedCertificateRequest.commonName
+        commonName: mappedCertificateRequest.commonName,
+        applicationId,
+        applicationName
       };
     }
 
-    validateAlgorithmCompatibility(ca, policy);
-
     const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
     const effectiveKeyAlgorithm = extractedKeyAlgorithm;
-
-    const policyIsCAState: CertPolicyState =
-      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
 
     // Transform policy basicConstraints to the format expected by the CA service
     const caBasicConstraints = shouldIssueAsCA
@@ -1747,117 +1548,146 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
-    const mergedSubject = {
-      ...csrSubjectParsed,
-      commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,
-      organization: csrSubjectParsed.organization ?? certificateRequest.organization,
-      ou: csrSubjectParsed.ou ?? certificateRequest.organizationalUnit,
-      country: csrSubjectParsed.country ?? certificateRequest.country,
-      province: csrSubjectParsed.province ?? certificateRequest.state,
-      locality: csrSubjectParsed.locality ?? certificateRequest.locality
-    };
-    const subjectOverride = createDistinguishedName(mergedSubject);
+    const subjectOverride = buildSubjectOverrideForCsr(csr, {
+      commonName: certificateRequest.commonName,
+      organization: certificateRequest.organization,
+      organizationalUnit: certificateRequest.organizationalUnit,
+      country: certificateRequest.country,
+      state: certificateRequest.state,
+      locality: certificateRequest.locality,
+      domainComponents: certificateRequest.domainComponents
+    });
 
-    const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
-      await certificateDAL.transaction(async (tx) => {
-        const certResult = await internalCaService.signCertFromCa({
-          isInternal: true,
-          caId: ca.id,
-          csr,
-          subjectOverride,
-          basicConstraints: caBasicConstraints,
-          pathLength: effectiveBasicConstraints?.pathLength,
-          ttl: effectiveTtl,
-          altNames: undefined,
-          notBefore: normalizeDateForApi(notBefore),
-          notAfter: normalizeDateForApi(notAfter),
-          keyUsages: certificateRequest.keyUsages
-            ? convertKeyUsageArrayToLegacy(certificateRequest.keyUsages)
-            : undefined,
-          extendedKeyUsages: certificateRequest.extendedKeyUsages
-            ? convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages)
-            : undefined,
-          signatureAlgorithm: effectiveSignatureAlgorithm,
-          keyAlgorithm: effectiveKeyAlgorithm,
-          isFromProfile: true,
-          tx
-        });
+    // Record intent before the irreversible act. Signing is an external side effect that no database
+    // rollback can undo, so the only way to stay accountable for it is to have a row on disk that
+    // says what we were about to do. If signing or persistence fails, this request is what makes the
+    // failure reportable and reconcilable, instead of leaving behind a stored certificate that
+    // nothing references.
+    const pendingRequest = await certificateRequestService.createCertificateRequest({
+      internal: true,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId: profile.projectId,
+      caId: ca.id,
+      profileId: profile.id,
+      applicationId,
+      acmeOrderId,
+      csr,
+      commonName: mappedCertificateRequest.commonName,
+      altNames: mappedCertificateRequest.subjectAlternativeNames,
+      domainComponents: mappedCertificateRequest.domainComponents,
+      keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages),
+      extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages),
+      notBefore,
+      notAfter,
+      keyAlgorithm: effectiveKeyAlgorithm,
+      signatureAlgorithm: effectiveSignatureAlgorithm,
+      status: CertificateRequestStatus.PENDING,
+      basicConstraints,
+      customExtensions: resolvedCustomExtensions,
+      ttl: validity.ttl,
+      enrollmentType
+    });
 
-        const signedCertRecord = await certificateDAL.findById(certResult.certificateId, tx);
-        if (!signedCertRecord) {
-          throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
-        }
+    const effectiveApiConfig = await resolveEffectiveApiConfig({
+      applicationId,
+      profileId: profile.id,
+      profileApiConfig: profile.apiConfig,
+      pkiApplicationProfileDAL,
+      apiEnrollmentConfigDAL
+    });
 
-        const effectiveApiConfig = await resolveEffectiveApiConfig({
-          applicationId,
-          profileId: profile.id,
-          profileApiConfig: profile.apiConfig,
-          pkiApplicationProfileDAL,
-          apiEnrollmentConfigDAL
-        });
-        const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          { apiConfig: effectiveApiConfig },
-          effectiveTtl,
-          new Date(signedCertRecord.notAfter)
-        );
+    let certResult: Awaited<ReturnType<typeof internalCaService.signCertFromCa>>;
+    try {
+      // No transaction is open across this call. signCertFromCa does its reads, CA key access and
+      // signing unwrapped, then opens one short transaction for the writes and invokes onPersisted
+      // inside it, so the certificate rows and the bookkeeping below commit together.
+      certResult = await internalCaService.signCertFromCa({
+        isInternal: true,
+        caId: ca.id,
+        csr,
+        subjectOverride,
+        basicConstraints: caBasicConstraints,
+        pathLength: effectiveBasicConstraints?.pathLength,
+        ttl: effectiveTtl,
+        altNames: undefined,
+        notBefore: normalizeDateForApi(notBefore),
+        notAfter: normalizeDateForApi(notAfter),
+        keyUsages: certificateRequest.keyUsages
+          ? convertKeyUsageArrayToLegacy(certificateRequest.keyUsages)
+          : undefined,
+        extendedKeyUsages: certificateRequest.extendedKeyUsages
+          ? convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages)
+          : undefined,
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        keyAlgorithm: effectiveKeyAlgorithm,
+        customExtensions: resolvedCustomExtensions,
+        isFromProfile: true,
+        onPersisted: async (newCert, tx) => {
+          const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+            { apiConfig: effectiveApiConfig },
+            effectiveTtl,
+            new Date(newCert.notAfter)
+          );
 
-        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
-          profileId
-        };
-        if (finalRenewBeforeDays !== undefined) {
-          updateData.renewBeforeDays = finalRenewBeforeDays;
-        }
-        if (applicationId) {
-          updateData.applicationId = applicationId;
-        }
-        await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
+          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+            profileId
+          };
+          if (finalRenewBeforeDays !== undefined) {
+            updateData.renewBeforeDays = finalRenewBeforeDays;
+          }
+          if (applicationId) {
+            updateData.applicationId = applicationId;
+          }
+          await certificateDAL.updateById(newCert.id, updateData, tx);
 
-        const certRequestResult = await certificateRequestService.createCertificateRequest({
-          internal: true,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
-          projectId: profile.projectId,
-          tx,
-          caId: ca.id,
-          profileId: profile.id,
-          applicationId,
-          csr,
-          commonName: mappedCertificateRequest.commonName,
-          altNames: mappedCertificateRequest.subjectAlternativeNames,
-          keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages),
-          extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages),
-          notBefore,
-          notAfter,
-          keyAlgorithm: effectiveKeyAlgorithm,
-          signatureAlgorithm: effectiveSignatureAlgorithm,
-          status: CertificateRequestStatus.ISSUED,
-          certificateId: certResult.certificateId,
-          basicConstraints,
-          ttl: validity.ttl,
-          enrollmentType
-        });
-
-        if (metadata && metadata.length > 0) {
-          await insertMetadataForCertificate(resourceMetadataDAL, {
-            metadata,
-            certificateId: certResult.certificateId,
-            orgId: actorOrgId,
+          // Records the outcome: flips the request to ISSUED and links the certificate in one update.
+          // Returns null when the request is no longer attachable, meaning it left a pending status
+          // while the signing above was in flight — cancelled by a user, or failed by ACME order
+          // reconciliation. Throwing here rolls this transaction back, certificate rows included, so a
+          // cancelled request can never silently yield an issued certificate. The signature itself is
+          // wasted, which is the right trade: an unstored signature costs an HSM operation and a
+          // serial, whereas committing would hand back a certificate nothing accounts for.
+          await attachCertificateToPendingRequest(
+            certificateRequestDAL,
+            {
+              certificateRequestId: pendingRequest.id,
+              certificateId: newCert.id,
+              projectId: profile.projectId,
+              operation: CertificateIssuanceOperation.SIGN
+            },
             tx
-          });
-          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
-            metadata,
-            certificateRequestId: certRequestResult.id,
-            certificateRequestCreatedAt: certRequestResult.createdAt,
-            orgId: actorOrgId,
-            tx
-          });
-        }
+          );
 
-        return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
+          if (metadata && metadata.length > 0) {
+            await insertMetadataForCertificate(resourceMetadataDAL, {
+              metadata,
+              certificateId: newCert.id,
+              orgId: actorOrgId,
+              tx
+            });
+            await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+              metadata,
+              certificateRequestId: pendingRequest.id,
+              certificateRequestCreatedAt: pendingRequest.createdAt,
+              orgId: actorOrgId,
+              tx
+            });
+          }
+        }
       });
+    } catch (err) {
+      await markPendingRequestFailed(certificateRequestDAL, {
+        certificateRequestId: pendingRequest.id,
+        error: err,
+        fallbackMessage: "Certificate issuance failed"
+      });
+      throw err;
+    }
+
+    const { certificate, certificateChain, issuingCaCertificate, serialNumber } = certResult;
 
     const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
     let certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
@@ -1867,7 +1697,7 @@ export const certificateV3ServiceFactory = ({
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: cert.id,
+        certificateId: certResult.certificateId,
         projectId: profile.projectId,
         eventType: PkiAlertEventType.ISSUANCE,
         applicationId: applicationId ?? null
@@ -1876,21 +1706,40 @@ export const certificateV3ServiceFactory = ({
       logger.debug("Failed to queue PKI issuance alert event");
     }
 
+    if (certResult.certificateId && applicationId) {
+      await queueCertificateFilterReconcile(certResult.certificateId, applicationId, pkiSyncQueue);
+    }
+
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation: CertificateIssuanceOperation.SIGN,
+      actor,
+      actorId
+    });
+
+    await $recordQuotaUsage(quotaUsage);
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: certificateString,
       issuingCaCertificate: extractCertificateFromBuffer(issuingCaCertificate as unknown as Buffer),
       certificateChain: certificateChainString,
       serialNumber,
-      certificateId: cert.id,
-      certificateRequestId,
+      certificateId: certResult.certificateId,
+      certificateRequestId: pendingRequest.id,
       projectId: profile.projectId,
       profileName: profile.slug,
-      commonName: cert.commonName || ""
+      commonName: certResult.commonName || "",
+      applicationId,
+      applicationName
     };
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     profileId,
     certificateOrder,
     metadata,
@@ -1919,12 +1768,17 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
+    const applicationName = await $resolveApplicationName(applicationId);
 
     let certificateRequest: TCertificateRequest;
     let extractedKeyAlgorithm: string | undefined;
     let extractedSignatureAlgorithm: string | undefined;
 
     if (certificateOrder.csr) {
+      if (certificateOrder.customExtensions?.length) {
+        throw new BadRequestError({ message: CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE });
+      }
+
       const csrRequest = extractCertificateRequestFromCSR(certificateOrder.csr);
       certificateRequest = applyProfileDefaults(csrRequest, profile.defaults);
       const algorithms = extractAlgorithmsFromCSR(certificateOrder.csr);
@@ -1946,22 +1800,37 @@ export const certificateV3ServiceFactory = ({
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
         keyAlgorithm: certificateOrder.keyAlgorithm,
+        basicConstraints: certificateOrder.basicConstraints,
         organization: certificateOrder.organization,
         organizationalUnit: certificateOrder.organizationalUnit,
         country: certificateOrder.country,
         state: certificateOrder.state,
-        locality: certificateOrder.locality
+        locality: certificateOrder.locality,
+        customExtensions: certificateOrder.customExtensions
       };
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
+    }
+
+    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    if (preflightCa) {
+      assertCaInProfileProject(preflightCa, profile);
     }
 
     // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
     // Per RFC 5280, keyCertSign implies CA certificate. Some clients (like cert-manager) only send keyCertSign without basicConstraints.
     const orderCsrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
-    if (certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign) {
-      throw new BadRequestError({
-        message: "CA certificate issuance is not supported for external certificate authorities."
-      });
+    const orderWantsCaCertificate = certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign;
+    if (orderWantsCaCertificate) {
+      if (preflightCa?.externalCa?.type !== CaType.AWS_PCA) {
+        throw new BadRequestError({
+          message: "CA certificate issuance is not supported for this external certificate authority."
+        });
+      }
+
+      certificateRequest.basicConstraints = {
+        isCA: true,
+        pathLength: certificateRequest.basicConstraints?.pathLength
+      };
     }
 
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
@@ -1971,9 +1840,21 @@ export const certificateV3ServiceFactory = ({
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
     }
 
+    // Not recorded here: the issuance queue creates the certificate later, once the external CA
+    // responds, so the cached count picks it up on its next refresh.
+    await validateCertificateRequestLicense({
+      request: mappedCertificateRequest,
+      altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: $quotaDeps
+    });
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedCertificateRequest
+      mappedCertificateRequest,
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
     if (!validationResult.isValid) {
@@ -1985,26 +1866,35 @@ export const certificateV3ServiceFactory = ({
     // ACM pre-flight validation runs before the approval branch so bad inputs (e.g., a TTL that
     // isn't ACM's fixed 198 days) are rejected at submit time rather than after the approver has
     // already approved a request that's guaranteed to fail downstream.
-    if (profile.caId) {
-      const preflightCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-      if (preflightCa) {
-        assertCaInProfileProject(preflightCa, profile);
+    const orderCustomExtensions = validationResult.resolvedCustomExtensions;
+
+    if (orderCustomExtensions?.length && preflightCa) {
+      const preflightCaType = (preflightCa.externalCa?.type ?? CaType.INTERNAL) as CaType;
+      assertCaSupportsCustomExtensions(preflightCaType, orderCustomExtensions.length);
+
+      if (preflightCaType === CaType.AWS_PCA) {
+        assertAwsPcaCustomExtensionLimit(orderCustomExtensions.length);
       }
-      if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
-        validateAcmIssuanceInputs({
-          csr: certificateOrder.csr,
-          keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
-          ttl: certificateOrder.validity?.ttl,
-          notBefore: certificateOrder.notBefore,
-          notAfter: certificateOrder.notAfter,
-          organization: certificateRequest.organization,
-          organizationalUnit: certificateRequest.organizationalUnit,
-          country: certificateRequest.country,
-          state: certificateRequest.state,
-          locality: certificateRequest.locality
-        });
-      }
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
+      validateAcmIssuanceInputs({
+        csr: certificateOrder.csr,
+        keyAlgorithm: certificateOrder.keyAlgorithm,
+        altNames: certificateOrder.altNames,
+        ttl: certificateOrder.validity?.ttl,
+        notBefore: certificateOrder.notBefore,
+        notAfter: certificateOrder.notAfter,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
+      });
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.AWS_PCA) {
+      validateAwsPcaCaIssuanceInputs({ basicConstraints: certificateRequest.basicConstraints });
     }
 
     const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
@@ -2032,16 +1922,21 @@ export const certificateV3ServiceFactory = ({
           {
             projectId: profile.projectId,
             profileId: profile.id,
+            caId: profile.caId ?? null,
             applicationId: applicationId ?? null,
             csr: certificateOrder.csr || null,
-            commonName: certificateOrder.commonName || null,
-            altNames: certificateOrder.altNames ? JSON.stringify(certificateOrder.altNames) : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateOrder.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateOrder.extendedKeyUsages) || null,
+            // Subject and algorithms come from `certificateRequest`, not the raw order: with a BYO CSR
+            // the request body carries none of them, and issuance after approval reads this row.
+            commonName: certificateRequest.commonName || null,
+            altNames: certificateRequest.subjectAlternativeNames
+              ? JSON.stringify(certificateRequest.subjectAlternativeNames)
+              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || null,
             notBefore: certificateOrder.notBefore || null,
             notAfter: certificateOrder.notAfter || null,
-            keyAlgorithm: certificateOrder.keyAlgorithm || null,
-            signatureAlgorithm: certificateOrder.signatureAlgorithm || null,
+            keyAlgorithm: extractedKeyAlgorithm || certificateRequest.keyAlgorithm || null,
+            signatureAlgorithm: extractedSignatureAlgorithm || certificateRequest.signatureAlgorithm || null,
             ttl: certificateOrder.validity?.ttl || null,
             metadata: certificateOrder.template ? JSON.stringify({ template: certificateOrder.template }) : null,
             organization: certificateRequest.organization || null,
@@ -2049,8 +1944,16 @@ export const certificateV3ServiceFactory = ({
             country: certificateRequest.country || null,
             state: certificateRequest.state || null,
             locality: certificateRequest.locality || null,
+            domainComponents: certificateRequest.domainComponents
+              ? certificateRequest.domainComponents.join(",")
+              : null,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
+            // Issuance after approval reads this row, not the approval payload.
+            basicConstraints: certificateRequest.basicConstraints
+              ? JSON.stringify(certificateRequest.basicConstraints)
+              : null,
+            customExtensions: orderCustomExtensions ? JSON.stringify(orderCustomExtensions) : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -2069,21 +1972,25 @@ export const certificateV3ServiceFactory = ({
         const requestData: TCertRequestRequestData = {
           profileId,
           profileName: profile.slug,
+          // What the approver reviews has to be what gets issued, so this reads the same resolved
+          // request the row above persists rather than the raw order.
           certificateRequest: {
-            commonName: certificateOrder.commonName,
+            commonName: certificateRequest.commonName,
             organization: certificateRequest.organization,
             organizationalUnit: certificateRequest.organizationalUnit,
             country: certificateRequest.country,
             state: certificateRequest.state,
             locality: certificateRequest.locality,
-            keyUsages: certificateOrder.keyUsages as string[] | undefined,
-            extendedKeyUsages: certificateOrder.extendedKeyUsages as string[] | undefined,
-            altNames: certificateOrder.altNames,
+            domainComponents: certificateRequest.domainComponents,
+            keyUsages: certificateRequest.keyUsages as string[] | undefined,
+            extendedKeyUsages: certificateRequest.extendedKeyUsages as string[] | undefined,
+            altNames: certificateRequest.subjectAlternativeNames,
             validity: certificateOrder.validity,
             notBefore: certificateOrder.notBefore?.toISOString(),
             notAfter: certificateOrder.notAfter?.toISOString(),
-            signatureAlgorithm: certificateOrder.signatureAlgorithm,
-            keyAlgorithm: certificateOrder.keyAlgorithm
+            signatureAlgorithm: extractedSignatureAlgorithm || certificateRequest.signatureAlgorithm,
+            keyAlgorithm: extractedKeyAlgorithm || certificateRequest.keyAlgorithm,
+            basicConstraints: certificateRequest.basicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -2131,7 +2038,9 @@ export const certificateV3ServiceFactory = ({
         message: "Certificate order request requires approval",
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: certificateOrder.commonName
+        commonName: certificateOrder.commonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -2156,14 +2065,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    if (
-      caType === CaType.ACME ||
-      caType === CaType.AZURE_AD_CS ||
-      caType === CaType.AWS_PCA ||
-      caType === CaType.DIGICERT ||
-      caType === CaType.AWS_ACM_PUBLIC_CA ||
-      caType === CaType.VENAFI_TPP
-    ) {
+    if (caUsesExternalIssuanceQueue(caType)) {
       // Pre-flight validation for ACM — reject bad inputs synchronously so the user
       // gets a 400 on submit rather than a FAILED request row after the job runs.
       if (caType === CaType.AWS_ACM_PUBLIC_CA) {
@@ -2179,6 +2081,20 @@ export const certificateV3ServiceFactory = ({
           country: certificateRequest.country,
           state: certificateRequest.state,
           locality: certificateRequest.locality
+        });
+      }
+
+      if (caType === CaType.GODADDY) {
+        // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
+        // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
+        // extra SANs past the guard and on to GoDaddy.
+        const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
+        validateGoDaddyIssuanceInputs({
+          keyAlgorithm: certificateOrder.csr
+            ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
+            : certificateOrder.keyAlgorithm,
+          altNames: csrDerived?.subjectAlternativeNames ?? certificateOrder.altNames,
+          commonName: csrDerived?.commonName ?? certificateOrder.commonName
         });
       }
 
@@ -2203,13 +2119,16 @@ export const certificateV3ServiceFactory = ({
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         status: CertificateRequestStatus.PENDING,
+        customExtensions: orderCustomExtensions,
         ttl: certificateOrder.validity?.ttl,
         enrollmentType: EnrollmentType.API,
         organization: certificateRequest.organization,
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        domainComponents: certificateRequest.domainComponents,
+        basicConstraints: certificateRequest.basicConstraints
       });
 
       if (metadata && metadata.length > 0) {
@@ -2241,6 +2160,8 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
+        basicConstraints: certificateRequest.basicConstraints,
+        customExtensions: orderCustomExtensions,
         ...(applicationId && { applicationId })
       });
 
@@ -2248,813 +2169,15 @@ export const certificateV3ServiceFactory = ({
         status: CertificateRequestStatus.PENDING,
         certificateRequestId: certRequest.id,
         projectId: certRequest.projectId,
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId,
+        applicationName
       };
     }
 
     throw new BadRequestError({
       message: "Certificate ordering is not supported for the specified CA type"
     });
-  };
-
-  const renewCertificate = async ({
-    certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    internal = false,
-    removeRootsFromChain
-  }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
-    internal?: boolean;
-  }): Promise<TCertificateIssuanceResponse> => {
-    const renewalResult = await certificateDAL.transaction(async (tx) => {
-      const originalCert = await certificateDAL.findById(certificateId, tx);
-      if (!originalCert) {
-        throw new NotFoundError({ message: "Certificate not found" });
-      }
-
-      if (!originalCert.profileId) {
-        throw new ForbiddenRequestError({
-          message: "Only certificates issued from a profile can be renewed"
-        });
-      }
-
-      // Validate and cast algorithms with fallbacks
-      let originalSignatureAlgorithm = Object.values(CertSignatureAlgorithm).includes(
-        originalCert.signatureAlgorithm as CertSignatureAlgorithm
-      )
-        ? (originalCert.signatureAlgorithm as CertSignatureAlgorithm)
-        : CertSignatureAlgorithm.RSA_SHA256;
-      let originalKeyAlgorithm = Object.values(CertKeyAlgorithm).includes(originalCert.keyAlgorithm as CertKeyAlgorithm)
-        ? (originalCert.keyAlgorithm as CertKeyAlgorithm)
-        : CertKeyAlgorithm.RSA_2048;
-
-      // For external CA certificates without stored algorithm info, extract from certificate
-      if (!originalSignatureAlgorithm || !originalKeyAlgorithm) {
-        const isExternalCA = originalCert.caId && !originalCert.caId.startsWith("internal");
-
-        if (isExternalCA) {
-          // For external CA certificates, we can extract algorithm info from the cert or use defaults
-          originalSignatureAlgorithm = originalSignatureAlgorithm || CertSignatureAlgorithm.RSA_SHA256;
-          originalKeyAlgorithm = originalKeyAlgorithm || CertKeyAlgorithm.RSA_2048;
-        } else {
-          throw new BadRequestError({
-            message:
-              "Original certificate does not have algorithm information stored. Cannot renew certificate issued before algorithm tracking was implemented."
-          });
-        }
-      }
-
-      let profile = null;
-      if (originalCert.profileId) {
-        profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
-        if (!profile) {
-          throw new NotFoundError({ message: "Certificate profile not found" });
-        }
-
-        if (profile.enrollmentType !== EnrollmentType.API) {
-          throw new ForbiddenRequestError({
-            message:
-              "Certificate is not eligible for renewal: Only certificates issued from an API enrollment profile can be renewed through this endpoint"
-          });
-        }
-      }
-
-      const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
-      if (!certificateSecret) {
-        throw new ForbiddenRequestError({
-          message:
-            "Certificate is not eligible for renewal: certificates issued from CSR (external private key) cannot be renewed"
-        });
-      }
-
-      if (!internal) {
-        const projectId = profile?.projectId || originalCert.projectId;
-
-        if (originalCert.applicationId) {
-          const originalProfile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
-          if (!originalProfile) {
-            throw new NotFoundError({ message: "Original certificate profile not found" });
-          }
-          await $resolveApplicationIdForProfile(
-            originalProfile,
-            originalCert.applicationId,
-            {
-              actor,
-              actorId,
-              actorAuthMethod,
-              actorOrgId
-            },
-            EnrollmentType.API
-          );
-        } else if (profile) {
-          const { permission } = await permissionService.getProjectPermission({
-            actor,
-            actorId,
-            projectId,
-            actorAuthMethod,
-            actorOrgId,
-            actionProjectType: ActionProjectType.CertificateManager
-          });
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionCertificateProfileActions.IssueCert,
-            subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-          );
-        }
-      }
-
-      const issuerType = profile?.issuerType || (originalCert.caId ? IssuerType.CA : IssuerType.SELF_SIGNED);
-
-      let ca;
-      if (issuerType === IssuerType.CA) {
-        const caId = profile?.caId || originalCert.caId;
-        if (!caId) {
-          throw new NotFoundError({ message: "Certificate Authority ID not found" });
-        }
-
-        ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-        if (!ca) {
-          throw new NotFoundError({ message: "Certificate Authority not found" });
-        }
-
-        assertCaInProfileProject(ca, profile ?? originalCert);
-
-        const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
-        if (!eligibilityCheck.isEligible) {
-          await certificateDAL.updateById(
-            originalCert.id,
-            {
-              renewalError: `Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`
-            },
-            tx
-          );
-          throw new BadRequestError({
-            message: `Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`
-          });
-        }
-
-        const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
-        if (caType === CaType.INTERNAL) {
-          validateCaSupport(ca, "direct certificate issuance");
-        }
-      }
-
-      const policyId = profile?.certificatePolicyId || originalCert.certificateTemplateId;
-      const policy = policyId
-        ? await certificatePolicyService.getPolicyById({
-            actor,
-            actorId,
-            actorAuthMethod,
-            actorOrgId,
-            policyId,
-            internal
-          })
-        : null;
-
-      if (!policy && profile) {
-        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-      }
-
-      const getSimpleTtl = (startDate: Date, endDate: Date): string => {
-        const diffMs = endDate.getTime() - startDate.getTime();
-
-        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        if (days > 0) return `${days}d`;
-
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        if (hours > 0) return `${hours}h`;
-
-        const minutes = Math.floor(diffMs / (1000 * 60));
-        if (minutes > 0) return `${minutes}m`;
-
-        const seconds = Math.floor(diffMs / 1000);
-        return `${seconds}s`;
-      };
-
-      const ttl = getSimpleTtl(originalCert.notBefore, originalCert.notAfter);
-
-      const certificateRequest = {
-        commonName: originalCert.commonName || undefined,
-        organization: originalCert.subjectOrganization || undefined,
-        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
-        country: originalCert.subjectCountry || undefined,
-        state: originalCert.subjectState || undefined,
-        locality: originalCert.subjectLocality || undefined,
-        keyUsages: parseKeyUsages(originalCert.keyUsages),
-        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
-        subjectAlternativeNames: originalCert.altNames
-          ? originalCert.altNames.split(",").map((san) => detectSanType(san.trim()))
-          : [],
-        validity: {
-          ttl
-        },
-        signatureAlgorithm: originalCert.signatureAlgorithm || undefined,
-        keyAlgorithm: originalCert.keyAlgorithm || undefined
-      };
-
-      let validationResult: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] };
-      if (profile?.certificatePolicyId) {
-        validationResult = await certificatePolicyService.validateCertificateRequest(
-          profile.certificatePolicyId,
-          certificateRequest
-        );
-      }
-
-      if (!validationResult.isValid) {
-        await certificateDAL.updateById(
-          originalCert.id,
-          {
-            renewalError: `Policy validation failed: ${validationResult.errors.join(", ")}`
-          },
-          tx
-        );
-
-        throw new BadRequestError({
-          message: `Certificate renewal failed. Errors: ${validationResult.errors.join(", ")}`
-        });
-      }
-
-      const notBefore = new Date();
-      const notAfter = new Date(Date.now() + parseTtlToMs(ttl));
-
-      const effectiveApiConfig = profile
-        ? await resolveEffectiveApiConfig({
-            applicationId: originalCert.applicationId ?? undefined,
-            profileId: profile.id,
-            profileApiConfig: profile.apiConfig,
-            pkiApplicationProfileDAL,
-            apiEnrollmentConfigDAL
-          })
-        : undefined;
-      const finalRenewBeforeDays = profile
-        ? calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, ttl, notAfter)
-        : undefined;
-
-      let certificate: string;
-      let certificateChain: string;
-      let issuingCaCertificate: string;
-      let serialNumber: string;
-      let newCert: TCertificates;
-
-      if (issuerType === IssuerType.CA) {
-        // CA-signed certificate renewal
-        if (!ca) {
-          throw new NotFoundError({ message: "Certificate Authority not found for CA-signed certificate renewal" });
-        }
-
-        const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
-
-        // Only validate algorithm compatibility for internal CAs
-        if (caType === CaType.INTERNAL) {
-          validateAlgorithmCompatibility(ca, {
-            algorithms: policy?.algorithms
-          } as { algorithms?: { signature?: string[] } });
-        }
-
-        if (caType === CaType.INTERNAL) {
-          // Internal CA renewal - existing logic
-          const caResult = await internalCaService.issueCertFromCa({
-            caId: ca.id,
-            friendlyName: originalCert.friendlyName || originalCert.commonName || "Renewed Certificate",
-            commonName: originalCert.commonName || "",
-            altNames: originalCert.altNames || "",
-            ttl,
-            notBefore: normalizeDateForApi(notBefore),
-            notAfter: normalizeDateForApi(notAfter),
-            keyUsages: convertKeyUsageArrayToLegacy(parseKeyUsages(originalCert.keyUsages)),
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(
-              parseExtendedKeyUsages(originalCert.extendedKeyUsages)
-            ),
-            signatureAlgorithm: originalSignatureAlgorithm,
-            keyAlgorithm: originalKeyAlgorithm,
-            isFromProfile: true,
-            organization: originalCert.subjectOrganization || undefined,
-            ou: originalCert.subjectOrganizationalUnit || undefined,
-            country: originalCert.subjectCountry || undefined,
-            state: originalCert.subjectState || undefined,
-            locality: originalCert.subjectLocality || undefined,
-            actor,
-            actorId,
-            actorAuthMethod,
-            actorOrgId,
-            internal: true,
-            tx
-          });
-
-          certificate = caResult.certificate;
-          certificateChain = caResult.certificateChain;
-          issuingCaCertificate = caResult.issuingCaCertificate;
-          serialNumber = caResult.serialNumber;
-
-          const foundCert = await certificateDAL.findById(caResult.certificateId, tx);
-          if (!foundCert) {
-            throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
-          }
-          newCert = foundCert;
-        } else if (
-          caType === CaType.ACME ||
-          caType === CaType.AZURE_AD_CS ||
-          caType === CaType.AWS_PCA ||
-          caType === CaType.DIGICERT ||
-          caType === CaType.AWS_ACM_PUBLIC_CA ||
-          caType === CaType.VENAFI_TPP
-        ) {
-          // External CA renewal - mark for async processing outside transaction
-          return {
-            isExternalCA: true,
-            ca,
-            profile,
-            originalCert,
-            originalSignatureAlgorithm,
-            originalKeyAlgorithm,
-            ttl
-          };
-        } else {
-          throw new BadRequestError({
-            message: `CA type ${String(caType)} does not support certificate renewal`
-          });
-        }
-      } else {
-        // Self-signed certificate renewal
-        const effectiveAlgorithms = getEffectiveAlgorithms(
-          undefined,
-          undefined,
-          originalSignatureAlgorithm,
-          originalKeyAlgorithm
-        );
-
-        const selfSignedRenewalResult = await processSelfSignedCertificate({
-          certificateRequest,
-          policy,
-          profile,
-          originalCert,
-          effectiveAlgorithms,
-          certificateDAL,
-          certificateBodyDAL,
-          certificateSecretDAL,
-          kmsService,
-          projectDAL,
-          tx,
-          isRenewal: true
-        });
-
-        certificate = selfSignedRenewalResult.selfSignedResult.certificate.toString("utf8");
-        certificateChain = selfSignedRenewalResult.selfSignedResult.certificate.toString("utf8"); // Self-signed has no chain
-        issuingCaCertificate = ""; // No issuing CA for self-signed
-        serialNumber = selfSignedRenewalResult.selfSignedResult.serialNumber;
-        newCert = selfSignedRenewalResult.certificateData;
-      }
-
-      if (!newCert) {
-        throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
-      }
-
-      // For self-signed certificates, we already set the renewal data during creation
-      // For CA-signed certificates, we need to set it now
-      if (issuerType === IssuerType.CA) {
-        const renewalUpdateData: {
-          profileId: string | null;
-          renewedFromCertificateId: string;
-          renewBeforeDays?: number;
-          applicationId?: string | null;
-        } = {
-          profileId: originalCert.profileId || null,
-          renewedFromCertificateId: originalCert.id
-        };
-
-        if (finalRenewBeforeDays !== undefined) {
-          renewalUpdateData.renewBeforeDays = finalRenewBeforeDays;
-        }
-
-        if (originalCert.applicationId) {
-          renewalUpdateData.applicationId = originalCert.applicationId;
-        }
-
-        await certificateDAL.updateById(newCert.id, renewalUpdateData, tx);
-      } else {
-        const selfSignedUpdate: { renewBeforeDays?: number; applicationId?: string | null } = {};
-        if (finalRenewBeforeDays !== undefined) {
-          selfSignedUpdate.renewBeforeDays = finalRenewBeforeDays;
-        }
-        if (originalCert.applicationId) {
-          selfSignedUpdate.applicationId = originalCert.applicationId;
-        }
-        if (Object.keys(selfSignedUpdate).length > 0) {
-          await certificateDAL.updateById(newCert.id, selfSignedUpdate, tx);
-        }
-      }
-
-      await certificateDAL.updateById(
-        originalCert.id,
-        {
-          renewedByCertificateId: newCert.id,
-          renewalError: null
-        },
-        tx
-      );
-
-      await addRenewedCertificateToSyncs(originalCert.id, newCert.id, { certificateSyncDAL }, tx);
-
-      const renewalAltNames = originalCert.altNames
-        ? originalCert.altNames.split(",").map((san) => detectSanType(san.trim()))
-        : undefined;
-
-      const certRequestResult = await certificateRequestService.createCertificateRequest({
-        internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        projectId: originalCert.projectId,
-        tx,
-        caId: ca?.id || originalCert.caId || undefined,
-        profileId: originalCert.profileId || undefined,
-        applicationId: originalCert.applicationId ?? undefined,
-        commonName: originalCert.commonName || undefined,
-        altNames: renewalAltNames,
-        keyUsages: parseKeyUsages(originalCert.keyUsages),
-        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
-        notBefore: new Date(newCert.notBefore),
-        notAfter: new Date(newCert.notAfter),
-        keyAlgorithm: originalKeyAlgorithm,
-        signatureAlgorithm: originalSignatureAlgorithm,
-        metadata: `Renewed from certificate ID: ${originalCert.id}`,
-        status: CertificateRequestStatus.ISSUED,
-        certificateId: newCert.id,
-        ttl,
-        enrollmentType: EnrollmentType.API,
-        organization: certificateRequest.organization,
-        organizationalUnit: certificateRequest.organizationalUnit,
-        country: certificateRequest.country,
-        state: certificateRequest.state,
-        locality: certificateRequest.locality
-      });
-
-      // Copy metadata from original cert to new cert and cert request
-      await copyMetadataFromCertificate(resourceMetadataDAL, {
-        sourceCertificateId: originalCert.id,
-        targetCertificateId: newCert.id,
-        targetCertificateRequestId: certRequestResult.id,
-        targetCertificateRequestCreatedAt: certRequestResult.createdAt,
-        orgId: actorOrgId,
-        tx
-      });
-
-      return {
-        certificate,
-        certificateChain,
-        issuingCaCertificate,
-        serialNumber,
-        newCert,
-        originalCert,
-        profile,
-        certRequestResult
-      };
-    });
-
-    let certificateRequestId: string = renewalResult.certRequestResult?.id || "";
-
-    // Handle external CA renewals separately
-    if ("isExternalCA" in renewalResult && renewalResult.isExternalCA) {
-      const { ca, profile, originalCert, originalSignatureAlgorithm, originalKeyAlgorithm, ttl } = renewalResult;
-
-      const renewalOrderId = randomUUID();
-      const altNamesArray = originalCert.altNames
-        ? originalCert.altNames.split(",").map((san: string) => san.trim())
-        : [];
-      const structuredAltNames = altNamesArray.map((san) => detectSanType(san));
-
-      const certificateRequest = await certificateRequestService.createCertificateRequest({
-        internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        projectId: originalCert.projectId,
-        profileId: profile?.id,
-        applicationId: originalCert.applicationId ?? undefined,
-        caId: ca.id,
-        commonName: originalCert.commonName || undefined,
-        altNames: structuredAltNames.length > 0 ? structuredAltNames : undefined,
-        keyUsages: parseKeyUsages(originalCert.keyUsages),
-        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
-        keyAlgorithm: originalKeyAlgorithm,
-        signatureAlgorithm: originalSignatureAlgorithm,
-        metadata: `Renewed from certificate ID: ${originalCert.id}`,
-        status: CertificateRequestStatus.PENDING,
-        ttl,
-        enrollmentType: EnrollmentType.API,
-        organization: originalCert.subjectOrganization || undefined,
-        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
-        country: originalCert.subjectCountry || undefined,
-        state: originalCert.subjectState || undefined,
-        locality: originalCert.subjectLocality || undefined
-      });
-
-      certificateRequestId = certificateRequest.id;
-
-      // Copy metadata from original cert to new cert request
-      await copyMetadataFromCertificate(resourceMetadataDAL, {
-        sourceCertificateId: originalCert.id,
-        targetCertificateRequestId: certificateRequest.id,
-        targetCertificateRequestCreatedAt: certificateRequest.createdAt,
-        orgId: actorOrgId
-      });
-
-      await certificateIssuanceQueue.queueCertificateIssuance({
-        certificateId: renewalOrderId,
-        profileId: profile?.id || "",
-        caId: ca.id,
-        caType: (ca.externalCa?.type as CaType) ?? CaType.INTERNAL,
-        commonName: originalCert.commonName || "",
-        altNames: structuredAltNames,
-        ttl,
-        signatureAlgorithm: originalSignatureAlgorithm,
-        keyAlgorithm: originalKeyAlgorithm,
-        keyUsages: parseKeyUsages(originalCert.keyUsages).map(mapKeyUsageToLegacy),
-        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages).map(mapExtendedKeyUsageToLegacy),
-        organization: originalCert.subjectOrganization || undefined,
-        organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
-        country: originalCert.subjectCountry || undefined,
-        state: originalCert.subjectState || undefined,
-        locality: originalCert.subjectLocality || undefined,
-        isRenewal: true,
-        originalCertificateId: certificateId,
-        certificateRequestId: certificateRequest.id,
-        ...(originalCert.applicationId && { applicationId: originalCert.applicationId })
-      });
-
-      return {
-        status: CertificateRequestStatus.PENDING,
-        certificate: "", // External CA renewal is async
-        certificateChain: "",
-        issuingCaCertificate: "",
-        serialNumber: "",
-        certificateId: renewalOrderId,
-        certificateRequestId: certificateRequest.id,
-        projectId: originalCert.projectId,
-        profileName: profile?.slug || "External CA Profile",
-        commonName: originalCert.commonName || ""
-      };
-    }
-
-    // Type check to ensure we have internal CA renewal result
-    if ("isExternalCA" in renewalResult) {
-      throw new BadRequestError({ message: "External CA renewals should be handled asynchronously" });
-    }
-
-    await triggerAutoSyncForCertificate(renewalResult.newCert.id, {
-      certificateSyncDAL,
-      pkiSyncDAL,
-      pkiSyncQueue
-    });
-
-    let finalCertificateChain = renewalResult.certificateChain;
-    if (removeRootsFromChain) {
-      finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
-    }
-
-    try {
-      await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: renewalResult.newCert.id,
-        projectId: renewalResult.originalCert.projectId,
-        eventType: PkiAlertEventType.RENEWAL,
-        applicationId: renewalResult.originalCert.applicationId ?? null
-      });
-    } catch {
-      logger.debug("Failed to queue PKI renewal alert event");
-    }
-
-    return {
-      status: CertificateRequestStatus.ISSUED,
-      certificate: renewalResult.certificate,
-      issuingCaCertificate: renewalResult.issuingCaCertificate,
-      certificateChain: finalCertificateChain,
-      serialNumber: renewalResult.serialNumber,
-      certificateId: renewalResult.newCert.id,
-      certificateRequestId,
-      projectId: renewalResult.originalCert.projectId,
-      profileName: renewalResult.profile?.slug || "Self-signed Certificate",
-      commonName: renewalResult.originalCert.commonName || ""
-    };
-  };
-
-  const updateRenewalConfig = async ({
-    certificateId,
-    renewBeforeDays,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TUpdateRenewalConfigDTO): Promise<TRenewalConfigResponse> => {
-    const certificate = await certificateDAL.findById(certificateId);
-    if (!certificate) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
-    const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
-    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
-
-    if (certificate.applicationId) {
-      const { permission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId: certificate.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: certificate.applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Edit,
-        ResourcePermissionSub.Certificates
-      );
-    } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: certificate.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Edit,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: certificate.commonName,
-          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: certificate.serialNumber,
-          metadata: certMetadata
-        })
-      );
-    }
-
-    if (!certificate.profileId) {
-      throw new BadRequestError({
-        message: "Certificate is not eligible for auto-renewal: certificate was not issued from a profile"
-      });
-    }
-
-    const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    if (profile.enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
-      });
-    }
-
-    const certificateSecret = await certificateSecretDAL.findOne({ certId: certificate.id });
-    if (!certificateSecret) {
-      throw new ForbiddenRequestError({
-        message:
-          "Certificate is not eligible for auto-renewal: certificates issued from CSR (external private key) cannot be auto-renewed"
-      });
-    }
-
-    if (certificate.status !== CertStatus.ACTIVE) {
-      throw new BadRequestError({
-        message: `Certificate is not eligible for auto-renewal: certificate status is ${certificate.status}, must be active`
-      });
-    }
-
-    const now = new Date();
-    if (certificate.notAfter <= now) {
-      throw new BadRequestError({
-        message: "Certificate is not eligible for auto-renewal: certificate has expired"
-      });
-    }
-
-    if (certificate.revokedAt) {
-      throw new BadRequestError({
-        message: "Certificate is not eligible for auto-renewal: certificate has been revoked"
-      });
-    }
-
-    if (certificate.renewedByCertificateId) {
-      throw new BadRequestError({
-        message: "Certificate is not eligible for auto-renewal: certificate has already been renewed"
-      });
-    }
-
-    const certificateTtlInDays = Math.ceil(
-      (new Date(certificate.notAfter).getTime() - new Date(certificate.notBefore).getTime()) / (24 * 60 * 60 * 1000)
-    );
-
-    if (renewBeforeDays >= certificateTtlInDays) {
-      throw new BadRequestError({
-        message: "Invalid renewal configuration: renewal threshold exceeds certificate validity period"
-      });
-    }
-
-    if (!isValidRenewalTiming(renewBeforeDays, new Date(certificate.notAfter))) {
-      throw new BadRequestError({
-        message: "Invalid renewal configuration: renewal would be triggered immediately or in the past"
-      });
-    }
-
-    await certificateDAL.transaction(async (tx) => {
-      await certificateDAL.updateById(
-        certificateId,
-        {
-          renewBeforeDays
-        },
-        tx
-      );
-    });
-
-    return {
-      projectId: certificate.projectId,
-      renewBeforeDays,
-      commonName: certificate.commonName || ""
-    };
-  };
-
-  const disableRenewalConfig = async ({
-    certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDisableRenewalConfigDTO): Promise<TDisableRenewalResponse> => {
-    const certificate = await certificateDAL.findById(certificateId);
-    if (!certificate) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
-    const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
-    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
-
-    if (certificate.applicationId) {
-      const { permission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId: certificate.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: certificate.applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Edit,
-        ResourcePermissionSub.Certificates
-      );
-    } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: certificate.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Edit,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: certificate.commonName,
-          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: certificate.serialNumber,
-          metadata: certMetadata
-        })
-      );
-    }
-
-    if (!certificate.profileId) {
-      throw new BadRequestError({
-        message: "Certificate is not eligible for auto-renewal: certificate was not issued from a profile"
-      });
-    }
-
-    const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    if (profile.enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
-      });
-    }
-
-    await certificateDAL.transaction(async (tx) => {
-      await certificateDAL.updateById(
-        certificateId,
-        {
-          renewBeforeDays: null
-        },
-        tx
-      );
-    });
-
-    return {
-      projectId: certificate.projectId,
-      commonName: certificate.commonName || ""
-    };
   };
 
   const updateCertificate = async ({
@@ -3070,52 +2193,24 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const currentMetadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id });
-    const currentMetadata = currentMetadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+    const { projectPermission } = await assertCanEditCertificate({
+      certificate,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      permissionService,
+      resourceMetadataDAL
+    });
 
-    if (certificate.applicationId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId: certificate.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: certificate.applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(resourcePermission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Edit,
-        ResourcePermissionSub.Certificates
-      );
-    } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: certificate.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      const currentSubject = subject(ProjectPermissionSub.Certificates, {
+    if (metadata && projectPermission) {
+      assertCanEditCertificateResult({
+        projectPermission,
         commonName: certificate.commonName,
         altNames: certificate.altNames?.split(",").map((s) => s.trim()),
         serialNumber: certificate.serialNumber,
-        metadata: currentMetadata
+        metadata
       });
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Edit, currentSubject);
-
-      if (metadata) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateActions.Edit,
-          subject(ProjectPermissionSub.Certificates, {
-            commonName: certificate.commonName,
-            altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-            serialNumber: certificate.serialNumber,
-            metadata
-          })
-        );
-      }
     }
 
     let updatedMetadata: Array<{ key: string; value: string }> = [];
@@ -3131,18 +2226,57 @@ export const certificateV3ServiceFactory = ({
         });
       });
       updatedMetadata = metadata;
+
+      if (certificate.applicationId) {
+        await queueCertificateFilterReconcile(certificateId, certificate.applicationId, pkiSyncQueue);
+      }
     }
 
-    return { metadata: updatedMetadata, projectId: certificate.projectId, commonName: certificate.commonName };
+    return {
+      metadata: updatedMetadata,
+      projectId: certificate.projectId,
+      commonName: certificate.commonName,
+      applicationId: certificate.applicationId ?? null,
+      applicationName: certificate.applicationId
+        ? ((await pkiApplicationDAL.findById(certificate.applicationId))?.name ?? null)
+        : null
+    };
   };
 
+  const renewalService = certificateRenewalServiceFactory({
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateProfileDAL,
+    certificatePolicyService,
+    internalCaService,
+    permissionService,
+    certificateSyncDAL,
+    pkiSyncDAL,
+    pkiSyncQueue,
+    kmsService,
+    projectDAL,
+    certificateIssuanceQueue,
+    certificateRequestService,
+    certificateRequestDAL,
+    resourceMetadataDAL,
+    pkiAlertV2Queue,
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL,
+    apiEnrollmentConfigDAL,
+    licenseService,
+    quotaDeps: $quotaDeps,
+    recordQuotaUsage: $recordQuotaUsage,
+    resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
+    reportCertificateIssued: $reportCertificateIssued
+  });
+
   return {
+    ...renewalService,
     issueCertificateFromProfile,
     signCertificateFromProfile,
-    orderCertificateFromProfile,
-    renewCertificate,
-    updateRenewalConfig,
-    disableRenewalConfig,
+    orderCertificate,
     updateCertificate
   };
 };

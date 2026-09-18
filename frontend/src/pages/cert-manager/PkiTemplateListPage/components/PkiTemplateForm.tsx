@@ -25,10 +25,11 @@ import {
   useUpdateCertTemplateV2
 } from "@app/hooks/api";
 import {
+  buildExtendedKeyUsageToggleSchema,
   EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import { CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { TCertificateTemplateV2 } from "@app/hooks/api/certificateTemplates/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -55,12 +56,7 @@ const schema = z.object({
     [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
   }),
   extendedKeyUsages: z.object({
-    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+    ...buildExtendedKeyUsageToggleSchema(z.boolean().optional())
   })
 });
 
@@ -185,7 +181,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     <form onSubmit={handleSubmit(onFormSubmit)}>
       {certTemplate && (
         <FormControl label="Certificate Template ID">
-          <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+          <Input value={certTemplate.id} isDisabled className="bg-foreground-inverse/[0.07]" />
         </FormControl>
       )}
       <Controller
@@ -199,7 +195,12 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="my-template" />
+            <Input
+              {...field}
+              placeholder="my-template"
+              autoComplete="off"
+              name="pki-template-name"
+            />
           </FormControl>
         )}
       />

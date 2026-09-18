@@ -17,30 +17,7 @@ import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  Checkbox,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Button as V3Button, Pagination, SelectedActionBar } from "@app/components/v3";
 import { useSubscription, useUser } from "@app/context";
 import {
   getUserTablePreference,
@@ -57,6 +34,30 @@ import {
 } from "@app/hooks/api";
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import {
+  EmptyState,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "@app/pages/admin/components/AdminTable";
+import {
+  Button,
+  Checkbox,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  IconButton,
+  Input,
+  Tooltip
+} from "@app/pages/admin/components/AdminV3Adapters";
 
 const UserPanelTable = ({
   handlePopUpOpen,
@@ -120,6 +121,7 @@ const UserPanelTable = ({
     <>
       <div className="flex gap-2">
         <Input
+          aria-label="Search users"
           value={searchUserFilter}
           onChange={(e) => setSearchUserFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -128,17 +130,13 @@ const UserPanelTable = ({
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter Users"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
+            <V3Button
+              aria-label="Filter Users"
+              variant="outline"
+              className={twMerge("px-3", isTableFiltered && "border-project/50 text-project")}
             >
               <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
+            </V3Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="p-0">
             <DropdownMenuLabel>Filter By</DropdownMenuLabel>
@@ -151,7 +149,7 @@ const UserPanelTable = ({
               iconPos="right"
             >
               <div className="flex items-center gap-x-2">
-                <FontAwesomeIcon icon={faUserShield} className="text-yellow-700" />
+                <FontAwesomeIcon icon={faUserShield} className="text-warning" />
                 <span>Server Admins</span>
               </div>
             </DropdownMenuItem>
@@ -165,6 +163,7 @@ const UserPanelTable = ({
               <Tr>
                 <Th className="w-5">
                   <Checkbox
+                    aria-label="Select all users on this page"
                     id="member-page-select"
                     isChecked={isPageSelected || isPageIndeterminate}
                     isIndeterminate={isPageIndeterminate}
@@ -192,13 +191,15 @@ const UserPanelTable = ({
               {!isPending &&
                 users?.map((user) => {
                   const { username, email, firstName, lastName, id, superAdmin } = user;
-                  const name = firstName || lastName ? `${firstName} ${lastName}` : null;
+                  const name =
+                    firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : null;
 
                   const isSelected = selectedUserIds.includes(id);
                   return (
                     <Tr key={`user-${id}`} className="w-full">
                       <Td>
                         <Checkbox
+                          aria-label={`Select user ${username || email}`}
                           id={`select-user-${id}`}
                           isChecked={isSelected}
                           onClick={(e) => {
@@ -212,7 +213,7 @@ const UserPanelTable = ({
                       <Td className="w-5/12 max-w-0">
                         <div className="flex items-center">
                           <p className="truncate">
-                            {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                            {name ?? <span className="text-muted">Not Set</span>}
                           </p>
                           {superAdmin && (
                             <Badge variant="info" className="ml-2">
@@ -229,12 +230,7 @@ const UserPanelTable = ({
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
-                              >
+                              <IconButton ariaLabel="Options" size="xs" variant="plain">
                                 <FontAwesomeIcon icon={faEllipsisV} />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -242,7 +238,10 @@ const UserPanelTable = ({
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("removeUser", { username, id });
+                                  handlePopUpOpen("removeUser", {
+                                    username,
+                                    id
+                                  });
                                 }}
                                 icon={<FontAwesomeIcon icon={faUserXmark} />}
                               >
@@ -261,7 +260,10 @@ const UserPanelTable = ({
                                       });
                                       return;
                                     }
-                                    handlePopUpOpen("upgradeToServerAdmin", { username, id });
+                                    handlePopUpOpen("upgradeToServerAdmin", {
+                                      username,
+                                      id
+                                    });
                                   }}
                                 >
                                   Make User Server Admin
@@ -289,7 +291,10 @@ const UserPanelTable = ({
                                       });
                                       return;
                                     }
-                                    handlePopUpOpen("removeServerAdmin", { username, id });
+                                    handlePopUpOpen("removeServerAdmin", {
+                                      username,
+                                      id
+                                    });
                                   }}
                                 >
                                   Remove Server Admin
@@ -374,7 +379,10 @@ export const UserIdentitiesTable = () => {
   };
 
   const handleGrantServerAdminAccess = async () => {
-    const { id } = popUp?.upgradeToServerAdmin?.data as { id: string; username: string };
+    const { id } = popUp?.upgradeToServerAdmin?.data as {
+      id: string;
+      username: string;
+    };
 
     await grantAdminAccess(id);
     createNotification({
@@ -386,7 +394,10 @@ export const UserIdentitiesTable = () => {
   };
 
   const handleRemoveServerAdminAccess = async () => {
-    const { id } = popUp?.removeServerAdmin?.data as { id: string; username: string };
+    const { id } = popUp?.removeServerAdmin?.data as {
+      id: string;
+      username: string;
+    };
 
     await removeAdminAccess(id);
     createNotification({
@@ -411,42 +422,31 @@ export const UserIdentitiesTable = () => {
 
   return (
     <>
-      <div
-        className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
-          selectedUsers.length > 0 && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedUsers.length}
+        onClearSelection={() => setSelectedUsers([])}
       >
-        <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <div className="mr-2 text-sm">{selectedUsers.length} Selected</div>
-          <button
-            type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
-            onClick={() => setSelectedUsers([])}
-          >
-            Unselect All
-          </button>
-          <Button
-            variant="outline_bg"
-            colorSchema="danger"
-            leftIcon={<FontAwesomeIcon icon={faTrash} />}
-            className="ml-2"
-            onClick={() => {
-              if (!selectedUsers?.length) return;
+        <Button
+          variant="outline_bg"
+          colorSchema="danger"
+          leftIcon={<FontAwesomeIcon icon={faTrash} />}
+          onClick={() => {
+            if (!selectedUsers?.length) return;
 
-              handlePopUpOpen("removeUsers");
-            }}
-            size="xs"
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+            handlePopUpOpen("removeUsers");
+          }}
+          size="xs"
+        >
+          Delete
+        </Button>
+      </SelectedActionBar>
+      <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-xl font-medium text-mineshaft-100">User Identities</p>
-            <p className="text-sm text-bunker-300">Manage user identities across your instance.</p>
+            <p className="text-xl font-medium text-foreground">User Identities</p>
+            <p className="text-sm text-label-secondary">
+              Manage user identities across your instance.
+            </p>
           </div>
         </div>
         <UserPanelTable
@@ -477,7 +477,12 @@ export const UserIdentitiesTable = () => {
         <DeleteActionModal
           isOpen={popUp.upgradeToServerAdmin.isOpen}
           title={`Are you sure you want to grant Server Admin permissions to ${
-            (popUp?.upgradeToServerAdmin?.data as { id: string; username: string })?.username || ""
+            (
+              popUp?.upgradeToServerAdmin?.data as {
+                id: string;
+                username: string;
+              }
+            )?.username || ""
           }?`}
           subTitle=""
           onChange={(isOpen) => handlePopUpToggle("upgradeToServerAdmin", isOpen)}
@@ -497,6 +502,7 @@ export const UserIdentitiesTable = () => {
           buttonText="Remove Access"
         />
         <UpgradePlanModal
+          paywallKey="admin.user-identities"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan.data?.text}
@@ -509,10 +515,8 @@ export const UserIdentitiesTable = () => {
           onDeleteApproved={() => handleRemoveUsers()}
           buttonText="Delete"
         >
-          <div className="mt-4 text-sm text-mineshaft-400">
-            The following users will be deleted:
-          </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;
@@ -522,7 +526,7 @@ export const UserIdentitiesTable = () => {
                       <p>
                         {user.firstName || user.lastName ? (
                           <>
-                            {`${`${user.firstName} ${user.lastName}`.trim()} `}(
+                            {`${`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()} `}(
                             <span className="break-all">{email}</span>)
                           </>
                         ) : (

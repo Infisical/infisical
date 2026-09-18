@@ -1,16 +1,22 @@
 import { requestContext } from "@fastify/request-context";
-import opentelemetry from "@opentelemetry/api";
 import fp from "fastify-plugin";
 
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import {
+  coreHttpRequestCounter,
+  highCardinalityMeter,
+  isTelemetryEnabled,
+  normalizeHttpMethod,
+  shouldRecordHighCardinalityMetrics
+} from "@app/lib/telemetry/metrics";
 
-const apiMeter = opentelemetry.metrics.getMeter("API");
+const apiMeter = highCardinalityMeter("API");
 
 const latencyHistogram = apiMeter.createHistogram("API_latency", {
   unit: "ms"
 });
 
-const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+const infisicalMeter = highCardinalityMeter("Infisical");
 
 const requestCounter = infisicalMeter.createCounter("infisical.http.server.request.count", {
   description: "Total number of API requests to Infisical (covers both human users and machine identities)",
@@ -24,9 +30,28 @@ const requestDurationHistogram = infisicalMeter.createHistogram("infisical.http.
 
 export const apiMetrics = fp(async (fastify) => {
   fastify.addHook("onResponse", async (request, reply) => {
+    if (!isTelemetryEnabled()) return;
+
+    // the line detects @fastify/static routes via config.rootPath and excludes frontend asset traffic
+    // so http.route stays low-cardinality and metrics stay comparable across deployment modes.
+    if ((request.routeOptions.config as { rootPath?: string } | undefined)?.rootPath) return;
+
+    // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
+    const coreMethod = normalizeHttpMethod(request.method);
     const { method } = request;
-    const route = request.routerPath;
+    const route = request.routeOptions.url;
     const { statusCode } = reply;
+
+    // Recorded ahead of the high-cardinality gate: these three labels are bounded (the route is Fastify's
+    // template, never the raw path), and they are the denominator for coreHttpErrorCounter, so a deployment
+    // that drops the per-actor meters must not lose them too.
+    coreHttpRequestCounter.add(1, {
+      "http.request.method": coreMethod,
+      "http.route": route ?? "unknown",
+      "http.response.status_code": statusCode
+    });
+
+    if (!shouldRecordHighCardinalityMetrics()) return;
 
     latencyHistogram.record(reply.elapsedTime, {
       route,
@@ -44,7 +69,7 @@ export const apiMetrics = fp(async (fastify) => {
 
     const attributes: Record<string, string | number> = {
       "http.request.method": method,
-      "http.route": route,
+      "http.route": route ?? "",
       "http.response.status_code": statusCode
     };
 

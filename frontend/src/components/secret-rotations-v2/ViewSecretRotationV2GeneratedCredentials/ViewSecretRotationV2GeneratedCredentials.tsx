@@ -5,6 +5,7 @@ import { format } from "date-fns";
 
 import { ViewAuth0ClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAuth0ClientSecretRotationGeneratedCredentials";
 import { ViewAzureClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAzureClientSecretRotationGeneratedCredentials";
+import { ViewConvexAccessKeyRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewConvexAccessKeyRotationGeneratedCredentials";
 import { ViewDatabricksServicePrincipalSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewDatabricksServicePrincipalSecretRotationGeneratedCredentials";
 import { ViewLdapPasswordRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewLdapPasswordRotationGeneratedCredentials";
 import { Modal, ModalContent, Spinner } from "@app/components/v2";
@@ -23,13 +24,20 @@ import {
 
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
+import { ViewCloudflareApiTokenRotationGeneratedCredentials } from "./ViewCloudflareApiTokenRotationGeneratedCredentials";
+import { ViewCloudflareR2AccessKeyRotationGeneratedCredentials } from "./ViewCloudflareR2AccessKeyRotationGeneratedCredentials";
+import { ViewDatadogApiKeyRotationGeneratedCredentials } from "./ViewDatadogApiKeyRotationGeneratedCredentials";
 import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./ViewDatadogApplicationKeySecretRotationGeneratedCredentials";
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
+import { ViewFireworksApiKeyRotationGeneratedCredentials } from "./ViewFireworksApiKeyRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
+import { ViewLiteLLMApiKeyRotationGeneratedCredentials } from "./ViewLiteLLMApiKeyRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
+import { ViewOpenAIServiceAccountRotationGeneratedCredentials } from "./ViewOpenAIServiceAccountRotationGeneratedCredentials";
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewSalesforceOauthCredentialsRotationGeneratedCredentials } from "./ViewSalesforceOauthCredentialsRotationGeneratedCredentials";
+import { ViewSnowflakeUserKeyPairRotationGeneratedCredentials } from "./ViewSnowflakeUserKeyPairRotationGeneratedCredentials";
 import { ViewSupabaseApiKeyRotationGeneratedCredentials } from "./ViewSupabaseApiKeyRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
@@ -56,8 +64,8 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading generated credentials...</p>
+        <Spinner size="lg" className="text-surface-selected" />
+        <p className="mt-4 text-sm text-muted">Loading generated credentials...</p>
       </div>
     );
   }
@@ -65,7 +73,7 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (!generatedCredentialsResponse) {
     return (
       <div className="flex w-full justify-center">
-        <p className="text-sm text-red">No generated credentials found for this rotation.</p>
+        <p className="text-sm text-danger">No generated credentials found for this rotation.</p>
       </div>
     );
   }
@@ -160,6 +168,20 @@ const Content = ({ secretRotation }: ContentProps) => {
         />
       );
       break;
+    case SecretRotation.LiteLLMApiKey:
+      Component = (
+        <ViewLiteLLMApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.OpenAIServiceAccount:
+      Component = (
+        <ViewOpenAIServiceAccountRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
     case SecretRotation.HpIloLocalAccount:
       Component = (
         <ViewHpIloRotationGeneratedCredentials
@@ -188,6 +210,48 @@ const Content = ({ secretRotation }: ContentProps) => {
         />
       );
       break;
+    case SecretRotation.DatadogApiKey:
+      Component = (
+        <ViewDatadogApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.ConvexAccessKey:
+      Component = (
+        <ViewConvexAccessKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.FireworksApiKey:
+      Component = (
+        <ViewFireworksApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.SnowflakeUserKeyPair:
+      Component = (
+        <ViewSnowflakeUserKeyPairRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.CloudflareApiToken:
+      Component = (
+        <ViewCloudflareApiTokenRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.CloudflareR2AccessKey:
+      Component = (
+        <ViewCloudflareR2AccessKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
     default:
       throw new Error("Unhandled View Generated Credential Rotation Type");
   }
@@ -199,14 +263,14 @@ const Content = ({ secretRotation }: ContentProps) => {
       {Component}
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && (
         <NoticeBannerV2 title={`${appName} Retired Credentials Behavior`}>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-sm text-label">
             Due to {SECRET_ROTATION_MAP[type].name} Rotations utilizing a single credential set,
             retired credentials will not be able to authenticate with {appName} during their{" "}
             <a
               target="_blank"
               href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
               rel="noopener noreferrer"
-              className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+              className="underline decoration-project underline-offset-2 hover:text-foreground-secondary"
             >
               inactive period
             </a>
@@ -215,12 +279,11 @@ const Content = ({ secretRotation }: ContentProps) => {
         </NoticeBannerV2>
       )}
       {nextRotationAt && (
-        <div className="flex items-center gap-x-1.5 text-sm text-mineshaft-200">
-          <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+        <div className="flex items-center gap-x-1.5 text-sm text-foreground-secondary">
+          <FontAwesomeIcon icon={faRotate} className="text-muted" />
           <span>
             Next rotation occurs on: {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
-            {format(nextRotationAt, "h:mm aa")}{" "}
-            <span className="text-mineshaft-300">(Local Time)</span>
+            {format(nextRotationAt, "h:mm aa")} <span className="text-label">(Local Time)</span>
           </span>
         </div>
       )}

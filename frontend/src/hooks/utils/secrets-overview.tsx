@@ -258,3 +258,37 @@ export const useHoneyTokenOverview = (
     getHoneyTokenByName
   };
 };
+
+export const useProxiedServiceOverview = (
+  proxiedServices: DashboardProjectSecretsOverview["proxiedServices"]
+) => {
+  const proxiedServiceNames = useMemo(() => {
+    const names = new Set<string>();
+    proxiedServices?.forEach((svc) => {
+      names.add(svc.name);
+    });
+    return [...names];
+  }, [proxiedServices]);
+
+  const isProxiedServicePresentInEnv = useCallback(
+    (name: string, env: string) => {
+      return Boolean(
+        proxiedServices?.find((svc) => svc.name === name && svc.environment.slug === env)
+      );
+    },
+    [proxiedServices]
+  );
+
+  const getProxiedServiceByName = useCallback(
+    (env: string, name: string) => {
+      return proxiedServices?.find((svc) => svc.environment.slug === env && svc.name === name);
+    },
+    [proxiedServices]
+  );
+
+  return {
+    proxiedServiceNames,
+    isProxiedServicePresentInEnv,
+    getProxiedServiceByName
+  };
+};

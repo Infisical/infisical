@@ -1,6 +1,5 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import opentelemetry from "@opentelemetry/api";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
 import { ZodError } from "zod";
@@ -9,6 +8,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ConflictError,
   CryptographyError,
   DatabaseError,
   ForbiddenRequestError,
@@ -22,7 +22,17 @@ import {
   ScimRequestError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { classifyError } from "@app/lib/errors/classify";
+import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import {
+  coreHttpErrorCounter,
+  highCardinalityMeter,
+  normalizeHttpMethod,
+  rateLimitExceededCounter,
+  shouldRecordHighCardinalityMetrics
+} from "@app/lib/telemetry/metrics";
+import { OauthTokenError, OauthTokenErrorCode, toErrorDescription } from "@app/services/oauth-client/oauth-token-error";
 
 enum JWTErrors {
   JwtExpired = "jwt expired",
@@ -33,6 +43,7 @@ enum JWTErrors {
 enum HttpStatusCodes {
   BadRequest = 400,
   NotFound = 404,
+  Conflict = 409,
   Unauthorized = 401,
   Forbidden = 403,
   UnprocessableContent = 422,
@@ -45,96 +56,162 @@ enum HttpStatusCodes {
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
-  const apiMeter = opentelemetry.metrics.getMeter("API");
+  const apiMeter = highCardinalityMeter("API");
   const errorHistogram = apiMeter.createHistogram("API_errors", {
     description: "API errors by type, status code, and name",
     unit: "1"
   });
 
-  const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+  const infisicalMeter = highCardinalityMeter("Infisical");
   const errorCounter = infisicalMeter.createCounter("infisical.http.server.error.count", {
     description: "Total number of API errors in Infisical (covers both human users and machine identities)",
     unit: "{error}"
   });
 
-  server.setErrorHandler((error, req, res) => {
-    req.log.error(error);
-    if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
-      const { method } = req;
-      const route = req.routerPath;
-      const errorType =
-        error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
+  server.setErrorHandler((error: Error, req, res) => {
+    // Expected client errors don't need stack traces. Log them without the Error object to
+    // avoid stack serialization; keep full-stack logging for unexpected / server errors.
+    const isExpectedClientError =
+      error instanceof BadRequestError ||
+      error instanceof NotFoundError ||
+      error instanceof ConflictError ||
+      error instanceof UnauthorizedError ||
+      error instanceof ForbiddenError ||
+      error instanceof ForbiddenRequestError ||
+      error instanceof PermissionBoundaryError ||
+      error instanceof ZodError ||
+      (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
+      error instanceof RateLimitError ||
+      error instanceof PolicyViolationError ||
+      (error instanceof ScimRequestError && error.status < 500) ||
+      (error instanceof AcmeError && error.status < 500) ||
+      error instanceof jwt.JsonWebTokenError;
 
-      errorHistogram.record(1, {
-        route,
-        method,
-        type: errorType,
-        name: error.name
-      });
-
-      const orgId = requestContext.get(RequestContextKey.OrgId);
-      const orgName = requestContext.get(RequestContextKey.OrgName);
-      const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
-      const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
-      const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
-
-      const attributes: Record<string, string | number> = {
-        "http.request.method": method,
-        "http.route": route,
-        "error.type": errorType,
-        "error.name": error.name
-      };
-
-      if (orgId) {
-        attributes["infisical.organization.id"] = orgId;
-      }
-      if (orgName) {
-        attributes["infisical.organization.name"] = orgName;
-      }
-
-      if (userAuthInfo) {
-        if (userAuthInfo.userId) {
-          attributes["infisical.user.id"] = userAuthInfo.userId;
-        }
-        if (userAuthInfo.email) {
-          attributes["infisical.user.email"] = userAuthInfo.email;
-        }
-      }
-
-      if (identityAuthInfo) {
-        if (identityAuthInfo.identityId) {
-          attributes["infisical.identity.id"] = identityAuthInfo.identityId;
-        }
-        if (identityAuthInfo.identityName) {
-          attributes["infisical.identity.name"] = identityAuthInfo.identityName;
-        }
-        if (identityAuthInfo.authMethod) {
-          attributes["infisical.auth.method"] = identityAuthInfo.authMethod;
-        }
-      }
-
-      if (projectDetails) {
-        if (projectDetails.id) {
-          attributes["infisical.project.id"] = projectDetails.id;
-        }
-        if (projectDetails.name) {
-          attributes["infisical.project.name"] = projectDetails.name;
-        }
-      }
-
-      const userAgent = req.headers["user-agent"];
-      if (userAgent) {
-        attributes["user_agent.original"] = userAgent;
-      }
-
-      if (req.realIp) {
-        attributes["client.address"] = req.realIp;
-      }
-
-      errorCounter.add(1, attributes);
+    if (isExpectedClientError) {
+      // Log structured fields (NOT the Error instance) so these stay searchable by name/route
+      // without serializing a stack
+      req.log.warn(
+        {
+          reqId: req.id,
+          errorName: error.name,
+          errorMessage: error.message,
+          route: req.routeOptions?.url,
+          method: req.method,
+          orgId: req.auth?.orgId,
+          realIp: req.realIp,
+          actor: req.auth?.actor,
+          details: (error as { details?: unknown }).details
+        },
+        `client error: ${error.name}`
+      );
+    } else {
+      req.log.error(error);
     }
 
-    if (error instanceof BadRequestError) {
+    if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+      // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
+      const coreMethod = normalizeHttpMethod(req.method);
+      const { method } = req;
+      const route = req.routeOptions.url;
+
+      if (shouldRecordHighCardinalityMetrics()) {
+        const errorType =
+          error instanceof jwt.JsonWebTokenError ? "TokenError" : error.constructor.name || "UnknownError";
+
+        errorHistogram.record(1, {
+          route,
+          method,
+          type: errorType,
+          name: error.name
+        });
+
+        const orgId = requestContext.get(RequestContextKey.OrgId);
+        const orgName = requestContext.get(RequestContextKey.OrgName);
+        const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
+        const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
+        const projectDetails = requestContext.get(RequestContextKey.ProjectDetails);
+
+        const attributes: Record<string, string | number> = {
+          "http.request.method": method,
+          "http.route": route ?? "",
+          "error.type": errorType,
+          "error.name": error.name
+        };
+
+        if (orgId) {
+          attributes["infisical.organization.id"] = orgId;
+        }
+        if (orgName) {
+          attributes["infisical.organization.name"] = orgName;
+        }
+
+        if (userAuthInfo) {
+          if (userAuthInfo.userId) {
+            attributes["infisical.user.id"] = userAuthInfo.userId;
+          }
+          if (userAuthInfo.email) {
+            attributes["infisical.user.email"] = userAuthInfo.email;
+          }
+        }
+
+        if (identityAuthInfo) {
+          if (identityAuthInfo.identityId) {
+            attributes["infisical.identity.id"] = identityAuthInfo.identityId;
+          }
+          if (identityAuthInfo.identityName) {
+            attributes["infisical.identity.name"] = identityAuthInfo.identityName;
+          }
+          if (identityAuthInfo.authMethod) {
+            attributes["infisical.auth.method"] = identityAuthInfo.authMethod;
+          }
+        }
+
+        if (projectDetails) {
+          if (projectDetails.id) {
+            attributes["infisical.project.id"] = projectDetails.id;
+          }
+          if (projectDetails.name) {
+            attributes["infisical.project.name"] = projectDetails.name;
+          }
+        }
+
+        const userAgent = req.headers["user-agent"];
+        if (userAgent) {
+          attributes["user_agent.original"] = userAgent;
+        }
+
+        if (req.realIp) {
+          attributes["client.address"] = req.realIp;
+        }
+
+        errorCounter.add(1, attributes);
+      }
+
+      const coreAttrs: Record<string, string | number> = {
+        "http.request.method": coreMethod,
+        "http.route": route ?? "unknown",
+        "error.type": classifyError(error)
+      };
+      coreHttpErrorCounter.add(1, coreAttrs);
+    }
+
+    // The OAuth token endpoint's error contract is RFC 6749 section 5.2, not the house envelope. See
+    // OauthTokenError; only that endpoint raises this, and it maps everything it can throw itself.
+    if (error instanceof OauthTokenError) {
+      // RFC 6749 section 5.2: a client that authenticated with the Authorization header must get a 401
+      // carrying a challenge for the scheme it used.
+      if (
+        error.oauthErrorCode === OauthTokenErrorCode.InvalidClient &&
+        req.headers.authorization?.toLowerCase().startsWith("basic ")
+      ) {
+        void res.header("WWW-Authenticate", 'Basic realm="Infisical", charset="UTF-8"');
+      }
+
+      void res.status(error.statusCode).send({
+        error: error.oauthErrorCode,
+        error_description: toErrorDescription(error.message)
+      });
+    } else if (error instanceof BadRequestError) {
       void res.status(HttpStatusCodes.BadRequest).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.BadRequest,
@@ -142,6 +219,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name,
         details: error.details
       });
+    } else if (error instanceof ConflictError) {
+      void res
+        .status(HttpStatusCodes.Conflict)
+        .send({ reqId: req.id, statusCode: HttpStatusCodes.Conflict, message: error.message, error: error.name });
     } else if (error instanceof NotFoundError) {
       void res
         .status(HttpStatusCodes.NotFound)
@@ -154,12 +235,24 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name
       });
     } else if (error instanceof DatabaseError) {
-      void res.status(HttpStatusCodes.InternalServerError).send({
-        reqId: req.id,
-        statusCode: HttpStatusCodes.InternalServerError,
-        message: "Something went wrong",
-        error: error.name
-      });
+      // A value that overflows its varchar(n) column is bad input, not a server fault. Route-level Zod
+      // schemas are the intended guard, but where one is missing or drifts from the column width this
+      // keeps the response a validation failure instead of an opaque 500.
+      if (hasPostgresErrorCode(error, PostgresErrorCode.StringDataRightTruncation)) {
+        void res.status(HttpStatusCodes.UnprocessableContent).send({
+          reqId: req.id,
+          statusCode: HttpStatusCodes.UnprocessableContent,
+          error: "ValidationFailure",
+          message: "One or more field values exceed the maximum length allowed for this resource"
+        });
+      } else {
+        void res.status(HttpStatusCodes.InternalServerError).send({
+          reqId: req.id,
+          statusCode: HttpStatusCodes.InternalServerError,
+          message: "Something went wrong",
+          error: error.name
+        });
+      }
     } else if (error instanceof InternalServerError) {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,
@@ -203,6 +296,10 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         details: error?.details
       });
     } else if (error instanceof RateLimitError) {
+      rateLimitExceededCounter.add(1, {
+        "http.route": req.routeOptions.url ?? "unknown",
+        "http.request.method": normalizeHttpMethod(req.method)
+      });
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.TooManyRequests,
@@ -215,7 +312,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         schemas: error.schemas,
         status: error.status,
         detail: error.detail,
-        mutability: error.mutability
+        mutability: error.mutability,
+        scimType: error.scimType
       });
     } else if (error instanceof OidcAuthError) {
       void res.status(HttpStatusCodes.InternalServerError).send({
@@ -260,7 +358,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
           detail: error.message
-          // TODO: add subproblems if they exist
         });
     } else if (error instanceof PolicyViolationError) {
       void res.status(HttpStatusCodes.Forbidden).send({

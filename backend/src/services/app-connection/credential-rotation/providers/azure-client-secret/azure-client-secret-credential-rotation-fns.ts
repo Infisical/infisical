@@ -336,7 +336,11 @@ export const revokeAzureClientSecret = async (
 export const azureClientSecretRotationProviderFactory: TCredentialRotationProviderFactory<
   TAzureClientSecretStrategyConfig,
   TAzureClientSecretGeneratedCredential
-> = (connection) => {
+> = (
+  connection,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _services
+) => {
   const validateConnectionMethod: TCredentialRotationValidateMethod = (method) => {
     if (method !== AzureKeyVaultConnectionMethod.ClientSecret) {
       throw new BadRequestError({
@@ -424,7 +428,8 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
     TAzureClientSecretStrategyConfig,
     TAzureClientSecretGeneratedCredential
   > = async (strategyConfig, credentials, rotationInterval, activeIndex) => {
-    const accessToken = await getGraphApiToken(credentials);
+    const azureCredentials = credentials as TAzureClientSecretCredentialRotationCredentials;
+    const accessToken = await getGraphApiToken(azureCredentials);
 
     return createAzureClientSecret({
       accessToken,
@@ -448,9 +453,10 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
   > = async (inactiveCredential, strategyConfig, credentials) => {
     if (!inactiveCredential?.keyId) return;
 
-    const accessToken = await getGraphApiToken(credentials);
+    const azureCredentials = credentials as TAzureClientSecretCredentialRotationCredentials;
+    const accessToken = await getGraphApiToken(azureCredentials);
 
-    await revokeAzureClientSecret(inactiveCredential.keyId, strategyConfig, credentials, accessToken);
+    await revokeAzureClientSecret(inactiveCredential.keyId, strategyConfig, azureCredentials, accessToken);
   };
 
   return {

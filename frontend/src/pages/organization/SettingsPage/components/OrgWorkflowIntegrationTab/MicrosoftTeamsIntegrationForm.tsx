@@ -3,10 +3,20 @@ import crypto from "crypto";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   useGetMicrosoftTeamsClientId,
@@ -18,6 +28,7 @@ import { slugSchema } from "@app/lib/schemas";
 type Props = {
   id?: string;
   onClose: () => void;
+  onBack?: () => void;
 };
 
 const microsoftTeamsFormSchema = z.object({
@@ -32,7 +43,7 @@ const microsoftTeamsFormSchema = z.object({
 
 type TMicrosoftTeamsFormData = z.infer<typeof microsoftTeamsFormSchema>;
 
-export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
+export const MicrosoftTeamsIntegrationForm = ({ id, onClose, onBack }: Props) => {
   const {
     control,
     handleSubmit,
@@ -89,7 +100,7 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
       });
 
       createNotification({
-        text: "Successfully updated Microsoft Teams integration",
+        text: "Updated Microsoft Teams integration",
         type: "success"
       });
 
@@ -122,27 +133,35 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleMicrosoftTeamsFormSubmit)} autoComplete="off">
-      <div className="mb-4 text-xs text-mineshaft-200">
+    <form
+      onSubmit={handleSubmit(handleMicrosoftTeamsFormSubmit)}
+      className="flex flex-col gap-4"
+      autoComplete="off"
+    >
+      <p className="text-xs text-muted">
         For seamless installations, ensure that the Infisical bot is already installed in your
-        Microsoft Teams tenant. For more information, please refer to the{" "}
+        Microsoft Teams tenant. See the{" "}
         <a
-          className="text-primary-500"
+          className="text-org underline underline-offset-2"
           href="https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Microsoft Teams Workflow Integration Documentation
-        </a>
-        , which will guide you through the download and installation process.
-      </div>
+          documentation
+        </a>{" "}
+        for the download and installation process.
+      </p>
       <Controller
         control={control}
         name="slug"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Alias" isRequired errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="microsoft-teams-integration-alias">
+              Alias <span className="text-danger">*</span>
+            </FieldLabel>
+            <Input id="microsoft-teams-integration-alias" isError={Boolean(error)} {...field} />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       {!microsoftTeamsIntegration && (
@@ -150,14 +169,18 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
           control={control}
           name="tenantId"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isRequired
-              label="Tenant ID"
-              errorText={error?.message}
-              isError={Boolean(error)}
-            >
-              <Input placeholder="" {...field} />
-            </FormControl>
+            <Field>
+              <FieldLabel htmlFor="microsoft-teams-integration-tenant-id">
+                Tenant ID <span className="text-danger">*</span>
+              </FieldLabel>
+              <Input
+                id="microsoft-teams-integration-tenant-id"
+                isError={Boolean(error)}
+                {...field}
+              />
+              <FieldError>{error?.message}</FieldError>
+              <FieldDescription>The ID of the Microsoft Teams tenant to connect.</FieldDescription>
+            </Field>
           )}
         />
       )}
@@ -165,28 +188,50 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose }: Props) => {
         control={control}
         name="description"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="microsoft-teams-integration-description">Description</FieldLabel>
+            <Input
+              id="microsoft-teams-integration-description"
+              isError={Boolean(error)}
+              {...field}
+            />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       {microsoftTeamsIntegration && (
-        <FormControl label="Connected Microsoft Teams Tenant">
+        <Field>
+          <FieldLabel htmlFor="microsoft-teams-integration-tenant">
+            Connected Microsoft Teams tenant
+          </FieldLabel>
           <Input
+            id="microsoft-teams-integration-tenant"
             value={microsoftTeamsIntegration.tenantId}
-            isReadOnly
-            className="bg-white/[0.07]"
+            readOnly
           />
-        </FormControl>
+        </Field>
       )}
-      <div className="mt-6 flex items-center space-x-4">
-        <Button type="submit" isLoading={isSubmitting} isDisabled={!isDirty || isSubmitting}>
-          {id && microsoftTeamsIntegration ? "Save" : "Create Microsoft Teams Integration"}
+      <DialogFooter>
+        {onBack && (
+          <Button type="button" variant="ghost" className="mr-auto" onClick={onBack}>
+            <ChevronLeft />
+            Back
+          </Button>
+        )}
+        <DialogClose asChild>
+          <Button type="button" variant="ghost">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button
+          type="submit"
+          variant="org"
+          isPending={isSubmitting}
+          isDisabled={!isDirty || isSubmitting}
+        >
+          {id && microsoftTeamsIntegration ? "Save" : "Connect Microsoft Teams"}
         </Button>
-        <Button variant="outline_bg" onClick={onClose}>
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };

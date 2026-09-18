@@ -59,6 +59,10 @@ const meta = {
         disable: true
       }
     },
+    iconPosition: {
+      control: "select",
+      options: ["left", "right", "both"]
+    },
     isSquare: {
       table: {
         disable: true
@@ -158,6 +162,7 @@ export const Success: Story = {
   name: "Variant: Success",
   args: {
     variant: "success",
+    iconPosition: "left",
     children: (
       <>
         <CheckIcon />

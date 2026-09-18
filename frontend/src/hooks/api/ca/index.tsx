@@ -1,3 +1,5 @@
+export type { CaIssuanceCapabilities } from "./capabilities";
+export { getCaIssuanceCapabilities } from "./capabilities";
 export {
   AcmeDnsProvider,
   CaRenewalStatus,
@@ -5,6 +7,7 @@ export {
   CaSigningConfigType,
   CaStatus,
   CaType,
+  GoDaddyProductType,
   InternalCaType
 } from "./enums";
 export {
@@ -16,6 +19,7 @@ export {
   useGenerateCaCertificate,
   useImportCaCertificate,
   useInstallCaCertificateAdcs,
+  useInstallCaCertificateAdcsNative,
   useInstallCaCertificateVenafi,
   useOrderCertificateWithProfile,
   useRenewCa,
@@ -26,6 +30,7 @@ export {
 } from "./mutations";
 export type { TCaAutoRenewalConfig, TCaSigningConfig } from "./queries";
 export {
+  useGetAdcsTemplates,
   useGetAzureAdcsTemplates,
   useGetCa,
   useGetCaAutoRenewal,
@@ -34,6 +39,7 @@ export {
   useGetCaCertTemplates,
   useGetCaCrls,
   useGetCaCsr,
+  useGetCaQuota,
   useGetCaSigningConfig,
   useGetInternalCaById,
   useListCasByProjectId,
@@ -41,6 +47,7 @@ export {
   useListExternalCasByProjectId
 } from "./queries";
 export type {
+  TCaQuota,
   TInternalCertificateAuthority,
   TOrderCertificateDTO,
   TOrderCertificateResponse

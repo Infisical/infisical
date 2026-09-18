@@ -9,20 +9,233 @@ import {
   ProjectVersion,
   SortDirection,
   TableName,
+  TMemberships,
   TProjects,
   TProjectsUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
-import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import {
+  buildFindFilter,
+  ormify,
+  selectAllTableCols,
+  sqlNestRelationships,
+  TFindFilter,
+  TFindOpt
+} from "@app/lib/knex";
 
 import { ActorType } from "../auth/auth-type";
+import {
+  hardDeleteApprovalSecretLinksInBatches,
+  hardDeleteSecretReferencesInBatches,
+  hardDeleteSecretsInBatches,
+  hardDeleteSecretVersionsInBatches,
+  projectFolderIdsSubquery
+} from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
+
+  // Soft-deleted projects (deleteAfter set) must be hidden from every read path. We override the
+  // ormify base reads so indirect callers can't accidentally surface a pending-deletion project,
+  // and expose explicit *IncludingExpired escape hatches for the restore + hard-delete worker.
+  const findById: typeof projectOrm.findById = async (id, tx) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Project)
+        .where({ id })
+        .whereNull("deleteAfter")
+        .first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
+  const findOne: typeof projectOrm.findOne = async (filter, tx) => {
+    try {
+      const res = await (tx || db.replicaNode())(TableName.Project).where(filter).whereNull("deleteAfter").first("*");
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
+  const find = (async (
+    filter: TFindFilter<TProjects>,
+    { offset, limit, sort, count, tx, countDistinct }: TFindOpt<TProjects, boolean, keyof TProjects | undefined> = {}
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Project)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter))
+        .whereNull("deleteAfter");
+      if (countDistinct) {
+        void query.countDistinct(countDistinct);
+      } else if (count) {
+        void query.select(db.raw("COUNT(*) OVER() AS count"));
+        void query.select("*");
+      }
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      }
+      const res = await query;
+      return res as TProjects[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find" });
+    }
+  }) as typeof projectOrm.find;
+
+  // Bypasses the soft-delete read filter — hard-delete worker only. Primary-backed by default
+  // (NOT the replica): staleness here is dangerous (a just-restored/already-reaped project could
+  // look wrong), so we read the primary unless the caller explicitly threads a transaction.
+  const findByIdIncludingExpired = async (id: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db)(TableName.Project).where({ id }).first("*");
+      return result as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id including expired" });
+    }
+  };
+
+  // Raw find that includes soft-deleted rows, primary-backed by default (same staleness concern as
+  // above). Used by the hard-delete worker's KMS shared-key check so a *second* pending-deletion
+  // project sharing a key still counts as a referencer.
+  const findIncludingExpired: typeof projectOrm.find = ((filter, opts) =>
+    projectOrm.find(filter, { ...(opts ?? {}), tx: opts?.tx ?? db })) as typeof projectOrm.find;
+
+  const softDeleteById = async (
+    id: string,
+    update: {
+      deleteAfter: Date;
+      softDeletedAt: Date;
+      deletedByActorType: string | null;
+      deletedByActorId: string | null;
+      slug: string;
+    },
+    tx?: Knex
+  ) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNull("deleteAfter")
+        .update(update)
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete project" });
+    }
+  };
+
+  const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Project)
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", "<=", new Date())
+        .orderBy("deleteAfter", "asc")
+        .limit(limit)
+        .select("*");
+      return rows as TProjects[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find expired projects for hard delete" });
+    }
+  };
+
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
+    batchSize,
+    statementTimeoutMs,
+    interBatchSleepMs,
+    onBatchCommitted
+  });
+
+  const hardDeleteProjectSecretVersionsInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretVersionsInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteProjectSecretReferencesInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretReferencesInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteProjectApprovalSecretLinksInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteApprovalSecretLinksInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteProjectSecretsInBatches = (
+    projectId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretsInBatches(
+      db,
+      projectFolderIdsSubquery(projectId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  // Hands a project's envs to the paced env hard-delete worker: marks them deleteAfter = now,
+  // collapsing any restore grace. Returns rows marked.
+  const softDeleteProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const now = new Date();
+      const marked = await (tx || db)(TableName.Environment)
+        .where({ projectId })
+        .andWhere((qb) => void qb.whereNull("deleteAfter").orWhere("deleteAfter", ">", now))
+        .update({
+          deleteAfter: now,
+          softDeletedAt: db.raw(`COALESCE("softDeletedAt", ?)`, [now]) as unknown as Date
+        });
+      return marked;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete project environments" });
+    }
+  };
+
+  // Counts ALL env rows (any soft-delete state). Primary-backed so a stale replica cannot end the drain early.
+  const countProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db)(TableName.Environment).where({ projectId }).count().first();
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count project environments" });
+    }
+  };
 
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
@@ -41,6 +254,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .andWhere((qb) => {
           void qb
             .where(`${TableName.Membership}.actorIdentityId`, identityId)
@@ -94,7 +308,7 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
+  const findUserProjects = async (userId: string, orgId: string | string[], projectType?: ProjectType) => {
     try {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
@@ -106,7 +320,8 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, Array.isArray(orgId) ? orgId : [orgId])
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .andWhere((qb) => {
           void qb
             .where(`${TableName.Membership}.actorUserId`, userId)
@@ -188,6 +403,8 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .whereNotNull(`${TableName.Membership}.scopeProjectId`)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .andWhere((qb) => {
           void qb
             .where(`${TableName.Membership}.${actorColumn}`, actorId)
@@ -201,10 +418,185 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Returns all effective project memberships for an actor (user or identity) in a project: direct
+   * membership and any memberships via groups the actor belongs to. Single query.
+   */
+  const findEffectiveProjectMemberships = async (dto: {
+    actorType: ActorType;
+    actorId: string;
+    orgId: string;
+    projectId: string;
+    tx?: Knex;
+  }): Promise<TMemberships[]> => {
+    try {
+      if (dto.actorType !== ActorType.USER && dto.actorType !== ActorType.IDENTITY) {
+        return [];
+      }
+
+      const conn = dto.tx ?? db.replicaNode();
+      const isUser = dto.actorType === ActorType.USER;
+      const groupMembershipTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupMembershipActorColumn = isUser ? "userId" : "identityId";
+      const actorColumn = isUser ? "actorUserId" : "actorIdentityId";
+
+      const groupIdsSubquery = conn(TableName.Groups)
+        .join(groupMembershipTable, `${groupMembershipTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, dto.actorId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+      const rows = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(`${TableName.Membership}.scopeProjectId`, dto.projectId)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.${actorColumn}`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, groupIdsSubquery);
+        })
+        .select(selectAllTableCols(TableName.Membership));
+
+      return rows as TMemberships[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective project memberships" });
+    }
+  };
+
+  /**
+   * Returns the first effective project membership for an actor (user or identity): direct or via group.
+   * Use for access checks and to get a single membership id/role. For all memberships use findEffectiveProjectMemberships.
+   */
+  const findEffectiveProjectMembership = async (dto: {
+    actorType: ActorType;
+    actorId: string;
+    orgId: string;
+    projectId: string;
+    tx?: Knex;
+  }): Promise<TMemberships | null> => {
+    const list = await findEffectiveProjectMemberships(dto);
+    const directMembership = list.find((membership) =>
+      dto.actorType === ActorType.USER
+        ? membership.actorUserId === dto.actorId
+        : membership.actorIdentityId === dto.actorId
+    );
+
+    return directMembership ?? list[0] ?? null;
+  };
+
+  /**
+   * Resolves effective project membership for many users/groups in one lookup entrypoint.
+   * Users are considered members if they are directly added or inherit access via a project group membership.
+   */
+  const findEffectiveProjectSubjectsMembership = async ({
+    orgId,
+    projectId,
+    userIds,
+    groupIds,
+    tx
+  }: {
+    orgId: string;
+    projectId: string;
+    userIds: string[];
+    groupIds: string[];
+    tx?: Knex;
+  }) => {
+    try {
+      const uniqueUserIds = [...new Set(userIds)];
+      const uniqueGroupIds = [...new Set(groupIds)];
+      if (uniqueUserIds.length === 0 && uniqueGroupIds.length === 0) {
+        return {
+          effectiveUserIds: [] as string[],
+          effectiveGroupIds: [] as string[]
+        };
+      }
+
+      const conn = tx || db.replicaNode();
+      const rows = await conn(TableName.Membership)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .andWhere((qb) => {
+          let hasCondition = false;
+          if (uniqueUserIds.length > 0) {
+            hasCondition = true;
+            void qb.where((sqb) => {
+              void sqb
+                .whereIn(`${TableName.Membership}.actorUserId`, uniqueUserIds)
+                .orWhereIn(`${TableName.UserGroupMembership}.userId`, uniqueUserIds);
+            });
+          }
+          if (uniqueGroupIds.length > 0) {
+            if (hasCondition) {
+              void qb.orWhereIn(`${TableName.Membership}.actorGroupId`, uniqueGroupIds);
+            } else {
+              void qb.whereIn(`${TableName.Membership}.actorGroupId`, uniqueGroupIds);
+            }
+          }
+        })
+        .select<
+          {
+            directUserId: string | null;
+            groupUserId: string | null;
+            directGroupId: string | null;
+          }[]
+        >(
+          db.ref("actorUserId").withSchema(TableName.Membership).as("directUserId"),
+          db.ref("userId").withSchema(TableName.UserGroupMembership).as("groupUserId"),
+          db.ref("actorGroupId").withSchema(TableName.Membership).as("directGroupId")
+        );
+
+      const effectiveUserIds = new Set<string>();
+      const effectiveGroupIds = new Set<string>();
+      const requestedUserIds = new Set(uniqueUserIds);
+      const requestedGroupIds = new Set(uniqueGroupIds);
+
+      for (const row of rows) {
+        if (row.directUserId && requestedUserIds.has(row.directUserId)) {
+          effectiveUserIds.add(row.directUserId);
+        }
+        if (row.groupUserId && requestedUserIds.has(row.groupUserId)) {
+          effectiveUserIds.add(row.groupUserId);
+        }
+        if (row.directGroupId && requestedGroupIds.has(row.directGroupId)) {
+          effectiveGroupIds.add(row.directGroupId);
+        }
+      }
+
+      return {
+        effectiveUserIds: [...effectiveUserIds],
+        effectiveGroupIds: [...effectiveGroupIds]
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective project subjects membership" });
+    }
+  };
+  const findProjectTypesByIds = async (ids: string[], tx?: Knex): Promise<{ id: string; type: string }[]> => {
+    try {
+      if (ids.length === 0) return [];
+      const rows = await (tx || db.replicaNode())(TableName.Project).whereIn("id", ids).select("id", "type");
+      return rows as { id: string; type: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project types by ids" });
+    }
+  };
+
   // Lightweight all-projects-in-org lookup that returns only the IDs.
   const findOrgProjectIds = async (orgId: string, tx?: Knex): Promise<string[]> => {
     try {
-      const rows = await (tx || db.replicaNode())(TableName.Project).where({ orgId }).select("id");
+      const rows = await (tx || db.replicaNode())(TableName.Project)
+        .where({ orgId })
+        .whereNull("deleteAfter")
+        .select("id");
       return rows.map((r) => r.id);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org project ids" });
@@ -243,6 +635,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const workspaces = await db
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.id`, id)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
@@ -300,6 +693,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.slug`, slug)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
@@ -371,7 +765,10 @@ export const projectDALFactory = (db: TDbClient) => {
   };
 
   const checkProjectUpgradeStatus = async (projectId: string) => {
-    const project = await projectOrm.findById(projectId);
+    const project = await findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+    }
     const upgradeInProgress =
       project.upgradeStatus === ProjectUpgradeStatus.InProgress && project.version === ProjectVersion.V1;
 
@@ -387,7 +784,7 @@ export const projectDALFactory = (db: TDbClient) => {
 
     const project = await db(TableName.Project)
       .where({ [`${TableName.Project}.id` as "id"]: projectId })
-
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
 
       .select(
@@ -453,15 +850,27 @@ export const projectDALFactory = (db: TDbClient) => {
       })
       .select("scopeProjectId");
 
+    const directMembershipSubQuery = db(TableName.Membership)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where(
+        dto.actor === ActorType.IDENTITY
+          ? `${TableName.Membership}.actorIdentityId`
+          : `${TableName.Membership}.actorUserId`,
+        dto.actorId
+      )
+      .select("scopeProjectId");
+
     // Get the SQL strings for the subqueries
     const membershipSQL = membershipSubQuery.toQuery();
+    const directMembershipSQL = directMembershipSubQuery.toQuery();
 
     const query = db
       .replicaNode()(TableName.Project)
       .where(`${TableName.Project}.orgId`, dto.orgId)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.Project))
       .select(db.raw("COUNT(*) OVER() AS count"))
-      .select<(TProjects & { isMember: boolean; count: number })[]>(
+      .select<(TProjects & { isMember: boolean; isDirectMember: boolean; count: number })[]>(
         db.raw(
           `
                   CASE
@@ -470,13 +879,30 @@ export const projectDALFactory = (db: TDbClient) => {
                   END as "isMember"
                 `,
           [db.raw(membershipSQL)]
+        ),
+        db.raw(
+          `
+                  CASE
+                    WHEN ${TableName.Project}.id IN (?) THEN TRUE
+                    ELSE FALSE
+                  END as "isDirectMember"
+                `,
+          [db.raw(directMembershipSQL)]
         )
       )
       .limit(limit)
       .offset(offset);
-    if (sortBy === SearchProjectSortBy.NAME) {
-      void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
+    const sortColumn = {
+      [SearchProjectSortBy.NAME]: `${TableName.Project}.name`,
+      [SearchProjectSortBy.DESCRIPTION]: `${TableName.Project}.description`,
+      [SearchProjectSortBy.CREATED_AT]: `${TableName.Project}.createdAt`
+    }[sortBy];
+
+    void query.orderBy(sortColumn, sortDir, "last");
+    if (sortBy !== SearchProjectSortBy.NAME) {
+      void query.orderBy(`${TableName.Project}.name`, SortDirection.ASC);
     }
+    void query.orderBy(`${TableName.Project}.id`, SortDirection.ASC);
 
     if (dto.type) {
       void query.where(`${TableName.Project}.type`, dto.type);
@@ -503,6 +929,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter({ id: envId }, TableName.Environment))
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.Project))
       .first();
     return project;
@@ -591,11 +1018,17 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countOfOrgProjects = async (orgId: string | null, tx?: Knex) => {
+  const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
 
       const doc = await (tx || db.replicaNode())(TableName.Project)
+        .whereNotIn("type", [ProjectType.CertificateManager])
+        .whereNull("deleteAfter")
+        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
+        // Project rows of the removed SSH / Agent Sentinel products are left in
+        // place (see migration 20260729150000) but must not consume workspace quota.
+        .whereNotIn("type", ["ssh", "ai"])
         .andWhere((bd) => {
           if (orgId) {
             void bd.where({ orgId }).orWhereIn("orgId", subOrgProjects);
@@ -610,9 +1043,26 @@ export const projectDALFactory = (db: TDbClient) => {
 
   return {
     ...projectOrm,
+    findById,
+    findOne,
+    find,
+    findByIdIncludingExpired,
+    findIncludingExpired,
+    softDeleteById,
+    findExpiredForHardDelete,
+    hardDeleteProjectSecretVersionsInBatches,
+    hardDeleteProjectSecretReferencesInBatches,
+    hardDeleteProjectApprovalSecretLinksInBatches,
+    hardDeleteProjectSecretsInBatches,
+    softDeleteProjectEnvironments,
+    countProjectEnvironments,
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
+    findEffectiveProjectMemberships,
+    findEffectiveProjectMembership,
+    findEffectiveProjectSubjectsMembership,
+    findProjectTypesByIds,
     findOrgProjectIds,
     setProjectUpgradeStatus,
     findProjectGhostUser,
@@ -624,6 +1074,6 @@ export const projectDALFactory = (db: TDbClient) => {
     searchProjects,
     findProjectByEnvId,
     findProjectDeletedEnvironments,
-    countOfOrgProjects
+    countOfBillableOrgProjects
   };
 };

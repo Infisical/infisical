@@ -3,6 +3,7 @@ import { z } from "zod";
 import { KmipClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KmipPermission } from "@app/ee/services/kmip/kmip-enum";
+import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { KmipClientOrderBy } from "@app/ee/services/kmip/kmip-types";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
@@ -203,7 +204,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         200: KmipClientResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const kmipClient = await server.services.kmip.getKmipClient({
         actor: req.permission.type,
@@ -252,7 +253,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { kmipClients, totalCount } = await server.services.kmip.listKmipClientsByProjectId({
         actor: req.permission.type,
@@ -287,16 +288,27 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         id: z.string()
       }),
-      body: z.object({
-        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number")
-      }),
+      body: z
+        .object({
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+          ttl: z.string().refine((val) => {
+            try {
+              return ms(val) >= ms(MIN_SERVER_CERT_TTL);
+            } catch {
+              return false;
+            }
+          }, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)"),
+          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096).optional()
+        })
+        .refine((data) => data.csr || data.keyAlgorithm, {
+          message: "Either csr or keyAlgorithm must be provided"
+        }),
       response: {
         200: z.object({
           serialNumber: z.string(),
           certificateChain: z.string(),
           certificate: z.string(),
-          privateKey: z.string()
+          privateKey: z.string().optional()
         })
       }
     },
@@ -321,7 +333,8 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
             clientId: req.params.id,
             serialNumber: certificate.serialNumber,
             ttl: req.body.ttl,
-            keyAlgorithm: req.body.keyAlgorithm
+            keyAlgorithm: req.body.keyAlgorithm,
+            isFromCsr: Boolean(req.body.csr)
           }
         }
       });
@@ -352,8 +365,12 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    // Legacy machine-identity servers only. Enrollment-based servers use POST /kmip/servers/connect,
+    // which reads the cert config from the stored server entity instead of the request body.
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { hostnamesOrIps } = req.body;
+
       const configs = await server.services.kmip.registerServer({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -369,7 +386,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
           type: EventType.REGISTER_KMIP_SERVER,
           metadata: {
             serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
-            hostnamesOrIps: req.body.hostnamesOrIps,
+            hostnamesOrIps,
             commonName: req.body.commonName ?? "kmip-server",
             keyAlgorithm: req.body.keyAlgorithm,
             ttl: req.body.ttl

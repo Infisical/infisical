@@ -30,7 +30,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -135,12 +135,12 @@ export const OrgGeneralAuthSection = ({
 
     if (type === EnforceAuthType.SAML) {
       if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "enforce SAML SSO" });
+        handlePopUpOpen("upgradePlan", { featureName: "enforce SAML SSO", planName: "Pro" });
         return;
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.SAML);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -160,12 +160,15 @@ export const OrgGeneralAuthSection = ({
 
     if (type === EnforceAuthType.GOOGLE) {
       if (!subscription?.enforceGoogleSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "enforce Google OAuth" });
+        handlePopUpOpen("upgradePlan", {
+          featureName: "enforce Google OAuth",
+          planName: "Advanced"
+        });
         return;
       }
 
       if (value) {
-        setBypassEnabledInModal(currentOrg?.bypassOrgAuthEnabled ?? false);
+        setBypassEnabledInModal(true);
         setEnforcementTypeInModal(EnforceAuthType.GOOGLE);
         handlePopUpOpen("enforceSamlSsoConfirmation");
         return;
@@ -182,7 +185,7 @@ export const OrgGeneralAuthSection = ({
       });
     } else if (type === EnforceAuthType.OIDC) {
       if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO", isEnterpriseFeature: true });
+        handlePopUpOpen("upgradePlan", { featureName: "OIDC SSO", planName: "Enterprise" });
         return;
       }
 
@@ -212,7 +215,7 @@ export const OrgGeneralAuthSection = ({
     try {
       if (!currentOrg?.id) return;
       if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "Admin SSO Bypass" });
+        handlePopUpOpen("upgradePlan", { featureName: "Admin SSO Bypass", planName: "Pro" });
         return;
       }
 
@@ -253,11 +256,14 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce SAML SSO</FieldTitle>
-                <FieldDescription>Only allow members to sign in via SAML.</FieldDescription>
+                <FieldDescription>
+                  Only allow members to sign in via SAML. Also disables email & password signup for
+                  your verified domain(s) and skips email verification for SSO sign-ins.
+                </FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-saml-auth"
                     variant="org"
                     checked={currentOrg?.authEnforced ?? false}
@@ -276,11 +282,14 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce OIDC SSO</FieldTitle>
-                <FieldDescription>Only allow members to sign in via OIDC.</FieldDescription>
+                <FieldDescription>
+                  Only allow members to sign in via OIDC. Also disables email & password signup for
+                  your verified domain(s) and skips email verification for SSO sign-ins.
+                </FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-oidc-auth"
                     variant="org"
                     checked={currentOrg?.authEnforced ?? false}
@@ -307,7 +316,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-google-sso"
                     variant="org"
                     checked={currentOrg?.googleSsoAuthEnforced ?? false}
@@ -363,7 +372,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="allow-admin-bypass"
                     variant="org"
                     checked={currentOrg?.bypassOrgAuthEnabled ?? false}
@@ -378,10 +387,10 @@ export const OrgGeneralAuthSection = ({
       </Card>
 
       <UpgradePlanModal
+        paywallKey="organization.org-general-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.planName ?? "Pro"} plan.`}
       />
 
       <Dialog
@@ -411,6 +420,14 @@ export const OrgGeneralAuthSection = ({
                 Before proceeding, ensure your {enforcementLabel} provider is available and properly
                 configured to avoid access issues.
               </p>
+              {enforcementTypeInModal !== EnforceAuthType.GOOGLE && (
+                <p>
+                  This also disables email & password signup for your verified domain(s) and skips
+                  email verification for SSO sign-ins. Make sure a break-glass admin already has a
+                  password and SSO bypass access before continuing — the signup block prevents
+                  creating new password accounts for the domain afterwards.
+                </p>
+              )}
             </AlertDescription>
           </Alert>
 
@@ -423,7 +440,7 @@ export const OrgGeneralAuthSection = ({
                   issues with their {enforcementLabel} provider.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="bypass-enabled-modal"
                 variant="org"
                 checked={bypassEnabledInModal}

@@ -26,7 +26,7 @@ export function superRefineLockout(
     if (Number.isNaN(parsedLockoutDuration)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Lockout duration must be a number",
+        message: "Required",
         path: ["lockoutDurationValue"]
       });
       isAnyParseError = true;
@@ -36,7 +36,7 @@ export function superRefineLockout(
     if (Number.isNaN(parsedLockoutCounterReset)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Lockout counter reset must be a number",
+        message: "Required",
         path: ["lockoutCounterResetValue"]
       });
       isAnyParseError = true;
@@ -50,7 +50,7 @@ export function superRefineLockout(
       if (lockoutDurationInSeconds > 86400 || lockoutDurationInSeconds < 30) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Lockout duration must be between 30 seconds and 1 day",
+          message: "Must be between 30 seconds and 1 day",
           path: ["lockoutDurationValue"]
         });
       }
@@ -58,7 +58,7 @@ export function superRefineLockout(
       if (lockoutCounterResetInSeconds > 3600 || lockoutCounterResetInSeconds < 5) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Lockout counter reset must be between 5 seconds and 1 hour",
+          message: "Must be between 5 seconds and 1 hour",
           path: ["lockoutCounterResetValue"]
         });
       }

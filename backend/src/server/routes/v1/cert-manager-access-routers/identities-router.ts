@@ -14,7 +14,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ApplicationMemberKind } from "@app/services/pki-application/pki-application-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
@@ -51,7 +50,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
@@ -85,7 +84,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
@@ -138,7 +137,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
@@ -159,7 +158,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       operationId: "addCertManagerIdentity",
       params: z.object({ identityId: z.string().trim().uuid() }),
       body: z.object({
-        role: z.string().trim().optional().default(ProjectMembershipRole.NoAccess),
+        role: z.string().trim().optional().default(ProjectMembershipRole.Member),
         roles: z
           .array(
             z.union([
@@ -207,11 +206,14 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         }
       });
       await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CertManagerIdentityAdded,
+        event: PostHogEventTypes.CertManagerMemberAdded,
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "identity",
+          role: (roles || [{ role }]).map((r) => r.role).join(",")
         }
       });
 
@@ -250,6 +252,17 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "identity",
+          role: req.body.roles.map((r) => r.role).join(",")
+        }
+      });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };
     }
   });
@@ -266,19 +279,10 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     },
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
-      const { membership } = await server.services.pkiApplicationMembership.deleteMemberAndCleanup({
-        projectId,
-        actorKind: ApplicationMemberKind.Identity,
-        actorId: req.params.identityId,
-        performDelete: (tx) =>
-          server.services.membershipIdentity.deleteMembership(
-            {
-              permission: req.permission,
-              scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
-              selector: { identityId: req.params.identityId }
-            },
-            tx
-          )
+      const { membership } = await server.services.membershipIdentity.deleteMembership({
+        permission: req.permission,
+        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        selector: { identityId: req.params.identityId }
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -286,6 +290,16 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         event: {
           type: EventType.REMOVE_CERT_MANAGER_IDENTITY,
           metadata: { identityId: req.params.identityId, membershipId: membership.id }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "identity"
         }
       });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };

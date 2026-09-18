@@ -19,6 +19,10 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretFolderActions {
+  ManageAccess = "manage-access"
+}
+
 export enum ProjectPermissionCommitsActions {
   Read = "read",
   PerformRollback = "perform-rollback"
@@ -60,6 +64,9 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  GenerateMac = "generate-mac",
+  VerifyMac = "verify-mac",
+  Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
 
@@ -81,6 +88,7 @@ export enum ProjectPermissionIdentityActions {
   AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -104,14 +112,6 @@ export enum ProjectPermissionGroupActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   AssignRole = "assign-role"
-}
-
-export enum ProjectPermissionSshHostActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  IssueHostCert = "issue-host-cert"
 }
 
 export enum ProjectPermissionPkiTemplateActions {
@@ -166,6 +166,13 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionSecretValidationRuleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionPkiSyncActions {
   Read = "read",
   Create = "create",
@@ -173,7 +180,10 @@ export enum ProjectPermissionPkiSyncActions {
   Delete = "delete",
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
-  RemoveCertificates = "remove-certificates"
+  RemoveCertificates = "remove-certificates",
+  SetPostSyncCommand = "set-post-sync-command",
+  SetHealthCheckCommand = "set-health-check-command",
+  SetTargetHost = "set-target-host"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {
@@ -234,6 +244,15 @@ export enum ProjectPermissionAppConnectionActions {
   RotateCredentials = "rotate-credentials"
 }
 
+export enum ProjectPermissionHsmConnectorActions {
+  Read = "read-hsm-connectors",
+  Create = "create-hsm-connectors",
+  Edit = "edit-hsm-connectors",
+  Delete = "delete-hsm-connectors",
+  Test = "test-hsm-connectors",
+  Attach = "attach-hsm-connectors"
+}
+
 export enum ProjectPermissionSecretScanningFindingActions {
   Read = "read-findings",
   Update = "update-findings"
@@ -256,49 +275,9 @@ export enum ProjectPermissionAuditLogsActions {
 }
 
 export enum ProjectPermissionInsightsActions {
-  Read = "read"
-}
-
-export enum ProjectPermissionPamAccountActions {
-  Access = "access",
   Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  TriggerRotation = "trigger-rotation",
-  ReadCredentials = "read-credentials"
-}
-
-export enum ProjectPermissionPamSessionActions {
-  Read = "read",
-  Terminate = "terminate"
-}
-
-export enum ProjectPermissionPamAccountPolicyActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete"
-}
-
-export enum ProjectPermissionPamInsightsActions {
-  Read = "read"
-}
-
-export enum ProjectPermissionPamDiscoveryActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  RunScan = "run-scan"
-}
-
-export enum ProjectPermissionMcpEndpointActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  Connect = "connect"
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum ProjectPermissionHoneyTokenActions {
@@ -310,6 +289,39 @@ export enum ProjectPermissionHoneyTokenActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionProxiedServiceActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Proxy = "proxy",
+  ReportUsage = "report-usage"
+}
+
+export enum ProjectPermissionAgentVaultAccessBundleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ManageMembers = "manage-members"
+}
+
+export enum ProjectPermissionAgentVaultSessionActions {
+  Read = "read",
+  Create = "create",
+  Revoke = "revoke"
+}
+
+export enum ProjectPermissionAgentVaultProxyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  // Issuing a replacement enrollment token mints a credential that enrolls a new box, so it is not Edit.
+  IssueToken = "issue-token",
+  Revoke = "revoke"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -318,6 +330,12 @@ export enum ProjectPermissionApprovalRequestActions {
 export enum ProjectPermissionApprovalRequestGrantActions {
   Read = "read",
   Revoke = "revoke"
+}
+
+export enum ProjectPermissionProjectFolderGrantActions {
+  ReadGrant = "read-grant",
+  CreateGrant = "create-grant",
+  RevokeGrant = "revoke-grant"
 }
 
 export enum ProjectPermissionSecretApprovalRequestActions {
@@ -353,11 +371,6 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
-  SshCertificateAuthorities = "ssh-certificate-authorities",
-  SshCertificates = "ssh-certificates",
-  SshCertificateTemplates = "ssh-certificate-templates",
-  SshHosts = "ssh-hosts",
-  SshHostGroups = "ssh-host-groups",
   PkiSubscribers = "pki-subscribers",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
@@ -365,6 +378,7 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  SecretValidationRules = "secret-validation-rules",
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
@@ -375,23 +389,18 @@ export enum ProjectPermissionSub {
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
-  PamFolders = "pam-folders",
-  PamResources = "pam-resources",
-  PamDomains = "pam-domains",
-  PamAccounts = "pam-accounts",
-  PamSessions = "pam-sessions",
-  PamAccountPolicies = "pam-account-policies",
-  PamDiscovery = "pam-discovery",
-  PamInsights = "pam-insights",
+  HsmConnectors = "hsm-connectors",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
   Application = "certificate-application",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
-  McpEndpoints = "mcp-endpoints",
-  McpServers = "mcp-servers",
-  McpActivityLogs = "mcp-activity-logs",
+  ProjectFolderGrant = "project-folder-grant",
   HoneyTokens = "honey-tokens",
+  ProxiedServices = "proxied-services",
+  AgentVaultAccessBundles = "agent-vault-access-bundles",
+  AgentVaultSessions = "agent-vault-sessions",
+  AgentVaultProxies = "agent-vault-proxies",
   Insights = "insights"
 }
 
@@ -429,6 +438,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -513,10 +523,6 @@ export type GroupSubjectFields = {
   assignableRole?: string;
 };
 
-export type SshHostSubjectFields = {
-  hostname: string;
-};
-
 export type PkiTemplateSubjectFields = {
   name: string;
   // (dangtony98): consider adding [commonName] as a subject field in the future
@@ -556,29 +562,19 @@ export type AppConnectionSubjectFields = {
   connectionId: string;
 };
 
-export type McpEndpointSubjectFields = {
-  name: string;
+export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
 };
 
-export type PamAccountSubjectFields = {
-  resourceName?: string;
-  resourceType?: string;
-  domainName?: string;
-  domainType?: string;
-  accountName: string;
-  metadata?: { key: string; value: string }[];
+export type ProxiedServiceSubjectFields = {
+  environment: string;
+  secretPath: string;
 };
 
-export type PamResourceSubjectFields = {
-  name: string;
-  resourceType: string;
-  metadata?: { key: string; value: string }[];
-};
-
-export type PamDomainSubjectFields = {
-  name: string;
-  domainType: string;
-  metadata?: { key: string; value: string }[];
+export type ProjectFolderGrantSubjectFields = {
+  environment: string;
+  secretPath: string;
 };
 
 export type ProjectPermissionSet =
@@ -588,6 +584,13 @@ export type ProjectPermissionSet =
     ]
   | [
       ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionSecretFolderActions,
       (
         | ProjectPermissionSub.SecretFolders
         | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
@@ -604,6 +607,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSecretSyncActions,
       ProjectPermissionSub.SecretSyncs | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
     ]
+  | [ProjectPermissionSecretValidationRuleActions, ProjectPermissionSub.SecretValidationRules]
   | [
       ProjectPermissionPkiSyncActions,
       ProjectPermissionSub.PkiSyncs | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
@@ -665,13 +669,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
-  | [
-      ProjectPermissionSshHostActions,
-      ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
-    ]
   | [
       ProjectPermissionPkiSubscriberActions,
       (
@@ -679,7 +676,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]
@@ -711,30 +707,21 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
+  | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [
-      ProjectPermissionActions,
-      ProjectPermissionSub.PamResources | (ForcedSubject<ProjectPermissionSub.PamResources> & PamResourceSubjectFields)
+      ProjectPermissionHoneyTokenActions,
+      ProjectPermissionSub.HoneyTokens | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
     ]
   | [
-      ProjectPermissionActions,
-      ProjectPermissionSub.PamDomains | (ForcedSubject<ProjectPermissionSub.PamDomains> & PamDomainSubjectFields)
+      ProjectPermissionProxiedServiceActions,
+      (
+        | ProjectPermissionSub.ProxiedServices
+        | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
+      )
     ]
-  | [
-      ProjectPermissionPamAccountActions,
-      ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
-    ]
-  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
-  | [ProjectPermissionPamAccountPolicyActions, ProjectPermissionSub.PamAccountPolicies]
-  | [ProjectPermissionPamDiscoveryActions, ProjectPermissionSub.PamDiscovery]
-  | [ProjectPermissionPamInsightsActions, ProjectPermissionSub.PamInsights]
-  | [
-      ProjectPermissionMcpEndpointActions,
-      ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
-    ]
-  | [ProjectPermissionHoneyTokenActions, ProjectPermissionSub.HoneyTokens]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
+  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -756,7 +743,14 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
-  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights];
+  | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
+  | [
+      ProjectPermissionProjectFolderGrantActions,
+      (
+        | ProjectPermissionSub.ProjectFolderGrant
+        | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
+      )
+    ];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -921,6 +915,57 @@ const PkiSyncConditionSchema = z
   .partial();
 
 const SecretImportConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const HoneyTokenConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const ProxiedServiceConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const ProjectFolderGrantConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1207,37 +1252,6 @@ const GroupConditionSchema = z
   })
   .partial();
 
-const SshHostConditionSchema = z
-  .object({
-    hostname: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-        })
-        .partial()
-    ])
-  })
-  .partial();
-
-const McpEndpointConditionSchema = z
-  .object({
-    name: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-        })
-        .partial()
-    ])
-  })
-  .partial();
-
 const PkiSubscriberConditionSchema = z
   .object({
     name: z.union([
@@ -1297,180 +1311,6 @@ const AppConnectionConditionSchema = z
         })
         .partial()
     ])
-  })
-  .partial();
-
-const PamAccountConditionSchema = z
-  .object({
-    resourceName: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    accountName: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    resourceType: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    domainName: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    domainType: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    metadata: z.object({
-      [PermissionConditionOperators.$ELEMENTMATCH]: z
-        .object({
-          key: z
-            .object({
-              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-            })
-            .partial(),
-          value: z
-            .object({
-              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-            })
-            .partial()
-        })
-        .partial()
-    })
-  })
-  .partial();
-
-const PamResourceConditionSchema = z
-  .object({
-    name: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    resourceType: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    metadata: z.object({
-      [PermissionConditionOperators.$ELEMENTMATCH]: z
-        .object({
-          key: z
-            .object({
-              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-            })
-            .partial(),
-          value: z
-            .object({
-              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-            })
-            .partial()
-        })
-        .partial()
-    })
-  })
-  .partial();
-
-const PamDomainConditionSchema = z
-  .object({
-    name: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    domainType: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    metadata: z.object({
-      [PermissionConditionOperators.$ELEMENTMATCH]: z
-        .object({
-          key: z
-            .object({
-              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-            })
-            .partial(),
-          value: z
-            .object({
-              [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-              [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-              [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-            })
-            .partial()
-        })
-        .partial()
-    })
   })
   .partial();
 
@@ -1648,6 +1488,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.SecretValidationRules).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretValidationRuleActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.Environments).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -1673,34 +1519,6 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.IpAllowList).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SshCertificateAuthorities)
-      .describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SshCertificates).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SshCertificateTemplates)
-      .describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SshHostGroups).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     )
@@ -1810,90 +1628,51 @@ const GeneralPermissionSchema = [
     ).optional()
   }),
   z.object({
-    subject: z.literal(ProjectPermissionSub.PamFolders).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamResources).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: PamResourceConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamDomains).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: PamDomainConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given domain."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamAccounts).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamAccountActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: PamAccountConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamSessions).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamSessionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamAccountPolicies).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamAccountPolicyActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamDiscovery).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamDiscoveryActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.PamInsights).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPamInsightsActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.McpEndpoints).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMcpEndpointActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: McpEndpointConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.McpServers).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.McpActivityLogs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    subject: z.literal(ProjectPermissionSub.HsmConnectors).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHsmConnectorActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.HoneyTokens).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: HoneyTokenConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ProxiedServices).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionProxiedServiceActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: ProxiedServiceConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z
+      .literal(ProjectPermissionSub.AgentVaultAccessBundles)
+      .describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultAccessBundleActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultSessions).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSessionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultProxies).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultProxyActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -1914,6 +1693,16 @@ const GeneralPermissionSchema = [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretApprovalRequestActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ProjectFolderGrant).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionProjectFolderGrantActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: ProjectFolderGrantConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
   })
 ];
 
@@ -1951,6 +1740,38 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   ...GeneralPermissionSchema
 ]);
 
+// DEPRECATED, tolerated write vocabulary for removed products (SSH, Agent Sentinel).
+//
+// The products were removed in ENG-5432, but permission JSON stored in customer
+// databases (custom roles, user/identity additional privileges, project templates)
+// and enumerated in API/Terraform configs can still carry these subjects. This
+// schema validates every permission write, so rejecting them would 422 any
+// read-modify-write client that round-trips a stale rule (e.g. the Terraform
+// project-template resource re-sends server-read roles on unrelated edits).
+//
+// These entries accept the historical vocabulary and grant nothing: no enforcement
+// code checks these subjects anymore, so matching CASL rules are inert. Do not add
+// new consumers. Remove this block together with a data migration that scrubs the
+// subjects from stored permission JSON in a future breaking release.
+const DeprecatedRemovedSubjectActionSchema = z
+  .union([z.string().trim().min(1).max(64), z.string().trim().min(1).max(64).array().min(1)])
+  .transform((el) => (typeof el === "string" ? [el] : el));
+
+const buildDeprecatedRemovedSubjectSchema = <T extends string>(subject: T) =>
+  z.object({
+    subject: z
+      .literal(subject)
+      .describe("DEPRECATED. The entity belonged to a removed product; accepted for backwards compatibility."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: DeprecatedRemovedSubjectActionSchema.describe(
+      "DEPRECATED. Accepted for backwards compatibility; grants nothing."
+    ),
+    conditions: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe("DEPRECATED. Accepted for backwards compatibility; ignored.")
+  });
+
 export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
@@ -1965,6 +1786,8 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    // manage-access is deliberately not writable here: it can only be obtained through the
+    // folder access flow (built-in admin role and the full-access folder tier)
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     ),
@@ -1999,16 +1822,6 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: IdentityManagementConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SshHosts).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSshHostActions).describe(
-      "Describe what action an entity can take."
-    ),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    conditions: SshHostConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
@@ -2095,6 +1908,12 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.Application).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApplicationActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.CertificateAuthorities).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificateAuthorityActions).describe(
@@ -2114,6 +1933,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+  // DEPRECATED removed-product subjects, accepted but inert (see comment on
+  // buildDeprecatedRemovedSubjectSchema above).
+  buildDeprecatedRemovedSubjectSchema("ssh-certificate-authorities"),
+  buildDeprecatedRemovedSubjectSchema("ssh-certificates"),
+  buildDeprecatedRemovedSubjectSchema("ssh-certificate-templates"),
+  buildDeprecatedRemovedSubjectSchema("ssh-hosts"),
+  buildDeprecatedRemovedSubjectSchema("ssh-host-groups"),
+  buildDeprecatedRemovedSubjectSchema("mcp-endpoints"),
+  buildDeprecatedRemovedSubjectSchema("mcp-servers"),
+  buildDeprecatedRemovedSubjectSchema("mcp-activity-logs"),
   ...GeneralPermissionSchema
 ]);
 
@@ -2148,7 +1977,8 @@ export const buildServiceTokenProjectPermission = (
             environment
           });
         }
-        if (canRead) {
+        // Folder read is implied-for-all, so it isn't granted explicitly for read-scoped tokens.
+        if (canRead && subject !== ProjectPermissionSub.SecretFolders) {
           if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
             // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
             // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.

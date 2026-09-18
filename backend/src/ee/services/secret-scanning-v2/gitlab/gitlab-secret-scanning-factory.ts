@@ -8,6 +8,7 @@ import {
   SecretScanningResource
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
+  assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
   replaceNonChangesWithNewlines
@@ -259,6 +260,14 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     if (!GitLabProjectRegex.test(resourceName)) {
       throw new Error("Invalid GitLab project name");
     }
+
+    // Checked before the clone: measuring afterwards means the network, wall clock and ephemeral
+    // disk have already been spent. `repositorySize` is in bytes and is only returned to callers
+    // with sufficient privileges — when it is absent the post-clone check is the backstop.
+    await assertProviderRepositorySizeWithinLimit(resourceName, async () => {
+      const project = await client.Projects.show(resourceName, { statistics: true });
+      return project.statistics?.repositorySize;
+    });
 
     const validatedHostname = new URL(instanceUrl).host;
 
