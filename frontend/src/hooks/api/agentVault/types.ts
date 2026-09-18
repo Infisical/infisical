@@ -84,10 +84,76 @@ export type TAgentVaultActor =
   | { type: AgentVaultMemberType.MachineIdentity; id: string; name: string }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
+export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
+
 export type TAgentVaultMember = {
   id: string;
   createdAt: string;
   actor: TAgentVaultActor;
+};
+
+// A product membership carries two things a bundle grant has no use for: whether the person's
+// organization invite is still open, and whether Agent Vault owns the machine identity, which decides
+// whether the row offers Remove or Delete.
+export type TAgentVaultProductActor =
+  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
+      isOrgMembershipPending: boolean;
+    })
+  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.MachineIdentity }> & {
+      isManagedByAgentVault: boolean;
+      orgId: string | null;
+    })
+  | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
+
+export type TAgentVaultProductMember = {
+  id: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  actor: TAgentVaultProductActor;
+};
+
+// Narrows the actor to one variant, so a tab that asked for users does not re-narrow in every cell.
+export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
+  TAgentVaultProductMember,
+  "actor"
+> & {
+  actor: Extract<TAgentVaultProductActor, { type: T }>;
+};
+
+export type TListAgentVaultProxiesDTO = {
+  search?: string;
+  orderBy?: "name" | "createdAt";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+};
+
+export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
+  orderBy?: "name" | "serviceCount" | "createdAt";
+};
+
+export type TListAgentVaultMembersDTO = {
+  actorType?: AgentVaultMemberType;
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TAgentVaultActorIdsDTO = {
+  userIds?: string[];
+  groupIds?: string[];
+  machineIdentityIds?: string[];
+};
+
+export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
+  emails?: string[];
+  role: string;
+};
+
+export type TAgentVaultMemberWriteResult<T> = {
+  members: T[];
+  skipped: (TAgentVaultActorRef & { identifier: string })[];
 };
 
 export type TAgentVaultAccessBundle = {
@@ -106,7 +172,6 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
   services: TAgentVaultService[];
-  members?: TAgentVaultMember[];
 };
 
 export type TAgentVaultSessionAccessBundle = {
@@ -196,11 +261,8 @@ export type TUpdateAgentVaultServiceDTO = {
   substitutions?: TAgentVaultSubstitutionInput[];
 };
 
-export type TAddAgentVaultMembersDTO = {
+export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
   accessBundleId: string;
-  userIds: string[];
-  identityIds: string[];
-  groupIds: string[];
 };
 
 export type TCreateAgentVaultSessionDTO = {
@@ -213,38 +275,4 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
-};
-
-export type TAgentVaultProductMember = {
-  membershipId: string;
-  userId: string | null;
-  groupId: string | null;
-  identityId: string | null;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-};
-
-export type TAgentVaultProductUserMember = TAgentVaultProductMember & {
-  email: string | null;
-  username: string;
-  firstName: string | null;
-  lastName: string | null;
-  isOrgMembershipPending: boolean;
-};
-
-export type TAgentVaultProductGroupMember = TAgentVaultProductMember & {
-  name: string;
-};
-
-export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & {
-  name: string;
-  identityProjectId: string | null;
-  identityOrgId: string | null;
-};
-
-export type TAgentVaultProductMemberActor = {
-  userId?: string;
-  groupId?: string;
-  identityId?: string;
 };

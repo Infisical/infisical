@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
+import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { PendingInvitationBadge } from "@app/components/agent-vault/PendingInvitationBadge";
 import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
@@ -24,6 +25,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
   Table,
   TableBody,
@@ -40,30 +42,49 @@ import {
   useUser
 } from "@app/context";
 import {
-  useListAgentVaultProductUserMembers,
-  useRemoveAgentVaultProductMember
-} from "@app/hooks/api/agentVault";
-import { TAgentVaultProductUserMember } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
+import { useListAgentVaultMembers, useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
 
 import { InviteMembersDialog } from "./InviteMembersDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
-const fullName = (member: TAgentVaultProductUserMember) =>
-  `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
-
-const displayName = (member: TAgentVaultProductUserMember) =>
-  fullName(member) || member.username || member.email || "";
+type TUserMember = TAgentVaultProductMemberOf<AgentVaultMemberType.User>;
 
 export const MembersTab = () => {
   const { user } = useUser();
-  const { data: members = [], isPending } = useListAgentVaultProductUserMembers();
-  const removeMember = useRemoveAgentVaultProductMember();
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultUsersTable", PreferenceKey.PerPage, 20)
+  );
+
+  const { data, isPending } = useListAgentVaultMembers({
+    actorType: AgentVaultMemberType.User,
+    search: debouncedSearch.trim() || undefined,
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+  const revokeMembers = useRevokeAgentVaultMembers();
+
+  const filtered = data?.members ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
+
+  // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the
+  // copy off the live input would caption a stale result set.
+  const isFiltered = Boolean(debouncedSearch.trim());
+
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [memberToEdit, setMemberToEdit] = useState<TAgentVaultProductUserMember | null>(null);
-  const [memberToRemove, setMemberToRemove] = useState<TAgentVaultProductUserMember | null>(null);
+  const [memberToEdit, setMemberToEdit] = useState<TUserMember | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<TUserMember | null>(null);
 
   const { permission } = useProjectPermission();
   const canAddMembers = permission.can(
@@ -80,22 +101,12 @@ export const MembersTab = () => {
     if (requesterEmail && canAddMembers) setIsInviteOpen(true);
   }, [requesterEmail, canAddMembers]);
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return members;
-    return members.filter(
-      (member) =>
-        displayName(member).toLowerCase().includes(term) ||
-        (member.email ?? "").toLowerCase().includes(term)
-    );
-  }, [members, search]);
-
   const handleRemove = async () => {
     try {
-      if (!memberToRemove?.userId) return;
-      await removeMember.mutateAsync({ userId: memberToRemove.userId });
+      if (!memberToRemove) return;
+      await revokeMembers.mutateAsync({ userIds: [memberToRemove.actor.id] });
       createNotification({
-        text: `${displayName(memberToRemove)} removed`,
+        text: `${memberDisplayName(memberToRemove.actor)} removed`,
         type: "success"
       });
       setMemberToRemove(null);
@@ -113,7 +124,10 @@ export const MembersTab = () => {
           </InputGroupAddon>
           <InputGroupInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search users..."
           />
         </InputGroup>
@@ -131,9 +145,9 @@ export const MembersTab = () => {
         <CardContent>
           <Empty className="border">
             <EmptyHeader>
-              <EmptyTitle>{search ? "No users match your search" : "No users yet"}</EmptyTitle>
+              <EmptyTitle>{isFiltered ? "No users match your search" : "No users yet"}</EmptyTitle>
               <EmptyDescription>
-                {search ? "Try a different search term." : "Add users to give them access."}
+                {isFiltered ? "Try a different search term." : "Add users to give them access."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -167,14 +181,16 @@ export const MembersTab = () => {
               ))}
             {!isPending &&
               filtered.map((member) => {
-                const isSelf = member.userId === user?.id;
-                const name = fullName(member);
+                const isSelf = member.actor.id === user?.id;
+                const name = [member.actor.firstName, member.actor.lastName]
+                  .filter(Boolean)
+                  .join(" ");
 
                 return (
-                  <TableRow key={member.membershipId}>
+                  <TableRow key={member.id}>
                     <TableCell isTruncatable className="min-w-32" title={name || undefined}>
                       {name ? (
-                        <HighlightText text={name} highlight={search} />
+                        <HighlightText text={name} highlight={debouncedSearch} />
                       ) : (
                         <span className="text-muted">—</span>
                       )}
@@ -182,16 +198,19 @@ export const MembersTab = () => {
                     <TableCell
                       isTruncatable
                       className="min-w-32 text-sm"
-                      title={member.email || member.username}
+                      title={member.actor.email || member.actor.username}
                     >
-                      <HighlightText text={member.email || member.username} highlight={search} />
+                      <HighlightText
+                        text={member.actor.email || member.actor.username}
+                        highlight={debouncedSearch}
+                      />
                     </TableCell>
                     <TableCell>
                       <ProductRoleBadge role={member.role} />
                     </TableCell>
                     <TableCell variant="action">
                       <div className="flex items-center justify-end gap-2">
-                        <PendingInvitationBadge isPending={member.isOrgMembershipPending} />
+                        <PendingInvitationBadge isPending={member.actor.isOrgMembershipPending} />
                         {!isSelf && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -223,14 +242,29 @@ export const MembersTab = () => {
         </Table>
       )}
 
+      {totalCount > 0 && (
+        // The card lays its children out with gap-5, which reads as a gap under the table.
+        <CardContent className="-mt-5 pt-0">
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={(newPerPage) => {
+              setPerPage(newPerPage);
+              setPage(1);
+              setUserTablePreference("agentVaultUsersTable", PreferenceKey.PerPage, newPerPage);
+            }}
+          />
+        </CardContent>
+      )}
+
       <InviteMembersDialog isOpen={isInviteOpen} onOpenChange={setIsInviteOpen} />
 
       <ProductRoleDialog
-        isOpen={Boolean(memberToEdit)}
+        member={memberToEdit}
         onOpenChange={() => setMemberToEdit(null)}
-        subject={memberToEdit ? displayName(memberToEdit) : ""}
-        currentRole={memberToEdit?.role ?? ProjectMembershipRole.Member}
-        actor={memberToEdit?.userId ? { userId: memberToEdit.userId } : {}}
+        subject={memberToEdit ? memberDisplayName(memberToEdit.actor) : ""}
       />
 
       <DeleteConfirmDialog
@@ -238,11 +272,11 @@ export const MembersTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setMemberToRemove(null);
         }}
-        title={`Remove "${memberToRemove ? displayName(memberToRemove) : ""}"`}
+        title={`Remove "${memberToRemove ? memberDisplayName(memberToRemove.actor) : ""}"`}
         description="They lose every access bundle granted to them. Any active session they hold stops reaching its hosts at the next proxy poll."
-        confirmKey={memberToRemove ? displayName(memberToRemove) : ""}
+        confirmKey={memberToRemove ? memberDisplayName(memberToRemove.actor) : ""}
         confirmLabel="Remove"
-        isPending={removeMember.isPending}
+        isPending={revokeMembers.isPending}
         onConfirm={handleRemove}
       />
     </Card>

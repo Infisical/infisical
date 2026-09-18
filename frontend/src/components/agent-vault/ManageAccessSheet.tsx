@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { BanIcon, MoreHorizontalIcon, UserPlusIcon } from "lucide-react";
+import { BanIcon, MoreHorizontalIcon, SearchIcon, UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -22,6 +22,10 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Pagination,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -35,13 +39,20 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import {
-  useGetAgentVaultAccessBundle,
-  useRemoveAgentVaultAccessBundleMember
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
+import {
+  useListAgentVaultAccessBundleMembers,
+  useRevokeAgentVaultAccessBundleMembers
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 
-import { AddMemberDialog } from "./AddMemberDialog";
+import { GrantAccessDialog } from "./GrantAccessDialog";
 import { memberDisplayName, MemberName } from "./MemberName";
 
 type Props = {
@@ -53,19 +64,37 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TAgentVaultMember | null>(null);
 
-  const { data: bundleDetails, isPending } = useGetAgentVaultAccessBundle(accessBundle?.id ?? "");
-  const removeMember = useRemoveAgentVaultAccessBundleMember();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  // Ten rather than twenty: the sheet is 640px wide and sits inside a scroll container.
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultAccessBundleMembersTable", PreferenceKey.PerPage, 10)
+  );
 
-  const members = bundleDetails?.members ?? [];
-  const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove) : "";
+  const { data, isPending } = useListAgentVaultAccessBundleMembers(accessBundle?.id ?? "", {
+    search: debouncedSearch.trim() || undefined,
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+  const revokeMembers = useRevokeAgentVaultAccessBundleMembers();
+
+  const members = data?.members ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
+
+  // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the
+  // copy off the live input would caption a stale result set.
+  const isFiltered = Boolean(debouncedSearch.trim());
+  const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove.actor) : "";
 
   const handleRemove = async () => {
     try {
       if (!accessBundle || !memberToRemove) return;
 
-      await removeMember.mutateAsync({
+      await revokeMembers.mutateAsync({
         accessBundleId: accessBundle.id,
-        actor: memberToRemove.actor
+        ...actorIdsPayload([memberToRemove.actor])
       });
       createNotification({
         text: `Access bundle revoked from "${memberToRemoveName}"`,
@@ -88,7 +117,20 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center gap-2">
+            <InputGroup className="flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search members..."
+              />
+            </InputGroup>
             <Button size="sm" variant="av" onClick={() => setIsAddOpen(true)}>
               <UserPlusIcon />
               Grant Access
@@ -100,9 +142,13 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           {!isPending && members.length === 0 && (
             <Empty className="flex-none border">
               <EmptyHeader>
-                <EmptyTitle>No members yet</EmptyTitle>
+                <EmptyTitle>
+                  {isFiltered ? "No members match your search" : "No members yet"}
+                </EmptyTitle>
                 <EmptyDescription>
-                  Grant this bundle to a user, machine identity, or group.
+                  {isFiltered
+                    ? "Try a different search term."
+                    : "Grant this bundle to a user, machine identity, or group."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -130,7 +176,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
                           <IconButton
                             variant="ghost"
                             size="xs"
-                            aria-label={`Actions for ${memberDisplayName(member)}`}
+                            aria-label={`Actions for ${memberDisplayName(member.actor)}`}
                           >
                             <MoreHorizontalIcon />
                           </IconButton>
@@ -151,21 +197,38 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
               </TableBody>
             </Table>
           )}
+
+          {totalCount > 0 && (
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+                setUserTablePreference(
+                  "agentVaultAccessBundleMembersTable",
+                  PreferenceKey.PerPage,
+                  newPerPage
+                );
+              }}
+            />
+          )}
         </div>
 
         {accessBundle && (
-          <AddMemberDialog
+          <GrantAccessDialog
             isOpen={isAddOpen}
             onOpenChange={setIsAddOpen}
             accessBundleId={accessBundle.id}
-            members={members}
           />
         )}
 
         <AlertDialog
           open={Boolean(memberToRemove)}
           onOpenChange={(isOpen) => {
-            if (!isOpen && !removeMember.isPending) setMemberToRemove(null);
+            if (!isOpen && !revokeMembers.isPending) setMemberToRemove(null);
           }}
         >
           <AlertDialogContent>
@@ -179,10 +242,10 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel isDisabled={removeMember.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel isDisabled={revokeMembers.isPending}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="danger"
-                isPending={removeMember.isPending}
+                isPending={revokeMembers.isPending}
                 onClick={async (event) => {
                   event.preventDefault();
                   await handleRemove();

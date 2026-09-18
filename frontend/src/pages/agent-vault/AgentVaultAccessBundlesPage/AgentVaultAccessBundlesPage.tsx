@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
@@ -40,6 +40,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageHeader,
+  Pagination,
   Skeleton,
   Table,
   TableBody,
@@ -52,6 +53,12 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
 import { useListAgentVaultAccessBundles } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -60,20 +67,12 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog";
 
+// The values are the API's orderBy vocabulary, so the table header and the query cannot drift.
 enum SortColumn {
   Name = "name",
-  Services = "services",
-  Created = "created"
+  Services = "serviceCount",
+  Created = "createdAt"
 }
-
-const SORT_COMPARATORS: Record<
-  SortColumn,
-  (a: TAgentVaultAccessBundleListItem, b: TAgentVaultAccessBundleListItem) => number
-> = {
-  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Services]: (a, b) => a.serviceCount - b.serviceCount,
-  [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-};
 
 export const AgentVaultAccessBundlesPage = () => {
   const { t } = useTranslation();
@@ -83,8 +82,13 @@ export const AgentVaultAccessBundlesPage = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultAccessBundlesTable", PreferenceKey.PerPage, 20)
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
@@ -94,22 +98,20 @@ export const AgentVaultAccessBundlesPage = () => {
     null
   );
 
-  const { data: accessBundles, isPending } = useListAgentVaultAccessBundles();
+  const { data, isPending } = useListAgentVaultAccessBundles({
+    search: debouncedSearch.trim() || undefined,
+    orderBy: sortColumn,
+    orderDirection: sortDirection === "ascending" ? "asc" : "desc",
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
 
-  const displayedBundles = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const filtered = (accessBundles ?? []).filter(
-      (bundle) =>
-        bundle.name.toLowerCase().includes(term) ||
-        (bundle.description ?? "").toLowerCase().includes(term)
-    );
-
-    const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
-
-    return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [accessBundles, search, sortColumn, sortDirection]);
+  const displayedBundles = data?.accessBundles ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    setPage(1);
     if (direction === "none") {
       setSortColumn(SortColumn.Created);
       setSortDirection("descending");
@@ -127,7 +129,7 @@ export const AgentVaultAccessBundlesPage = () => {
       sortColumn !== column && "opacity-30"
     );
 
-  const isFiltered = Boolean(search.trim());
+  const isFiltered = Boolean(debouncedSearch.trim());
 
   let emptyTitle: string;
   let emptyDescription: string;
@@ -180,7 +182,10 @@ export const AgentVaultAccessBundlesPage = () => {
             </InputGroupAddon>
             <InputGroupInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search access bundles..."
             />
           </InputGroup>
@@ -348,6 +353,27 @@ export const AgentVaultAccessBundlesPage = () => {
                 ))}
             </TableBody>
           </Table>
+        )}
+
+        {totalCount > 0 && (
+          // The card lays its children out with gap-5, which reads as a gap under the table.
+          <CardContent className="-mt-5 pt-0">
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+                setUserTablePreference(
+                  "agentVaultAccessBundlesTable",
+                  PreferenceKey.PerPage,
+                  newPerPage
+                );
+              }}
+            />
+          </CardContent>
         )}
       </Card>
 

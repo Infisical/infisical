@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
@@ -46,6 +46,7 @@ import {
   EmptyTitle,
   IconButton,
   PageHeader,
+  Pagination,
   Skeleton,
   Table,
   TableBody,
@@ -58,6 +59,12 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultTrafficPolicy,
   useDeleteAgentVaultProxy,
@@ -121,16 +128,11 @@ const HeadWithHint = ({ hint, children }: { hint: string; children: ReactNode })
   </Tooltip>
 );
 
+// The values are the API's orderBy vocabulary, so the table header and the query cannot drift.
 enum SortColumn {
   Name = "name",
-  Created = "created"
+  Created = "createdAt"
 }
-
-const SORT_COMPARATORS: Record<SortColumn, (a: TAgentVaultProxy, b: TAgentVaultProxy) => number> = {
-  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Created]: (a, b) =>
-    new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
-};
 
 const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
@@ -140,7 +142,23 @@ export const AgentVaultProxiesPage = () => {
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
-  const { data: proxies, isPending } = useListAgentVaultProxies();
+  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, 20)
+  );
+
+  const { data, isPending } = useListAgentVaultProxies({
+    orderBy: sortColumn,
+    orderDirection: sortDirection === "ascending" ? "asc" : "desc",
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+
+  const displayed = data?.proxies ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
   const deleteProxy = useDeleteAgentVaultProxy();
   const revokeProxy = useRevokeAgentVaultProxyAccess();
   const reissueToken = useReissueAgentVaultProxyEnrollmentToken();
@@ -151,15 +169,9 @@ export const AgentVaultProxiesPage = () => {
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
   const [proxyToReissue, setProxyToReissue] = useState<TAgentVaultProxy | null>(null);
   const [enrollment, setEnrollment] = useState<TAgentVaultEnrollment | null>(null);
-  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
-
-  const displayed = useMemo(() => {
-    const ordered = [...(proxies ?? [])].sort(SORT_COMPARATORS[sortColumn]);
-    return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [proxies, sortColumn, sortDirection]);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    setPage(1);
     if (direction === "none") {
       setSortColumn(SortColumn.Created);
       setSortDirection("descending");
@@ -240,7 +252,7 @@ export const AgentVaultProxiesPage = () => {
           )}
         </CardHeader>
 
-        {!isPending && (proxies?.length ?? 0) === 0 ? (
+        {!isPending && totalCount === 0 ? (
           <CardContent>
             <Empty className="border">
               <EmptyHeader>
@@ -391,6 +403,23 @@ export const AgentVaultProxiesPage = () => {
                 ))}
             </TableBody>
           </Table>
+        )}
+
+        {totalCount > 0 && (
+          // The card lays its children out with gap-5, which reads as a gap under the table.
+          <CardContent className="-mt-5 pt-0">
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+                setUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, newPerPage);
+              }}
+            />
+          </CardContent>
         )}
       </Card>
 

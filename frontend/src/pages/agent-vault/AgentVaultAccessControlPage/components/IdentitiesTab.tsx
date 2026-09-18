@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -33,6 +33,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
+  Pagination,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -49,43 +50,65 @@ import {
   useProject
 } from "@app/context";
 import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
+import {
   agentVaultKeys,
-  useListAgentVaultProductIdentityMembers,
-  useRemoveAgentVaultProductMember
+  useListAgentVaultMembers,
+  useRevokeAgentVaultMembers
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultProductIdentityMember } from "@app/hooks/api/agentVault/types";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
 import { useDeleteProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { CreateProjectIdentitySheet } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/CreateProjectIdentity/CreateProjectIdentitySheet";
 
 import { ProductRoleDialog } from "./ProductRoleDialog";
+
+type TMachineIdentityMember = TAgentVaultProductMemberOf<AgentVaultMemberType.MachineIdentity>;
 
 export const IdentitiesTab = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: identities = [], isPending } = useListAgentVaultProductIdentityMembers();
-  const removeMember = useRemoveAgentVaultProductMember();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultMachineIdentitiesTable", PreferenceKey.PerPage, 20)
+  );
+
+  const { data, isPending } = useListAgentVaultMembers({
+    actorType: AgentVaultMemberType.MachineIdentity,
+    search: debouncedSearch.trim() || undefined,
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+  const revokeMembers = useRevokeAgentVaultMembers();
   const deleteIdentity = useDeleteProjectIdentity();
   const updateIdentity = useUpdateProjectIdentity();
 
-  const [search, setSearch] = useState("");
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [toEdit, setToEdit] = useState<TAgentVaultProductIdentityMember | null>(null);
-  const [toRemove, setToRemove] = useState<TAgentVaultProductIdentityMember | null>(null);
+  const filtered = data?.members ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return identities.filter((identity) => identity.name.toLowerCase().includes(term));
-  }, [identities, search]);
+  // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the
+  // copy off the live input would caption a stale result set.
+  const isFiltered = Boolean(debouncedSearch.trim());
+
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [toEdit, setToEdit] = useState<TMachineIdentityMember | null>(null);
+  const [toRemove, setToRemove] = useState<TMachineIdentityMember | null>(null);
 
   // An identity created here is scoped to the Agent Vault project, so detaching it would orphan it.
-  // Those are deleted outright.
-  const isAgentVaultManaged = (identity: TAgentVaultProductIdentityMember) =>
-    identity.identityProjectId === currentProject.id;
+  // Those are deleted outright. The server answers the question rather than the client comparing ids.
+  const isAgentVaultManaged = (member: TMachineIdentityMember) =>
+    member.actor.isManagedByAgentVault;
 
-  const renderManagedByBadge = (identity: TAgentVaultProductIdentityMember) => {
+  const renderManagedByBadge = (identity: TMachineIdentityMember) => {
     if (isAgentVaultManaged(identity)) {
       return (
         <Badge variant="av">
@@ -94,7 +117,7 @@ export const IdentitiesTab = () => {
         </Badge>
       );
     }
-    if (isSubOrganization && currentOrg.id === identity.identityOrgId) {
+    if (isSubOrganization && currentOrg.id === identity.actor.orgId) {
       return (
         <Badge variant="sub-org">
           <SubOrgIcon />
@@ -112,24 +135,24 @@ export const IdentitiesTab = () => {
 
   const handleRemove = async () => {
     try {
-      if (!toRemove?.identityId) return;
+      if (!toRemove) return;
 
       if (isAgentVaultManaged(toRemove)) {
         // Identities are created here with delete protection on, which the delete endpoint refuses.
         await updateIdentity.mutateAsync({
-          identityId: toRemove.identityId,
+          identityId: toRemove.actor.id,
           projectId: currentProject.id,
           hasDeleteProtection: false
         });
         await deleteIdentity.mutateAsync({
-          identityId: toRemove.identityId,
+          identityId: toRemove.actor.id,
           projectId: currentProject.id
         });
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(currentOrg.id) });
-        createNotification({ text: `"${toRemove.name}" deleted`, type: "success" });
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
+        createNotification({ text: `"${toRemove.actor.name}" deleted`, type: "success" });
       } else {
-        await removeMember.mutateAsync({ identityId: toRemove.identityId });
-        createNotification({ text: `"${toRemove.name}" removed`, type: "success" });
+        await revokeMembers.mutateAsync({ machineIdentityIds: [toRemove.actor.id] });
+        createNotification({ text: `"${toRemove.actor.name}" removed`, type: "success" });
       }
 
       setToRemove(null);
@@ -147,7 +170,10 @@ export const IdentitiesTab = () => {
           </InputGroupAddon>
           <InputGroupInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search machine identities..."
           />
         </InputGroup>
@@ -169,7 +195,9 @@ export const IdentitiesTab = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>
-                {search ? "No machine identities match your search" : "No machine identities yet"}
+                {isFiltered
+                  ? "No machine identities match your search"
+                  : "No machine identities yet"}
               </EmptyTitle>
               <EmptyDescription>
                 {search
@@ -207,18 +235,17 @@ export const IdentitiesTab = () => {
             {!isPending &&
               filtered.map((identity) => (
                 <TableRow
-                  key={identity.membershipId}
-                  className={identity.identityId ? "cursor-pointer" : undefined}
+                  key={identity.id}
+                  className="cursor-pointer"
                   onClick={() => {
-                    if (!identity.identityId) return;
                     navigate({
                       to: "/organizations/$orgId/agent-vault/identities/$identityId",
-                      params: { orgId: currentOrg.id, identityId: identity.identityId }
+                      params: { orgId: currentOrg.id, identityId: identity.actor.id }
                     });
                   }}
                 >
-                  <TableCell isTruncatable className="min-w-32" title={identity.name}>
-                    <HighlightText text={identity.name} highlight={search} />
+                  <TableCell isTruncatable className="min-w-32" title={identity.actor.name}>
+                    <HighlightText text={identity.actor.name} highlight={debouncedSearch} />
                   </TableCell>
                   <TableCell>
                     <ProductRoleBadge role={identity.role} />
@@ -249,14 +276,33 @@ export const IdentitiesTab = () => {
         </Table>
       )}
 
+      {totalCount > 0 && (
+        // The card lays its children out with gap-5, which reads as a gap under the table.
+        <CardContent className="-mt-5 pt-0">
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={(newPerPage) => {
+              setPerPage(newPerPage);
+              setPage(1);
+              setUserTablePreference(
+                "agentVaultMachineIdentitiesTable",
+                PreferenceKey.PerPage,
+                newPerPage
+              );
+            }}
+          />
+        </CardContent>
+      )}
+
       <CreateProjectIdentitySheet isOpen={isAddOpen} onOpenChange={setIsAddOpen} />
 
       <ProductRoleDialog
-        isOpen={Boolean(toEdit)}
+        member={toEdit}
         onOpenChange={() => setToEdit(null)}
-        subject={toEdit?.name ?? ""}
-        currentRole={toEdit?.role ?? ProjectMembershipRole.Member}
-        actor={toEdit?.identityId ? { identityId: toEdit.identityId } : {}}
+        subject={toEdit?.actor.name ?? ""}
       />
 
       <DeleteConfirmDialog
@@ -266,17 +312,17 @@ export const IdentitiesTab = () => {
         }}
         title={
           toRemove && isAgentVaultManaged(toRemove)
-            ? `Delete "${toRemove.name}"`
-            : `Remove "${toRemove?.name ?? ""}"`
+            ? `Delete "${toRemove.actor.name}"`
+            : `Remove "${toRemove?.actor.name ?? ""}"`
         }
         description={
           toRemove && isAgentVaultManaged(toRemove)
             ? "This machine identity is managed by Agent Vault. Deleting it removes the identity along with its access. This cannot be undone."
             : "It loses Agent Vault access, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
         }
-        confirmKey={toRemove?.name ?? ""}
+        confirmKey={toRemove?.actor.name ?? ""}
         confirmLabel={toRemove && isAgentVaultManaged(toRemove) ? "Delete" : "Remove"}
-        isPending={removeMember.isPending || updateIdentity.isPending || deleteIdentity.isPending}
+        isPending={revokeMembers.isPending || updateIdentity.isPending || deleteIdentity.isPending}
         onConfirm={handleRemove}
       />
     </Card>

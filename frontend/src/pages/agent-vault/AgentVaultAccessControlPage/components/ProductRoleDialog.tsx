@@ -13,30 +13,35 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
-import { useUpdateAgentVaultProductMemberRole } from "@app/hooks/api/agentVault";
-import { TAgentVaultProductMemberActor } from "@app/hooks/api/agentVault/types";
+import { useUpdateAgentVaultMemberRole } from "@app/hooks/api/agentVault";
+import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
 
 type Props = {
-  isOpen: boolean;
+  // The member being edited, or null while the dialog is closed. One prop rather than three, so the
+  // empty actor the callers used to pass -- which no request could have been built from -- cannot be
+  // expressed.
+  member: Pick<TAgentVaultProductMember, "role" | "actor"> | null;
   onOpenChange: (isOpen: boolean) => void;
   subject: string;
-  currentRole: string;
-  actor: TAgentVaultProductMemberActor;
 };
 
-export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, actor }: Props) => {
-  const updateRole = useUpdateAgentVaultProductMemberRole();
+export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
+  const updateRole = useUpdateAgentVaultMemberRole();
+  const currentRole = member?.role ?? ProjectMembershipRole.Member;
   const [role, setRole] = useState(currentRole);
 
   useEffect(() => {
-    if (isOpen) setRole(currentRole);
-  }, [isOpen, currentRole]);
+    if (member) setRole(member.role);
+  }, [member]);
 
   const handleSave = async () => {
     try {
-      await updateRole.mutateAsync({ ...actor, role });
+      // Guarded here rather than by returning null, so the dialog's exit animation still runs.
+      if (!member) return;
+      await updateRole.mutateAsync({ actor: member.actor, role });
       createNotification({
         text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
         type: "success"
@@ -48,7 +53,7 @@ export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={Boolean(member)} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Change Role</DialogTitle>

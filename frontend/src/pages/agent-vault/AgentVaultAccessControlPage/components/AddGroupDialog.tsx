@@ -16,10 +16,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetOrganizationGroups } from "@app/hooks/api";
-import {
-  useAddAgentVaultProductMember,
-  useListAgentVaultProductGroupMembers
-} from "@app/hooks/api/agentVault";
+import { useAddAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
@@ -34,24 +31,28 @@ type Props = {
 export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: orgGroups = [] } = useGetOrganizationGroups(currentOrg.id);
-  const { data: projectGroups = [] } = useListAgentVaultProductGroupMembers();
-  const addMember = useAddAgentVaultProductMember();
+  const addMembers = useAddAgentVaultMembers();
 
   const [group, setGroup] = useState<TOption | null>(null);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
 
-  const options = useMemo(() => {
-    const attached = new Set(projectGroups.map((membership) => membership.groupId));
-    return orgGroups
-      .filter((orgGroup) => !attached.has(orgGroup.id))
-      .map((orgGroup) => ({ value: orgGroup.id, label: orgGroup.name }));
-  }, [orgGroups, projectGroups]);
+  // Groups already in Agent Vault are not filtered out. The member list is paged, so a client-side
+  // exclusion could only see one page of it; the server reports an existing member in skipped instead.
+  const options = useMemo(
+    () => orgGroups.map((orgGroup) => ({ value: orgGroup.id, label: orgGroup.name })),
+    [orgGroups]
+  );
 
   const handleAdd = async () => {
     try {
       if (!group) return;
-      await addMember.mutateAsync({ groupId: group.value, role });
-      createNotification({ text: `"${group.label}" added`, type: "success" });
+      const { skipped } = await addMembers.mutateAsync({ groupIds: [group.value], role });
+      createNotification({
+        text: skipped.length
+          ? `"${group.label}" already has access to Agent Vault`
+          : `"${group.label}" added`,
+        type: skipped.length ? "info" : "success"
+      });
       setGroup(null);
       onOpenChange(false);
     } catch {
@@ -96,7 +97,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
           </Button>
           <Button
             variant="av"
-            isPending={addMember.isPending}
+            isPending={addMembers.isPending}
             isDisabled={!group}
             onClick={handleAdd}
           >

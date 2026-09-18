@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useDiscardChangesGuard } from "@app/hooks";
+import { useDebounce, useDiscardChangesGuard } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles
@@ -73,7 +73,15 @@ type Props = {
 };
 
 export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
-  const { data: accessBundles } = useListAgentVaultAccessBundles();
+  const [bundleSearch, setBundleSearch] = useState("");
+  const [debouncedBundleSearch] = useDebounce(bundleSearch);
+  // A combobox is for finding a bundle by name, so it searches the server rather than paging.
+  const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles({
+    search: debouncedBundleSearch.trim() || undefined,
+    orderBy: "name",
+    orderDirection: "asc",
+    limit: 50
+  });
   const createSession = useCreateAgentVaultSession();
 
   const [selectedBundle, setSelectedBundle] = useState<TAgentVaultAccessBundleListItem | null>(
@@ -144,8 +152,12 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
             <FieldContent>
               <Combobox
                 id="agent-vault-session-bundle"
-                options={accessBundles ?? []}
+                options={accessBundles?.accessBundles ?? []}
                 value={selectedBundle}
+                shouldFilter={false}
+                isLoading={isSearchingBundles}
+                includeMissingSelectedOptions
+                onInputValueChange={setBundleSearch}
                 getOptionValue={(bundle) => bundle.id}
                 getOptionLabel={(bundle) => bundle.name}
                 placeholder="Pick an access bundle"
