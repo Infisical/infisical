@@ -139,7 +139,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           role: ProductRoleSchema
         })
         .refine((val) => val.userIds.length + val.emails.length > 0, {
-          message: "Provide at least one userId or email."
+          message: "Provide at least one user ID or email address."
         }),
       response: { 200: z.object({ members: MemberResultSchema.array(), skipped: z.string().array() }) }
     },

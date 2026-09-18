@@ -66,13 +66,13 @@ export const agentVaultSessionServiceFactory = ({
     );
 
     if (!accessBundles.length) {
-      throw new BadRequestError({ message: "Name the access bundle the session should carry" });
+      throw new BadRequestError({ message: "Name the access bundle this session should carry" });
     }
     if (accessBundles.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
-      throw new BadRequestError({ message: "A session carries one access bundle. Name a single bundle." });
+      throw new BadRequestError({ message: "A session carries one access bundle. Name only one." });
     }
     if (new Set(accessBundles).size !== accessBundles.length) {
-      throw new BadRequestError({ message: "The same access bundle is named more than once. Name it once." });
+      throw new BadRequestError({ message: "You've named the same access bundle more than once. Name it only once." });
     }
 
     const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } });

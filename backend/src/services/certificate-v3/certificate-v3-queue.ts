@@ -8,6 +8,7 @@ import { QueueJobs } from "@app/queue";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-constants";
+import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateV3ServiceFactory } from "./certificate-v3-service";
 
 type TCertificateV3QueueServiceFactoryDep = {
@@ -70,7 +71,7 @@ export const certificateV3QueueServiceFactory = ({
                   }
                 }
 
-                await certificateV3Service.renewCertificate({
+                const renewed = await certificateV3Service.renewCertificate({
                   actor: ActorType.PLATFORM,
                   actorId: "",
                   actorAuthMethod: null,
@@ -78,6 +79,8 @@ export const certificateV3QueueServiceFactory = ({
                   certificateId: certificate.id,
                   internal: true
                 });
+
+                const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
 
                 totalCertificatesRenewed += 1;
 
@@ -91,10 +94,20 @@ export const certificateV3QueueServiceFactory = ({
                     type: EventType.AUTOMATED_RENEW_CERTIFICATE,
                     metadata: {
                       certificateId: certificate.id,
+                      // An external-CA renewal returns a renewal order id in `certificateId` while
+                      // it is still pending, so only an issued result names a real certificate.
+                      ...(isIssued && {
+                        newCertificateId: renewed.certificateId,
+                        serialNumber: renewed.serialNumber
+                      }),
+                      certificateRequestId: renewed.certificateRequestId,
                       commonName: certificate.commonName || "",
                       profileId: certificate.profileId!,
                       renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
-                      profileName: certificate.profileName || ""
+                      profileName: certificate.profileName || "",
+                      applicationId: certificate.applicationId,
+                      applicationName: certificate.applicationName,
+                      status: renewed.status
                     }
                   }
                 });
@@ -115,6 +128,8 @@ export const certificateV3QueueServiceFactory = ({
                       profileId: certificate.profileId || "",
                       renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
                       profileName: certificate.profileName || "",
+                      applicationId: certificate.applicationId,
+                      applicationName: certificate.applicationName,
                       error: errorMessage
                     }
                   }

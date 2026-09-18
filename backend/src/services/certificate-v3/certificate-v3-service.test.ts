@@ -88,9 +88,13 @@ describe("CertificateV3Service", () => {
     | "find"
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
+    | "findCertificatesMatchingSyncFilters"
+    | "findActiveCertificatesByIds"
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
+    findCertificatesMatchingSyncFilters: vi.fn().mockResolvedValue([]),
+    findActiveCertificatesByIds: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(),
     getRequestEnrollmentTypeByCertId: vi.fn().mockResolvedValue(null),
     getOriginatingRequestByCertId: vi.fn().mockResolvedValue({ enrollmentType: null, csr: null }),
@@ -307,13 +311,15 @@ describe("CertificateV3Service", () => {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
         addCertificates: vi.fn().mockResolvedValue([]),
         findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(null),
-        updateSyncMetadata: vi.fn().mockResolvedValue(null)
+        updateSyncMetadata: vi.fn().mockResolvedValue(null),
+        primaryNode: vi.fn()
       },
       pkiSyncDAL: {
         find: vi.fn().mockResolvedValue([])
       },
       pkiSyncQueue: {
-        queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined)
+        queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined),
+        queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined)
       },
       certificateBodyDAL: {
         create: vi.fn().mockResolvedValue({ id: "body-123" })
@@ -355,6 +361,9 @@ describe("CertificateV3Service", () => {
       pkiApplicationProfileDAL: {
         findAllByProfileId: vi.fn().mockResolvedValue([]),
         findOneByApplicationAndProfile: vi.fn().mockResolvedValue(undefined)
+      } as never,
+      pkiApplicationDAL: {
+        findById: vi.fn().mockResolvedValue(undefined)
       } as never,
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
@@ -3089,7 +3098,9 @@ describe("CertificateV3Service", () => {
       expect(result).toEqual({
         projectId: "project-123",
         renewBeforeDays: 7,
-        commonName: ""
+        commonName: "",
+        applicationId: null,
+        applicationName: null
       });
 
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: 7 });
@@ -3212,7 +3223,9 @@ describe("CertificateV3Service", () => {
       expect(result).toEqual({
         projectId: "project-123",
         renewBeforeDays: 7,
-        commonName: ""
+        commonName: "",
+        applicationId: null,
+        applicationName: null
       });
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: 7 });
     });
@@ -3330,7 +3343,9 @@ describe("CertificateV3Service", () => {
 
       expect(result).toEqual({
         projectId: "project-123",
-        commonName: ""
+        commonName: "",
+        applicationId: null,
+        applicationName: null
       });
 
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: null });

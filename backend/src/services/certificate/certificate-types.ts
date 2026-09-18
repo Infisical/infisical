@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import {
   CERT_EXTENDED_KEY_USAGES,
@@ -122,6 +123,7 @@ export type TGetCertDTO = {
 export type TDeleteCertDTO = {
   id?: string;
   serialNumber?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeCertDTO = {

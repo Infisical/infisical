@@ -175,10 +175,8 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
                 <ShieldCheckIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
-                  Add HSM Connector
-                </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <div className="flex items-center gap-x-2 text-label">Add HSM Connector</div>
+                <p className="text-sm leading-4 text-muted">
                   Register a hardware security module so Infisical can route key operations through
                   it.
                 </p>

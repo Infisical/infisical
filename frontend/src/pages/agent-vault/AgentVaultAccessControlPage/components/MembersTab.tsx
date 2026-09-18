@@ -239,7 +239,7 @@ export const MembersTab = () => {
           if (!isOpen) setMemberToRemove(null);
         }}
         title={`Remove "${memberToRemove ? displayName(memberToRemove) : ""}"`}
-        description="They lose every access bundle granted to them, and any live session stops reaching its hosts at the next proxy poll."
+        description="They lose every access bundle granted to them. Any active session they hold stops reaching its hosts at the next proxy poll."
         confirmKey={memberToRemove ? displayName(memberToRemove) : ""}
         confirmLabel="Remove"
         isPending={removeMember.isPending}
