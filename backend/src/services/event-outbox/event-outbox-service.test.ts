@@ -362,6 +362,34 @@ describe("event outbox drain", () => {
     }
   });
 
+  // Without this, a handle() that never settles keeps the heartbeat alive forever and, because the
+  // flush job id is per consumer, blocks every later flush for that consumer until a restart.
+  test("gives up on a consumer that never settles and retries the batch", async () => {
+    vi.useFakeTimers();
+    try {
+      const { service, commits, extended } = buildDrain({
+        batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
+        handle: () => new Promise(() => {})
+      });
+
+      const draining = service.drain(KEY);
+      await vi.advanceTimersByTimeAsync(30 * 60_000);
+      await expect(draining).resolves.toEqual({ handled: 2, unknownConsumer: false });
+
+      expect(commits).toHaveLength(1);
+      expect(commits[0].delivered).toEqual([]);
+      expect(commits[0].retriable).toHaveLength(1);
+      expect(commits[0].retriable[0].ids).toEqual(["1", "2"]);
+      expect(commits[0].retriable[0].error).toContain("did not finish handling the batch");
+
+      const afterTimeout = extended.length;
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      expect(extended.length).toBe(afterTimeout);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("leaves rows untouched when no consumer is registered under the key", async () => {
     const { service, commits } = buildDrain({ batches: [[makeRow()]], handle: async () => [] });
 

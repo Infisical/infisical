@@ -34,6 +34,12 @@ const STALE_SWEEP_MAX_BATCHES = 10;
 // A quarter of the threshold so one missed beat doesn't get a live claim swept.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
 
+// Deliberately longer than the stale threshold: the heartbeat exists so a legitimately slow batch can
+// outlive it. This is the backstop for a handle() that never settles, which would otherwise keep the
+// heartbeat, and with it the per-consumer flush job, alive until the process restarts. It cannot
+// cancel the work in flight, so an abandoned batch may still deliver and be delivered again on retry.
+const CONSUMER_HANDLE_TIMEOUT_MS = 3 * STALE_CLAIM_THRESHOLD_MS;
+
 const COMMIT_ATTEMPTS = 3;
 const COMMIT_RETRY_DELAY_MS = 250;
 
@@ -41,6 +47,25 @@ const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+
+class ConsumerHandleTimeoutError extends Error {
+  constructor(consumer: string, ms: number) {
+    super(`Consumer '${consumer}' did not finish handling the batch within ${ms / 1000}s`);
+    this.name = "ConsumerHandleTimeoutError";
+  }
+}
+
+const withTimeout = async <T>(promise: Promise<T>, ms: number, makeError: () => Error): Promise<T> => {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(makeError()), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
 
 const formatIssues = (issues: { path: (string | number)[]; message: string }[]) =>
   issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ");
@@ -222,10 +247,20 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }, CLAIM_HEARTBEAT_INTERVAL_MS);
 
     try {
-      return await consumer.handle(claimed);
+      return await withTimeout(
+        consumer.handle(claimed),
+        CONSUMER_HANDLE_TIMEOUT_MS,
+        () => new ConsumerHandleTimeoutError(key.consumer, CONSUMER_HANDLE_TIMEOUT_MS)
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      logger.error(error, `event-outbox: consumer '${key.consumer}' threw while handling a batch`);
+      if (error instanceof ConsumerHandleTimeoutError) {
+        logger.error(
+          `event-outbox: consumer '${key.consumer}' timed out on a batch of ${claimed.length}; retrying it later [timeoutMs=${CONSUMER_HANDLE_TIMEOUT_MS}]`
+        );
+      } else {
+        logger.error(error, `event-outbox: consumer '${key.consumer}' threw while handling a batch`);
+      }
       return claimed.map((row) => ({ id: String(row.id), status: EventResultStatus.Retry, error: message }));
     } finally {
       clearInterval(heartbeat);
