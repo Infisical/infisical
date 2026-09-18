@@ -40,6 +40,39 @@ export const createSecretV2 = async (dto: {
   return createdSecretPayload.secret as TRawSecret;
 };
 
+export const updateSecretV2 = async (dto: {
+  workspaceId: string;
+  environmentSlug: string;
+  secretPath: string;
+  key: string;
+  value?: string;
+  newKey?: string;
+  authToken: string;
+  expectStatusCode?: number;
+}) => {
+  const updateSecRes = await testServer.inject({
+    method: "PATCH",
+    url: `/api/v3/secrets/raw/${dto.key}`,
+    headers: {
+      authorization: `Bearer ${dto.authToken}`
+    },
+    body: {
+      workspaceId: dto.workspaceId,
+      environment: dto.environmentSlug,
+      secretPath: dto.secretPath,
+      secretValue: dto.value,
+      newSecretName: dto.newKey
+    }
+  });
+
+  expect(updateSecRes.statusCode).toBe(dto.expectStatusCode ?? 200);
+
+  // A spec asserting a rejection wants the body, not the secret.
+  if ((dto.expectStatusCode ?? 200) !== 200) return { error: JSON.parse(updateSecRes.payload) as { message: string } };
+
+  return { secret: JSON.parse(updateSecRes.payload).secret as TRawSecret };
+};
+
 export const deleteSecretV2 = async (dto: {
   workspaceId: string;
   environmentSlug: string;
