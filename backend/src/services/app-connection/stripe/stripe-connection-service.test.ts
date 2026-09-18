@@ -74,4 +74,14 @@ describe("stripeConnectionService.listApiKeys", () => {
     expect(getMock.mock.calls[0][0]).toContain("limit=100");
     expect(getMock.mock.calls[1][0]).toBe("https://api.stripe.com/v2/iam/api_keys?page=2");
   });
+
+  it("never sends the platform credential to a next_page_url outside the Stripe API keys endpoint", async () => {
+    getMock.mockResolvedValueOnce(keyPage("mk_1", "https://evil.example.com/v2/iam/api_keys?page=2"));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    const keys = await makeService().listApiKeys("connection-id", {} as any);
+
+    expect(keys.map((key) => key.id)).toEqual(["mk_1"]);
+    expect(getMock).toHaveBeenCalledTimes(1);
+  });
 });

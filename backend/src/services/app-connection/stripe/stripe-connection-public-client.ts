@@ -106,7 +106,21 @@ export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKe
     );
 
     keys.push(...(response.data?.data ?? []));
-    url = response.data?.next_page_url ?? undefined;
+
+    const nextPageUrl = response.data?.next_page_url ?? undefined;
+
+    // config.auth carries our platform key, which can act on every connected Stripe account, not a
+    // per-connection token. This must be checked before that credential goes out on the next request,
+    // never after, since next_page_url comes from the response body Stripe controls.
+    if (nextPageUrl && !nextPageUrl.startsWith(STRIPE_API_KEYS_URL)) {
+      logger.error(
+        `listStripeApiKeys: next_page_url for account ${accountId} did not point at the Stripe API keys endpoint, stopped paginating`
+      );
+      url = undefined;
+    } else {
+      url = nextPageUrl;
+    }
+
     pages += 1;
   }
 
