@@ -46,7 +46,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
   const name = firstName || lastName ? `${firstName} ${lastName}`.trim() : null;
 
   return (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full lg:max-w-[24rem] lg:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>User membership details</CardDescription>

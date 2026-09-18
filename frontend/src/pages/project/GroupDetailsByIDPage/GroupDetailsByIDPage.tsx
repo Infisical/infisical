@@ -109,8 +109,8 @@ const Page = () => {
           <Skeleton className="h-4 w-80 max-w-full" />
         </div>
         <div className="flex flex-col gap-5 lg:flex-row">
-          <Skeleton className="h-64 w-full lg:max-w-[24rem]" />
-          <Skeleton className="h-64 flex-1" />
+          <Skeleton className="h-64 w-full lg:max-w-[24rem] lg:shrink-0" />
+          <Skeleton className="h-64 min-w-0 flex-1" />
         </div>
       </div>
     );

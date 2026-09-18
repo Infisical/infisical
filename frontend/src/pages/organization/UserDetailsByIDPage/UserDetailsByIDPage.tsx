@@ -217,7 +217,7 @@ const Page = withPermission(
             </PageHeader>
             <div className="flex flex-col gap-5 lg:flex-row">
               <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
-              <div className="flex flex-1 flex-col gap-y-5">
+              <div className="flex min-w-0 flex-1 flex-col gap-y-5">
                 <UserProjectsSection membershipId={membershipId} />
                 <UserGroupsSection orgMembership={membership} />
                 <UserAuditLogsSection orgMembership={membership} />

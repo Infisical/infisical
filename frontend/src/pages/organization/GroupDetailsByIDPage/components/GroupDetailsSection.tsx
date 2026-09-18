@@ -43,7 +43,7 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen, canEditGroup = t
   });
 
   return data ? (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full lg:max-w-[24rem] lg:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>Group details</CardDescription>

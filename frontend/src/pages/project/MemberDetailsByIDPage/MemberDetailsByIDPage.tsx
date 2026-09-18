@@ -274,7 +274,7 @@ export const Page = () => {
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectMemberDetailsSection membership={membershipDetails} />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <MemberRoleDetailsSection
                 membershipDetails={membershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}

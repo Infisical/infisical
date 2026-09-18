@@ -170,7 +170,7 @@ const Page = () => {
               handlePopUpOpen={handlePopUpOpen}
               canEditGroup={canEditGroup}
             />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <GroupMembersSection
                 groupId={groupId}
                 groupSlug={data.group.slug}
