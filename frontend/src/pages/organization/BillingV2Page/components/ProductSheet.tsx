@@ -462,6 +462,7 @@ type ProductSheetProps = {
   // notice points to sales; the sales-led "Contact sales" path stays available.
   selfServe: boolean;
   onClose: () => void;
+  onEntitlementChanged?: () => void;
   onRemove: (prodId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
@@ -478,6 +479,7 @@ export const ProductSheet = ({
   renewsOn,
   selfServe,
   onClose,
+  onEntitlementChanged,
   onRemove,
   onContact
 }: ProductSheetProps) => {
@@ -552,7 +554,8 @@ export const ProductSheet = ({
       const result = await startTrial.mutateAsync({
         orgId,
         productId: prod.id,
-        plan: trialConfirmTier
+        plan: trialConfirmTier,
+        returnPath
       });
       // Card-first: awaiting_card means no card is on file and the trial is NOT granted yet. Send the
       // customer to the card-setup checkout; completing it grants the trial via webhook.
@@ -572,6 +575,7 @@ export const ProductSheet = ({
         type: "success",
         text: `Your ${prod.name} trial has started.`
       });
+      onEntitlementChanged?.();
       onClose();
     } catch {
       setTrialConfirmTier(null);
@@ -635,7 +639,10 @@ export const ProductSheet = ({
               }
               onStartTrial={() => setTrialConfirmTier(activatePlanObj.tier)}
               onBack={() => setView("plans")}
-              onDone={onClose}
+              onDone={() => {
+                onEntitlementChanged?.();
+                onClose();
+              }}
             />
           )}
 
@@ -649,7 +656,10 @@ export const ProductSheet = ({
               selfServe={selfServe}
               isTrialConversion={entitlement?.trialPlan === upgradePlanObj.tier}
               onBack={() => setView("plans")}
-              onDone={onClose}
+              onDone={() => {
+                onEntitlementChanged?.();
+                onClose();
+              }}
             />
           )}
 
