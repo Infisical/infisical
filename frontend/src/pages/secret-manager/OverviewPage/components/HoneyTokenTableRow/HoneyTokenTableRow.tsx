@@ -41,6 +41,7 @@ import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enu
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
@@ -83,6 +84,11 @@ export const HoneyTokenTableRow = ({
   const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
   const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -238,9 +244,11 @@ export const HoneyTokenTableRow = ({
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
         className={twMerge(
-          "group hover:z-10",
+          groupClassName,
+          "hover:z-10",
           isTriggered && !isExpanded && "bg-danger/5 hover:bg-danger/10"
         )}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -300,7 +308,7 @@ export const HoneyTokenTableRow = ({
                 {renderStatusBadge(singleEnvToken)}
               </div>
               <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvToken)}
+                {shouldRenderActions && renderActionButtons(singleEnvToken)}
               </div>
             </div>
           ) : (

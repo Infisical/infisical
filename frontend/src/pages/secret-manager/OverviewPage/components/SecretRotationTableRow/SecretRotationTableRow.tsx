@@ -47,6 +47,7 @@ import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotati
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
@@ -110,6 +111,11 @@ export const SecretRotationTableRow = ({
   };
 
   const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
   const totalCols = environments.length + 2; // secret key row + icon
 
   const statuses = getSecretRotationStatusesByName(secretRotationName);
@@ -321,7 +327,8 @@ export const SecretRotationTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -402,7 +409,7 @@ export const SecretRotationTableRow = ({
                     <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
                   </div>
                   <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                    {renderActionButtons(singleEnvRotation)}
+                    {shouldRenderActions && renderActionButtons(singleEnvRotation)}
                   </div>
                 </>
               )}
