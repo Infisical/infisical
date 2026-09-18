@@ -89,12 +89,14 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         ipAddress: req.realIp
       });
 
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.PKI_SIGNER_REQUEST_TO_SIGN,
-          metadata: { signerId: req.params.signerId, requestId: request?.id }
+          metadata: { signerId: req.params.signerId, name: signer.name, approvalRequestId: request?.id }
         }
       });
 
@@ -134,14 +136,17 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId
       });
 
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING,
           metadata: {
             signerId: req.params.signerId,
-            requestId: result?.request?.id,
+            name: signer.name,
+            approvalRequestId: result?.request?.id,
             granteeUserId: req.body.granteeUserId,
             granteeIdentityId: req.body.granteeIdentityId
           }
@@ -174,12 +179,14 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         actorOrgId: req.permission.orgId
       });
 
+      const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        projectId: signer.projectId,
         event: {
           type: EventType.PKI_SIGNER_REVOKE_REQUEST,
-          metadata: { signerId: req.params.signerId, requestId: req.params.requestId }
+          metadata: { signerId: req.params.signerId, name: signer.name, approvalRequestId: req.params.requestId }
         }
       });
 

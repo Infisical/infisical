@@ -7,13 +7,14 @@ import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  PageHeader
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -103,7 +104,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
         <ProjectPermissionCan
           renderGuardBanner
@@ -114,38 +115,38 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                {cameFromProfile && search.profileId ? (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      profileId: search.profileId
-                    }}
-                    search={{
-                      from: search.profileFrom,
-                      applicationName: search.profileApplicationName
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    {sourceProfile?.slug || "Certificate Profile"}
-                  </Link>
-                ) : (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    Certificate Authorities
-                  </Link>
-                )}
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
                 <PageHeader
+                  backLink={
+                    cameFromProfile && search.profileId ? (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId,
+                          profileId: search.profileId
+                        }}
+                        search={{
+                          from: search.profileFrom,
+                          applicationName: search.profileApplicationName
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        {sourceProfile?.slug || "Certificate Profile"}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        Certificate Authorities
+                      </Link>
+                    )
+                  }
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate authority"
                   title={data.name}

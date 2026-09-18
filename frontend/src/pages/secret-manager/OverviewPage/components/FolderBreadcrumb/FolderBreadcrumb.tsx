@@ -1,27 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Check, Copy, FolderIcon, SlashIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  IconButton
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 
 type Props = {
+  projectName: string;
   secretPath?: string;
 };
 
@@ -29,11 +27,14 @@ type Measurements = {
   containerWidth: number;
   segmentWidths: number[];
   ellipsisWidth: number;
-  folderIconWidth: number;
+  rootWidth: number;
   separatorWidth: number;
 };
 
-export function FolderBreadcrumb({ secretPath = "" }: Props) {
+const breadcrumbLinkClassName =
+  "-my-1 inline-flex min-h-7 items-center rounded px-1.5 hover:bg-foreground/10 hover:no-underline";
+
+export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -41,13 +42,11 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
     containerWidth: 0,
     segmentWidths: [],
     ellipsisWidth: 0,
-    folderIconWidth: 0,
+    rootWidth: 0,
     separatorWidth: 0
   });
 
   const folderPaths = useMemo(() => (secretPath || "").split("/").filter(Boolean), [secretPath]);
-
-  const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
 
   const getCrumbPath = useCallback(
     (index: number) => `/${secretPath.split("/").filter(Boolean).slice(0, index).join("/")}`,
@@ -63,7 +62,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
     if (!container || !measureContainer) return;
 
     const containerWidth = container.getBoundingClientRect().width;
-    const folderIcon = measureContainer.querySelector("[data-measure='folder-icon']");
+    const root = measureContainer.querySelector("[data-measure='root']");
     const separator = measureContainer.querySelector("[data-measure='separator']");
     const ellipsis = measureContainer.querySelector("[data-measure='ellipsis']");
     const segments = measureContainer.querySelectorAll("[data-measure='segment']");
@@ -76,14 +75,14 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
         containerWidth,
         segmentWidths,
         ellipsisWidth: ellipsis?.getBoundingClientRect().width ?? 0,
-        folderIconWidth: folderIcon?.getBoundingClientRect().width ?? 0,
+        rootWidth: root?.getBoundingClientRect().width ?? 0,
         separatorWidth: separator?.getBoundingClientRect().width ?? 0
       };
 
       if (
         prev.containerWidth === newMeasurements.containerWidth &&
         prev.ellipsisWidth === newMeasurements.ellipsisWidth &&
-        prev.folderIconWidth === newMeasurements.folderIconWidth &&
+        prev.rootWidth === newMeasurements.rootWidth &&
         prev.separatorWidth === newMeasurements.separatorWidth &&
         prev.segmentWidths.length === newMeasurements.segmentWidths.length &&
         prev.segmentWidths.every((w, i) => w === newMeasurements.segmentWidths[i])
@@ -98,7 +97,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
   // Initial measurement and re-measure on path change
   useEffect(() => {
     measureElements();
-  }, [measureElements, folderPaths]);
+  }, [measureElements, folderPaths, projectName]);
 
   // Track container width with ResizeObserver
   useEffect(() => {
@@ -116,7 +115,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
 
   // Calculate visible segments based on actual measurements
   const { startCount, endCount, needsEllipsis } = useMemo(() => {
-    const { containerWidth, segmentWidths, ellipsisWidth, folderIconWidth, separatorWidth } =
+    const { containerWidth, segmentWidths, ellipsisWidth, rootWidth, separatorWidth } =
       measurements;
 
     // Before measurements are ready, show minimal state to prevent overflow
@@ -134,12 +133,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
       (sum, w) => sum + w + separatorWidth + GAP * 2,
       0
     );
-    // The copy-path button is a fixed-width sibling after the breadcrumb; subtract its
-    // footprint so the path collapses before it would collide with the button.
-    // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
-    const COPY_BUTTON_WIDTH = 28;
-    const copyButtonReserve = folderPaths.length > 0 ? COPY_BUTTON_WIDTH + GAP : 0;
-    const availableWidth = containerWidth - folderIconWidth - GAP - copyButtonReserve;
+    const availableWidth = containerWidth - rootWidth - GAP;
 
     // If everything fits, show all
     if (totalSegmentWidth <= availableWidth) {
@@ -209,6 +203,39 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
   // Canonical secret path (matches onFolderCrumbClick's "/"-prefixed format)
   const fullPath = `/${folderPaths.join("/")}`;
 
+  const handleCopyPath = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(fullPath);
+      createNotification({ type: "success", text: "Folder path copied to clipboard" });
+    } catch {
+      createNotification({ type: "error", text: "Failed to copy folder path to clipboard" });
+    }
+  }, [fullPath]);
+
+  const renderCurrentFolder = (path: string) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="xs"
+          aria-current="page"
+          aria-label={`Open actions for ${path}`}
+          title={path}
+          className={`${breadcrumbLinkClassName} max-w-full min-w-0 shrink gap-1 text-sm font-normal focus-visible:ring-inset`}
+        >
+          <span className="truncate">{path}</span>
+          <ChevronDownIcon className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onSelect={handleCopyPath}>
+          <CopyIcon />
+          Copy path
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -220,8 +247,12 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
         className="pointer-events-none invisible absolute flex items-center gap-1.5 whitespace-nowrap sm:gap-3"
         aria-hidden="true"
       >
-        <span data-measure="folder-icon" className="inline-flex items-center">
+        <span
+          data-measure="root"
+          className="inline-flex max-w-48 items-center gap-4 pr-1.5 pl-3 text-sm"
+        >
           <FolderIcon className="size-4" />
+          <span className="truncate">{projectName}</span>
         </span>
         <span data-measure="separator" className="inline-flex items-center">
           <SlashIcon className="size-3 -rotate-12" />
@@ -230,9 +261,12 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           <span
             key={`measure-${path}-${index + 1}`}
             data-measure="segment"
-            className="inline-flex items-center text-sm"
+            className={`inline-flex items-center px-1.5 text-sm ${
+              index === folderPaths.length - 1 ? "gap-1" : ""
+            }`}
           >
             {path}
+            {index === folderPaths.length - 1 && <ChevronDownIcon className="size-3.5" />}
           </span>
         ))}
         <span data-measure="ellipsis" className="inline-flex size-6 items-center justify-center">
@@ -240,19 +274,23 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
         </span>
       </div>
 
-      {/* Visible breadcrumb (shrinks/clips on its own so the copy button is never clipped) */}
-      <Breadcrumb className="min-w-0 overflow-hidden">
+      <Breadcrumb className="min-w-0">
         <BreadcrumbList className="flex-nowrap">
-          {/* Root folder icon */}
+          {/* Root folder */}
           <BreadcrumbItem>
-            <BreadcrumbLink asChild>
+            <BreadcrumbLink
+              asChild
+              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline"
+            >
               <Link
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
-                aria-label="Root folder"
+                aria-label={`${projectName} root folder`}
+                title={projectName}
               >
-                <FolderIcon />
+                <FolderIcon className="size-4 shrink-0 text-folder" />
+                <span className="truncate">{projectName}</span>
               </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -264,12 +302,14 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
                 <SlashIcon className="size-3 -rotate-12" />
               </BreadcrumbSeparator>
               {!needsEllipsis && index === startSegments.length - 1 ? (
-                <BreadcrumbPage title={path} className="truncate">
-                  {path}
-                </BreadcrumbPage>
+                <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
               ) : (
                 <BreadcrumbItem>
-                  <BreadcrumbLink asChild title={path} className="truncate">
+                  <BreadcrumbLink
+                    asChild
+                    title={path}
+                    className={`${breadcrumbLinkClassName} truncate`}
+                  >
                     <Link
                       from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                       to="."
@@ -292,9 +332,9 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
               <BreadcrumbItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <span className="data-[state=open]:[&>*]:bg-foreground/10">
-                      <BreadcrumbEllipsis className="size-6 cursor-pointer rounded hover:bg-foreground/10" />
-                    </span>
+                    <IconButton aria-label="Show hidden folders" variant="ghost-muted" size="xs">
+                      <BreadcrumbEllipsis className="size-6" />
+                    </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="relative max-w-[300px] pl-3" align="start">
                     <div className="absolute top-3 bottom-[23px] left-[8px] w-px bg-muted/50" />
@@ -339,12 +379,14 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
                   <SlashIcon className="size-3 -rotate-12" />
                 </BreadcrumbSeparator>
                 {isLast ? (
-                  <BreadcrumbPage title={path} className="truncate">
-                    {path}
-                  </BreadcrumbPage>
+                  <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
                 ) : (
                   <BreadcrumbItem>
-                    <BreadcrumbLink asChild title={path} className="truncate">
+                    <BreadcrumbLink
+                      asChild
+                      title={path}
+                      className={`${breadcrumbLinkClassName} truncate`}
+                    >
                       <Link
                         from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                         to="."
@@ -363,31 +405,6 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           })}
         </BreadcrumbList>
       </Breadcrumb>
-
-      {/* Copy current folder path (pinned outside the clip flow so it's always visible) */}
-      {folderPaths.length > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              variant="ghost-muted"
-              size="xs"
-              className="shrink-0"
-              aria-label="Copy folder path"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(fullPath);
-                  setIsCopied(true);
-                } catch {
-                  // clipboard unavailable (denied or insecure context); keep the un-copied state
-                }
-              }}
-            >
-              {isCopied ? <Check /> : <Copy />}
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>{isCopied ? "Copied" : "Copy path"}</TooltipContent>
-        </Tooltip>
-      )}
     </div>
   );
 }

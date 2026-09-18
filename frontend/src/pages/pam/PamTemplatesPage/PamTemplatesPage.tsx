@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Button,
   Card,
@@ -28,6 +28,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -232,8 +233,8 @@ export const PamTemplatesPage = () => {
                 <SelectItem value="all">All types</SelectItem>
                 {accountTypes.map((meta) => (
                   <SelectItem key={meta.type} value={meta.type}>
-                    <img
-                      src={`/images/integrations/${meta.icon}`}
+                    <ProviderIcon
+                      icon={meta.icon}
                       alt={meta.name}
                       className="mr-1.5 inline-block size-4 rounded-sm"
                     />

@@ -53,6 +53,7 @@ const buildService = (
     [PamAccountType.Postgres]: handler,
     [PamAccountType.MySQL]: handler,
     [PamAccountType.MsSQL]: handler,
+    [PamAccountType.OracleDB]: handler,
     [PamAccountType.Windows]: handler,
     [PamAccountType.WindowsAd]: handler
   } as typeof PAM_ROTATION_FACTORY_MAP;
@@ -69,7 +70,6 @@ const buildService = (
       ),
       updateById
     },
-    gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(async () => "gw-1") },
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },

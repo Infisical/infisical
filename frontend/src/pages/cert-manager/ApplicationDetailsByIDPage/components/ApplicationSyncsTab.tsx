@@ -89,6 +89,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
         applicationId={applicationId}
       />
       <UpgradePlanModal
+        paywallKey="cert-manager.application-syncs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Certificate Syncs are available on Infisical's Enterprise plan."

@@ -32,6 +32,7 @@ import {
   checkFolderMovePolicyBlock,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
+import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
 
 import {
   ChangeType,
@@ -109,6 +110,7 @@ type TSecretFolderServiceFactoryDep = {
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
@@ -139,6 +141,7 @@ export const secretFolderServiceFactory = ({
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
   secretQueueService,
+  secretSyncQueue,
   dynamicSecretDAL,
   secretRotationV2DAL,
   honeyTokenDAL,
@@ -824,6 +827,15 @@ export const secretFolderServiceFactory = ({
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await permissionService.invalidateProjectFolderPermissionCache(projectId);
+
+    // A recursive sync rooted above this folder just lost every secret it held, and no secret-level
+    // write carries that. Queued after the commit so a worker cannot read the folder back.
+    await secretSyncQueue.queueSecretSyncsSyncSecretsByPath({
+      projectId,
+      environmentSlug: environment,
+      secretPath: path.join(secretPath, folder.name)
+    });
+
     return folder;
   };
 

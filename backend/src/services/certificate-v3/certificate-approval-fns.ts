@@ -44,6 +44,7 @@ import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
+import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -78,6 +79,7 @@ import {
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { applyProfileDefaults } from "./certificate-v3-fns";
 import { TAltNameEntry, TCertificateIssuanceResponse } from "./certificate-v3-types";
 
@@ -89,6 +91,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey">;
@@ -217,7 +220,8 @@ export const certificateApprovalServiceFactory = (
     certificateIssuanceQueue,
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL
+    apiEnrollmentConfigDAL,
+    pkiSyncQueue
   } = deps;
 
   const $validateProfileAndPermissions = async ({
@@ -661,6 +665,10 @@ export const certificateApprovalServiceFactory = (
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber } = certResult;
 
+    if (certResult.certificateId && certRequest.applicationId) {
+      await queueCertificateFilterReconcile(certResult.certificateId, certRequest.applicationId, pkiSyncQueue);
+    }
+
     const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
     const certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
 
@@ -912,6 +920,10 @@ export const certificateApprovalServiceFactory = (
 
     const { selfSignedResult, certificateData } = result;
 
+    if (certificateData.id && applicationId) {
+      await queueCertificateFilterReconcile(certificateData.id, applicationId, pkiSyncQueue);
+    }
+
     const subjectCommonName =
       (selfSignedResult.certificateSubject.common_name as string) ||
       certificateRequestInput.commonName ||
@@ -1064,6 +1076,10 @@ export const certificateApprovalServiceFactory = (
       });
 
     const finalCertificateChain = bufferToString(certificateChain);
+
+    if (cert.id && applicationId) {
+      await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
+    }
 
     return {
       status: CertificateRequestStatus.ISSUED,

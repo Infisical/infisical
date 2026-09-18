@@ -487,7 +487,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                             {...field}
                           />
                           <FieldError>{error?.message}</FieldError>
-                          <p className="mt-1 text-xs text-mineshaft-400">
+                          <p className="mt-1 text-xs text-muted">
                             PEM-encoded client certificate used for mutual TLS (mTLS).
                           </p>
                         </Field>
@@ -511,7 +511,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                             {...field}
                           />
                           <FieldError>{error?.message}</FieldError>
-                          <p className="mt-1 text-xs text-mineshaft-400">
+                          <p className="mt-1 text-xs text-muted">
                             PEM-encoded private key matching the Client Certificate. Stored
                             encrypted server-side and never returned to the browser after save.
                           </p>
