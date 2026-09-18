@@ -28,18 +28,6 @@ import { RemoveProductModal } from "./components/RemoveProductModal";
 import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
 import { catalogById } from "./billing-v2-format";
-// LOCAL PREVIEW ONLY — DO NOT COMMIT (see billing-v2-local-preview.ts).
-import {
-  asCloudOverview,
-  asManagedCloudOverview,
-  asTrialCloudOverview,
-  PREVIEW_CATALOG,
-  PREVIEW_MODE,
-  previewEntitlements,
-  TRIAL_CATALOG,
-  trialEntitlements,
-  usePreviewUsage
-} from "./billing-v2-local-preview";
 import { BillingV2RenderState } from "./billing-v2-view-types";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
@@ -86,60 +74,21 @@ export const BillingV2Page = () => {
     useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
 
   const {
-    data: serverOverview,
+    data: overview,
     isPending,
     isPlaceholderData,
     isError,
     refetch
   } = useGetBillingV2Overview(selectedOrgId);
-  const { data: realCatalog = [] } = useGetBillingV2Catalog(selectedOrgId);
+  const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
-
-  // ===== LAYOUT PREVIEW — REMOVE BEFORE MERGE (see billing-v2-local-preview.ts) =====
-  // A dev stack has no licence server, so the catalog is empty and no product cards render. This
-  // substitutes the licence server's half of the data so the layout is reviewable. Switch views with
-  // PREVIEW_MODE in billing-v2-local-preview.ts.
-  const usePreview = PREVIEW_MODE !== "off" && realCatalog.length === 0;
-  const isTrialPreview = PREVIEW_MODE === "cloud-trial";
-  const previewCatalog = isTrialPreview ? TRIAL_CATALOG : PREVIEW_CATALOG;
-  const catalog = usePreview ? previewCatalog : realCatalog;
-  // Real figures for the faked products, read off this instance's own database through the breakdown
-  // endpoint, so picking an organization moves the meters the way it will in production.
-  const previewUsage = usePreviewUsage(selectedOrgId, breakdownScope);
-  const previewedEntitlements = isTrialPreview
-    ? trialEntitlements(previewUsage)
-    : previewEntitlements(previewUsage);
-  // Shadows the real overview for the whole component, so every branch keyed off it (subState, the
-  // managed/self-serve copy, the payment and invoice cards) sees the faked shape too. Restore to
-  // `const { data: overview, ... } = useGetBillingV2Overview(selectedOrgId)` when removing the preview.
-  let overview = serverOverview;
-  if (usePreview && serverOverview) {
-    if (PREVIEW_MODE === "cloud") {
-      overview = asCloudOverview(serverOverview, previewedEntitlements);
-    } else if (isTrialPreview) {
-      overview = asTrialCloudOverview(serverOverview, previewedEntitlements);
-    } else if (PREVIEW_MODE === "cloud-managed") {
-      overview = asManagedCloudOverview(serverOverview, previewedEntitlements);
-    } else {
-      overview = { ...serverOverview, entitlements: previewedEntitlements };
-    }
-  }
-  // The preview fakes the deployment, so it has to fake this endpoint's answer too. A dev stack is
-  // self-hosted and the signed-in user is often an instance admin, so the server legitimately returns
-  // every root org on the box; left alone, the picker would appear while the page pretends to be cloud.
-  // Real cloud returns exactly one org, which is what makes the production rule (more than one entry
-  // means you may switch) correct without testing isCloud anywhere.
-  const pickerOrgs = usePreview && PREVIEW_MODE !== "self-hosted" ? rootOrgs.slice(0, 1) : rootOrgs;
-  // ===== END LAYOUT PREVIEW =====
 
   // More than one organization means the server decided this caller may switch: an instance admin on
   // self-hosted, where one licence spans every org on the box. Cloud is bounded to the logged-in root
   // org and always counts one, so this needs no isCloud test, and not reading the overview keeps the
   // picker on screen while that request is loading or failing.
-  // LOCAL PREVIEW: drop the preview branch and use `unsearchedOrgPage?.totalCount` directly.
-  const rootOrgCount =
-    usePreview && PREVIEW_MODE !== "self-hosted" ? 1 : (unsearchedOrgPage?.totalCount ?? 0);
+  const rootOrgCount = unsearchedOrgPage?.totalCount ?? 0;
   const showOrgFilter = rootOrgCount > 1;
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
@@ -276,7 +225,7 @@ export const BillingV2Page = () => {
               onUpgrade={onUpgrade}
               onSetCommitment={onSetCommitment}
               onViewBreakdown={onViewBreakdown}
-              rootOrgs={pickerOrgs}
+              rootOrgs={rootOrgs}
               rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
               isRootOrgsLoading={isOrgSearchPending}
               isReloading={isReloading}
