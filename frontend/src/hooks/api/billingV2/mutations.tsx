@@ -29,6 +29,7 @@ import {
 const invalidateBillingV2 = (queryClient: QueryClient, orgId: string) => {
   queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
   queryClient.invalidateQueries({ queryKey: billingV2Keys.catalog(orgId) });
+  queryClient.invalidateQueries({ queryKey: subscriptionQueryKeys.getOrgSubsription(orgId) });
 };
 
 export const useCreateBillingV2PortalSession = () => {
@@ -171,10 +172,10 @@ export const useChangeBillingV2Commitment = () => {
 export const useStartBillingV2Trial = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, productId, plan }: TStartBillingV2TrialDTO) => {
+    mutationFn: async ({ orgId, productId, plan, returnPath }: TStartBillingV2TrialDTO) => {
       const { data } = await apiRequest.post<BillingV2TrialResult>(
         `/api/v1/organizations/${orgId}/billing/v2/trial`,
-        { productId, plan }
+        { productId, plan, returnPath }
       );
 
       return data;

@@ -12,6 +12,8 @@ const SecretOverviewPageQuerySchema = z.object({
   connectionName: z.string().optional(),
   environments: z.array(z.string()).catch([]),
   dynamicSecretId: z.string().optional(),
+  upgradeContinuation: z.literal("create-dynamic-secret").optional(),
+  checkout: z.enum(["success", "canceled"]).optional(),
   honeyTokenId: z.string().optional(),
   tags: z.string().optional(),
   filterBy: z.string().optional()

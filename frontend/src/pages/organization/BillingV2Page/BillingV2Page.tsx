@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
+import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -93,6 +94,19 @@ export const BillingV2Page = () => {
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
+  const deepLinkSearch = new URLSearchParams(window.location.search);
+  const upgradeProduct = deepLinkSearch.get("upgradeProduct");
+  const upgradeReturnPath = getSafeUpgradeReturnPath(
+    deepLinkSearch.get("upgradeReturnPath"),
+    window.location.origin
+  );
+
+  useEffect(() => {
+    if (flow || !upgradeProduct || !catalog.some((product) => product.id === upgradeProduct)) {
+      return;
+    }
+    setFlow({ type: "sheet", prodId: upgradeProduct });
+  }, [catalog, flow, upgradeProduct]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -258,10 +272,15 @@ export const BillingV2Page = () => {
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
           initialView={flow.view}
-          returnPath={window.location.pathname}
+          returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}
           onClose={close}
+          onEntitlementChanged={() => {
+            if (upgradeReturnPath) {
+              window.location.assign(upgradeReturnPath);
+            }
+          }}
           onRemove={setRemoveProdId}
           onContact={() => {
             close();

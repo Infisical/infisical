@@ -336,6 +336,7 @@ export type TStartBillingV2TrialDTO = {
   orgId: string;
   productId: string;
   plan: string;
+  returnPath?: string;
 };
 
 export type TCancelBillingV2TrialDTO = {
