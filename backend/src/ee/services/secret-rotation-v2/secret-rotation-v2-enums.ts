@@ -26,7 +26,8 @@ export enum SecretRotation {
   FireworksApiKey = "fireworks-api-key",
   SnowflakeUserKeyPair = "snowflake-user-key-pair",
   CloudflareApiToken = "cloudflare-api-token",
-  CloudflareR2AccessKey = "cloudflare-r2-access-key"
+  CloudflareR2AccessKey = "cloudflare-r2-access-key",
+  StripeApiKey = "stripe-api-key"
 }
 
 export enum SecretRotationStatus {
