@@ -1664,14 +1664,25 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  height: 1em;
+  max-height: 1em;
+  overflow: hidden;
   margin-right: 0.25rem;
   color: currentColor;
-  vertical-align: -2px;
+  vertical-align: -0.15em;
 }
 
 .ifx-avqs__chip-icon svg {
   width: 14px;
   height: 14px;
+}
+
+.ifx-avqs__chip-icon img {
+  width: auto;
+  height: 1em;
+  max-height: 1em;
+  max-width: 1.2em;
+  object-fit: contain;
 }
 
 .ifx-avqs__chevron {
@@ -1797,7 +1808,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.4rem;
   padding: 0.85rem 0.5rem;
   border: 1px solid #e5e7eb;
@@ -1833,7 +1844,32 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 32px;
+  min-height: 32px;
   color: #52525b;
+}
+
+.ifx-avqs__tile-icon img,
+.ifx-avqs__tile-icon svg {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.ifx-avqs__img--light-only {
+  display: block;
+}
+
+.ifx-avqs__img--dark-only {
+  display: none;
+}
+
+.dark .ifx-avqs__img--light-only {
+  display: none;
+}
+
+.dark .ifx-avqs__img--dark-only {
+  display: block;
 }
 
 .ifx-avqs__tile:hover .ifx-avqs__tile-icon,
