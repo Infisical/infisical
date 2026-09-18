@@ -375,7 +375,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgMembershipId: z.string().trim()
       }),
       response: {
-        204: z.null()
+        204: z.string().length(0)
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
@@ -385,7 +385,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId
       });
 
-      void res.status(204);
+      return res.status(204).send("");
     }
   });
 
@@ -682,7 +682,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: z.string().trim()
       }),
       response: {
-        204: z.null()
+        204: z.string().length(0)
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
@@ -692,7 +692,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId
       });
 
-      void res.status(204);
+      return res.status(204).send("");
     }
   });
 };
