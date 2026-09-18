@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
+  ArrowDownIcon,
+  ArrowRightIcon,
   CheckCircleIcon,
   CheckIcon,
   CircleAlertIcon,
@@ -25,7 +27,6 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Checkbox,
   Combobox,
   Dialog,
   DialogClose,
@@ -38,11 +39,16 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import {
@@ -135,43 +141,68 @@ const isValidFolderPath = (path: string) => {
   );
 };
 
-const PathTrail = ({ projectName, secretPath }: { projectName: string; secretPath: string }) => {
-  const segments = getPathSegments(secretPath);
-
+const PathValue = ({ secretPath }: { secretPath: string }) => {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
+    <span className="inline-flex min-w-0 items-center gap-2">
       <FolderIcon className="size-4 shrink-0 text-folder" aria-hidden="true" />
-      <span className="max-w-40 shrink-0 truncate">{projectName}</span>
-      {secretPath !== "/" &&
-        segments.map((segment, index) => (
-          <span
-            key={segments.slice(0, index + 1).join("/")}
-            className="inline-flex min-w-0 items-center gap-1.5 font-mono"
-          >
-            <SlashIcon className="size-3 shrink-0 -rotate-12 text-muted" aria-hidden="true" />
-            <span className="truncate">{segment}</span>
-          </span>
-        ))}
+      <span className="truncate font-mono text-xs">{secretPath}</span>
     </span>
   );
 };
 
-const SourceFolderContext = ({
-  projectName,
-  sourceSecretPath
+const StaticLocationValue = ({
+  accessibleLabel,
+  children
 }: {
-  projectName: string;
-  sourceSecretPath: string;
+  accessibleLabel: string;
+  children: ReactNode;
 }) => {
   return (
-    <div className="mb-4 rounded-md border border-border bg-container px-3 py-2.5">
-      <p className="mb-1 text-xs text-muted">Moving from</p>
-      <div className="min-w-0 text-sm text-foreground">
-        <PathTrail projectName={projectName} secretPath={sourceSecretPath} />
-      </div>
+    <div className="flex h-9 min-w-0 items-center rounded-md border border-border bg-container px-3 text-sm text-foreground">
+      <span className="sr-only">{accessibleLabel}: </span>
+      {children}
     </div>
   );
 };
+
+const MoveLocationLayout = ({
+  sourceEnvironment,
+  sourceSecretPath,
+  destinationEnvironment,
+  destinationPath
+}: {
+  sourceEnvironment: ReactNode;
+  sourceSecretPath: string;
+  destinationEnvironment: ReactNode;
+  destinationPath: ReactNode;
+}) => (
+  <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] md:items-end md:gap-2">
+    <section className="flex min-w-0 flex-col gap-2" aria-labelledby="move-source-heading">
+      <h3 id="move-source-heading" className="text-sm font-medium text-foreground">
+        Source
+      </h3>
+      <div className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2">
+        {sourceEnvironment}
+        <StaticLocationValue accessibleLabel="Source folder">
+          <PathValue secretPath={sourceSecretPath} />
+        </StaticLocationValue>
+      </div>
+    </section>
+    <div className="flex items-center justify-center self-end text-muted" aria-hidden="true">
+      <ArrowDownIcon className="size-4 md:hidden" />
+      <ArrowRightIcon className="hidden size-4 md:block" />
+    </div>
+    <section className="flex min-w-0 flex-col gap-2" aria-labelledby="move-destination-heading">
+      <h3 id="move-destination-heading" className="text-sm font-medium text-foreground">
+        Destination
+      </h3>
+      <div className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2">
+        {destinationEnvironment}
+        {destinationPath}
+      </div>
+    </section>
+  </div>
+);
 
 const PathOption = ({
   option,
@@ -247,7 +278,8 @@ const DestinationPathField = ({
   onChange,
   isCreating,
   onCreatingChange,
-  isCandidateBlocked
+  isCandidateBlocked,
+  hideLabel = false
 }: {
   pathEnvironments: ProjectEnv[];
   creationEnvironments: ProjectEnv[];
@@ -259,6 +291,7 @@ const DestinationPathField = ({
   isCreating: boolean;
   onCreatingChange: (isCreating: boolean) => void;
   isCandidateBlocked: (destinationPath: string) => boolean;
+  hideLabel?: boolean;
 }) => {
   const { permission } = useProjectPermission();
   const getOrCreateFolder = useGetOrCreateFolder();
@@ -484,7 +517,9 @@ const DestinationPathField = ({
 
   return (
     <Field>
-      <FieldLabel htmlFor={inputId}>Destination folder</FieldLabel>
+      <FieldLabel htmlFor={inputId} className={hideLabel ? "sr-only" : undefined}>
+        Destination folder
+      </FieldLabel>
       <FieldContent>
         <Combobox
           id={inputId}
@@ -533,9 +568,7 @@ const DestinationPathField = ({
               </span>
             );
           }}
-          renderValue={(option) => (
-            <PathTrail projectName={projectName} secretPath={option.secretPath} />
-          )}
+          renderValue={(option) => <PathValue secretPath={option.secretPath} />}
           onInputValueChange={(nextValue) => setInputPath(normalizeFolderPathInput(nextValue))}
           onClear={() => onChange(null)}
           onValueChange={async (option) => {
@@ -745,7 +778,7 @@ const MoveBlockAlerts = ({
 
   if (isSelfMove) {
     return (
-      <Alert variant="danger" className="mt-4">
+      <Alert variant="danger">
         <CircleAlertIcon />
         <AlertTitle>This move is not allowed</AlertTitle>
         <AlertDescription>
@@ -757,7 +790,7 @@ const MoveBlockAlerts = ({
 
   if (blockedDestinations.length === 0) {
     return (
-      <Alert variant="danger" className="mt-4">
+      <Alert variant="danger">
         <CircleAlertIcon />
         <AlertTitle>Could not verify the destination</AlertTitle>
         <AlertDescription>
@@ -780,7 +813,7 @@ const MoveBlockAlerts = ({
   }
 
   return (
-    <Alert variant="danger" className="mt-4">
+    <Alert variant="danger">
       <CircleAlertIcon />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
@@ -802,7 +835,7 @@ const FolderRbacPoliciesWarning = ({ folderNames }: { folderNames: string[] }) =
   const isSingle = folderNames.length === 1;
 
   return (
-    <Alert variant="warning" className="mt-4">
+    <Alert variant="warning">
       <TriangleAlertIcon />
       <AlertTitle>
         Folder permissions will move with {isSingle ? "this folder" : "these folders"}
@@ -816,6 +849,43 @@ const FolderRbacPoliciesWarning = ({ folderNames }: { folderNames: string[] }) =
     </Alert>
   );
 };
+
+const OverwriteControl = ({
+  id,
+  isChecked,
+  isDisabled,
+  onCheckedChange
+}: {
+  id: string;
+  isChecked: boolean;
+  isDisabled: boolean;
+  onCheckedChange: (isChecked: boolean) => void;
+}) => (
+  <div className="mr-auto flex min-w-0 items-center gap-2">
+    <Toggle
+      id={id}
+      variant="danger"
+      checked={isChecked}
+      disabled={isDisabled}
+      onCheckedChange={onCheckedChange}
+    />
+    <Label htmlFor={id}>Overwrite existing secrets</Label>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="rounded-sm text-muted focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="About overwriting existing secrets"
+        >
+          <InfoIcon className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        Overwrite matching destination keys, including keys hidden by your access.
+      </TooltipContent>
+    </Tooltip>
+  </div>
+);
 
 const SingleEnvContent = ({
   onComplete,
@@ -1059,52 +1129,65 @@ const SingleEnvContent = ({
   };
 
   return (
-    <div>
-      <Controller
-        control={control}
-        name="environment"
-        render={({ field: { onChange, value } }) => (
-          <Field>
-            <FieldLabel>Environment</FieldLabel>
-            <FieldContent>
-              <Select value={value} onValueChange={onChange} disabled={isCreatingFolder}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select environment" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="w-full">
-                  {environments.map(({ name, slug }) => (
-                    <SelectItem value={slug} key={slug}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldContent>
-          </Field>
-        )}
+    <div className="flex flex-col gap-4">
+      <MoveLocationLayout
+        sourceEnvironment={
+          <StaticLocationValue accessibleLabel="Source environment">
+            <span className="truncate">{sourceEnv.name}</span>
+          </StaticLocationValue>
+        }
+        sourceSecretPath={sourceSecretPath}
+        destinationEnvironment={
+          <Controller
+            control={control}
+            name="environment"
+            render={({ field: { onChange, value } }) => (
+              <Field>
+                <FieldLabel htmlFor="move-destination-environment" className="sr-only">
+                  Destination environment
+                </FieldLabel>
+                <FieldContent>
+                  <Select value={value} onValueChange={onChange} disabled={isCreatingFolder}>
+                    <SelectTrigger id="move-destination-environment" className="w-full">
+                      <SelectValue placeholder="Environment..." />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="w-full">
+                      {environments.map(({ name, slug }) => (
+                        <SelectItem value={slug} key={slug}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        }
+        destinationPath={
+          <DestinationPathField
+            key={selectedEnvironment}
+            hideLabel
+            inputId="move-secret-path-single"
+            pathEnvironments={
+              selectedEnvironment
+                ? environments.filter((environment) => environment.slug === selectedEnvironment)
+                : environments
+            }
+            creationEnvironments={environments.filter(({ slug }) => slug === selectedEnvironment)}
+            projectId={projectId}
+            projectName={projectName}
+            value={selectedPath}
+            onChange={setSelectedPath}
+            isCreating={isCreatingFolder}
+            onCreatingChange={setIsCreatingFolder}
+            isCandidateBlocked={(destinationPath) =>
+              buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath })
+                .isSelfMove
+            }
+          />
+        }
       />
-      <SourceFolderContext projectName={projectName} sourceSecretPath={sourceSecretPath} />
-      <div className="mt-4">
-        <DestinationPathField
-          key={selectedEnvironment}
-          inputId="move-secret-path-single"
-          pathEnvironments={
-            selectedEnvironment
-              ? environments.filter((environment) => environment.slug === selectedEnvironment)
-              : environments
-          }
-          creationEnvironments={environments.filter(({ slug }) => slug === selectedEnvironment)}
-          projectId={projectId}
-          projectName={projectName}
-          value={selectedPath}
-          onChange={setSelectedPath}
-          isCreating={isCreatingFolder}
-          onCreatingChange={setIsCreatingFolder}
-          isCandidateBlocked={(destinationPath) =>
-            buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath }).isSelfMove
-          }
-        />
-      </div>
       <MoveBlockAlerts
         isSelfMove={isSelfMove}
         isDestinationBlocked={isDestinationBlocked}
@@ -1112,34 +1195,21 @@ const SingleEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
-      {showOverwriteOption && (
-        <Controller
-          control={control}
-          name="shouldOverwrite"
-          render={({ field: { onBlur, value, onChange } }) => (
-            <Field className="mt-4">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="overwrite-checkbox"
-                  isChecked={value}
-                  onCheckedChange={onChange}
-                  onBlur={onBlur}
-                  variant="project"
-                />
-                <FieldLabel htmlFor="overwrite-checkbox" className="cursor-pointer">
-                  Overwrite existing secrets
-                </FieldLabel>
-              </Field>
-              <FieldDescription>
-                {value
-                  ? "Secrets with conflicting keys at the destination will be overwritten"
-                  : "Secrets with conflicting keys at the destination will not be overwritten"}
-              </FieldDescription>
-            </Field>
-          )}
-        />
-      )}
-      <DialogFooter className="mt-6">
+      <DialogFooter className="items-center">
+        {showOverwriteOption && (
+          <Controller
+            control={control}
+            name="shouldOverwrite"
+            render={({ field: { value, onChange } }) => (
+              <OverwriteControl
+                id="overwrite-checkbox"
+                isChecked={value}
+                isDisabled={isSubmitting || isCreatingFolder}
+                onCheckedChange={onChange}
+              />
+            )}
+          />
+        )}
         <DialogClose asChild>
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -1527,30 +1597,46 @@ const MultiEnvContent = ({
   }
 
   return (
-    <div>
-      <Alert variant="info" className="mb-4">
-        <InfoIcon />
-        <AlertTitle>
-          Select a single environment to move {moveCopy.noun} across environments.
-        </AlertTitle>
-      </Alert>
-      <SourceFolderContext projectName={projectName} sourceSecretPath={sourceSecretPath} />
-      <DestinationPathField
-        inputId="move-secret-path-multi"
-        pathEnvironments={environments}
-        creationEnvironments={folderCreationEnvironments}
-        projectId={projectId}
-        projectName={projectName}
-        value={selectedPath}
-        onChange={setSelectedPath}
-        isCreating={isCreatingFolder}
-        onCreatingChange={setIsCreatingFolder}
-        isCandidateBlocked={(destinationPath) =>
-          buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath }).isSelfMove
-        }
-      />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <MoveLocationLayout
+          sourceEnvironment={
+            <StaticLocationValue accessibleLabel="Source environments">
+              <span className="truncate">{environments.length} environments</span>
+            </StaticLocationValue>
+          }
+          sourceSecretPath={sourceSecretPath}
+          destinationEnvironment={
+            <StaticLocationValue accessibleLabel="Destination environments">
+              <span className="truncate">Same environments</span>
+            </StaticLocationValue>
+          }
+          destinationPath={
+            <DestinationPathField
+              hideLabel
+              inputId="move-secret-path-multi"
+              pathEnvironments={environments}
+              creationEnvironments={folderCreationEnvironments}
+              projectId={projectId}
+              projectName={projectName}
+              value={selectedPath}
+              onChange={setSelectedPath}
+              isCreating={isCreatingFolder}
+              onCreatingChange={setIsCreatingFolder}
+              isCandidateBlocked={(destinationPath) =>
+                buildDestinationTargets({ movedFolders, sourceSecretPath, destinationPath })
+                  .isSelfMove
+              }
+            />
+          }
+        />
+        <FieldDescription isOpen>
+          To move {moveCopy.noun} between environments, select a single environment before opening
+          Move.
+        </FieldDescription>
+      </div>
       {Boolean(environmentsToBeSkipped.length) && (
-        <Alert variant="danger" className="mt-4">
+        <Alert variant="danger">
           <CircleAlertIcon />
           <AlertTitle>The following environments will not be affected</AlertTitle>
           <AlertDescription>
@@ -1569,34 +1655,21 @@ const MultiEnvContent = ({
         environments={environments}
       />
       <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
-      {showOverwriteOption && (
-        <Controller
-          control={control}
-          name="shouldOverwrite"
-          render={({ field: { onBlur, value, onChange } }) => (
-            <Field className="mt-4">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="overwrite-checkbox-multi"
-                  isChecked={value}
-                  onCheckedChange={onChange}
-                  onBlur={onBlur}
-                  variant="project"
-                />
-                <FieldLabel htmlFor="overwrite-checkbox-multi" className="cursor-pointer">
-                  Overwrite existing secrets
-                </FieldLabel>
-              </Field>
-              <FieldDescription>
-                {value
-                  ? "Secrets with conflicting keys at the destination will be overwritten"
-                  : "Secrets with conflicting keys at the destination will not be overwritten"}
-              </FieldDescription>
-            </Field>
-          )}
-        />
-      )}
-      <DialogFooter className="mt-6">
+      <DialogFooter className="items-center">
+        {showOverwriteOption && (
+          <Controller
+            control={control}
+            name="shouldOverwrite"
+            render={({ field: { value, onChange } }) => (
+              <OverwriteControl
+                id="overwrite-checkbox-multi"
+                isChecked={value}
+                isDisabled={isSubmitting || isCreatingFolder}
+                onCheckedChange={onChange}
+              />
+            )}
+          />
+        )}
         <DialogClose asChild>
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -1758,13 +1831,13 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-xl [&>*]:min-w-0">
+      <DialogContent className="max-w-3xl [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>{moveCopy.title}</DialogTitle>
           <DialogDescription>
             {isSingleEnvMode
-              ? `Move the selected ${moveCopy.noun} to a new environment and folder location`
-              : `Move the selected ${moveCopy.noun} across all environments to a new folder location`}
+              ? `Move the selected ${moveCopy.noun} to another project location.`
+              : `Move the selected ${moveCopy.noun} to the same folder location across environments.`}
           </DialogDescription>
         </DialogHeader>
         {renderContent()}
