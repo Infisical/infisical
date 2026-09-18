@@ -1455,7 +1455,6 @@ export const createRelativeImportExpander = ({
         if (environment === currentEnvironment && secretPath === currentSecretPath) {
           const origin = keyOriginMap.get(secretKey);
           if (origin) return canExpandValue(origin.environment, origin.secretPath, secretKey, secretTagSlugs);
-          return false;
         }
         return canExpandValue(environment, secretPath, secretKey, secretTagSlugs);
       },
