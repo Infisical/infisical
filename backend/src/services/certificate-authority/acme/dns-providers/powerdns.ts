@@ -59,7 +59,7 @@ const withRrsetLock = async <T>(
 
     if (!lock) {
       throw new Error(
-        `Timed out waiting to update the PowerDNS record '${name}'. Another certificate order is using it. Retry the order.`
+        `Timed out waiting to update the PowerDNS record '${name}'. Another certificate order is still using it.`
       );
     }
 

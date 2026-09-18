@@ -100,7 +100,8 @@ export const certificateAuthorityQueueFactory = ({
     pkiSyncDAL,
     pkiSyncQueue,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({

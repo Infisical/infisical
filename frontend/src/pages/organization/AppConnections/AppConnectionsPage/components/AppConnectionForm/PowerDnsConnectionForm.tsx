@@ -99,6 +99,19 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
+const normalizeApiUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  try {
+    const url = new URL(trimmed);
+    url.pathname = url.pathname.replace(/\/api(\/v\d+)?\/*$/, "");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return trimmed;
+  }
+};
+
 export const PowerDnsConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [selectedTab, setSelectedTab] = useState("configuration");
@@ -212,7 +225,7 @@ export const PowerDnsConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Controller
               name="credentials.apiUrl"
               control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
+              render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
                 <Field className="mb-4">
                   <FieldLabel htmlFor="api-url">API URL</FieldLabel>
                   <FieldDescription>
@@ -222,6 +235,10 @@ export const PowerDnsConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     id="api-url"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    onBlur={(e) => {
+                      onChange(normalizeApiUrl(e.target.value));
+                      onBlur();
+                    }}
                     placeholder="https://pdns.example.com:8081"
                     isError={Boolean(error?.message)}
                   />

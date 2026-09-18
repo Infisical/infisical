@@ -220,7 +220,9 @@ export const AcmeFields = ({
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
+            <FieldLabel>
+              Zone <span className="text-danger">*</span>
+            </FieldLabel>
             <FilterableSelect
               isLoading={isPowerDnsZonesPending && !!dnsAppConnection.id}
               isDisabled={!dnsAppConnection.id}
@@ -233,7 +235,7 @@ export const AcmeFields = ({
               }}
               options={powerDnsZones}
               placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
+              getOptionLabel={(option) => option.name.replace(/\.$/, "")}
               getOptionValue={(option) => option.id}
               isError={Boolean(error)}
             />
@@ -256,6 +258,13 @@ export const AcmeFields = ({
             placeholder="https://acme-v02.api.letsencrypt.org/directory"
             isError={Boolean(error)}
           />
+          {field.value?.startsWith("http://") && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
+              <Info className="size-3.5" />
+              This directory is served over plain HTTP. Account credentials and EAB keys will be
+              sent unencrypted. Use HTTPS unless this is a local test directory.
+            </p>
+          )}
           <FieldError errors={[error]} />
         </Field>
       )}
@@ -289,6 +298,16 @@ export const AcmeFields = ({
               ) : (
                 <span className="text-muted">(optional)</span>
               )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  The key identifier your CA issued for External Account Binding. It ties this ACME
+                  account to your existing account with the CA. Required by CAs such as DigiCert,
+                  ZeroSSL and Google Trust Services.
+                </TooltipContent>
+              </Tooltip>
             </FieldLabel>
             <Input
               {...field}
@@ -308,6 +327,15 @@ export const AcmeFields = ({
         <Field className="mb-4">
           <FieldLabel>
             EAB HMAC Key <span className="text-muted">(optional)</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                The base64-encoded HMAC key issued alongside the EAB Key Identifier. Provide both or
+                neither.
+              </TooltipContent>
+            </Tooltip>
           </FieldLabel>
           <Input
             type="password"

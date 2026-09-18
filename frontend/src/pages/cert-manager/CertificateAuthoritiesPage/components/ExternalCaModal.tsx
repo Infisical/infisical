@@ -474,6 +474,30 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableGoDaddyConnections
   ]);
 
+  const dnsAppConnections: TAvailableAppConnection[] = useMemo(() => {
+    switch (dnsProvider) {
+      case AcmeDnsProvider.ROUTE53:
+        return availableRoute53Connections || [];
+      case AcmeDnsProvider.Cloudflare:
+        return availableCloudflareConnections || [];
+      case AcmeDnsProvider.DNSMadeEasy:
+        return availableDNSMadeEasyConnections || [];
+      case AcmeDnsProvider.AzureDNS:
+        return availableAzureDNSConnections || [];
+      case AcmeDnsProvider.PowerDns:
+        return availablePowerDnsConnections || [];
+      default:
+        return [];
+    }
+  }, [
+    dnsProvider,
+    availableRoute53Connections,
+    availableCloudflareConnections,
+    availableDNSMadeEasyConnections,
+    availableAzureDNSConnections,
+    availablePowerDnsConnections
+  ]);
+
   const isPending =
     ((isRoute53Pending ||
       isCloudflarePending ||
@@ -964,7 +988,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   dnsProvider={dnsProvider}
                   directoryUrl={directoryUrl}
                   dnsAppConnection={dnsAppConnection}
-                  availableConnections={availableConnections}
+                  availableConnections={dnsAppConnections}
                   isPending={isPending}
                   cloudflareZones={cloudflareZones}
                   isZonesPending={isZonesPending}
