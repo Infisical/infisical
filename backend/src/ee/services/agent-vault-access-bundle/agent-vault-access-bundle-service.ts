@@ -1028,13 +1028,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       );
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-      const existing = await membershipDAL.find(bundleScope(rest.projectId, bundle.id), { tx });
-      const heldByKey = new Map(
-        existing.flatMap((row) => {
-          const found = byColumn.find(([actorColumn]) => row[actorColumn]);
-          if (!found) return [];
-          const actor = { actorColumn: found[0], actorId: row[found[0]]! };
-          return [[actorKey(actor), row] as const];
+      // Bounded by the actors named rather than every grant on the bundle: this runs inside the row
+      // lock, and a bundle granted to thousands would otherwise read all of them to revoke one.
+      const heldByKey = new Map<string, TMemberships>();
+      await Promise.all(
+        byColumn.map(async ([actorColumn, ids]) => {
+          if (!ids.length) return;
+          const rows = await membershipDAL.find(
+            { ...bundleScope(rest.projectId, bundle.id), $in: { [actorColumn]: ids } },
+            { tx }
+          );
+          rows.forEach((row) => {
+            const actorId = row[actorColumn];
+            if (actorId) heldByKey.set(actorKey({ actorColumn, actorId }), row);
+          });
         })
       );
 

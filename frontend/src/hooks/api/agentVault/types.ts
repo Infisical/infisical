@@ -151,6 +151,15 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
+// What a write answers with: the actor named but not hydrated, because these endpoints do not join the
+// actor's row. Distinct from TAgentVaultProductMember, which only a read returns.
+export type TAgentVaultWrittenMember = {
+  id: string;
+  role: string;
+  createdAt: string;
+  actor: TAgentVaultActorRef;
+};
+
 export type TAgentVaultMemberWriteResult<T> = {
   members: T[];
   skipped: (TAgentVaultActorRef & { identifier: string })[];

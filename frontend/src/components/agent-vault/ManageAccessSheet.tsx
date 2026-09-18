@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { BanIcon, MoreHorizontalIcon, SearchIcon, UserPlusIcon } from "lucide-react";
 
@@ -71,6 +71,13 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultAccessBundleMembersTable", PreferenceKey.PerPage, 10)
   );
+
+  // The sheet stays mounted between opens, so without this a second bundle inherits the first one's
+  // search term and page and looks as though members are missing.
+  useEffect(() => {
+    setSearch("");
+    setPage(1);
+  }, [accessBundle?.id]);
 
   const { data, isPending } = useListAgentVaultAccessBundleMembers(accessBundle?.id ?? "", {
     search: debouncedSearch.trim() || undefined,

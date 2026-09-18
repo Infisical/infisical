@@ -227,6 +227,10 @@ const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; gro
 const namedCount = (body: { userIds: string[]; machineIdentityIds: string[]; groupIds: string[]; emails?: string[] }) =>
   body.userIds.length + body.machineIdentityIds.length + body.groupIds.length + (body.emails?.length ?? 0);
 
+export const AgentVaultProductRoleSchema = z
+  .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
+  .describe(AGENT_VAULT.MEMBERSHIP.role);
+
 const atLeastOne = "Name at least one user, machine identity, or group";
 
 const atMost = (action: string) =>
@@ -284,9 +288,9 @@ export const AgentVaultProductMemberAddSchema = z
 export const AgentVaultMemberRevokeIdsSchema = z
   .object(
     memberIdsShape({
-      userIds: AGENT_VAULT.MEMBER.userIds,
-      machineIdentityIds: AGENT_VAULT.MEMBER.machineIdentityIds,
-      groupIds: AGENT_VAULT.MEMBER.groupIds
+      userIds: AGENT_VAULT.MEMBER.revokeUserIds,
+      machineIdentityIds: AGENT_VAULT.MEMBER.revokeMachineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBER.revokeGroupIds
     })
   )
   .refine((body) => namedCount(body) > 0, atLeastOne)

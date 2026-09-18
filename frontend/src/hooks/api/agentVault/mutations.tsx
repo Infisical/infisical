@@ -15,10 +15,10 @@ import {
   TAgentVaultEnrollment,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
-  TAgentVaultProductMember,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
+  TAgentVaultWrittenMember,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
@@ -151,7 +151,8 @@ export const useDeleteAgentVaultService = () => {
   });
 };
 
-// Only the role change still addresses one actor by path; every other write takes the id arrays.
+// Only the role change addresses one actor by path; every other write takes the id arrays. The dialog
+// hands it a member or renders closed, so there is no empty-actor case to guard here.
 const ACTOR_PATH: Record<AgentVaultMemberType, string> = {
   [AgentVaultMemberType.User]: "users",
   [AgentVaultMemberType.Group]: "groups",
@@ -324,7 +325,7 @@ export const useAddAgentVaultMembers = () => {
   return useMutation({
     mutationFn: async (dto: TAddAgentVaultProductMembersDTO) => {
       const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultProductMember>
+        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
       >("/api/v1/agent-vault/members", dto);
       return data;
     },
@@ -337,7 +338,7 @@ export const useUpdateAgentVaultMemberRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ actor, role }: { actor: TAgentVaultActorRef; role: string }) => {
-      const { data } = await apiRequest.patch<{ member: TAgentVaultProductMember }>(
+      const { data } = await apiRequest.patch<{ member: TAgentVaultWrittenMember }>(
         `/api/v1/agent-vault/members/${ACTOR_PATH[actor.type]}/${actor.id}`,
         { role }
       );
@@ -353,7 +354,7 @@ export const useRevokeAgentVaultMembers = () => {
   return useMutation({
     mutationFn: async (dto: TAgentVaultActorIdsDTO) => {
       const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultProductMember>
+        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
       >("/api/v1/agent-vault/members/revoke", dto);
       return data;
     },

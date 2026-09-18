@@ -275,7 +275,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "createAgentVaultService",
-      description: "Add a service to an Agent Vault access bundle",
+      description: "Create a service in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)

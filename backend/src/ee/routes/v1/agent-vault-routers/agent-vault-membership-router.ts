@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -18,12 +17,9 @@ import {
   AgentVaultProductMemberIdsSchema,
   AgentVaultProductMemberRefSchema,
   AgentVaultProductMemberSchema,
+  AgentVaultProductRoleSchema,
   AgentVaultSkippedActorSchema
 } from "./agent-vault-schemas";
-
-const ProductRoleSchema = z
-  .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
-  .describe(AGENT_VAULT.MEMBERSHIP.role);
 
 // Plural kebab segments, matching the group routes that publish /machine-identities, so the path stays
 // resource-shaped while the JSON says machineIdentity.
@@ -132,7 +128,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         actorType: z.enum(ACTOR_TYPE_SEGMENTS).describe(AGENT_VAULT.MEMBER.actorType),
         actorId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
       }),
-      body: z.object({ role: ProductRoleSchema }),
+      body: z.object({ role: AgentVaultProductRoleSchema }),
       response: { 200: z.object({ member: AgentVaultProductMemberRefSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

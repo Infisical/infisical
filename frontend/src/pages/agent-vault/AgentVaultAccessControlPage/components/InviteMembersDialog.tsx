@@ -43,8 +43,10 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     select: (el) => (el as { requesterEmail?: string })?.requesterEmail
   });
 
-  // The search is a substring match over names too, so another member can outrank the requester in the
-  // results; a page of them keeps the exact-username check below honest.
+  // A page rather than one row: the members list only searches by substring, and another member whose
+  // name contains this address can outrank the requester, so the exact-username match below needs
+  // more than the top hit to look at. A requester buried under twenty matches still falls through,
+  // and the cost of that is one add the server reports as already a member.
   const { data: requesterMatch } = useListAgentVaultMembers(
     { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
     Boolean(requesterEmail)
@@ -63,7 +65,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     });
   }, [orgUsers]);
 
-  // One row, not a list: this only answers whether the requester in the URL is already a member.
   const memberUsernames = useMemo(
     () => new Set((requesterMatch?.members ?? []).map((member) => member.actor.username)),
     [requesterMatch]

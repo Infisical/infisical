@@ -4295,6 +4295,9 @@ export const AGENT_VAULT = {
     isManagedByAgentVault:
       "Whether Agent Vault created the machine identity. One it owns is deleted rather than removed.",
     machineIdentityOrgId: "The ID of the organization the machine identity belongs to.",
+    revokeUserIds: "The IDs of the users to revoke the access bundle from.",
+    revokeMachineIdentityIds: "The IDs of the machine identities to revoke the access bundle from.",
+    revokeGroupIds: "The IDs of the groups to revoke the access bundle from.",
     skipped: "The requested grantees who already had the access bundle and were left as they were.",
     revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
     search: "Match members by name, username or email address.",
