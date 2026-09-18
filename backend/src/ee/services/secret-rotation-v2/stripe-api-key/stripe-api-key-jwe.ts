@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 export type TStripeSecretKeyField = {
   token?: string | null;
@@ -75,9 +76,11 @@ export const decryptStripeJwe = (jwe: string, privateKeyPem: string): string => 
     decipher.setAuthTag(Buffer.from(authTag, "base64url"));
 
     return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final()]).toString();
-  } catch {
-    // Deliberately swallows the underlying OpenSSL error (unpad failure, auth tag mismatch): it is
-    // an implementation detail that must never reach a user, and its wording is not a stable contract.
+  } catch (error) {
+    // The underlying OpenSSL error (unpad failure, auth tag mismatch) carries no plaintext or key
+    // material, but it is an implementation detail that must never reach a user, and its wording is
+    // not a stable contract, so it is logged here rather than thrown.
+    logger.error(error, "decryptStripeJwe: failed to decrypt a Stripe-returned secret");
     throw new BadRequestError({
       message: "Infisical could not decrypt the secret Stripe returned. Try creating the API key again."
     });

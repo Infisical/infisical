@@ -1,7 +1,12 @@
 import crypto from "node:crypto";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@app/lib/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
+
+// eslint-disable-next-line import/first
 import { decryptStripeJwe, generateStripeEncryptionKeyPair, readStripeSecret } from "./stripe-api-key-jwe";
 
 /** Builds the compact JWE Stripe would return, so the test proves the real unwrap path. */
@@ -74,6 +79,16 @@ describe("decryptStripeJwe", () => {
     segments[4] = Buffer.alloc(16).toString("base64url");
 
     expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow(/could not decrypt the secret/);
+  });
+
+  it("logs the underlying OpenSSL error instead of discarding it", async () => {
+    const { logger } = await import("@app/lib/logger");
+    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
+    const segments = encryptJwe("rk_live_secret", publicKey).split(".");
+    segments[4] = Buffer.alloc(16).toString("base64url");
+
+    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow();
+    expect(logger.error).toHaveBeenCalledWith(expect.any(Error), expect.stringContaining("decryptStripeJwe"));
   });
 
   it("fails a corrupted wrapped key with a message an administrator can act on", async () => {

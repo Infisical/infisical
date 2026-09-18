@@ -14,6 +14,9 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+
+// eslint-disable-next-line import/first
 import { stripeConnectionService } from "./stripe-connection-service";
 
 const keyPage = (id: string, next?: string) => ({
@@ -83,5 +86,16 @@ describe("stripeConnectionService.listApiKeys", () => {
 
     expect(keys.map((key) => key.id)).toEqual(["mk_1"]);
     expect(getMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("authorizes the caller for this connection before reaching Stripe", async () => {
+    getMock.mockResolvedValueOnce(keyPage("mk_1"));
+    const getAppConnection = vi.fn(async () => ({ credentials: { accountId: "acct_123" } }));
+    const actor = { type: "user", id: "user-1", authMethod: "email", orgId: "org-1" };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    await stripeConnectionService(getAppConnection as any).listApiKeys("connection-id", actor as any);
+
+    expect(getAppConnection).toHaveBeenCalledWith(AppConnection.Stripe, "connection-id", actor);
   });
 });
