@@ -150,12 +150,22 @@ export const SelectionPanel = ({
 
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets and folders across the following environments?";
+      return "Bulk Delete Secrets and Folders";
     }
     if (selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets across the following environments?";
+      return "Bulk Delete Secrets";
     }
-    return "Do you want to delete the selected folders across the following environments?";
+    return "Bulk Delete Folders";
+  };
+
+  const getDeleteModalDescription = () => {
+    if (selectedFolderCount > 0 && selectedKeysCount > 0) {
+      return `Delete ${selectedKeysCount} selected secret${selectedKeysCount === 1 ? "" : "s"} and ${selectedFolderCount} selected folder${selectedFolderCount === 1 ? "" : "s"} across all environments.`;
+    }
+    if (selectedKeysCount > 0) {
+      return `Delete ${selectedKeysCount} selected secret${selectedKeysCount === 1 ? "" : "s"} across all environments.`;
+    }
+    return `Delete ${selectedFolderCount} selected folder${selectedFolderCount === 1 ? "" : "s"} across all environments.`;
   };
 
   const getDeleteModalSubTitle = () => {
@@ -608,6 +618,7 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkDeleteEntries.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         title={getDeleteModalTitle()}
+        description={getDeleteModalDescription()}
         subTitle={getDeleteModalSubTitle()}
         onDeleteApproved={handleBulkDelete}
         selectedEntries={selectedEntries}
