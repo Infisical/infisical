@@ -47,10 +47,22 @@ export const verifyGcpTokenAndExtractCaller = async ({
   errorContext
 }: TVerifyGcpTokenInput): Promise<TGcpIdentityDetails> => {
   // A token that does not even parse is the caller's mistake, not a verification outcome.
-  if (!crypto.jwt().decode(jwt)) {
+  const unverifiedPayload = crypto.jwt().decode(jwt) as { email?: string } | null;
+  if (!unverifiedPayload) {
     throw new UnauthorizedError({
       message: "Access denied: the GCP token could not be parsed as a JWT.",
       detail: { reasonCode: ResourceAuthLoginFailureReason.GcpMalformedToken, ...errorContext }
+    });
+  }
+
+  // A metadata token requested with format=standard carries no email, so there is no service
+  // account to match. Reading an unverified claim is safe here because it only decides which
+  // refusal to report; the signature is still checked below.
+  if (type === GcpAuthType.Gce && !unverifiedPayload.email) {
+    throw new UnauthorizedError({
+      message:
+        "Access denied: the GCP identity token carries no service account email. Request it with format=full rather than format=standard.",
+      detail: { reasonCode: ResourceAuthLoginFailureReason.GcpMissingEmailClaim, ...errorContext }
     });
   }
 

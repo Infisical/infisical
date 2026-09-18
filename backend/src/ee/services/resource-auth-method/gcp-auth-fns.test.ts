@@ -182,7 +182,7 @@ describe("verifyGcpTokenAndExtractCaller", () => {
 
   test("dispatches the gce type to the ID token validator", async () => {
     vi.mocked(validateIdTokenIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT, computeEngineDetails: undefined });
-    const jwt = jwtWith({ aud: "gw-1" });
+    const jwt = jwtWith({ aud: "gw-1", email: SERVICE_ACCOUNT });
     await verifyGcpTokenAndExtractCaller({ type: "gce", jwt, audience: "gw-1", errorContext });
     expect(validateIdTokenIdentity).toHaveBeenCalledWith({ audience: "gw-1", jwt });
     expect(validateIamIdentity).not.toHaveBeenCalled();
@@ -203,10 +203,22 @@ describe("verifyGcpTokenAndExtractCaller", () => {
     expect(validateIdTokenIdentity).not.toHaveBeenCalled();
   });
 
+  test("names a format=standard token with no email claim", async () => {
+    await expect(
+      verifyGcpTokenAndExtractCaller({ type: "gce", jwt: jwtWith({ aud: "gw-1" }), audience: "gw-1", errorContext })
+    ).rejects.toMatchObject({ detail: { reasonCode: "gcp_missing_email_claim", resourceId: "gw-1" } });
+    expect(validateIdTokenIdentity).not.toHaveBeenCalled();
+  });
+
   test("reports a signature or upstream failure separately from a rejected claim", async () => {
     vi.mocked(validateIdTokenIdentity).mockRejectedValue(new Error("bad signature"));
     await expect(
-      verifyGcpTokenAndExtractCaller({ type: "gce", jwt: jwtWith({ aud: "gw-1" }), audience: "gw-1", errorContext })
+      verifyGcpTokenAndExtractCaller({
+        type: "gce",
+        jwt: jwtWith({ aud: "gw-1", email: SERVICE_ACCOUNT }),
+        audience: "gw-1",
+        errorContext
+      })
     ).rejects.toMatchObject({
       detail: { reasonCode: "gcp_token_verification_failed", resourceId: "gw-1" }
     });

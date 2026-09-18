@@ -173,6 +173,7 @@ export const ResourceAuthLoginFailureReason = {
   AudienceNotAllowed: "audience_not_allowed",
   GatewayProxyUnavailable: "gateway_proxy_unavailable",
   GcpMalformedToken: "gcp_malformed_token",
+  GcpMissingEmailClaim: "gcp_missing_email_claim",
   GcpTokenRejected: "gcp_token_rejected",
   GcpTokenVerificationFailed: "gcp_token_verification_failed",
   GcpTokenLifetimeRejected: "gcp_token_lifetime_rejected",
