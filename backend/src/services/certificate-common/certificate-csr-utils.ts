@@ -29,7 +29,6 @@ import {
 import {
   appendCustomExtensions,
   describeCustomExtensionValue,
-  isIssuerGeneratedExtensionOid,
   isReservedExtensionOid,
   TIssuedCustomExtension
 } from "./certificate-extension-fns";
@@ -127,7 +126,7 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   }
 
   const csrCustomExtensions = csrObj.extensions
-    .filter((extension) => !isReservedExtensionOid(extension.type) && !isIssuerGeneratedExtensionOid(extension.type))
+    .filter((extension) => !isReservedExtensionOid(extension.type))
     .map((extension) => {
       const der = Buffer.from(new Uint8Array(extension.value)).toString("base64");
       const text = describeCustomExtensionValue(extension.type, der);
