@@ -63,9 +63,6 @@ import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-d
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
-import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
 import { gatewayPoolDalFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { gatewayPoolMembershipDalFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { gatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -771,8 +768,6 @@ export const registerRoutes = async (
   const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
   const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
 
-  const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
-  const gatewayDAL = gatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
   const gitHubAppDAL = gitHubAppDALFactory(db);
@@ -1913,15 +1908,6 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const gatewayService = gatewayServiceFactory({
-    permissionService,
-    gatewayDAL,
-    kmsService,
-    licenseService,
-    orgGatewayConfigDAL,
-    keyStore
-  });
-
   // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
   // resourceAuthMethodService, so the proxy resolver cannot be a constructor dependency.
   const gatewayProxyRegistry = gatewayProxyRegistryFactory();
@@ -2148,7 +2134,6 @@ export const registerRoutes = async (
     membershipRoleDAL,
     kmsService,
     keyStore,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     pamAccountDependencyDAL,
@@ -2158,7 +2143,6 @@ export const registerRoutes = async (
 
   const pamAccountHeartbeatService = pamAccountHeartbeatServiceFactory({
     pamAccountDAL,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     kmsService,
@@ -2215,10 +2199,8 @@ export const registerRoutes = async (
     kmsService,
     keyStore,
     licenseService,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    gatewayDAL,
     gatewayV2DAL,
     auditLogService,
     userDAL
@@ -2229,6 +2211,7 @@ export const registerRoutes = async (
     cronJob,
     secretSyncDAL,
     folderDAL,
+    projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,
     kmsService,
@@ -2250,7 +2233,6 @@ export const registerRoutes = async (
     appConnectionDAL,
     gitHubAppDAL,
     licenseService,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     notificationService,
@@ -2379,7 +2361,8 @@ export const registerRoutes = async (
     kmsService,
     folderDAL,
     secretDAL: secretV2BridgeDAL,
-    secretVersionV2BridgeDAL
+    secretVersionV2BridgeDAL,
+    projectDAL
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,
@@ -2517,6 +2500,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
+    secretSyncQueue,
     dynamicSecretDAL,
     secretRotationV2DAL,
     honeyTokenDAL,
@@ -2677,7 +2661,6 @@ export const registerRoutes = async (
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
     identityOidcAuthDAL,
-    gatewayDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
     permissionService,
@@ -2716,11 +2699,9 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    gatewayService,
     orgDAL,
     gatewayV2Service,
     gatewayV2DAL,
-    gatewayDAL,
     kmsService,
     keyStore,
     membershipIdentityDAL,
@@ -2921,7 +2902,6 @@ export const registerRoutes = async (
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     projectDAL
@@ -2950,7 +2930,6 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
-    gatewayDAL,
     gatewayV2DAL,
     gatewayPoolService,
     resourceMetadataDAL
@@ -3128,10 +3107,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
-    gatewayDAL,
     gatewayV2DAL,
     projectDAL,
     appConnectionCredentialRotationService,
@@ -3267,6 +3244,9 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     folderDAL,
+    projectEnvDAL,
+    projectDAL,
+    projectFolderGrantDAL,
     secretSyncQueue,
     projectBotService,
     keyStore,
@@ -3309,7 +3289,6 @@ export const registerRoutes = async (
     secretQueueService,
     queueService,
     appConnectionDAL,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     telemetryService,
@@ -4079,8 +4058,6 @@ export const registerRoutes = async (
     externalMigrationQueue,
     userDAL,
     permissionService,
-    gatewayDAL,
-    gatewayService,
     gatewayV2DAL,
     appConnectionService,
     secretService,
@@ -4309,7 +4286,6 @@ export const registerRoutes = async (
     kmip: kmipService,
     kmipOperation: kmipOperationService,
     kmipServer: kmipServerService,
-    gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,
     gatewayPool: gatewayPoolService,

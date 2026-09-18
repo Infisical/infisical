@@ -167,7 +167,9 @@ export enum TableName {
   ProjectSplitBackfillIds = "project_split_backfill_ids",
   UserNotifications = "user_notifications",
   ScimEvents = "scim_events",
-  // Gateway
+  // Gateway v1. Retired: nothing reads or writes these tables, or the gatewayId columns on
+  // dynamic_secrets / identity_kubernetes_auths / identity_auth_templates that point at them.
+  // They are kept populated so the removal can be reverted without data loss.
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
   ProjectGateway = "project_gateways",

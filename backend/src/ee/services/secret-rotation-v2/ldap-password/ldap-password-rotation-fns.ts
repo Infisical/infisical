@@ -111,15 +111,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (
-  secretRotation,
-  appConnectionDAL,
-  kmsService,
-  gatewayService,
-  gatewayV2Service,
-  gatewayPoolService,
-  passwordValidationContext
-) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;

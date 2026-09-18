@@ -19,7 +19,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  PageLoader
+  PageLoader,
+  ProviderIcon
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
@@ -80,25 +81,27 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between font-inter text-foreground">
+      <div className="container mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
             to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
             params={{ orgId, projectId }}
             search={{ selectedTab: IntegrationsListPageTabs.SecretSyncs }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-foreground"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon className="size-4" />
             Secret Syncs
           </Link>
           <div className="mb-6 flex w-full items-center gap-3">
-            <img
+            <ProviderIcon
               alt={`${destinationDetails.name} sync`}
-              src={`/images/integrations/${destinationDetails.image}`}
+              icon={destinationDetails.image}
               className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">
-              <p className="truncate text-2xl font-medium text-foreground">{secretSync.name}</p>
+              <p className="truncate text-2xl font-medium text-foreground-inverse">
+                {secretSync.name}
+              </p>
               <p className="mt-1 leading-3 text-accent">
                 {secretSync.description || `${destinationDetails.name} Sync`}
               </p>

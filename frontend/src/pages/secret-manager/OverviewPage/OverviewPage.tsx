@@ -729,6 +729,8 @@ const OverviewPageContent = () => {
 
   const canCreateFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Create);
 
+  const canReadFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Read);
+
   const canEditFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Edit);
 
   const canDeleteFolders = canFolderActionInVisibleEnv(ProjectPermissionActions.Delete);
@@ -2619,6 +2621,7 @@ const OverviewPageContent = () => {
         sourcePath: secretPath,
         sourceEnvironmentSlug: singleVisibleEnv?.slug ?? ""
       }),
+    canCopySecrets: canReadSecrets || canReadFolders,
     isCopySecretsDisabled: hasPendingBatchChanges,
     copySecretsDisabledReason: hasPendingBatchChanges
       ? "Commit or discard pending changes first"

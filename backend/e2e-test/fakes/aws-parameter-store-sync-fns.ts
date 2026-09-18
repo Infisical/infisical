@@ -1,6 +1,7 @@
 import { TAwsParameterStoreSyncWithCredentials } from "@app/services/secret-sync/aws-parameter-store/aws-parameter-store-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 // Type-only, and by a path the aliases do not match, so this does not resolve back to here.
@@ -82,7 +83,8 @@ export const fakeParameterStore = {
 };
 
 export const AwsParameterStoreSyncFns = {
-  syncSecrets: (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { syncOptions, environment } = secretSync;
     const store = storeForSync(secretSync);
 
@@ -137,7 +139,8 @@ export const AwsParameterStoreSyncFns = {
       Object.fromEntries(Object.entries(storeForSync(secretSync).secrets).map(([key, value]) => [key, { value }]))
     ),
 
-  removeSecrets: (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const store = storeForSync(secretSync);
 
     if (store.writeError) {

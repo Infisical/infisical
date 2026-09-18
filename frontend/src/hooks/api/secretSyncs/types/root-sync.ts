@@ -5,6 +5,7 @@ export type RootSyncOptions = {
   initialSyncBehavior: SecretSyncInitialSyncBehavior;
   disableSecretDeletion?: boolean;
   keySchema?: string;
+  includeAllSubFolders?: boolean;
 };
 
 export type TRootSecretSync = {
