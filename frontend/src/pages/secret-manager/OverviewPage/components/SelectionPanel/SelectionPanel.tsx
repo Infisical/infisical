@@ -551,7 +551,7 @@ export const SelectionPanel = ({
                       }}
                     >
                       <CopyPlus />
-                      Copy to Environment
+                      Copy to New Source
                     </DropdownMenuItem>
                   </span>
                 </TooltipTrigger>
