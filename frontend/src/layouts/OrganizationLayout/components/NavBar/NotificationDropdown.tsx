@@ -6,9 +6,9 @@ import { Bell, BellIcon } from "lucide-react";
 
 import {
   Badge,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
   Loader
@@ -142,18 +142,15 @@ export const NotificationDropdown = () => {
                   </div>
                 ))}
                 {hasMoreNotifications && (
-                  <div className="flex justify-center p-2">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setVisibleNotificationCount((count) => count + NOTIFICATIONS_PER_PAGE);
-                      }}
-                    >
-                      Show more
-                    </Button>
-                  </div>
+                  <DropdownMenuItem
+                    className="justify-center rounded-none"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setVisibleNotificationCount((count) => count + NOTIFICATIONS_PER_PAGE);
+                    }}
+                  >
+                    Show More
+                  </DropdownMenuItem>
                 )}
               </div>
             )}
