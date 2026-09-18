@@ -76,13 +76,13 @@ const GeneralSettingsCard = ({
   isSubmitting,
   isDirty
 }: GeneralSettingsCardProps) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>{title}</CardTitle>
+  <Card className="gap-0 overflow-hidden p-0">
+    <CardHeader className="p-6">
+      <CardTitle className="font-alliance">{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
-    {children && <CardContent>{children}</CardContent>}
-    <CardFooter className="justify-end border-t">
+    {children && <CardContent className="px-6 pb-6">{children}</CardContent>}
+    <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
       <Button
         variant="neutral"
         size="sm"
