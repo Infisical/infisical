@@ -432,7 +432,7 @@ export const secretSyncQueueFactory = ({
 
     const importedSecretMap: TSecretMap = {};
 
-    // Import behavior is never combined with a recursive sync, so this payload always covers
+    // Import behavior is never combined with including subfolders, so this payload always covers
     // exactly one folder. Comparison is against raw keys as returned by the destination
     // (already schema-stripped), so entries come from `secrets` rather than the schema-applying flatten().
     const payload = await $getInfisicalSecrets(secretSync, false);
@@ -1067,12 +1067,13 @@ export const secretSyncQueueFactory = ({
       isAutoSyncEnabled: true
     });
 
-    // A sync on the path itself always matches, recursive or not. A sync on an ancestor folder only
-    // matches when it is recursive, so a non-recursive sync rooted above this path is never
-    // triggered by a change it was never configured to cover.
+    // A sync on the path itself always matches, whether or not it includes subfolders. A sync on an
+    // ancestor folder only matches when it includes them, so a sync rooted above this path that does
+    // not is never triggered by a change it was never configured to cover.
     const secretSyncs = candidateSyncs.filter(
       (sync) =>
-        (folder && sync.folderId === folder.id) || Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.recursive)
+        (folder && sync.folderId === folder.id) ||
+        Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
     );
 
     await secretSyncDAL.update(

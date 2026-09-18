@@ -139,7 +139,8 @@ export const secretSyncServiceFactory = ({
   const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsService };
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
-  // the actor's read access to them is established. A recursive sync reads the whole subtree, and
+  // the actor's read access to them is established. A sync including subfolders reads the whole
+  // subtree, and
   // folder grants are per-folder rather than inherited, so checking only the root wouldn't catch a
   // child folder the actor is denied on.
   const $assertCanReadSyncedFolders = async (
@@ -149,13 +150,13 @@ export const secretSyncServiceFactory = ({
       environment,
       sourcePath,
       sourceFolderId,
-      recursive
+      includeAllSubFolders
     }: {
       projectId: string;
       environment: string;
       sourcePath: string;
       sourceFolderId: string;
-      recursive: boolean;
+      includeAllSubFolders: boolean;
     }
   ) => {
     const folders = await getSyncedFolders({
@@ -165,7 +166,7 @@ export const secretSyncServiceFactory = ({
       environment,
       sourcePath,
       sourceFolderId,
-      recursive
+      includeAllSubFolders
     });
 
     for (const { path } of folders) {
@@ -189,7 +190,7 @@ export const secretSyncServiceFactory = ({
   };
 
   // Shared by $assertSyncedSecretsAreFlattenable and findRecursiveConflicts: both need the same
-  // decrypt-and-expand payload for the full recursive subtree, and differ only in what they do
+  // decrypt-and-expand payload for the whole source subtree, and differ only in what they do
   // with it once built (throw on the first conflict vs. report every conflict back).
   const $buildRecursiveSyncPayload = async ({
     projectId,
@@ -234,7 +235,7 @@ export const secretSyncServiceFactory = ({
           environment,
           sourcePath,
           sourceFolderId,
-          syncOptions: { recursive: true, keySchema },
+          syncOptions: { includeAllSubFolders: true, keySchema },
           includeImports: true
         },
         {
@@ -264,8 +265,8 @@ export const secretSyncServiceFactory = ({
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
   // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
   // calling it here means a user reads the same sentence at save time and when the sync later drifts
-  // into the same state. Callers only call this for a recursive sync — a non-recursive one covers a
-  // single folder, where flatten() can never find a conflict.
+  // into the same state. Callers only call this for a sync that includes subfolders — one that does
+  // not covers a single folder, where flatten() can never find a conflict.
   const $assertSyncedSecretsAreFlattenable = async ({
     projectId,
     actorOrgId,
@@ -346,7 +347,7 @@ export const secretSyncServiceFactory = ({
       environment,
       sourcePath: secretPath,
       sourceFolderId: folder.id,
-      recursive: true
+      includeAllSubFolders: true
     });
 
     const payload = await $buildRecursiveSyncPayload({
@@ -662,20 +663,21 @@ export const secretSyncServiceFactory = ({
       });
 
     const requestedSyncOptions = params.syncOptions;
-    const isRecursive = Boolean(requestedSyncOptions?.recursive);
+    const includeAllSubFolders = Boolean(requestedSyncOptions?.includeAllSubFolders);
 
     await $assertCanReadSyncedFolders(projectPermission, {
       projectId,
       environment,
       sourcePath: secretPath,
       sourceFolderId: folder.id,
-      recursive: isRecursive
+      includeAllSubFolders
     });
 
     // Some destinations store secrets in a single flat list rather than a folder hierarchy, so a
-    // recursive sync must flatten its whole subtree to one namespace. Check that it can here, so
+    // sync including subfolders must flatten its whole subtree to one namespace. Check that it can
+    // here, so
     // the sync doesn't get created only to fail immediately on its first run.
-    if (isRecursive) {
+    if (includeAllSubFolders) {
       await $assertSyncedSecretsAreFlattenable({
         projectId,
         actorOrgId: actor.orgId,
@@ -909,14 +911,16 @@ export const secretSyncServiceFactory = ({
     // so the gate cannot authorize one sync while the row ends up describing another.
     const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
 
-    const { recursive, keySchema } = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
-    const isRecursive = Boolean(recursive);
+    const { includeAllSubFolders: requestedSubFolders, keySchema } = (updatedSyncOptions ?? {}) as NonNullable<
+      TSecretSync["syncOptions"]
+    >;
+    const includeAllSubFolders = Boolean(requestedSubFolders);
 
-    // Every update to a recursive sync re-authorizes the whole subtree, because an actor holding
-    // Edit on the source folder can otherwise repoint an existing recursive sync at a destination
-    // they control and read descendants they were never granted. A non-recursive sync covers only
-    // its source folder, so it re-authorizes when that source actually changes.
-    if (isSourceChanged || isRecursive) {
+    // Every update to a sync that includes subfolders re-authorizes the whole subtree, because an
+    // actor holding Edit on the source folder can otherwise repoint it at a destination they control
+    // and read descendants they were never granted. A sync covering only its source folder
+    // re-authorizes when that source actually changes.
+    if (isSourceChanged || includeAllSubFolders) {
       if (!updatedEnvironment || !updatedSecretPath)
         throw new BadRequestError({ message: "Must specify both source environment and secret path" });
 
@@ -930,10 +934,10 @@ export const secretSyncServiceFactory = ({
         environment: updatedEnvironment,
         sourcePath: updatedSecretPath,
         sourceFolderId: folderId,
-        recursive: isRecursive
+        includeAllSubFolders
       });
 
-      if (isRecursive) {
+      if (includeAllSubFolders) {
         await $assertSyncedSecretsAreFlattenable({
           projectId: secretSync.projectId,
           actorOrgId: actor.orgId,

@@ -9,16 +9,16 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
-// We don't allow initial sync import combined with recursive, because it can change the shape of
-// how secrets are organized in Infisical, which would then influence future syncs.
-const RECURSIVE_SYNC_REFINEMENT = {
-  path: ["recursive"],
+// We don't allow initial sync import combined with including subfolders, because it can change the
+// shape of how secrets are organized in Infisical, which would then influence future syncs.
+const SUBFOLDER_SYNC_REFINEMENT = {
+  path: ["includeAllSubFolders"],
   message:
     "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
 };
 
-const isRecursiveCombinationAllowed = (options: { recursive?: unknown; initialSyncBehavior?: unknown }) =>
-  !options.recursive || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination;
+const isSubFolderCombinationAllowed = (options: { includeAllSubFolders?: unknown; initialSyncBehavior?: unknown }) =>
+  !options.includeAllSubFolders || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination;
 
 // Shared by BaseSyncOptionsSchema and the recursive-conflicts preview route: both compile this
 // string as a Handlebars template (getKeyWithSchema in secret-sync-payload.ts), so both need the
@@ -81,12 +81,12 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     disableSecretDeletion: supportsDisableSecretDeletion
       ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
       : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`),
-    recursive: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).recursive)
+    includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).includeAllSubFolders)
   });
 
   // What refinedSchema actually is: baseSchema, merged with the destination's own extra
   // sync-option fields when `merge` supplies them, wrapped in a Zod effect that enforces
-  // isRecursiveCombinationAllowed across the result.
+  // isSubFolderCombinationAllowed across the result.
   type TRefinedSchema = z.ZodEffects<
     T extends AnyZodObject
       ? z.ZodObject<z.objectUtil.MergeShapes<typeof baseSchema.shape, T["shape"]>>
@@ -98,8 +98,8 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
   // above always agree, but the compiler has no way to prove that from a runtime value.
   const refinedSchema = (
     merge
-      ? baseSchema.merge(merge).refine(isRecursiveCombinationAllowed, RECURSIVE_SYNC_REFINEMENT)
-      : baseSchema.refine(isRecursiveCombinationAllowed, RECURSIVE_SYNC_REFINEMENT)
+      ? baseSchema.merge(merge).refine(isSubFolderCombinationAllowed, SUBFOLDER_SYNC_REFINEMENT)
+      : baseSchema.refine(isSubFolderCombinationAllowed, SUBFOLDER_SYNC_REFINEMENT)
   ) as TRefinedSchema;
 
   return refinedSchema.describe(

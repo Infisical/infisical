@@ -45,7 +45,7 @@ const DefaultSecretSyncSourceFields = () => {
   const destination = watch("destination");
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
-  const recursive = watch("syncOptions.recursive");
+  const includeAllSubFolders = watch("syncOptions.includeAllSubFolders");
   const keySchema = watch("syncOptions.keySchema");
 
   const { syncOption } = useSecretSyncOption(destination);
@@ -56,7 +56,7 @@ const DefaultSecretSyncSourceFields = () => {
     environment: selectedEnvironment?.slug,
     secretPath: selectedSecretPath,
     keySchema,
-    recursive: Boolean(recursive)
+    includeAllSubFolders: Boolean(includeAllSubFolders)
   });
 
   useEffect(() => {
@@ -128,19 +128,19 @@ const DefaultSecretSyncSourceFields = () => {
       />
       <Controller
         control={control}
-        name="syncOptions.recursive"
+        name="syncOptions.includeAllSubFolders"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
             <Field orientation="horizontal">
               <FieldContent>
-                <Label htmlFor="recursive">Include secrets from subfolders</Label>
+                <Label htmlFor="includeAllSubFolders">Include secrets from all subfolders</Label>
                 <FieldDescription>
                   Also sync secrets from every folder beneath this path, however deep. Secret names
                   must be unique across all of them.
                 </FieldDescription>
               </FieldContent>
               <Toggle
-                id="recursive"
+                id="includeAllSubFolders"
                 variant="project"
                 checked={Boolean(value)}
                 onCheckedChange={(checked) => {

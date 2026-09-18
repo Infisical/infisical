@@ -344,7 +344,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
   const currentInitialBehavior = watch("syncOptions.initialSyncBehavior");
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const keySchema = watch("syncOptions.keySchema");
-  const recursive = Boolean(watch("syncOptions.recursive"));
+  const includeAllSubFolders = Boolean(watch("syncOptions.includeAllSubFolders"));
 
   // Vercel "sensitive" secrets cannot be read back, so importing destination secrets is impossible.
   // Force the initial sync behavior to OverwriteDestination whenever sensitive is enabled.
@@ -363,14 +363,15 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
   // A sync that includes subfolders has no single folder to import destination secrets back into,
   // so overwrite is its only option. The source step sets that when the toggle goes on; this keeps
   // the choice from being offered again here.
-  const importAvailable = Boolean(syncOption?.canImportSecrets) && !vercelSensitive && !recursive;
+  const importAvailable =
+    Boolean(syncOption?.canImportSecrets) && !vercelSensitive && !includeAllSubFolders;
   const behaviorKeys = importAvailable
     ? BEHAVIOR_ORDER
     : [SecretSyncInitialSyncBehavior.OverwriteDestination];
 
   return (
     <>
-      {recursive && syncOption?.canImportSecrets && (
+      {includeAllSubFolders && syncOption?.canImportSecrets && (
         <Alert className="mb-3" variant="info">
           <Info />
           <AlertTitle>Importing secrets is not supported with subfolders</AlertTitle>
@@ -380,7 +381,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
           </AlertDescription>
         </Alert>
       )}
-      {!vercelSensitive && !recursive && !syncOption?.canImportSecrets && (
+      {!vercelSensitive && !includeAllSubFolders && !syncOption?.canImportSecrets && (
         <Alert className="mb-3" variant="warning">
           <TriangleAlert />
           <AlertTitle>Importing secrets is not supported</AlertTitle>

@@ -3,28 +3,28 @@ import { BaseSecretSyncSchema, KeySchemaSchema } from "./secret-sync-schemas";
 
 const schema = BaseSecretSyncSchema(SecretSync.Render, { canImportSecrets: true }).shape.syncOptions;
 
-describe("BaseSyncOptionsSchema recursive", () => {
-  test("defaults to absent, which means non-recursive", () => {
+describe("BaseSyncOptionsSchema includeAllSubFolders", () => {
+  test("defaults to absent, which means the source folder only", () => {
     const result = schema.safeParse({ initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination });
 
     expect(result.success).toBe(true);
-    expect(result.success && result.data.recursive).toBeUndefined();
+    expect(result.success && result.data.includeAllSubFolders).toBeUndefined();
   });
 
-  test("accepts recursive with the overwrite behavior", () => {
+  test("accepts including subfolders with the overwrite behavior", () => {
     const result = schema.safeParse({
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: true
+      includeAllSubFolders: true
     });
 
     expect(result.success).toBe(true);
   });
 
   // See RECURSIVE_SYNC_REFINEMENT.
-  test("rejects recursive combined with importing from the destination", () => {
+  test("rejects including subfolders combined with importing from the destination", () => {
     const result = schema.safeParse({
       initialSyncBehavior: SecretSyncInitialSyncBehavior.ImportPrioritizeSource,
-      recursive: true
+      includeAllSubFolders: true
     });
 
     expect(result.success).toBe(false);

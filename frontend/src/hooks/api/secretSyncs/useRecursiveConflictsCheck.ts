@@ -6,7 +6,7 @@ type UseRecursiveConflictsCheckProps = {
   environment?: string;
   secretPath?: string;
   keySchema?: string;
-  recursive: boolean;
+  includeAllSubFolders: boolean;
 };
 
 export const useRecursiveConflictsCheck = ({
@@ -15,9 +15,9 @@ export const useRecursiveConflictsCheck = ({
   environment,
   secretPath,
   keySchema,
-  recursive
+  includeAllSubFolders
 }: UseRecursiveConflictsCheckProps) => {
-  const shouldCheck = recursive && Boolean(environment) && Boolean(secretPath);
+  const shouldCheck = includeAllSubFolders && Boolean(environment) && Boolean(secretPath);
 
   const { data, isLoading, isSuccess, error } = useCheckRecursiveConflicts(
     destination,

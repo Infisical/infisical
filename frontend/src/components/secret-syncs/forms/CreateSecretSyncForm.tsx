@@ -251,7 +251,8 @@ export const CreateSecretSyncForm = ({
     environment: watch("environment")?.slug,
     secretPath: watch("secretPath"),
     keySchema,
-    recursive: Boolean(watch("syncOptions.recursive")) && !importsFromDestination
+    includeAllSubFolders:
+      Boolean(watch("syncOptions.includeAllSubFolders")) && !importsFromDestination
   });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);

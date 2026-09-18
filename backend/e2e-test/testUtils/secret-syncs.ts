@@ -15,7 +15,7 @@ type TSecretSyncRecord = {
   name: string;
   syncOptions: {
     initialSyncBehavior: string;
-    recursive?: boolean;
+    includeAllSubFolders?: boolean;
     keySchema?: string;
     disableSecretDeletion?: boolean;
   };
@@ -72,7 +72,7 @@ export const createSecretSync = async (dto: {
   initialSyncBehavior?: SecretSyncInitialSyncBehavior;
   keySchema?: string;
   disableSecretDeletion?: boolean;
-  recursive?: boolean;
+  includeAllSubFolders?: boolean;
   isAutoSyncEnabled?: boolean;
   authToken: string;
   expectStatusCode?: number;
@@ -92,7 +92,7 @@ export const createSecretSync = async (dto: {
         initialSyncBehavior: dto.initialSyncBehavior ?? SecretSyncInitialSyncBehavior.OverwriteDestination,
         ...(dto.keySchema ? { keySchema: dto.keySchema } : {}),
         ...(dto.disableSecretDeletion === undefined ? {} : { disableSecretDeletion: dto.disableSecretDeletion }),
-        ...(dto.recursive === undefined ? {} : { recursive: dto.recursive })
+        ...(dto.includeAllSubFolders === undefined ? {} : { includeAllSubFolders: dto.includeAllSubFolders })
       },
       destinationConfig: { region: dto.region, path: dto.destinationPath }
     }

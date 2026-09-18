@@ -99,7 +99,7 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, recursive },
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
     destination,
     isAutoSyncEnabled
   } = watch();
@@ -361,10 +361,10 @@ export const SecretSyncReviewFields = () => {
           </Detail>
           {AdditionalSyncOptionsFieldsComponent}
           <Detail>
-            <DetailLabel>Include Subfolders</DetailLabel>
+            <DetailLabel>Include All Subfolders</DetailLabel>
             <DetailValue>
-              <Badge variant={recursive ? "success" : "neutral"}>
-                {recursive ? "Enabled" : "Disabled"}
+              <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
+                {includeAllSubFolders ? "Enabled" : "Disabled"}
               </Badge>
             </DetailValue>
           </Detail>

@@ -41,7 +41,7 @@ export const getSyncedFolders = async ({
   environment,
   sourcePath,
   sourceFolderId,
-  recursive
+  includeAllSubFolders
 }: {
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -49,9 +49,9 @@ export const getSyncedFolders = async ({
   environment: string;
   sourcePath: string;
   sourceFolderId: string;
-  recursive: boolean;
+  includeAllSubFolders: boolean;
 }): Promise<{ folderId: string; path: string }[]> => {
-  if (!recursive) return [{ folderId: sourceFolderId, path: sourcePath }];
+  if (!includeAllSubFolders) return [{ folderId: sourceFolderId, path: sourcePath }];
 
   const paths = await recursivelyGetSecretPaths({
     folderDAL,
@@ -99,8 +99,8 @@ export const mergeImportedSecrets = (
   return merged;
 };
 
-// Resolves and decrypts every secret in the sync's source subtree (a single folder, or, when
-// recursive, that folder plus every folder beneath it), merging in any imports, and wraps the
+// Resolves and decrypts every secret in the sync's source subtree (a single folder, or, when the
+// sync includes subfolders, that folder plus every folder beneath it), merging in any imports, and wraps the
 // result in a TSecretSyncPayload. A cross-folder duplicate name is not resolved here: flatten()
 // throws on it by default, and payload.dedupeConflicts() is how the one caller that needs to
 // tolerate it (removal) gets a payload that won't.
@@ -110,7 +110,7 @@ export const buildSyncPayload = async (
     environment: string;
     sourcePath: string;
     sourceFolderId: string;
-    syncOptions: Pick<TSecretSync["syncOptions"], "recursive" | "keySchema"> | undefined;
+    syncOptions: Pick<TSecretSync["syncOptions"], "includeAllSubFolders" | "keySchema"> | undefined;
     includeImports: boolean;
   },
   deps: {
@@ -126,7 +126,7 @@ export const buildSyncPayload = async (
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
   const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeImports } = args;
-  const { recursive, keySchema } = syncOptions ?? {};
+  const { includeAllSubFolders, keySchema } = syncOptions ?? {};
 
   const folders = await getSyncedFolders({
     folderDAL,
@@ -135,7 +135,7 @@ export const buildSyncPayload = async (
     environment,
     sourcePath,
     sourceFolderId,
-    recursive: Boolean(recursive)
+    includeAllSubFolders: Boolean(includeAllSubFolders)
   });
 
   const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));

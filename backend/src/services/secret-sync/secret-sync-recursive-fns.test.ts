@@ -16,27 +16,27 @@ const deps = {
 } as unknown as Pick<Parameters<typeof getSyncedFolders>[0], "folderDAL" | "projectEnvDAL">;
 
 describe("getSyncedFolders", () => {
-  test("returns only the source folder when recursive is off", async () => {
+  test("returns only the source folder when subfolders are off", async () => {
     const folders = await getSyncedFolders({
       ...deps,
       projectId: "proj-1",
       environment: "dev",
       sourcePath: "/",
       sourceFolderId: "root",
-      recursive: false
+      includeAllSubFolders: false
     });
 
     expect(folders).toEqual([{ folderId: "root", path: "/" }]);
   });
 
-  test("returns the source folder and its descendants when recursive is on", async () => {
+  test("returns the source folder and its descendants when subfolders are on", async () => {
     const folders = await getSyncedFolders({
       ...deps,
       projectId: "proj-1",
       environment: "dev",
       sourcePath: "/",
       sourceFolderId: "root",
-      recursive: true
+      includeAllSubFolders: true
     });
 
     expect(folders.map((folder) => folder.path).sort()).toEqual(["/", "/api"]);
@@ -226,7 +226,7 @@ describe("buildSyncPayload", () => {
         environment: "dev",
         sourcePath: "/",
         sourceFolderId: "root",
-        syncOptions: { recursive: true },
+        syncOptions: { includeAllSubFolders: true },
         includeImports: true
       },
       buildDeps
@@ -285,7 +285,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
     environment: "dev",
     sourcePath: "/",
     sourceFolderId: "root",
-    syncOptions: { recursive: true },
+    syncOptions: { includeAllSubFolders: true },
     includeImports: true
   } as Parameters<typeof buildSyncPayload>[0];
 

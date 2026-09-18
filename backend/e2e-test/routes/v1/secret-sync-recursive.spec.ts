@@ -43,7 +43,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
   let connectionId: string;
   let actorToken: string;
 
-  const newSync = (dto: { name: string; recursive: boolean; expectStatusCode?: number }) =>
+  const newSync = (dto: { name: string; includeAllSubFolders: boolean; expectStatusCode?: number }) =>
     createSecretSync({
       name: dto.name,
       projectId,
@@ -53,7 +53,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
       region: REGION,
       destinationPath: `/${dto.name}/`,
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: dto.recursive,
+      includeAllSubFolders: dto.includeAllSubFolders,
       isAutoSyncEnabled: false,
       authToken: actorToken,
       expectStatusCode: dto.expectStatusCode
@@ -129,7 +129,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
   });
 
   test("creating a sync that includes subfolders is refused, naming the folder that is denied", async () => {
-    const { error } = await newSync({ name: "recursive-denied", recursive: true, expectStatusCode: 403 });
+    const { error } = await newSync({ name: "recursive-denied", includeAllSubFolders: true, expectStatusCode: 403 });
 
     expect(error.message).toContain("/backend/api");
   });
@@ -148,7 +148,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
       region: REGION,
       destinationPath: "/recursive-created-by-admin/",
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: true,
+      includeAllSubFolders: true,
       isAutoSyncEnabled: false,
       authToken: adminToken
     });
@@ -164,14 +164,14 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
   });
 
   test("turning subfolders on for an existing sync is refused", async () => {
-    const { secretSync } = await newSync({ name: "recursive-turned-on-later", recursive: false });
+    const { secretSync } = await newSync({ name: "recursive-turned-on-later", includeAllSubFolders: false });
 
     const { error } = await updateSecretSync({
       syncId: secretSync!.id,
       body: {
         syncOptions: {
           initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-          recursive: true
+          includeAllSubFolders: true
         }
       },
       authToken: actorToken,
@@ -194,7 +194,7 @@ describe("A recursive secret sync is refused when two folders use the same secre
   let cleanupOrg: () => Promise<void>;
   let connectionId: string;
 
-  const newSync = (dto: { name: string; recursive: boolean; expectStatusCode?: number }) =>
+  const newSync = (dto: { name: string; includeAllSubFolders: boolean; expectStatusCode?: number }) =>
     createSecretSync({
       name: dto.name,
       projectId,
@@ -204,7 +204,7 @@ describe("A recursive secret sync is refused when two folders use the same secre
       region: REGION,
       destinationPath: `/${dto.name}/`,
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: dto.recursive,
+      includeAllSubFolders: dto.includeAllSubFolders,
       isAutoSyncEnabled: false,
       authToken: adminToken,
       expectStatusCode: dto.expectStatusCode
@@ -237,7 +237,7 @@ describe("A recursive secret sync is refused when two folders use the same secre
       region: REGION,
       destinationPath: `/${dto.name}/`,
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: true,
+      includeAllSubFolders: true,
       isAutoSyncEnabled: false,
       authToken: adminToken
     });
@@ -303,7 +303,7 @@ describe("A recursive secret sync is refused when two folders use the same secre
   });
 
   test("creating it is refused, naming the secret and both folders", async () => {
-    const { error } = await newSync({ name: "recursive-duplicate", recursive: true, expectStatusCode: 400 });
+    const { error } = await newSync({ name: "recursive-duplicate", includeAllSubFolders: true, expectStatusCode: 400 });
 
     expect(error.message).toContain("DB_URL");
     expect(error.message).toContain("/backend");
@@ -335,7 +335,7 @@ describe("A recursive secret sync is refused when two folders use the same secre
 
     const updated = await getSecretSync({ syncId: secretSync.id, authToken: adminToken });
 
-    expect(updated.syncOptions.recursive).toBeFalsy();
+    expect(updated.syncOptions.includeAllSubFolders).toBeFalsy();
   });
 
   test("an update that leaves the sync options alone is still checked as recursive", async () => {
@@ -357,14 +357,14 @@ describe("A recursive secret sync is refused when two folders use the same secre
   });
 
   test("turning subfolders on for an existing sync is refused", async () => {
-    const { secretSync } = await newSync({ name: "recursive-turned-on-later", recursive: false });
+    const { secretSync } = await newSync({ name: "recursive-turned-on-later", includeAllSubFolders: false });
 
     const { error } = await updateSecretSync({
       syncId: secretSync!.id,
       body: {
         syncOptions: {
           initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-          recursive: true
+          includeAllSubFolders: true
         }
       },
       authToken: adminToken,
@@ -434,7 +434,7 @@ describe("A change in a subfolder reaches the recursive sync above it", async ()
       region: REGION,
       destinationPath,
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: true,
+      includeAllSubFolders: true,
       isAutoSyncEnabled: false,
       authToken: adminToken
     });
@@ -506,7 +506,7 @@ describe("A change in a subfolder reaches the recursive sync above it", async ()
       region: REGION,
       destinationPath,
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
-      recursive: true,
+      includeAllSubFolders: true,
       isAutoSyncEnabled: false,
       authToken: adminToken
     });
@@ -541,7 +541,9 @@ describe("A change in a subfolder reaches the recursive sync above it", async ()
     });
 
     // A run that starts after the delete, not merely an empty destination: only the delete can have
-    // queued it.
+    // queued it. waitForSyncRun returns once the run has started and the record reports a terminal
+    // status, which the previous run already satisfies, so the destination is read by polling rather
+    // than immediately.
     await waitForSyncRun({
       syncId: secretSync!.id,
       region: REGION,
@@ -550,6 +552,6 @@ describe("A change in a subfolder reaches the recursive sync above it", async ()
       authToken: adminToken
     });
 
-    expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({});
+    await waitForDestinationSecrets({ region: REGION, destinationPath, expected: {} });
   });
 });
