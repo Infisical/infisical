@@ -20,7 +20,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  PageLoader
+  PageLoader,
+  ProviderIcon
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -107,24 +108,26 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between font-inter text-white">
+      <div className="container mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <button
             type="button"
             onClick={handleBack}
-            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon className="size-4" />
             {applicationName ? "Back to Application" : "Certificate Syncs"}
           </button>
           <div className="mb-6 flex w-full items-center gap-3">
-            <img
+            <ProviderIcon
               alt={`${destinationDetails.name} sync`}
-              src={`/images/integrations/${destinationDetails.image}`}
+              icon={destinationDetails.image}
               className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">
-              <p className="truncate text-2xl font-medium text-white">{pkiSync.name}</p>
+              <p className="truncate text-2xl font-medium text-foreground-inverse">
+                {pkiSync.name}
+              </p>
               <p className="mt-1 leading-3 text-accent">
                 {pkiSync.description || `${destinationDetails.name} PKI Sync`}
               </p>

@@ -360,11 +360,11 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
                 <PenTool className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
+                <div className="flex items-center gap-x-2 text-label">
                   Create Signer
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
                 </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <p className="text-sm leading-4 text-muted">
                   A code-signing certificate with the members and approval policy that govern its
                   use.
                 </p>
