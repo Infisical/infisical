@@ -3,14 +3,14 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import {
@@ -43,7 +43,6 @@ import {
  */
 export const requestWithAzureKeyVaultGateway = async <T>(
   connection: { gatewayId?: string | null; gatewayPoolId?: string | null },
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   requestConfig: AxiosRequestConfig,
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
@@ -74,61 +73,18 @@ export const requestWithAzureKeyVaultGateway = async <T>(
   // eslint-disable-next-line no-nested-ternary
   const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
 
-  // try gateway v2 first, then fall back to gateway v1
   const gatewayConnectionDetailsV2 = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
     targetHost,
     targetPort
   });
 
-  if (gatewayConnectionDetailsV2) {
-    return withGatewayV2Proxy(
-      async (proxyPort) => {
-        const isHttps = url.protocol === "https:";
-
-        url.host = `localhost:${proxyPort}`;
-
-        const finalRequestConfig: AxiosRequestConfig = {
-          ...requestConfig,
-          url: url.toString(),
-          headers: {
-            ...requestConfig.headers,
-            Host: targetHost
-          },
-          ...(isHttps && {
-            httpsAgent: new https.Agent({
-              servername: targetHost
-            })
-          })
-        };
-
-        try {
-          return await request.request(finalRequestConfig);
-        } catch (error) {
-          if (error instanceof AxiosError) {
-            logger.error(
-              {
-                error,
-                message: error.message,
-                data: (error.response as undefined | { data: unknown })?.data,
-                url: url.toString()
-              },
-              "Error during Azure Key Vault gateway v2 request:"
-            );
-          }
-          throw error;
-        }
-      },
-      {
-        protocol: GatewayProxyProtocol.Tcp,
-        ...gatewayConnectionDetailsV2
-      }
-    );
+  // Falling through here would silently bypass the gateway this connection is pinned to.
+  if (!gatewayConnectionDetailsV2) {
+    throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
   }
 
-  const gatewayConnectionDetailsV1 = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
-
-  return withGatewayProxy(
+  return withGatewayV2Proxy(
     async (proxyPort) => {
       const isHttps = url.protocol === "https:";
 
@@ -159,17 +115,15 @@ export const requestWithAzureKeyVaultGateway = async <T>(
               data: (error.response as undefined | { data: unknown })?.data,
               url: url.toString()
             },
-            "Error during Azure Key Vault gateway v1 request:"
+            "Error during Azure Key Vault gateway request:"
           );
         }
         throw error;
       }
     },
     {
-      relayDetails: gatewayConnectionDetailsV1,
       protocol: GatewayProxyProtocol.Tcp,
-      targetHost,
-      targetPort
+      ...gatewayConnectionDetailsV2
     }
   );
 };

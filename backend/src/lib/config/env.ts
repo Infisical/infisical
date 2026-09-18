@@ -538,11 +538,6 @@ const envSchema = z
     SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
 
     /* Gateway----------------------------------------------------------------------------- */
-    GATEWAY_INFISICAL_STATIC_IP_ADDRESS: zpStr(z.string().optional()),
-    GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
-    GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
-    GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
-
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),

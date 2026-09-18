@@ -574,7 +574,6 @@ export const ProductSheet = ({
       });
       onClose();
     } catch {
-      createNotification({ type: "error", text: `Failed to start the ${prod.name} trial.` });
       setTrialConfirmTier(null);
     }
   };
@@ -590,7 +589,6 @@ export const ProductSheet = ({
       });
       onClose();
     } catch {
-      createNotification({ type: "error", text: `Failed to cancel the ${prod.name} trial.` });
       setShowCancelTrial(false);
     }
   };

@@ -90,9 +90,7 @@ const buildService = ({ approvalPaths = [] as string[] } = {}) => {
     secretService: { createManySecretsRaw },
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
     externalMigrationQueue: { enqueueVaultImportSideEffects: vi.fn().mockResolvedValue(undefined) },
-    gatewayService: {},
     gatewayV2Service: {},
-    gatewayDAL: {},
     gatewayV2DAL: {},
     gatewayPoolService: {},
     userDAL: {}

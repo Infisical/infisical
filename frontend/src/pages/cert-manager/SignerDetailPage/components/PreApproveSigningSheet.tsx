@@ -161,10 +161,8 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
                 <BadgeCheckIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
-                  Pre-approve signing
-                </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <div className="flex items-center gap-x-2 text-label">Pre-approve signing</div>
+                <p className="text-sm leading-4 text-muted">
                   Grant an Operator or machine identity a signed-off window without an approval
                   flow.
                 </p>

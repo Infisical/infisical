@@ -1,4 +1,5 @@
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
@@ -24,7 +25,7 @@ export const HoneyTokenSelect = ({ onSelect }: Props) => {
             >
               <button type="button" onClick={() => onSelect(type)}>
                 <ItemMedia variant="image" className="size-12">
-                  <img src={`/images/integrations/${image}`} width={size} alt="" />
+                  <ProviderIcon icon={image} width={size} alt="" />
                 </ItemMedia>
                 <ItemContent className="items-center">
                   <ItemTitle>{name}</ItemTitle>
