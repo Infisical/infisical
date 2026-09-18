@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { RESOURCE_SCOPE, ResourceType, TableName, TAgentVaultAccessBundles } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
 export type TAgentVaultAccessBundleDALFactory = ReturnType<typeof agentVaultAccessBundleDALFactory>;
@@ -155,15 +156,53 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   };
 
   const findMembers = async (
-    { projectId, accessBundleId }: { projectId: string; accessBundleId: string },
+    {
+      projectId,
+      accessBundleId,
+      search,
+      limit,
+      offset
+    }: { projectId: string; accessBundleId: string; search?: string; limit: number; offset: number },
     tx?: Knex
-  ): Promise<TAgentVaultAccessBundleMemberDetail[]> => {
+  ): Promise<{ members: TAgentVaultAccessBundleMemberDetail[]; totalCount: number }> => {
     try {
-      const rows = (await (tx || db.replicaNode())(TableName.Membership)
-        .where({ ...grantScope(projectId, accessBundleId), isActive: true })
-        .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
-        .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+      const conn = tx || db.replicaNode();
+
+      const applyFilters = (query: Knex.QueryBuilder) => {
+        void query
+          .where({ ...grantScope(projectId, accessBundleId), isActive: true })
+          // Joined on the primary keys, and only_one_actor_type keeps at most one of the three non-null,
+          // so none of these multiply a row. That is what lets the count query carry them.
+          .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+          .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+          .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
+
+        if (search) {
+          const term = `%${sanitizeSqlLikeString(search)}%`;
+          void query.where((qb) => {
+            void qb
+              .orWhereILike(`${TableName.Users}.username`, term)
+              .orWhereILike(`${TableName.Users}.email`, term)
+              // Covers a first name, a last name and the two together, so no separate checks are needed.
+              .orWhereRaw(`CONCAT_WS(' ', ??, ??) ILIKE ?`, [
+                `${TableName.Users}.firstName`,
+                `${TableName.Users}.lastName`,
+                term
+              ])
+              .orWhereILike(`${TableName.Identity}.name`, term)
+              .orWhereILike(`${TableName.Groups}.name`, term);
+          });
+        }
+        return query;
+      };
+
+      // Shared with the page query, so the pager describes the filtered set rather than the whole one.
+      const countResult = (await applyFilters(conn(TableName.Membership))
+        .count(`${TableName.Membership}.id as count`)
+        .first()) as { count: string } | undefined;
+      const totalCount = parseInt(countResult?.count || "0", 10);
+
+      const rows = (await applyFilters(conn(TableName.Membership))
         .select(
           db.ref("id").withSchema(TableName.Membership),
           db.ref("scopeResourceId").withSchema(TableName.Membership).as("accessBundleId"),
@@ -178,7 +217,13 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("name").withSchema(TableName.Groups).as("groupName")
         )
-        .orderBy(`${TableName.Membership}.createdAt`, "asc")) as {
+        // The membership id breaks ties: createdAt defaults to the transaction's start time, so one bulk
+        // grant writes up to a hundred rows sharing a timestamp, and offset paging would otherwise show
+        // some of them twice and others never.
+        .orderBy(`${TableName.Membership}.createdAt`, "asc")
+        .orderBy(`${TableName.Membership}.id`, "asc")
+        .limit(limit)
+        .offset(offset)) as {
         id: string;
         accessBundleId: string;
         userId: string | null;
@@ -210,12 +255,15 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         };
       };
 
-      return rows.map((row) => ({
-        id: row.id,
-        accessBundleId: row.accessBundleId,
-        createdAt: row.createdAt,
-        actor: actorOf(row)
-      }));
+      return {
+        members: rows.map((row) => ({
+          id: row.id,
+          accessBundleId: row.accessBundleId,
+          createdAt: row.createdAt,
+          actor: actorOf(row)
+        })),
+        totalCount
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault access bundle members" });
     }

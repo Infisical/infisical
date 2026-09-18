@@ -4290,7 +4290,11 @@ export const AGENT_VAULT = {
     isManagedByAgentVault:
       "Whether Agent Vault created the machine identity. One it owns is deleted rather than removed.",
     machineIdentityOrgId: "The ID of the organization the machine identity belongs to.",
-    skipped: "The requested grantees who already had the access bundle and were left as they were."
+    skipped: "The requested grantees who already had the access bundle and were left as they were.",
+    revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
+    search: "Match members by name, username or email address.",
+    limit: "The maximum number of members to return.",
+    offset: "How many members to skip."
   },
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",

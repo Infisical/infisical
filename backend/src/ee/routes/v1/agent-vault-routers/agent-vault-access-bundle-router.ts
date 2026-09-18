@@ -1,4 +1,3 @@
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
@@ -6,7 +5,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
-import { AgentVaultCredentialType, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -28,6 +27,7 @@ import {
   AgentVaultCustomHeadersInputSchema,
   AgentVaultCustomHeadersUpdateSchema,
   AgentVaultHostPatternSchema,
+  agentVaultListQuery,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
@@ -151,10 +151,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       response: {
         200: z.object({
-          accessBundle: AccessBundleSchema.extend({
-            services: AgentVaultServiceSchema.array(),
-            members: AgentVaultMemberSchema.array().optional()
-          })
+          accessBundle: AccessBundleSchema.extend({ services: AgentVaultServiceSchema.array() })
         })
       }
     },
@@ -491,17 +488,17 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      response: { 200: z.object({ members: AgentVaultMemberSchema.array() }) }
+      querystring: z.object(agentVaultListQuery(AGENT_VAULT.MEMBER)),
+      response: { 200: z.object({ members: AgentVaultMemberSchema.array(), totalCount: z.number() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const members = await server.services.agentVaultAccessBundle.listMembers({
+    handler: async (req) =>
+      server.services.agentVaultAccessBundle.listMembers({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId
-      });
-      return { members };
-    }
+        accessBundleId: req.params.accessBundleId,
+        ...req.query
+      })
   });
 
   server.route({
@@ -562,98 +559,64 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     }
   });
 
-  const revokeAccessBundle = async (
-    req: FastifyRequest,
-    accessBundleId: string,
-    actor: { type: AgentVaultMemberType; id: string }
-  ) => {
-    const member = await server.services.agentVaultAccessBundle.removeMember({
-      projectId: req.internalAgentVaultProjectId,
-      ctx: actorContext(req),
-      accessBundleId,
-      actor
-    });
-
-    await server.services.auditLog.createAuditLog({
-      ...req.auditLogInfo,
-      orgId: req.permission.orgId,
-      projectId: req.internalAgentVaultProjectId,
-      event: {
-        type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE,
-        metadata: {
-          accessBundleId,
-          accessBundleName: member.accessBundleName,
-          memberId: member.id,
-          ...auditActorFields(member.actor)
-        }
+  server.route({
+    method: "POST",
+    url: "/:accessBundleId/members/revoke",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "revokeAgentVaultAccessBundleMembers",
+      // A deliberate break from REST, which CODE_QUALITY.md sanctions for a bulk operation that cannot be
+      // expressed per resource: DELETE carrying a request body is mangled by enough proxies and clients to
+      // be unusable, so removal is a named action that mirrors the grant it undoes.
+      description: "Revoke an Agent Vault access bundle from users, machine identities or groups",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      body: AgentVaultMemberIdsSchema,
+      response: {
+        200: z.object({
+          members: AgentVaultRemovedMemberSchema.array(),
+          skipped: AgentVaultActorRefSchema.array().describe(AGENT_VAULT.MEMBER.revokeSkipped)
+        })
       }
-    });
-
-    emitAgentVaultTelemetry(server.services.telemetry, req, {
-      event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved,
-      properties: { accessBundleId, memberType: member.actor.type }
-    });
-
-    return { member };
-  };
-
-  server.route({
-    method: "DELETE",
-    url: "/:accessBundleId/members/users/:userId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "removeAgentVaultAccessBundleUserMember",
-      description: "Revoke an Agent Vault access bundle from a user",
-      tags: [ApiDocsTags.AgentVaultAccessBundles],
-      params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        userId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
-      }),
-      response: { 200: z.object({ member: AgentVaultRemovedMemberSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      revokeAccessBundle(req, req.params.accessBundleId, { type: AgentVaultMemberType.User, id: req.params.userId })
-  });
+    handler: async (req) => {
+      const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.revokeMembers({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        ...req.body
+      });
 
-  server.route({
-    method: "DELETE",
-    url: "/:accessBundleId/members/groups/:groupId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "removeAgentVaultAccessBundleGroupMember",
-      description: "Revoke an Agent Vault access bundle from a group",
-      tags: [ApiDocsTags.AgentVaultAccessBundles],
-      params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
-      }),
-      response: { 200: z.object({ member: AgentVaultRemovedMemberSchema }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      revokeAccessBundle(req, req.params.accessBundleId, { type: AgentVaultMemberType.Group, id: req.params.groupId })
-  });
+      await Promise.all(
+        members.map((member) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: req.internalAgentVaultProjectId,
+            event: {
+              type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE,
+              metadata: {
+                accessBundleId: req.params.accessBundleId,
+                accessBundleName,
+                memberId: member.id,
+                ...auditActorFields(member.actor)
+              }
+            }
+          })
+        )
+      );
 
-  server.route({
-    method: "DELETE",
-    url: "/:accessBundleId/members/identities/:identityId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "removeAgentVaultAccessBundleIdentityMember",
-      description: "Revoke an Agent Vault access bundle from a machine identity",
-      tags: [ApiDocsTags.AgentVaultAccessBundles],
-      params: z.object({
-        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
-      }),
-      response: { 200: z.object({ member: AgentVaultRemovedMemberSchema }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      revokeAccessBundle(req, req.params.accessBundleId, {
-        type: AgentVaultMemberType.MachineIdentity,
-        id: req.params.identityId
-      })
+      members.forEach((member) =>
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved,
+          properties: { accessBundleId: req.params.accessBundleId, memberType: member.actor.type }
+        })
+      );
+
+      return { members, skipped };
+    }
   });
 };

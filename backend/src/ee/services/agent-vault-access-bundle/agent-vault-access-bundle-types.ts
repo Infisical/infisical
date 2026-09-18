@@ -4,7 +4,6 @@ import {
   AgentVaultHttpMethod,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultAccessBundleActorRef } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string; value: string }
@@ -87,7 +86,12 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
   serviceId: string;
 };
 
-export type TListMembersDTO = TAgentVaultProjectScoped & { accessBundleId: string };
+export type TListMembersDTO = TAgentVaultProjectScoped & {
+  accessBundleId: string;
+  search?: string;
+  limit: number;
+  offset: number;
+};
 
 export type TAddMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
@@ -96,7 +100,9 @@ export type TAddMembersDTO = TAgentVaultProjectScoped & {
   machineIdentityIds: string[];
 };
 
-export type TRemoveMemberDTO = TAgentVaultProjectScoped & {
+export type TRevokeMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
-  actor: TAgentVaultAccessBundleActorRef;
+  userIds: string[];
+  groupIds: string[];
+  machineIdentityIds: string[];
 };

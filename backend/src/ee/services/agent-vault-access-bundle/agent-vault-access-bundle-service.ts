@@ -51,7 +51,7 @@ import {
   TGetAccessBundleDTO,
   TListAccessBundlesDTO,
   TListMembersDTO,
-  TRemoveMemberDTO,
+  TRevokeMembersDTO,
   TUpdateAccessBundleDTO,
   TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
@@ -125,18 +125,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     actorUserId: AgentVaultMemberType.User,
     actorIdentityId: AgentVaultMemberType.MachineIdentity,
     actorGroupId: AgentVaultMemberType.Group
-  };
-
-  const ACTOR_COLUMN_OF: Record<AgentVaultMemberType, TGrantActorColumn> = {
-    [AgentVaultMemberType.User]: "actorUserId",
-    [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
-    [AgentVaultMemberType.Group]: "actorGroupId"
-  };
-
-  const ACTOR_LABEL_OF: Record<AgentVaultMemberType, string> = {
-    [AgentVaultMemberType.User]: "User with ID",
-    [AgentVaultMemberType.MachineIdentity]: "Machine identity with ID",
-    [AgentVaultMemberType.Group]: "Group with ID"
   };
 
   const toActorRefFromGrant = ({ actorColumn, actorId }: TGrantActor): TAgentVaultAccessBundleActorRef => ({
@@ -446,7 +434,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
-    const { bundle, permission, isAdmin } = await resolveReachableBundle(dto);
+    const { bundle, permission } = await resolveReachableBundle(dto);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Read,
       ProjectPermissionSub.AgentVaultAccessBundles
@@ -454,9 +442,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
     const { customHeaders, substitutions } = await loadTransformations(services.map((service) => service.id));
-    const members = isAdmin
-      ? await agentVaultAccessBundleDAL.findMembers({ projectId: dto.projectId, accessBundleId: bundle.id })
-      : undefined;
 
     return {
       id: bundle.id,
@@ -470,8 +455,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           customHeaders.filter((header) => header.serviceId === service.id),
           substitutions.filter((substitution) => substitution.serviceId === service.id)
         )
-      ),
-      members
+      )
     };
   };
 
@@ -923,13 +907,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return projectService(deleted, customHeaders, substitutions);
   };
 
-  const listMembers = async ({ accessBundleId, ...rest }: TListMembersDTO) => {
+  const listMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
-    return agentVaultAccessBundleDAL.findMembers({ projectId: rest.projectId, accessBundleId: bundle.id });
+    return agentVaultAccessBundleDAL.findMembers({
+      projectId: rest.projectId,
+      accessBundleId: bundle.id,
+      search,
+      limit,
+      offset
+    });
   };
 
   const addMembers = async ({ accessBundleId, userIds, groupIds, machineIdentityIds, ...rest }: TAddMembersDTO) => {
@@ -1005,25 +995,65 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  const removeMember = async ({ accessBundleId, actor, ...rest }: TRemoveMemberDTO) => {
+  const revokeMembers = async ({
+    accessBundleId,
+    userIds,
+    groupIds,
+    machineIdentityIds,
+    ...rest
+  }: TRevokeMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const member = await membershipDAL.findOne({
-      ...bundleScope(rest.projectId, bundle.id),
-      [ACTOR_COLUMN_OF[actor.type]]: actor.id
+    const requested = new Map<string, TGrantActor>();
+    const byColumn: [TGrantActorColumn, string[]][] = [
+      ["actorUserId", userIds],
+      ["actorGroupId", groupIds],
+      ["actorIdentityId", machineIdentityIds]
+    ];
+    byColumn.forEach(([actorColumn, ids]) => {
+      ids.forEach((actorId) => requested.set(actorKey({ actorColumn, actorId }), { actorColumn, actorId }));
     });
-    if (!member) {
-      throw new NotFoundError({
-        message: `${ACTOR_LABEL_OF[actor.type]} '${actor.id}' does not have this access bundle`
-      });
-    }
+    const actors = [...requested.values()];
 
-    await membershipDAL.deleteById(member.id);
-    return { ...toMember(member), accessBundleName: bundle.name };
+    // The same bundle row lock the grant path takes, so a revoke cannot race a concurrent grant or a
+    // bundle delete and leave a row behind.
+    const outcome = await membershipDAL.transaction(async (tx) => {
+      const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+        { id: bundle.id, projectId: rest.projectId },
+        tx
+      );
+      if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+
+      const existing = await membershipDAL.find(bundleScope(rest.projectId, bundle.id), { tx });
+      const heldByKey = new Map(
+        existing.flatMap((row) => {
+          const found = byColumn.find(([actorColumn]) => row[actorColumn]);
+          if (!found) return [];
+          const actor = { actorColumn: found[0], actorId: row[found[0]]! };
+          return [[actorKey(actor), row] as const];
+        })
+      );
+
+      // An actor who holds no grant is reported rather than refused: the end state the caller asked for
+      // is already true, which is what makes a bulk revoke safe to retry.
+      const skipped = actors.filter((actor) => !heldByKey.has(actorKey(actor))).map(toActorRefFromGrant);
+      const held = actors.filter((actor) => heldByKey.has(actorKey(actor)));
+      if (!held.length) return { removed: [] as TMemberships[], skipped };
+
+      const rows = held.map((actor) => heldByKey.get(actorKey(actor))!);
+      await membershipDAL.delete({ $in: { id: rows.map((row) => row.id) } }, tx);
+      return { removed: rows, skipped };
+    });
+
+    return {
+      members: outcome.removed.map(toMember),
+      skipped: outcome.skipped,
+      accessBundleName: bundle.name
+    };
   };
 
   return {
@@ -1037,6 +1067,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     deleteService,
     listMembers,
     addMembers,
-    removeMember
+    revokeMembers
   };
 };

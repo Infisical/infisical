@@ -223,13 +223,19 @@ describe("Agent Vault V1 Router", async () => {
     test("the creator is granted the access bundle they just made", async () => {
       const bundle = await createAccessBundle("creator-grant");
 
-      const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
-      const { accessBundle } = JSON.parse(res.payload) as {
-        accessBundle: { members: { actor: { type: string; id: string } }[] };
+      const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`);
+      const { members, totalCount } = JSON.parse(res.payload) as {
+        members: { actor: { type: string; id: string } }[];
+        totalCount: number;
       };
 
-      expect(accessBundle.members).toHaveLength(1);
-      expect(accessBundle.members[0].actor).toMatchObject({ type: "user", id: seedData1.id });
+      expect(totalCount).toBe(1);
+      expect(members).toHaveLength(1);
+      expect(members[0].actor).toMatchObject({ type: "user", id: seedData1.id });
+
+      // The detail response no longer carries a members array, so there is one source for the list.
+      const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+      expect(JSON.parse(detail.payload).accessBundle).not.toHaveProperty("members");
     });
 
     test("updatedAt moves when a bundle changes, and matches createdAt until it does", async () => {
@@ -1038,7 +1044,10 @@ describe("Agent Vault V1 Router", async () => {
           "POST",
           `/api/v1/agent-vault/access-bundles/${unknown}/services`,
           { name: "c", hostPattern: "api.foo.com", credential: { type: "passthrough" } }
-        ]
+        ],
+        // The bundle is the path resource, so a missing one is still 404 even though a missing actor in
+        // the body is reported as skipped.
+        ["POST", `/api/v1/agent-vault/access-bundles/${unknown}/members/revoke`, { userIds: [seedData1.id] }]
       ];
 
       for await (const [method, url, body] of routes) {
@@ -2225,8 +2234,11 @@ describe("Agent Vault V1 Router", async () => {
         expect((await resolve()).services).toHaveLength(1);
 
         expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/groups/${group.id}`))
-            .statusCode
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+              groupIds: [group.id]
+            })
+          ).statusCode
         ).toBe(200);
         expect((await resolve()).services).toHaveLength(0);
 
@@ -2381,33 +2393,44 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
 
         const stillGranted = async () => (await grantRows(held.id, { actorGroupId: group.id })).length;
+        const revoke = (accessBundleId: string, body: Record<string, unknown>) =>
+          inject("POST", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, body);
 
-        expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${other.id}/members/groups/${group.id}`))
-            .statusCode
-        ).toBe(404);
+        // Every miss below is a 200 with the actor reported in skipped, not a 404: a batch cannot fail
+        // wholesale on one absent id and stay useful, and the grant it does not name has to survive.
+        // That surviving grant is the assertion that matters; the status alone would not catch a revoke
+        // that reached the wrong bundle.
+        const wrongBundle = await revoke(other.id, { groupIds: [group.id] });
+        expect(wrongBundle.statusCode).toBe(200);
+        expect(JSON.parse(wrongBundle.payload)).toMatchObject({
+          members: [],
+          skipped: [{ type: "group", id: group.id }]
+        });
         expect(await stillGranted()).toBe(1);
 
-        expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/users/${group.id}`)).statusCode
-        ).toBe(404);
+        // The same id sent as the wrong actor kind names nobody, so the group's grant stands.
+        const wrongType = await revoke(held.id, { userIds: [group.id] });
+        expect(wrongType.statusCode).toBe(200);
+        expect(JSON.parse(wrongType.payload).skipped).toMatchObject([{ type: "user", id: group.id }]);
         expect(await stillGranted()).toBe(1);
 
-        expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/users/${crypto.randomUUID()}`))
-            .statusCode
-        ).toBe(404);
+        const unknownActor = await revoke(held.id, { userIds: [crypto.randomUUID()] });
+        expect(unknownActor.statusCode).toBe(200);
+        expect(JSON.parse(unknownActor.payload).members).toHaveLength(0);
+        expect(await stillGranted()).toBe(1);
 
-        expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/groups/${group.id}`))
-            .statusCode
-        ).toBe(200);
+        const correct = await revoke(held.id, { groupIds: [group.id] });
+        expect(correct.statusCode).toBe(200);
+        expect(JSON.parse(correct.payload)).toMatchObject({
+          members: [{ actor: { type: "group", id: group.id } }],
+          skipped: []
+        });
         expect(await stillGranted()).toBe(0);
 
-        expect(
-          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${held.id}/members/groups/${group.id}`))
-            .statusCode
-        ).toBe(404);
+        // Repeating it changes nothing, which is what makes the bulk call safe to retry.
+        const again = await revoke(held.id, { groupIds: [group.id] });
+        expect(again.statusCode).toBe(200);
+        expect(JSON.parse(again.payload)).toMatchObject({ members: [], skipped: [{ type: "group", id: group.id }] });
       } finally {
         await group.cleanup();
       }
@@ -2427,11 +2450,17 @@ describe("Agent Vault V1 Router", async () => {
       const projectMembership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
         .first();
-      const refused = await inject(
-        "DELETE",
-        `/api/v1/agent-vault/access-bundles/${bundle.id}/members/identities/${identity.id}`
-      );
-      expect(refused.statusCode).toBe(404);
+      // The actor holds a project membership but no grant on this bundle, so the revoke reports it as
+      // skipped and, crucially, leaves the project membership alone. That is the property this test
+      // defends: the two scopes share one table, so a revoke that lost its scope filter would take it.
+      const refused = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+        machineIdentityIds: [identity.id]
+      });
+      expect(refused.statusCode).toBe(200);
+      expect(JSON.parse(refused.payload)).toMatchObject({
+        members: [],
+        skipped: [{ type: "machineIdentity", id: identity.id }]
+      });
       expect(await testDb("memberships").where({ id: projectMembership.id })).toHaveLength(1);
 
       for (const name of ["seats-a", "seats-b", "seats-c"]) {
