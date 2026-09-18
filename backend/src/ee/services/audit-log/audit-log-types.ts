@@ -7,6 +7,10 @@ import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import {
+  ResourceAuthMethodType,
+  TSettableAuthMethod
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   TCreateSecretRotationV2DTO,
@@ -906,6 +910,7 @@ export enum EventType {
   // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_CREATE = "resource-auth-method-create",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",
@@ -7432,7 +7437,7 @@ interface GatewayConnectEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
+type ResourceAuthMethodKind = TSettableAuthMethod;
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -7440,6 +7445,7 @@ interface ResourceAuthMethodLoginEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
     principalArn?: string;
@@ -7447,6 +7453,9 @@ interface ResourceAuthMethodLoginEvent {
     enrollmentTokenId?: string;
     kubernetesNamespace?: string;
     kubernetesServiceAccountName?: string;
+    gcpServiceAccountEmail?: string;
+    gcpProjectId?: string;
+    gcpZone?: string;
   };
 }
 
@@ -7455,6 +7464,7 @@ interface ResourceAuthMethodLoginFailedEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     reasonCode: string;
     message: string;
@@ -7462,24 +7472,39 @@ interface ResourceAuthMethodLoginFailedEvent {
     accountId?: string;
     kubernetesNamespace?: string;
     kubernetesServiceAccountName?: string;
+    gcpServiceAccountEmail?: string;
+    gcpProjectId?: string;
+    gcpZone?: string;
   };
+}
+
+interface ResourceAuthMethodConfigMetadata {
+  resourceType: ResourceAuthMethodResourceType;
+  resourceId: string;
+  resourceName?: string;
+  method: ResourceAuthMethodType;
+  methodConfigId: string;
+  stsEndpoint?: string;
+  allowedPrincipalArns?: string;
+  allowedAccountIds?: string;
+  kubernetesHost?: string;
+  allowedNamespaces?: string;
+  allowedNames?: string;
+  allowedAudience?: string;
+  gcpAuthType?: string;
+  allowedServiceAccounts?: string;
+  allowedProjects?: string;
+  allowedZones?: string;
+}
+
+interface ResourceAuthMethodCreateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_CREATE;
+  metadata: ResourceAuthMethodConfigMetadata;
 }
 
 interface ResourceAuthMethodUpdateEvent {
   type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
-  metadata: {
-    resourceType: ResourceAuthMethodResourceType;
-    resourceId: string;
-    method: ResourceAuthMethodKind;
-    methodConfigId: string;
-    stsEndpoint?: string;
-    allowedPrincipalArns?: string;
-    allowedAccountIds?: string;
-    kubernetesHost?: string;
-    allowedNamespaces?: string;
-    allowedNames?: string;
-    allowedAudience?: string;
-  };
+  metadata: ResourceAuthMethodConfigMetadata;
 }
 
 interface ResourceAuthMethodRevokeEvent {
@@ -8377,6 +8402,7 @@ export type Event =
   | GatewayConnectEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodCreateEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
   | RelayCreateEvent

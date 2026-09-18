@@ -244,6 +244,7 @@ export enum TableName {
   GatewayV2 = "gateways_v2",
   ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
+  ResourceGcpAuth = "resource_gcp_auths",
   ResourceKubernetesAuth = "resource_kubernetes_auths",
   ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",

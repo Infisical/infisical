@@ -171,7 +171,17 @@ export const ResourceAuthLoginFailureReason = {
   NamespaceNotAllowed: "namespace_not_allowed",
   NameNotAllowed: "name_not_allowed",
   AudienceNotAllowed: "audience_not_allowed",
-  GatewayProxyUnavailable: "gateway_proxy_unavailable"
+  GatewayProxyUnavailable: "gateway_proxy_unavailable",
+  GcpMalformedToken: "gcp_malformed_token",
+  GcpMissingEmailClaim: "gcp_missing_email_claim",
+  GcpTokenAudienceRejected: "gcp_token_audience_rejected",
+  GcpTokenRejected: "gcp_token_rejected",
+  GcpTokenVerificationFailed: "gcp_token_verification_failed",
+  GcpTokenLifetimeRejected: "gcp_token_lifetime_rejected",
+  ServiceAccountNotAllowed: "service_account_not_allowed",
+  ComputeEngineDetailsMissing: "compute_engine_details_missing",
+  ProjectNotAllowed: "project_not_allowed",
+  ZoneNotAllowed: "zone_not_allowed"
 } as const;
 
 // Who performs the TokenReview. Api means Infisical does, using the configured reviewer token.
@@ -186,10 +196,22 @@ export type TKubernetesTokenReviewMode = (typeof KubernetesTokenReviewMode)[keyo
 
 export const ResourceAuthMethodType = {
   Aws: "aws",
+  Gcp: "gcp",
   Kubernetes: "kubernetes",
   Token: "token",
   Identity: "identity"
 } as const;
 
+// Mirrors the machine identity GCP auth types.
+export const GcpAuthType = {
+  Gce: "gce",
+  Iam: "iam"
+} as const;
+
+export type TGcpAuthType = (typeof GcpAuthType)[keyof typeof GcpAuthType];
+
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export type ResourceAuthMethodType = (typeof ResourceAuthMethodType)[keyof typeof ResourceAuthMethodType];
+
+// The methods a resource can actually be configured with; `identity` is legacy and read-only.
+export type TSettableAuthMethod = Exclude<ResourceAuthMethodType, typeof ResourceAuthMethodType.Identity>;

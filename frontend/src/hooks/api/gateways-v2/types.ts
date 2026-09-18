@@ -27,6 +27,16 @@ export type GatewayAwsAuthConfig = {
   updatedAt: string;
 };
 
+export type GatewayGcpAuthConfig = {
+  id: string;
+  type: "gce" | "iam";
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type GatewayKubernetesAuthConfig = {
   id: string;
   kubernetesHost: string;
@@ -52,6 +62,7 @@ export type GatewayIdentityAuthConfig = {
 
 export type GatewayAuthMethodView =
   | { method: "aws"; config: GatewayAwsAuthConfig }
+  | { method: "gcp"; config: GatewayGcpAuthConfig }
   | { method: "kubernetes"; config: GatewayKubernetesAuthConfig }
   | { method: "token"; config: GatewayTokenAuthConfig }
   | { method: "identity"; config: GatewayIdentityAuthConfig };
@@ -66,6 +77,13 @@ export type SettableAuthMethodInput =
       stsEndpoint?: string;
       allowedPrincipalArns: string;
       allowedAccountIds: string;
+    }
+  | {
+      method: "gcp";
+      type: "gce" | "iam";
+      allowedServiceAccounts: string;
+      allowedProjects: string;
+      allowedZones: string;
     }
   | {
       method: "kubernetes";

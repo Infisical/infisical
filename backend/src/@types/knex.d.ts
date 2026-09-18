@@ -521,6 +521,9 @@ import {
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
+  TResourceGcpAuths,
+  TResourceGcpAuthsInsert,
+  TResourceGcpAuthsUpdate,
   TResourceKubernetesAuths,
   TResourceKubernetesAuthsInsert,
   TResourceKubernetesAuthsUpdate,
@@ -1734,6 +1737,11 @@ declare module "knex/types/tables" {
       TResourceAwsAuths,
       TResourceAwsAuthsInsert,
       TResourceAwsAuthsUpdate
+    >;
+    [TableName.ResourceGcpAuth]: KnexOriginal.CompositeTableType<
+      TResourceGcpAuths,
+      TResourceGcpAuthsInsert,
+      TResourceGcpAuthsUpdate
     >;
     [TableName.ResourceKubernetesAuth]: KnexOriginal.CompositeTableType<
       TResourceKubernetesAuths,
