@@ -119,12 +119,12 @@ export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {
   if (
     data.destination === PkiSync.GcpCertificateManager &&
     data.destinationConfig?.certificateMapBinding &&
-    (data.certificateIds?.length ?? 0) > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
+    (data.filters?.certificateOrderIds?.length ?? 0) > GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
   ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["destinationConfig", "certificateMapBinding"],
-      message: `Certificate map binding supports up to ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY} certificates, which is the GCP limit for one certificate map entry.`
+      message: `Certificate map binding supports up to ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY} certificate orders, which is the GCP limit for one certificate map entry.`
     });
   }
 

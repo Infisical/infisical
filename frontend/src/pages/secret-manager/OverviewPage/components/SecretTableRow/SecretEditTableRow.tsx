@@ -925,6 +925,11 @@ export const SecretEditTableRow = ({
     ProjectPermissionSecretActions.DescribeSecret,
     { environment, secretPath, secretName, secretTags: ["*"] }
   );
+  const canDuplicateSecret = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.DescribeSecret,
+    { environment, secretPath, secretName, secretTags: tags?.map(({ slug }) => slug) ?? [] }
+  );
 
   const isReadOnly =
     isPendingDelete ||
@@ -1757,7 +1762,11 @@ export const SecretEditTableRow = ({
                 </TooltipContent>
               </Tooltip>
               <Tooltip
-                open={isPendingBatchChange || isManagedSecret || isCreatable ? undefined : false}
+                open={
+                  isPendingBatchChange || isManagedSecret || isCreatable || !canDuplicateSecret
+                    ? undefined
+                    : false
+                }
                 disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
@@ -1768,6 +1777,7 @@ export const SecretEditTableRow = ({
                       isPendingBatchChange ||
                       isManagedSecret ||
                       isCreatable ||
+                      !canDuplicateSecret ||
                       !secretId ||
                       !onCopySecret
                     }
@@ -1779,13 +1789,15 @@ export const SecretEditTableRow = ({
                 <TooltipContent side="left">
                   {isPendingBatchChange
                     ? "Discard Pending Changes First"
-                    : isCreatable
-                      ? "Create Secret First"
-                      : isHoneyTokenSecret
-                        ? "Cannot Copy Honey Token Secret"
-                        : isRotatedSecret
-                          ? "Cannot Copy Rotated Secret"
-                          : "Copy Secret"}
+                    : !canDuplicateSecret
+                      ? "Access Denied"
+                      : isCreatable
+                        ? "Create Secret First"
+                        : isHoneyTokenSecret
+                          ? "Cannot Copy Honey Token Secret"
+                          : isRotatedSecret
+                            ? "Cannot Copy Rotated Secret"
+                            : "Copy Secret"}
                 </TooltipContent>
               </Tooltip>
 
@@ -1916,6 +1928,7 @@ export const SecretEditTableRow = ({
         </SheetContent>
       </Sheet>
       <UpgradePlanModal
+        paywallKey="secret-manager.secret-edit-table-row"
         isOpen={popUp.accessInsightsUpgrade.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
         text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."

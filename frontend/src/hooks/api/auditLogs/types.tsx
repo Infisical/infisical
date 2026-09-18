@@ -1,4 +1,5 @@
 import { CaStatus } from "../ca";
+import { CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -705,6 +706,7 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    revocationReason?: CrlReason;
   };
 }
 

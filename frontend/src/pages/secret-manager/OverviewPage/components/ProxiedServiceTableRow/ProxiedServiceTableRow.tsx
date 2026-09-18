@@ -262,17 +262,18 @@ export const ProxiedServiceTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow>
-          <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
+        <TableRow className="border-0 hover:bg-transparent">
+          <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
+              className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="border-none rounded-none bg-transparent">
-                <TableHeader>
+              <Table containerClassName="rounded-none border-0">
+                <TableHeader className="bg-container-hover">
                   <TableRow>
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className="w-full">Environment</TableHead>
-                    <TableHead />
+                    <TableHead variant="action" className="w-px" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -283,6 +284,7 @@ export const ProxiedServiceTableRow = ({
 
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
+                          <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                           <TableCell colSpan={2}>
                             <div className="relative flex w-full items-center">
                               <span>{envName}</span>

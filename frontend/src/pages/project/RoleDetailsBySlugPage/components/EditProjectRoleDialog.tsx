@@ -209,6 +209,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
         </SheetContent>
       </Sheet>
       <UpgradePlanModal
+        paywallKey="project.edit-project-role-dialog"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
         text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."

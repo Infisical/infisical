@@ -890,8 +890,9 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
     }
 
+    const normalizedCadence = normalizeCadence(cadence);
     // `quantities` from the client is the buyer's committed choice; the service derives declaredUsage.
-    const resolved = await buildProductLineItem(product, normalizeCadence(cadence), orgId, plan, quantities);
+    const resolved = await buildProductLineItem(product, normalizedCadence, orgId, plan, quantities);
     if (!resolved) {
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
@@ -899,7 +900,7 @@ export const licenseV2ServiceFactory = ({
     const result = await licenseClient.buyProduct(orgId, {
       productId,
       plan: resolved.planTier,
-      cadence: normalizeCadence(cadence),
+      cadence: normalizedCadence,
       quantities: resolved.quantities,
       declaredUsage: resolved.declaredUsage,
       email,
@@ -908,7 +909,12 @@ export const licenseV2ServiceFactory = ({
 
     if (result.outcome === "subscription_updated") {
       await licenseClient.markEntitlementsStale(orgId);
-      return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
+      return {
+        outcome: "subscription_updated" as const,
+        subscriptionId: result.subscriptionId,
+        plan: resolved.planTier,
+        cadence: normalizedCadence
+      };
     }
 
     // checkout_created: the customer must finish in Stripe Checkout; entitlements change via webhook.
@@ -916,7 +922,12 @@ export const licenseV2ServiceFactory = ({
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
     await licenseClient.markEntitlementsStale(orgId, { checkout: true });
-    return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
+    return {
+      outcome: "checkout_created" as const,
+      checkoutUrl: result.checkoutUrl,
+      plan: resolved.planTier,
+      cadence: normalizedCadence
+    };
   };
 
   const addPaymentMethod = async ({ orgId, actor, returnPath }: TAddBillingV2PaymentMethodDTO) => {

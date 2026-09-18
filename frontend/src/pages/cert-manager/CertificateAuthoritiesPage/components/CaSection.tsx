@@ -148,6 +148,7 @@ export const CaSection = () => {
       </CardContent>
       <CreateCaWizard isOpen={isCreateWizardOpen} onOpenChange={setIsCreateWizardOpen} />
       <UpgradePlanModal
+        paywallKey="cert-manager.ca"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { text: string })?.text}

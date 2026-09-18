@@ -262,6 +262,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="organization.org-sso.section"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan.data?.text}
