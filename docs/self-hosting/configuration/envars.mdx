@@ -960,6 +960,20 @@ You can configure third-party app connections for re-use across Infisical Projec
     </ParamField>
 </Accordion>
 
+<Accordion title="Stripe OAuth Connection">
+    <ParamField query="INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID" type="string" default="none" optional>
+        The Client ID of your Stripe App.
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL" type="string" default="none" optional>
+        The OAuth install link for your Stripe App, copied from the Stripe dashboard. Stripe issues a different link per mode, so make sure it matches the mode of the secret key below.
+    </ParamField>
+
+    <ParamField query="INF_APP_CONNECTION_STRIPE_SECRET_KEY" type="string" default="none" optional>
+        The secret key of the Stripe account that owns your Stripe App.
+    </ParamField>
+</Accordion>
+
 ## Secret scanning
 
 <Accordion title="GitHub">
