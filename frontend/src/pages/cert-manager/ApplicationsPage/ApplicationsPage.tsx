@@ -3,7 +3,6 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -22,7 +21,9 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageHeader,
   PageLoader,
+  Pagination,
   ResourceIcon,
   Table,
   TableBody,
@@ -35,18 +36,41 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { TPkiApplication, useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { ConfigureProfilesModal } from "./components/ConfigureProfilesModal";
 import { PkiApplicationModal } from "./components/PkiApplicationModal";
 
+const APPLICATIONS_TABLE = "pkiApplicationsTable";
+
 export const ApplicationsPage = () => {
   const { projectId, orgId } = useParams({ strict: false });
   const navigate = useNavigate();
-  const { data: applications, isPending } = useListPkiApplications();
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, 20)
+  );
+  const offset = (page - 1) * perPage;
+  const { data, isPending } = useListPkiApplications({ limit: perPage, offset });
+  const applications = data?.applications;
+  const totalCount = data?.total ?? 0;
+
+  useResetPageHelper({ totalCount, offset, setPage });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, newPerPage);
+  };
+
   const { hasProjectRole } = useProjectPermission();
   const canCreateApplication = hasProjectRole("admin");
   const canConfigureProfiles = canCreateApplication;
@@ -100,7 +124,7 @@ export const ApplicationsPage = () => {
             >
               <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
-                  <ResourceIcon className="size-4 shrink-0 text-primary" />
+                  <ResourceIcon className="size-4 shrink-0 text-project" />
                   <span>{app.name}</span>
                   {app.description?.length ? (
                     <Tooltip>
@@ -154,9 +178,9 @@ export const ApplicationsPage = () => {
       <Helmet>
         <title>Applications</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
               scope={ProjectType.CertificateManager}
               icon={ResourceIcon}
@@ -183,7 +207,18 @@ export const ApplicationsPage = () => {
                   </CardAction>
                 ) : null}
               </CardHeader>
-              <CardContent>{renderApplications()}</CardContent>
+              <CardContent>
+                {renderApplications()}
+                {totalCount > 0 ? (
+                  <Pagination
+                    count={totalCount}
+                    page={page}
+                    perPage={perPage}
+                    onChangePage={setPage}
+                    onChangePerPage={handlePerPageChange}
+                  />
+                ) : null}
+              </CardContent>
             </Card>
           </div>
         </div>

@@ -1,11 +1,22 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { TriangleAlert } from "lucide-react";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Badge } from "@app/components/v3";
+import {
+  getSecretSyncDestinationConfig,
+  TSecretSyncForm
+} from "@app/components/secret-syncs/forms/schemas";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailGroupHeader,
+  DetailLabel,
+  DetailValue
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useDuplicateDestinationCheck } from "@app/hooks/api/secretSyncs";
@@ -27,8 +38,12 @@ import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
+import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
-import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
+import {
+  CloudflareWorkersSyncOptionsReviewFields,
+  CloudflareWorkersSyncReviewFields
+} from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
@@ -37,6 +52,7 @@ import { FlyioSyncOptionsReviewFields, FlyioSyncReviewFields } from "./FlyioSync
 import { GcpSyncReviewFields } from "./GcpSyncReviewFields";
 import { GitHubSyncReviewFields } from "./GitHubSyncReviewFields";
 import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
+import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
@@ -48,13 +64,23 @@ import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
+import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
+import {
+  SpaceliftSyncOptionsReviewFields,
+  SpaceliftSyncReviewFields
+} from "./SpaceliftSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
 import { TravisCISyncReviewFields } from "./TravisCISyncReviewFields";
+import {
+  TriggerDevSyncOptionsReviewFields,
+  TriggerDevSyncReviewFields
+} from "./TriggerDevSyncReviewFields";
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
@@ -73,7 +99,7 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
     destination,
     isAutoSyncEnabled
   } = watch();
@@ -83,8 +109,9 @@ export const SecretSyncReviewFields = () => {
   const { hasDuplicate, duplicateProjectId, isChecking } = useDuplicateDestinationCheck({
     destination,
     projectId: currentProject?.id || "",
+    connectionId: connection?.id,
     enabled: true,
-    destinationConfig: watch("destinationConfig")
+    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig"))
   });
 
   switch (destination) {
@@ -160,6 +187,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsReviewFields />;
       break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;
@@ -167,11 +195,17 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Railway:
       DestinationFieldsComponent = <RailwaySyncReviewFields />;
       break;
+    case SecretSync.HasuraCloud:
+      DestinationFieldsComponent = <HasuraCloudSyncReviewFields />;
+      break;
     case SecretSync.Checkly:
       DestinationFieldsComponent = <ChecklySyncReviewFields />;
       break;
     case SecretSync.Supabase:
       DestinationFieldsComponent = <SupabaseSyncReviewFields />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationFieldsComponent = <RundeckSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
@@ -218,115 +252,150 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Snowflake:
       DestinationFieldsComponent = <SnowflakeSyncReviewFields />;
       break;
+    case SecretSync.TriggerDev:
+      DestinationFieldsComponent = <TriggerDevSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <TriggerDevSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Qovery:
+      DestinationFieldsComponent = <QoverySyncReviewFields />;
+      break;
+    case SecretSync.Cloud66:
+      DestinationFieldsComponent = <Cloud66SyncReviewFields />;
+      break;
+    case SecretSync.Daytona:
+      // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Spacelift:
+      DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
+      break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
   }
 
   return (
-    <div className="mb-4 flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Source</span>
+    <div className="mb-4 flex flex-col gap-y-8">
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Source</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Environment</DetailLabel>
+            <DetailValue>{environment.name}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Secret Path</DetailLabel>
+            <DetailValue>{secretPath}</DetailValue>
+          </Detail>
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Environment">{environment.name}</GenericFieldLabel>
-          <GenericFieldLabel label="Secret Path">{secretPath}</GenericFieldLabel>
-        </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="flex w-full items-center gap-2 border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Destination</span>
-          {isChecking && <span className="text-xs text-mineshaft-400">Checking...</span>}
-        </div>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">
+          Destination
+          {isChecking && <span className="ml-2 text-xs font-normal text-muted">Checking...</span>}
+        </DetailGroupHeader>
+
         {hasDuplicate && (
-          <div
-            className={`mb-2 flex items-start rounded-md border px-3 py-2 ${
-              currentOrg?.blockDuplicateSecretSyncDestinations
-                ? "border-red-600 bg-red-900/20"
-                : "border-yellow-600 bg-yellow-900/20"
-            }`}
-          >
-            <div
-              className={`flex text-sm ${
-                currentOrg?.blockDuplicateSecretSyncDestinations
-                  ? "text-red-100"
-                  : "text-yellow-100"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faWarning}
-                className={`mt-1 mr-2 ${
-                  currentOrg?.blockDuplicateSecretSyncDestinations
-                    ? "text-red-600"
-                    : "text-yellow-600"
-                }`}
-              />
-              <div>
-                <p>
-                  {currentOrg?.blockDuplicateSecretSyncDestinations
-                    ? "Another secret sync in your organization is already configured with the same destination. Your organization does not allow duplicate destination configurations."
-                    : "Another secret sync in your organization is already configured with the same destination. This may lead to conflicts or unexpected behavior."}
-                </p>
-                {duplicateProjectId && (
-                  <p
-                    className={`mt-1 text-xs ${
-                      currentOrg?.blockDuplicateSecretSyncDestinations
-                        ? "text-red-200"
-                        : "text-yellow-200"
-                    }`}
-                  >
+          <Alert variant={currentOrg?.blockDuplicateSecretSyncDestinations ? "danger" : "warning"}>
+            <TriangleAlert />
+            <AlertTitle>
+              {currentOrg?.blockDuplicateSecretSyncDestinations
+                ? "Duplicate destination blocked"
+                : "Duplicate destination detected"}
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                {currentOrg?.blockDuplicateSecretSyncDestinations
+                  ? "Another secret sync in your organization is already configured with the same destination. Your organization does not allow duplicate destination configurations."
+                  : "Another secret sync in your organization is already configured with the same destination. This may lead to conflicts or unexpected behavior."}
+              </p>
+              <p>
+                {duplicateProjectId ? (
+                  <>
                     Duplicate found in project ID:{" "}
-                    <code
-                      className={`rounded-sm px-1 py-0.5 ${
-                        currentOrg?.blockDuplicateSecretSyncDestinations
-                          ? "bg-red-800/50"
-                          : "bg-yellow-800/50"
-                      }`}
-                    >
+                    <code className="rounded-sm bg-foreground/10 px-1 py-0.5 font-mono">
                       {duplicateProjectId}
                     </code>
-                  </p>
+                  </>
+                ) : (
+                  "Duplicate found in another project in your organization."
                 )}
-              </div>
-            </div>
-          </div>
+              </p>
+            </AlertDescription>
+          </Alert>
         )}
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Connection</DetailLabel>
+            <DetailValue>{connection.name}</DetailValue>
+          </Detail>
           {DestinationFieldsComponent}
         </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Sync Options</span>
-        </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Auto-Sync">
-            <Badge variant={isAutoSyncEnabled ? "success" : "neutral"}>
-              {isAutoSyncEnabled ? "Enabled" : "Disabled"}
-            </Badge>
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Initial Sync Behavior">
-            {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destinationName).name}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Key Schema">{keySchema}</GenericFieldLabel>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Sync Options</DetailGroupHeader>
+
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Auto-Sync</DetailLabel>
+            <DetailValue>
+              <Badge variant={isAutoSyncEnabled ? "success" : "neutral"}>
+                {isAutoSyncEnabled ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Initial Sync Behavior</DetailLabel>
+            <DetailValue>
+              {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destinationName).name}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Key Schema</DetailLabel>
+            {keySchema ? (
+              <DetailValue>{keySchema}</DetailValue>
+            ) : (
+              <DetailValue className="text-muted italic">None</DetailValue>
+            )}
+          </Detail>
           {AdditionalSyncOptionsFieldsComponent}
-          {disableSecretDeletion && (
-            <GenericFieldLabel label="Secret Deletion">
-              <Badge variant="warning">Disabled</Badge>
-            </GenericFieldLabel>
-          )}
+          <Detail>
+            <DetailLabel>Include All Subfolders</DetailLabel>
+            <DetailValue>
+              <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
+                {includeAllSubFolders ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Secret Deletion Protection</DetailLabel>
+            <DetailValue>
+              <Badge variant={disableSecretDeletion ? "success" : "neutral"}>
+                {disableSecretDeletion ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
         </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Details</span>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Details</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{name}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Description</DetailLabel>
+            {description ? (
+              <DetailValue>{description}</DetailValue>
+            ) : (
+              <DetailValue className="text-muted italic">None</DetailValue>
+            )}
+          </Detail>
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
-          <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
-        </div>
-      </div>
+      </DetailGroup>
     </div>
   );
 };

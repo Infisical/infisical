@@ -1,9 +1,28 @@
-import { useEffect, useState } from "react";
-import { RefreshCwIcon } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useInvalidateCache } from "@app/hooks/api";
@@ -16,13 +35,18 @@ export const CachingPageForm = () => {
 
   const [type, setType] = useState<CacheType | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const confirmationInputId = useId();
 
   const {
     data: invalidationStatus,
     isFetching,
     refetch
   } = useGetInvalidatingCacheStatus(shouldPoll);
-  const isInvalidating = Boolean(shouldPoll && (isFetching || invalidationStatus));
+  const isInvalidating = Boolean(
+    isSubmitting || (shouldPoll && (isFetching || invalidationStatus))
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "invalidateCache"
@@ -31,10 +55,21 @@ export const CachingPageForm = () => {
   const handleInvalidateCacheSubmit = async () => {
     if (!type || isInvalidating) return;
 
-    await invalidateCache({ type });
-    createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
-    setShouldPoll(true);
-    handlePopUpClose("invalidateCache");
+    setIsSubmitting(true);
+    try {
+      await invalidateCache({ type });
+      createNotification({
+        text: `Began invalidating ${type} cache`,
+        type: "success"
+      });
+      setShouldPoll(true);
+      setConfirmation("");
+      handlePopUpClose("invalidateCache");
+    } catch {
+      // MutationCache reports request errors globally; keep the dialog and confirmation available.
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -42,7 +77,10 @@ export const CachingPageForm = () => {
 
     if (shouldPoll) {
       setShouldPoll(false);
-      createNotification({ text: "Successfully invalidated cache", type: "success" });
+      createNotification({
+        text: "Successfully invalidated cache",
+        type: "success"
+      });
     }
   }, [isInvalidating, shouldPoll]);
 
@@ -52,42 +90,90 @@ export const CachingPageForm = () => {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex flex-col">
-          <div className="mb-2 flex items-center gap-3">
-            <span className="text-xl font-medium text-mineshaft-100">Secrets Cache</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Secrets Cache
             {isInvalidating && (
               <Badge variant="danger">
                 <RefreshCwIcon className="animate-spin" />
-                Invalidating Cache
+                Invalidating cache
               </Badge>
             )}
-          </div>
-          <span className="max-w-xl text-sm text-mineshaft-400">
+          </CardTitle>
+          <CardDescription className="max-w-xl">
             The encrypted secrets cache encompasses all secrets stored within the system and
             provides a temporary, secure storage location for frequently accessed credentials.
-          </span>
-        </div>
-
-        <Button
-          colorSchema="danger"
-          onClick={() => {
-            setType(CacheType.SECRETS);
-            handlePopUpOpen("invalidateCache");
-          }}
-          isDisabled={!user.superAdmin || isInvalidating}
-        >
-          Invalidate Secrets Cache
-        </Button>
-      </div>
-      <DeleteActionModal
-        isOpen={popUp.invalidateCache.isOpen}
-        title={`Are you sure you want to invalidate ${type} cache?`}
-        subTitle="This action is permanent and irreversible. The cache invalidation process may take several minutes to complete."
-        onChange={(isOpen) => handlePopUpToggle("invalidateCache", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleInvalidateCacheSubmit}
-      />
+          </CardDescription>
+          <CardAction>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setConfirmation("");
+                setType(CacheType.SECRETS);
+                handlePopUpOpen("invalidateCache");
+              }}
+              isDisabled={!user.superAdmin || isInvalidating}
+            >
+              Invalidate secrets cache
+            </Button>
+          </CardAction>
+        </CardHeader>
+      </Card>
+      <AlertDialog
+        open={popUp.invalidateCache.isOpen}
+        onOpenChange={(isOpen) => {
+          if (isSubmitting && !isOpen) return;
+          handlePopUpToggle("invalidateCache", isOpen);
+          if (!isOpen) setConfirmation("");
+        }}
+      >
+        <AlertDialogContent>
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleInvalidateCacheSubmit().catch(() => undefined);
+            }}
+          >
+            <AlertDialogHeader className="text-left">
+              <AlertDialogTitle>Invalidate {type} cache?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action is permanent and may take several minutes to complete.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Field>
+              <FieldLabel htmlFor={confirmationInputId}>Type confirm to continue</FieldLabel>
+              <Input
+                id={confirmationInputId}
+                name={confirmationInputId}
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
+                spellCheck={false}
+              />
+            </Field>
+            <Alert variant="danger" className="items-center [&>svg]:translate-y-0">
+              <TriangleAlertIcon />
+              <AlertDescription className="text-current">This cannot be undone.</AlertDescription>
+            </Alert>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <Button
+                type="submit"
+                variant="danger"
+                size="sm"
+                isPending={isSubmitting}
+                isDisabled={confirmation !== "confirm" || isInvalidating}
+              >
+                Invalidate cache
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

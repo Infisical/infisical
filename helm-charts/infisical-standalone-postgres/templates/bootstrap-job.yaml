@@ -21,6 +21,9 @@ spec:
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
       serviceAccountName: {{ include "infisical.serviceAccountName" . }}
+    {{- with $infisicalValues.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+    {{- end }}
     {{- if $infisicalValues.image.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
@@ -29,6 +32,9 @@ spec:
       initContainers:
       - name: wait-for-infisical
         image: curlimages/curl:8.14.1
+        {{- with $infisicalValues.containerSecurityContext }}
+        securityContext: {{- toYaml . | nindent 10 }}
+        {{- end }}
         command: ['sh', '-c']
         args:
         - |
@@ -42,6 +48,9 @@ spec:
         - name: infisical-bootstrap
           image: "infisical/cli:{{ $infisicalValues.autoBootstrap.image.tag }}"
           imagePullPolicy: {{ $infisicalValues.image.pullPolicy | default "IfNotPresent" }}
+          {{- with $infisicalValues.containerSecurityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           args:
             - bootstrap
             - --domain=http://{{ include "infisical.fullname" . }}:8080

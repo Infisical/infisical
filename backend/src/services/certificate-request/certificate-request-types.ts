@@ -1,4 +1,5 @@
 import { TProjectPermission } from "@app/lib/types";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
 import { CertificateRequestStatus } from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
@@ -28,6 +29,7 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   status: CertificateRequestStatus;
   certificateId?: string;
   acmeOrderId?: string;
+  customExtensions?: TResolvedCustomExtension[];
   basicConstraints?: {
     isCA: boolean;
     pathLength?: number;
@@ -39,6 +41,7 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   country?: string;
   state?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {

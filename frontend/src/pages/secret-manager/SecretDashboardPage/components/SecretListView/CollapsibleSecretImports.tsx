@@ -28,6 +28,8 @@ interface FlatItem {
   reference: string;
   id: string;
   environment: { name: string; slug: string };
+  projectName?: string;
+  sourceProjectId?: string;
   tooltipText?: string;
   destination?: string;
   syncName?: string;
@@ -36,6 +38,7 @@ interface FlatItem {
 interface CollapsibleSecretImportsProps {
   importedBy?: {
     environment: { name: string; slug: string };
+    project?: { name: string; slug: string; id: string };
     folders: {
       name: string;
       secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
@@ -109,6 +112,10 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
       return;
     }
 
+    const base = item.sourceProjectId
+      ? `/organizations/${currentOrg.id}/projects/secret-management/${item.sourceProjectId}`
+      : projectBase;
+
     const params = new URLSearchParams();
     params.set("environments", JSON.stringify([item.environment.slug]));
 
@@ -128,7 +135,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
       }
     }
 
-    window.open(`${projectBase}/overview?${params.toString()}`, "_blank");
+    window.open(`${base}/overview?${params.toString()}`, "_blank");
   };
 
   const flattenedItems = useMemo(() => {
@@ -140,9 +147,11 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
           items.push({
             type: ItemType.Folder,
             path: folder.name,
-            id: `folder-${env.environment.name}-${folder.name}`,
+            id: `folder-${env.project?.id ?? ""}-${env.environment.name}-${folder.name}`,
             reference: "Imported",
-            environment: env.environment
+            environment: env.environment,
+            projectName: env.project?.name,
+            sourceProjectId: env.project?.id
           });
         }
 
@@ -152,16 +161,21 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
             if (
               secretsToDelete.includes(referencedSecretKey) &&
               !items.some(
-                (item) => item.environment.name === env.environment.name && item.path === secretPath
+                (item) =>
+                  item.environment.name === env.environment.name &&
+                  item.path === secretPath &&
+                  item.sourceProjectId === env.project?.id
               )
             ) {
               items.push({
                 type: ItemType.Secret,
                 path: secretPath,
                 secretKey: referencedSecretKey,
-                id: `secret-${env.environment.name}-${secretPath}`,
+                id: `secret-${env.project?.id ?? ""}-${env.environment.name}-${secretPath}`,
                 reference: "Referenced",
-                environment: env.environment
+                environment: env.environment,
+                projectName: env.project?.name,
+                sourceProjectId: env.project?.id
               });
             }
           });
@@ -226,6 +240,8 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     return null;
   }
 
+  const hasCrossProjectItems = flattenedItems.some((item) => item.projectName !== undefined);
+
   return (
     <div className="mb-4 w-full">
       <Alert className="mb-4" variant="warning">
@@ -239,6 +255,11 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
             <TableHead className="w-1/4 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Resource
             </TableHead>
+            {hasCrossProjectItems && (
+              <TableHead className="w-1/4 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                Project
+              </TableHead>
+            )}
             <TableHead className="w-1/3 border-r border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
               Environment
             </TableHead>
@@ -261,6 +282,11 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
               <TableCell className="border-r" isTruncatable>
                 {getResourceLabel(item)}
               </TableCell>
+              {hasCrossProjectItems && (
+                <TableCell isTruncatable className="border-r">
+                  {item.projectName ?? "-"}
+                </TableCell>
+              )}
               <TableCell isTruncatable className="border-r">
                 {item.environment.name}
               </TableCell>

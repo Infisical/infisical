@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
-  TBitbucketEnvironment,
-  TBitbucketRepo,
-  TBitbucketWorkspace,
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel
+} from "@app/components/v3";
+import { useDebounce } from "@app/hooks";
+import {
   useBitbucketConnectionListEnvironments,
   useBitbucketConnectionListRepositories,
   useBitbucketConnectionListWorkspaces
@@ -20,19 +25,28 @@ export const BitbucketSyncFields = () => {
     TSecretSyncForm & { destination: SecretSync.Bitbucket }
   >();
 
+  const [workspaceSearch, setWorkspaceSearch] = useState("");
+  const [debouncedWorkspaceSearch] = useDebounce(workspaceSearch, 300);
+  const [repoSearch, setRepoSearch] = useState("");
+  const [debouncedRepoSearch] = useDebounce(repoSearch, 300);
   const connectionId = useWatch({ name: "connection.id", control });
   const workspace = useWatch({ name: "destinationConfig.workspaceSlug", control });
   const repository = useWatch({ name: "destinationConfig.repositorySlug", control });
 
   const { data: workspaces = [], isPending: isWorkspacesLoading } =
-    useBitbucketConnectionListWorkspaces(connectionId, {
+    useBitbucketConnectionListWorkspaces(connectionId, debouncedWorkspaceSearch || undefined, {
       enabled: Boolean(connectionId)
     });
 
   const { data: repositories = [], isPending: isRepositoriesLoading } =
-    useBitbucketConnectionListRepositories(connectionId, workspace ?? "", {
-      enabled: Boolean(connectionId) && Boolean(workspace)
-    });
+    useBitbucketConnectionListRepositories(
+      connectionId,
+      workspace ?? "",
+      debouncedRepoSearch || undefined,
+      {
+        enabled: Boolean(connectionId) && Boolean(workspace)
+      }
+    );
 
   const { data: environments = [], isPending: isEnvironmentsLoading } =
     useBitbucketConnectionListEnvironments(connectionId, workspace ?? "", repository ?? "", {
@@ -40,7 +54,7 @@ export const BitbucketSyncFields = () => {
     });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.workspaceSlug", "");
@@ -53,29 +67,43 @@ export const BitbucketSyncFields = () => {
         name="destinationConfig.workspaceSlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Bitbucket Workspace"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isWorkspacesLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={workspaces.find((w) => w.slug === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TBitbucketWorkspace>;
-                onChange(v?.slug ?? "");
-                // Clear downstream selections
-                setValue("destinationConfig.repositorySlug", "");
-                setValue("destinationConfig.environmentId", "");
-              }}
-              options={workspaces}
-              placeholder="Select workspace..."
-              getOptionLabel={(option) => option.slug}
-              getOptionValue={(option) => option.slug}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-bitbucket-workspace-slug-label"
+              htmlFor="secret-sync-bitbucket-workspace-slug"
+            >
+              Bitbucket Workspace
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-bitbucket-workspace-slug-label"
+                aria-describedby={error ? "secret-sync-bitbucket-workspace-slug-error" : undefined}
+                id="secret-sync-bitbucket-workspace-slug"
+                isError={Boolean(error)}
+                isLoading={isWorkspacesLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={value || null}
+                onValueChange={(option) => {
+                  if (option === value) return;
+                  onChange(option);
+                  setValue("destinationConfig.repositorySlug", "");
+                  setValue("destinationConfig.environmentId", "");
+                }}
+                onInputValueChange={(newValue) => setWorkspaceSearch(newValue)}
+                shouldFilter={false}
+                includeMissingSelectedOptions={!workspaceSearch}
+                options={workspaces.map((w) => w.slug)}
+                placeholder="Search for a workspace..."
+                getOptionLabel={(option) => option}
+                getOptionValue={(option) => option}
+                emptyMessage={(inputValue) =>
+                  inputValue ? "No workspaces found matching your search." : "No workspaces found."
+                }
+                modal
+              />
+              <FieldError id="secret-sync-bitbucket-workspace-slug-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -83,28 +111,46 @@ export const BitbucketSyncFields = () => {
         name="destinationConfig.repositorySlug"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Bitbucket Repository"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isRepositoriesLoading && Boolean(workspace)}
-              isDisabled={!workspace}
-              value={repositories.find((r) => r.slug === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TBitbucketRepo>;
-                onChange(v?.slug ?? "");
-                // Clear downstream selections
-                setValue("destinationConfig.environmentId", "");
-              }}
-              options={repositories}
-              placeholder="Select repository..."
-              getOptionLabel={(option) => option.full_name}
-              getOptionValue={(option) => option.slug}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-bitbucket-repository-slug-label"
+              htmlFor="secret-sync-bitbucket-repository-slug"
+            >
+              Bitbucket Repository
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-bitbucket-repository-slug-label"
+                aria-describedby={error ? "secret-sync-bitbucket-repository-slug-error" : undefined}
+                id="secret-sync-bitbucket-repository-slug"
+                isError={Boolean(error)}
+                isLoading={isRepositoriesLoading && Boolean(workspace)}
+                isDisabled={!workspace}
+                value={value || null}
+                onValueChange={(option) => {
+                  if (option === value) return;
+                  onChange(option);
+                  setValue("destinationConfig.environmentId", "");
+                }}
+                onInputValueChange={(newValue) => setRepoSearch(newValue)}
+                shouldFilter={false}
+                includeMissingSelectedOptions={!repoSearch}
+                options={repositories.map((r) => r.slug)}
+                placeholder="Search for a repository..."
+                getOptionLabel={(option) =>
+                  repositories.find((r) => r.slug === option)?.full_name ?? `${workspace}/${option}`
+                }
+                getOptionValue={(option) => option}
+                emptyMessage={(inputValue) =>
+                  inputValue
+                    ? "No repositories found matching your search."
+                    : "No repositories found."
+                }
+                modal
+              />
+              <FieldError id="secret-sync-bitbucket-repository-slug-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -112,30 +158,40 @@ export const BitbucketSyncFields = () => {
         name="destinationConfig.environmentId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isOptional
-            label="Bitbucket Deployment Environment"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isEnvironmentsLoading && Boolean(repository)}
-              isDisabled={!repository}
-              value={environments.find((e) => e.uuid === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TBitbucketEnvironment>;
-                onChange(v?.uuid ?? "");
-              }}
-              options={environments}
-              placeholder="Select environment..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.uuid}
-              isClearable
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-bitbucket-environment-id-label"
+              htmlFor="secret-sync-bitbucket-environment-id"
+            >
+              Bitbucket Deployment Environment (Optional)
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-bitbucket-environment-id-label"
+                aria-describedby={error ? "secret-sync-bitbucket-environment-id-error" : undefined}
+                id="secret-sync-bitbucket-environment-id"
+                isError={Boolean(error)}
+                isLoading={isEnvironmentsLoading && Boolean(repository)}
+                isDisabled={!repository}
+                value={value || null}
+                onValueChange={(option) => {
+                  onChange(option);
+                }}
+                onClear={() => onChange("")}
+                options={environments.map((e) => e.uuid)}
+                placeholder="Select environment..."
+                getOptionLabel={(option) =>
+                  environments.find((e) => e.uuid === option)?.name ?? option
+                }
+                getOptionValue={(option) => option}
+                getOptionKeywords={(option) => [option]}
+                modal
+              />
+              <FieldError id="secret-sync-bitbucket-environment-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

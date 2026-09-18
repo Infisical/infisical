@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { LogProvider } from "../audit-log-stream-enums";
+import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "../audit-log-stream-enums";
 import { BaseProviderSchema } from "../audit-log-stream-schemas";
 
 export const CustomProviderCredentialsSchema = z.object({
@@ -31,7 +31,7 @@ export const SanitizedCustomProviderSchema = BaseCustomProviderSchema.extend({
     url: CustomProviderCredentialsSchema.shape.url,
     // Return header keys and a redacted value
     headers: CustomProviderCredentialsSchema.shape.headers.transform((headers) =>
-      headers.map((header) => ({ ...header, value: "******" }))
+      headers.map((header) => ({ ...header, value: REDACTED_CREDENTIAL_VALUE }))
     )
   })
 });
@@ -46,5 +46,7 @@ export const CreateCustomProviderLogStreamSchema = z.object({
 });
 
 export const UpdateCustomProviderLogStreamSchema = z.object({
-  credentials: CustomProviderCredentialsSchema
+  credentials: CustomProviderCredentialsSchema,
+  // Custom streams migrated to "single" can pass "batch" here to upgrade (one-way).
+  streamMode: z.nativeEnum(StreamMode).optional()
 });

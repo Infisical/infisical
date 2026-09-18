@@ -11,12 +11,14 @@ import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { commitKeys } from "../folderCommits/queries";
-import { secretSnapshotKeys } from "../secretSnapshots/queries";
+import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import {
   TCreateFolderDTO,
   TDeleteFolderDTO,
   TGetFoldersByEnvDTO,
   TGetProjectFoldersDTO,
+  TMoveFolderDTO,
+  TMoveFolderResponse,
   TProjectEnvironmentsFolders,
   TSecretFolder,
   TUpdateFolderBatchDTO,
@@ -178,12 +180,6 @@ export const useGetOrCreateFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
@@ -213,12 +209,6 @@ export const useCreateFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
@@ -255,12 +245,6 @@ export const useUpdateFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
@@ -294,12 +278,6 @@ export const useDeleteFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
@@ -339,20 +317,6 @@ export const useUpdateFolderBatch = () => {
           })
         });
         queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({
-            projectId,
-            environment: folder.environment,
-            directory: folder.path
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({
-            projectId,
-            environment: folder.environment,
-            directory: folder.path
-          })
-        });
-        queryClient.invalidateQueries({
           queryKey: commitKeys.count({
             projectId,
             environment: folder.environment,
@@ -366,6 +330,55 @@ export const useUpdateFolderBatch = () => {
             directory: folder.path
           })
         });
+      });
+    }
+  });
+};
+
+export const useMoveFolder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TMoveFolderResponse, object, TMoveFolderDTO>({
+    mutationFn: async ({ projectId, folderId, destinationEnvironment, destinationPath }) => {
+      const { data } = await apiRequest.post<TMoveFolderResponse>("/api/v2/folders/move", {
+        projectId,
+        folderId,
+        destinationEnvironment,
+        destinationPath
+      });
+      return data;
+    },
+    onSuccess: (
+      _,
+      { projectId, sourceEnvironment, sourcePath, destinationEnvironment, destinationPath }
+    ) => {
+      const invalidatePath = (environment: string, path: string) => {
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath: path })
+        });
+        queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.count({ projectId, environment, directory: path })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.history({ projectId, environment, directory: path })
+        });
+      };
+
+      // the folder's old parent listing and its new parent listing both change
+      invalidatePath(sourceEnvironment, sourcePath);
+      invalidatePath(destinationEnvironment, destinationPath);
+
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
     }
   });

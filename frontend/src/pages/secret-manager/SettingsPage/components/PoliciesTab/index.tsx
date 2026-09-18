@@ -1,0 +1,1 @@
+export { PoliciesTab } from "./PoliciesTab";

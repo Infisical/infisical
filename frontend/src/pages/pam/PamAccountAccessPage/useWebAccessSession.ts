@@ -1,39 +1,109 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
-import { Terminal } from "@xterm/xterm";
-import ms from "ms";
+import { type ITheme, Terminal } from "@xterm/xterm";
 import { Readline } from "xterm-readline";
 
+import { type ResolvedTheme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
+import { PamAccountType } from "@app/hooks/api/pam";
 
-import { DEFAULT_ACCESS_DURATION } from "../constants";
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
 
 import "@xterm/xterm/css/xterm.css";
 
 type UseWebAccessSessionOptions = {
   accountId: string;
-  projectId: string;
-  orgId: string;
-  resourceName: string;
-  accountName: string;
-  resourceType: string;
+  accountType: string;
   reason?: string;
-  onSessionEnd?: () => void;
+  mfaSessionId?: string;
+  onSessionEnd?: (endReason?: string) => void;
 };
+
+const DARK_TERMINAL_THEME: ITheme = {
+  background: "#0d1117",
+  foreground: "#c9d1d9",
+  cursor: "#58a6ff",
+  cursorAccent: "#0d1117",
+  selectionBackground: "#264f78",
+  black: "#0d1117",
+  red: "#ff7b72",
+  green: "#3fb950",
+  yellow: "#d29922",
+  blue: "#58a6ff",
+  magenta: "#bc8cff",
+  cyan: "#76e3ea",
+  white: "#c9d1d9",
+  brightBlack: "#484f58",
+  brightRed: "#ffa198",
+  brightGreen: "#56d364",
+  brightYellow: "#e3b341",
+  brightBlue: "#79c0ff",
+  brightMagenta: "#d2a8ff",
+  brightCyan: "#b3f0ff",
+  brightWhite: "#f0f6fc"
+};
+
+const getLightTerminalTheme = (): ITheme => {
+  const styles = getComputedStyle(document.documentElement);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  const resolveToken = (token: string, fallback: string) => {
+    const value = styles.getPropertyValue(token).trim();
+    if (!value || !context) return fallback;
+    context.fillStyle = fallback;
+    context.fillStyle = value;
+    return context.fillStyle;
+  };
+
+  const background = resolveToken("--color-background", "#f7f7f7");
+  const foreground = resolveToken("--color-foreground", "#19191c");
+  const muted = resolveToken("--color-muted", "#707174");
+  const danger = resolveToken("--color-danger", "#b42318");
+  const success = resolveToken("--color-success", "#1a7f37");
+  const warning = resolveToken("--color-warning", "#8a5a00");
+  const info = resolveToken("--color-info", "#0969da");
+  const magenta = resolveToken("--color-product-ss", "#8250df");
+  const cyan = resolveToken("--color-product-kms", "#087f5b");
+
+  return {
+    background,
+    foreground,
+    cursor: resolveToken("--color-project", "#4f6f00"),
+    cursorAccent: background,
+    selectionBackground: resolveToken("--color-surface-selected", "#d8dee4"),
+    black: foreground,
+    red: danger,
+    green: success,
+    yellow: warning,
+    blue: info,
+    magenta,
+    cyan,
+    white: muted,
+    brightBlack: muted,
+    brightRed: danger,
+    brightGreen: success,
+    brightYellow: warning,
+    brightBlue: info,
+    brightMagenta: magenta,
+    brightCyan: cyan,
+    brightWhite: foreground
+  };
+};
+
+const getTerminalTheme = (resolvedTheme: ResolvedTheme): ITheme =>
+  resolvedTheme === "light" ? getLightTerminalTheme() : DARK_TERMINAL_THEME;
 
 export const useWebAccessSession = ({
   accountId,
-  projectId,
-  orgId,
-  resourceName,
-  accountName,
-  resourceType,
+  accountType,
   reason,
+  mfaSessionId,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
+  const { resolvedTheme } = useTheme();
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -47,16 +117,23 @@ export const useWebAccessSession = ({
   const readLoopActiveRef = useRef(false);
   const nextPromptResolverRef = useRef<((prompt: string) => void) | null>(null);
   const nextPromptRejecterRef = useRef<((reason: Error) => void) | null>(null);
+  const resolvedThemeRef = useRef(resolvedTheme);
+  resolvedThemeRef.current = resolvedTheme;
 
   const onSessionEndRef = useRef(onSessionEnd);
-  // Seed with the prop so non-SSH flows (which collect reason via the upfront ReasonGate)
-  // pass it on the first connect; SSH leaves it undefined and uses the inline terminal prompt.
+  const endReasonRef = useRef<string | undefined>(undefined);
   const submittedReasonRef = useRef<string | undefined>(reason);
-  const askedOptionalReasonRef = useRef(false);
+  const mfaSessionIdRef = useRef<string | undefined>(mfaSessionId);
 
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
   }, [onSessionEnd]);
+
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.options.theme = getTerminalTheme(resolvedTheme);
+    }
+  }, [resolvedTheme]);
 
   const adjustWidthForOutput = useCallback(
     (output: string, terminal: Terminal, fitAddon: FitAddon, container: HTMLDivElement) => {
@@ -83,8 +160,9 @@ export const useWebAccessSession = ({
     },
     []
   );
+
   // TODO: refactor when the list of supported resource type grows
-  const isSSH = resourceType === "ssh";
+  const isSSH = accountType === PamAccountType.SSH;
 
   // --- WebSocket lifecycle (imperative) ---
 
@@ -93,6 +171,7 @@ export const useWebAccessSession = ({
       const { protocol, host } = window.location;
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
+      endReasonRef.current = undefined;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -176,6 +255,7 @@ export const useWebAccessSession = ({
         }
 
         if (msg.type === WsMessageType.SessionEnd) {
+          endReasonRef.current = msg.reason;
           terminal.write(`\r\n${msg.reason.replace(/\r?\n/g, "\r\n")}\r\n`);
           return;
         }
@@ -215,7 +295,7 @@ export const useWebAccessSession = ({
           terminalRef.current.options.disableStdin = true;
         }
         setIsConnected(false);
-        onSessionEndRef.current?.();
+        onSessionEndRef.current?.(endReasonRef.current);
       };
 
       ws.onerror = () => {
@@ -245,26 +325,14 @@ export const useWebAccessSession = ({
     try {
       const { data } = await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { projectId, reason: submittedReasonRef.current }
+        { reason: submittedReasonRef.current, mfaSessionId: mfaSessionIdRef.current }
       );
+      mfaSessionIdRef.current = undefined;
       if (containerEl) {
         containerEl.style.width = "";
         isWidenedRef.current = false;
       }
       if (fitAddonRef.current) fitAddonRef.current.fit();
-
-      if (isSSH && submittedReasonRef.current === undefined && !askedOptionalReasonRef.current) {
-        askedOptionalReasonRef.current = true;
-        const optional = await prompt(
-          "\r\nOptionally provide a reason for this session (press Enter to skip): "
-        );
-        if (optional.trim()) {
-          submittedReasonRef.current = optional.trim();
-          terminal.reset();
-          connect();
-          return;
-        }
-      }
 
       terminal.reset();
       openWebSocket(terminal, data.ticket);
@@ -276,24 +344,20 @@ export const useWebAccessSession = ({
             details?: {
               mfaSessionId?: string;
               mfaMethod?: string;
-              policyId?: string;
-              policyName?: string;
-              policyType?: string;
-              constraints?: { accessDuration: { max: string } };
             };
           };
         };
       };
 
       if (axiosErr?.response?.data?.error === "SESSION_MFA_REQUIRED") {
-        const mfaSessionId = axiosErr.response!.data!.details?.mfaSessionId;
+        const newMfaSessionId = axiosErr.response!.data!.details?.mfaSessionId;
 
-        if (!mfaSessionId) {
+        if (!newMfaSessionId) {
           terminal.write("\r\nMFA session could not be created. Please try again.\r\n");
           return;
         }
 
-        const mfaUrl = `${window.location.origin}/mfa-session/${mfaSessionId}`;
+        const mfaUrl = `${window.location.origin}/mfa-session/${newMfaSessionId}`;
 
         // Try to open MFA verification in a new window.
         const popup = window.open(mfaUrl, "_blank");
@@ -319,7 +383,7 @@ export const useWebAccessSession = ({
 
             try {
               const resp = await apiRequest.get<TMfaSessionStatusResponse>(
-                `/api/v2/mfa-sessions/${mfaSessionId}/status`
+                `/api/v2/mfa-sessions/${newMfaSessionId}/status`
               );
               if (resp.data.status === MfaSessionStatus.ACTIVE) {
                 clearInterval(interval);
@@ -352,77 +416,11 @@ export const useWebAccessSession = ({
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
             `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-            { projectId, mfaSessionId, reason: submittedReasonRef.current }
+            { mfaSessionId: newMfaSessionId, reason: submittedReasonRef.current }
           );
           openWebSocket(terminal, retryData.ticket);
         } catch {
           terminal.write("\r\nFailed to connect after MFA verification. Please try again.\r\n");
-        }
-        return;
-      }
-
-      // Check for PolicyViolationError
-      if (axiosErr?.response?.data?.error === "PolicyViolationError") {
-        const policyName = axiosErr.response!.data!.details?.policyName ?? "Unknown Policy";
-        const accessDurationMax =
-          axiosErr.response!.data!.details?.constraints?.accessDuration.max ??
-          DEFAULT_ACCESS_DURATION;
-
-        terminal.write(`\r\nThis account is protected by approval policy: "${policyName}"\r\n`);
-
-        const answer = await prompt(
-          "\r\nThis action requires approval. Would you like to create an approval request? [Y/n]: "
-        );
-
-        if (answer.trim().toLowerCase() === "n") {
-          terminal.write("\r\nApproval request was not created.\r\n");
-          await prompt("\r\nPress Enter to try again.");
-          terminal.reset();
-          connect();
-          return;
-        }
-
-        const justification = await prompt(
-          "\r\nEnter justification (optional, press Enter to skip): "
-        );
-
-        terminal.write("\r\nCreating approval request...\r\n");
-
-        try {
-          const { data: approvalData } = await apiRequest.post<{ request: { id: string } }>(
-            "/api/v1/approval-policies/pam-access/requests",
-            {
-              projectId,
-              requestData: {
-                accessDuration:
-                  ms(accessDurationMax) < ms(DEFAULT_ACCESS_DURATION)
-                    ? accessDurationMax
-                    : DEFAULT_ACCESS_DURATION,
-                resourceName,
-                accountName
-              },
-              justification: justification.trim() || undefined
-            }
-          );
-
-          terminal.write("\r\nApproval request created successfully!\r\n");
-
-          const approvalUrl = `${window.location.origin}/organizations/${orgId}/projects/pam/${projectId}/approvals/${approvalData.request.id}`;
-          terminal.write(`View details at: ${approvalUrl}\r\n`);
-
-          await prompt("\r\nOnce approved, press Enter to reconnect.");
-          terminal.reset();
-          connect();
-        } catch (approvalErr: unknown) {
-          const approvalAxiosErr = approvalErr as {
-            response?: { data?: { message?: string } };
-          };
-          const errorMsg =
-            approvalAxiosErr?.response?.data?.message ?? "Failed to create approval request.";
-          terminal.write(`\r\n${errorMsg}\r\n`);
-          await prompt("\r\nPress Enter to try again.");
-          terminal.reset();
-          connect();
         }
         return;
       }
@@ -448,7 +446,7 @@ export const useWebAccessSession = ({
 
       terminal.write("\r\nFailed to connect. Please close and try again.\r\n");
     }
-  }, [accountId, projectId, orgId, resourceName, accountName, containerEl, openWebSocket]);
+  }, [accountId, containerEl, openWebSocket]);
 
   const disconnect = useCallback(() => {
     const ws = wsRef.current;
@@ -485,29 +483,7 @@ export const useWebAccessSession = ({
       cursorBlink: true,
       fontSize: 14,
       fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Monaco, "Courier New", monospace',
-      theme: {
-        background: "#0d1117",
-        foreground: "#c9d1d9",
-        cursor: "#58a6ff",
-        cursorAccent: "#0d1117",
-        selectionBackground: "#264f78",
-        black: "#0d1117",
-        red: "#ff7b72",
-        green: "#3fb950",
-        yellow: "#d29922",
-        blue: "#58a6ff",
-        magenta: "#bc8cff",
-        cyan: "#76e3ea",
-        white: "#c9d1d9",
-        brightBlack: "#484f58",
-        brightRed: "#ffa198",
-        brightGreen: "#56d364",
-        brightYellow: "#e3b341",
-        brightBlue: "#79c0ff",
-        brightMagenta: "#d2a8ff",
-        brightCyan: "#b3f0ff",
-        brightWhite: "#f0f6fc"
-      },
+      theme: getTerminalTheme(resolvedThemeRef.current),
       scrollback: 10000,
       allowProposedApi: true
     });
@@ -560,7 +536,7 @@ export const useWebAccessSession = ({
         }
       });
     } else {
-      // Non-SSH (PostgreSQL, Redis): use xterm-readline for full line-editing support
+      // Redis: use xterm-readline for full line-editing support
       const readlineAddon = new Readline();
       terminal.loadAddon(readlineAddon);
       readlineRef.current = readlineAddon;

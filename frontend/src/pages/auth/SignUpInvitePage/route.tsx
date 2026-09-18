@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_restrict-login-signup/signupinvite")({
       if (result.token) {
         // New user — store signup token, render the signup form
         SecurityClient.setSignupToken(result.token);
-        return { inviteEmail: email };
+        return { inviteEmail: email, inviteOrganizationName: result.organizationName };
       }
 
       // Existing user, not logged in, membership accepted — send to login

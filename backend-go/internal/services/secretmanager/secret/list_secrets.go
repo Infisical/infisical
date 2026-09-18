@@ -12,34 +12,16 @@ import (
 	"github.com/infisical/api/internal/services/secretmanager/secretimport"
 )
 
-// PersonalOverridesBehavior controls how personal secret overrides are handled.
-type PersonalOverridesBehavior int
-
-const (
-	// PersonalOverridesIncludeAll returns both shared and personal secrets (v3 behavior).
-	PersonalOverridesIncludeAll PersonalOverridesBehavior = iota
-	// PersonalOverridesNeverInclude returns only shared secrets.
-	PersonalOverridesNeverInclude
-	// PersonalOverridesPriority returns personal secrets when they exist, otherwise shared (v4 with flag).
-	PersonalOverridesPriority
-)
-
 // ListSecretsOpts contains options for listing secrets.
-// Note: Imports are always loaded and included in the result.
+// The service is permission-agnostic - all filtering happens in the handler.
 type ListSecretsOpts struct {
-	ProjectID                         string
-	Environment                       string
-	SecretPath                        string
-	UserID                            *uuid.UUID
-	ViewSecretValue                   bool
-	ExpandSecretReferences            bool
-	Recursive                         bool
-	PersonalOverridesBehavior         PersonalOverridesBehavior
-	ExpandPersonalOverrides           bool
-	TagSlugs                          []string
-	MetadataFilter                    []MetadataFilter
-	Access                            AccessControl
-	ThrowOnMissingReadValuePermission bool
+	ProjectID      string
+	Environment    string
+	SecretPath     string
+	UserID         *uuid.UUID // For personal secrets lookup
+	Recursive      bool
+	TagSlugs       []string
+	MetadataFilter []MetadataFilter
 }
 
 // ListSecretsResult contains the results of listing secrets.
@@ -48,9 +30,33 @@ type ListSecretsResult struct {
 	ImportedSecrets []ProcessedSecret
 	Imports         []secretimport.ResolvedImport
 	FolderLookup    *secretfolder.FolderLookup
+	CipherPair      *kms.CipherPair // Exposed for handler to use in expansion
 }
 
-// ListSecrets retrieves secrets for a project/environment/path with full processing.
+// AllSecrets returns all secrets (direct + imported) in priority order for expansion.
+// Direct secrets first, then imported in reverse import order (later imports win).
+func (r *ListSecretsResult) AllSecrets() []*ProcessedSecret {
+	result := make([]*ProcessedSecret, 0, len(r.DirectSecrets)+len(r.ImportedSecrets))
+
+	for i := range r.DirectSecrets {
+		result = append(result, &r.DirectSecrets[i])
+	}
+
+	importedByFolderID := make(map[uuid.UUID][]*ProcessedSecret, len(r.Imports))
+	for i := range r.ImportedSecrets {
+		sec := &r.ImportedSecrets[i]
+		importedByFolderID[sec.Secret.FolderID] = append(importedByFolderID[sec.Secret.FolderID], sec)
+	}
+
+	for i := len(r.Imports) - 1; i >= 0; i-- {
+		result = append(result, importedByFolderID[r.Imports[i].FolderID]...)
+	}
+
+	return result
+}
+
+// ListSecrets retrieves secrets for a project/environment/path.
+// This is permission-agnostic - returns ALL secrets. Handler filters by permission.
 func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*ListSecretsResult, error) {
 	folderLookup, err := s.secretFolderService.LoadFolders(ctx, opts.ProjectID, nil)
 	if err != nil {
@@ -88,7 +94,6 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		return nil, errutil.DatabaseErr("Failed to load imports").WithErrf("ListSecrets: %w", err)
 	}
 
-	// Resolve import chain using folder lookup
 	resolveFolder := func(envID uuid.UUID, path string) (uuid.UUID, bool) {
 		node, ok := folderLookup.GetByPath(envID, path)
 		if !ok {
@@ -128,112 +133,26 @@ func (s *Service) ListSecrets(ctx context.Context, opts *ListSecretsOpts) (*List
 		return nil, errutil.DatabaseErr("Failed to load secrets").WithErrf("ListSecrets: %w", err)
 	}
 
-	cipherPair, err := s.kmsService.CreateCipherPairWithDataKey(ctx, kms.CreateCipherPairDTO{
-		Type:      kms.DataKeyProject,
-		ProjectID: opts.ProjectID,
-	})
+	cipherPair, err := s.kmsService.CreateCipherPairWithProjectDataKey(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, errutil.InternalServer("Failed to get decryption key").WithErrf("ListSecrets: %w", err)
 	}
 
-	directSecrets, importedSecrets, err := s.processSecretsWithPermissions(
-		ctx,
-		secrets,
-		directFolderIDs,
-		directPaths,
-		allImports,
-		opts.Environment,
-		folderLookup,
-		importLookup,
-		secretProcessorOpts{
-			ViewSecretValue:                   opts.ViewSecretValue,
-			Access:                            opts.Access,
-			CipherPair:                        cipherPair,
-			RequestedPath:                     opts.SecretPath,
-			Recursive:                         opts.Recursive,
-			ThrowOnMissingReadValuePermission: opts.ThrowOnMissingReadValuePermission,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	directSecrets = filterByPersonalOverridesBehavior(directSecrets, opts.PersonalOverridesBehavior)
-	importedSecrets = filterByPersonalOverridesBehavior(importedSecrets, opts.PersonalOverridesBehavior)
-
-	if opts.ExpandSecretReferences {
-		// Build expansion list: direct secrets first, then imported in reverse import order
-		allSecrets := buildExpansionSecretList(directSecrets, importedSecrets, allImports)
-
-		var expansionUserID *uuid.UUID
-		if opts.ExpandPersonalOverrides &&
-			(opts.PersonalOverridesBehavior == PersonalOverridesPriority ||
-				opts.PersonalOverridesBehavior == PersonalOverridesIncludeAll) {
-			expansionUserID = opts.UserID
-		}
-
-		expander := NewSecretExpander(allSecrets, ExpandOpts{
-			CanAccessAbsolute: func(ref AbsoluteSecretRef) bool {
-				return opts.Access.CanReadValue(ref.Env, ref.Path, ref.Key, nil)
-			},
-			FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
-				return s.fetchAbsoluteSecrets(ctx, refs, absoluteFetchOpts{
-					projectID:    opts.ProjectID,
-					folderLookup: folderLookup,
-					cipherPair:   cipherPair,
-					userID:       expansionUserID,
-				})
-			},
-		})
-		expander.Expand()
-
-		if expander.HasDeniedRefs() {
-			return nil, errutil.Forbidden("Permission denied for secret reference expansion").WithErrf("ListSecrets: denied refs: %v", expander.DeniedRefs())
-		}
-	}
-
-	return &ListSecretsResult{
-		DirectSecrets:   directSecrets,
-		ImportedSecrets: importedSecrets,
-		Imports:         allImports,
-		FolderLookup:    folderLookup,
-	}, nil
-}
-
-// secretProcessorOpts configures secret processing.
-type secretProcessorOpts struct {
-	ViewSecretValue                   bool
-	Access                            AccessControl
-	CipherPair                        *kms.CipherPair
-	RequestedPath                     string
-	Recursive                         bool
-	ThrowOnMissingReadValuePermission bool
-}
-
-// processSecretsWithPermissions filters and decrypts secrets based on permissions.
-func (s *Service) processSecretsWithPermissions(
-	ctx context.Context,
-	rawSecrets []Secret,
-	directFolderIDs []uuid.UUID,
-	directPaths map[uuid.UUID]string,
-	imports []secretimport.ResolvedImport,
-	requestedEnv string,
-	folderLookup *secretfolder.FolderLookup,
-	importLookup *secretimport.ImportLookup,
-	opts secretProcessorOpts,
-) (directSecrets, importedSecrets []ProcessedSecret, err error) {
+	// Process secrets: decrypt and categorize as direct or imported
 	directFolderSet := make(map[uuid.UUID]bool, len(directFolderIDs))
 	for _, id := range directFolderIDs {
 		directFolderSet[id] = true
 	}
 
-	importByFolderID := make(map[uuid.UUID]*secretimport.ResolvedImport, len(imports))
-	for i := range imports {
-		importByFolderID[imports[i].FolderID] = &imports[i]
+	importByFolderID := make(map[uuid.UUID]*secretimport.ResolvedImport, len(allImports))
+	for i := range allImports {
+		importByFolderID[allImports[i].FolderID] = &allImports[i]
 	}
 
-	for i := range rawSecrets {
-		sec := &rawSecrets[i]
+	var directSecrets, importedSecrets []ProcessedSecret
+
+	for i := range secrets {
+		sec := &secrets[i]
 		var secretPath, envSlug string
 		var isImported bool
 		var importFolderID uuid.UUID
@@ -241,7 +160,7 @@ func (s *Service) processSecretsWithPermissions(
 
 		if directFolderSet[sec.FolderID] {
 			secretPath = directPaths[sec.FolderID]
-			envSlug = requestedEnv
+			envSlug = opts.Environment
 			isImported = false
 		} else if imp, ok := importByFolderID[sec.FolderID]; ok {
 			secretPath = imp.Path
@@ -254,30 +173,7 @@ func (s *Service) processSecretsWithPermissions(
 			continue
 		}
 
-		tagSlugs := make([]string, len(sec.Tags))
-		for j, tag := range sec.Tags {
-			tagSlugs[j] = tag.Slug
-		}
-
-		// Permission checks
-		if !opts.Access.CanDescribe(envSlug, secretPath, sec.Key, tagSlugs) {
-			continue
-		}
-
-		canReadValue := opts.Access.CanReadValue(envSlug, secretPath, sec.Key, tagSlugs)
-
-		if opts.Recursive && opts.ViewSecretValue && secretPath != opts.RequestedPath {
-			if !canReadValue {
-				continue
-			}
-		}
-
-		if opts.ThrowOnMissingReadValuePermission && opts.ViewSecretValue && !canReadValue {
-			return nil, nil, errutil.Forbidden("Missing read value permission for secret %s", sec.Key)
-		}
-
-		valueHidden := !opts.ViewSecretValue || !canReadValue
-		rawValue, displayValue, secretComment, metadata, decryptErrs := decryptSecretFields(sec, opts.CipherPair, valueHidden)
+		rawValue, displayValue, secretComment, metadata, decryptErrs := DecryptSecretFields(sec, cipherPair, false)
 		if decryptErrs.HasErrors() {
 			s.logger.WarnContext(ctx, "secret decryption errors (fail-open)",
 				slog.String("secretId", sec.ID.String()),
@@ -292,7 +188,7 @@ func (s *Service) processSecretsWithPermissions(
 			Value:             displayValue,
 			Comment:           secretComment,
 			Metadata:          metadata,
-			ValueHidden:       valueHidden,
+			ValueHidden:       false,
 			IsImported:        isImported,
 			ImportFolderID:    importFolderID,
 			ImportEnvironment: importEnv,
@@ -306,84 +202,26 @@ func (s *Service) processSecretsWithPermissions(
 		}
 	}
 
-	return directSecrets, importedSecrets, nil
+	return &ListSecretsResult{
+		DirectSecrets:   directSecrets,
+		ImportedSecrets: importedSecrets,
+		Imports:         allImports,
+		FolderLookup:    folderLookup,
+		CipherPair:      cipherPair,
+	}, nil
 }
 
-// filterByPersonalOverridesBehavior filters secrets based on personal overrides behavior.
-func filterByPersonalOverridesBehavior(secretsList []ProcessedSecret, behavior PersonalOverridesBehavior) []ProcessedSecret {
-	switch behavior {
-	case PersonalOverridesIncludeAll:
-		return secretsList
-
-	case PersonalOverridesNeverInclude:
-		result := make([]ProcessedSecret, 0, len(secretsList))
-		for i := range secretsList {
-			if secretsList[i].Secret.Type == "shared" {
-				result = append(result, secretsList[i])
-			}
-		}
-		return result
-
-	case PersonalOverridesPriority:
-		secretMap := make(map[string]*ProcessedSecret, len(secretsList))
-		for i := range secretsList {
-			sec := &secretsList[i]
-			key := sec.Secret.Key + "-" + sec.Secret.FolderID.String()
-			if existing, exists := secretMap[key]; !exists || sec.Secret.Type == "personal" && existing.Secret.Type != "personal" {
-				secretMap[key] = sec
-			}
-		}
-		result := make([]ProcessedSecret, 0, len(secretMap))
-		for _, sec := range secretMap {
-			result = append(result, *sec)
-		}
-		return result
-
-	default:
-		return secretsList
-	}
+// AbsoluteFetchOpts contains options for fetching absolute secret references.
+type AbsoluteFetchOpts struct {
+	ProjectID    string
+	FolderLookup *secretfolder.FolderLookup
+	CipherPair   *kms.CipherPair
+	UserID       *uuid.UUID
 }
 
-// buildExpansionSecretList builds a priority-ordered list for expansion.
-// Direct secrets come first, then imported secrets in reverse import order.
-// First occurrence of each key wins for relative reference resolution.
-func buildExpansionSecretList(
-	directSecrets []ProcessedSecret,
-	importedSecrets []ProcessedSecret,
-	imports []secretimport.ResolvedImport,
-) []*ProcessedSecret {
-	result := make([]*ProcessedSecret, 0, len(directSecrets)+len(importedSecrets))
-
-	// Direct secrets first (highest priority)
-	for i := range directSecrets {
-		result = append(result, &directSecrets[i])
-	}
-
-	// Group imported secrets by folder for ordering
-	importedByFolderID := make(map[uuid.UUID][]*ProcessedSecret, len(imports))
-	for i := range importedSecrets {
-		sec := &importedSecrets[i]
-		importedByFolderID[sec.Secret.FolderID] = append(importedByFolderID[sec.Secret.FolderID], sec)
-	}
-
-	// Imported secrets in reverse import order (later imports have higher priority)
-	for i := len(imports) - 1; i >= 0; i-- {
-		result = append(result, importedByFolderID[imports[i].FolderID]...)
-	}
-
-	return result
-}
-
-// absoluteFetchOpts contains options for fetching absolute secret references.
-type absoluteFetchOpts struct {
-	projectID    string
-	folderLookup *secretfolder.FolderLookup
-	cipherPair   *kms.CipherPair
-	userID       *uuid.UUID
-}
-
-// fetchAbsoluteSecrets retrieves secrets for the given absolute references.
-func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts absoluteFetchOpts) []*ProcessedSecret {
+// FetchAbsoluteSecrets retrieves secrets for the given absolute references.
+// Returns all matching secrets - permission filtering should happen in the caller.
+func (s *Service) FetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecretRef, opts AbsoluteFetchOpts) []*ProcessedSecret {
 	if len(refs) == 0 {
 		return nil
 	}
@@ -398,7 +236,7 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 
 	for i := range refs {
 		ref := &refs[i]
-		envID, ok := opts.folderLookup.GetEnvIDBySlug(ref.Env)
+		envID, ok := opts.FolderLookup.GetEnvIDBySlug(ref.Env)
 		if !ok {
 			continue
 		}
@@ -414,7 +252,7 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 	folderToLocation := make(map[uuid.UUID]locationKey)
 
 	for loc := range locationToKeys {
-		node, ok := opts.folderLookup.GetByPath(loc.envID, loc.path)
+		node, ok := opts.FolderLookup.GetByPath(loc.envID, loc.path)
 		if !ok {
 			continue
 		}
@@ -426,7 +264,7 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 		return nil
 	}
 
-	rawSecrets, err := s.FindByFolderIds(ctx, folderIDs, opts.userID, nil)
+	rawSecrets, err := s.FindByFolderIds(ctx, folderIDs, opts.UserID, nil)
 	if err != nil {
 		return nil
 	}
@@ -444,8 +282,9 @@ func (s *Service) fetchAbsoluteSecrets(ctx context.Context, refs []AbsoluteSecre
 			continue
 		}
 
-		envSlug, _ := opts.folderLookup.GetEnvSlug(loc.envID)
-		rawValue, displayValue, comment, metadata, decryptErrs := decryptSecretFields(sec, opts.cipherPair, false)
+		envSlug, _ := opts.FolderLookup.GetEnvSlug(loc.envID)
+
+		rawValue, displayValue, comment, metadata, decryptErrs := DecryptSecretFields(sec, opts.CipherPair, false)
 		if decryptErrs.HasErrors() {
 			s.logger.WarnContext(ctx, "absolute ref decryption errors (fail-open)",
 				slog.String("secretId", sec.ID.String()),

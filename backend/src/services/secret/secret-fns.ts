@@ -21,6 +21,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
@@ -52,6 +53,7 @@ export const INFISICAL_SECRET_VALUE_HIDDEN_MASK = "<hidden-by-infisical>";
 
 export const generateSecretBlindIndexBySalt = async (secretName: string, secretBlindIndexDoc: TSecretBlindIndexes) => {
   const appCfg = getConfig();
+  recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "blind_index" });
   const secretBlindIndex = await buildSecretBlindIndexFromName({
     secretName,
     keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,
@@ -804,10 +806,11 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -818,15 +821,21 @@ export const createManySecretsRawFnFactory = ({
       );
       if (secretsStoredInDB.length)
         throw new BadRequestError({
-          message: `Secret already exists: ${secretsStoredInDB.map((el) => el.key).join(",")}`
+          message: `Secret already exists: ${secretsStoredInDB.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
         });
 
-      const inputSecrets = secrets.map((secret) => {
+      const blindIndexes = await Promise.all(
+        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
+      );
+
+      const inputSecrets = secrets.map((secret, idx) => {
+        const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob;
         return {
           type: secret.type,
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.secretName,
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedValue,
+          secretValueBlindIndex: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,
@@ -988,10 +997,11 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1021,7 +1031,13 @@ export const updateManySecretsRawFnFactory = ({
       }
 
       const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
-      const inputSecrets = secrets.map((secret) => {
+
+      const blindIndexes = await Promise.all(
+        secrets.map((secret) => generateSecretBlindIndex(Buffer.from(secret.secretValue)))
+      );
+
+      const inputSecrets = secrets.map((secret, idx) => {
+        const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob;
         if (secret.newSecretName === "") {
           throw new BadRequestError({ message: "New secret name cannot be empty" });
         }
@@ -1030,7 +1046,8 @@ export const updateManySecretsRawFnFactory = ({
           type: secret.type,
           userId: secret.type === SecretType.Personal ? userId : null,
           key: secret.newSecretName || secret.secretName,
-          encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secret.secretValue) }).cipherTextBlob,
+          encryptedValue,
+          secretValueBlindIndex: blindIndexes[idx],
           encryptedComent: secret.secretComment
             ? secretManagerEncryptor({ plainText: Buffer.from(secret.secretComment) }).cipherTextBlob
             : null,

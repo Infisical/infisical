@@ -1,11 +1,8 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
-import { AlertTriangleIcon, CheckIcon, DownloadIcon, LucideIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, DownloadIcon, LucideIcon, XIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge, TBadgeProps } from "@app/components/v3";
+import { Badge, TBadgeProps, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSyncStatus, TSecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -65,13 +62,13 @@ export const SecretSyncImportStatusBadge = ({ secretSync, mini }: Props) => {
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {failureMessage && (
             <div>
-              <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+              <div className="mb-2 flex self-start text-danger">
+                <XIcon className="mr-1.5 ml-1 size-4" />
                 <div className="text-xs">
                   {mini ? "Failed to Import Secrets" : "Failure Reason"}
                 </div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+              <div className="rounded-sm bg-surface-active p-2 text-xs">{failureMessage}</div>
             </div>
           )}
         </div>
@@ -90,11 +87,16 @@ export const SecretSyncImportStatusBadge = ({ secretSync, mini }: Props) => {
   }
 
   return (
-    <Tooltip position="bottom" className="max-w-sm" content={tooltipContent}>
-      <Badge isSquare={mini} variant={variant}>
-        <Icon />
-        {!mini && label}
-      </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge isSquare={mini} variant={variant}>
+          <Icon />
+          {!mini && label}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-sm">
+        {tooltipContent}
+      </TooltipContent>
     </Tooltip>
   );
 };

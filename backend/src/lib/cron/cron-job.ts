@@ -10,8 +10,12 @@ import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock"
 
 export const CronJobName = {
   HealthAlert: "health-alert",
+  KmsRootKeyCleanup: "kms-root-key-cleanup",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
+  DailySecretVersionCleanup: "daily-secret-version-cleanup",
+  DailyAuditLogCleanup: "daily-audit-log-cleanup",
+  DailyResourceNotification: "daily-resource-notification",
   FrequentResourceCleanup: "frequent-resource-cleanup",
   CertificateCleanup: "certificate-cleanup",
   CertificateV3AutoRenewal: "certificate-v3-auto-renewal",
@@ -19,17 +23,32 @@ export const CronJobName = {
   DailyExpiringPkiItemAlert: "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing: "daily-pki-alert-v2-processing",
   PkiSyncCleanup: "pki-sync-cleanup",
+  PkiSyncHealthCheck: "pki-sync-health-check",
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
   PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",
-  PamAccountRotation: "pam-account-rotation",
   DailySecretSyncRetry: "daily-secret-sync-retry",
   SecretRotationV2QueueRotations: "secret-rotation-v2-queue-rotations",
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
   TelemetryInstanceStats: "telemetry-instance-stats",
   TelemetryAggregatedEvents: "telemetry-aggregated-events",
   DigiCertOrderPolling: "digicert-order-polling",
-  CaCrlRotation: "ca-crl-rotation"
+  ProjectEnvHardDelete: "project-env-hard-delete",
+  ProjectHardDelete: "project-hard-delete",
+  DigiCertRevocationSync: "digicert-revocation-sync",
+  GoDaddyOrderPolling: "godaddy-order-polling",
+  CaCrlRotation: "ca-crl-rotation",
+  SignerDailyAutoRenewal: "signer-daily-auto-renewal",
+  SignerIssuancePolling: "signer-issuance-polling",
+  AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
+  AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
+  LicenseUsageFlush: "license-usage-flush",
+  PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
+  PamHeartbeatQueueChecks: "pam-heartbeat-queue-checks",
+  MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
+  DailyAlertProcessing: "daily-alert-processing",
+  SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
+  InstanceUpdateCheck: "instance-update-check"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────
@@ -57,11 +76,10 @@ const DEFAULTS = {
 
 // ── redis schema ──────────────────────────────────────────────────────────────
 
+// Every key this module writes lives under a single Redis Cluster hash tag so
+// multi-key Lua scripts never return CROSSSLOT. A custom `keyPrefix` must keep
+// that property — see `assertHashTagged`.
 const KEY_HASH_TAG = "{cron}";
-const SLOT_KEY = (i: number) => `${KEY_HASH_TAG}:slot:${i}`;
-const RUN_KEY = (id: string) => `${KEY_HASH_TAG}:run:${id}`;
-const LEASE_KEY = (id: string) => `${KEY_HASH_TAG}:lease:${id}`;
-const PENDING_ZSET = `${KEY_HASH_TAG}:pending`;
 
 // Run-hash status values. Stored as plain strings in the hash so we don't
 // break Redis tooling, but referenced through this object to avoid drift.
@@ -126,6 +144,17 @@ class HandlerTimeoutError extends Error {
   }
 }
 
+// A prefix without a `{...}` hash tag would spread this module's keys across
+// Cluster slots and break every multi-key EVAL. Fail loudly at construction
+// rather than silently at the first enqueue tick.
+const assertHashTagged = (keyPrefix: string) => {
+  const start = keyPrefix.indexOf("{");
+  const end = keyPrefix.indexOf("}", start + 1);
+  if (start < 0 || end <= start + 1) {
+    throw new Error(`cron: keyPrefix "${keyPrefix}" must contain a non-empty Redis Cluster hash tag, e.g. "{cron}"`);
+  }
+};
+
 export type TCronJobFactory = ReturnType<typeof cronJobFactory>;
 
 // ── factory ───────────────────────────────────────────────────────────────────
@@ -142,7 +171,9 @@ export const cronJobFactory = ({
   handlerTimeoutMs = DEFAULTS.handlerTimeoutMs,
   retryBackoffBaseMs = DEFAULTS.retryBackoffBaseMs,
   retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs,
-  drainTimeoutMs = DEFAULTS.drainTimeoutMs
+  drainTimeoutMs = DEFAULTS.drainTimeoutMs,
+  keyPrefix = KEY_HASH_TAG,
+  schedulingEnabled = true
 }: {
   redis: Redis | Cluster;
   redlock: Redlock;
@@ -156,7 +187,30 @@ export const cronJobFactory = ({
   retryBackoffBaseMs?: number;
   retryBackoffMaxMs?: number;
   drainTimeoutMs?: number;
+  /**
+   * Namespace for every Redis key this manager owns. Defaults to the production
+   * `{cron}` namespace. Tests override it so a test-owned manager and the
+   * server's real one can share a Redis without colliding on slot keys.
+   */
+  keyPrefix?: string;
+  /**
+   * Whether this pod runs cron handlers at all. When false, `register` is a no-op, so a pod that
+   * never starts the timers also never holds the registry. Defaults to true so tests and any
+   * caller that only wants the manager keep the previous behaviour.
+   */
+  schedulingEnabled?: boolean;
 }) => {
+  assertHashTagged(keyPrefix);
+
+  const SLOT_KEY = (i: number) => `${keyPrefix}:slot:${i}`;
+  const RUN_KEY = (id: string) => `${keyPrefix}:run:${id}`;
+  const LEASE_KEY = (id: string) => `${keyPrefix}:lease:${id}`;
+  const PENDING_ZSET = `${keyPrefix}:pending`;
+
+  if (!schedulingEnabled) {
+    logger.info("cron: scheduling disabled for this run mode, skipping every registration");
+  }
+
   const workerId = randomUUID();
   const entries = new Map<string, CronEntry>();
   const lastEnqueuedAt = new Map<string, number>();
@@ -165,6 +219,9 @@ export const cronJobFactory = ({
   let enqueueTimer: ReturnType<typeof setInterval> | null = null;
   let processTimer: ReturnType<typeof setInterval> | null = null;
   let currentSlot: number | null = null;
+  let stopped = false;
+  // Tail of the serialized slot-operation chain. Never rejects.
+  let slotOp: Promise<void> = Promise.resolve();
 
   // ── helpers ────────────────────────────────────────────────────────────
 
@@ -277,6 +334,8 @@ export const cronJobFactory = ({
     handlerTimeoutMs?: number;
     leaseDurationMs?: number;
   }) => {
+    if (!schedulingEnabled) return;
+
     if (!enabled) {
       logger.info(`cron[${name}]: disabled`);
       return;
@@ -325,6 +384,24 @@ export const cronJobFactory = ({
         return;
       }
     }
+  };
+
+  // Runs slot claims/refreshes strictly one at a time.
+  //
+  // `claimOrRefreshSlot` awaits between reading `currentSlot` and writing it,
+  // so two overlapping ticks could both observe a lost slot, both null
+  // `currentSlot`, and then claim two *different* slots — the pod would burn
+  // two of the five participant slots and leak one on shutdown, since only the
+  // last-assigned `currentSlot` is ever released.
+  //
+  // Chaining also gives stop() one handle to await, so it can never read
+  // `currentSlot` mid-handover (skipping the release) or have a late claim land
+  // after the release.
+  const runSlotOp = (label: string) => {
+    slotOp = slotOp
+      .then(() => (stopped ? undefined : claimOrRefreshSlot()))
+      .catch((err: unknown) => logger.error({ err }, `cron: ${label} failed`));
+    return slotOp;
   };
 
   // ── enqueue ─────────────────────────────────────────────────────────────────
@@ -517,10 +594,11 @@ export const cronJobFactory = ({
   // immediately so the pod doesn't wait a full `slotRefreshMs` before
   // participating.
   const start = () => {
-    slotTimer = setInterval(safeTick("slot refresh", claimOrRefreshSlot), slotRefreshMs);
+    stopped = false;
+    slotTimer = setInterval(() => void runSlotOp("slot refresh"), slotRefreshMs);
     enqueueTimer = setInterval(safeTick("enqueue tick", enqueueTick), enqueueIntervalMs);
     processTimer = setInterval(safeTick("process tick", processTick), processIntervalMs);
-    safeTick("initial slot claim", claimOrRefreshSlot)();
+    void runSlotOp("initial slot claim");
   };
 
   // Stops the timers, drains in-flight handlers, and atomically releases the
@@ -531,6 +609,7 @@ export const cronJobFactory = ({
   // aren't aborted mid-execution and graceful redeploys don't leave runs
   // stuck in `status='running'` until the lease TTL elapses.
   const stop = async () => {
+    stopped = true;
     if (slotTimer) clearInterval(slotTimer);
     if (enqueueTimer) clearInterval(enqueueTimer);
     if (processTimer) clearInterval(processTimer);
@@ -553,9 +632,16 @@ export const cronJobFactory = ({
         if (timeoutHandle) clearTimeout(timeoutHandle);
       }
     }
+
+    // No new slot ops can be queued (timers cleared, `stopped` set), so this is
+    // the final tail. Waiting on it guarantees `currentSlot` is settled and that
+    // nothing can re-create the key after the release below.
+    await slotOp;
+
     if (currentSlot !== null) {
       await redis.eval(RELEASE_SLOT_IF_MINE_LUA, 1, SLOT_KEY(currentSlot), workerId);
       logger.info(`cron: released slot ${currentSlot} [worker=${workerId}]`);
+      currentSlot = null;
     }
   };
 

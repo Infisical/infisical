@@ -1,10 +1,13 @@
 import { z } from "zod";
 
 import { GithubOrgSyncConfigsSchema } from "@app/db/schemas";
-import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { GithubOrgNameCreateSchema, GithubOrgNamePatchSchema } from "./github-org-sync-schema";
 
 const SanitizedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   isActive: true,
@@ -15,7 +18,6 @@ const SanitizedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   githubOrgName: true
 });
 
-const githubOrgNameValidator = zodValidateCharacters([CharacterType.AlphaNumeric, CharacterType.Hyphen]);
 export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -26,7 +28,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
+        githubOrgName: GithubOrgNameCreateSchema,
         githubOrgAccessToken: z.string().trim().max(1000).optional(),
         isActive: z.boolean().default(false)
       }),
@@ -44,6 +46,15 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         isActive: req.body.isActive
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { githubOrgName: req.body.githubOrgName, isActive: req.body.isActive }
+        })
+        .catch(() => {});
+
       return { githubOrgSyncConfig };
     }
   });
@@ -58,7 +69,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z
         .object({
-          githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
+          githubOrgName: GithubOrgNamePatchSchema,
           githubOrgAccessToken: z.string().trim().max(1000),
           isActive: z.boolean()
         })
@@ -76,6 +87,18 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         githubOrgAccessToken: req.body.githubOrgAccessToken,
         isActive: req.body.isActive
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            githubOrgName: githubOrgSyncConfig.githubOrgName,
+            isActive: githubOrgSyncConfig.isActive ?? undefined
+          }
+        })
+        .catch(() => {});
 
       return { githubOrgSyncConfig };
     }
@@ -100,6 +123,17 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         orgPermission: req.permission
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            githubOrgName: githubOrgSyncConfig.githubOrgName
+          }
+        })
+        .catch(() => {});
+
       return { githubOrgSyncConfig };
     }
   });
@@ -110,7 +144,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       response: {
         200: z.object({
@@ -148,8 +182,23 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const result = await server.services.githubOrgSync.syncAllTeams({
-        orgPermission: req.permission
+        orgPermission: req.permission,
+        auditLogInfo: req.auditLogInfo
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GitHubOrgSyncExecuted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            totalUsers: result.totalUsers,
+            createdTeams: result.createdTeams.length,
+            updatedTeams: result.updatedTeams.length,
+            syncDuration: result.syncDuration
+          }
+        })
+        .catch(() => {});
 
       return {
         totalUsers: result.totalUsers,

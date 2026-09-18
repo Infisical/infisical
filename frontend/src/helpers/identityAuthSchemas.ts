@@ -1,6 +1,12 @@
 import { z } from "zod";
 
+import {
+  IdentityKubernetesAuthTokenReviewMode,
+  IdentityTrustedIp
+} from "@app/hooks/api/identities/types";
+
 import { SECONDS_PER_DAY } from "./datetime";
+import { isValidIpOrCidr } from "./ip";
 
 // Fallback used by identity auth forms when the server's configured
 // `MAX_MACHINE_IDENTITY_TOKEN_AGE` is unavailable (e.g. server status hasn't
@@ -13,3 +19,112 @@ export const accessTokenTtlSchema = (maxTTL: number, label: string) =>
   z.string().refine((val) => !val || Number(val) <= maxTTL, {
     message: `${label} cannot exceed ${Math.floor(maxTTL / SECONDS_PER_DAY)} days`
   });
+
+// Cross-field check mirroring the backend rule: a max TTL of 0 means "no maximum",
+// so the TTL is only constrained when a positive max TTL is set.
+export const superRefineAccessTokenTtl = (
+  data: { accessTokenTTL?: string; accessTokenMaxTTL?: string },
+  ctx: z.RefinementCtx
+) => {
+  const ttl = Number(data.accessTokenTTL);
+  const maxTtl = Number(data.accessTokenMaxTTL);
+
+  if (!Number.isNaN(ttl) && !Number.isNaN(maxTtl) && maxTtl > 0 && ttl > maxTtl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Access Token TTL cannot be greater than Access Token Max TTL",
+      path: ["accessTokenTTL"]
+    });
+  }
+};
+
+// Trusted-IP constraint fields shared by every identity auth method form
+// (access token trusted IPs, plus client secret trusted IPs for Universal Auth).
+export const trustedIpsSchema = z
+  .object({
+    ipAddress: z
+      .string()
+      .max(50)
+      .refine(isValidIpOrCidr, "The IP is not a valid IPv4, IPv6, or CIDR block")
+  })
+  .array()
+  .min(1);
+
+export const DEFAULT_TRUSTED_IPS = [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }];
+
+// Collapses the server's { ipAddress, prefix } shape back into CIDR notation for the form.
+export const mapTrustedIpsFromServer = (trustedIps: IdentityTrustedIp[]) =>
+  trustedIps.map(({ ipAddress, prefix }) => ({
+    ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
+  }));
+
+// Cross-field Kubernetes connection rules mirroring the backend's shared validator
+// (identity-kubernetes-auth-validators.ts); used by the identity k8s auth form and the
+// auth template modal so the two surfaces cannot drift apart.
+export const superRefineKubernetesConnectionFields = (
+  data: {
+    tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
+    kubernetesHost?: string | null;
+    caCert?: string;
+    verifyTlsCertificate?: boolean;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  },
+  ctx: z.RefinementCtx
+) => {
+  const tokenReviewMode = data.tokenReviewMode ?? IdentityKubernetesAuthTokenReviewMode.Api;
+
+  if (
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+    !data.kubernetesHost?.length
+  ) {
+    ctx.addIssue({
+      path: ["kubernetesHost"],
+      code: z.ZodIssueCode.custom,
+      message: "When token review mode is set to API, a Kubernetes host must be provided"
+    });
+  }
+  if (
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+    !data.gatewayId &&
+    !data.gatewayPoolId
+  ) {
+    ctx.addIssue({
+      path: ["gatewayId"],
+      code: z.ZodIssueCode.custom,
+      message:
+        "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+    });
+  }
+  if (data.gatewayId && data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayPoolId"],
+      code: z.ZodIssueCode.custom,
+      message: "Cannot specify both a gateway and a gateway pool"
+    });
+  }
+  if (
+    data.verifyTlsCertificate &&
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+    !data.caCert?.length
+  ) {
+    ctx.addIssue({
+      path: ["caCert"],
+      code: z.ZodIssueCode.custom,
+      message:
+        "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+    });
+  }
+  if (
+    data.verifyTlsCertificate === false &&
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+    data.caCert?.length
+  ) {
+    ctx.addIssue({
+      path: ["verifyTlsCertificate"],
+      code: z.ZodIssueCode.custom,
+      message:
+        "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+    });
+  }
+};

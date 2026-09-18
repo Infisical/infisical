@@ -409,6 +409,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         `${TableName.AccessApprovalPolicyEnvironment}.policyId`
       )
       .join(TableName.Environment, `${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .where((qb) => {
         if (customFilter?.envId) {
           void qb.where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);
@@ -627,11 +628,11 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           `${TableName.AccessApprovalPolicyEnvironment}.policyId`,
           `${TableName.AccessApprovalPolicy}.id`
         )
-        .join(
-          TableName.Environment,
-          `${TableName.AccessApprovalPolicyEnvironment}.envId`,
-          `${TableName.Environment}.id`
-        )
+        .join(TableName.Environment, function joinActiveEnvForAccessApprovalPolicy() {
+          this.on(`${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .where(
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           buildFindFilter(

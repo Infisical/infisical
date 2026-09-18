@@ -22,7 +22,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./Tooltip";
  * content disappears the moment the cursor leaves the trigger, so any link or
  * action inside is fragile; `HoverCard` keeps the panel open as the cursor
  * moves into it. Reach for `Popover` instead when the user must click to
- * commit an interaction (forms, pickers, action menus).
+ * commit an interaction (forms, pickers, action menus). Tooltip content
+ * preserves an 8px viewport gutter by default.
  */
 const meta = {
   title: "Generic/Tooltip",

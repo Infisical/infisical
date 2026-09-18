@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const CamundaSyncReviewFields = () => {
@@ -11,10 +11,16 @@ export const CamundaSyncReviewFields = () => {
   const clusterUUID = watch("destinationConfig.clusterUUID");
   return (
     <>
-      <GenericFieldLabel label="Secret Scope">{scope}</GenericFieldLabel>
-      <GenericFieldLabel label="Cluster">
-        {clusterName} (id:{clusterUUID})
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Secret Scope</DetailLabel>
+        <DetailValue>{scope}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Cluster</DetailLabel>
+        <DetailValue>
+          {clusterName} (id:{clusterUUID})
+        </DetailValue>
+      </Detail>
     </>
   );
 };

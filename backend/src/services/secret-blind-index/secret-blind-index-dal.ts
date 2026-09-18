@@ -14,7 +14,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .where({ projectId })
         .whereNull("secretBlindIndex")
         .count(`${TableName.Secret}.id` as "id");
@@ -28,7 +32,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .where({ projectId })
         .select(selectAllTableCols(TableName.Secret))
         .select(
@@ -45,7 +53,11 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .where({ projectId })
         .whereIn(`${TableName.Secret}.id`, secretIds)
         .select(selectAllTableCols(TableName.Secret))

@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { TProfileCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
 import { TCertificatePolicy, TCertificatePolicyInsert, TCertificatePolicyUpdate } from "./certificate-policy-types";
 
@@ -31,12 +32,13 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
       "extendedKeyUsages",
       "algorithms",
       "validity",
-      "basicConstraints"
+      "basicConstraints",
+      "customExtensions"
     ];
 
     jsonFields.forEach((field) => {
       const value = serialized[field];
-      if (value !== undefined && typeof value !== "string") {
+      if (value && typeof value !== "string") {
         serialized[field] = JSON.stringify(value);
       }
     });
@@ -52,7 +54,8 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
       "extendedKeyUsages",
       "algorithms",
       "validity",
-      "basicConstraints"
+      "basicConstraints",
+      "customExtensions"
     ];
     const parsed = { ...raw } as Record<string, unknown>;
 
@@ -120,7 +123,11 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
         .del()
         .returning("*")) as Record<string, unknown>[];
 
-      return certificatePolicy;
+      if (!certificatePolicy) {
+        return null;
+      }
+
+      return parseJsonFields(certificatePolicy);
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete certificate policy" });
     }
@@ -258,10 +265,15 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
   const getProfilesUsingPolicy = async (policyId: string, tx?: Knex) => {
     try {
       const profiles = await (tx || db)(TableName.PkiCertificateProfile)
-        .select("id", "slug", "description")
+        .select("id", "slug", "description", "defaults")
         .where({ certificatePolicyId: policyId });
 
-      return profiles as Array<{ id: string; slug: string; description?: string }>;
+      return profiles as Array<{
+        id: string;
+        slug: string;
+        description?: string;
+        defaults?: { customExtensions?: TProfileCustomExtension[] } | null;
+      }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Get profiles using certificate policy" });
     }

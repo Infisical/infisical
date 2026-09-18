@@ -48,7 +48,8 @@ export const Route = createFileRoute("/_authenticate")({
     if (
       !data.organizationId &&
       location.pathname !== ROUTE_PATHS.Auth.PasswordSetupPage.path &&
-      location.pathname !== "/organizations/none"
+      location.pathname !== "/organizations/none" &&
+      location.pathname !== "/organizations/onboarding"
     ) {
       throw redirect({ to: "/login/select-organization" });
     }
@@ -76,6 +77,12 @@ export const Route = createFileRoute("/_authenticate")({
           to: "/login"
         });
       });
+
+    const isOnAdminSetup = location.pathname === "/admin/setup";
+
+    if (user.superAdmin && context.serverConfig.onboardingCompleted === false && !isOnAdminSetup) {
+      throw redirect({ to: "/admin/setup" });
+    }
 
     const isSubOrganization = !!data.subOrganizationId;
     return {

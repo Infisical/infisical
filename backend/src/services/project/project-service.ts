@@ -7,6 +7,7 @@ import {
   ActionProjectType,
   OrganizationActionScope,
   OrgMembershipRole,
+  OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -18,6 +19,7 @@ import {
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -32,7 +34,6 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
-  ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -43,12 +44,6 @@ import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
 } from "@app/ee/services/project-template/project-template-types";
-import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
-import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
-import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
-import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
-import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
-import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
@@ -60,7 +55,10 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TProjectPermission } from "@app/lib/types";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
@@ -94,20 +92,19 @@ import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
+import { TProjectAccessRequestDALFactory } from "./project-access-request-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { bootstrapSshProject } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
-import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
   ProjectFilterType,
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
+  TEnableSecretBlindIndexDTO,
   TGetActivityTrendDTO,
   TGetDashboardStatsDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
-  TGetProjectSshConfig,
   TGetProjectWorkflowIntegrationConfig,
   TListProjectAlertsDTO,
   TListProjectCasDTO,
@@ -115,10 +112,6 @@ import {
   TListProjectCertsDTO,
   TListProjectPkiSubscribersDTO,
   TListProjectsDTO,
-  TListProjectSshCasDTO,
-  TListProjectSshCertificatesDTO,
-  TListProjectSshCertificateTemplatesDTO,
-  TListProjectSshHostsDTO,
   TLoadProjectKmsBackupDTO,
   TProjectAccessRequestDTO,
   TSearchProjectsDTO,
@@ -128,7 +121,6 @@ import {
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
-  TUpdateProjectSshConfig,
   TUpdateProjectVersionLimitDTO,
   TUpdateProjectWorkflowIntegration,
   TUpgradeProjectDTO
@@ -142,7 +134,6 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "transaction" | "create" | "findOne" | "updateById">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
@@ -183,17 +174,11 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find" | "findOne" | "create" | "transaction">;
-  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
-  sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
-  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
-  sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
-  sshHostGroupDAL: Pick<TSshHostGroupDALFactory, "find" | "findSshHostGroupsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -207,13 +192,29 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectAccessRequestDAL: Pick<
+    TProjectAccessRequestDALFactory,
+    "upsertPendingRequest" | "findPendingForRequesterInOrg"
+  >;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
+// Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
+const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.SecretManager]: "secret-management",
+  [ProjectType.CertificateManager]: "cert-manager"
+};
+
+const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
+};
+
 export const projectServiceFactory = ({
   projectDAL,
-  projectSshConfigDAL,
   projectQueue,
   permissionService,
   orgDAL,
@@ -228,12 +229,6 @@ export const projectServiceFactory = ({
   pkiCollectionDAL,
   pkiAlertDAL,
   pkiSubscriberDAL,
-  sshCertificateAuthorityDAL,
-  sshCertificateAuthoritySecretDAL,
-  sshCertificateDAL,
-  sshCertificateTemplateDAL,
-  sshHostDAL,
-  sshHostGroupDAL,
   keyStore,
   kmsService,
   projectSlackConfigDAL,
@@ -249,7 +244,9 @@ export const projectServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   roleDAL,
-  groupDAL
+  groupDAL,
+  projectAccessRequestDAL,
+  usageMeteringService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -269,6 +266,12 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
+    if (type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+      });
+    }
+
     const organization = await orgDAL.findOne({ id: actorOrgId });
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -286,10 +289,6 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
-    if (type === ProjectType.AI) {
-      throw new BadRequestError({ message: "Agent Sentinel projects are not supported" });
-    }
-
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
@@ -297,7 +296,7 @@ export const projectServiceFactory = ({
       // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(organization.id);
       if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-        const currentProjectCount = await projectDAL.countOfOrgProjects(organization.id, tx);
+        const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
         if (currentProjectCount >= plan.workspaceLimit) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
@@ -305,12 +304,36 @@ export const projectServiceFactory = ({
         }
       }
 
+      if (type === ProjectType.SecretScanning) {
+        const [existingSecretScanningProject] = await projectDAL.find(
+          { orgId: organization.id, type: ProjectType.SecretScanning },
+          { limit: 1, tx }
+        );
+
+        if (existingSecretScanningProject) {
+          throw new BadRequestError({
+            message: "Secret Scanning is limited to one project per organization at this time."
+          });
+        }
+      }
+
       if (kmsKeyId) {
+        if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
+          throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
+        }
+
         const kms = await kmsService.getKmsById(kmsKeyId, tx);
 
         if (kms.orgId !== organization.id) {
           throw new ForbiddenRequestError({
             message: "KMS does not belong in the organization"
+          });
+        }
+
+        // an internal key here belongs to another project or to the org
+        if (!kms.isExternal) {
+          throw new BadRequestError({
+            message: "Only an external KMS key can be assigned to a project"
           });
         }
       }
@@ -363,17 +386,6 @@ export const projectServiceFactory = ({
           }
         }
         throw err;
-      }
-
-      if (type === ProjectType.SSH) {
-        await bootstrapSshProject({
-          projectId: project.id,
-          sshCertificateAuthorityDAL,
-          sshCertificateAuthoritySecretDAL,
-          kmsService,
-          projectSshConfigDAL,
-          tx
-        });
       }
 
       // set default environments and root folder for provided environments
@@ -739,11 +751,35 @@ export const projectServiceFactory = ({
       return {
         ...project,
         environments: envs,
+        deletedEnvironments: [] as {
+          id: string;
+          name: string;
+          slug: string;
+          deleteAfter: Date;
+          softDeletedAt: Date;
+          deletedBy:
+            | {
+                type: "user";
+                id: string;
+                email: string | null;
+                username: string | null;
+                firstName: string | null;
+                lastName: string | null;
+              }
+            | { type: "identity"; id: string; name: string }
+            | null;
+        }[],
         _id: project.id
       };
     });
 
     await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
+    // A new project seeds its creator (plus any template members/identities); emit so a new
+    // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
+    // the just-committed row; the counter filters by project type.
+    usageMeteringService.emit(results.orgId, SecretIdentities.key);
+    usageMeteringService.emit(results.orgId, PamIdentities.key);
+    usageMeteringService.emit(results.orgId, AgentVaultIdentities.key);
     return results;
   };
 
@@ -763,6 +799,19 @@ export const projectServiceFactory = ({
     if (project.hasDeleteProtection) {
       throw new ForbiddenRequestError({
         message: "Project delete protection is enabled"
+      });
+    }
+
+    // PAM projects are managed (one per org); deleting would also cascade FK-referenced migrated data.
+    if (project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: "Privileged Access Manager projects cannot be deleted."
+      });
+    }
+
+    if (project.type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be deleted."
       });
     }
 
@@ -798,57 +847,62 @@ export const projectServiceFactory = ({
     }
 
     try {
-      const deletedProject = await projectDAL.transaction(async (tx) => {
-        // delete these so that project custom roles can be deleted in cascade effect
-        // direct deletion of project without these will cause fk error
-        // this will clean up all memberships
-        await membershipUserDAL.delete(
-          { scopeOrgId: project.orgId, scopeProjectId: project.id, scope: AccessScope.Project },
-          tx
-        );
-        const delProject = await projectDAL.deleteById(project.id, tx);
-        const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
-        // akhilmhdh: before removing those kms checking any other project uses it
-        // happened due to project split
-        if (delProject.kmsCertificateKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsCertificateKeyId: delProject.kmsCertificateKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
-          }
-        }
-
-        if (delProject.kmsSecretManagerKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsSecretManagerKeyId: delProject.kmsSecretManagerKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
-          }
-        }
-        // Delete the org membership for the ghost user if it's found.
-        if (projectGhostUser) {
-          await userDAL.deleteById(projectGhostUser.id, tx);
-        }
-
-        return delProject;
+      // "Real delete" from the caller's perspective: this returns immediately (one UPDATE) and the
+      // project disappears from every read, but the expensive cascade runs asynchronously in the
+      // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick
+      // (no grace period). The slug is freed so a same-named project can be recreated right away.
+      const now = new Date();
+      const softDeletedProject = await projectDAL.softDeleteById(project.id, {
+        deleteAfter: now,
+        softDeletedAt: now,
+        deletedByActorType: actor,
+        deletedByActorId: actorId,
+        slug: `del-${alphaNumericNanoId(20)}`
       });
 
+      if (!softDeletedProject) {
+        throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
+      }
+
+      // refresh the cached plan so the freed workspace slot is reflected immediately
+      // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-      return deletedProject;
+      // The soft-deleted project drops out of the meters' counts, so its members no longer count.
+      usageMeteringService.emit(project.orgId, SecretIdentities.key);
+      usageMeteringService.emit(project.orgId, PamIdentities.key);
+      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+      return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();
     }
   };
 
   const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
-    const workspaces =
+    const workspaces = (
       actor === ActorType.IDENTITY
         ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type);
+        : await projectDAL.findUserProjects(actorId, actorOrgId, type)
+    ).map((workspace) => ({
+      ...workspace,
+      deletedEnvironments: [] as {
+        id: string;
+        name: string;
+        slug: string;
+        deleteAfter: Date;
+        softDeletedAt: Date;
+        deletedBy:
+          | {
+              type: "user";
+              id: string;
+              email: string | null;
+              username: string | null;
+              firstName: string | null;
+              lastName: string | null;
+            }
+          | { type: "identity"; id: string; name: string }
+          | null;
+      }[]
+    }));
 
     if (includeRoles) {
       const { permission } = await permissionService.getOrgPermission({
@@ -861,7 +915,7 @@ export const projectServiceFactory = ({
       });
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
       const customRoles = await roleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)
@@ -888,6 +942,28 @@ export const projectServiceFactory = ({
     return workspaces;
   };
 
+  const getAccessibleProjectsWithSubOrgs = async ({
+    actorId,
+    actorOrgId
+  }: Pick<TListProjectsDTO, "actorId" | "actorOrgId">) => {
+    const organizations = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
+    const currentOrganization = organizations.find((organization) => organization.id === actorOrgId);
+    const organizationIds = [actorOrgId];
+    for (const organization of currentOrganization?.subOrganizations ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- Keep membership reads bounded to one database connection.
+      const membership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId,
+        orgId: organization.id,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (membership?.isActive) organizationIds.push(organization.id);
+    }
+
+    const projects = await projectDAL.findUserProjects(actorId, organizationIds);
+    return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
+  };
+
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
@@ -900,11 +976,14 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    return project;
+    const deletedEnvironments = await projectDAL.findProjectDeletedEnvironments(project.id);
+
+    return { ...project, deletedEnvironments };
   };
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    const appCfg = getConfig();
 
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
@@ -916,6 +995,14 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
+    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
+    // not the caller's to change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
+      });
+    }
+
     if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         message: "Only admins can update secret detection ignore values"
@@ -926,6 +1013,35 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({
         message: "Only admins can update Certificate Manager project settings"
       });
+    }
+
+    if (update.auditLogsRetentionDays !== undefined) {
+      if (!hasRole(ProjectMembershipRole.Admin)) {
+        throw new ForbiddenRequestError({
+          message: "Only project admins can update the audit logs retention period"
+        });
+      }
+
+      if (appCfg.isCloud) {
+        throw new BadRequestError({
+          message: "The audit logs retention period can not be updated on Infisical Cloud instances."
+        });
+      }
+
+      const plan = await licenseService.getPlan(project.orgId);
+
+      if (!plan.auditLogs) {
+        throw new BadRequestError({
+          message:
+            "Failed to update the audit logs retention period because audit logs are not included in your current plan. Upgrade your plan to configure retention."
+        });
+      }
+
+      if (update.auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+        throw new BadRequestError({
+          message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
+        });
+      }
     }
 
     try {
@@ -941,7 +1057,8 @@ export const projectServiceFactory = ({
         showSnapshotsLegacy: update.showSnapshotsLegacy,
         secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
         pitVersionLimit: update.pitVersionLimit,
-        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata
+        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata,
+        auditLogsRetentionDays: update.auditLogsRetentionDays
       });
 
       return updatedProject;
@@ -1133,6 +1250,7 @@ export const projectServiceFactory = ({
       });
     }
 
+    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
     const encryptedPrivateKey = crypto.encryption().symmetric().encryptWithRootEncryptionKey(userPrivateKey);
 
     await projectQueue.upgradeProject({
@@ -1378,8 +1496,10 @@ export const projectServiceFactory = ({
     const validatedSortBy = sortBy && ALLOWED_SORT_COLUMNS.has(sortBy) ? sortBy : "notAfter";
     const validatedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
+    const { status: ignoredSyncStatus, ...syncEligibilityFilters } = regularFilters;
+
     const certificates = forPkiSync
-      ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
+      ? await certificateDAL.findActiveCertificatesForSync(syncEligibilityFilters, { offset, limit }, permissionFilters)
       : await certificateDAL.findWithPrivateKeyInfo(
           regularFilters,
           {
@@ -1390,34 +1510,9 @@ export const projectServiceFactory = ({
           permissionFilters
         );
 
-    const countFilter = {
-      projectId,
-      ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
-      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
-      ...(regularFilters.search && { search: String(regularFilters.search) }),
-      ...(regularFilters.status && { status: regularFilters.status }),
-      ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
-      ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
-      ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
-      ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
-      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) }),
-      ...(regularFilters.keyAlgorithm && { keyAlgorithm: regularFilters.keyAlgorithm }),
-      ...(regularFilters.signatureAlgorithm && { signatureAlgorithm: String(regularFilters.signatureAlgorithm) }),
-      ...(regularFilters.keySizes && { keySizes: regularFilters.keySizes }),
-      ...(regularFilters.caIds && { caIds: regularFilters.caIds }),
-      ...(regularFilters.enrollmentTypes && { enrollmentTypes: regularFilters.enrollmentTypes }),
-      ...(regularFilters.source && { source: regularFilters.source }),
-      ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
-      ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
-      ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
-      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo }),
-      ...(regularFilters.applicationId && { applicationId: regularFilters.applicationId }),
-      ...(regularFilters.applicationIds && { applicationIds: regularFilters.applicationIds })
-    };
-
     const count = forPkiSync
-      ? await certificateDAL.countActiveCertificatesForSync(countFilter)
-      : await certificateDAL.countCertificatesInProject(countFilter, permissionFilters);
+      ? await certificateDAL.countActiveCertificatesForSync(syncEligibilityFilters, permissionFilters)
+      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters);
 
     return {
       certificates,
@@ -1649,184 +1744,6 @@ export const projectServiceFactory = ({
     };
   };
 
-  /**
-   * Return list of SSH CAs for project
-   */
-  const listProjectSshCas = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshCasDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SshCertificateAuthorities
-    );
-
-    const cas = await sshCertificateAuthorityDAL.find(
-      {
-        projectId
-      },
-      { sort: [["updatedAt", "desc"]] }
-    );
-
-    return cas;
-  };
-
-  /**
-   * Return list of SSH hosts for project
-   */
-  const listProjectSshHosts = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshHostsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    const allowedHosts = [];
-
-    // (dangtony98): room to optimize
-    const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
-
-    for (const host of hosts) {
-      const canRead = permission.can(
-        ProjectPermissionSshHostActions.Read,
-        subject(ProjectPermissionSub.SshHosts, {
-          hostname: host.hostname
-        })
-      );
-
-      if (canRead) {
-        allowedHosts.push(host);
-      }
-    }
-
-    return allowedHosts;
-  };
-
-  /**
-   * Return list of SSH host groups for project
-   */
-  const listProjectSshHostGroups = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshHostsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHostGroups);
-
-    const sshHostGroups = await sshHostGroupDAL.findSshHostGroupsWithLoginMappings(projectId);
-
-    return sshHostGroups;
-  };
-
-  /**
-   * Return list of SSH certificates for project
-   */
-  const listProjectSshCertificates = async ({
-    limit = 25,
-    offset = 0,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshCertificatesDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
-
-    const cas = await sshCertificateAuthorityDAL.find({
-      projectId
-    });
-
-    const certificates = await sshCertificateDAL.find(
-      {
-        $in: {
-          sshCaId: cas.map((ca) => ca.id)
-        }
-      },
-      { offset, limit, sort: [["updatedAt", "desc"]] }
-    );
-
-    const count = await sshCertificateDAL.countSshCertificatesInProject(projectId);
-
-    return { certificates, totalCount: count };
-  };
-
-  /**
-   * Return list of SSH certificate templates for project
-   */
-  const listProjectSshCertificateTemplates = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshCertificateTemplatesDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SshCertificateTemplates
-    );
-
-    const cas = await sshCertificateAuthorityDAL.find({
-      projectId
-    });
-
-    const certificateTemplates = await sshCertificateTemplateDAL.find({
-      $in: {
-        sshCaId: cas.map((ca) => ca.id)
-      }
-    });
-
-    return { certificateTemplates };
-  };
-
   const updateProjectKmsKey = async ({
     projectId,
     kms,
@@ -1925,119 +1842,10 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId, undefined, true);
     const kmsKey = await kmsService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };
-  };
-
-  const getProjectSshConfig = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TGetProjectSshConfig) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
-
-    const projectSshConfig = await projectSshConfigDAL.findOne({
-      projectId
-    });
-
-    if (!projectSshConfig) {
-      throw new NotFoundError({
-        message: `Project SSH config with ID '${projectId}' not found`
-      });
-    }
-
-    return projectSshConfig;
-  };
-
-  const updateProjectSshConfig = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    defaultUserSshCaId,
-    defaultHostSshCaId
-  }: TUpdateProjectSshConfig) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    let projectSshConfig = await projectSshConfigDAL.findOne({
-      projectId
-    });
-
-    if (!projectSshConfig) {
-      throw new NotFoundError({
-        message: `Project SSH config with ID '${projectId}' not found`
-      });
-    }
-
-    projectSshConfig = await projectSshConfigDAL.transaction(async (tx) => {
-      if (defaultUserSshCaId) {
-        const userSshCa = await sshCertificateAuthorityDAL.findOne(
-          {
-            id: defaultUserSshCaId,
-            projectId
-          },
-          tx
-        );
-
-        if (!userSshCa) {
-          throw new NotFoundError({
-            message: "User SSH CA must exist and belong to this project"
-          });
-        }
-      }
-
-      if (defaultHostSshCaId) {
-        const hostSshCa = await sshCertificateAuthorityDAL.findOne(
-          {
-            id: defaultHostSshCaId,
-            projectId
-          },
-          tx
-        );
-
-        if (!hostSshCa) {
-          throw new NotFoundError({
-            message: "Host SSH CA must exist and belong to this project"
-          });
-        }
-      }
-
-      const updatedProjectSshConfig = await projectSshConfigDAL.updateById(
-        projectSshConfig.id,
-        {
-          defaultUserSshCaId,
-          defaultHostSshCaId
-        },
-        tx
-      );
-
-      return updatedProjectSshConfig;
-    });
-
-    return projectSshConfig;
   };
 
   const getProjectWorkflowIntegrationConfig = async ({
@@ -2488,20 +2296,30 @@ export const projectServiceFactory = ({
     );
     const appCfg = getConfig();
 
-    let projectTypeUrl = project.type;
-    if (project.type === ProjectType.SecretManager) {
-      projectTypeUrl = "secret-management";
-    } else if (project.type === ProjectType.CertificateManager) {
-      projectTypeUrl = "cert-manager";
-    }
+    const projectTypeUrl = PROJECT_ACCESS_REQUEST_URL_SLUGS[project.type as ProjectType] ?? project.type;
+    const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
-    const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
+    const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.PAM]: "pam",
+      [ProjectType.AgentVault]: "agent-vault"
+    };
+    const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
 
-    const productLabel = project.type === ProjectType.CertificateManager ? "Certificate Manager" : null;
+    const callbackPath = orgScopedPath
+      ? `/organizations/${project.orgId}/${orgScopedPath}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
+      : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
+
+    const productLabel = PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type as ProjectType] ?? null;
     const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";
     const notificationBody = productLabel
       ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
       : `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`;
+
+    await projectAccessRequestDAL.upsertPendingRequest({
+      projectId,
+      requesterUserId: permission.id,
+      comment: comment || null
+    });
 
     await notificationService.createUserNotifications(
       projectMembers
@@ -2532,10 +2350,69 @@ export const projectServiceFactory = ({
     });
   };
 
+  const getMyPendingProjectAccessRequests = async ({ permission }: { permission: OrgServiceActor }) => {
+    if (permission.type !== ActorType.USER) {
+      return { requests: [] as { projectId: string; createdAt: Date }[] };
+    }
+    const requests = await projectAccessRequestDAL.findPendingForRequesterInOrg(permission.id, permission.orgId);
+    return { requests };
+  };
+
+  const enableSecretBlindIndex = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    if (project.secretBlindIndexEnabled) {
+      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
+    }
+
+    await projectQueue.startSecretBlindIndexMigration(project.id);
+  };
+
+  const getSecretBlindIndexMigrationStatus = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    return projectQueue.getJobState(project.id);
+  };
+
   return {
     createProject,
     deleteProject,
     getProjects,
+    getAccessibleProjectsWithSubOrgs,
     updateProject,
     getProjectUpgradeStatus,
     getAProject,
@@ -2551,12 +2428,7 @@ export const projectServiceFactory = ({
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,
-    listProjectSshCas,
-    listProjectSshHosts,
-    listProjectSshHostGroups,
     listProjectPkiSubscribers,
-    listProjectSshCertificates,
-    listProjectSshCertificateTemplates,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,
@@ -2566,10 +2438,11 @@ export const projectServiceFactory = ({
     getProjectWorkflowIntegrationConfig,
     updateProjectWorkflowIntegration,
     deleteProjectWorkflowIntegration,
-    getProjectSshConfig,
-    updateProjectSshConfig,
     requestProjectAccess,
+    getMyPendingProjectAccessRequests,
     searchProjects,
-    extractProjectIdFromSlug
+    extractProjectIdFromSlug,
+    enableSecretBlindIndex,
+    getSecretBlindIndexMigrationStatus
   };
 };

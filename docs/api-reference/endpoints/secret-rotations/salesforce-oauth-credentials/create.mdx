@@ -1,0 +1,82 @@
+---
+title: "Create"
+openapi: "POST /api/v2/secret-rotations/salesforce-oauth-credentials"
+---
+
+<Note>
+    Check out the configuration docs for [Salesforce OAuth Credentials Rotations](/documentation/platform/secret-rotation/salesforce-oauth-credentials) to learn how to obtain the required parameters.
+</Note>
+
+Creates a Salesforce OAuth Credentials secret rotation. Infisical will rotate the consumer secret of the specified External Client App via your [Salesforce connection](/integrations/app-connections/salesforce) and write the rotated consumer key/secret pair to the specified secret path.
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique, slug-friendly name for the rotation (max 100 characters). |
+| `projectId` | string (UUID) | Yes | The project ID. |
+| `connectionId` | string (UUID) | Yes | ID of the Salesforce app connection. |
+| `environment` | string | Yes | Environment slug (e.g. `dev`, `prod`). |
+| `secretPath` | string | Yes | Path where the generated secrets will be stored. |
+| `isAutoRotationEnabled` | boolean | No | Whether to rotate automatically on the schedule. Defaults to `true`. |
+| `rotationInterval` | number | Yes | Days between rotations (minimum `1`). |
+| `rotateAtUtc` | object | No | Time of day (UTC) to run rotation: `{ "hours", "minutes" }`. Defaults to `{ "hours": 0, "minutes": 0 }`. |
+| `parameters.appId` | string | Yes | The identifier of the Salesforce External Client App to rotate the consumer secret for. |
+| `parameters.appName` | string | Yes | The developer name of the Salesforce External Client App to rotate the consumer secret for. |
+| `secretsMapping.consumerKey` | string | Yes | Secret key name to store the rotated consumer key (e.g. `SALESFORCE_CONSUMER_KEY`). |
+| `secretsMapping.consumerSecret` | string | Yes | Secret key name to store the rotated consumer secret (e.g. `SALESFORCE_CONSUMER_SECRET`). |
+| `description` | string | No | Optional description. |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://us.infisical.com/api/v2/secret-rotations/salesforce-oauth-credentials \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-salesforce-rotation",
+    "projectId": "<project-id>",
+    "description": "Salesforce ECA consumer secret rotation",
+    "connectionId": "<salesforce-connection-id>",
+    "environment": "dev",
+    "secretPath": "/",
+    "isAutoRotationEnabled": true,
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "parameters": {
+      "appId": "<external-client-app-id>",
+      "appName": "<external-client-app-developer-name>"
+    },
+    "secretsMapping": {
+      "consumerKey": "SALESFORCE_CONSUMER_KEY",
+      "consumerSecret": "SALESFORCE_CONSUMER_SECRET"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "secretRotation": {
+    "id": "<rotation-id>",
+    "name": "my-salesforce-rotation",
+    "description": "Salesforce ECA consumer secret rotation",
+    "secretsMapping": {
+      "consumerKey": "SALESFORCE_CONSUMER_KEY",
+      "consumerSecret": "SALESFORCE_CONSUMER_SECRET"
+    },
+    "isAutoRotationEnabled": true,
+    "activeIndex": 0,
+    "connectionId": "<salesforce-connection-id>",
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "type": "salesforce-oauth-credentials",
+    "parameters": {
+      "appId": "<external-client-app-id>",
+      "appName": "<external-client-app-developer-name>"
+    }
+  }
+}
+```

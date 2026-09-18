@@ -5,14 +5,22 @@ export type TPasswordRequirements = z.infer<typeof PasswordRequirementsSchema>;
 export const PasswordRequirementsSchema = z
   .object({
     length: z
-      .number()
+      .number({ invalid_type_error: "Password length is required" })
       .min(1, "Password length must be a positive number")
       .max(250, "Password length must be less than 250"),
     required: z.object({
-      digits: z.number().min(0, "Digit count must be non-negative"),
-      lowercase: z.number().min(0, "Lowercase count must be non-negative"),
-      uppercase: z.number().min(0, "Uppercase count must be non-negative"),
-      symbols: z.number().min(0, "Symbol count must be non-negative")
+      digits: z
+        .number({ invalid_type_error: "Digit count is required" })
+        .min(0, "Digit count must be non-negative"),
+      lowercase: z
+        .number({ invalid_type_error: "Lowercase count is required" })
+        .min(0, "Lowercase count must be non-negative"),
+      uppercase: z
+        .number({ invalid_type_error: "Uppercase count is required" })
+        .min(0, "Uppercase count must be non-negative"),
+      symbols: z
+        .number({ invalid_type_error: "Symbol count is required" })
+        .min(0, "Symbol count must be non-negative")
     }),
     allowedSymbols: z
       .string()

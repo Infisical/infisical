@@ -6,6 +6,7 @@ import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } fro
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -13,7 +14,9 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -22,12 +25,19 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import {
+  AccessRequestWebhookAction,
+  TWebhookActor,
+  TWebhookRequestedPermission,
+  WebhookEvents
+} from "@app/services/webhook/webhook-types";
 
 import { TNotificationServiceFactory } from "../../../services/notification/notification-service";
 import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
+import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
@@ -75,6 +85,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  queueService: Pick<TQueueServiceFactory, "queue">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -93,8 +104,121 @@ export const accessApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL,
-  notificationService
+  notificationService,
+  queueService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  const $queueAccessRequestWebhook = async ({
+    action,
+    accessApprovalRequest,
+    projectId,
+    isBypassed
+  }: {
+    action: AccessRequestWebhookAction;
+    accessApprovalRequest: NonNullable<Awaited<ReturnType<TAccessApprovalRequestDALFactory["findById"]>>>;
+    projectId: string;
+    isBypassed?: boolean;
+  }) => {
+    let envSlug: string;
+    let secretPath: string;
+    let requestedPermissions: TWebhookRequestedPermission[];
+    try {
+      const verified = verifyRequestedPermissions({ permissions: accessApprovalRequest.permissions });
+      envSlug = verified.envSlug;
+      secretPath = verified.secretPath;
+      requestedPermissions = verified.requestedPermissions;
+    } catch (error) {
+      logger.warn(
+        error,
+        `Skipping access request webhook, requested permissions could not be parsed [requestId=${accessApprovalRequest.id}] [action=${action}]`
+      );
+      return;
+    }
+
+    const [project, environment] = await Promise.all([
+      projectDAL.findById(projectId),
+      projectEnvDAL.findOne({ projectId, slug: envSlug })
+    ]);
+
+    if (!project) {
+      logger.warn(
+        `Skipping access request webhook, project not found [projectId=${projectId}] [requestId=${accessApprovalRequest.id}] [action=${action}]`
+      );
+      return;
+    }
+
+    if (!environment) {
+      logger.warn(
+        `Access request webhook payload has no environment name, environment not found [projectId=${projectId}] [environmentSlug=${envSlug}] [requestId=${accessApprovalRequest.id}] [action=${action}]`
+      );
+    }
+
+    const cfg = getConfig();
+    const { requestedByUser } = accessApprovalRequest;
+    const requestedBy: TWebhookActor | null = accessApprovalRequest.requestedByUserId
+      ? {
+          type: ActorType.USER,
+          id: accessApprovalRequest.requestedByUserId,
+          name:
+            [requestedByUser?.firstName, requestedByUser?.lastName].filter(Boolean).join(" ") ||
+            requestedByUser?.username ||
+            "Unknown",
+          email: requestedByUser?.email ?? null
+        }
+      : null;
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.AccessRequestModified,
+        payload: {
+          projectId,
+          projectName: project.name,
+          environment: envSlug,
+          environmentName: environment?.name,
+          secretPath,
+          action,
+          request: {
+            id: accessApprovalRequest.id,
+            url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?selectedTab=resource-requests&requestId=${accessApprovalRequest.id}`,
+            status: accessApprovalRequest.status,
+            isBypassed:
+              isBypassed ??
+              (accessApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft &&
+                accessApprovalRequest.approvedByUser?.userId === accessApprovalRequest.requestedByUserId),
+            policy: {
+              id: accessApprovalRequest.policy.id,
+              name: accessApprovalRequest.policy.name,
+              enforcementLevel: accessApprovalRequest.policy.enforcementLevel,
+              hasSequencedApprovers: accessApprovalRequest.policy.approvers.some(
+                (approver) => (approver.sequence ?? 1) > 1
+              )
+            },
+            requestedAccess: {
+              isTemporary: accessApprovalRequest.isTemporary,
+              temporaryRange: accessApprovalRequest.temporaryRange || null,
+              permissions: requestedPermissions
+            },
+            requestedBy,
+            expiresAt: accessApprovalRequest.expiresAt?.toISOString() ?? null,
+            approvedAt: accessApprovalRequest.approvedAt?.toISOString() ?? null,
+            revokedAt: accessApprovalRequest.revokedAt?.toISOString() ?? null,
+            createdAt: accessApprovalRequest.createdAt.toISOString(),
+            updatedAt: accessApprovalRequest.updatedAt.toISOString()
+          }
+        }
+      },
+      {
+        jobId: `access-request-webhook-${accessApprovalRequest.id}-${alphaNumericNanoId(6)}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: { type: "exponential", delay: 3000 }
+      }
+    );
+  };
+
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -240,7 +364,8 @@ export const accessApprovalRequestServiceFactory = ({
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
-      const approvalPath = `${projectPath}/approval`;
+      // Deep-link approvers straight to this request on the Access Requests tab
+      const approvalPath = `${projectPath}/approval?selectedTab=resource-requests&requestId=${encodeURIComponent(approvalRequest.id)}`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -305,6 +430,28 @@ export const accessApprovalRequestServiceFactory = ({
 
       return approvalRequest;
     });
+
+    try {
+      const created = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(approval.id, tx)
+      );
+      if (created) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Created,
+          accessApprovalRequest: created,
+          projectId: project.id
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${approval.id}] [action=${AccessRequestWebhookAction.Created}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${approval.id}] [action=${AccessRequestWebhookAction.Created}]`
+      );
+    }
 
     return { request: approval, projectId: project.id };
   };
@@ -418,7 +565,8 @@ export const accessApprovalRequestServiceFactory = ({
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
-      const approvalPath = `${projectPath}/approval`;
+      // Deep-link approvers straight to this request on the Access Requests tab
+      const approvalPath = `${projectPath}/approval?selectedTab=resource-requests&requestId=${encodeURIComponent(requestId)}`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -492,6 +640,28 @@ export const accessApprovalRequestServiceFactory = ({
 
       return approvalRequest;
     });
+
+    try {
+      const edited = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(requestId, tx)
+      );
+      if (edited) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Edited,
+          accessApprovalRequest: edited,
+          projectId: accessApprovalRequest.projectId
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Edited}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${requestId}] [action=${AccessRequestWebhookAction.Edited}]`
+      );
+    }
 
     return { request: approval, projectId: accessApprovalRequest.projectId };
   };
@@ -595,7 +765,7 @@ export const accessApprovalRequestServiceFactory = ({
         })
       : undefined;
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, memberships } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -603,6 +773,17 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    // A user whose only active project role is NoAccess is not authorized to review the request,
+    // even with a break-glass approval. If they also hold another active role (e.g. via a group),
+    // allow the review to proceed.
+    const activeRoles = flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom);
+    const hasOnlyNoAccessRole =
+      activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
+
+    if (hasOnlyNoAccessRole) {
+      throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
+    }
 
     const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
@@ -618,6 +799,16 @@ export const accessApprovalRequestServiceFactory = ({
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
 
     const isSelfRejection = isSelfApproval && status === ApprovalStatus.REJECTED;
+
+    const isBypasser = policy.bypassers.some((bypasser) => bypasser.userId === actorId);
+
+    // Self-approval is blocked when the policy disallows it, unless this is a soft-enforcement break-glass approval and the user is on the bypasser list.
+    // this does not work for policies where all bypassers are allowed to self-approve.
+    if (isSelfApproval && status === ApprovalStatus.APPROVED && !policy.allowedSelfApprovals && !isBypasser) {
+      throw new BadRequestError({
+        message: "Failed to review access approval request. Users are not authorized to review their own request."
+      });
+    }
 
     // users can always reject (cancel) their own requests
     if (!isSelfRejection) {
@@ -790,7 +981,10 @@ export const accessApprovalRequestServiceFactory = ({
               privilegeId: privilegeIdToSet,
               status: ApprovalStatus.APPROVED,
               approvedAt: new Date(),
-              approvedByUserId: actorId
+              approvedByUserId: actorId,
+              // A break-glass approval grants access without the required reviews; persist the
+              // reason so the bypass can be surfaced in the UI and audit log after the fact.
+              bypassReason: isBreakGlassApprovalAttempt ? bypassReason || null : null
             },
             tx
           );
@@ -813,7 +1007,8 @@ export const accessApprovalRequestServiceFactory = ({
               .map((appUser) => appUser.email)
               .filter((email): email is string => !!email);
 
-            const approvalPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`;
+            // Deep-link approvers straight to this request on the Access Requests tab
+            const approvalPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval?selectedTab=resource-requests&requestId=${encodeURIComponent(accessApprovalRequest.id)}`;
             const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
             await notificationService.createUserNotifications(
@@ -850,7 +1045,37 @@ export const accessApprovalRequestServiceFactory = ({
       return reviewForThisActorProcessing;
     });
 
-    return { ...reviewStatus, projectId: accessApprovalRequest.projectId, policyId: accessApprovalRequest.policyId };
+    try {
+      const reviewed = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx)
+      );
+      if (reviewed) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Reviewed,
+          accessApprovalRequest: reviewed,
+          projectId: accessApprovalRequest.projectId,
+          // The helper otherwise infers this from the policy and the approver. The flag the review
+          // itself acted on is authoritative, so pass it rather than re-deriving it.
+          isBypassed: isBreakGlassApprovalAttempt
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${accessApprovalRequest.id}] [action=${AccessRequestWebhookAction.Reviewed}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${accessApprovalRequest.id}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+    }
+
+    return {
+      ...reviewStatus,
+      projectId: accessApprovalRequest.projectId,
+      policyId: accessApprovalRequest.policyId,
+      isBypass: isBreakGlassApprovalAttempt
+    };
   };
 
   const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
@@ -917,6 +1142,28 @@ export const accessApprovalRequestServiceFactory = ({
 
       return result;
     });
+
+    try {
+      const revoked = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(requestId, tx)
+      );
+      if (revoked) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Revoked,
+          accessApprovalRequest: revoked,
+          projectId: accessApprovalRequest.projectId
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Revoked}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${requestId}] [action=${AccessRequestWebhookAction.Revoked}]`
+      );
+    }
 
     return { request: updatedRequest, projectId: accessApprovalRequest.projectId };
   };

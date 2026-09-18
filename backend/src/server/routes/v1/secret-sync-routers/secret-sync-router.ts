@@ -30,6 +30,7 @@ import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
 import { CircleCISyncListItemSchema, CircleCISyncSchema } from "@app/services/secret-sync/circleci";
+import { Cloud66SyncListItemSchema, Cloud66SyncSchema } from "@app/services/secret-sync/cloud66";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
@@ -39,6 +40,7 @@ import {
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
+import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
 import {
   DigitalOceanAppPlatformSyncListItemSchema,
@@ -52,6 +54,10 @@ import { FlyioSyncListItemSchema, FlyioSyncSchema } from "@app/services/secret-s
 import { GcpSyncListItemSchema, GcpSyncSchema } from "@app/services/secret-sync/gcp";
 import { GitHubSyncListItemSchema, GitHubSyncSchema } from "@app/services/secret-sync/github";
 import { GitLabSyncListItemSchema, GitLabSyncSchema } from "@app/services/secret-sync/gitlab";
+import {
+  HasuraCloudSyncListItemSchema,
+  HasuraCloudSyncSchema
+} from "@app/services/secret-sync/hasura-cloud/hasura-cloud-sync-schemas";
 import { HCVaultSyncListItemSchema, HCVaultSyncSchema } from "@app/services/secret-sync/hc-vault";
 import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret-sync/heroku";
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
@@ -61,13 +67,17 @@ import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/service
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
+import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
+import { RundeckSyncListItemSchema, RundeckSyncSchema } from "@app/services/secret-sync/rundeck";
 import { SnowflakeSyncListItemSchema, SnowflakeSyncSchema } from "@app/services/secret-sync/snowflake";
+import { SpaceliftSyncListItemSchema, SpaceliftSyncSchema } from "@app/services/secret-sync/spacelift";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
 import { TeamCitySyncListItemSchema, TeamCitySyncSchema } from "@app/services/secret-sync/teamcity";
 import { TerraformCloudSyncListItemSchema, TerraformCloudSyncSchema } from "@app/services/secret-sync/terraform-cloud";
 import { TravisCISyncListItemSchema, TravisCISyncSchema } from "@app/services/secret-sync/travis-ci";
+import { TriggerDevSyncListItemSchema, TriggerDevSyncSchema } from "@app/services/secret-sync/trigger-dev";
 import { VercelSyncListItemSchema, VercelSyncSchema } from "@app/services/secret-sync/vercel";
 import { WindmillSyncListItemSchema, WindmillSyncSchema } from "@app/services/secret-sync/windmill";
 import { ZabbixSyncListItemSchema, ZabbixSyncSchema } from "@app/services/secret-sync/zabbix";
@@ -93,10 +103,12 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   HerokuSyncSchema,
   RenderSyncSchema,
   FlyioSyncSchema,
+  TriggerDevSyncSchema,
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
   SupabaseSyncSchema,
+  RundeckSyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -114,7 +126,12 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   DevinSyncSchema,
   OnaSyncSchema,
   TravisCISyncSchema,
-  SnowflakeSyncSchema
+  SnowflakeSyncSchema,
+  HasuraCloudSyncSchema,
+  QoverySyncSchema,
+  Cloud66SyncSchema,
+  SpaceliftSyncSchema,
+  DaytonaSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -138,6 +155,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   HerokuSyncListItemSchema,
   RenderSyncListItemSchema,
   FlyioSyncListItemSchema,
+  TriggerDevSyncListItemSchema,
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
@@ -146,6 +164,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   RailwaySyncListItemSchema,
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
+  RundeckSyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,
@@ -159,7 +178,12 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   DevinSyncListItemSchema,
   OnaSyncListItemSchema,
   TravisCISyncListItemSchema,
-  SnowflakeSyncListItemSchema
+  SnowflakeSyncListItemSchema,
+  HasuraCloudSyncListItemSchema,
+  QoverySyncListItemSchema,
+  Cloud66SyncListItemSchema,
+  SpaceliftSyncListItemSchema,
+  DaytonaSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
@@ -180,7 +204,7 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const secretSyncOptions = server.services.secretSync.listSecretSyncOptions();
       return { secretSyncOptions };
@@ -205,7 +229,7 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
         200: z.object({ secretSyncs: SecretSyncSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },

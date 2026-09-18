@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
@@ -17,21 +17,40 @@ export const GitLabSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Scope">{scope}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>{scope}</DetailValue>
+      </Detail>
       {scope === GitLabSyncScope.Project && (
-        <GenericFieldLabel label="Project Name">{projectName}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Project Name</DetailLabel>
+          <DetailValue>{projectName}</DetailValue>
+        </Detail>
       )}
       {scope === GitLabSyncScope.Group && (
-        <GenericFieldLabel label="Group Name">{groupName}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Group Name</DetailLabel>
+          <DetailValue>{groupName}</DetailValue>
+        </Detail>
       )}
       {targetEnvironment && (
-        <GenericFieldLabel label="Environment">{targetEnvironment}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Environment</DetailLabel>
+          <DetailValue>{targetEnvironment}</DetailValue>
+        </Detail>
       )}
-      <GenericFieldLabel label="Protect Secrets">
-        {shouldProtectSecrets ? "Yes" : "No"}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Mask Secrets">{shouldMaskSecrets ? "Yes" : "No"}</GenericFieldLabel>
-      <GenericFieldLabel label="Hide Secrets">{shouldHideSecrets ? "Yes" : "No"}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Protect Secrets</DetailLabel>
+        <DetailValue>{shouldProtectSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Mask Secrets</DetailLabel>
+        <DetailValue>{shouldMaskSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Hide Secrets</DetailLabel>
+        <DetailValue>{shouldHideSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
     </>
   );
 };

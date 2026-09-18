@@ -5,9 +5,10 @@ type TDigiCertErrorResponse = { errors?: { code?: string; message?: string }[] }
 export const extractDigiCertErrorMessage = (error: unknown) => {
   if (error instanceof AxiosError) {
     const data = error.response?.data as TDigiCertErrorResponse | undefined;
-    const firstError = data?.errors?.[0];
-    if (firstError?.message) {
-      return firstError.code ? `${firstError.message} (${firstError.code})` : firstError.message;
+    // Include every error code, not just the first, so callers can match a code in any position.
+    const errors = (data?.errors ?? []).filter((e) => e?.message || e?.code);
+    if (errors.length) {
+      return errors.map((e) => (e.code ? `${e.message ?? ""} (${e.code})` : e.message)).join("; ");
     }
     return error.message || "Unknown error";
   }

@@ -1,0 +1,59 @@
+version: v0.162.11
+releasedAt: 2026-07-21T19:19:24-03:00
+sourceTag: v0.162.11
+previousTag: v0.162.10
+impactLevel: low
+summary: Adds additive Postgres migrations for TLS cert auth and new indexes.
+  Most upgrades need no manual changes, but startup may take longer while
+  concurrent indexes build.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: TLS cert auth chain flag
+    description: Adds verifyClientCertificateChain to identity TLS certificate auth
+      records with a default of false. Existing configurations keep current
+      single-issuer behavior.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260624120000_add-verify-client-certificate-chain-to-identity-tls-cert-auth.ts
+        path: backend/src/db/migrations/20260624120000_add-verify-client-certificate-chain-to-identity-tls-cert-auth.ts
+        description: Adds boolean column with default false
+  - title: Resource metadata search indexes
+    description: Adds concurrent indexes on resource_metadata for org and secret
+      lookups. These are additive and target metadata search queries.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260716120000_resource-metadata-org-id-key-index.ts
+        path: backend/src/db/migrations/20260716120000_resource-metadata-org-id-key-index.ts
+        description: Creates orgId,key partial index concurrently
+      - type: file
+        ref: backend/src/db/migrations/20260716120001_resource-metadata-secret-id-index.ts
+        path: backend/src/db/migrations/20260716120001_resource-metadata-secret-id-index.ts
+        description: Creates secretId partial index concurrently
+  - title: Permission query FK indexes
+    description: Adds concurrent indexes on identity_metadata and
+      additional_privileges foreign key columns. Startup can take longer on
+      large databases while these indexes build.
+    action: If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260720120000_add-permission-query-fk-indexes.ts
+        path: backend/src/db/migrations/20260720120000_add-permission-query-fk-indexes.ts
+        description: Creates multiple concurrent FK indexes
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-21T23:00:22.174Z
+  sourceRange:
+    from: v0.162.10
+    to: v0.162.11

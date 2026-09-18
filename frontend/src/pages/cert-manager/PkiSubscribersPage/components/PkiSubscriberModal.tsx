@@ -33,6 +33,7 @@ import {
   useUpdatePkiSubscriber
 } from "@app/hooks/api";
 import {
+  buildExtendedKeyUsageToggleSchema,
   EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
@@ -69,15 +70,10 @@ const schema = z
       [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
     }),
     extendedKeyUsages: z.object({
-      [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-      [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-      [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-      [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-      [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-      [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+      ...buildExtendedKeyUsageToggleSchema(z.boolean().optional())
     }),
     enableAutoRenewal: z.boolean().optional().default(false),
-    renewalBefore: z.number().min(1).optional(),
+    renewalBefore: z.coerce.number().min(1).optional(),
     renewalUnit: z.nativeEnum(TimeUnit).optional(),
     // Properties for Azure ADCS only
     azureTemplateType: z.string().optional(),
@@ -407,7 +403,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
             <TabPanel value={FormTab.Configuration}>
               {pkiSubscriber && (
                 <FormControl label="Subscriber ID">
-                  <Input value={pkiSubscriber.id} isDisabled className="bg-white/[0.07]" />
+                  <Input
+                    value={pkiSubscriber.id}
+                    isDisabled
+                    className="bg-foreground-inverse/[0.07]"
+                  />
                 </FormControl>
               )}
               <Controller
@@ -420,7 +420,12 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     errorText={error?.message}
                     isRequired
                   >
-                    <Input {...field} placeholder="web-service" />
+                    <Input
+                      {...field}
+                      placeholder="web-service"
+                      autoComplete="off"
+                      name="pki-subscriber-name"
+                    />
                   </FormControl>
                 )}
               />
@@ -753,7 +758,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                           placeholder="5"
                           type="number"
                           min={1}
-                          onChange={(e) => onChange(Number(e.target.value))}
+                          value={field.value ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            onChange(val === "" ? "" : Number(val));
+                          }}
                         />
                       </FormControl>
                     )}

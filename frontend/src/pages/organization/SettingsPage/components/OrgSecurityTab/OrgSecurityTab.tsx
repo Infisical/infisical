@@ -7,11 +7,15 @@ import { OrgUserAccessTokenLimitSection } from "./OrgUserAccessTokenLimitSection
 export const OrgSecurityTab = withPermission(
   () => {
     return (
-      <>
+      <div className="flex flex-col gap-4">
         <OrgGenericAuthSection />
         <OrgUserAccessTokenLimitSection />
-      </>
+      </div>
     );
   },
-  { action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso }
+  {
+    action: OrgPermissionSsoActions.Read,
+    subject: OrgPermissionSubjects.Sso,
+    accessRestrictedMode: "dialog"
+  }
 );

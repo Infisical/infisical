@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TCloudflareWorkersSync } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 
 type Props = {
@@ -10,5 +10,10 @@ export const CloudflareWorkersSyncDestinationSection = ({ secretSync }: Props) =
     destinationConfig: { scriptId }
   } = secretSync;
 
-  return <GenericFieldLabel label="Script ID">{scriptId}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>Script ID</DetailLabel>
+      <DetailValue>{scriptId}</DetailValue>
+    </Detail>
+  );
 };

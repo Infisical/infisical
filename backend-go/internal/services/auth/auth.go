@@ -6,6 +6,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
+	"github.com/infisical/api/internal/libs/errutil"
 )
 
 // ActorType identifies the kind of entity performing an action.
@@ -25,19 +27,19 @@ type ActorAuthMethod string
 type IdentityAuthMethod string
 
 const (
-	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal_auth"
-	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes_auth"
-	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp_auth"
-	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud_auth"
-	IdentityAuthMethodAWS        IdentityAuthMethod = "aws_auth"
-	IdentityAuthMethodAzure      IdentityAuthMethod = "azure_auth"
-	IdentityAuthMethodToken      IdentityAuthMethod = "token_auth"
-	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls_cert_auth"
-	IdentityAuthMethodOCI        IdentityAuthMethod = "oci_auth"
-	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc_auth"
-	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt_auth"
-	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap_auth"
-	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe_auth"
+	IdentityAuthMethodUniversal  IdentityAuthMethod = "universal-auth"
+	IdentityAuthMethodKubernetes IdentityAuthMethod = "kubernetes-auth"
+	IdentityAuthMethodGCP        IdentityAuthMethod = "gcp-auth"
+	IdentityAuthMethodAliCloud   IdentityAuthMethod = "alicloud-auth"
+	IdentityAuthMethodAWS        IdentityAuthMethod = "aws-auth"
+	IdentityAuthMethodAzure      IdentityAuthMethod = "azure-auth"
+	IdentityAuthMethodToken      IdentityAuthMethod = "token-auth"
+	IdentityAuthMethodTLSCert    IdentityAuthMethod = "tls-cert-auth"
+	IdentityAuthMethodOCI        IdentityAuthMethod = "oci-auth"
+	IdentityAuthMethodOIDC       IdentityAuthMethod = "oidc-auth"
+	IdentityAuthMethodJWT        IdentityAuthMethod = "jwt-auth"
+	IdentityAuthMethodLDAP       IdentityAuthMethod = "ldap-auth"
+	IdentityAuthMethodSPIFFE     IdentityAuthMethod = "spiffe-auth"
 )
 
 // AuthOIDC holds OIDC-specific claims from the identity JWT payload.
@@ -122,6 +124,10 @@ type Identity struct {
 	AuthMethod   ActorAuthMethod
 	IsSuperAdmin bool
 
+	// TokenVersionID is the session/token version ID (for JWT user auth).
+	// Used for assume privilege validation to ensure token is still valid.
+	TokenVersionID uuid.UUID
+
 	// MFA fields (for JWT user auth).
 	IsMfaVerified bool
 	MfaMethod     string
@@ -143,7 +149,6 @@ type Identity struct {
 
 type ctxKey struct{}
 type httpInfoKey struct{}
-type authInfoKey struct{}
 
 // HTTPInfo holds HTTP request information for audit logging.
 type HTTPInfo struct {
@@ -159,7 +164,10 @@ func WithHTTPInfo(ctx context.Context, info *HTTPInfo) context.Context {
 
 // HTTPInfoFromContext returns the HTTPInfo stored in ctx, or nil if absent.
 func HTTPInfoFromContext(ctx context.Context) *HTTPInfo {
-	info, _ := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	info, ok := ctx.Value(httpInfoKey{}).(*HTTPInfo)
+	if !ok {
+		return nil
+	}
 	return info
 }
 
@@ -168,19 +176,38 @@ func WithIdentity(ctx context.Context, id *Identity) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
-// IdentityFromContext returns the identity stored in ctx, or nil if absent.
-func IdentityFromContext(ctx context.Context) *Identity {
-	id, _ := ctx.Value(ctxKey{}).(*Identity)
-	return id
+// IdentityFromContext returns the identity stored in ctx.
+// Returns an error if identity is not present (authentication required).
+func IdentityFromContext(ctx context.Context) (*Identity, error) {
+	id, ok := ctx.Value(ctxKey{}).(*Identity)
+	if !ok || id == nil {
+		return nil, errutil.Unauthorized("Authentication required")
+	}
+	return id, nil
 }
 
-// WithAuthInfo stores the actor auth info in the context.
-func WithAuthInfo(ctx context.Context, info *AuthInfo) context.Context {
-	return context.WithValue(ctx, authInfoKey{}, info)
+// AssumedPrivilegeDetails holds the decoded assume privilege token payload.
+// This is stored in request context when a user is assuming another actor's privileges.
+type AssumedPrivilegeDetails struct {
+	TokenVersionID uuid.UUID
+	ProjectID      string
+	RequesterID    uuid.UUID
+	ActorType      ActorType
+	ActorID        uuid.UUID
 }
 
-// AuthInfoFromContext returns the actor auth info stored in ctx, or nil if absent.
-func AuthInfoFromContext(ctx context.Context) *AuthInfo {
-	info, _ := ctx.Value(authInfoKey{}).(*AuthInfo)
-	return info
+type assumedPrivilegeKey struct{}
+
+// WithAssumedPrivilege stores the assumed privilege details in the context.
+func WithAssumedPrivilege(ctx context.Context, details *AssumedPrivilegeDetails) context.Context {
+	return context.WithValue(ctx, assumedPrivilegeKey{}, details)
+}
+
+// AssumedPrivilegeFromContext returns the assumed privilege details stored in ctx, or nil if absent.
+func AssumedPrivilegeFromContext(ctx context.Context) *AssumedPrivilegeDetails {
+	details, ok := ctx.Value(assumedPrivilegeKey{}).(*AssumedPrivilegeDetails)
+	if !ok {
+		return nil
+	}
+	return details
 }

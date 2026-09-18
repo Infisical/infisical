@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDownIcon } from "lucide-react";
@@ -86,17 +84,42 @@ function AccordionTrigger({
 function AccordionContent({
   className,
   children,
+  onAnimationEnd,
+  onAnimationStart,
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Content>) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  const syncExpandedState = (event: React.AnimationEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      setIsExpanded(event.currentTarget.dataset.state === "open");
+    }
+  };
+
   return (
     <AccordionPrimitive.Content
       data-slot="accordion-content"
-      className="overflow-hidden text-sm transition data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+      className={cn(
+        "overflow-hidden text-sm transition data-[state=closed]:animate-accordion-up data-[state=closed]:overflow-hidden data-[state=open]:animate-accordion-down motion-reduce:data-[state=open]:overflow-visible",
+        isExpanded && "overflow-visible"
+      )}
+      onAnimationStart={(event) => {
+        onAnimationStart?.(event);
+        if (
+          event.target === event.currentTarget &&
+          event.currentTarget.dataset.state === "closed"
+        ) {
+          setIsExpanded(false);
+        }
+      }}
+      onAnimationEnd={(event) => {
+        onAnimationEnd?.(event);
+        syncExpandedState(event);
+      }}
       {...props}
     >
       <div
         className={cn(
-          "group-data-[variant=default]/accordion:p-6",
           "group-data-[variant=ghost]/accordion:pt-2 group-data-[variant=ghost]/accordion:pb-4",
           className
         )}

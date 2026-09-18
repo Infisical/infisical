@@ -6,5 +6,6 @@ export type TParsedEnv = Record<
     tagSlugs?: string[];
     secretMetadata?: { key: string; value: string }[];
     skipMultilineEncoding?: boolean;
+    isFileSecret?: boolean;
   }
 >;

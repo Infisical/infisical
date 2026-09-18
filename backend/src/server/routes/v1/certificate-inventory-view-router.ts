@@ -21,7 +21,16 @@ const InventoryViewFiltersSchema = z
     caIds: z.array(z.string().uuid()).max(50).optional(),
     profileIds: z.array(z.string().uuid()).max(50).optional(),
     applicationIds: z.array(z.string().uuid()).max(50).optional(),
-    source: z.union([z.string().max(64), z.array(z.string().max(64)).max(10)]).optional()
+    source: z.union([z.string().max(64), z.array(z.string().max(64)).max(10)]).optional(),
+    metadata: z
+      .array(
+        z.object({
+          key: z.string().trim().min(1).max(255),
+          value: z.string().trim().max(1020).optional()
+        })
+      )
+      .max(20)
+      .optional()
   })
   .strict();
 
@@ -88,7 +97,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.certificateInventoryView.listViews({
         projectId: req.internalCertManagerProjectId,
@@ -126,7 +135,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.createView({
         projectId: req.internalCertManagerProjectId,
@@ -140,6 +149,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -151,7 +161,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             filters: req.body.filters,
             columns: req.body.columns,
             isShared: req.body.isShared,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -186,7 +197,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.updateView({
         viewId: req.params.viewId,
@@ -200,6 +211,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -211,7 +223,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             filters: req.body.filters,
             columns: req.body.columns,
             isShared: req.body.isShared,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -239,7 +252,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.deleteView({
         viewId: req.params.viewId,
@@ -249,6 +262,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -257,7 +271,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
           metadata: {
             viewId: req.params.viewId,
             name: view.name,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });

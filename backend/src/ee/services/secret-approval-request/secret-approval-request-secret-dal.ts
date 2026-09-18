@@ -396,6 +396,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         )
         .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .leftJoin(
           TableName.SecretApprovalRequestSecretTag,
           `${TableName.SecretApprovalRequestSecret}.id`,
@@ -441,6 +442,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   return {
     ...secretApprovalRequestSecretOrm,
     insertV2Bridge: secretApprovalRequestSecretV2Orm.insertMany,
+    updateV2ById: secretApprovalRequestSecretV2Orm.updateById,
     findByRequestId,
     findByRequestIdBridgeSecretV2,
     bulkUpdateNoVersionIncrement,

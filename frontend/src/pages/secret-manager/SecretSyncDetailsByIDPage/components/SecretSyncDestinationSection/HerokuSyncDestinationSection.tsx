@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { THerokuSync } from "@app/hooks/api/secretSyncs/types/heroku-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const HerokuSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="App Name">{appName}</GenericFieldLabel>
-      <GenericFieldLabel label="App ID">{app}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>App Name</DetailLabel>
+        <DetailValue>{appName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>App ID</DetailLabel>
+        <DetailValue>{app}</DetailValue>
+      </Detail>
     </>
   );
 };

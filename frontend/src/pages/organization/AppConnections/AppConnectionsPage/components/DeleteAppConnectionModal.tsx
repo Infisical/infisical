@@ -1,6 +1,18 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAppConnection, useDeleteAppConnection } from "@app/hooks/api/appConnections";
 
@@ -18,37 +30,68 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
   const { id: connectionId, name, app } = appConnection;
 
   const handleDeleteAppConnection = async () => {
-    await deleteAppConnection.mutateAsync({
-      connectionId,
-      app
-    });
+    if (deleteAppConnection.isPending) return;
 
-    createNotification({
-      text: `Successfully removed ${APP_CONNECTION_MAP[app].name} connection`,
-      type: "success"
-    });
+    try {
+      await deleteAppConnection.mutateAsync({
+        connectionId,
+        app
+      });
 
-    onOpenChange(false);
+      createNotification({
+        text: `Successfully removed ${APP_CONNECTION_MAP[app].name} connection`,
+        type: "success"
+      });
+
+      onOpenChange(false);
+    } catch {
+      // Error is handled by the mutation's onError handler
+    }
   };
 
   return (
-    <DeleteActionModal
-      isOpen={isOpen}
-      onChange={onOpenChange}
-      title={`Are you sure you want to delete ${name}?`}
-      deleteKey={name}
-      onDeleteApproved={handleDeleteAppConnection}
-    >
-      {appConnection.isPlatformManagedCredentials && (
-        <NoticeBannerV2 className="mt-3" title="Platform Managed Credentials">
-          <p className="text-sm text-bunker-300">
-            This App Connection&#39;s credentials are managed by Infisical.
-          </p>
-          <p className="mt-3 text-sm text-bunker-300">
-            By deleting this connection you may lose permanent access to the associated resource.
-          </p>
-        </NoticeBannerV2>
-      )}
-    </DeleteActionModal>
+    <AlertDialog open={isOpen} confirmationValue={name} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure you want to delete {name}?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>This action is irreversible.</AlertDescription>
+            </Alert>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {appConnection.isPlatformManagedCredentials && (
+          <Alert variant="warning">
+            <AlertTitle>Platform Managed Credentials</AlertTitle>
+            <AlertDescription>
+              This App Connection&#39;s credentials are managed by Infisical. By deleting this
+              connection you may lose permanent access to the associated resource.
+            </AlertDescription>
+          </Alert>
+        )}
+        <AlertDialogConfirmationField
+          onConfirm={() => {
+            if (!deleteAppConnection.isPending) {
+              handleDeleteAppConnection().catch(() => undefined);
+            }
+          }}
+        />
+        <AlertDialogFooter>
+          <AlertDialogCancel isDisabled={deleteAppConnection.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="danger"
+            isPending={deleteAppConnection.isPending}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!deleteAppConnection.isPending) {
+                handleDeleteAppConnection().catch(() => undefined);
+              }
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };

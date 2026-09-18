@@ -44,6 +44,8 @@ export enum OrgPermissionAuditLogsActions {
   Read = "read"
 }
 
+// TODO: remove once KMIP clients are fully migrated to KMIP servers (OrgPermissionKmipServerActions).
+// This only gates the legacy KMIP proxy flow.
 export enum OrgPermissionKmipActions {
   Proxy = "proxy"
 }
@@ -91,6 +93,22 @@ export enum OrgPermissionRelayActions {
   RevokeRelayAccess = "revoke-relay-access"
 }
 
+export enum OrgPermissionKmipServerActions {
+  CreateKmipServers = "create-kmip-servers",
+  ListKmipServers = "list-kmip-servers",
+  EditKmipServers = "edit-kmip-servers",
+  DeleteKmipServers = "delete-kmip-servers",
+  RevokeKmipServerAccess = "revoke-kmip-server-access"
+}
+
+export enum OrgPermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -98,6 +116,7 @@ export enum OrgPermissionIdentityActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -137,6 +156,12 @@ export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
 }
 
+export enum OrgPermissionSecretsManagementInsightsActions {
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
+}
+
 export enum OrgPermissionProjectActions {
   Create = "create",
   RequestAccess = "request-access"
@@ -165,6 +190,7 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
+  KmipServer = "kmip-server",
   Gateway = "gateway",
   GatewayPool = "gateway-pool",
   Relay = "relay",
@@ -172,7 +198,9 @@ export enum OrgPermissionSubjects {
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
-  HoneyTokens = "honey-tokens"
+  HoneyTokens = "honey-tokens",
+  OauthClients = "oauth-clients",
+  SecretsManagementInsights = "secrets-management-insights"
 }
 
 export type AppConnectionSubjectFields = {
@@ -184,7 +212,7 @@ export type OrgPermissionSet =
   | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
-  | [OrgPermissionActions, OrgPermissionSubjects.Member]
+  | [OrgPermissionMemberActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionSsoActions, OrgPermissionSubjects.Sso]
@@ -202,6 +230,7 @@ export type OrgPermissionSet =
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
   | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
+  | [OrgPermissionKmipServerActions, OrgPermissionSubjects.KmipServer]
   | [
       OrgPermissionAppConnectionActions,
       (
@@ -215,7 +244,9 @@ export type OrgPermissionSet =
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
-  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens];
+  | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients]
+  | [OrgPermissionSecretsManagementInsightsActions, OrgPermissionSubjects.SecretsManagementInsights];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -255,7 +286,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionMemberActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Settings).describe("The entity this permission pertains to."),
@@ -376,6 +409,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.KmipServer).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipServerActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.EmailDomains).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionEmailDomainActions).describe(
       "Describe what action an entity can take."
@@ -390,6 +429,18 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.HoneyTokens).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionHoneyTokenActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.OauthClients).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z
+      .literal(OrgPermissionSubjects.SecretsManagementInsights)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSecretsManagementInsightsActions).describe(
       "Describe what action an entity can take."
     )
   })
@@ -414,10 +465,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.GrantPrivileges, OrgPermissionSubjects.Member);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
@@ -479,6 +531,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.GrantPrivileges, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.RevokeAuth, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.EditAuth, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.CreateToken, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.GetToken, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.DeleteToken, OrgPermissionSubjects.Identity);
@@ -521,6 +574,12 @@ const buildAdminPermission = () => {
   can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.RevokeRelayAccess, OrgPermissionSubjects.Relay);
 
+  can(OrgPermissionKmipServerActions.ListKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.CreateKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.EditKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.DeleteKmipServers, OrgPermissionSubjects.KmipServer);
+  can(OrgPermissionKmipServerActions.RevokeKmipServerAccess, OrgPermissionSubjects.KmipServer);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
@@ -557,6 +616,15 @@ const buildAdminPermission = () => {
   can(OrgPermissionCertManagerActions.ManageInstance, OrgPermissionSubjects.CertManager);
   can(OrgPermissionCertManagerActions.ManageSettings, OrgPermissionSubjects.CertManager);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.OauthClients);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.OauthClients);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.OauthClients);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.OauthClients);
+
+  can(OrgPermissionSecretsManagementInsightsActions.Read, OrgPermissionSubjects.SecretsManagementInsights);
+  can(OrgPermissionSecretsManagementInsightsActions.GenerateReport, OrgPermissionSubjects.SecretsManagementInsights);
+  can(OrgPermissionSecretsManagementInsightsActions.DeleteReport, OrgPermissionSubjects.SecretsManagementInsights);
+
   return rules;
 };
 
@@ -568,7 +636,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
   can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);

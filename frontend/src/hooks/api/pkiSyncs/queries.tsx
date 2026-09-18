@@ -1,15 +1,22 @@
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { getCertificateDisplayName } from "@app/helpers/pkiSyncs";
 import { PkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import {
   TAwsListener,
   TAwsLoadBalancer,
+  TKempVirtualService,
   TListPkiSyncOptions,
   TListPkiSyncs,
   TPkiSync,
-  TPkiSyncCertificate
+  TPkiSyncCertificate,
+  TPkiSyncCertificateOrder,
+  TPkiSyncFilterPreview,
+  TPkiSyncFilters
 } from "@app/hooks/api/pkiSyncs/types";
+
+import { PkiSyncStatus } from "./enums";
 
 export const pkiSyncKeys = {
   all: ["pki-sync"] as const,
@@ -29,7 +36,107 @@ export const pkiSyncKeys = {
   awsLoadBalancers: (connectionId: string, region: string) =>
     [...pkiSyncKeys.all, "aws-load-balancers", connectionId, region] as const,
   awsListeners: (connectionId: string, region: string, loadBalancerArn: string) =>
-    [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const
+    [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const,
+  kempVirtualServices: (connectionId: string) =>
+    [...pkiSyncKeys.all, "kemp-virtual-services", connectionId] as const,
+  certificateOrders: (scopeId: string, certificateOrderIds: string[]) =>
+    [...pkiSyncKeys.all, "certificate-orders", scopeId, certificateOrderIds] as const,
+  matchingCertificateIds: (
+    projectId: string,
+    scopeId: string,
+    filters?: TPkiSyncFilters | null,
+    offset?: number,
+    limit?: number
+  ) =>
+    [
+      ...pkiSyncKeys.all,
+      "matching-certificate-ids",
+      projectId,
+      scopeId,
+      filters ?? null,
+      offset ?? 0,
+      limit ?? 20
+    ] as const
+};
+
+export const usePkiSyncPreviewCertificates = ({
+  projectId,
+  applicationId,
+  pkiSyncId,
+  filters,
+  offset = 0,
+  limit = 20,
+  enabled = false
+}: {
+  projectId: string;
+  applicationId?: string | null;
+  pkiSyncId?: string | null;
+  filters?: TPkiSyncFilters | null;
+  offset?: number;
+  limit?: number;
+  enabled?: boolean;
+}) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.matchingCertificateIds(
+      projectId,
+      pkiSyncId ?? applicationId ?? "",
+      filters,
+      offset,
+      limit
+    ),
+    enabled,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data } = await apiRequest.post<TPkiSyncFilterPreview>(
+        "/api/v1/cert-manager/syncs/certificates/search",
+        pkiSyncId
+          ? { pkiSyncId, filters: filters ?? null, offset, limit }
+          : { applicationId, filters: filters ?? null, offset, limit }
+      );
+
+      return {
+        certificates: data.certificates,
+        totalCount: data.matchedCount,
+        toUnlink: data.toUnlink,
+        willRemoveFromDestination: data.willRemoveFromDestination
+      };
+    }
+  });
+};
+
+export const MAX_RESOLVED_CERTIFICATE_ORDERS = 200;
+
+export const usePkiSyncCertificateOrders = ({
+  applicationId,
+  pkiSyncId,
+  certificateOrderIds
+}: {
+  applicationId?: string | null;
+  pkiSyncId?: string | null;
+  certificateOrderIds: string[];
+}) => {
+  const ids = certificateOrderIds.slice(0, MAX_RESOLVED_CERTIFICATE_ORDERS);
+
+  return useQuery({
+    queryKey: pkiSyncKeys.certificateOrders(pkiSyncId ?? applicationId ?? "", ids),
+    enabled: Boolean((pkiSyncId || applicationId) && ids.length),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ orders: TPkiSyncCertificateOrder[] }>(
+        "/api/v1/cert-manager/syncs/certificate-orders/search",
+        pkiSyncId
+          ? { pkiSyncId, certificateOrderIds: ids }
+          : { applicationId, certificateOrderIds: ids }
+      );
+
+      return new Map(
+        data.orders.map(({ certificateOrderId, commonName, altNames }) => [
+          certificateOrderId,
+          getCertificateDisplayName({ commonName, altNames }).originalDisplayName
+        ])
+      );
+    }
+  });
 };
 
 export const usePkiSyncOptions = (
@@ -85,6 +192,16 @@ export const fetchPkiSyncsByProjectId = async (
   return data.pkiSyncs;
 };
 
+const IN_FLIGHT_POLL_MS = 2000;
+
+const isPkiSyncInFlight = (sync?: TPkiSync) =>
+  sync?.syncStatus === PkiSyncStatus.Pending ||
+  sync?.syncStatus === PkiSyncStatus.Running ||
+  sync?.importStatus === PkiSyncStatus.Pending ||
+  sync?.importStatus === PkiSyncStatus.Running ||
+  sync?.removeStatus === PkiSyncStatus.Pending ||
+  sync?.removeStatus === PkiSyncStatus.Running;
+
 export const useListPkiSyncs = (
   projectId: string,
   options?: Omit<
@@ -96,6 +213,8 @@ export const useListPkiSyncs = (
   return useQuery({
     queryKey: pkiSyncKeys.list(projectId, applicationId),
     queryFn: () => fetchPkiSyncsByProjectId(projectId, undefined, applicationId),
+    refetchInterval: (query) =>
+      query.state.data?.some(isPkiSyncInFlight) ? IN_FLIGHT_POLL_MS : false,
     ...queryOptions
   });
 };
@@ -137,6 +256,7 @@ export const useGetPkiSync = (
 
       return data;
     },
+    refetchInterval: (query) => (isPkiSyncInFlight(query.state.data) ? IN_FLIGHT_POLL_MS : false),
     ...options
   });
 };
@@ -227,6 +347,34 @@ export const useListAwsListeners = (
       return data.listeners;
     },
     enabled: !!connectionId && !!region && !!loadBalancerArn,
+    ...options
+  });
+};
+
+export const useListKempVirtualServices = (
+  { connectionId }: { connectionId: string },
+  options?: Omit<
+    UseQueryOptions<
+      TKempVirtualService[],
+      unknown,
+      TKempVirtualService[],
+      ReturnType<typeof pkiSyncKeys.kempVirtualServices>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.kempVirtualServices(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ virtualServices: TKempVirtualService[] }>(
+        "/api/v1/cert-manager/syncs/kemp-loadmaster/virtual-services",
+        {
+          params: { connectionId }
+        }
+      );
+      return data.virtualServices;
+    },
+    enabled: !!connectionId,
     ...options
   });
 };

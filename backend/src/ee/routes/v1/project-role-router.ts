@@ -286,7 +286,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { roles } = await server.services.role.listRoles({
         permission: req.permission,
@@ -320,7 +320,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const role = await server.services.role.getRoleBySlug({
         permission: req.permission,
@@ -335,6 +335,43 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       });
 
       return { role: { ...role, projectId: role.projectId as string } };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/roles/:roleId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectRoles],
+      description: "Get a project role by ID",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        roleId: z.string().trim().uuid().describe(PROJECT_ROLE.GET_ROLE_BY_ID.roleId)
+      }),
+      response: {
+        200: z.object({
+          role: SanitizedRoleSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const role = await server.services.role.getProjectRoleById({
+        permission: req.permission,
+        selector: {
+          id: req.params.roleId
+        }
+      });
+
+      return { role };
     }
   });
 
@@ -376,7 +413,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { permissions, memberships, assumedPrivilegeDetails } = await server.services.role.getUserPermission({
         permission: req.permission,

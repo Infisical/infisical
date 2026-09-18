@@ -6,13 +6,9 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
 interface OrganizationInvitationTemplateProps extends Omit<BaseEmailWrapperProps, "preview" | "title"> {
-  metadata?: string;
   inviterFirstName?: string;
   inviterUsername?: string;
   organizationName: string;
-  email: string;
-  organizationId: string;
-  token: string;
   callback_url: string;
 }
 
@@ -20,11 +16,7 @@ export const OrganizationInvitationTemplate = ({
   organizationName,
   inviterFirstName,
   inviterUsername,
-  token,
   callback_url,
-  metadata,
-  email,
-  organizationId,
   siteUrl
 }: OrganizationInvitationTemplateProps) => {
   return (
@@ -54,11 +46,7 @@ export const OrganizationInvitationTemplate = ({
         </Text>
       </Section>
       <Section className="text-center">
-        <BaseButton
-          href={`${callback_url}?token=${token}${metadata ? `&metadata=${metadata}` : ""}&to=${encodeURIComponent(email)}&organization_id=${organizationId}`}
-        >
-          Accept Invite
-        </BaseButton>
+        <BaseButton href={callback_url}>Accept Invite</BaseButton>
       </Section>
       <Section className="mt-[24px] bg-gray-50 pt-[2px] pb-[16px] border border-solid border-gray-200 px-[24px] rounded-md text-gray-800">
         <Text className="mb-[0px]">
@@ -76,9 +64,7 @@ OrganizationInvitationTemplate.PreviewProps = {
   organizationName: "Example Organization",
   inviterFirstName: "Jane",
   inviterUsername: "jane@infisical.com",
-  email: "john@infisical.com",
   siteUrl: "https://infisical.com",
-  callback_url: "https://app.infisical.com",
-  token: "preview-token",
-  organizationId: "1ae1c2c7-8068-461c-b15e-421737868a6a"
+  callback_url:
+    "https://app.infisical.com/signupinvite?token=preview-token&to=john%40infisical.com&organization_id=1ae1c2c7-8068-461c-b15e-421737868a6a"
 } as OrganizationInvitationTemplateProps;

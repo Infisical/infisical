@@ -1,0 +1,76 @@
+name: "Publish OpenAPI Spec"
+
+# Publishes the OpenAPI spec for each state of backend/ that lands on main, so that
+# "Check API For Breaking Changes" has a trustworthy baseline to diff PRs against.
+#
+# This job exists because of GitHub's cache scoping: a PR can read caches written on
+# the default branch, but caches a PR writes are visible only to that PR. Baselines
+# therefore have to be produced by a run on main. The Docker layer cache the spec
+# generator uses is scoped the same way, so this job is also the only writer of that.
+#
+# The cache path below MUST stay identical to the one the checker restores, because
+# actions/cache folds the path into the cache version. A mismatched path misses even
+# on an exact key match, and it misses silently: the checker just rebuilds the
+# baseline every time and this job's work is thrown away.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-openapi-spec-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+
+      - name: Resolve cache key
+        id: key
+        run: echo "key=openapi-spec-v1-$(git rev-parse HEAD:backend)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for an existing spec
+        id: probe
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: base-spec.json
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+
+      - name: Set up buildx
+        if: steps.probe.outputs.cache-hit != 'true'
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Start postgres and redis
+        if: steps.probe.outputs.cache-hit != 'true'
+        run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
+
+      - name: Generate spec
+        if: steps.probe.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-openapi-spec
+        with:
+          output: base-spec.json
+          write-layer-cache: "true"
+
+      - name: Publish spec
+        if: steps.probe.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: base-spec.json
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.dev.yml down || true

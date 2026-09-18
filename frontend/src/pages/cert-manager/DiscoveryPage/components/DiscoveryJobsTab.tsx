@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HoverCard, HoverCardContent, HoverCardTrigger, Tag } from "@app/components/v2";
 import {
@@ -37,7 +38,8 @@ import {
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub,
-  useOrganization
+  useOrganization,
+  useSubscription
 } from "@app/context";
 import {
   PkiDiscoveryScanStatus,
@@ -67,11 +69,25 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
 
+  const { subscription } = useSubscription();
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createJob",
     "editJob",
-    "deleteJob"
+    "deleteJob",
+    "upgradePlan"
   ] as const);
+
+  const handleCreateJob = () => {
+    if (!subscription.pkiDiscovery) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "Certificate discovery is available on Infisical's Enterprise plan."
+      });
+      return;
+    }
+    handlePopUpOpen("createJob");
+  };
 
   const { data, isPending } = useListPkiDiscoveries({
     projectId,
@@ -139,7 +155,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <HoverCardTrigger>
               <Tag>+{remainingPorts.length}</Tag>
             </HoverCardTrigger>
-            <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-3">
+            <HoverCardContent className="border border-border-cool bg-surface-raised p-3">
               <div className="flex flex-wrap gap-1">
                 {remainingPorts.map((port) => (
                   <Tag key={port}>{port}</Tag>
@@ -166,11 +182,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             a={ProjectPermissionSub.PkiDiscovery}
           >
             {(isAllowed) => (
-              <Button
-                variant="project"
-                onClick={() => handlePopUpOpen("createJob")}
-                isDisabled={!isAllowed}
-              >
+              <Button variant="project" onClick={handleCreateJob} isDisabled={!isAllowed}>
                 <PlusIcon />
                 Add Job
               </Button>
@@ -349,6 +361,13 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
         onConfirm={handleDelete}
         discoveryName={(popUp.deleteJob.data as TPkiDiscovery)?.name || ""}
+      />
+
+      <UpgradePlanModal
+        paywallKey="cert-manager.discovery-jobs"
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { text: string })?.text}
       />
     </Card>
   );

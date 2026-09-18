@@ -16,15 +16,25 @@ import { useTimedReset } from "@app/hooks";
 import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
+import { QuickSearchSelection } from "./quickSearchTypes";
+
 type Props = {
   secret: SecretV3RawSanitized;
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
   tags: string[];
   search: string;
+  onSelectResult: (selection: QuickSearchSelection) => void;
 };
 
-export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }: Props) => {
+export const QuickSearchSecretItem = ({
+  secret,
+  envSlug,
+  onClose,
+  onSelectResult,
+  tags,
+  search
+}: Props) => {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
@@ -35,17 +45,18 @@ export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }
   const { currentProject } = useProject();
 
   const handleNavigate = () => {
+    onSelectResult({ search: secret.key, tags });
     navigate({
       search: (prev) => ({
         ...prev,
         secretPath: secret.path,
-        search: secret.key,
-        tags: tags.length ? tags.join(",") : undefined,
+        search: undefined,
+        tags: undefined,
         filterBy: "secret",
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   const handleCopy = async () => {

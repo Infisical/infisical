@@ -4,7 +4,6 @@ export enum ProjectMembershipRole {
   Custom = "custom",
   Viewer = "viewer",
   NoAccess = "no-access",
-  SshHostBootstrapper = "ssh-host-bootstrapper",
   KmsCryptographicOperator = "cryptographic-operator"
 }
 
@@ -30,7 +29,7 @@ export type TOrgRole = {
   id: string;
   createdAt: string;
   updatedAt: string;
-  description?: string;
+  description?: string | null;
   permissions: TPermission[];
 };
 
@@ -58,7 +57,7 @@ export type TGetUserProjectPermissionDTO = {
 export type TCreateOrgRoleDTO = {
   orgId: string;
   name: string;
-  description?: string;
+  description?: string | null;
   slug: string;
   permissions: TPermission[];
 };

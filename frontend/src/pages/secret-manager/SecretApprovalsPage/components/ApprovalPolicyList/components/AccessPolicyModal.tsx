@@ -1,241 +1,213 @@
-import { RefObject, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import ms from "ms";
+import axios from "axios";
+import {
+  CircleAlertIcon,
+  GripVerticalIcon,
+  InfoIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
   Button,
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  CreatableSelect,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldTitle,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
-  Select,
-  SelectItem,
-  Switch,
-  Tag,
-  Tooltip
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemGroup,
+  ItemMedia,
+  ItemSeparator,
+  SecretPathInput,
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
-import {
-  useCreateSecretApprovalPolicy,
-  useListWorkspaceGroups,
-  useUpdateSecretApprovalPolicy
-} from "@app/hooks/api";
+import { useDiscardChangesGuard } from "@app/hooks";
+import { useCreateSecretApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
 import {
   useCreateAccessApprovalPolicy,
   useUpdateAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval";
 import {
-  Approver,
   ApproverType,
   BypasserType,
-  TAccessApprovalPolicy
+  TAccessApprovalPolicy,
+  TApprovalPolicyApproverInput
 } from "@app/hooks/api/accessApproval/types";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
+import { onRequestError } from "@app/hooks/api/reactQuery";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
-import { PolicyMemberOption } from "./PolicyMemberOption";
+import {
+  approvalPolicyFormSchema,
+  isValidMemberEmail,
+  TApprovalPolicyFormSchema
+} from "./approvalPolicyFormSchema";
+import { groupApproversBySequence } from "./approvalPolicyRowUtils";
+import { ApproverOption, ApproverOptionData } from "./ApproverOption";
+
+const getApproverOptionValue = (option: ApproverOptionData) =>
+  `${option.type}-${option.id ?? option.username ?? ""}`;
+
+const getApproverOptionLabel = (option: ApproverOptionData) =>
+  option.name ?? option.username ?? option.id ?? "Unknown approver";
+
+const formatApproverOptionLabel = (
+  option: ApproverOptionData,
+  { context }: FormatOptionLabelMeta<ApproverOptionData>
+) =>
+  context === "menu" ? (
+    <ApproverOption option={option} label={getApproverOptionLabel(option)} />
+  ) : (
+    getApproverOptionLabel(option)
+  );
+
+const filterApproverOption = ({ data }: { data: ApproverOptionData }, input: string) => {
+  const search = input.trim().toLowerCase();
+  return [data.name, data.memberEmail, data.username, data.id].some((value) =>
+    value?.toLowerCase().includes(search)
+  );
+};
+
+const getManualMemberOption = (
+  email: string,
+  type: ApproverType.User | BypasserType.User
+): ApproverOptionData => {
+  const username = email.trim().toLowerCase();
+  return { type, username, name: username };
+};
+
+const canAddMemberEmail = (input: string, options: readonly ApproverOptionData[]) => {
+  const username = input.trim().toLowerCase();
+  if (!isValidMemberEmail(username)) return false;
+
+  return !options.some((option) =>
+    [option.username, option.memberEmail].some((value) => value?.toLowerCase() === username)
+  );
+};
+
+const hasOptionId = (option: ApproverOptionData): option is ApproverOptionData & { id: string } =>
+  Boolean(option.id);
 
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   members?: TWorkspaceUser[];
+  groups?: TGroupMembership[];
   projectId: string;
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
+  hasApproverOptionsError: boolean;
+  isRetryingApproverOptions: boolean;
+  onRetryApproverOptions: () => void;
 };
-
-const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
-const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
-
-const durationSchema = z
-  .string()
-  .trim()
-  .nullish()
-  .superRefine((val, ctx) => {
-    if (!val || val === "never") return;
-    const parsed = ms(val);
-
-    if (typeof parsed !== "number" || parsed <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Invalid duration format. Use formats like '1h', '3d', '72h'."
-      });
-      return;
-    }
-
-    if (parsed < MIN_EXPIRATION_MS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Duration must be at least 1 minute."
-      });
-      return;
-    }
-
-    if (parsed > MAX_EXPIRATION_MS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Duration cannot exceed 1 year."
-      });
-    }
-  });
-
-const formSchema = z
-  .object({
-    environments: z.array(z.object({ slug: z.string(), name: z.string() })).min(1),
-    name: z.string().optional(),
-    secretPath: z.string().trim().min(1),
-    approvals: z.number().min(1).default(1),
-    userApprovers: z
-      .object({
-        type: z.literal(ApproverType.User),
-        id: z.string(),
-        name: z.string().optional(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
-    groupApprovers: z
-      .object({ type: z.literal(ApproverType.Group), id: z.string() })
-      .array()
-      .default([]),
-    userBypassers: z
-      .object({
-        type: z.literal(BypasserType.User),
-        id: z.string(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
-    groupBypassers: z
-      .object({ type: z.literal(BypasserType.Group), id: z.string() })
-      .array()
-      .default([]),
-    policyType: z.nativeEnum(PolicyType),
-    enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-    allowedSelfApprovals: z.boolean().default(true),
-    sequenceApprovers: z
-      .object({
-        user: z
-          .object({
-            type: z.literal(ApproverType.User),
-            id: z.string(),
-            name: z.string().optional(),
-            isOrgMembershipActive: z.boolean().optional()
-          })
-          .array()
-          .default([]),
-        group: z
-          .object({ type: z.literal(ApproverType.Group), id: z.string() })
-          .array()
-          .default([]),
-        approvals: z.number().min(1).default(1)
-      })
-      .array()
-      .default([])
-      .optional(),
-    maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
-  })
-  .superRefine((data, ctx) => {
-    if (data.policyType === PolicyType.ChangePolicy) {
-      if (!(data.groupApprovers.length || data.userApprovers.length)) {
-        ctx.addIssue({
-          path: ["userApprovers"],
-          code: z.ZodIssueCode.custom,
-          message: "At least one approver should be provided"
-        });
-        ctx.addIssue({
-          path: ["groupApprovers"],
-          code: z.ZodIssueCode.custom,
-          message: "At least one approver should be provided"
-        });
-      }
-    }
-  });
-
-type TFormSchema = z.infer<typeof formSchema>;
 
 const Form = ({
   onToggle,
   members = [],
+  groups = [],
   projectId,
   projectSlug,
   editValues,
-  modalContainer,
-  isEditMode
-}: Props & { modalContainer: RefObject<HTMLDivElement>; isEditMode: boolean }) => {
+  isEditMode,
+  onDirtyChange,
+  onSubmittingChange,
+  onRequestClose,
+  hasApproverOptionsError,
+  isRetryingApproverOptions,
+  onRetryApproverOptions
+}: Props & {
+  isEditMode: boolean;
+  onDirtyChange: (isDirty: boolean) => void;
+  onSubmittingChange: (isSubmitting: boolean) => void;
+  onRequestClose: () => void;
+}) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
+    () =>
+      editValues
+        ? ({
+            ...editValues,
+            environments: editValues.environments,
+            userApprovers:
+              editValues.approvers
+                ?.filter((approver) => approver.type === ApproverType.User)
+                .map(({ id, type, name, isOrgMembershipActive }) => ({
+                  id,
+                  type: type as ApproverType.User,
+                  name,
+                  isOrgMembershipActive
+                })) || [],
+            groupApprovers:
+              editValues.approvers
+                ?.filter((approver) => approver.type === ApproverType.Group)
+                .map(({ id, type, name }) => ({
+                  id,
+                  type: type as ApproverType.Group,
+                  name
+                })) || [],
+            userBypassers:
+              editValues.bypassers
+                ?.filter((bypasser) => bypasser.type === BypasserType.User)
+                .map(({ id, type }) => ({ id, type: type as BypasserType.User })) || [],
+            groupBypassers:
+              editValues.bypassers
+                ?.filter((bypasser) => bypasser.type === BypasserType.Group)
+                .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
+            approvals: editValues.approvals,
+            allowedSelfApprovals: editValues.allowedSelfApprovals,
+            bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
+            maxTimePeriod: editValues.maxTimePeriod,
+            requestExpirationTime: editValues.requestExpirationTime,
+            sequenceApprovers: groupApproversBySequence(editValues.approvers, editValues.approvals)
+          } as TApprovalPolicyFormSchema)
+        : undefined,
+    [editValues]
+  );
   const {
     control,
     handleSubmit,
     watch,
     resetField,
-    formState: { isSubmitting }
-  } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema),
-    values: editValues
-      ? ({
-          ...editValues,
-          environments: editValues.environments,
-          userApprovers:
-            editValues?.approvers
-              ?.filter((approver) => approver.type === ApproverType.User)
-              .map(({ id, type, isOrgMembershipActive }) => ({
-                id,
-                type: type as ApproverType.User,
-                isOrgMembershipActive
-              })) || [],
-          groupApprovers:
-            editValues?.approvers
-              ?.filter((approver) => approver.type === ApproverType.Group)
-              .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
-          userBypassers:
-            editValues?.bypassers
-              ?.filter((bypasser) => bypasser.type === BypasserType.User)
-              .map(({ id, type }) => ({ id, type: type as BypasserType.User })) || [],
-          groupBypassers:
-            editValues?.bypassers
-              ?.filter((bypasser) => bypasser.type === BypasserType.Group)
-              .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
-          approvals: editValues?.approvals,
-          allowedSelfApprovals: editValues?.allowedSelfApprovals,
-          maxTimePeriod: editValues?.maxTimePeriod,
-          requestExpirationTime: editValues?.requestExpirationTime,
-          sequenceApprovers: editValues.approvers?.reduce(
-            (acc, curr) => {
-              if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
-                acc[acc.length - 1][curr.type]?.push(curr);
-                return acc;
-              }
-              const approvals = curr.approvalsRequired || editValues.approvals;
-              acc.push(
-                curr.type === ApproverType.User
-                  ? {
-                      user: [curr],
-                      group: [],
-                      sequence: 1,
-                      approvals
-                    }
-                  : { group: [curr], user: [], sequence: 1, approvals }
-              );
-              return acc;
-            },
-            [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
-          )
-        } as TFormSchema)
-      : undefined,
+    setError,
+    setValue,
+    formState: { isDirty, isSubmitting, errors }
+  } = useForm<TApprovalPolicyFormSchema>({
+    resolver: zodResolver(approvalPolicyFormSchema),
+    values: editFormValues,
     defaultValues: !editValues
       ? {
           secretPath: "/",
@@ -243,13 +215,16 @@ const Form = ({
         }
       : undefined
   });
+
+  useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
+  useEffect(() => onSubmittingChange(isSubmitting), [isSubmitting, onSubmittingChange]);
+
   const sequenceApproversFieldArray = useFieldArray({
     control,
     name: "sequenceApprovers"
   });
 
   const { currentProject } = useProject();
-  const { data: groups } = useListWorkspaceGroups(projectId);
 
   const availableEnvironments = currentProject?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
@@ -262,6 +237,8 @@ const Form = ({
 
   const enforcementLevel = watch("enforcementLevel");
 
+  const formUserApprovers = watch("userApprovers");
+  const formGroupApprovers = watch("groupApprovers");
   const formUserBypassers = watch("userBypassers");
   const formGroupBypassers = watch("groupBypassers");
   const formEnvironments = watch("environments");
@@ -275,7 +252,7 @@ const Form = ({
     userBypassers,
     sequenceApprovers,
     ...data
-  }: TFormSchema) => {
+  }: TApprovalPolicyFormSchema) => {
     if (!projectId) return;
 
     const bypassers = [...userBypassers, ...groupBypassers];
@@ -293,9 +270,7 @@ const Form = ({
         ...data,
         approvers: sequenceApprovers?.flatMap((approvers, index) =>
           approvers.user
-            .map(
-              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-            )
+            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
             .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
         ),
         approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -322,7 +297,7 @@ const Form = ({
     groupBypassers,
     sequenceApprovers,
     ...data
-  }: TFormSchema) => {
+  }: TApprovalPolicyFormSchema) => {
     if (!projectId || !projectSlug) return;
     if (!editValues?.id) return;
 
@@ -343,9 +318,7 @@ const Form = ({
         ...data,
         approvers: sequenceApprovers?.flatMap((approvers, index) =>
           approvers.user
-            .map(
-              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-            )
+            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
             .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
         ),
         approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -364,20 +337,37 @@ const Form = ({
     onToggle(false);
   };
 
-  const handleFormSubmit = async (data: TFormSchema) => {
-    if (isEditMode) {
-      await handleUpdatePolicy(data);
-    } else {
-      await handleCreatePolicy(data);
+  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
+    try {
+      if (isEditMode) {
+        await handleUpdatePolicy(data);
+      } else {
+        await handleCreatePolicy(data);
+      }
+    } catch (error) {
+      const serverResponse = axios.isAxiosError(error) ? error.response?.data : undefined;
+      const message = serverResponse?.message;
+
+      if (
+        typeof message === "string" &&
+        message.startsWith("A policy for secret path") &&
+        message.includes("already exists in environment")
+      ) {
+        setError("secretPath", { type: "server", message }, { shouldFocus: true });
+        return;
+      }
+
+      if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
     }
   };
 
-  const memberOptions: Omit<Approver, "sequence" | "approvalsRequired">[] = useMemo(
+  const memberOptions = useMemo<ApproverOptionData[]>(
     () =>
       members.map((member) => ({
         id: member.user.id,
         type: ApproverType.User,
-        name: member.user.username,
+        name: getMemberLabel(member),
+        memberEmail: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -387,16 +377,78 @@ const Form = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: ApproverType.Group
+        type: ApproverType.Group,
+        name: group.name
       })),
     [groups]
   );
+
+  const approverOptions = useMemo<ApproverOptionData[]>(
+    () => [...memberOptions, ...(groupOptions ?? [])],
+    [memberOptions, groupOptions]
+  );
+
+  const memberById = useMemo(
+    () => new Map(members.map((member) => [member.user.id, member] as const)),
+    [members]
+  );
+
+  const groupById = useMemo(
+    () => new Map(groups.map(({ group }) => [group.id, group] as const)),
+    [groups]
+  );
+
+  // policies only return ids for groups (and for change policy approvers), so labels have to be
+  // resolved against the loaded project members and groups
+  const resolveApproverOption = useCallback(
+    (option: ApproverOptionData): ApproverOptionData => {
+      if (!option.id) return option;
+
+      if (option.type === ApproverType.Group) {
+        const group = groupById.get(option.id);
+        return group ? { ...option, name: group.name } : option;
+      }
+
+      const member = memberById.get(option.id);
+      return member
+        ? {
+            ...option,
+            name: getMemberLabel(member),
+            memberEmail: member.user.username,
+            isOrgMembershipActive: member.user.isOrgMembershipActive
+          }
+        : option;
+    },
+    [memberById, groupById]
+  );
+
+  const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
+    users: selected
+      .filter((option) => option.type === ApproverType.User)
+      .map((option) => ({
+        type: ApproverType.User as const,
+        id: option.id,
+        username: option.username,
+        name: option.name,
+        isOrgMembershipActive: option.isOrgMembershipActive
+      })),
+    groups: selected
+      .filter((option) => option.type === ApproverType.Group)
+      .filter(hasOptionId)
+      .map((option) => ({
+        type: ApproverType.Group as const,
+        id: option.id,
+        name: option.name
+      }))
+  });
 
   const bypasserMemberOptions = useMemo(
     () =>
       members.map((member) => ({
         id: member.user.id,
         type: BypasserType.User,
+        name: getMemberLabel(member),
+        memberEmail: member.user.username,
         isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
@@ -406,10 +458,62 @@ const Form = ({
     () =>
       groups?.map(({ group }) => ({
         id: group.id,
-        type: BypasserType.Group
+        type: BypasserType.Group,
+        name: group.name
       })),
     [groups]
   );
+
+  const bypasserOptions = useMemo<ApproverOptionData[]>(
+    () => [...bypasserMemberOptions, ...(bypasserGroupOptions ?? [])],
+    [bypasserMemberOptions, bypasserGroupOptions]
+  );
+
+  const splitSelectedBypassers = (selected: readonly ApproverOptionData[]) => ({
+    users: selected
+      .filter((option) => option.type === BypasserType.User)
+      .map((option) => ({
+        type: BypasserType.User as const,
+        id: option.id,
+        username: option.username,
+        name: option.name,
+        isOrgMembershipActive: option.isOrgMembershipActive
+      })),
+    groups: selected
+      .filter((option) => option.type === BypasserType.Group)
+      .filter(hasOptionId)
+      .map((option) => ({
+        type: BypasserType.Group as const,
+        id: option.id,
+        name: option.name
+      }))
+  });
+
+  const selectedPolicyApprovers: ApproverOptionData[] = [
+    ...(formUserApprovers ?? []),
+    ...(formGroupApprovers ?? [])
+  ].map(resolveApproverOption);
+  const updatePolicyApprovers = (newValue: readonly ApproverOptionData[]) => {
+    const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
+    setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
+    setValue("groupApprovers", selectedGroups, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
+  const selectedPolicyBypassers: ApproverOptionData[] = [
+    ...(formUserBypassers ?? []),
+    ...(formGroupBypassers ?? [])
+  ].map(resolveApproverOption);
+  const updatePolicyBypassers = (newValue: readonly ApproverOptionData[]) => {
+    const { users, groups: selectedGroups } = splitSelectedBypassers(newValue);
+    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
+    setValue("groupBypassers", selectedGroups, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -440,293 +544,424 @@ const Form = ({
     setDragOverItem(null);
   };
 
+  const handleReorderKeyDown = (event: React.KeyboardEvent, index: number) => {
+    if (event.key === "ArrowUp" && index > 0) {
+      event.preventDefault();
+      sequenceApproversFieldArray.move(index, index - 1);
+    }
+
+    if (event.key === "ArrowDown" && index < sequenceApproversFieldArray.fields.length - 1) {
+      event.preventDefault();
+      sequenceApproversFieldArray.move(index, index + 1);
+    }
+  };
+
+  const renderApproverSelect = (index: number) => {
+    const selectedOptions: ApproverOptionData[] = [
+      ...(watch(`sequenceApprovers.${index}.user`) ?? []),
+      ...(watch(`sequenceApprovers.${index}.group`) ?? [])
+    ].map(resolveApproverOption);
+    const updateSelectedOptions = (newValue: readonly ApproverOptionData[]) => {
+      const { users, groups: selectedGroups } = splitSelectedApprovers(newValue);
+      setValue(`sequenceApprovers.${index}.user`, users, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+      setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
+        shouldDirty: true,
+        shouldValidate: true
+      });
+    };
+
+    return (
+      <CreatableSelect<ApproverOptionData>
+        isMulti
+        aria-label={`Approvers for step ${index + 1}`}
+        placeholder="Select approvers or enter a member email..."
+        options={approverOptions}
+        getOptionValue={getApproverOptionValue}
+        getOptionLabel={getApproverOptionLabel}
+        filterOption={filterApproverOption}
+        formatOptionLabel={formatApproverOptionLabel}
+        formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+        isValidNewOption={(input, value) =>
+          canAddMemberEmail(input, [
+            ...(value as MultiValue<ApproverOptionData>),
+            ...approverOptions
+          ])
+        }
+        isOptionDisabled={(option) =>
+          option.type === ApproverType.User && option.isOrgMembershipActive === false
+        }
+        value={selectedOptions}
+        onChange={(newValue) =>
+          updateSelectedOptions([...(newValue as MultiValue<ApproverOptionData>)])
+        }
+        onCreateOption={(input) =>
+          updateSelectedOptions([
+            ...selectedOptions,
+            getManualMemberOption(input, ApproverType.User)
+          ])
+        }
+        noOptionsMessage={() => "Enter an exact project member email address."}
+        isError={Boolean(
+          errors.sequenceApprovers?.[index]?.user || errors.sequenceApprovers?.[index]?.group
+        )}
+      />
+    );
+  };
+
+  const renderMinApprovals = (index: number, inputClassName: string) => (
+    <Controller
+      control={control}
+      name={`sequenceApprovers.${index}.approvals` as const}
+      defaultValue={1}
+      render={({ field }) => (
+        <>
+          <Input
+            {...field}
+            type="number"
+            min={1}
+            className={inputClassName}
+            isError={Boolean(errors.sequenceApprovers?.[index]?.approvals)}
+            onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
+          />
+          <FieldError errors={[errors.sequenceApprovers?.[index]?.approvals]} />
+        </>
+      )}
+    />
+  );
+
   return (
-    <div className="flex flex-col space-y-3">
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <div className="flex items-center gap-x-3">
-          <Controller
-            control={control}
-            name="policyType"
-            defaultValue={PolicyType.ChangePolicy}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Policy Type"
-                isRequired
-                isError={Boolean(error)}
-                tooltipText="Change policies govern secret changes within a given environment and secret path. Access policies allow underprivileged user to request access to environment/secret path."
-                errorText={error?.message}
-                className="flex-1"
+    <form
+      onSubmit={handleSubmit(handleFormSubmit)}
+      className="flex flex-1 flex-col gap-4 overflow-hidden"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {hasApproverOptionsError && (
+          <Alert variant="danger">
+            <CircleAlertIcon />
+            <AlertTitle>Could not load all approver suggestions</AlertTitle>
+            <AlertDescription>
+              <span>You can enter exact project member emails or retry.</span>
+              <Button
+                size="xs"
+                variant="danger"
+                type="button"
+                isPending={isRetryingApproverOptions}
+                isDisabled={isRetryingApproverOptions}
+                onClick={onRetryApproverOptions}
               >
-                <Select
-                  isDisabled={isEditMode}
-                  value={value}
-                  onValueChange={(val) => {
-                    onChange(val as PolicyType);
+                <RefreshCwIcon />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        <Controller
+          control={control}
+          name="policyType"
+          defaultValue={PolicyType.ChangePolicy}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Policy Type
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Change policies govern secret changes within a given environment and secret
+                    path. Access policies allow underprivileged users to request access to an
+                    environment and secret path.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  modal
+                  aria-label="Policy type"
+                  options={Object.values(PolicyType)}
+                  value={value ?? null}
+                  onValueChange={(policyType) => {
+                    onChange(policyType);
                     resetField("secretPath");
                   }}
-                  className="w-full border border-mineshaft-500"
-                >
-                  {Object.values(PolicyType).map((policyType) => {
-                    return (
-                      <SelectItem value={policyType} key={`policy-type-${policyType}`}>
-                        {policyDetails[policyType].name}
-                      </SelectItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Policy Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="min-w-0 flex-[2]"
-              >
-                <Input {...field} value={field.value || ""} />
-              </FormControl>
-            )}
-          />
-
-          {isAccessPolicyType && (
+                  getOptionValue={(policyType) => policyType}
+                  getOptionLabel={(policyType) => policyDetails[policyType].name}
+                  placeholder="Select policy type"
+                  searchPlaceholder="Search policy types..."
+                  searchAriaLabel="Search policy types"
+                  isDisabled={isEditMode}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="name"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Policy Name</FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  placeholder="e.g. Production Approvals"
+                  isError={Boolean(error)}
+                  autoComplete="off"
+                  name="policy-name"
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="secretPath"
+          defaultValue="/"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Secret Path
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Secret paths support glob patterns. Use * to match a single level and ** to
+                    match all nested levels. Example: /** matches all paths, /services/* matches
+                    immediate children.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FieldContent>
+                <SecretPathInput
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  environment={formEnvironments?.[0]?.slug || ""}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="environments"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Environments</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  multiple
+                  modal
+                  aria-label="Environments"
+                  value={value}
+                  onValueChange={onChange}
+                  placeholder="Select environments..."
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
+                  options={availableEnvironments}
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        {isAccessPolicyType && (
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
             <Controller
               control={control}
               name="maxTimePeriod"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Max. Time Period"
-                  tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-36 shrink-0"
-                >
-                  <Input {...field} value={field.value || ""} placeholder="permanent" />
-                </FormControl>
+                <Field className="flex-1">
+                  <FieldLabel>
+                    Max. Time Period
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      placeholder="permanent"
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
               )}
             />
-          )}
-
-          {isAccessPolicyType && (
             <Controller
               control={control}
               name="requestExpirationTime"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Request Expiration"
-                  tooltipText="Time before unapproved requests expire. Ex: 1h, 3d, 72h"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-36 shrink-0"
-                >
-                  <Input {...field} value={field.value || ""} placeholder="never expires" />
-                </FormControl>
+                <Field className="flex-1">
+                  <FieldLabel>
+                    Request Expiration
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Time before unapproved requests expire. Ex: 1h, 3d, 72h
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      placeholder="never expires"
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
               )}
             />
-          )}
-
-          {!isAccessPolicyType && (
-            <Controller
-              control={control}
-              name="approvals"
-              defaultValue={1}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Min. Approvals Required"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="shrink"
-                >
+          </div>
+        )}
+        {!isAccessPolicyType && (
+          <Controller
+            control={control}
+            name="approvals"
+            defaultValue={1}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Min. Approvals Required</FieldLabel>
+                <FieldContent>
                   <Input
                     {...field}
                     type="number"
                     min={1}
+                    isError={Boolean(error)}
                     onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
                   />
-                </FormControl>
-              )}
-            />
-          )}
-        </div>
-        <div className="flex items-center gap-x-3">
-          <Controller
-            control={control}
-            name="secretPath"
-            defaultValue="/"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                tooltipText="Secret paths support glob patterns. Use * to match a single level and ** to match all nested levels. Example: /** matches all paths, /services/* matches immediate children."
-                label="Secret Path"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="flex-1"
-              >
-                <SecretPathInput
-                  {...field}
-                  value={field.value || ""}
-                  environment={formEnvironments?.[0]?.slug || ""}
-                />
-              </FormControl>
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
-          <Controller
-            control={control}
-            name="environments"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Environments"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="flex-1"
-              >
-                <FilterableSelect
-                  value={value}
-                  isMulti
-                  onChange={onChange}
-                  placeholder="Select environments..."
-                  options={availableEnvironments}
-                  getOptionValue={(option) => option.slug}
-                  getOptionLabel={(option) => option.name}
-                />
-              </FormControl>
-            )}
-          />
-        </div>
-        <div className="mb-2">
-          <p>Approvers</p>
-          <p className="font-inter text-xs text-mineshaft-300 opacity-90">
-            Select members or groups that are allowed to approve requests from this policy.
+        )}
+        <div>
+          <p className="text-sm font-medium text-foreground">Approvers</p>
+          <p className="text-xs text-muted">
+            Select readable members or groups, or enter an exact project member email.
           </p>
         </div>
         {isAccessPolicyType ? (
           <>
-            <div className="max-h-64 thin-scrollbar space-y-2 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2">
-              {sequenceApproversFieldArray.fields.map((el, index) => (
-                <div
-                  className={twMerge(
-                    "rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
-                    dragOverItem === index ? "border-2 border-blue-400" : "",
-                    draggedItem === index ? "opacity-50" : ""
-                  )}
-                  key={el.id}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={handleDrop}
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <Tag>Step {index + 1}</Tag>
-                    <div className="flex items-center gap-3">
-                      <div className="inline text-xs text-mineshaft-400">Min. Approvals</div>
-                      <div className="mr-2 w-20 border-r border-mineshaft-400 pr-3">
-                        <Controller
-                          control={control}
-                          name={`sequenceApprovers.${index}.approvals` as const}
-                          defaultValue={1}
-                          render={({ field }) => (
-                            <Input
-                              {...field}
-                              type="number"
+            {sequenceApproversFieldArray.fields.length === 1 ? (
+              <div className="flex items-start gap-3">
+                <Field className="min-w-0 flex-1">
+                  <FieldLabel>Approvers</FieldLabel>
+                  <FieldContent>
+                    {renderApproverSelect(0)}
+                    <FieldError
+                      errors={[
+                        errors.sequenceApprovers?.[0]?.user,
+                        errors.sequenceApprovers?.[0]?.group
+                      ]}
+                    />
+                  </FieldContent>
+                </Field>
+                <Field className="w-28">
+                  <FieldLabel>Min. Approvals</FieldLabel>
+                  <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
+                </Field>
+              </div>
+            ) : (
+              <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
+                {sequenceApproversFieldArray.fields.map((el, index) => (
+                  <Fragment key={el.id}>
+                    {index > 0 && <ItemSeparator className="m-0" />}
+                    <Item
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={handleDrop}
+                      className={twMerge(
+                        "rounded-none border-0",
+                        dragOverItem === index && "bg-container-hover",
+                        draggedItem === index && "opacity-50"
+                      )}
+                    >
+                      <ItemMedia>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              type="button"
+                              draggable
+                              aria-label={`Reorder step ${index + 1}`}
+                              variant="ghost-muted"
                               size="xs"
-                              min={1}
-                              onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
-                            />
-                          )}
+                              onDragStart={(e) => handleDragStart(e, index)}
+                              onDragEnd={handleDragEnd}
+                              onKeyDown={(event) => handleReorderKeyDown(event, index)}
+                              className="cursor-move"
+                            >
+                              <GripVerticalIcon />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
+                        </Tooltip>
+                        <Badge variant="neutral">Step {index + 1}</Badge>
+                      </ItemMedia>
+                      <ItemContent className="min-w-0">
+                        {renderApproverSelect(index)}
+                        <FieldError
+                          errors={[
+                            errors.sequenceApprovers?.[index]?.user,
+                            errors.sequenceApprovers?.[index]?.group
+                          ]}
                         />
-                      </div>
-                      <Tooltip content="Remove step">
-                        <IconButton
-                          ariaLabel="delete"
-                          variant="plain"
-                          onClick={() => sequenceApproversFieldArray.remove(index)}
-                          className="text-red-500 hover:text-gray-200"
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content="Drag to reorder permission">
-                        <div
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, index)}
-                          onDragEnd={handleDragEnd}
-                          className="mr-2 cursor-move text-gray-400 hover:text-gray-200"
-                        >
-                          <FontAwesomeIcon icon={faGripVertical} />
+                      </ItemContent>
+                      <ItemActions>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted">Min</span>
+                          {renderMinApprovals(index, "h-8 w-14")}
                         </div>
-                      </Tooltip>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Controller
-                      control={control}
-                      name={`sequenceApprovers.${index}.user` as const}
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          label="User Approvers"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          className="flex-1"
-                        >
-                          <FilterableSelect
-                            menuPortalTarget={modalContainer.current}
-                            menuPlacement="top"
-                            isMulti
-                            placeholder="Select members..."
-                            options={memberOptions}
-                            components={{ Option: PolicyMemberOption }}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => {
-                              const member = members?.find((m) => m.user.id === option.id);
-
-                              if (!member)
-                                return ("name" in option && (option.name as string)) || option.id;
-
-                              return getMemberLabel(member);
-                            }}
-                            value={value}
-                            onChange={onChange}
-                          />
-                        </FormControl>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name={`sequenceApprovers.${index}.group` as const}
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          label="Group Approvers"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          className="flex-1"
-                        >
-                          <FilterableSelect
-                            menuPortalTarget={modalContainer.current}
-                            menuPlacement="top"
-                            isMulti
-                            placeholder="Select groups..."
-                            options={groupOptions}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) =>
-                              groups?.find(({ group }) => group.id === option.id)?.group.name ??
-                              option.id
-                            }
-                            value={value}
-                            onChange={onChange}
-                          />
-                        </FormControl>
-                      )}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="my-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              aria-label="Remove step"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => sequenceApproversFieldArray.remove(index)}
+                              className="text-danger hover:text-danger"
+                            >
+                              <Trash2Icon />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>Remove Step</TooltipContent>
+                        </Tooltip>
+                      </ItemActions>
+                    </Item>
+                  </Fragment>
+                ))}
+              </ItemGroup>
+            )}
+            <div>
               <Button
                 size="xs"
-                variant="outline_bg"
+                variant="outline"
+                type="button"
                 onClick={() =>
                   sequenceApproversFieldArray.append({
                     approvals: 1,
@@ -735,214 +970,229 @@ const Form = ({
                   })
                 }
               >
+                <PlusIcon />
                 Add Step
               </Button>
+              <FieldError errors={[errors.sequenceApprovers]} />
             </div>
           </>
         ) : (
-          <div className="flex gap-2">
-            <Controller
-              control={control}
-              name="userApprovers"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="User Approvers"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-1/2"
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
-                    isMulti
-                    placeholder="Select members..."
-                    components={{ Option: PolicyMemberOption }}
-                    options={memberOptions}
-                    getOptionValue={(option) => option.id}
-                    getOptionLabel={(option) => {
-                      const member = members?.find((m) => m.user.id === option.id);
-
-                      if (!member)
-                        return ("name" in option && (option.name as string)) || option.id;
-
-                      return getMemberLabel(member);
-                    }}
-                    value={value}
-                    onChange={onChange}
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="groupApprovers"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Group Approvers"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-1/2"
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
-                    isMulti
-                    placeholder="Select groups..."
-                    options={groupOptions}
-                    getOptionValue={(option) => option.id}
-                    getOptionLabel={(option) =>
-                      groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id
-                    }
-                    value={value}
-                    onChange={onChange}
-                  />
-                </FormControl>
-              )}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Approvers</FieldLabel>
+            <FieldContent>
+              <CreatableSelect<ApproverOptionData>
+                isMulti
+                aria-label="Approvers"
+                placeholder="Select approvers or enter a member email..."
+                options={approverOptions}
+                getOptionValue={getApproverOptionValue}
+                getOptionLabel={getApproverOptionLabel}
+                filterOption={filterApproverOption}
+                formatOptionLabel={formatApproverOptionLabel}
+                formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                isValidNewOption={(input, value) =>
+                  canAddMemberEmail(input, [
+                    ...(value as MultiValue<ApproverOptionData>),
+                    ...approverOptions
+                  ])
+                }
+                isOptionDisabled={(option) =>
+                  option.type === ApproverType.User && option.isOrgMembershipActive === false
+                }
+                value={selectedPolicyApprovers}
+                onChange={(newValue) =>
+                  updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
+                }
+                onCreateOption={(input) =>
+                  updatePolicyApprovers([
+                    ...selectedPolicyApprovers,
+                    getManualMemberOption(input, ApproverType.User)
+                  ])
+                }
+                noOptionsMessage={() => "Enter an exact project member email address."}
+                isError={Boolean(errors.userApprovers || errors.groupApprovers)}
+              />
+              <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
+            </FieldContent>
+          </Field>
         )}
         <Controller
           control={control}
           name="allowedSelfApprovals"
           defaultValue
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl label="Self Approvals" isError={Boolean(error)} errorText={error?.message}>
-              <Switch
+          render={({ field: { value, onChange } }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Self Approvals</FieldTitle>
+                <FieldDescription>Allow approvers to review their own requests</FieldDescription>
+              </FieldContent>
+              <Toggle
                 id="self-approvals"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value}
+                aria-label="Allow self approvals"
+                variant="project"
+                checked={value}
                 onCheckedChange={onChange}
-              >
-                Allow approvers to review their own requests
-              </Switch>
-            </FormControl>
+              />
+            </Field>
           )}
         />
+        {!isAccessPolicyType && (
+          <Controller
+            control={control}
+            name="bypassForMachineIdentities"
+            render={({ field: { value, onChange } }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>Bypass Approval for Machine Identities</FieldTitle>
+                  <FieldDescription>
+                    When enabled, machine identities can modify secrets without requiring approval
+                  </FieldDescription>
+                </FieldContent>
+                <Toggle
+                  id="bypass-machine-identities"
+                  aria-label="Bypass approval for machine identities"
+                  variant="project"
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
+              </Field>
+            )}
+          />
+        )}
         <Controller
           control={control}
           name="enforcementLevel"
           defaultValue={EnforcementLevel.Hard}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Bypass Approvals"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              className="mb-3"
-            >
-              <Switch
+          render={({ field: { value, onChange } }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Bypass Approvals</FieldTitle>
+                <FieldDescription>
+                  Allow certain users to bypass policy in break-glass situations
+                </FieldDescription>
+              </FieldContent>
+              <Toggle
                 id="bypass-approvals"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value === EnforcementLevel.Soft}
+                aria-label="Allow approval bypass"
+                variant="project"
+                checked={value === EnforcementLevel.Soft}
                 onCheckedChange={(v) => onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)}
-              >
-                Allow certain users to bypass policy in break-glass situations
-              </Switch>
-            </FormControl>
+              />
+            </Field>
           )}
         />
         {enforcementLevel === EnforcementLevel.Soft && (
           <>
-            <div className="flex gap-2">
-              <Controller
-                control={control}
-                name="userBypassers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="User Bypassers"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="mb-2 w-1/2"
-                  >
-                    <FilterableSelect
-                      menuPlacement="top"
-                      isMulti
-                      placeholder="Select members..."
-                      components={{ Option: PolicyMemberOption }}
-                      options={bypasserMemberOptions}
-                      getOptionValue={(option) => option.id}
-                      getOptionLabel={(option) => {
-                        const member = members?.find((m) => m.user.id === option.id);
-
-                        if (!member) return option.id;
-
-                        return getMemberLabel(member);
-                      }}
-                      value={value}
-                      onChange={onChange}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="groupBypassers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Group Bypassers"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="mb-2 w-1/2"
-                  >
-                    <FilterableSelect
-                      menuPlacement="top"
-                      isMulti
-                      placeholder="Select groups..."
-                      options={bypasserGroupOptions}
-                      getOptionValue={(option) => option.id}
-                      getOptionLabel={(option) =>
-                        groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id
-                      }
-                      value={value}
-                      onChange={onChange}
-                    />
-                  </FormControl>
-                )}
-              />
-            </div>
+            <Field>
+              <FieldLabel>Bypassers</FieldLabel>
+              <FieldContent>
+                <CreatableSelect<ApproverOptionData>
+                  isMulti
+                  aria-label="Bypassers"
+                  placeholder="Select bypassers or enter a member email..."
+                  options={bypasserOptions}
+                  getOptionValue={getApproverOptionValue}
+                  getOptionLabel={getApproverOptionLabel}
+                  filterOption={filterApproverOption}
+                  formatOptionLabel={formatApproverOptionLabel}
+                  formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                  isValidNewOption={(input, value) =>
+                    canAddMemberEmail(input, [
+                      ...(value as MultiValue<ApproverOptionData>),
+                      ...bypasserOptions
+                    ])
+                  }
+                  isOptionDisabled={(option) =>
+                    option.type === BypasserType.User && option.isOrgMembershipActive === false
+                  }
+                  value={selectedPolicyBypassers}
+                  onChange={(newValue) =>
+                    updatePolicyBypassers([...(newValue as MultiValue<ApproverOptionData>)])
+                  }
+                  onCreateOption={(input) =>
+                    updatePolicyBypassers([
+                      ...selectedPolicyBypassers,
+                      getManualMemberOption(input, BypasserType.User)
+                    ])
+                  }
+                  noOptionsMessage={() => "Enter an exact project member email address."}
+                  isError={Boolean(errors.userBypassers || errors.groupBypassers)}
+                />
+                <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
+              </FieldContent>
+            </Field>
 
             {bypasserCount <= 0 && (
-              <div className="mt-1 flex rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm text-bunker-300">
-                Not selecting specific users or groups will allow anyone to bypass this policy.
-              </div>
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertDescription>
+                  Not selecting specific users or groups will allow anyone to bypass this policy.
+                </AlertDescription>
+              </Alert>
             )}
           </>
         )}
-        <div className="mt-8 flex items-center space-x-4">
-          <Button
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-          >
-            Save
-          </Button>
-          <Button onClick={() => onToggle(false)} colorSchema="secondary" variant="plain">
-            Close
-          </Button>
-        </div>
-      </form>
-    </div>
+      </div>
+      <SheetFooter className="border-t">
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isEditMode ? "Update Policy" : "Add Policy"}
+        </Button>
+        <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
+          Close
+        </Button>
+      </SheetFooter>
+    </form>
   );
 };
 
 export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Props) => {
-  const modalContainer = useRef<HTMLDivElement>(null);
   const isEditMode = Boolean(editValues);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const closeSheet = useCallback(() => {
+    setIsDirty(false);
+    setIsSubmitting(false);
+    onToggle(false);
+  }, [onToggle]);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      if (!isSubmitting) requestDiscard();
+      return;
+    }
+
+    onToggle(true);
+  };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onToggle}>
-      <ModalContent
-        className="max-w-3xl"
-        ref={modalContainer}
-        title={isEditMode ? "Edit Policy" : "Create Policy"}
-      >
-        <Form
-          {...props}
-          isOpen={isOpen}
-          onToggle={onToggle}
-          editValues={editValues}
-          modalContainer={modalContainer}
-          isEditMode={isEditMode}
-        />
-      </ModalContent>
-    </Modal>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
+          <SheetHeader className="border-b">
+            <SheetTitle>{isEditMode ? "Edit Policy" : "Add Policy"}</SheetTitle>
+          </SheetHeader>
+          <Form
+            {...props}
+            onToggle={closeSheet}
+            editValues={editValues}
+            isEditMode={isEditMode}
+            onDirtyChange={setIsDirty}
+            onSubmittingChange={setIsSubmitting}
+            onRequestClose={requestDiscard}
+          />
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved policy changes will be lost."
+      />
+    </>
   );
 };

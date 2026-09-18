@@ -1,16 +1,20 @@
 <h1 align="center">
-  <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/img/logoname-white.svg">
+    <img width="300" src="/img/logoname-black.svg" alt="infisical">
+  </picture>
 </h1>
 <p align="center">
   <p align="center"><b>The open-source secret management platform</b>: Sync secrets/configs across your team/infrastructure and prevent secret leaks.</p>
 </p>
 
 <h4 align="center">
-  <a href="https://infisical.com/slack">Slack</a> |
+  <a href="https://community.infisical.com/">Community</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a> |
+  <a href="https://x.com/infisical">X</a> |
   <a href="https://infisical.com/careers">Hiring (Remote/SF)</a>
 </h4>
 
@@ -18,28 +22,22 @@
   <a href="https://github.com/Infisical/infisical/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Infisical is released under the MIT license." />
   </a>
-  <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
-    <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
-  </a>
-  <a href="https://github.com/Infisical/infisical/issues">
-    <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
+  <a href="https://github.com/Infisical/infisical/releases">
+    <img src="https://img.shields.io/github/v/release/Infisical/infisical?label=Release&color=brightgreen" alt="Latest Infisical release" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
     <img src="https://img.shields.io/badge/Downloads-6.95M-orange" alt="Cloudsmith downloads" />
   </a>
-  <a href="https://infisical.com/slack">
-    <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
-  </a>
-  <a href="https://twitter.com/infisical">
-    <img src="https://img.shields.io/twitter/follow/infisical?label=Follow" alt="Infisical Twitter" />
+  <a href="https://community.infisical.com/">
+    <img src="https://img.shields.io/badge/community-forum-blueviolet" alt="Infisical community forum" />
   </a>
 </h4>
 
-<img src="/img/infisical_github_repo2.png" width="100%" alt="Dashboard" />
+<img src="/img/infisical_github_repo4.png" width="100%" alt="Infisical secrets management dashboard" />
 
 ## Introduction
 
-**[Infisical](https://infisical.com)** is the open source secret management platform that teams use to centralize their application configuration and secrets like API keys and database credentials as well as manage their internal PKI.
+**[Infisical](https://infisical.com)** is the open source security infrastructure platform that teams use for secrets, certificates, and privileged access management.
 
 We're on a mission to make security tooling more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 
@@ -47,41 +45,58 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 
 ### Secrets Management:
 
+Centralize your application secrets and configuration across every environment, with versioning, rotation, and leak prevention built in.
+
 - **[Dashboard](https://infisical.com/docs/documentation/platform/project)**: Manage secrets across projects and environments (e.g. development, production, etc.) through a user-friendly interface.
-- **[Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview)**: Sync secrets to platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and use tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
+- **[Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview)**: Sync secrets to platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/secret-syncs/vercel), [AWS](https://infisical.com/docs/integrations/secret-syncs/aws-secrets-manager), and use tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
 - **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery)**: Keep track of every secret and project state; roll back when needed.
-- **[Secret Rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview)**: Rotate secrets at regular intervals for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql), [AWS IAM](https://infisical.com/docs/documentation/platform/secret-rotation/aws-iam), and more.
+- **[Secret Rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview)**: Rotate secrets at regular intervals for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql-credentials), [AWS IAM](https://infisical.com/docs/documentation/platform/secret-rotation/aws-iam-user-secret), and more.
 - **[Dynamic Secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/overview)**: Generate ephemeral secrets on-demand for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/postgresql), [MySQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/mysql), [RabbitMQ](https://infisical.com/docs/documentation/platform/dynamic-secrets/rabbit-mq), and more.
 - **[Secret Scanning and Leak Prevention](https://infisical.com/docs/cli/scanning-overview)**: Prevent secrets from leaking to git.
-- **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/getting-started/kubernetes)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
-- **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)**: Inject secrets into applications without modifying any code logic.
+- **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/guides/kubernetes-operator)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
+- **[Infisical Agent](https://infisical.com/docs/integrations/platforms/infisical-agent)**: Inject secrets into applications without modifying any code logic.
+- **[Honey Tokens](https://infisical.com/docs/documentation/platform/honey-tokens/overview)**: Plant decoy credentials alongside your real secrets that act as tripwires, instantly alerting your team the moment an attacker tries to use them.
+- **[Agent Vault](https://github.com/Infisical/agent-vault)**: Broker AI agent access to external APIs so agents never hold real credentials. Outbound requests route through a proxy that injects secrets before forwarding, eliminating credential exfiltration risk from prompt injection.
 
 ### Certificate Management
 
-- **[Internal CA](https://infisical.com/docs/documentation/platform/pki/private-ca)**: Create and manage a private
+Run a complete private PKI: issue, manage, and monitor X.509 certificates from a centralized platform.
+
+- **[Internal CA](https://infisical.com/docs/documentation/platform/pki/ca/private-ca)**: Create and manage a private
   CA hierarchy directly within Infisical.
 - **[External CA](https://infisical.com/docs/documentation/platform/pki/ca/external-ca)**: Integrate with third-party certificate authorities such as Let’s Encrypt, DigiCert, Microsoft AD CS, and more to leverage existing PKI infrastructure
   or issue publicly trusted certificates.
-- **[Certificate Lifecycle Management](https://infisical.com/docs/documentation/platform/pki/certificates/overview)**: Create certificate [profiles](https://infisical.com/docs/documentation/platform/pki/certificates/profiles) and [policies](https://infisical.com/docs/documentation/platform/pki/certificates/policies) to control how certificates are issued, including [enrollment methods](https://infisical.com/docs/documentation/platform/pki/enrollment-methods/overview) such as API, ACME, or EST. Manage the full lifecycle from issuance to renewal and [revocation](https://infisical.com/docs/documentation/platform/pki/certificates/certificates#guide-to-revoking-certificates) with CRL and inventory tracking.
-- **[Certificate Syncs](https://infisical.com/docs/documentation/platform/pki/certificate-syncs/overview)**: Sync certificates to external platforms like [AWS Certificate Manager](https://infisical.com/docs/documentation/platform/pki/certificate-syncs/aws-certificate-manager) and [Azure Key Vault](https://infisical.com/docs/documentation/platform/pki/certificate-syncs/azure-key-vault).
-- **[Alerting](https://infisical.com/docs/documentation/platform/pki/alerting)**: Configure alerting for expiring CA and end-entity certificates.
+- **[Certificate Lifecycle Management](https://infisical.com/docs/documentation/platform/pki/applications/certificates)**: Create certificate [profiles](https://infisical.com/docs/documentation/platform/pki/settings/profiles) and [policies](https://infisical.com/docs/documentation/platform/pki/settings/policies) to control how certificates are issued, including [enrollment methods](https://infisical.com/docs/documentation/platform/pki/applications/enrollment-methods/overview) such as API, ACME, or EST. Manage the full lifecycle from issuance to renewal and [revocation](https://infisical.com/docs/documentation/platform/pki/applications/certificates#revocation) with CRL and inventory tracking.
+- **[Certificate Syncs](https://infisical.com/docs/documentation/platform/pki/applications/certificate-syncs/overview)**: Sync certificates to external platforms like [AWS Certificate Manager](https://infisical.com/docs/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager) and [Azure Key Vault](https://infisical.com/docs/documentation/platform/pki/applications/certificate-syncs/azure-key-vault).
+- **[Alerting](https://infisical.com/docs/documentation/platform/pki/applications/alerting/overview)**: Configure alerting for expiring CA and end-entity certificates.
+- **[Code Signing](https://infisical.com/docs/documentation/platform/pki/code-signing/overview)**: Sign software artifacts like containers, installers, and packages with managed code-signing certificates, central approval, and a full audit trail.
 
 ### Infisical Key Management System (KMS):
+
+Centrally manage cryptographic keys and use them to encrypt and decrypt data across your projects.
 
 - **[Cryptographic Keys](https://infisical.com/docs/documentation/platform/kms)**: Centrally manage keys across projects through a user-friendly interface or via the API.
 - **[Encrypt and Decrypt Data](https://infisical.com/docs/documentation/platform/kms#guide-to-encrypting-data)**: Use symmetric keys to encrypt and decrypt data.
 
-### Infisical SSH
+### Privileged Access Management (PAM)
 
-- **[Signed SSH Certificates](https://infisical.com/docs/documentation/platform/ssh)**: Issue ephemeral SSH credentials for secure, short-lived, and centralized access to infrastructure.
+Manage and secure access to critical infrastructure like databases and servers with policy-based controls, approvals, and full session visibility.
+
+- **[Privileged Access Management](https://infisical.com/docs/documentation/platform/pam/overview)**: Decouple user identity from infrastructure credentials. Users authenticate with their SSO identity while Infisical brokers just-in-time access to resources like [PostgreSQL](https://infisical.com/docs/documentation/platform/pam/accounts/postgresql), [SSH servers](https://infisical.com/docs/documentation/platform/pam/accounts/ssh), [Kubernetes](https://infisical.com/docs/documentation/platform/pam/accounts/kubernetes), [Active Directory](https://infisical.com/docs/documentation/platform/pam/accounts/windows-ad), and more.
+- **[Session Recording](https://infisical.com/docs/documentation/platform/pam/sessions/session-recording)**: Capture and replay privileged sessions for audit and compliance, with AI session insights to surface risky activity.
+- **[Credential Rotation](https://infisical.com/docs/documentation/platform/pam/product-reference/credential-rotation/overview)**: Automatically rotate the underlying credentials for managed resources so static secrets never leave Infisical.
+- **[Web Access](https://infisical.com/docs/documentation/platform/pam/accounts/overview)**: Connect to SSH, PostgreSQL, Redis, and Windows RDP resources directly from the browser.
 
 ### General Platform:
 
+Capabilities that span every Infisical product.
+
 - **Authentication Methods**: Authenticate machine identities with Infisical using a cloud-native or platform agnostic authentication method ([Kubernetes Auth](https://infisical.com/docs/documentation/platform/identities/kubernetes-auth), [GCP Auth](https://infisical.com/docs/documentation/platform/identities/gcp-auth), [Azure Auth](https://infisical.com/docs/documentation/platform/identities/azure-auth), [AWS Auth](https://infisical.com/docs/documentation/platform/identities/aws-auth), [OIDC Auth](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general), [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth)).
 - **[Access Controls](https://infisical.com/docs/documentation/platform/access-controls/overview)**: Define advanced authorization controls for users and machine identities with [RBAC](https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls), [additional privileges](https://infisical.com/docs/documentation/platform/access-controls/additional-privileges), [temporary access](https://infisical.com/docs/documentation/platform/access-controls/temporary-access), [access requests](https://infisical.com/docs/documentation/platform/access-controls/access-requests), [approval workflows](https://infisical.com/docs/documentation/platform/pr-workflows), and more.
-- **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)**: Track every action taken on the platform.
+- **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)**: Track every action taken on the platform, with optional [audit log streaming](https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams) to external logging providers.
+- **[Gateway](https://infisical.com/docs/documentation/platform/gateways/overview)**: Securely reach private network resources from Infisical without opening inbound connections to your environment.
 - **[Self-hosting](https://infisical.com/docs/self-hosting/overview)**: Deploy Infisical on-prem or cloud with ease; keep data on your own infrastructure.
-- **[Infisical SDK](https://infisical.com/docs/sdks/overview)**: Interact with Infisical via client SDKs ([Node](https://infisical.com/docs/sdks/languages/node), [Python](https://github.com/Infisical/python-sdk-official?tab=readme-ov-file#infisical-python-sdk), [Go](https://infisical.com/docs/sdks/languages/go), [Ruby](https://infisical.com/docs/sdks/languages/ruby), [Java](https://infisical.com/docs/sdks/languages/java), [.NET](https://infisical.com/docs/sdks/languages/csharp))
+- **[Infisical SDK](https://infisical.com/docs/sdks/overview)**: Interact with Infisical via client SDKs ([Node](https://infisical.com/docs/sdks/languages/node), [Python](https://github.com/Infisical/python-sdk-official?tab=readme-ov-file#infisical-python-sdk), [Go](https://infisical.com/docs/sdks/languages/go), [Ruby](https://infisical.com/docs/sdks/languages/ruby), [Java](https://infisical.com/docs/sdks/languages/java), [.NET](https://infisical.com/docs/sdks/languages/dotnet))
 - **[Infisical CLI](https://infisical.com/docs/cli/overview)**: Interact with Infisical via CLI; useful for injecting secrets into local development and CI/CD pipelines.
 - **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)**: Interact with Infisical via API.
 
@@ -91,18 +106,20 @@ Check out the [Quickstart Guides](https://infisical.com/docs/documentation/getti
 
 | Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
+| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) <br><br> Already self-hosting? Plan version upgrades with the [Infisical Upgrade Tool](https://upgrade.infisical.com/). |
 
 ### Run Infisical locally
 
 To set up and run Infisical locally, make sure you have [Git](https://git-scm.com/downloads) and [Docker](https://www.docker.com/get-started/) installed on your system.
 
 **Linux/macOS:**
+
 ```console
 git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker compose -f docker-compose.prod.yml up
 ```
 
 **Windows (Command Prompt):**
+
 ```console
 git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker compose -f docker-compose.prod.yml up
 ```
@@ -113,7 +130,7 @@ Once running, create an account at [http://localhost:80](http://localhost:80).
 
 ### Scan and prevent secret leaks
 
-On top managing secrets with Infisical, you can also [scan for over 140+ secret types]() in your files, directories and git repositories.
+On top of managing secrets with Infisical, you can also [scan for over 140+ secret types](https://infisical.com/docs/cli/scanning-overview) in your files, directories and git repositories.
 
 To scan your full git history, run:
 
@@ -121,7 +138,7 @@ To scan your full git history, run:
 infisical scan --verbose
 ```
 
-Install pre commit hook to scan each commit before you push to your repository
+Install a pre-commit hook to scan each commit before you push to your repository
 
 ```
 infisical scan install --pre-commit-hook
@@ -131,17 +148,17 @@ Learn about Infisical's code scanning feature [here](https://infisical.com/docs/
 
 ## Open-source vs. paid
 
-This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
+This repo is available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
 
-If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo).
+If you are interested in managed Infisical Cloud or self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://infisical.cal.com/vlad/infisical-demo).
 
 ## Security
 
 Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public!
 
-Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please get in touch via the e-mail address security@infisical.com. In the message, try to provide a description of the issue and ideally a way of reproducing it. The security team will get back to you as soon as possible.
+Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please report it privately through our vulnerability disclosure policy at <https://infisical.com/vulnerability-disclosure>. Scope, safe harbour and disclosure terms are all set out there. See also [SECURITY.md](./SECURITY.md).
 
-Note that this security address should be used only for undisclosed vulnerabilities. Please report any security problems to us before disclosing it publicly.
+Please report any security problems to us before disclosing them publicly. For compliance documentation and security questionnaires, use security@infisical.com instead.
 
 ## Contributing
 
@@ -149,7 +166,7 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 
 Not sure where to get started? You can:
 
-- Join our <a href="https://infisical.com/slack">Slack</a>, and ask us any questions there.
+- Join our <a href="https://community.infisical.com/">community</a>, and ask us any questions there.
 
 ## We are hiring!
 

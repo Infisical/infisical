@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import {
   HumanitecSyncScope,
   THumanitecSync
@@ -18,17 +18,32 @@ export const HumanitecSyncDestinationSection = ({ secretSync }: Props) => {
     case HumanitecSyncScope.Application:
       Components = (
         <>
-          <GenericFieldLabel label="Application">{destinationConfig.app}</GenericFieldLabel>
-          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Application</DetailLabel>
+            <DetailValue>{destinationConfig.app}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Organization</DetailLabel>
+            <DetailValue>{destinationConfig.org}</DetailValue>
+          </Detail>
         </>
       );
       break;
     case HumanitecSyncScope.Environment:
       Components = (
         <>
-          <GenericFieldLabel label="Application">{destinationConfig.app}</GenericFieldLabel>
-          <GenericFieldLabel label="Organization">{destinationConfig.org}</GenericFieldLabel>
-          <GenericFieldLabel label="Environment">{destinationConfig.env}</GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Application</DetailLabel>
+            <DetailValue>{destinationConfig.app}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Organization</DetailLabel>
+            <DetailValue>{destinationConfig.org}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Environment</DetailLabel>
+            <DetailValue>{destinationConfig.env}</DetailValue>
+          </Detail>
         </>
       );
       break;
@@ -40,9 +55,10 @@ export const HumanitecSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel className="capitalize" label="Scope">
-        {destinationConfig.scope.replace("-", " ")}
-      </GenericFieldLabel>
+      <Detail className="capitalize">
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>{destinationConfig.scope.replace("-", " ")}</DetailValue>
+      </Detail>
       {Components}
     </>
   );

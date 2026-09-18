@@ -58,7 +58,7 @@ export const RequestSecretTab = () => {
         <CardDescription>Request and manage secrets from your team</CardDescription>
         <CardAction>
           <Button
-            variant="org"
+            variant="project"
             onClick={() => {
               handlePopUpOpen("createSecretRequest");
             }}

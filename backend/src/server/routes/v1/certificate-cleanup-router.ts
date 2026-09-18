@@ -106,7 +106,8 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
         organizationId: req.permission.orgId,
         properties: {
           isEnabled: config.isEnabled,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId
         }
       });
 

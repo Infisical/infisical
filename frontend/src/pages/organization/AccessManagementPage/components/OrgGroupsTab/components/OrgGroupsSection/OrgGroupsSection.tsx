@@ -100,9 +100,7 @@ export const OrgGroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {isSubOrganization
-                    ? "Add Group to Sub-Organization"
-                    : "Create Organization Group"}
+                  {isSubOrganization ? "Add" : "Create"}
                 </Button>
               )}
             </OrgPermissionCan>
@@ -140,6 +138,7 @@ export const OrgGroupsSection = () => {
         }
       />
       <UpgradePlanModal
+        paywallKey="organization.org-groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}

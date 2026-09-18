@@ -1,4 +1,4 @@
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { OrgPermissionMemberActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
@@ -14,9 +14,9 @@ export const UserAuditLogsSection = withPermission(
     // eslint-disable-next-line no-nested-ternary
     return (
       subscription?.auditLogs && (
-        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-            <p className="text-lg font-medium text-gray-200">Audit Logs</p>
+        <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
+          <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
+            <p className="text-lg font-medium text-foreground-cool">Audit Logs</p>
           </div>
           <LogsSection
             presets={{
@@ -27,5 +27,5 @@ export const UserAuditLogsSection = withPermission(
       )
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Member }
+  { action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member }
 );

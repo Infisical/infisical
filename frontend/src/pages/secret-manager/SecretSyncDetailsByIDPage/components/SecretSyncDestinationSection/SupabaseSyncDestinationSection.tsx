@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TSupabaseSync } from "@app/hooks/api/secretSyncs/types/supabase";
 
 type Props = {
@@ -8,5 +8,10 @@ type Props = {
 export const SupabaseSyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
-  return <GenericFieldLabel label="Project">{destinationConfig.projectName}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>Project</DetailLabel>
+      <DetailValue>{destinationConfig.projectName}</DetailValue>
+    </Detail>
+  );
 };

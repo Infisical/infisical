@@ -15,6 +15,11 @@ export type TUpdateEnvDTO = {
 
 export type TDeleteEnvDTO = {
   id: string;
+  hardDelete?: boolean;
+} & TProjectPermission;
+
+export type TRestoreEnvDTO = {
+  id: string;
 } & TProjectPermission;
 
 export type TReorderEnvDTO = {
@@ -25,3 +30,7 @@ export type TReorderEnvDTO = {
 export type TGetEnvDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TGetEnvBySlugDTO = {
+  slug: string;
+} & TProjectPermission;

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TChecklySync } from "@app/hooks/api/secretSyncs/types/checkly-sync";
 
 type Props = {
@@ -10,9 +10,15 @@ export const ChecklySyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Account">{destinationConfig.accountName}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Account</DetailLabel>
+        <DetailValue>{destinationConfig.accountName}</DetailValue>
+      </Detail>
       {destinationConfig.groupId && (
-        <GenericFieldLabel label="Group">{destinationConfig.groupName}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Group</DetailLabel>
+          <DetailValue>{destinationConfig.groupName}</DetailValue>
+        </Detail>
       )}
     </>
   );

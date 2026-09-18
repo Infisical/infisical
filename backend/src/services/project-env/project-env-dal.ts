@@ -1,23 +1,157 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TProjectEnvironments } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
+
+import {
+  envFolderIdsSubquery,
+  hardDeleteApprovalSecretLinksInBatches,
+  hardDeleteSecretReferencesInBatches,
+  hardDeleteSecretsInBatches,
+  hardDeleteSecretVersionsInBatches
+} from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 
 export type TProjectEnvDALFactory = ReturnType<typeof projectEnvDALFactory>;
 
 export const projectEnvDALFactory = (db: TDbClient) => {
   const projectEnvOrm = ormify(db, TableName.Environment);
 
+  const findById: typeof projectEnvOrm.findById = async (id, tx) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment)
+        .where({ id })
+        .whereNull("deleteAfter")
+        .first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
+  const findOne: typeof projectEnvOrm.findOne = async (filter, tx) => {
+    try {
+      const res = await (tx || db.replicaNode())(TableName.Environment)
+        .where(filter)
+        .whereNull("deleteAfter")
+        .first("*");
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
+  const find = (async (
+    filter: TFindFilter<TProjectEnvironments>,
+    { offset, limit, sort, tx }: TFindOpt<TProjectEnvironments> = {}
+  ) => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Environment)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        .where(buildFindFilter(filter))
+        .whereNull("deleteAfter");
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+      if (sort) {
+        void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      }
+      const res = await query;
+      return res as TProjectEnvironments[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find" });
+    }
+  }) as typeof projectEnvOrm.find;
+
   const findBySlugs = async (projectId: string, env: string[], tx?: Knex) => {
     try {
       const envs = await (tx || db.replicaNode())(TableName.Environment)
         .where("projectId", projectId)
-        .whereIn("slug", env);
+        .whereIn("slug", env)
+        .whereNull("deleteAfter");
       return envs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by slugs" });
+    }
+  };
+
+  const softDeleteById = async (
+    id: string,
+    projectId: string,
+    deleteAfter: Date,
+    softDeletedAt: Date,
+    deletedByUserId: string | null,
+    deletedByIdentityId: string | null,
+    position: number,
+    tx?: Knex
+  ) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNull("deleteAfter")
+        .update({ deleteAfter, softDeletedAt, deletedByUserId, deletedByIdentityId, position })
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete environment" });
+    }
+  };
+
+  // Bypasses the soft-delete read filter on findById/findOne/find. Only intended
+  // for the restore flow — every other read path must keep soft-deleted envs hidden.
+  const findByIdIncludingExpired = async (id: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment).where({ id }).first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id including expired" });
+    }
+  };
+
+  // Worker read: env row + orgId via a soft-delete-blind project join, so the hard-delete audit
+  // log resolves its org even while the parent project is pending deletion.
+  const findByIdWithOrgIncludingExpired = async (id: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Environment}.id`, id)
+        .select(selectAllTableCols(TableName.Environment), db.ref("orgId").withSchema(TableName.Project).as("orgId"))
+        .first();
+      return result as (TProjectEnvironments & { orgId: string }) | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id with org including expired" });
+    }
+  };
+
+  // Bypasses the soft-delete read filter. Used by create/update to detect when a
+  // slug is held by a pending-deletion env so we can surface a friendly error
+  // instead of the DB unique-constraint failure.
+  const findBySlugIncludingExpired = async (projectId: string, slug: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment).where({ projectId, slug }).first("*");
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by slug including expired" });
+    }
+  };
+
+  const restoreById = async (id: string, projectId: string, position: number, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", ">", new Date())
+        .update({
+          deleteAfter: null,
+          softDeletedAt: null,
+          deletedByUserId: null,
+          deletedByIdentityId: null,
+          position
+        })
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Restore environment" });
     }
   };
 
@@ -70,11 +204,130 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     await (tx || db)(TableName.Environment).where({ projectId }).where("position", ">=", pos).increment("position", 1);
   };
 
+  // Closes a gap at `pos` across all environments in a project.
+  // Used by hard-delete flows to keep deleted entries compact as well.
+  const closePositionGap = async (projectId: string, pos: number, tx?: Knex) => {
+    await (tx || db)(TableName.Environment)
+      .where({ projectId })
+      .andWhere("position", ">", pos)
+      .decrement("position", 1);
+  };
+
+  // Oldest-first, bounded discovery for the hard-delete cron. The LIMIT keeps the enqueued set bounded
+  // regardless of backlog size.
+  const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment)
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", "<=", new Date())
+        .orderBy("deleteAfter", "asc")
+        .limit(limit)
+        .select("*");
+      return result as TProjectEnvironments[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find expired for hard delete" });
+    }
+  };
+
+  // Atomic hard-delete guard for the worker: removes the env only while it is still expired
+  const hardDeleteIfExpired = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Environment)
+        .where({ id, projectId })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", "<=", new Date())
+        .del()
+        .returning("*");
+      return doc as TProjectEnvironments | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Hard delete environment if expired" });
+    }
+  };
+
+  const pruneOpts = (
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) => ({
+    batchSize,
+    statementTimeoutMs,
+    interBatchSleepMs,
+    onBatchCommitted
+  });
+
+  const hardDeleteEnvironmentSecretVersionsInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretVersionsInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentSecretReferencesInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretReferencesInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentApprovalSecretLinksInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteApprovalSecretLinksInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
+  const hardDeleteEnvironmentSecretsInBatches = (
+    envId: string,
+    batchSize: number,
+    statementTimeoutMs: number,
+    interBatchSleepMs: number,
+    onBatchCommitted?: (deleted: number) => void
+  ) =>
+    hardDeleteSecretsInBatches(
+      db,
+      envFolderIdsSubquery(envId),
+      pruneOpts(batchSize, statementTimeoutMs, interBatchSleepMs, onBatchCommitted)
+    );
+
   return {
     ...projectEnvOrm,
+    findById,
+    findOne,
+    find,
     findBySlugs,
+    softDeleteById,
+    findByIdIncludingExpired,
+    findByIdWithOrgIncludingExpired,
+    findBySlugIncludingExpired,
+    restoreById,
     findLastEnvPosition,
     updateAllPosition,
-    shiftPositions
+    shiftPositions,
+    closePositionGap,
+    findExpiredForHardDelete,
+    hardDeleteIfExpired,
+    hardDeleteEnvironmentSecretVersionsInBatches,
+    hardDeleteEnvironmentSecretReferencesInBatches,
+    hardDeleteEnvironmentApprovalSecretLinksInBatches,
+    hardDeleteEnvironmentSecretsInBatches
   };
 };

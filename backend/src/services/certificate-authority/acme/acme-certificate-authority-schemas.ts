@@ -33,6 +33,15 @@ export const AcmeCertificateAuthoritySchema = BaseCertificateAuthoritySchema.ext
   configuration: AcmeCertificateAuthorityConfigurationSchema
 });
 
+const SanitizedAcmeCertificateAuthorityConfigurationSchema = AcmeCertificateAuthorityConfigurationSchema.omit({
+  eabHmacKey: true
+});
+
+export const SanitizedAcmeCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
+  type: z.literal(CaType.ACME),
+  configuration: SanitizedAcmeCertificateAuthorityConfigurationSchema
+});
+
 export const CreateAcmeCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.ACME).extend({
   configuration: AcmeCertificateAuthorityConfigurationSchema
 });

@@ -9,7 +9,7 @@ export const OrgGeneralTab = () => {
   const { hasOrgRole } = useOrgPermission();
   const { isSubOrganization } = useOrganization();
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="flex flex-col gap-4">
       {isSubOrganization ? <SubOrgNameChangeSection /> : <OrgNameChangeSection />}
       {!isSubOrganization && <OrgIncidentContactsSection />}
       {hasOrgRole(OrgMembershipRole.Admin) && <OrgDeleteSection />}

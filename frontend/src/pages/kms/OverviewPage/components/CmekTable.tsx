@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -14,10 +13,12 @@ import {
   LockIcon,
   PencilIcon,
   PlusIcon,
+  RotateCwIcon,
   SearchIcon,
   TrashIcon,
   UnlockIcon
 } from "lucide-react";
+import { motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -48,6 +49,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  SelectedActionBar,
   Skeleton,
   Table,
   TableBody,
@@ -73,7 +75,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
+import {
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch,
+  useTimedReset
+} from "@app/hooks";
 import {
   useBulkExportCmekPrivateKeys,
   useGetCmeksByProjectId,
@@ -91,11 +99,14 @@ import { CmekBulkImportModal } from "./CmekBulkImportModal";
 import { CmekDecryptModal } from "./CmekDecryptModal";
 import { CmekEncryptModal } from "./CmekEncryptModal";
 import { CmekExportKeyModal } from "./CmekExportKeyModal";
+import { CmekGenerateMacModal } from "./CmekGenerateMacModal";
 import { CmekModal } from "./CmekModal";
 import { CmekSignModal } from "./CmekSignModal";
+import { CmekVerifyMacModal } from "./CmekVerifyMacModal";
 import { CmekVerifyModal } from "./CmekVerifyModal";
 import { DeleteCmekModal } from "./DeleteCmekModal";
 import { cmekKeysToExportJSON, downloadJSON } from "./jsonExport";
+import { RotateCmekModal } from "./RotateCmekModal";
 
 const getStatusBadgeProps = (
   isDisabled: boolean
@@ -128,6 +139,8 @@ export const CmekTable = () => {
   } = usePagination(CmekOrderBy.Name, {
     initPerPage: getUserTablePreference("cmekClientTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -152,7 +165,7 @@ export const CmekTable = () => {
     setSelectedKeyIds([]);
   }, [page]);
 
-  const selectableKeys = keys.filter((k) => !k.isDisabled);
+  const selectableKeys = keys.filter((k) => !k.isDisabled && k.isExportable);
   const isPageSelected =
     selectableKeys.length > 0 && selectableKeys.every((k) => selectedKeyIds.includes(k.id));
   const isPageIndeterminate =
@@ -166,10 +179,13 @@ export const CmekTable = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upsertKey",
     "deleteKey",
+    "rotateKey",
     "encryptData",
     "decryptData",
     "signData",
     "verifyData",
+    "generateMac",
+    "verifyMac",
     "exportKey",
     "importKeys"
   ] as const);
@@ -241,6 +257,18 @@ export const CmekTable = () => {
     ProjectPermissionCmekActions.Verify,
     ProjectPermissionSub.Cmek
   );
+  const cannotGenerateMac = permission.cannot(
+    ProjectPermissionCmekActions.GenerateMac,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotVerifyMac = permission.cannot(
+    ProjectPermissionCmekActions.VerifyMac,
+    ProjectPermissionSub.Cmek
+  );
+  const cannotRotateKey = permission.cannot(
+    ProjectPermissionCmekActions.Rotate,
+    ProjectPermissionSub.Cmek
+  );
   const cannotExportPrivateKey = permission.cannot(
     ProjectPermissionCmekActions.ExportPrivateKey,
     ProjectPermissionSub.Cmek
@@ -258,52 +286,40 @@ export const CmekTable = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
-      <div
-        className={twMerge(
-          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
-          selectedKeyIds.length > 0 && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedKeyIds.length}
+        onClearSelection={() => setSelectedKeyIds([])}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
-          <div className="mr-2 text-sm">{selectedKeyIds.length} Selected</div>
-          <button
-            type="button"
-            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
-            onClick={() => setSelectedKeyIds([])}
-          >
-            Unselect All
-          </button>
-          <ProjectPermissionCan
-            I={ProjectPermissionCmekActions.ExportPrivateKey}
-            a={ProjectPermissionSub.Cmek}
-            renderTooltip
-          >
-            {(isAllowed) => (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="ml-2">
-                    <Button
-                      variant="project"
-                      size="xs"
-                      onClick={handleBulkExport}
-                      isDisabled={!isAllowed}
-                      isPending={bulkExportMutation.isPending}
-                    >
-                      <DownloadIcon className="mr-1 size-4" />
-                      Export
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isAllowed
-                    ? "Export all selected keys as a JSON file"
-                    : "You don't have permission to export keys"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-        </div>
-      </div>
+        <ProjectPermissionCan
+          I={ProjectPermissionCmekActions.ExportPrivateKey}
+          a={ProjectPermissionSub.Cmek}
+          renderTooltip
+        >
+          {(isAllowed) => (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="project"
+                    size="xs"
+                    onClick={handleBulkExport}
+                    isDisabled={!isAllowed}
+                    isPending={bulkExportMutation.isPending}
+                  >
+                    <DownloadIcon className="mr-1 size-4" />
+                    Export
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isAllowed
+                  ? "Export all selected keys as a JSON file"
+                  : "You don't have permission to export keys"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </ProjectPermissionCan>
+      </SelectedActionBar>
 
       <Card>
         <CardHeader>
@@ -377,6 +393,7 @@ export const CmekTable = () => {
                 onChange={(e) => {
                   setSearch(e.target.value);
                 }}
+                ref={searchInputRef}
                 placeholder="Search keys by name or ID..."
               />
             </InputGroup>
@@ -439,7 +456,8 @@ export const CmekTable = () => {
                   <TableHead>Algorithm</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-5" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -447,7 +465,7 @@ export const CmekTable = () => {
                   Array.from({ length: 5 }).map((_, i) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`skeleton-${i}`}>
-                      {Array.from({ length: 8 }).map((__, j) => (
+                      {Array.from({ length: 9 }).map((__, j) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
@@ -462,19 +480,22 @@ export const CmekTable = () => {
                       id,
                       version,
                       description,
-                      encryptionAlgorithm,
+                      algorithm,
                       isDisabled,
+                      isExportable,
+                      hasDeleteProtection,
                       keyUsage
                     } = cmek;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
                     const isSelected = selectedKeyIds.includes(id);
 
                     const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
-                      encryptionAlgorithm as AsymmetricKeyAlgorithm
+                      algorithm as AsymmetricKeyAlgorithm
                     );
+                    // unexportable asymmetric keys can still surface their public key in the export modal
                     const cannotExportKey = isAsymmetricKey
-                      ? cannotExportPrivateKey && cannotReadKey
-                      : cannotExportPrivateKey;
+                      ? (cannotExportPrivateKey || !isExportable) && cannotReadKey
+                      : cannotExportPrivateKey || !isExportable;
 
                     return (
                       <TableRow
@@ -484,7 +505,7 @@ export const CmekTable = () => {
                         onMouseLeave={() => setCopyCipherText("")}
                       >
                         <TableCell>
-                          {isDisabled ? (
+                          {isDisabled || !isExportable ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex">
@@ -496,7 +517,11 @@ export const CmekTable = () => {
                                   />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent>Disabled keys cannot be exported</TooltipContent>
+                              <TooltipContent>
+                                {isDisabled
+                                  ? "Disabled keys cannot be exported"
+                                  : "This key was created as non-exportable"}
+                              </TooltipContent>
                             </Tooltip>
                           ) : (
                             <Checkbox
@@ -566,12 +591,24 @@ export const CmekTable = () => {
                             </Tooltip>
                           </div>
                         </TableCell>
-                        <TableCell className="uppercase">{encryptionAlgorithm}</TableCell>
+                        <TableCell className="uppercase">{algorithm}</TableCell>
                         <TableCell>
                           <Badge variant={variant}>{label}</Badge>
                         </TableCell>
                         <TableCell>{version}</TableCell>
                         <TableCell>
+                          {!isExportable && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <LockIcon className="size-4 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                This key was created as non-exportable
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                        <TableCell variant="action">
                           <div className="flex justify-end">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -616,6 +653,24 @@ export const CmekTable = () => {
                                     </DropdownMenuItem>
                                   </>
                                 )}
+                                {keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("generateMac", cmek)}
+                                      isDisabled={cannotGenerateMac || isDisabled}
+                                    >
+                                      <FileSignatureIcon className="mr-2 size-4" />
+                                      Generate MAC
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handlePopUpOpen("verifyMac", cmek)}
+                                      isDisabled={cannotVerifyMac || isDisabled}
+                                    >
+                                      <CircleCheckIcon className="mr-2 size-4" />
+                                      Verify MAC
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("exportKey", cmek)}
                                   isDisabled={cannotExportKey || isDisabled}
@@ -630,6 +685,15 @@ export const CmekTable = () => {
                                   <PencilIcon className="mr-2 size-4" />
                                   Edit Key
                                 </DropdownMenuItem>
+                                {keyUsage === KmsKeyUsage.ENCRYPT_DECRYPT && (
+                                  <DropdownMenuItem
+                                    onClick={() => handlePopUpOpen("rotateKey", cmek)}
+                                    isDisabled={cannotRotateKey || isDisabled}
+                                  >
+                                    <RotateCwIcon className="mr-2 size-4" />
+                                    Rotate Key
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={() => handleDisableCmek(cmek)}
                                   isDisabled={cannotEditKey}
@@ -641,14 +705,27 @@ export const CmekTable = () => {
                                   )}
                                   {isDisabled ? "Enable" : "Disable"} Key
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("deleteKey", cmek)}
-                                  isDisabled={cannotDeleteKey}
-                                  variant="danger"
+                                <Tooltip
+                                  open={cannotDeleteKey || hasDeleteProtection ? undefined : false}
                                 >
-                                  <TrashIcon className="mr-2 size-4" />
-                                  Delete Key
-                                </DropdownMenuItem>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("deleteKey", cmek)}
+                                        isDisabled={cannotDeleteKey || hasDeleteProtection}
+                                        variant="danger"
+                                      >
+                                        <TrashIcon className="mr-2 size-4" />
+                                        Delete Key
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    {cannotDeleteKey
+                                      ? "Access Restricted"
+                                      : "Disable delete protection on this key before deleting it"}
+                                  </TooltipContent>
+                                </Tooltip>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -686,6 +763,11 @@ export const CmekTable = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("upsertKey", isOpen)}
         cmek={popUp.upsertKey.data as TCmek | null}
       />
+      <RotateCmekModal
+        isOpen={popUp.rotateKey.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("rotateKey", isOpen)}
+        cmek={popUp.rotateKey.data as TCmek}
+      />
       <CmekEncryptModal
         isOpen={popUp.encryptData.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("encryptData", isOpen)}
@@ -705,6 +787,16 @@ export const CmekTable = () => {
         isOpen={popUp.verifyData.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("verifyData", isOpen)}
         cmek={popUp.verifyData.data as TCmek}
+      />
+      <CmekGenerateMacModal
+        isOpen={popUp.generateMac.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("generateMac", isOpen)}
+        cmek={popUp.generateMac.data as TCmek}
+      />
+      <CmekVerifyMacModal
+        isOpen={popUp.verifyMac.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("verifyMac", isOpen)}
+        cmek={popUp.verifyMac.data as TCmek}
       />
       <CmekExportKeyModal
         isOpen={popUp.exportKey.isOpen}

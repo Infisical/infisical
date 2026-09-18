@@ -17,12 +17,12 @@ export enum NotificationType {
   PROJECT_ACCESS_REQUEST = "project-access-request",
   PROJECT_INVITATION = "project-invitation",
   SECRET_SYNC_FAILED = "secret-sync-failed",
+  PKI_SYNC_FAILED = "pki-sync-failed",
   GATEWAY_HEALTH_ALERT = "gateway-health-alert",
   RELAY_HEALTH_ALERT = "relay-health-alert",
   APPROVAL_REQUIRED = "approval-required",
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
-  CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
-  AUDIT_LOG_STREAM_FAILED = "audit-log-stream-failed"
+  CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed"
 }
 
 export interface TUserNotification {
@@ -38,8 +38,7 @@ export interface TUserNotification {
 
 export const CRITICAL_NOTIFICATION_TYPES: NotificationType[] = [
   NotificationType.GATEWAY_HEALTH_ALERT,
-  NotificationType.RELAY_HEALTH_ALERT,
-  NotificationType.AUDIT_LOG_STREAM_FAILED
+  NotificationType.RELAY_HEALTH_ALERT
 ];
 
 export const isCriticalNotification = (type: NotificationType): boolean =>

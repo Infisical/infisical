@@ -293,13 +293,14 @@ export const importDataIntoInfisicalFn = async ({
           });
         }
 
-        const { encryptor: secretManagerEncrypt } = await kmsService.createCipherPairWithDataKey(
-          {
-            type: KmsDataKey.SecretManager,
-            projectId: selectedProjectId
-          },
-          tx
-        );
+        const { encryptor: secretManagerEncrypt, generateSecretBlindIndex } =
+          await kmsService.createCipherPairWithDataKey(
+            {
+              type: KmsDataKey.SecretManager,
+              projectId: selectedProjectId
+            },
+            tx
+          );
 
         const secretBatches = chunkArray(secrets, 2500);
         for await (const secretBatch of secretBatches) {
@@ -316,8 +317,9 @@ export const importDataIntoInfisicalFn = async ({
               message: `Secret already exists: ${secretsByKeys.map((el) => el.key).join(",")}`
             });
           }
-          await fnSecretBulkInsert({
-            inputSecrets: secretBatch.map((el) => {
+
+          const inputSecretsWithBlindIndex = await Promise.all(
+            secretBatch.map(async (el) => {
               const references = getAllSecretReferences(el.secretValue).nestedReferences;
 
               return {
@@ -325,11 +327,18 @@ export const importDataIntoInfisicalFn = async ({
                 encryptedValue: el.secretValue
                   ? secretManagerEncrypt({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
                   : undefined,
+                secretValueBlindIndex: el.secretValue
+                  ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
+                  : undefined,
                 key: el.secretKey,
                 references,
                 type: SecretType.Shared
               };
-            }),
+            })
+          );
+
+          await fnSecretBulkInsert({
+            inputSecrets: inputSecretsWithBlindIndex,
             folderId: selectedFolder.id,
             orgId: actorOrgId,
             resourceMetadataDAL,

@@ -1,7 +1,6 @@
 import z from "zod";
 
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
-import { GatewayVersion, TGatewayV1RelayDetails } from "@app/lib/gateway/types";
 import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
@@ -40,6 +39,12 @@ export type THCVaultMount = {
   path: string;
   type: string;
   version?: string | null;
+};
+
+export type TResolvedKvMount = {
+  mountSegments: string[];
+  mountUrlPath: string;
+  kvVersion: "1" | "2";
 };
 
 export type THCVaultAuthMountResponse = {
@@ -161,20 +166,10 @@ export type THCVaultLdapRole = {
   mountPath: string;
 };
 
-export type TGatewayDetails =
-  | {
-      gatewayVersion: GatewayVersion.V1;
-      details: TGatewayV1RelayDetails;
-      target: {
-        host: string;
-        port: number;
-      };
-    }
-  | {
-      gatewayVersion: GatewayVersion.V2;
-      details: TGatewayV2ConnectionDetails;
-      target: {
-        host: string;
-        port: number;
-      };
-    };
+export type TGatewayDetails = {
+  details: TGatewayV2ConnectionDetails;
+  target: {
+    host: string;
+    port: number;
+  };
+};

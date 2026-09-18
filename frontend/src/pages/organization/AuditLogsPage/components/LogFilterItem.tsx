@@ -1,8 +1,7 @@
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Button, Tooltip } from "@app/components/v2";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 type Props = {
   hoverTooltip?: string;
@@ -24,27 +23,34 @@ export const LogFilterItem = ({
   return (
     <div className={twMerge("flex flex-col justify-between", className)}>
       <div className="flex items-center pr-1">
-        <p className="text-xs opacity-60">{label}</p>
+        <p className="text-xs text-muted">{label}</p>
         {tooltipText && (
-          <Tooltip content={tooltipText} className="max-w-sm">
-            <FontAwesomeIcon
-              icon={faInfoCircle}
-              className="-mt-[0.05rem] ml-1 text-[11px] text-mineshaft-400"
-            />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="ml-1 size-3 text-muted" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">{tooltipText}</TooltipContent>
           </Tooltip>
         )}
         <Button
           onClick={() => onClear()}
-          variant="link"
-          className="ml-auto font-normal text-mineshaft-400 transition-all duration-75 hover:text-mineshaft-300"
+          variant="ghost"
           size="xs"
+          className="ml-auto h-auto px-1.5 py-0.5 text-xs font-normal text-muted hover:text-foreground"
         >
           Clear
         </Button>
       </div>
-      <Tooltip className="relative top-4" content={hoverTooltip} isDisabled={!hoverTooltip}>
+      {hoverTooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>{children}</div>
+          </TooltipTrigger>
+          <TooltipContent>{hoverTooltip}</TooltipContent>
+        </Tooltip>
+      ) : (
         <div>{children}</div>
-      </Tooltip>
+      )}
     </div>
   );
 };

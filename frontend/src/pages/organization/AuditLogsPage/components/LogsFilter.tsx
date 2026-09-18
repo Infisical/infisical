@@ -2,23 +2,25 @@
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
-import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
+import { ListFilter } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Field,
+  FieldError,
   FilterableSelect,
-  FormControl,
   Input
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { isOrgScopedProduct } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
   eventToNameMap,
@@ -28,7 +30,7 @@ import {
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import { Project } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -73,6 +75,7 @@ const getActiveFilterCount = (filter: TAuditLogFilterFormData) => {
 export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   const { data: workspaces = [] } = useGetUserProjects();
   const { currentOrg } = useOrganization();
+  const scopeVariant = useScopeVariant();
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
 
@@ -98,7 +101,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
     secretEvents.includes(eventType)
   );
   const showSecretsSection =
-    selectedProject?.type !== ProjectType.PAM &&
+    !(selectedProject?.type && isOrgScopedProduct(selectedProject.type)) &&
     (hasSecretEventFilter || currentSelectedEventTypes.length === 0);
 
   const filteredEventTypes = useMemo(() => {
@@ -119,8 +122,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline_bg" colorSchema="primary" className="relative">
-          <FontAwesomeIcon icon={faFilterCircleXmark} />
+        <Button variant="outline" className="relative">
+          <ListFilter />
           {activeFilterCount > 0 && (
             <Badge className="absolute -top-2 -right-2" variant="info">
               {activeFilterCount}
@@ -128,10 +131,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="mt-4 overflow-visible py-4">
+      <DropdownMenuContent align="end" className="overflow-x-visible overflow-y-visible py-2">
         <form onSubmit={handleSubmit(setFilter)}>
           <div className="flex max-w-96 min-w-96 flex-col font-inter">
-            <div className="mb-3 flex items-center border-b border-b-mineshaft-500 px-3 pb-2">
+            <div className="mb-3 flex items-center border-b border-b-border px-3 pb-2">
               <div className="flex w-full items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span>Filters</span>
@@ -150,8 +153,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       secretKey: undefined
                     });
                   }}
-                  variant="link"
-                  className="text-mineshaft-400"
+                  variant="ghost"
+                  className="h-auto px-1.5 py-0.5 font-normal text-muted hover:text-foreground"
                   size="xs"
                 >
                   Clear filters
@@ -170,7 +173,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                   control={control}
                   name="eventType"
                   render={({ field }) => (
-                    <FormControl>
+                    <Field>
                       <FilterableSelect
                         value={filteredEventTypes.filter((eventType) =>
                           field.value.includes(eventType.value as EventType)
@@ -189,7 +192,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         getOptionValue={(option) => option.value}
                         getOptionLabel={(option) => option.label}
                       />
-                    </FormControl>
+                    </Field>
                   )}
                 />
               </LogFilterItem>
@@ -203,11 +206,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                   control={control}
                   name="userAgentType"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
-                    <FormControl
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                      className="w-full"
-                    >
+                    <Field>
                       <FilterableSelect
                         value={
                           userAgentTypes.find(
@@ -222,8 +221,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         options={userAgentTypes}
                         getOptionValue={(option) => option.value}
                         getOptionLabel={(option) => option.label}
+                        isError={Boolean(error)}
                       />
-                    </FormControl>
+                      <FieldError errors={[error]} />
+                    </Field>
                   )}
                 />
               </LogFilterItem>
@@ -241,11 +242,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     control={control}
                     name="project"
                     render={({ field: { onChange, value }, fieldState: { error } }) => (
-                      <FormControl
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                        className="mb-0 w-full"
-                      >
+                      <Field>
                         <FilterableSelect
                           value={value}
                           isClearable
@@ -265,8 +262,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           }))}
                           getOptionValue={(option) => option.id}
                           getOptionLabel={(option) => option.name}
+                          isError={Boolean(error)}
                         />
-                      </FormControl>
+                        <FieldError errors={[error]} />
+                      </Field>
                     )}
                   />
                 </LogFilterItem>
@@ -280,8 +279,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     transition={{ duration: 0.3 }}
                   >
                     <div className="mt-2 mb-3">
-                      <p className="text-xs opacity-60">Secrets</p>
-                      <div className="h-px w-full rounded-full bg-mineshaft-500" />
+                      <p className="text-xs text-muted">Secrets</p>
+                      <div className="h-px w-full rounded-full bg-border" />
                     </div>
                     <LogFilterItem
                       label="Environment"
@@ -299,11 +298,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         control={control}
                         name="environment"
                         render={({ field: { onChange, value }, fieldState: { error } }) => (
-                          <FormControl
-                            errorText={error?.message}
-                            isError={Boolean(error)}
-                            className="w-full"
-                          >
+                          <Field>
                             <FilterableSelect
                               value={value}
                               menuPlacement="top"
@@ -318,8 +313,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                               }))}
                               getOptionValue={(option) => option.slug}
                               getOptionLabel={(option) => option.name}
+                              isError={Boolean(error)}
                             />
-                          </FormControl>
+                            <FieldError errors={[error]} />
+                          </Field>
                         )}
                       />
                     </LogFilterItem>
@@ -340,16 +337,15 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         control={control}
                         name="secretPath"
                         render={({ field: { onChange, value, ...field } }) => (
-                          <FormControl className="w-full">
+                          <Field>
                             <Input
                               placeholder="Enter secret path"
-                              className="disabled:cursor-not-allowed"
-                              isDisabled={!selectedProject}
+                              disabled={!selectedProject}
                               {...field}
                               value={value}
                               onChange={(e) => onChange(e.target.value)}
                             />
-                          </FormControl>
+                          </Field>
                         )}
                       />
                     </LogFilterItem>
@@ -371,18 +367,17 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         control={control}
                         name="secretKey"
                         render={({ field: { onChange, value, ...field } }) => (
-                          <FormControl className="w-full">
+                          <Field>
                             <Input
-                              isDisabled={!selectedProject}
+                              disabled={!selectedProject}
                               {...field}
                               placeholder="Enter secret key"
-                              className="disabled:cursor-not-allowed"
                               value={value}
                               onChange={(e) =>
                                 setValue("secretKey", e.target.value, { shouldDirty: true })
                               }
                             />
-                          </FormControl>
+                          </Field>
                         )}
                       />
                     </LogFilterItem>
@@ -391,7 +386,12 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               </AnimatePresence>
             </div>
             <div className="mt-2 px-3">
-              <Button size="xs" type="submit" isDisabled={!formState.isDirty}>
+              <Button
+                size="xs"
+                type="submit"
+                variant={scopeVariant}
+                isDisabled={!formState.isDirty}
+              >
                 Apply
               </Button>
             </div>

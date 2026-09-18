@@ -11,33 +11,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AlertTriangleIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  Checkbox,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Pagination, SelectedActionBar } from "@app/components/v3";
 import { useSubscription, useUser } from "@app/context";
 import {
   getUserTablePreference,
@@ -54,6 +31,29 @@ import {
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddServerAdminModal } from "@app/pages/admin/AccessManagementPage/components/AddServerAdminModal";
+import {
+  EmptyState,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "@app/pages/admin/components/AdminTable";
+import {
+  Button,
+  Checkbox,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Input,
+  Tooltip
+} from "@app/pages/admin/components/AdminV3Adapters";
 
 const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions from user";
 
@@ -114,6 +114,7 @@ const ServerAdminsPanelTable = ({
     <>
       <div className="flex items-center gap-x-2">
         <Input
+          aria-label="Search server admins"
           value={searchUserFilter}
           onChange={(e) => setSearchUserFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -135,6 +136,7 @@ const ServerAdminsPanelTable = ({
               <Tr>
                 <Th className="w-5">
                   <Checkbox
+                    aria-label="Select all server admins on this page"
                     id="member-page-select"
                     isChecked={isPageSelected || isPageIndeterminate}
                     isIndeterminate={isPageIndeterminate}
@@ -162,13 +164,15 @@ const ServerAdminsPanelTable = ({
               {!isPending &&
                 users?.map((user) => {
                   const { username, email, firstName, lastName, id } = user;
-                  const name = firstName || lastName ? `${firstName} ${lastName}` : null;
+                  const name =
+                    firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : null;
 
                   const isSelected = selectedUserIds.includes(id);
                   return (
                     <Tr key={`user-${id}`} className="w-full">
                       <Td>
                         <Checkbox
+                          aria-label={`Select user ${username || email}`}
                           id={`select-user-${id}`}
                           isChecked={isSelected}
                           onClick={(e) => {
@@ -181,7 +185,7 @@ const ServerAdminsPanelTable = ({
                       </Td>
                       <Td className="w-5/12 max-w-0">
                         <p className="truncate">
-                          {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                          {name ?? <span className="text-muted">Not Set</span>}
                         </p>
                       </Td>
                       <Td className="w-5/12 max-w-0">
@@ -191,12 +195,7 @@ const ServerAdminsPanelTable = ({
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
-                              >
+                              <IconButton ariaLabel="Options" size="xs" variant="plain">
                                 <FontAwesomeIcon icon={faEllipsisV} />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -204,7 +203,10 @@ const ServerAdminsPanelTable = ({
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("removeUser", { username, id });
+                                  handlePopUpOpen("removeUser", {
+                                    username,
+                                    id
+                                  });
                                 }}
                                 icon={<FontAwesomeIcon icon={faUserXmark} />}
                               >
@@ -231,7 +233,10 @@ const ServerAdminsPanelTable = ({
                                     });
                                     return;
                                   }
-                                  handlePopUpOpen("removeServerAdmin", { username, id });
+                                  handlePopUpOpen("removeServerAdmin", {
+                                    username,
+                                    id
+                                  });
                                 }}
                               >
                                 Remove Server Admin
@@ -313,7 +318,10 @@ export const ServerAdminsTable = () => {
   };
 
   const handleRemoveServerAdminAccess = async () => {
-    const { id } = popUp?.removeServerAdmin?.data as { id: string; username: string };
+    const { id } = popUp?.removeServerAdmin?.data as {
+      id: string;
+      username: string;
+    };
 
     await removeAdminAccess(id);
     createNotification({
@@ -338,38 +346,25 @@ export const ServerAdminsTable = () => {
 
   return (
     <>
-      <div
-        className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
-          selectedUsers.length > 0 && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedUsers.length}
+        onClearSelection={() => setSelectedUsers([])}
       >
-        <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <div className="mr-2 text-sm">{selectedUsers.length} Selected</div>
-          <button
-            type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
-            onClick={() => setSelectedUsers([])}
-          >
-            Unselect All
-          </button>
-          <Button
-            variant="outline_bg"
-            colorSchema="danger"
-            leftIcon={<FontAwesomeIcon icon={faTrash} />}
-            className="ml-2"
-            onClick={() => {
-              if (!selectedUsers?.length) return;
+        <Button
+          variant="outline_bg"
+          colorSchema="danger"
+          leftIcon={<FontAwesomeIcon icon={faTrash} />}
+          onClick={() => {
+            if (!selectedUsers?.length) return;
 
-              handlePopUpOpen("removeUsers");
-            }}
-            size="xs"
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+            handlePopUpOpen("removeUsers");
+          }}
+          size="xs"
+        >
+          Delete
+        </Button>
+      </SelectedActionBar>
+      <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
         <ServerAdminsPanelTable
           handlePopUpOpen={handlePopUpOpen}
           users={users}
@@ -409,6 +404,7 @@ export const ServerAdminsTable = () => {
           onOpenChange={(isOpen) => handlePopUpToggle("addServerAdmin", isOpen)}
         />
         <UpgradePlanModal
+          paywallKey="admin.server-admins"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
@@ -421,10 +417,8 @@ export const ServerAdminsTable = () => {
           onDeleteApproved={() => handleRemoveUsers()}
           buttonText="Remove"
         >
-          <div className="mt-4 text-sm text-mineshaft-400">
-            The following users will be deleted:
-          </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;
@@ -434,7 +428,7 @@ export const ServerAdminsTable = () => {
                       <p>
                         {user.firstName || user.lastName ? (
                           <>
-                            {`${`${user.firstName} ${user.lastName}`.trim()} `}(
+                            {`${`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()} `}(
                             <span className="break-all">{email}</span>)
                           </>
                         ) : (

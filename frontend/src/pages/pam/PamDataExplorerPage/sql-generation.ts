@@ -1,11 +1,14 @@
-// Client-side SQL generation for the Postgres Data Explorer.
+// Client-side SQL generation for the Data Explorer.
 // All identifiers are properly quoted to prevent SQL injection.
 
-export function quoteIdent(name: string): string {
+export type SqlDialect = "postgres" | "mysql" | "snowflake";
+
+function quoteIdent(name: string, dialect: SqlDialect = "postgres"): string {
+  if (dialect === "mysql") return `\`${name.replace(/`/g, "``")}\``;
   return `"${name.replace(/"/g, '""')}"`;
 }
 
-export function quoteLiteral(value: unknown): string {
+function quoteLiteral(value: unknown, dialect: SqlDialect = "postgres"): string {
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return "NULL";
@@ -13,11 +16,14 @@ export function quoteLiteral(value: unknown): string {
   }
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
   const str = String(value);
-  // Use dollar-quoting if the string contains single quotes and no dollar signs
-  if (str.includes("'") && !str.includes("$")) {
+  if (dialect === "postgres" && str.includes("'") && !str.includes("$")) {
     return `$$${str}$$`;
   }
-  return `'${str.replace(/'/g, "''")}'`;
+  const escaped =
+    dialect === "postgres"
+      ? str.replace(/'/g, "''")
+      : str.replace(/\\/g, "\\\\").replace(/'/g, "''");
+  return `'${escaped}'`;
 }
 
 export type FilterCondition = {
@@ -44,10 +50,10 @@ export type SortCondition = {
   direction: "ASC" | "DESC";
 };
 
-function buildWhereClause(filters: FilterCondition[]): string {
+function buildWhereClause(filters: FilterCondition[], dialect: SqlDialect): string {
   if (filters.length === 0) return "";
   const conditions = filters.map((f) => {
-    const col = quoteIdent(f.column);
+    const col = quoteIdent(f.column, dialect);
     switch (f.operator) {
       case "IS NULL":
         return `${col} IS NULL`;
@@ -56,23 +62,25 @@ function buildWhereClause(filters: FilterCondition[]): string {
       case "IN": {
         const values = f.value
           .split(",")
-          .map((v) => quoteLiteral(v.trim()))
+          .map((v) => quoteLiteral(v.trim(), dialect))
           .join(", ");
         return `${col} IN (${values})`;
       }
-      case "LIKE":
       case "ILIKE":
-        return `${col} ${f.operator} ${quoteLiteral(f.value)}`;
+        if (dialect === "mysql") return `${col} LIKE ${quoteLiteral(f.value, dialect)}`;
+        return `${col} ILIKE ${quoteLiteral(f.value, dialect)}`;
+      case "LIKE":
+        return `${col} LIKE ${quoteLiteral(f.value, dialect)}`;
       default:
-        return `${col} ${f.operator} ${quoteLiteral(f.value)}`;
+        return `${col} ${f.operator} ${quoteLiteral(f.value, dialect)}`;
     }
   });
   return ` WHERE ${conditions.join(" AND ")}`;
 }
 
-function buildOrderByClause(sorts: SortCondition[]): string {
+function buildOrderByClause(sorts: SortCondition[], dialect: SqlDialect): string {
   if (sorts.length === 0) return "";
-  const parts = sorts.map((s) => `${quoteIdent(s.column)} ${s.direction}`);
+  const parts = sorts.map((s) => `${quoteIdent(s.column, dialect)} ${s.direction}`);
   return ` ORDER BY ${parts.join(", ")}`;
 }
 
@@ -84,18 +92,28 @@ export function buildSelectQuery(params: {
   limit: number;
   offset: number;
   primaryKeys?: string[];
+  dialect?: SqlDialect;
 }): string {
-  const { schema, table, filters, sorts, limit, offset, primaryKeys } = params;
-  const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
-  const where = buildWhereClause(filters);
+  const {
+    schema,
+    table,
+    filters,
+    sorts,
+    limit,
+    offset,
+    primaryKeys,
+    dialect = "postgres"
+  } = params;
+  const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
+  const where = buildWhereClause(filters, dialect);
 
-  // Default sort by PK for stable pagination
   let orderBy: string;
   if (sorts.length > 0) {
-    orderBy = buildOrderByClause(sorts);
+    orderBy = buildOrderByClause(sorts, dialect);
   } else if (primaryKeys && primaryKeys.length > 0) {
     orderBy = buildOrderByClause(
-      primaryKeys.map((pk) => ({ column: pk, direction: "ASC" as const }))
+      primaryKeys.map((pk) => ({ column: pk, direction: "ASC" as const })),
+      dialect
     );
   } else {
     orderBy = "";
@@ -108,26 +126,33 @@ export function buildCountQuery(params: {
   schema: string;
   table: string;
   filters: FilterCondition[];
+  dialect?: SqlDialect;
 }): string {
-  const { schema, table, filters } = params;
-  const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
-  const where = buildWhereClause(filters);
-  return `SELECT COUNT(*) AS count FROM ${tableName}${where}`;
+  const { schema, table, filters, dialect = "postgres" } = params;
+  const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
+  const where = buildWhereClause(filters, dialect);
+  return `SELECT COUNT(*) AS ${quoteIdent("count", dialect)} FROM ${tableName}${where}`;
 }
 
 export function buildInsertQuery(params: {
   schema: string;
   table: string;
   row: Record<string, unknown>;
+  dialect?: SqlDialect;
 }): string {
-  const { schema, table, row } = params;
-  const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
+  const { schema, table, row, dialect = "postgres" } = params;
+  const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const entries = Object.entries(row).filter(([, v]) => v !== undefined && v !== "");
   if (entries.length === 0) {
+    if (dialect === "mysql") return `INSERT INTO ${tableName} () VALUES ()`;
+    if (dialect === "snowflake") {
+      throw new Error("Snowflake cannot insert a row with no values. Fill in at least one column.");
+    }
     return `INSERT INTO ${tableName} DEFAULT VALUES RETURNING *`;
   }
-  const columns = entries.map(([k]) => quoteIdent(k)).join(", ");
-  const values = entries.map(([, v]) => quoteLiteral(v)).join(", ");
+  const columns = entries.map(([k]) => quoteIdent(k, dialect)).join(", ");
+  const values = entries.map(([, v]) => quoteLiteral(v, dialect)).join(", ");
+  if (dialect !== "postgres") return `INSERT INTO ${tableName} (${columns}) VALUES (${values})`;
   return `INSERT INTO ${tableName} (${columns}) VALUES (${values}) RETURNING *`;
 }
 
@@ -136,18 +161,20 @@ export function buildUpdateQuery(params: {
   table: string;
   changes: Record<string, unknown>;
   primaryKeyMatch: Record<string, unknown>;
+  dialect?: SqlDialect;
 }): string {
-  const { schema, table, changes, primaryKeyMatch } = params;
+  const { schema, table, changes, primaryKeyMatch, dialect = "postgres" } = params;
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("UPDATE requires at least one primary key condition");
   }
-  const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
+  const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const setClauses = Object.entries(changes)
-    .map(([col, val]) => `${quoteIdent(col)} = ${quoteLiteral(val)}`)
+    .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
     .join(", ");
   const whereClauses = Object.entries(primaryKeyMatch)
-    .map(([col, val]) => `${quoteIdent(col)} = ${quoteLiteral(val)}`)
+    .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
     .join(" AND ");
+  if (dialect !== "postgres") return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses}`;
   return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses} RETURNING *`;
 }
 
@@ -155,20 +182,20 @@ export function buildDeleteQuery(params: {
   schema: string;
   table: string;
   primaryKeyMatch: Record<string, unknown>;
+  dialect?: SqlDialect;
 }): string {
-  const { schema, table, primaryKeyMatch } = params;
+  const { schema, table, primaryKeyMatch, dialect = "postgres" } = params;
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("DELETE requires at least one primary key condition");
   }
-  const tableName = `${quoteIdent(schema)}.${quoteIdent(table)}`;
+  const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const whereClauses = Object.entries(primaryKeyMatch)
-    .map(([col, val]) => `${quoteIdent(col)} = ${quoteLiteral(val)}`)
+    .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
     .join(" AND ");
   return `DELETE FROM ${tableName} WHERE ${whereClauses}`;
 }
 
-// Note: RETURNING * in individual INSERT/UPDATE statements is harmless but unused when
-// wrapped here — pgClient.query() returns only the last statement's result (COMMIT).
+// RETURNING * in individual INSERT/UPDATE is harmless but unused when wrapped here.
 // The frontend re-fetches data after save anyway.
 export function wrapInTransaction(statements: string[]): string {
   return `BEGIN;\n${statements.join(";\n")};\nCOMMIT;`;

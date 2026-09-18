@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TExternalInfisicalSync } from "@app/hooks/api/secretSyncs/types/external-infisical-sync";
 
 type Props = {
@@ -10,9 +10,18 @@ export const ExternalInfisicalSyncDestinationSection = ({ secretSync }: Props) =
 
   return (
     <>
-      <GenericFieldLabel label="Project ID">{destinationConfig.projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">{destinationConfig.environment}</GenericFieldLabel>
-      <GenericFieldLabel label="Secret Path">{destinationConfig.secretPath}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project ID</DetailLabel>
+        <DetailValue>{destinationConfig.projectId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{destinationConfig.environment}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Secret Path</DetailLabel>
+        <DetailValue>{destinationConfig.secretPath}</DetailValue>
+      </Detail>
     </>
   );
 };

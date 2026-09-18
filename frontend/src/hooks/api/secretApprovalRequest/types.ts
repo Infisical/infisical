@@ -1,3 +1,4 @@
+import { OrderByDirection } from "../generic/types";
 import { TSecretApprovalPolicy } from "../secretApproval/types";
 import { SecretV3Raw } from "../secrets/types";
 import { WsTag } from "../tags/types";
@@ -14,6 +15,13 @@ export enum CommitType {
   UPDATE = "update",
   CREATE = "create",
   ADD = "add"
+}
+
+export enum SecretApprovalRequestOrderBy {
+  Environment = "environment",
+  SecretPath = "secretPath",
+  Author = "author",
+  CreatedAt = "createdAt"
 }
 
 export type TSecretApprovalSecChangeData = {
@@ -64,6 +72,11 @@ export type TSecretApprovalRequest = {
   secretPath: string;
   hasMerged: boolean;
   status: "open" | "close";
+  // Set when the request was merged without satisfying the policy's required approvals.
+  bypassReason?: string | null;
+  // Commit message captured when changes are submitted through a point-in-time commit.
+  // Not set for secret edits routed directly through an approval policy.
+  commitMessage?: string | null;
   policy: Omit<TSecretApprovalPolicy, "approvers" | "bypassers"> & {
     approvers: {
       isOrgMembershipActive: boolean;
@@ -95,7 +108,11 @@ export type TSecretApprovalRequest = {
     firstName: string;
     lastName: string;
     username: string;
-  };
+  } | null;
+  committerIdentity: {
+    identityId: string;
+    name: string;
+  } | null;
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
   commits: ({
     // if there is no secret means it was creation
@@ -120,6 +137,8 @@ export type TGetSecretApprovalRequestList = {
   limit?: number;
   offset?: number;
   search?: string;
+  orderBy?: SecretApprovalRequestOrderBy;
+  orderDirection?: OrderByDirection;
 };
 
 export type TGetSecretApprovalRequestCount = {
@@ -147,5 +166,7 @@ export type TUpdateSecretApprovalRequestStatusDTO = {
 export type TPerformSecretApprovalRequestMerge = {
   id: string;
   projectId: string;
+  environment: string;
+  secretPath: string;
   bypassReason?: string;
 };

@@ -14,8 +14,10 @@ import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -119,6 +121,15 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupAddedToProject,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId, projectId: req.params.projectId }
+        })
+        .catch(() => {});
 
       return {
         groupMembership: {
@@ -284,7 +295,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
   server.route({
     method: "GET",
     url: "/:projectId/groups",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     config: {
       rateLimit: readLimit
     },
@@ -354,7 +365,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
   server.route({
     method: "GET",
     url: "/:projectId/groups/:groupId",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     config: {
       rateLimit: readLimit
     },
@@ -426,7 +437,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
   server.route({
     method: "GET",
     url: "/:projectId/groups/:groupId/users",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     config: {
       rateLimit: readLimit
     },

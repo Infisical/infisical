@@ -1,6 +1,5 @@
 import sodium from "libsodium-wrappers";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import {
@@ -9,13 +8,14 @@ import {
   getGitHubInstanceApiUrl,
   GitHubConnectionMethod,
   makePaginatedGitHubRequest,
-  requestWithGitHubGateway
+  requestWithGitHubGateway,
+  TGitHubAppCredentialResolverDeps
 } from "@app/services/app-connection/github";
 import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync/github/github-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { TGitHubPublicKey, TGitHubSecret, TGitHubSecretPayload, TGitHubSyncWithCredentials } from "./github-sync-types";
 
@@ -23,9 +23,9 @@ import { TGitHubPublicKey, TGitHubSecret, TGitHubSecretPayload, TGitHubSyncWithC
 
 const getEncryptedSecrets = async (
   secretSync: TGitHubSyncWithCredentials,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  gitHubAppDeps: TGitHubAppCredentialResolverDeps
 ) => {
   const { destinationConfig, connection } = secretSync;
 
@@ -48,17 +48,16 @@ const getEncryptedSecrets = async (
 
   return makePaginatedGitHubRequest<TGitHubSecret, { secrets: TGitHubSecret[] }>(
     connection,
-    gatewayService,
     gatewayV2Service,
     gatewayPoolService,
     path,
+    gitHubAppDeps,
     (data) => data.secrets
   );
 };
 
 const getPublicKey = async (
   secretSync: TGitHubSyncWithCredentials,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   token: string
@@ -93,7 +92,6 @@ const getPublicKey = async (
 
   const response = await requestWithGitHubGateway<TGitHubPublicKey>(
     { gatewayId: effectiveGatewayId },
-    gatewayService,
     gatewayV2Service,
     {
       url: `https://${apiBaseUrl}${path}`,
@@ -112,7 +110,6 @@ const getPublicKey = async (
 
 const deleteSecret = async (
   secretSync: TGitHubSyncWithCredentials,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   token: string,
@@ -148,7 +145,6 @@ const deleteSecret = async (
 
   await requestWithGitHubGateway(
     { gatewayId: effectiveGatewayId },
-    gatewayService,
     gatewayV2Service,
     {
       url: `https://${apiBaseUrl}${path}`,
@@ -165,7 +161,6 @@ const deleteSecret = async (
 
 const putSecret = async (
   secretSync: TGitHubSyncWithCredentials,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   token: string,
@@ -211,7 +206,6 @@ const putSecret = async (
 
   await requestWithGitHubGateway(
     { gatewayId: effectiveGatewayId },
-    gatewayService,
     gatewayV2Service,
     {
       url: `https://${apiBaseUrl}${path}`,
@@ -230,11 +224,12 @@ const putSecret = async (
 export const GithubSyncFns = {
   syncSecrets: async (
     secretSync: TGitHubSyncWithCredentials,
-    ogSecretMap: TSecretMap,
-    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+    payload: TSecretSyncPayload,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+    gitHubAppDeps: TGitHubAppCredentialResolverDeps
   ) => {
+    const ogSecretMap = payload.flatten();
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
     switch (secretSync.destinationConfig.scope) {
@@ -279,17 +274,17 @@ export const GithubSyncFns = {
         token = connection.credentials.personalAccessToken;
         break;
       default:
-        token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
+        token = await getGitHubAppAuthToken(connection, gatewayV2Service, gatewayPoolService, gitHubAppDeps);
     }
 
     const resolvedSync = { ...secretSync, connection };
     const encryptedSecrets = await getEncryptedSecrets(
       resolvedSync,
-      gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
-    const publicKey = await getPublicKey(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token);
+    const publicKey = await getPublicKey(resolvedSync, gatewayV2Service, gatewayPoolService, token);
 
     await sodium.ready;
     for await (const key of Object.keys(secretMap)) {
@@ -301,7 +296,7 @@ export const GithubSyncFns = {
       const encryptedSecretValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
 
       try {
-        await putSecret(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token, {
+        await putSecret(resolvedSync, gatewayV2Service, gatewayPoolService, token, {
           secret_name: key,
           encrypted_value: encryptedSecretValue,
           key_id: publicKey.key_id
@@ -322,7 +317,7 @@ export const GithubSyncFns = {
         continue;
 
       if (!(encryptedSecret.name in secretMap)) {
-        await deleteSecret(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
+        await deleteSecret(resolvedSync, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
       }
     }
   },
@@ -331,11 +326,12 @@ export const GithubSyncFns = {
   },
   removeSecrets: async (
     secretSync: TGitHubSyncWithCredentials,
-    ogSecretMap: TSecretMap,
-    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+    payload: TSecretSyncPayload,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+    gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+    gitHubAppDeps: TGitHubAppCredentialResolverDeps
   ) => {
+    const ogSecretMap = payload.flatten();
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
     const { connection: rawConnection } = secretSync;
@@ -355,19 +351,19 @@ export const GithubSyncFns = {
         token = connection.credentials.personalAccessToken;
         break;
       default:
-        token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service, gatewayPoolService);
+        token = await getGitHubAppAuthToken(connection, gatewayV2Service, gatewayPoolService, gitHubAppDeps);
     }
 
     const encryptedSecrets = await getEncryptedSecrets(
       resolvedSync,
-      gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
 
     for await (const encryptedSecret of encryptedSecrets) {
       if (encryptedSecret.name in secretMap) {
-        await deleteSecret(resolvedSync, gatewayService, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
+        await deleteSecret(resolvedSync, gatewayV2Service, gatewayPoolService, token, encryptedSecret);
       }
     }
   }

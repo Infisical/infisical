@@ -1,14 +1,31 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   DatadogConnectionMethod,
   TDatadogConnection
 } from "@app/hooks/api/appConnections/types/datadog-connection";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -23,11 +40,20 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.Datadog)
 });
 
+const urlSchema = z.string().trim().url("Invalid Datadog URL").min(1, "URL required").max(255);
+
 const formSchema = z.discriminatedUnion("method", [
+  rootSchema.extend({
+    method: z.literal(DatadogConnectionMethod.Token),
+    credentials: z.object({
+      url: urlSchema,
+      token: z.string().trim().min(1, "Token required")
+    })
+  }),
   rootSchema.extend({
     method: z.literal(DatadogConnectionMethod.ApiKey),
     credentials: z.object({
-      url: z.string().trim().url("Invalid Datadog URL").min(1, "URL required").max(255),
+      url: urlSchema,
       apiKey: z.string().trim().min(1, "API Key required"),
       applicationKey: z.string().trim().min(1, "Application Key required")
     })
@@ -43,15 +69,13 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Datadog,
-      method: DatadogConnectionMethod.ApiKey
+      method: DatadogConnectionMethod.Token
     }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control, watch } = form;
+
+  const selectedMethod = watch("method");
 
   return (
     <FormProvider {...form}>
@@ -59,74 +83,132 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
         {!isUpdate && <GenericAppConnectionsFields />}
 
         <Controller
+          name="method"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="method">
+                Method
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.Datadog].name}. This field cannot be changed
+                    after creation.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(DatadogConnectionMethod).map((method) => (
+                    <SelectItem value={method} key={method}>
+                      {getAppConnectionMethodDetails(method).name}
+                      {method === DatadogConnectionMethod.Token ? " (Recommended)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+
+        <Controller
           name="credentials.url"
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Datadog URL"
-              tooltipClassName="max-w-sm"
-              tooltipText="The Datadog site URL to connect to (e.g., https://api.datadoghq.com)."
-            >
-              <Input {...field} placeholder="https://api.datadoghq.com" />
-            </FormControl>
-          )}
-        />
-        <Controller
-          name="credentials.apiKey"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="API Key"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
+            <Field className="mb-4">
+              <FieldLabel htmlFor="url">
+                Datadog URL
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The Datadog site URL to connect to (e.g., https://api.datadoghq.com).
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="url"
+                {...field}
+                placeholder="https://api.datadoghq.com"
+                isError={Boolean(error?.message)}
               />
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <Controller
-          name="credentials.applicationKey"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Application Key"
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
-          )}
+
+        {selectedMethod === DatadogConnectionMethod.Token ? (
+          <Controller
+            name="credentials.token"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="token">Service Access Token</FieldLabel>
+                <SecretInput
+                  aria-describedby={error ? "token-error" : undefined}
+                  id="token"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError id="token-error" errors={[error]} />
+              </Field>
+            )}
+          />
+        ) : (
+          <>
+            <Controller
+              name="credentials.apiKey"
+              control={control}
+              shouldUnregister
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="api-key">API Key</FieldLabel>
+                  <SecretInput
+                    aria-describedby={error ? "api-key-error" : undefined}
+                    id="api-key"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="api-key-error" errors={[error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="credentials.applicationKey"
+              control={control}
+              shouldUnregister
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="application-key">Application Key</FieldLabel>
+                  <SecretInput
+                    aria-describedby={error ? "application-key-error" : undefined}
+                    id="application-key"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="application-key-error" errors={[error]} />
+                </Field>
+              )}
+            />
+          </>
+        )}
+
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Datadog"}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to Datadog"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
       </form>
     </FormProvider>
   );

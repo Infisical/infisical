@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TFlyioSync } from "@app/hooks/api/secretSyncs/types/flyio-sync";
 
 type Props = {
@@ -10,5 +10,10 @@ export const FlyioSyncDestinationSection = ({ secretSync }: Props) => {
     destinationConfig: { appId }
   } = secretSync;
 
-  return <GenericFieldLabel label="App">{appId}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>App</DetailLabel>
+      <DetailValue>{appId}</DetailValue>
+    </Detail>
+  );
 };

@@ -10,6 +10,8 @@
 
 ## Type
 
+<!-- Tick at least one. CI fails if none are ticked. -->
+
 - [ ] Fix
 - [ ] Feature
 - [ ] Improvement

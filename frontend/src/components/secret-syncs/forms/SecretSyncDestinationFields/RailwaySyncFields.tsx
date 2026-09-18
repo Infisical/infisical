@@ -1,13 +1,21 @@
 import { useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
-  TRailwayProject,
-  useRailwayConnectionListProjects
-} from "@app/hooks/api/appConnections/railway";
+  Combobox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useRailwayConnectionListProjects } from "@app/hooks/api/appConnections/railway";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -36,7 +44,7 @@ export const RailwaySyncFields = () => {
   }, [projects, projectId]);
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.environmentId", "");
@@ -51,27 +59,37 @@ export const RailwaySyncFields = () => {
         name="destinationConfig.projectId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select a project"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={projects.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TRailwayProject>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.projectName", v?.name ?? "");
-              }}
-              options={projects}
-              placeholder="Select a project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-railway-project-id-label"
+              htmlFor="secret-sync-railway-project-id"
+            >
+              Select a project
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-railway-project-id-label"
+                aria-describedby={error ? "secret-sync-railway-project-id-error" : undefined}
+                id="secret-sync-railway-project-id"
+                isError={Boolean(error)}
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects.find((p) => p.id === value) ?? null}
+                onValueChange={(option) => {
+                  const v = option;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.projectName", v?.name ?? "");
+                }}
+                options={projects}
+                placeholder="Select a project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldError id="secret-sync-railway-project-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
@@ -79,27 +97,37 @@ export const RailwaySyncFields = () => {
         disabled={!connectionId || !projectId}
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select an environment"
-            tooltipClassName="max-w-md"
-          >
-            <FilterableSelect
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={environments.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TRailwayProject>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.environmentName", v?.name ?? "");
-              }}
-              options={environments}
-              placeholder="Select an environment..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-railway-environment-id-label"
+              htmlFor="secret-sync-railway-environment-id"
+            >
+              Select an environment
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-railway-environment-id-label"
+                aria-describedby={error ? "secret-sync-railway-environment-id-error" : undefined}
+                id="secret-sync-railway-environment-id"
+                isError={Boolean(error)}
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={environments.find((p) => p.id === value) ?? null}
+                onValueChange={(option) => {
+                  const v = option;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.environmentName", v?.name ?? "");
+                }}
+                options={environments}
+                placeholder="Select an environment..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldError id="secret-sync-railway-environment-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -108,31 +136,54 @@ export const RailwaySyncFields = () => {
         disabled={!connectionId || !projectId}
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Select a service"
-            tooltipClassName="max-w-md"
-            tooltipText="By default secrets are created as shared variables in Railway."
-            helperText="Scope your secrets to a specific service within the environment."
-          >
-            <FilterableSelect
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={services.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const v = option as SingleValue<TRailwayProject>;
-                onChange(v?.id ?? null);
-                setValue("destinationConfig.serviceName", v?.name ?? "");
-              }}
-              options={services}
-              placeholder="Select a service..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-railway-service-id-label"
+              htmlFor="secret-sync-railway-service-id"
+            >
+              Select a service
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  By default secrets are created as shared variables in Railway.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-railway-service-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-railway-service-id-description secret-sync-railway-service-id-error"
+                    : "secret-sync-railway-service-id-description"
+                }
+                id="secret-sync-railway-service-id"
+                isError={Boolean(error)}
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={services.find((p) => p.id === value) ?? null}
+                onValueChange={(option) => {
+                  const v = option;
+                  onChange(v?.id ?? null);
+                  setValue("destinationConfig.serviceName", v?.name ?? "");
+                }}
+                options={services}
+                placeholder="Select a service..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldDescription id="secret-sync-railway-service-id-description">
+                Scope your secrets to a specific service within the environment.
+              </FieldDescription>
+              <FieldError id="secret-sync-railway-service-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

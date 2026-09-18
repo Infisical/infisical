@@ -1,14 +1,8 @@
 import { ReactNode } from "react";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { IconButton } from "@app/components/v2";
-import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { Detail, DetailGroupHeader, DetailLabel, DetailValue } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
-import { getSecretSyncPermissionSubject } from "@app/lib/fn/permission";
 
 import { OnePassSyncDestinationSection } from "./1PasswordSyncDestinationSection";
 import { AwsParameterStoreSyncDestinationSection } from "./AwsParameterStoreSyncDestinationSection";
@@ -22,6 +16,7 @@ import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
 import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
+import { Cloud66SyncDestinationSection } from "./Cloud66SyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
@@ -32,6 +27,7 @@ import { FlyioSyncDestinationSection } from "./FlyioSyncDestinationSection";
 import { GcpSyncDestinationSection } from "./GcpSyncDestinationSection";
 import { GitHubSyncDestinationSection } from "./GitHubSyncDestinationSection";
 import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
+import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
@@ -42,23 +38,26 @@ import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
 import { OnaSyncDestinationSection } from "./OnaSyncDestinationSection";
 import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
+import { QoverySyncDestinationSection } from "./QoverySyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
+import { RundeckSyncDestinationSection } from "./RundeckSyncDestinationSection";
 import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
+import { SpaceliftSyncDestinationSection } from "./SpaceliftSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
 import { TravisCISyncDestinationSection } from "./TravisCISyncDestinationSection";
+import { TriggerDevSyncDestinationSection } from "./TriggerDevSyncDestinationSection";
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
-  onEditDestination: VoidFunction;
 };
 
-export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: Props) => {
+export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
   const { destination, connection } = secretSync;
 
   const app = APP_CONNECTION_MAP[connection.app].name;
@@ -142,11 +141,17 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.Railway:
       DestinationComponents = <RailwaySyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.HasuraCloud:
+      DestinationComponents = <HasuraCloudSyncDestinationSection secretSync={secretSync} />;
+      break;
     case SecretSync.Checkly:
       DestinationComponents = <ChecklySyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Supabase:
       DestinationComponents = <SupabaseSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Rundeck:
+      DestinationComponents = <RundeckSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationComponents = (
@@ -195,34 +200,33 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.Snowflake:
       DestinationComponents = <SnowflakeSyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.TriggerDev:
+      DestinationComponents = <TriggerDevSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Qovery:
+      DestinationComponents = <QoverySyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Daytona:
+      // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Cloud66:
+      DestinationComponents = <Cloud66SyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Spacelift:
+      DestinationComponents = <SpaceliftSyncDestinationSection secretSync={secretSync} />;
+      break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);
   }
 
-  const permissionSubject = getSecretSyncPermissionSubject(secretSync);
-
   return (
-    <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="font-medium text-mineshaft-100">Destination Configuration</h3>
-        <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
-          {(isAllowed) => (
-            <IconButton
-              variant="plain"
-              colorSchema="secondary"
-              isDisabled={!isAllowed}
-              ariaLabel="Edit sync destination"
-              onClick={onEditDestination}
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </IconButton>
-          )}
-        </ProjectPermissionCan>
-      </div>
-      <div className="flex w-full flex-wrap gap-8">
-        <GenericFieldLabel label={`${app} Connection`}>{connection.name}</GenericFieldLabel>
-        {DestinationComponents}
-      </div>
-    </div>
+    <>
+      <DetailGroupHeader>Destination Configuration</DetailGroupHeader>
+      <Detail>
+        <DetailLabel>{`${app} Connection`}</DetailLabel>
+        <DetailValue>{connection.name}</DetailValue>
+      </Detail>
+      {DestinationComponents}
+    </>
   );
 };

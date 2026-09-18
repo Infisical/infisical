@@ -15,9 +15,11 @@ import { OrderByDirection } from "@app/lib/types";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const GroupIdentityResponseSchema = IdentitiesSchema.pick({
   id: true,
@@ -28,6 +30,23 @@ const GroupWithRoleSchema = GroupsSchema.extend({
   role: z.string(),
   roleId: z.string().nullish()
 });
+
+// Member/identity search matches free-form user names, emails, and machine-identity names, so allow
+// letters/digits (any script), spaces, and the punctuation those values commonly contain.
+const MEMBER_SEARCH_ALLOWED_CHARACTERS = [
+  CharacterType.UnicodeLettersAndDigits,
+  CharacterType.Spaces,
+  CharacterType.Hyphen,
+  CharacterType.Period,
+  CharacterType.Underscore,
+  CharacterType.At,
+  CharacterType.Plus,
+  CharacterType.SingleQuote,
+  CharacterType.ForwardSlash,
+  CharacterType.Colon
+];
+const MEMBER_SEARCH_INVALID_MESSAGE =
+  "Invalid search: only letters, numbers, spaces, and the characters - . _ @ + ' / : are allowed.";
 
 export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -42,8 +61,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       operationId: "createGroup",
       tags: [ApiDocsTags.Groups],
       body: z.object({
-        name: z.string().trim().min(1).max(50).describe(GROUPS.CREATE.name),
-        slug: slugSchema({ min: 5, max: 36 }).optional().describe(GROUPS.CREATE.slug),
+        name: z.string().trim().min(1).max(255).describe(GROUPS.CREATE.name),
+        slug: slugSchema({ min: 5, max: 255 }).optional().describe(GROUPS.CREATE.slug),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(GROUPS.CREATE.role)
       }),
       response: {
@@ -73,6 +92,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            name: group.name
+          }
+        })
+        .catch(() => {});
+
       return group;
     }
   });
@@ -83,7 +114,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getGroupById",
@@ -116,7 +147,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listGroups",
@@ -154,8 +185,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }),
       body: z
         .object({
-          name: z.string().trim().min(1).describe(GROUPS.UPDATE.name),
-          slug: slugSchema({ min: 5, max: 36 }).describe(GROUPS.UPDATE.slug),
+          name: z.string().trim().min(1).max(255).describe(GROUPS.UPDATE.name),
+          slug: slugSchema({ min: 5, max: 255 }).describe(GROUPS.UPDATE.slug),
           role: z.string().trim().min(1).describe(GROUPS.UPDATE.role)
         })
         .partial(),
@@ -186,6 +217,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            name: group.name
+          }
+        })
+        .catch(() => {});
 
       return group;
     }
@@ -239,6 +282,20 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
                 }
               }
         });
+
+        if (!isUnlinked) {
+          void server.services.telemetry
+            .sendPostHogEvents({
+              event: PostHogEventTypes.GroupDeleted,
+              distinctId: getTelemetryDistinctId(req),
+              organizationId: req.permission.orgId,
+              properties: {
+                groupId: group.id,
+                name: group.name
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       return group;
@@ -251,7 +308,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listGroupUsers",
@@ -266,18 +323,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         search: z
           .string()
           .trim()
-          .refine(
-            (val) =>
-              characterValidator([
-                CharacterType.AlphaNumeric,
-                CharacterType.Hyphen,
-                CharacterType.Period,
-                CharacterType.At
-              ])(val),
-            {
-              message: "Invalid pattern: only alphanumeric characters, -, ., @ are allowed."
-            }
-          )
+          .refine(characterValidator(MEMBER_SEARCH_ALLOWED_CHARACTERS), {
+            message: MEMBER_SEARCH_INVALID_MESSAGE
+          })
           .optional()
           .describe(GROUPS.LIST_USERS.search),
         filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
@@ -320,7 +368,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listGroupMachineIdentities",
@@ -334,8 +382,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         search: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
+          .refine(characterValidator(MEMBER_SEARCH_ALLOWED_CHARACTERS), {
+            message: MEMBER_SEARCH_INVALID_MESSAGE
           })
           .optional()
           .describe(GROUPS.LIST_MACHINE_IDENTITIES.search),
@@ -374,7 +422,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listGroupMembers",
@@ -465,7 +513,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listGroupProjects",
@@ -574,6 +622,15 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId: group.id, memberType: "user" }
+        })
+        .catch(() => {});
+
       return user;
     }
   });
@@ -621,6 +678,15 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { groupId: group.id, memberType: "identity" }
+        })
+        .catch(() => {});
 
       return identity;
     }
@@ -675,6 +741,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            memberType: "user"
+          }
+        })
+        .catch(() => {});
+
       return user;
     }
   });
@@ -722,6 +800,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.GroupMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            groupId: group.id,
+            memberType: "identity"
+          }
+        })
+        .catch(() => {});
 
       return identity;
     }

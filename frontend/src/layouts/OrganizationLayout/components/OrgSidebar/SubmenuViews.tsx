@@ -7,9 +7,11 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  useSidebarScope
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { isOrgScopedProduct } from "@app/helpers/project";
 
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
@@ -29,9 +31,14 @@ export const ProjectSubmenuView = ({
   const searchParams = useSearch({ strict: false }) as Record<string, string>;
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
-  const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  const sidebarScope = useSidebarScope();
+  const isOrgScoped = isOrgScopedProduct(currentProject.type);
+  const basePath = isOrgScoped
+    ? `/organizations/${currentOrg.id}/${typePath}`
+    : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const isOnExactPage = pathname.startsWith(`${basePath}/${submenu.pathSuffix}`);
   const currentTab = searchParams?.selectedTab;
+  const anyItemMatchesDetail = submenu.items.some((s) => Boolean(s.activeMatch?.test(pathname)));
 
   return (
     <SidebarGroup>
@@ -51,83 +58,28 @@ export const ProjectSubmenuView = ({
           const isActive =
             matchesDetail ||
             (isOnExactPage &&
+              !anyItemMatchesDetail &&
               (currentTab === sub.tab || (!currentTab && sub.tab === submenu.defaultTab)));
 
           return (
             <SidebarMenuItem key={sub.label}>
               <SidebarMenuButton
                 size="lg"
-                scope="project"
+                scope={sidebarScope}
                 asChild
+                closeOnMobile
                 isActive={isActive}
                 tooltip={sub.label}
               >
                 <Link
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   to={
-                    `/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any
+                    isOrgScoped
+                      ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
+                      : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any)
                   }
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  search={{ selectedTab: sub.tab } as any}
-                >
-                  <sub.icon className="size-4" />
-                  <span>{sub.label}</span>
-                </Link>
-              </SidebarMenuButton>
-              {Boolean(sub.badgeCount) && (
-                <Badge variant="warning" className="absolute top-[10.5px] right-4">
-                  {sub.badgeCount}
-                </Badge>
-              )}
-            </SidebarMenuItem>
-          );
-        })}
-      </SidebarMenu>
-    </SidebarGroup>
-  );
-};
-
-// --- Generic submenu view for org ---
-
-export const OrgSubmenuView = ({ submenu, onBack }: { submenu: Submenu; onBack: () => void }) => {
-  const { currentOrg } = useOrganization();
-  const { pathname } = useLocation();
-  const searchParams = useSearch({ strict: false }) as Record<string, string>;
-  const orgId = currentOrg.id;
-
-  const isOnExactPage = pathname.startsWith(`/organizations/${orgId}/${submenu.pathSuffix}`);
-  const currentTab = searchParams?.selectedTab;
-
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel asChild>
-        <button
-          className="cursor-pointer hover:bg-foreground/[0.025]"
-          type="button"
-          onClick={onBack}
-        >
-          <ChevronLeft />
-          <span>{submenu.title}</span>
-        </button>
-      </SidebarGroupLabel>
-      <SidebarMenu>
-        {submenu.items.map((sub) => {
-          const matchesDetail = Boolean(sub.activeMatch?.test(pathname));
-          const isActive =
-            matchesDetail ||
-            (isOnExactPage &&
-              (currentTab === sub.tab || (!currentTab && sub.tab === submenu.defaultTab)));
-
-          return (
-            <SidebarMenuItem key={sub.label}>
-              <SidebarMenuButton size="lg" asChild isActive={isActive} tooltip={sub.label}>
-                <Link
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  to={`/organizations/$orgId/${submenu.pathSuffix}` as any}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  params={{ orgId } as any}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   search={{ selectedTab: sub.tab } as any}
                 >

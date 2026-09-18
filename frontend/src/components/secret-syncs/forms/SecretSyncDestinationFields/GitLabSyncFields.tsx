@@ -1,18 +1,30 @@
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faCircleInfo, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import axios, { HttpStatusCode } from "axios";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   Input,
+  Label,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useDebounce } from "@app/hooks";
 import {
   TGitLabGroup,
   TGitLabProject,
@@ -24,40 +36,71 @@ import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 import { TSecretSyncForm } from "../schemas";
 
+const GITLAB_SYNC_LIST_LIMIT = 20;
+const GITLAB_SEARCH_DEBOUNCE_MS = 500;
+
+const normalizeGitLabSearch = (value: string) => value.trim().toLocaleLowerCase();
+
+const getGitLabSearchErrorMessage = (error: unknown, resource: "groups" | "projects") => {
+  if (!error) return null;
+
+  return axios.isAxiosError(error) && error.response?.status === HttpStatusCode.TooManyRequests
+    ? `GitLab is rate limiting ${resource}. Wait a moment and try again.`
+    : `Unable to load GitLab ${resource}. Try again.`;
+};
+
+const renderGitLabGroupOption = (group: TGitLabGroup) => (
+  <div className="min-w-0">
+    <p className="truncate">{group.name}</p>
+    {group.fullPath !== group.name && (
+      <p className="truncate text-xs leading-4 text-muted">{group.fullPath}</p>
+    )}
+  </div>
+);
+
+const renderGitLabProjectOption = (project: TGitLabProject) => {
+  const fullPathWithNamespace = project.name;
+  const shortName = fullPathWithNamespace.split("/").pop() || fullPathWithNamespace;
+
+  return (
+    <div className="min-w-0">
+      <p className="truncate">{shortName}</p>
+      {fullPathWithNamespace !== shortName && (
+        <p className="truncate text-xs leading-4 text-muted">{fullPathWithNamespace}</p>
+      )}
+    </div>
+  );
+};
+
 const SecretProtectionOption = ({
   title,
+  description,
   isEnabled,
   onChange,
   id,
-  isDisabled = false,
-  tooltip
+  isDisabled = false
 }: {
   title: string;
+  description: string;
   isEnabled: boolean;
   onChange: (checked: boolean) => void;
   id: string;
   isDisabled?: boolean;
-  tooltip?: string;
 }) => {
   return (
-    <Switch
-      className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-      id={id}
-      thumbClassName="bg-mineshaft-800"
-      onCheckedChange={onChange}
-      isChecked={isEnabled}
-      isDisabled={isDisabled}
-      containerClassName="w-full"
-    >
-      <p>
-        {title}{" "}
-        {tooltip && (
-          <Tooltip className="max-w-md" content={tooltip}>
-            <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-          </Tooltip>
-        )}
-      </p>
-    </Switch>
+    <Field orientation="horizontal">
+      <FieldContent className={isDisabled ? "pointer-events-none opacity-50" : undefined}>
+        <Label htmlFor={id}>{title}</Label>
+        <FieldDescription>{description}</FieldDescription>
+      </FieldContent>
+      <Toggle
+        id={id}
+        variant="project"
+        checked={isEnabled}
+        onCheckedChange={onChange}
+        disabled={isDisabled}
+      />
+    </Field>
   );
 };
 
@@ -66,23 +109,61 @@ export const GitLabSyncFields = () => {
     TSecretSyncForm & { destination: SecretSync.GitLab }
   >();
 
+  const [projectSearch, setProjectSearch] = useState("");
+  const [debouncedProjectSearch] = useDebounce(projectSearch, GITLAB_SEARCH_DEBOUNCE_MS);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [debouncedGroupSearch] = useDebounce(groupSearch, GITLAB_SEARCH_DEBOUNCE_MS);
+
   const connectionId = useWatch({ name: "connection.id", control });
   const scope = useWatch({ name: "destinationConfig.scope", control });
   const shouldMaskSecrets = useWatch({ name: "destinationConfig.shouldMaskSecrets", control });
+  const projectId = useWatch({ name: "destinationConfig.projectId", control });
+  const projectName = useWatch({ name: "destinationConfig.projectName", control });
+  const groupId = useWatch({ name: "destinationConfig.groupId", control });
+  const groupName = useWatch({ name: "destinationConfig.groupName", control });
 
-  const { data: groups, isLoading: isGroupsLoading } = useGitLabConnectionListGroups(connectionId, {
-    enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
-  });
-
-  const { data: projects, isLoading: isProjectsLoading } = useGitLabConnectionListProjects(
+  const {
+    data: groups,
+    error: groupsError,
+    isFetching: isGroupsFetching
+  } = useGitLabConnectionListGroups(
     connectionId,
+    debouncedGroupSearch || undefined,
+    GITLAB_SYNC_LIST_LIMIT,
     {
-      enabled: Boolean(connectionId)
+      enabled: Boolean(connectionId) && scope === GitLabSyncScope.Group
     }
   );
 
+  const {
+    data: projects,
+    error: projectsError,
+    isFetching: isProjectsFetching
+  } = useGitLabConnectionListProjects(
+    connectionId,
+    debouncedProjectSearch || undefined,
+    GITLAB_SYNC_LIST_LIMIT,
+    {
+      enabled: Boolean(connectionId) && scope === GitLabSyncScope.Project
+    }
+  );
+
+  const isGroupSearchPending =
+    Boolean(connectionId) &&
+    scope === GitLabSyncScope.Group &&
+    (normalizeGitLabSearch(groupSearch) !== normalizeGitLabSearch(debouncedGroupSearch) ||
+      isGroupsFetching);
+  const isProjectSearchPending =
+    Boolean(connectionId) &&
+    scope === GitLabSyncScope.Project &&
+    (normalizeGitLabSearch(projectSearch) !== normalizeGitLabSearch(debouncedProjectSearch) ||
+      isProjectsFetching);
+
+  const groupsErrorMessage = getGitLabSearchErrorMessage(groupsError, "groups");
+  const projectsErrorMessage = getGitLabSearchErrorMessage(projectsError, "projects");
+
   return (
-    <div className="h-full overflow-auto">
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
@@ -90,6 +171,8 @@ export const GitLabSyncFields = () => {
           setValue("destinationConfig.groupId", "");
           setValue("destinationConfig.groupName", "");
           setValue("destinationConfig.scope", GitLabSyncScope.Project);
+          setProjectSearch("");
+          setGroupSearch("");
         }}
       />
 
@@ -98,28 +181,35 @@ export const GitLabSyncFields = () => {
         control={control}
         defaultValue={GitLabSyncScope.Project}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error?.message)} label="Scope">
-            <Select
-              value={value}
-              onValueChange={(val) => {
-                onChange(val);
-                setValue("destinationConfig.projectId", "");
-                setValue("destinationConfig.projectName", "");
-                setValue("destinationConfig.groupId", "");
-                setValue("destinationConfig.groupName", "");
-              }}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select a scope..."
-              dropdownContainerClassName="max-w-none"
-            >
-              {Object.values(GitLabSyncScope).map((projectScope) => (
-                <SelectItem className="capitalize" value={projectScope} key={projectScope}>
-                  {projectScope.replace("-", " ")}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Field>
+            <FieldLabel>Scope</FieldLabel>
+            <FieldContent>
+              <Select
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  setValue("destinationConfig.projectId", "");
+                  setValue("destinationConfig.projectName", "");
+                  setValue("destinationConfig.groupId", "");
+                  setValue("destinationConfig.groupName", "");
+                  setProjectSearch("");
+                  setGroupSearch("");
+                }}
+              >
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a scope..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitLabSyncScope).map((projectScope) => (
+                    <SelectItem className="capitalize" value={projectScope} key={projectScope}>
+                      {projectScope.replace("-", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -127,41 +217,69 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.groupId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Group"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content="Ensure the group exists in the connection's GitLab instance URL."
-                >
-                  <div>
-                    <span>Don&#39;t see the group you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                  </div>
+          render={({ field: { onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel
+                id="secret-sync-git-lab-group-id-label"
+                htmlFor="secret-sync-git-lab-group-id"
+              >
+                Group
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    Ensure the group exists in the connection&apos;s GitLab instance URL. Only the
+                    first results are shown, search by name to find more.
+                  </TooltipContent>
                 </Tooltip>
-              }
-            >
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={isGroupsLoading && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={groups?.find((group) => group.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TGitLabGroup>)?.id ?? "");
-                  setValue(
-                    "destinationConfig.groupName",
-                    (option as SingleValue<TGitLabGroup>)?.fullName ?? ""
-                  );
-                }}
-                options={groups}
-                placeholder="Select a group..."
-                getOptionLabel={(option) => option.fullName}
-                getOptionValue={(option) => option.id}
-              />
-            </FormControl>
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  aria-labelledby="secret-sync-git-lab-group-id-label"
+                  aria-describedby={error ? "secret-sync-git-lab-group-id-error" : undefined}
+                  id="secret-sync-git-lab-group-id"
+                  isError={Boolean(error)}
+                  isLoading={isGroupSearchPending}
+                  loadingMessage="Loading GitLab groups..."
+                  isDisabled={!connectionId}
+                  value={groupId || null}
+                  onValueChange={(option) => {
+                    const selected = groups?.find((item) => item.id === option);
+                    if (!selected || option === groupId) return;
+                    onChange(option);
+                    setValue("destinationConfig.groupName", selected?.fullName ?? "", {
+                      shouldDirty: true
+                    });
+                  }}
+                  onClear={() => {
+                    onChange("");
+                    setValue("destinationConfig.groupName", "", { shouldDirty: true });
+                    setGroupSearch("");
+                  }}
+                  clearAriaLabel="Clear group"
+                  onInputValueChange={(newValue) => setGroupSearch(newValue)}
+                  shouldFilter={false}
+                  includeMissingSelectedOptions={!groupSearch && !groupsError}
+                  options={(groups ?? []).map((item) => item.id)}
+                  placeholder="Search for a group..."
+                  getOptionLabel={(id) =>
+                    groups?.find((item) => item.id === id)?.fullPath ?? (groupName || id)
+                  }
+                  renderOption={(id) => {
+                    const item = groups?.find((option) => option.id === id);
+                    return item ? renderGitLabGroupOption(item) : groupName || id;
+                  }}
+                  getOptionValue={(id) => id}
+                  emptyMessage={(inputValue) =>
+                    groupsErrorMessage ??
+                    (inputValue ? "No groups found matching your search." : "No groups found.")
+                  }
+                  modal
+                />
+                <FieldError id="secret-sync-git-lab-group-id-error" errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
@@ -170,41 +288,70 @@ export const GitLabSyncFields = () => {
         <Controller
           name="destinationConfig.projectId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="GitLab Project"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content="Ensure the project exists in the connection's GitLab instance URL and the connection has access to it."
-                >
-                  <div>
-                    <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                  </div>
+          render={({ field: { onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel
+                id="secret-sync-git-lab-project-id-label"
+                htmlFor="secret-sync-git-lab-project-id"
+              >
+                GitLab Project
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    Ensure the project exists in the connection&apos;s GitLab instance URL and the
+                    connection has access to it. Only the first results are shown, search by name to
+                    find more.
+                  </TooltipContent>
                 </Tooltip>
-              }
-            >
-              <FilterableSelect
-                menuPlacement="top"
-                isLoading={isProjectsLoading && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={projects?.find((project) => project.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TGitLabProject>)?.id ?? "");
-                  setValue(
-                    "destinationConfig.projectName",
-                    (option as SingleValue<TGitLabProject>)?.name ?? ""
-                  );
-                }}
-                options={projects}
-                placeholder="Select a project..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id}
-              />
-            </FormControl>
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  aria-labelledby="secret-sync-git-lab-project-id-label"
+                  aria-describedby={error ? "secret-sync-git-lab-project-id-error" : undefined}
+                  id="secret-sync-git-lab-project-id"
+                  isError={Boolean(error)}
+                  isLoading={isProjectSearchPending}
+                  loadingMessage="Loading GitLab projects..."
+                  isDisabled={!connectionId}
+                  value={projectId || null}
+                  onValueChange={(option) => {
+                    const selected = projects?.find((item) => item.id === option);
+                    if (!selected || option === projectId) return;
+                    onChange(option);
+                    setValue("destinationConfig.projectName", selected?.name ?? "", {
+                      shouldDirty: true
+                    });
+                  }}
+                  onClear={() => {
+                    onChange("");
+                    setValue("destinationConfig.projectName", "", { shouldDirty: true });
+                    setProjectSearch("");
+                  }}
+                  clearAriaLabel="Clear GitLab project"
+                  onInputValueChange={(newValue) => setProjectSearch(newValue)}
+                  shouldFilter={false}
+                  includeMissingSelectedOptions={!projectSearch && !projectsError}
+                  options={(projects ?? []).map((item) => item.id)}
+                  placeholder="Search for a project..."
+                  getOptionLabel={(id) =>
+                    projects?.find((item) => item.id === id)?.name ?? (projectName || id)
+                  }
+                  renderOption={(id) => {
+                    const item = projects?.find((option) => option.id === id);
+                    return item ? renderGitLabProjectOption(item) : projectName || id;
+                  }}
+                  getOptionValue={(id) => id}
+                  emptyMessage={(inputValue) =>
+                    projectsErrorMessage ??
+                    (inputValue ? "No projects found matching your search." : "No projects found.")
+                  }
+                  modal
+                />
+                <FieldError id="secret-sync-git-lab-project-id-error" errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       )}
@@ -214,69 +361,65 @@ export const GitLabSyncFields = () => {
         defaultValue=""
         name="destinationConfig.targetEnvironment"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="GitLab Environment Scope (Optional)"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="*" />
-          </FormControl>
+          <Field>
+            <FieldLabel>GitLab Environment Scope (Optional)</FieldLabel>
+            <FieldContent>
+              <Input {...field} placeholder="*" isError={Boolean(error)} />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
-      {/* Secret Protection Settings Section */}
-      <div className="mt-6">
-        <div className="space-y-4">
-          <Controller
-            control={control}
-            name="destinationConfig.shouldProtectSecrets"
-            render={({ field: { onChange, value } }) => (
-              <SecretProtectionOption
-                id="should-protect-secrets"
-                title="Mark secrets as Protected"
-                isEnabled={value || false}
-                onChange={onChange}
-              />
-            )}
-          />
+      <div className="flex flex-col gap-4">
+        <Controller
+          control={control}
+          name="destinationConfig.shouldProtectSecrets"
+          render={({ field: { onChange, value } }) => (
+            <SecretProtectionOption
+              id="should-protect-secrets"
+              title="Mark secrets as Protected"
+              description="When enabled, variables are only exposed to pipelines running on protected branches and protected tags in GitLab."
+              isEnabled={value || false}
+              onChange={onChange}
+            />
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="destinationConfig.shouldMaskSecrets"
-            render={({ field: { onChange, value } }) => (
-              <SecretProtectionOption
-                id="should-mask-secrets"
-                title="Mark secrets as Masked"
-                tooltip="GitLab has limitations for masked variables: secrets must be at least 8 characters long and not match existing CI/CD variable names. Secrets not meeting these criteria won't be masked."
-                isEnabled={value || false}
-                onChange={(checked) => {
-                  onChange(checked);
-                  if (!checked) {
-                    setValue("destinationConfig.shouldHideSecrets", false);
-                  }
-                }}
-              />
-            )}
-          />
+        <Controller
+          control={control}
+          name="destinationConfig.shouldMaskSecrets"
+          render={({ field: { onChange, value } }) => (
+            <SecretProtectionOption
+              id="should-mask-secrets"
+              title="Mark secrets as Masked"
+              description="GitLab hides masked variables in job logs. Variables must be at least 8 characters and meet GitLab's masking requirements to be masked successfully."
+              isEnabled={value || false}
+              onChange={(checked) => {
+                onChange(checked);
+                if (!checked) {
+                  setValue("destinationConfig.shouldHideSecrets", false);
+                }
+              }}
+            />
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="destinationConfig.shouldHideSecrets"
-            render={({ field: { onChange, value } }) => (
-              <div className="max-h-32 opacity-100 transition-all duration-300">
-                <SecretProtectionOption
-                  id="should-hide-secrets"
-                  title="Mark secrets as Hidden"
-                  tooltip="Secrets can only be marked as hidden if they are also masked. If this is enabled, Infisical will not be able to unhide/unmask secrets from the sync destination if you disable the option later."
-                  isEnabled={value || false}
-                  onChange={onChange}
-                  isDisabled={!shouldMaskSecrets}
-                />
-              </div>
-            )}
-          />
-        </div>
+        <Controller
+          control={control}
+          name="destinationConfig.shouldHideSecrets"
+          render={({ field: { onChange, value } }) => (
+            <SecretProtectionOption
+              id="should-hide-secrets"
+              title="Mark secrets as Hidden"
+              description="Hides the variable value in the GitLab UI. Requires masking to be enabled. Once enabled, Infisical can no longer unhide or unmask the variable from GitLab."
+              isEnabled={value || false}
+              onChange={onChange}
+              isDisabled={!shouldMaskSecrets}
+            />
+          )}
+        />
       </div>
-    </div>
+    </FieldGroup>
   );
 };

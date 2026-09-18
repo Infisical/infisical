@@ -21,7 +21,10 @@ type TDigiCertCertificateAuthorityQueueServiceFactoryDep = Omit<
   "certificateRequestDAL"
 > & {
   cronJob: TCronJobFactory;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findPendingValidationByCaType">;
+  certificateRequestDAL: Pick<
+    TCertificateRequestDALFactory,
+    "updateById" | "findPendingValidationByCaType" | "setPendingMessage"
+  >;
 };
 
 export type TDigiCertCertificateAuthorityQueueServiceFactory = ReturnType<

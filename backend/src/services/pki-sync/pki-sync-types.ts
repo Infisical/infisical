@@ -8,6 +8,29 @@ import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-me
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
+import { THostCommandResult } from "./pki-sync-host-command-fns";
+
+export type TPkiSyncFilters = {
+  profileIds?: string[];
+  certificateOrderIds?: string[];
+  metadata?: { key: string; value?: string }[];
+};
+
+export type TPkiSyncCertificateRef = {
+  id: string;
+  commonName: string;
+  altNames?: string | null;
+  serialNumber?: string;
+  notAfter?: Date;
+  orderId?: string;
+  profileName?: string | null;
+};
+
+export type TPkiSyncCertificateDiff = {
+  matched: TPkiSyncCertificateRef[];
+  toLink: TPkiSyncCertificateRef[];
+  toUnlink: TPkiSyncCertificateRef[];
+};
 
 export type TPkiSync = {
   id: string;
@@ -19,6 +42,7 @@ export type TPkiSync = {
   syncOptions: Record<string, unknown>;
   projectId: string;
   applicationId?: string | null;
+  applicationName?: string | null;
   subscriberId?: string;
   connectionId: string;
   createdAt: Date;
@@ -57,6 +81,25 @@ export type TPkiSync = {
     id: string;
     name: string;
   } | null;
+  filters?: TPkiSyncFilters | null;
+};
+
+export type THealthCheckTarget = {
+  id: string;
+  destination: PkiSync;
+  destinationConfig: Record<string, unknown>;
+  syncOptions: Record<string, unknown>;
+  connection: {
+    id: string;
+    name: string;
+    app: string;
+    credentials: Record<string, unknown>;
+    method?: string;
+    orgId: string;
+    gatewayId?: string;
+    gatewayPoolId?: string | null;
+  };
+  syncCredentials?: { exportPassword?: string };
 };
 
 export type TPkiSyncWithCredentials = TPkiSync & {
@@ -65,10 +108,12 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     name: string;
     app: string;
     credentials: Record<string, unknown>;
+    method?: string;
     orgId: string;
     gatewayId?: string;
     gatewayPoolId?: string | null;
   };
+  syncCredentials?: { exportPassword?: string };
 };
 
 export type TPkiSyncListItem = TPkiSync & {
@@ -85,8 +130,26 @@ export type TCertificateMap = Record<
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;
+    profileId?: string | null;
+    commonName?: string | null;
   }
 >;
+
+export type TPkiSyncSyncResult = {
+  uploaded: number;
+  removed?: number;
+  failedRemovals?: number;
+  skipped: number;
+  healthCheck?: THostCommandResult;
+  postSyncCommand?: THostCommandResult;
+  details?: {
+    failedUploads?: Array<{ name: string; error: string }>;
+    failedRemovals?: Array<{ name: string; error: string }>;
+    skippedCertificates?: Array<{ name: string; reason: string }>;
+    validationErrors?: Array<{ name: string; error: string }>;
+  };
+  partialFailureMessage?: string;
+};
 
 export type TCreatePkiSyncDTO = {
   name: string;
@@ -100,6 +163,8 @@ export type TCreatePkiSyncDTO = {
   projectId: string;
   applicationId?: string;
   certificateIds?: string[];
+  filters?: TPkiSyncFilters | null;
+  credentials?: { exportPassword?: string };
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
 };
@@ -115,7 +180,8 @@ export type TUpdatePkiSyncDTO = {
   syncOptions?: Record<string, unknown>;
   subscriberId?: string | null;
   connectionId?: string;
-  certificateIds?: string[];
+  filters?: TPkiSyncFilters | null;
+  credentials?: { exportPassword?: string };
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
 };
@@ -131,6 +197,7 @@ export type TListPkiSyncsByProjectId = {
   projectId: string;
   certificateId?: string;
   applicationId?: string | null;
+  destination?: PkiSync;
 };
 
 export type TFindPkiSyncByIdDTO = {
@@ -155,6 +222,34 @@ export type TTriggerPkiSyncRemoveCertificatesByIdDTO = {
   id: string;
   projectId?: string;
   auditLogInfo: AuditLogInfo;
+};
+
+export type TPreviewPkiSyncFiltersDTO = {
+  applicationId?: string;
+  pkiSyncId?: string;
+  filters?: TPkiSyncFilters | null;
+  offset?: number;
+  limit?: number;
+  projectId?: string;
+};
+
+export type TSearchPkiSyncCertificateOrdersDTO = {
+  applicationId?: string;
+  pkiSyncId?: string;
+  certificateOrderIds: string[];
+};
+
+export type TPkiSyncCertificateOrder = {
+  certificateOrderId: string;
+  commonName: string;
+  altNames?: string | null;
+};
+
+export type TPkiSyncFilterPreview = {
+  matchedCount: number;
+  certificates: TPkiSyncCertificateRef[];
+  toUnlink: TPkiSyncCertificateRef[];
+  willRemoveFromDestination: boolean;
 };
 
 export type TAddCertificatesToPkiSyncDTO = {
@@ -200,6 +295,7 @@ export type TPkiSyncCertificate = {
   updatedAt: Date;
   certificateSerialNumber?: string;
   certificateCommonName?: string;
+  certificateOrderId?: string;
   certificateAltNames?: string;
   certificateStatus?: string;
   certificateNotBefore?: Date;
@@ -208,10 +304,20 @@ export type TPkiSyncCertificate = {
   certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
+  externalIdentifier?: string;
   syncMetadata?: TSyncMetadata;
 };
 
 export type TPkiSyncRaw = NonNullable<Awaited<ReturnType<TPkiSyncDALFactory["findById"]>>>;
+
+export type TQueuePkiSyncLinkMatchingCertificatesDTO = {
+  certificateId: string;
+  applicationId: string;
+};
+
+export type TQueuePkiSyncReconcileFiltersDTO = {
+  syncId: string;
+};
 
 export type TQueuePkiSyncSyncCertificatesByIdDTO = {
   syncId: string;
@@ -224,10 +330,16 @@ export type TQueuePkiSyncImportCertificatesByIdDTO = {
   auditLogInfo?: AuditLogInfo;
 };
 
+export type TQueuePkiSyncRunHealthCheckByIdDTO = {
+  syncId: string;
+};
+
 export type TQueuePkiSyncRemoveCertificatesByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
   deleteSyncOnComplete?: boolean;
+  certificateIds?: string[];
+  failedToAcquireLockCount?: number;
 };
 
 export type TPkiSyncSyncCertificatesDTO = Job<

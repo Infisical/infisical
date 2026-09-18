@@ -16,11 +16,11 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
 - The NetScaler must be accessible over HTTPS from Infisical (directly or via an [Infisical Gateway](/documentation/platform/gateways/overview))
 - User account with permissions to manage SSL certificates and bind them to vservers
 
-## Create a NetScaler Sync
+## Create a NetScaler sync
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **NetScaler** option.
 
@@ -31,7 +31,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
         4. Configure the **Sync Options**:
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
             - **Preserve Certificate on Renewal**: Update the existing certkey object in place, preserving name and vServer bindings.
-            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize `sslcertkey` names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:
@@ -48,8 +48,9 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
         ### Sample request
 
         <Note>
-          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
-          If not provided, you can add certificates later using the certificate management endpoints.
+          Pass `filters` to describe the certificates this sync holds. Anything in the Application that matches is
+          attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
         </Note>
 
         ```bash Request
@@ -64,13 +65,13 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
             "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "netscaler",
             "isAutoSyncEnabled": true,
-            "certificateIds": [
-                "550e8400-e29b-41d4-a716-446655440000"
-            ],
+            "filters": {
+                "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+            },
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "preserveItemOnRenewal": true,
-                "certificateNameSchema": "myapp-{{certificateId}}"
+                "certificateNameSchema": "{{commonName}}-{{certificateId}}"
             },
             "destinationConfig": {
                 "vserverName": "vs-ssl-prod"
@@ -94,7 +95,7 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
                 "syncOptions": {
                     "canRemoveCertificates": true,
                     "preserveItemOnRenewal": true,
-                    "certificateNameSchema": "myapp-{{certificateId}}"
+                    "certificateNameSchema": "{{commonName}}-{{certificateId}}"
                 },
                 "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connectionId": "550e8400-e29b-41d4-a716-446655440000",
@@ -106,7 +107,11 @@ Deploy certificates to Citrix NetScaler ADC appliances via the NITRO API. Certif
     </Tab>
 </Tabs>
 
-## Certificate Management
+<Note>
+  NetScaler caps `sslcertkey` names at **63 characters**. Full UUID placeholders (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) each resolve to 32 characters, so combining two of them exceeds the limit and the schema is rejected when you save the sync. For tight schemas, use `{{shortCertificateId}}` (22 characters) in place of `{{certificateId}}`, optionally with a short prefix or `{{commonName}}`.
+</Note>
+
+## Certificate management
 
 The NetScaler Certificate Sync provides:
 
@@ -119,30 +124,27 @@ The NetScaler Certificate Sync provides:
 <Note>
   NetScaler Certificate Syncs support both automatic and manual
   synchronization modes. When auto-sync is enabled, certificates are
-  automatically deployed as they are issued or renewed.
+  automatically deployed as they're issued or renewed.
 </Note>
 
-## How It Works
+## How it works
 
-When syncing certificates, Infisical performs the following steps on the NetScaler appliance via the NITRO REST API:
+Infisical automatically keeps your NetScaler certificates in sync:
 
-1. Logs in to the NetScaler NITRO API using the configured credentials.
-2. For each certificate:
-    - Uploads the certificate file (`.cer`) to `/nsconfig/ssl/`.
-    - Uploads the private key file (`.key`) to `/nsconfig/ssl/`.
-    - Creates or updates an `sslcertkey` object linking the cert and key.
-    - If a vServer is configured, binds the certkey to the SSL virtual server.
-3. Saves the running configuration to persist changes across reboots.
-4. Logs out of the session.
+- Uploads certificates, with their private keys, to the NetScaler appliance.
+- Optionally binds them to an SSL virtual server for HTTPS termination.
+- Optionally removes certificates that are no longer active in Infisical.
 
-## Certificate Renewal Behavior
+Changes are saved to the running configuration so they persist across reboots.
+
+## Certificate renewal behavior
 
 When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
 
 - **Preserve enabled (default)**: The existing certkey object is updated in place with the new certificate content. The certkey name and any vServer bindings are preserved. This is ideal for production environments where services reference the certkey by name.
 - **Preserve disabled**: A new certkey object is created with a unique name. The original certkey remains on the NetScaler. Both certificates coexist until the original is revoked or removed.
 
-## Removing Certificates
+## Removing certificates
 
 When certificate removal is enabled and a certificate is no longer active in Infisical:
 
@@ -151,7 +153,7 @@ When certificate removal is enabled and a certificate is no longer active in Inf
 3. Deletes the certificate and key files from `/nsconfig/ssl/`.
 4. Saves the configuration.
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to NetScaler using the sync certificates functionality. This is useful for:
 
@@ -165,24 +167,24 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 ## FAQ
 
 <Accordion title="Can I import certificates from NetScaler back into Infisical?">
-  NetScaler does not support importing certificates back into Infisical
-  due to the nature of NetScaler appliances where private keys cannot be
+  NetScaler doesn't support importing certificates back into Infisical
+  due to the nature of NetScaler appliances where private keys can't be
   extracted from the system.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+  <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for AWS services.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

@@ -1,9 +1,21 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FormControl, Input } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -14,7 +26,7 @@ export const AzureKeyVaultSyncFields = () => {
   >();
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.vaultBaseUrl", "");
@@ -24,24 +36,38 @@ export const AzureKeyVaultSyncFields = () => {
         name="destinationConfig.vaultBaseUrl"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Vault Base URL"
-            tooltipText="Enter your Azure Key Vault URL. This is the base URL for your Azure Key Vault, e.g. https://example.vault.azure.net."
-          >
-            <Input {...field} placeholder="https://example.vault.azure.net" />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Vault Base URL
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Enter your Azure Key Vault URL. This is the base URL for your Azure Key Vault,
+                  e.g. https://example.vault.azure.net.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                placeholder="https://example.vault.azure.net"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-
-      <div className="mt-4 flex items-center gap-2 text-xs text-yellow-400">
-        <FontAwesomeIcon icon={faInfoCircle} />
-        <p>
+      <Alert variant="info">
+        <Info />
+        <AlertTitle>Key Naming</AlertTitle>
+        <AlertDescription>
           Secret keys with underscores (_) will be converted to hyphens (-) when syncing to Azure
           Key Vault.
-        </p>
-      </div>
-    </>
+        </AlertDescription>
+      </Alert>
+    </FieldGroup>
   );
 };

@@ -7,6 +7,11 @@ import {
   UsageState
 } from "./certificate-constants";
 
+export const isValidDomainComponentSequence = (value: string): boolean => {
+  const components = value.split(",");
+  return components.length > 0 && components.every((component) => component.trim().length > 0);
+};
+
 export const formatUsageName = (usage: string): string => {
   if (Object.values(CertKeyUsageType).includes(usage as CertKeyUsageType)) {
     return formatKeyUsage(usage as CertKeyUsageType);

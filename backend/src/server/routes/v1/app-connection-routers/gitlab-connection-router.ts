@@ -35,6 +35,10 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       params: z.object({
         connectionId: z.string().uuid()
       }),
+      querystring: z.object({
+        search: z.string().trim().max(255).optional(),
+        limit: z.coerce.number().int().min(1).max(100).optional()
+      }),
       response: {
         200: z
           .object({
@@ -44,13 +48,16 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
+      const { search, limit } = req.query;
 
       const projects: TGitLabProject[] = await server.services.appConnection.gitlab.listProjects(
         connectionId,
-        req.permission
+        req.permission,
+        search,
+        limit
       );
 
       return projects;
@@ -68,22 +75,31 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       params: z.object({
         connectionId: z.string().uuid()
       }),
+      querystring: z.object({
+        search: z.string().trim().max(255).optional(),
+        limit: z.coerce.number().int().min(1).max(100).optional()
+      }),
       response: {
         200: z
           .object({
             id: z.string(),
-            fullName: z.string()
+            name: z.string(),
+            fullName: z.string(),
+            fullPath: z.string()
           })
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
+      const { search, limit } = req.query;
 
       const groups: TGitLabGroup[] = await server.services.appConnection.gitlab.listGroups(
         connectionId,
-        req.permission
+        req.permission,
+        search,
+        limit
       );
 
       return groups;

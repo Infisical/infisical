@@ -72,7 +72,7 @@ export const useRevokeRelayAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ relayId }: TRevokeRelayAccessDTO) => {
-      const { data } = await apiRequest.post<{ method: string; deletedTokenCount: number }>(
+      const { data } = await apiRequest.post<{ method: string }>(
         `/api/v2/relays/${relayId}/revoke`
       );
       return data;

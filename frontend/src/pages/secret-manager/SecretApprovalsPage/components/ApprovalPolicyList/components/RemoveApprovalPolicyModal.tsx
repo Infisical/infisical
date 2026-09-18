@@ -1,9 +1,25 @@
-import { faCheck, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { useEffect, useState } from "react";
+import { CheckIcon, LoaderCircleIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, Spinner } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertTitle,
+  Button,
+  Field,
+  FieldContent,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   useDeleteAccessApprovalPolicy,
@@ -26,29 +42,14 @@ export const RemoveApprovalPolicyModal = ({
   isOpen,
   onOpenChange
 }: Props) => {
-  const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
-  const { mutateAsync: deleteAccessApprovalPolicy } = useDeleteAccessApprovalPolicy();
+  const deleteSecretApprovalPolicy = useDeleteSecretApprovalPolicy();
+  const deleteAccessApprovalPolicy = useDeleteAccessApprovalPolicy();
 
   const { currentProject } = useProject();
 
-  const handleDeletePolicy = async () => {
-    if (policyType === PolicyType.ChangePolicy) {
-      await deleteSecretApprovalPolicy({
-        projectId: currentProject.id,
-        id: policyId
-      });
-    } else {
-      await deleteAccessApprovalPolicy({
-        projectSlug: currentProject.slug,
-        id: policyId
-      });
-    }
-    createNotification({
-      type: "success",
-      text: "Successfully deleted policy"
-    });
-    onOpenChange(false);
-  };
+  const [inputData, setInputData] = useState("");
+  const isConfirmed = inputData === "remove";
+  const isDeleting = deleteSecretApprovalPolicy.isPending || deleteAccessApprovalPolicy.isPending;
 
   const deleteSecretApprovalData = useGetSecretApprovalRequestCount({
     policyId,
@@ -67,62 +68,104 @@ export const RemoveApprovalPolicyModal = ({
   });
 
   let openCount: number | undefined;
-  let isPending: boolean;
+  let isCheckingRequests: boolean;
   if (policyType === PolicyType.ChangePolicy) {
     openCount = deleteSecretApprovalData.data?.open;
-    isPending = deleteSecretApprovalData.isPending;
+    isCheckingRequests = deleteSecretApprovalData.isPending;
   } else {
     openCount = deleteAccessApprovalData.data?.pendingCount;
-    isPending = deleteAccessApprovalData.isPending;
+    isCheckingRequests = deleteAccessApprovalData.isPending;
   }
 
+  const hasOpenRequests = (openCount ?? 0) > 0;
+
+  useEffect(() => {
+    setInputData("");
+  }, [isOpen]);
+
+  const handleDeletePolicy = async () => {
+    if (!isConfirmed || isDeleting || isCheckingRequests) return;
+
+    if (policyType === PolicyType.ChangePolicy) {
+      await deleteSecretApprovalPolicy.mutateAsync({
+        projectId: currentProject.id,
+        id: policyId
+      });
+    } else {
+      await deleteAccessApprovalPolicy.mutateAsync({
+        projectSlug: currentProject.slug,
+        id: policyId
+      });
+    }
+    createNotification({
+      type: "success",
+      text: "Successfully deleted policy"
+    });
+    onOpenChange(false);
+  };
+
   return (
-    <DeleteActionModal
-      isOpen={isOpen}
-      deleteKey="remove"
-      title="Do you want to remove this policy?"
-      onChange={onOpenChange}
-      onDeleteApproved={handleDeletePolicy}
-      isDisabled={isPending}
-    >
-      {isPending ? (
-        <div className="mt-4 flex w-full items-center gap-2 p-2">
-          <Spinner size="xs" className="text-mineshaft-600" />
-          <span className="text-sm text-mineshaft-400">Checking for open requests...</span>
-        </div>
-      ) : (
-        <div
-          className={twMerge(
-            "mt-4 flex w-full items-start gap-2 rounded-sm border p-2 text-sm",
-            (openCount ?? 0) > 0
-              ? "border-yellow/20 bg-yellow/10 text-yellow"
-              : "border-green/20 bg-green/10 text-green"
-          )}
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <Trash2Icon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Do you want to remove this policy?</AlertDialogTitle>
+          <AlertDialogDescription>Removing this policy cannot be undone.</AlertDialogDescription>
+        </AlertDialogHeader>
+        {isCheckingRequests ? (
+          <div className="flex w-full items-center gap-2 p-2">
+            <LoaderCircleIcon className="size-4 animate-spin text-muted" />
+            <span className="text-sm text-muted">Checking for open requests...</span>
+          </div>
+        ) : (
+          <Alert variant={hasOpenRequests ? "warning" : "success"}>
+            {hasOpenRequests ? <TriangleAlertIcon /> : <CheckIcon />}
+            <AlertTitle>
+              {hasOpenRequests
+                ? `This policy has ${openCount} open request${(openCount ?? 0) > 1 ? "s" : ""}`
+                : "This policy has no open requests"}
+            </AlertTitle>
+            <AlertDescription>
+              {hasOpenRequests
+                ? "Removing this policy will close all open requests."
+                : "This policy is safe to remove."}
+            </AlertDescription>
+          </Alert>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleDeletePolicy();
+          }}
         >
-          {(openCount ?? 0) > 0 ? (
-            <>
-              <FontAwesomeIcon className="mt-1" icon={faWarning} />
-              <div className="flex flex-col">
-                <span>
-                  This policy has {openCount} open request
-                  {(openCount ?? 0) > 1 ? "s" : ""}
-                </span>
-                <p className="text-xs text-mineshaft-200">
-                  Removing this policy will close all open requests.
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <FontAwesomeIcon className="mt-1" icon={faCheck} />
-              <div className="flex flex-col">
-                <span>This policy has no open requests</span>
-                <p className="text-xs text-mineshaft-200">This policy is safe to remove.</p>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </DeleteActionModal>
+          <Field>
+            <FieldLabel>
+              Type <span className="font-bold">remove</span> to confirm
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                placeholder="Type remove here"
+                autoComplete="off"
+              />
+            </FieldContent>
+          </Field>
+        </form>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button
+            variant="danger"
+            onClick={handleDeletePolicy}
+            isPending={isDeleting}
+            isDisabled={!isConfirmed || isDeleting || isCheckingRequests}
+          >
+            Remove
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };

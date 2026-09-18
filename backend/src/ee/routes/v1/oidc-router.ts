@@ -56,7 +56,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   });
 
   await server.register(fastifySession, {
-    secret: appCfg.COOKIE_SECRET_SIGN_KEY,
+    secret: server.cookieSigningKey,
     store: redisStore,
     cookie: {
       secure: appCfg.HTTPS_ENABLED,
@@ -83,7 +83,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { domain, orgSlug, callbackPort } = req.query;
+        const { domain, orgSlug, callbackPort } = req.query as {
+          domain?: string;
+          orgSlug?: string;
+          callbackPort?: string;
+        };
 
         const identifier = domain || orgSlug;
         if (!identifier) {
@@ -319,7 +323,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             provider: "oidc",
-            action: "update"
+            action: "update",
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -456,7 +461,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             provider: "oidc",
-            action: "create"
+            action: "create",
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -478,7 +484,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.permission);
 

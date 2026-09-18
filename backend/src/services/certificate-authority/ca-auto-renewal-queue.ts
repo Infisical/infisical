@@ -1,6 +1,6 @@
 /* eslint-disable no-continue, no-await-in-loop */
-import RE2 from "re2";
-
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -10,11 +10,14 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { getAzureADCSConnectionCredentials } from "../app-connection/azure-adcs/azure-adcs-connection-fns";
 import { TVenafiConnection } from "../app-connection/venafi/venafi-connection-types";
+import { splitPemChain } from "../certificate/certificate-fns";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { submitCsrToNativeAdcs } from "./ca-signing-config/adcs-native-signing-fns";
 import { submitCsrToAdcs } from "./ca-signing-config/adcs-signing-fns";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config/ca-signing-config-dal";
 import { CaSigningConfigType } from "./ca-signing-config/ca-signing-config-enums";
 import {
+  AdcsDestinationConfigSchema,
   AzureAdCsDestinationConfigSchema,
   VenafiDestinationConfigSchema
 } from "./ca-signing-config/ca-signing-config-types";
@@ -39,13 +42,14 @@ type TCaAutoRenewalQueueFactoryDep = {
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TCaAutoRenewalQueueFactory = ReturnType<typeof caAutoRenewalQueueFactory>;
 
 const BATCH_SIZE = 100;
 const MAX_RENEWAL_MESSAGE_LENGTH = 1024;
-const PEM_CERT_REGEX = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g");
 
 export const caAutoRenewalQueueFactory = ({
   queueService,
@@ -54,7 +58,9 @@ export const caAutoRenewalQueueFactory = ({
   caSigningConfigDAL,
   internalCertificateAuthorityService,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  gatewayV2Service,
+  gatewayPoolService
 }: TCaAutoRenewalQueueFactoryDep) => {
   /**
    * Shared helper that handles the full Venafi certificate issuance flow:
@@ -138,13 +144,12 @@ export const caAutoRenewalQueueFactory = ({
       certificateId
     });
 
-    const pemCerts = PEM_CERT_REGEX.match(pemBundle);
-    if (!pemCerts || pemCerts.length === 0) {
+    const [certificate, ...chainCerts] = splitPemChain(pemBundle);
+    if (!certificate) {
       throw new Error("Failed to parse certificate from Venafi response");
     }
 
-    const certificate = pemCerts[0];
-    const certificateChain = pemCerts.slice(1).join("\n");
+    const certificateChain = chainCerts.join("\n");
 
     await internalCertificateAuthorityService.importCertToCa({
       isInternal: true,
@@ -262,6 +267,64 @@ export const caAutoRenewalQueueFactory = ({
     });
   };
 
+  const processNativeAdcsCertificateIssuance = async ({
+    caId,
+    internalCaId,
+    maxPathLength
+  }: {
+    caId: string;
+    internalCaId: string;
+    maxPathLength?: number;
+  }) => {
+    const signingConfig = await caSigningConfigDAL.findByCaId(internalCaId);
+    if (!signingConfig) {
+      throw new Error("No signing config found");
+    }
+
+    if (signingConfig.type !== CaSigningConfigType.Adcs) {
+      throw new Error(`Signing config type '${signingConfig.type}' is not ADCS`);
+    }
+
+    if (!signingConfig.appConnectionId) {
+      throw new Error("ADCS signing config is missing app connection");
+    }
+
+    const parseResult = AdcsDestinationConfigSchema.safeParse(signingConfig.destinationConfig);
+    if (!parseResult.success) {
+      throw new Error("ADCS signing config has invalid or missing destination configuration");
+    }
+    const destinationConfig = parseResult.data;
+
+    const { csr } = await internalCertificateAuthorityService.getCaCsr({
+      isInternal: true,
+      caId,
+      ...(maxPathLength !== undefined && { maxPathLength })
+    });
+
+    const { certificate, certificateChain } = await submitCsrToNativeAdcs(
+      {
+        appConnectionId: signingConfig.appConnectionId,
+        csr,
+        template: destinationConfig.template,
+        caName: destinationConfig.caName
+      },
+      { appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService }
+    );
+
+    await internalCertificateAuthorityService.importCertToCa({
+      isInternal: true,
+      caId,
+      certificate,
+      certificateChain
+    });
+
+    await internalCertificateAuthorityDAL.updateById(internalCaId, {
+      lastRenewalStatus: CaRenewalStatus.SUCCESS,
+      lastRenewalMessage: null,
+      lastRenewalAt: new Date()
+    });
+  };
+
   queueService.start(QueueName.CaAutoRenewal, async (job) => {
     if (job.name === QueueJobs.CaVenafiInstall) {
       const { caId, maxPathLength } = job.data as { caId: string; maxPathLength?: number };
@@ -317,6 +380,38 @@ export const caAutoRenewalQueueFactory = ({
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         logger.error(error, `${QueueJobs.CaAdcsInstall}: CA ${caId} ADCS install failed`);
+
+        await internalCertificateAuthorityDAL.updateById(internalCa.id, {
+          lastRenewalStatus: CaRenewalStatus.FAILED,
+          lastRenewalMessage: errorMessage.substring(0, MAX_RENEWAL_MESSAGE_LENGTH)
+        });
+      }
+
+      return;
+    }
+
+    if (job.name === QueueJobs.CaNativeAdcsInstall) {
+      const { caId, maxPathLength } = job.data as { caId: string; maxPathLength?: number };
+
+      logger.info({ caId }, `${QueueJobs.CaNativeAdcsInstall}: processing native ADCS install`);
+
+      const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
+      if (!internalCa) {
+        logger.error({ caId }, `${QueueJobs.CaNativeAdcsInstall}: internal CA not found`);
+        return;
+      }
+
+      try {
+        await processNativeAdcsCertificateIssuance({
+          caId,
+          internalCaId: internalCa.id,
+          maxPathLength
+        });
+
+        logger.info({ caId }, `${QueueJobs.CaNativeAdcsInstall}: successfully installed certificate via native ADCS`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        logger.error(error, `${QueueJobs.CaNativeAdcsInstall}: CA ${caId} native ADCS install failed`);
 
         await internalCertificateAuthorityDAL.updateById(internalCa.id, {
           lastRenewalStatus: CaRenewalStatus.FAILED,
@@ -406,6 +501,11 @@ export const caAutoRenewalQueueFactory = ({
               });
             } else if (signingConfig.type === CaSigningConfigType.AzureAdCs) {
               await processAdcsCertificateIssuance({
+                caId: internalCa.caId,
+                internalCaId: internalCa.id
+              });
+            } else if (signingConfig.type === CaSigningConfigType.Adcs) {
+              await processNativeAdcsCertificateIssuance({
                 caId: internalCa.caId,
                 internalCaId: internalCa.id
               });
@@ -502,9 +602,36 @@ export const caAutoRenewalQueueFactory = ({
     );
   };
 
+  const queueNativeAdcsInstall = async (caId: string, maxPathLength?: number) => {
+    const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
+    if (!internalCa) {
+      throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
+    }
+
+    if (internalCa.lastRenewalStatus === CaRenewalStatus.PENDING) {
+      throw new BadRequestError({ message: "A certificate installation is already in progress for this CA" });
+    }
+
+    await internalCertificateAuthorityDAL.updateById(internalCa.id, {
+      lastRenewalStatus: CaRenewalStatus.PENDING,
+      lastRenewalMessage: null
+    });
+
+    await queueService.queue(
+      QueueName.CaAutoRenewal,
+      QueueJobs.CaNativeAdcsInstall,
+      { caId, maxPathLength },
+      {
+        jobId: `native-adcs-install-${caId}-${Date.now()}`,
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+  };
+
   queueService.listen(QueueName.CaAutoRenewal, "failed", (_, err) => {
     logger.error(err, `${QueueName.CaAutoRenewal}: job failed`);
   });
 
-  return { startDailyAutoRenewalJob, queueVenafiInstall, queueAdcsInstall };
+  return { startDailyAutoRenewalJob, queueVenafiInstall, queueAdcsInstall, queueNativeAdcsInstall };
 };

@@ -18,6 +18,5 @@ export const CHEF_PKI_SYNC_DATA_BAG_NAMING = {
 export const CHEF_PKI_SYNC_DEFAULTS = {
   CERTIFICATE_DATA_BAG: "ssl_certificates",
   ITEM_NAME_TEMPLATE: "{{certificateId}}",
-  INFISICAL_PREFIX: "Infisical-",
-  DEFAULT_ENVIRONMENT: "global"
+  INFISICAL_PREFIX: "Infisical-"
 } as const;

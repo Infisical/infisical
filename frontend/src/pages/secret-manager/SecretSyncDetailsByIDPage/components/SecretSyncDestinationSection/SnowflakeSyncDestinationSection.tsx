@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TSnowflakeSync } from "@app/hooks/api/secretSyncs/types/snowflake-sync";
 
 type Props = {
@@ -10,8 +10,14 @@ export const SnowflakeSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Database">{destinationConfig.database}</GenericFieldLabel>
-      <GenericFieldLabel label="Schema">{destinationConfig.schema}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Database</DetailLabel>
+        <DetailValue>{destinationConfig.database}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Schema</DetailLabel>
+        <DetailValue>{destinationConfig.schema}</DetailValue>
+      </Detail>
     </>
   );
 };

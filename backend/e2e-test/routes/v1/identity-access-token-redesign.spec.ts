@@ -16,6 +16,7 @@ import jwt from "jsonwebtoken";
 
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
 // ---------------------------------------------------------------------------
@@ -126,6 +127,19 @@ const deleteOrgIdentityMembership = async (identityId: string) => {
 
   await testDb(TableName.MembershipRole).where({ membershipId: membership.id }).delete();
   await testDb(TableName.Membership).where({ id: membership.id }).delete();
+
+  // The real removal paths (membershipIdentityService.deleteMembership,
+  // identityV1.deleteIdentity sub-org branch) bump the identity's revocation
+  // version so cached "allow" verdicts are rechecked once against Postgres. This
+  // helper mutates the row directly, so mirror that bump here.
+  await testRedis.incr(KeyStorePrefixes.IdentityRevocationVersion(identityId));
+};
+
+// Clears this identity's cached revocation verdicts, forcing the next request
+// to re-resolve against Postgres.
+const dropRevocationVerdicts = async (identityId: string) => {
+  const keys = await testRedis.keys(`${KeyStorePrefixes.IdentityRevocationVerdict(identityId, "")}*`);
+  if (keys.length) await testRedis.del(...keys);
 };
 
 const waitForRevocationRow = async (tokenId: string) => {
@@ -441,14 +455,51 @@ describe("Identity Access Token — redesigned JWT flow", () => {
 
       const revocation = await waitForRevocationRow(decoded!.identityAccessTokenId);
       const expectedExpiresAtMs = decoded!.exp * 1000;
+      // maxTTL=0/TTL=0 keeps a ~90d marker; it must cover the JWT exp and lands at
+      // exp plus the skew buffer.
+      const markerSkewMs = 300 * 1000;
       expect(revocation.expiresAt.getTime()).toBeGreaterThan(Date.now());
-      expect(Math.abs(revocation.expiresAt.getTime() - expectedExpiresAtMs)).toBeLessThanOrEqual(2_000);
+      expect(revocation.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedExpiresAtMs - 2_000);
+      expect(revocation.expiresAt.getTime()).toBeLessThanOrEqual(expectedExpiresAtMs + markerSkewMs + 2_000);
 
-      await testRedis.flushdb("SYNC");
+      await dropRevocationVerdicts(identityId);
 
       expect((await callDetailsEndpoint(accessToken)).statusCode).toBe(401);
     } finally {
       await cleanupIdentityDirect(identityId);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 9. Version-counter churn from revokes doesn't wedge freshly issued tokens
+  // -------------------------------------------------------------------------
+  test("revoking a token invalidates it but a re-login still authenticates", async () => {
+    const { identityId, clientId, clientSecret } = await createUaIdentity("test-version-churn");
+
+    try {
+      const tokenA = await loginWithUa(clientId, clientSecret);
+
+      // Two calls: the second exercises a warmed verdict cache for tokenA.
+      expect((await callDetailsEndpoint(tokenA)).statusCode).toBe(200);
+      expect((await callDetailsEndpoint(tokenA)).statusCode).toBe(200);
+
+      // Revoke bumps the per-identity version, so the cached allow for tokenA
+      // no longer matches and it is rejected.
+      const revokeRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/auth/token/revoke",
+        body: { accessToken: tokenA }
+      });
+      expect(revokeRes.statusCode).toBe(200);
+      expect((await callDetailsEndpoint(tokenA)).statusCode).toBe(401);
+
+      // A freshly issued token for the same identity is a new tuple, so the
+      // version churn must not wedge it.
+      const tokenB = await loginWithUa(clientId, clientSecret);
+      expect((await callDetailsEndpoint(tokenB)).statusCode).toBe(200);
+      expect((await callDetailsEndpoint(tokenB)).statusCode).toBe(200);
+    } finally {
+      await deleteIdentity(identityId);
     }
   });
 });

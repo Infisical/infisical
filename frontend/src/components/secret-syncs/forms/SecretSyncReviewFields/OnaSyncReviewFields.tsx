@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const OnaSyncReviewFields = () => {
@@ -9,8 +9,9 @@ export const OnaSyncReviewFields = () => {
   const destinationConfig = watch("destinationConfig");
 
   return (
-    <GenericFieldLabel label="Ona Project">
-      {destinationConfig.projectName || destinationConfig.projectId}
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Ona Project</DetailLabel>
+      <DetailValue>{destinationConfig.projectName || destinationConfig.projectId}</DetailValue>
+    </Detail>
   );
 };

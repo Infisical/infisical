@@ -2,8 +2,8 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
+import { buildFindFilter, orgTreeIds, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
@@ -166,6 +166,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
       )
       .first();
+
+    // a missing row would otherwise surface as a cryptic schema parse error, so fail with a clean 404
+    if (!result) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const data = {
       ...CertificateAuthoritiesSchema.parse(result),
@@ -362,11 +365,49 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Internal CAs across the org tree, excluding soft-deleted projects. External and ACME CAs are
+  // intentionally not counted; maxCas covers those via countCasByOrgId below.
+  const countInternalCasByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .join(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId))
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Internal CAs By Org ID - Certificate Authority" });
+    }
+  };
+
+  // Every CA type across the org tree. Counting all types rather than INTERNAL + ACME behaves
+  // identically, since tiers that set maxCas cannot create the others (pkiEnterpriseCaIntegrations
+  // blocks them) and is simpler.
+  const countCasByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId))
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count CAs By Org ID - Certificate Authority" });
+    }
+  };
+
   return {
     ...caOrm,
     findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa,
-    findByNameAndProjectIdWithAssociatedCa
+    findByNameAndProjectIdWithAssociatedCa,
+    countInternalCasByOrgId,
+    countCasByOrgId
   };
 };

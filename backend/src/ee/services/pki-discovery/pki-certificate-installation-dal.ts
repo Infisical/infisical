@@ -226,7 +226,12 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.notAfter`,
           `${TableName.Certificate}.status`,
           `${TableName.Certificate}.friendlyName`,
-          `${TableName.Certificate}.fingerprintSha256`
+          `${TableName.Certificate}.fingerprintSha256`,
+          `${TableName.Certificate}.subjectOrganization`,
+          `${TableName.Certificate}.subjectOrganizationalUnit`,
+          `${TableName.Certificate}.subjectCountry`,
+          `${TableName.Certificate}.subjectState`,
+          `${TableName.Certificate}.subjectLocality`
         )
         .join(
           TableName.Certificate,

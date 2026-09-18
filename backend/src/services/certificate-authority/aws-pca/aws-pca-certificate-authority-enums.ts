@@ -41,3 +41,15 @@ export const CRL_REASON_TO_REVOCATION_REASON_MAP: Record<CrlReason, RevocationRe
  */
 export const API_CSR_PASSTHROUGH_TEMPLATE_ARN =
   "arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1";
+
+// AWS sets CA:TRUE from the template, not from ApiPassthrough or the CSR, and only publishes
+// templates for pathLen 0-3.
+export const SUBORDINATE_CA_API_CSR_PASSTHROUGH_TEMPLATE_ARN_BY_PATH_LENGTH: Record<number, string> = {
+  0: "arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen0_APICSRPassthrough/V1",
+  1: "arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen1_APICSRPassthrough/V1",
+  2: "arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen2_APICSRPassthrough/V1",
+  3: "arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen3_APICSRPassthrough/V1"
+};
+
+// Mirrored in frontend CertificateIssuanceModal.tsx; update both.
+export const AWS_PCA_MAX_CA_PATH_LENGTH = 3;

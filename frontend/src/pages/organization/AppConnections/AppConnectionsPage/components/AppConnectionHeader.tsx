@@ -1,53 +1,38 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 type Props = {
   app: AppConnection;
   isConnected: boolean;
-  onBack?: () => void;
 };
 
-export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
+export const AppConnectionHeader = ({ app, isConnected }: Props) => {
   const appDetails = APP_CONNECTION_MAP[app];
+  const AppIcon = appDetails.icon;
 
   return (
-    <div className="mb-4 flex w-full items-start gap-2 border-b border-mineshaft-500 pb-4">
-      <div className="relative">
-        <img
+    <div className="flex w-full items-start gap-2">
+      <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-container">
+        <ProviderIcon
           alt={`${appDetails.name} logo`}
-          src={`/images/integrations/${appDetails.image}`}
-          className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
+          icon={appDetails.image}
+          className="h-7 w-7 object-contain"
         />
-        {appDetails.icon && (
-          <FontAwesomeIcon
-            icon={appDetails.icon}
-            className="absolute right-1 bottom-1 text-primary-700"
-          />
-        )}
+        {AppIcon && <AppIcon className="absolute right-0.5 bottom-0.5 size-3 text-project" />}
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-label">
           {appDetails.name}
           <DocumentationLinkBadge
             href={`https://infisical.com/docs/integrations/app-connections/${app}`}
           />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 font-normal text-muted">
           {isConnected ? `${appDetails.name} Connection` : `Connect to ${appDetails.name}`}
         </p>
       </div>
-      {onBack && (
-        <button
-          type="button"
-          className="mt-1 ml-auto text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
-          onClick={onBack}
-        >
-          Select another App
-        </button>
-      )}
     </div>
   );
 };

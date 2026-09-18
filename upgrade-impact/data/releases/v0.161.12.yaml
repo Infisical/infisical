@@ -1,0 +1,55 @@
+version: v0.161.12
+releasedAt: 2026-07-03T11:21:08-03:00
+sourceTag: v0.161.12
+previousTag: v0.161.11
+impactLevel: low
+summary: Standalone images now run with numeric UID 1001. Startup also adds
+  additive database objects for cross-project secret sharing.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Cross-project sharing schema
+    description: Startup adds a project folder grants table, an organization flag
+      for cross-project secret sharing, and a nullable target project slug on
+      secret references.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260624195421_project-folder-grants.ts
+        path: backend/src/db/migrations/20260624195421_project-folder-grants.ts
+        description: Creates project_folder_grants table.
+      - type: file
+        ref: backend/src/db/migrations/20260625000000_allow-cross-project-secret-sharing.ts
+        path: backend/src/db/migrations/20260625000000_allow-cross-project-secret-sharing.ts
+        description: Adds organization feature flag column.
+      - type: file
+        ref: backend/src/db/migrations/20260628000000_secret-reference-v2-cross-project.ts
+        path: backend/src/db/migrations/20260628000000_secret-reference-v2-cross-project.ts
+        description: Adds nullable targetProjectSlug column.
+configChanges: []
+deploymentNotes:
+  - title: Standalone image user ID
+    description: Standalone and FIPS standalone images now set the runtime user as
+      numeric UID 1001 instead of the named non-root user.
+    action: If you use custom pod or container security settings, ensure UID 1001
+      can read mounted files and write required paths.
+    confidence: high
+    evidence:
+      - type: file
+        ref: Dockerfile.standalone-infisical
+        path: Dockerfile.standalone-infisical
+        description: Changes runtime user to USER 1001.
+      - type: file
+        ref: Dockerfile.fips.standalone-infisical
+        path: Dockerfile.fips.standalone-infisical
+        description: Changes runtime user to USER 1001.
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-03T15:52:31.423Z
+  sourceRange:
+    from: v0.161.11
+    to: v0.161.12

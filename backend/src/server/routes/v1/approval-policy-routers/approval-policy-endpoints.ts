@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
@@ -12,6 +13,7 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
@@ -46,18 +48,22 @@ export const registerApprovalPolicyEndpoints = ({
   requestResponseSchema,
   grantResponseSchema,
   inputsSchema,
-  checkPolicyMatchResponseSchema
+  checkPolicyMatchResponseSchema,
+  allowRequestCreation = true
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
   createPolicySchema: TCreatePolicySchema;
   updatePolicySchema: TUpdatePolicySchema;
   policyResponseSchema: z.ZodObject<z.ZodRawShape>;
-  createRequestSchema: z.ZodType<TCreateRequestDTO>;
+  createRequestSchema?: z.ZodType<TCreateRequestDTO>;
   requestResponseSchema: z.ZodObject<z.ZodRawShape>;
   grantResponseSchema: z.ZodObject<z.ZodRawShape>;
   inputsSchema: z.ZodType<TApprovalPolicyInputs>;
   checkPolicyMatchResponseSchema: z.ZodObject<z.ZodRawShape>;
+  // Whether callers may open an approval request directly. Policy types whose requests are
+  // only ever created server-side, as part of the flow being gated, must leave this off.
+  allowRequestCreation?: boolean;
 }) => {
   // Policies
   server.route({
@@ -76,7 +82,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.create(
         policyType,
@@ -104,7 +110,8 @@ export const registerApprovalPolicyEndpoints = ({
           organizationId: req.permission.orgId,
           properties: {
             policyType,
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: policy.projectId
           }
         });
       }
@@ -132,7 +139,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policies, projectId } = await server.services.approvalPolicy.list(
         policyType,
@@ -176,7 +183,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 
@@ -217,7 +224,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.updateById(
         req.params.policyId,
@@ -238,6 +245,19 @@ export const registerApprovalPolicyEndpoints = ({
           }
         }
       });
+
+      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.PkiApprovalPolicyUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyType,
+            orgId: req.permission.orgId,
+            projectId: policy.projectId
+          }
+        });
+      }
 
       return { policy };
     }
@@ -261,7 +281,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policyId, projectId } = await server.services.approvalPolicy.deleteById(
         req.params.policyId,
@@ -280,6 +300,19 @@ export const registerApprovalPolicyEndpoints = ({
           }
         }
       });
+
+      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.PkiApprovalPolicyDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyType,
+            orgId: req.permission.orgId,
+            projectId
+          }
+        });
+      }
 
       return { policyId };
     }
@@ -305,7 +338,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests, projectId } = await server.services.approvalPolicy.listRequests(
         policyType,
@@ -331,67 +364,90 @@ export const registerApprovalPolicyEndpoints = ({
     }
   });
 
-  server.route({
-    method: "POST",
-    url: "/requests",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "createApprovalRequest",
-      description: "Create approval request",
-      body: createRequestSchema,
-      response: {
-        200: z.object({
-          request: requestResponseSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      let requesterName: string;
-      let requesterEmail: string;
-      let machineIdentityId: string | undefined;
-
-      if (req.auth.authMode === AuthMode.JWT) {
-        requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
-        requesterEmail = req.auth.user.email ?? "";
-      } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
-        requesterName = req.auth.identityName ?? "Machine Identity";
-        requesterEmail = "";
-        machineIdentityId = req.auth.identityId;
-      } else {
-        throw new BadRequestError({ message: "Unsupported auth mode for approval requests." });
-      }
-
-      const { request } = await server.services.approvalPolicy.createRequest(
-        policyType,
-        {
-          requesterName,
-          requesterEmail,
-          machineIdentityId,
-          ...req.body
-        },
-        req.permission
-      );
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: request.projectId,
-        event: {
-          type: EventType.APPROVAL_REQUEST_CREATE,
-          metadata: {
-            policyType,
-            justification: req.body.justification || undefined,
-            requestDuration: req.body.requestDuration || "infinite"
-          }
-        }
-      });
-
-      return { request };
+  if (allowRequestCreation) {
+    if (!createRequestSchema) {
+      throw new Error(`createRequestSchema is required when request creation is enabled for ${policyType}`);
     }
-  });
+
+    server.route({
+      method: "POST",
+      url: "/requests",
+      config: {
+        rateLimit: writeLimit
+      },
+      schema: {
+        operationId: "createApprovalRequest",
+        description: "Create approval request",
+        body: createRequestSchema,
+        response: {
+          200: z.object({
+            request: requestResponseSchema
+          })
+        }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      handler: async (req) => {
+        let requesterName: string;
+        let requesterEmail: string;
+        let machineIdentityId: string | undefined;
+
+        if (isUserSessionAuth(req.auth)) {
+          requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
+          requesterEmail = req.auth.user.email ?? "";
+        } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
+          requesterName = req.auth.identityName ?? "Machine Identity";
+          requesterEmail = "";
+          machineIdentityId = req.auth.identityId;
+        } else {
+          throw new BadRequestError({ message: "Unsupported auth mode for approval requests." });
+        }
+
+        const { request } = await server.services.approvalPolicy.createRequest(
+          policyType,
+          {
+            requesterName,
+            requesterEmail,
+            machineIdentityId,
+            ...req.body
+          },
+          req.permission
+        );
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: request.projectId,
+          event: {
+            type: EventType.APPROVAL_REQUEST_CREATE,
+            metadata: {
+              policyType: request.type,
+              approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
+              justification: req.body.justification || undefined,
+              requestDuration: req.body.requestDuration || "infinite",
+              ...getApprovalRequestSubjectMetadata(request)
+            }
+          }
+        });
+
+        if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+          await server.services.telemetry.sendPostHogEvents({
+            event: PostHogEventTypes.PkiApprovalRequestCreated,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              policyType,
+              orgId: req.permission.orgId,
+              projectId: request.projectId
+            }
+          });
+        }
+
+        return { request };
+      }
+    });
+  }
 
   server.route({
     method: "GET",
@@ -411,7 +467,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
@@ -422,9 +478,12 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_GET,
           metadata: {
-            policyType,
-            requestId: request.id,
-            status: request.status
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            status: request.status,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -488,9 +547,12 @@ export const registerApprovalPolicyEndpoints = ({
           event: {
             type: EventType.APPROVAL_REQUEST_APPROVE,
             metadata: {
-              policyType,
-              requestId: req.params.requestId,
-              comment: req.body.comment
+              policyType: request.type,
+              approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
+              comment: req.body.comment,
+              ...getApprovalRequestSubjectMetadata(request)
             }
           }
         });
@@ -503,7 +565,8 @@ export const registerApprovalPolicyEndpoints = ({
           organizationId: req.permission.orgId,
           properties: {
             decision: "approved",
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: request.projectId
           }
         });
       }
@@ -548,9 +611,12 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_REJECT,
           metadata: {
-            policyType,
-            requestId: req.params.requestId,
-            comment: req.body.comment
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            comment: req.body.comment,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -562,7 +628,8 @@ export const registerApprovalPolicyEndpoints = ({
           organizationId: req.permission.orgId,
           properties: {
             decision: "rejected",
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: request.projectId
           }
         });
       }
@@ -589,7 +656,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.cancelRequest(req.params.requestId, req.permission);
 
@@ -600,8 +667,11 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_CANCEL,
           metadata: {
-            policyType,
-            requestId: req.params.requestId
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -630,7 +700,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grants, projectId } = await server.services.approvalPolicy.listGrants(
         policyType,
@@ -674,7 +744,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
 
@@ -756,7 +826,7 @@ export const registerApprovalPolicyEndpoints = ({
         200: checkPolicyMatchResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.approvalPolicy.checkPolicyMatch(policyType, req.body, req.permission);
 

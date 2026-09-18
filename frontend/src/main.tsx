@@ -2,11 +2,18 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { setWasmUrl } from "@lottiefiles/dotlottie-react";
 import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm?url";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
+// Load-bearing import: the entry module pulling in this barrel is what keeps
+// @app/context in the entry chunk. Pointing this at a deeper path re-partitions
+// the chunks and breaks module init order, which took the app down on boot.
+// Neither lint nor typecheck catches it, so only a real build does.
 import { Lottie } from "./components/v2";
+import { initializeTheme } from "./components/v3/platform/ThemeProvider";
 import { queryClient } from "./hooks/api/reactQuery";
+import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
 import { NotFoundPage } from "./pages/public/NotFoundPage/NotFoundPage";
 // Import the generated route tree
@@ -14,9 +21,11 @@ import { routeTree } from "./routeTree.gen";
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/500.css";
 import "@xyflow/react/dist/style.css";
 import "nprogress/nprogress.css";
-import "react-toastify/dist/ReactToastify.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./index.css";
 
@@ -24,6 +33,9 @@ import "./translation";
 // don't want to use this?
 // have a look at the Quick start guide
 // for passing in lng and translations on init/
+
+initializePlatform();
+initializeTheme();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);
@@ -63,7 +75,7 @@ const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
-    <div className="flex h-full w-full items-center justify-center bg-bunker-800 [#root>&]:h-screen">
+    <div className="flex h-full w-full items-center justify-center bg-page [#root>&]:h-screen">
       <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
     </div>
   ),
@@ -94,7 +106,9 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     </StrictMode>
   );
 }

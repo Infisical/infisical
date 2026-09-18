@@ -6,21 +6,25 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { AcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { SanitizedAcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import { ADCSCertificateAuthoritySchema } from "@app/services/certificate-authority/adcs/adcs-certificate-authority-schemas";
 import { AwsAcmPublicCaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-schemas";
 import { AwsPcaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-schemas";
 import { AzureAdCsCertificateAuthoritySchema } from "@app/services/certificate-authority/azure-ad-cs/azure-ad-cs-certificate-authority-schemas";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { DigiCertCertificateAuthoritySchema } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-schemas";
+import { GoDaddyCertificateAuthoritySchema } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-schemas";
 import { InternalCertificateAuthoritySchema } from "@app/services/certificate-authority/internal/internal-certificate-authority-schemas";
 import { VenafiTppCertificateAuthoritySchema } from "@app/services/certificate-authority/venafi-tpp/venafi-tpp-certificate-authority-schemas";
 
 const CertificateAuthoritySchema = z.discriminatedUnion("type", [
   InternalCertificateAuthoritySchema,
-  AcmeCertificateAuthoritySchema,
+  SanitizedAcmeCertificateAuthoritySchema,
   AzureAdCsCertificateAuthoritySchema,
+  ADCSCertificateAuthoritySchema,
   AwsPcaCertificateAuthoritySchema,
   DigiCertCertificateAuthoritySchema,
+  GoDaddyCertificateAuthoritySchema,
   AwsAcmPublicCaCertificateAuthoritySchema,
   VenafiTppCertificateAuthoritySchema
 ]);
@@ -28,11 +32,42 @@ const CertificateAuthoritySchema = z.discriminatedUnion("type", [
 export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/",
+    url: "/quota",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      operationId: "getCertificateAuthorityQuotaV1",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Get certificate authority usage against the plan's limits",
+      response: {
+        200: z.object({
+          certificateAuthorities: z.object({
+            used: z.number().int().describe("Certificate authorities of every type currently in use."),
+            limit: z.number().int().nullable().describe("The plan's cap, or null when uncapped.")
+          }),
+          internalCertificateAuthorities: z.object({
+            used: z.number().int().describe("Internal certificate authorities currently in use."),
+            limit: z.number().int().nullable().describe("The plan's cap, or null when uncapped.")
+          })
+        })
+      }
+    },
+    handler: async (req) =>
+      server.services.certificateAuthority.getCertificateAuthorityQuota(
+        { projectId: req.internalCertManagerProjectId },
+        req.permission
+      )
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listCertificateAuthoritiesV1General",
@@ -73,6 +108,14 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
         req.permission
       );
 
+      const adcsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId,
+          type: CaType.ADCS
+        },
+        req.permission
+      );
+
       const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         {
           projectId,
@@ -105,6 +148,14 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
         req.permission
       );
 
+      const godaddyCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
+        {
+          projectId,
+          type: CaType.GODADDY
+        },
+        req.permission
+      );
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId,
@@ -115,10 +166,12 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
               ...(internalCas ?? []).map((ca) => ca.id),
               ...(acmeCas ?? []).map((ca) => ca.id),
               ...(azureAdCsCas ?? []).map((ca) => ca.id),
+              ...(adcsCas ?? []).map((ca) => ca.id),
               ...(awsPcaCas ?? []).map((ca) => ca.id),
               ...(digicertCas ?? []).map((ca) => ca.id),
               ...(awsAcmPublicCas ?? []).map((ca) => ca.id),
-              ...(venafiTppCas ?? []).map((ca) => ca.id)
+              ...(venafiTppCas ?? []).map((ca) => ca.id),
+              ...(godaddyCas ?? []).map((ca) => ca.id)
             ]
           }
         }
@@ -129,10 +182,12 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           ...(internalCas ?? []),
           ...(acmeCas ?? []),
           ...(azureAdCsCas ?? []),
+          ...(adcsCas ?? []),
           ...(awsPcaCas ?? []),
           ...(digicertCas ?? []),
           ...(awsAcmPublicCas ?? []),
-          ...(venafiTppCas ?? [])
+          ...(venafiTppCas ?? []),
+          ...(godaddyCas ?? [])
         ]
       };
     }

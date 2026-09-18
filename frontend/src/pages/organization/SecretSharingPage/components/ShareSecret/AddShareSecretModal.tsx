@@ -1,5 +1,6 @@
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -31,15 +32,17 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
           <DialogTitle>Share a Secret</DialogTitle>
           <DialogDescription>Securely share one off secrets with your team.</DialogDescription>
         </DialogHeader>
-        <ShareSecretForm
-          isPublic={false}
-          value={(popUp.createSharedSecret.data as { value?: string })?.value}
-          allowSecretSharingOutsideOrganization={
-            currentOrg?.allowSecretSharingOutsideOrganization ?? true
-          }
-          maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
-          maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
-        />
+        <DialogBody>
+          <ShareSecretForm
+            isPublic={false}
+            value={(popUp.createSharedSecret.data as { value?: string })?.value}
+            allowSecretSharingOutsideOrganization={
+              currentOrg?.allowSecretSharingOutsideOrganization ?? true
+            }
+            maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
+            maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
+          />
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

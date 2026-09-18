@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TNorthflankSync } from "@app/hooks/api/secretSyncs/types/northflank-sync";
 
 type Props = {
@@ -10,12 +10,16 @@ export const NorthflankSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">
-        {destinationConfig.projectName || destinationConfig.projectId}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Secret Group">
-        {destinationConfig.secretGroupName || destinationConfig.secretGroupId}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{destinationConfig.projectName || destinationConfig.projectId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Secret Group</DetailLabel>
+        <DetailValue>
+          {destinationConfig.secretGroupName || destinationConfig.secretGroupId}
+        </DetailValue>
+      </Detail>
     </>
   );
 };

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Link } from "@tanstack/react-router";
+import { Link as RouterLink } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   BoxesIcon as SubOrgIcon,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "./Button";
+import { ButtonBadge } from "./ButtonBadge";
 
 /**
  * Buttons trigger actions or events when clicked or pressed.
@@ -33,6 +34,7 @@ const meta = {
       options: [
         "outline",
         "ghost",
+        "link",
         "neutral",
         "success",
         "info",
@@ -88,6 +90,35 @@ export const Outline: Story = {
   }
 };
 
+export const WithCornerBadge: Story = {
+  name: "Composition: Corner Badge",
+  render: () => (
+    <div className="flex flex-col items-start gap-6">
+      <Button variant="outline" size="lg">
+        <LogInIcon />
+        Continue with GitHub
+        <ButtonBadge variant="project">Last used</ButtonBadge>
+      </Button>
+      <Button variant="outline" size="lg">
+        Explore feature
+        <ButtonBadge variant="info">New</ButtonBadge>
+      </Button>
+      <Button variant="outline" size="lg">
+        Use recommended setup
+        <ButtonBadge variant="success">Recommended</ButtonBadge>
+      </Button>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Place `ButtonBadge` inside a `Button` for short contextual flags such as Last used, New, or Recommended. It inherits Badge typography, sizing, radius, and casing while adding corner positioning and an opaque semantic tint. Choose an existing semantic variant or an intentionally branded project variant, and keep the label concise."
+      }
+    }
+  }
+};
+
 export const Neutral: Story = {
   name: "Variant: Neutral",
   args: {
@@ -119,6 +150,22 @@ export const Ghost: Story = {
     docs: {
       description: {
         story: "Use this variant for optional / non-primary actions."
+      }
+    }
+  }
+};
+
+export const Link: Story = {
+  name: "Variant: Link",
+  args: {
+    variant: "link",
+    children: <>Link</>
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use this zero-padding text variant for compact secondary actions embedded in labels or prose."
       }
     }
   }
@@ -290,10 +337,10 @@ export const AsRouterLink: Story = {
     variant: "project",
     asChild: true,
     children: (
-      <Link to=".">
+      <RouterLink to=".">
         <ProjectIcon />
         View Project
-      </Link>
+      </RouterLink>
     )
   },
   parameters: {

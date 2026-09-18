@@ -21,6 +21,7 @@ export type TGetChefSecrets = {
   orgName: string;
   dataBagName: string;
   dataBagItemName: string;
+  gatewayId?: string | null;
 };
 
 export type TChefSecret = string | number | boolean | null;

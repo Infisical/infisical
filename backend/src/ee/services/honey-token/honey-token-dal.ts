@@ -14,6 +14,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .whereIn(`${TableName.HoneyToken}.folderId`, folderIds)
       .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
       .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .select(
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("name").withSchema(TableName.HoneyToken),
@@ -138,6 +139,21 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     await (tx || db)(TableName.HoneyTokenSecretMapping).where({ honeyTokenId }).delete();
   };
 
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.HoneyToken}.folderId`)
+      .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .where(`${TableName.HoneyToken}.projectId`, projectId)
+      .whereNot(`${TableName.HoneyToken}.status`, "revoked")
+      // exclude honey tokens in soft-deleted environments, mirroring findByFolderIds and the other counts
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .count<{ count: string | number }>({
+        count: `${TableName.HoneyToken}.id`
+      });
+
+    return Number(result?.count ?? 0);
+  };
+
   return {
     ...orm,
     findByFolderIds,
@@ -145,6 +161,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     findOneByTokenIdentifierAndOrgId,
     findOneByTokenIdentifier,
     countByOrgId,
+    countByProjectId,
     tryMarkTriggered,
     createSecretMappings,
     deleteSecretMappingsByHoneyTokenId

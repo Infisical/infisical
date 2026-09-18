@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const HCVaultSyncReviewFields = () => {
@@ -11,8 +11,14 @@ export const HCVaultSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Secrets Engine Mount">{mount}</GenericFieldLabel>
-      <GenericFieldLabel label="Path">{path}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Secrets Engine Mount</DetailLabel>
+        <DetailValue>{mount}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Path</DetailLabel>
+        <DetailValue>{path}</DetailValue>
+      </Detail>
     </>
   );
 };

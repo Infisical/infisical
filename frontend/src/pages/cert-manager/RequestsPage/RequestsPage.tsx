@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   Badge,
   Card,
@@ -25,12 +24,17 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageHeader,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -95,15 +99,13 @@ const isCertRequestData = (data: unknown): data is { requestData: CertRequestReq
   );
 };
 
-const isCodeSigningData = (data: unknown): data is { requestData: CodeSigningRequestData } => {
-  return Boolean(
-    data &&
-      typeof data === "object" &&
-      "requestData" in data &&
-      data.requestData &&
-      typeof data.requestData === "object" &&
-      "signerName" in (data.requestData as object)
-  );
+const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
+  if (!data || typeof data !== "object") return null;
+  const wrapped = (data as { requestData?: unknown }).requestData;
+  if (wrapped && typeof wrapped === "object" && "signerName" in (wrapped as object)) {
+    return wrapped as CodeSigningRequestData;
+  }
+  return null;
 };
 
 export const RequestsPage = () => {
@@ -163,12 +165,39 @@ export const RequestsPage = () => {
     })
   );
 
-  const { data: apps = [] } = useListPkiApplications();
+  const pendingApplicationCount = useMemo(
+    () =>
+      (requests as TApprovalRequest[]).filter((r) => r.status === ApprovalRequestStatus.Pending)
+        .length,
+    [requests]
+  );
+  const pendingSigningCount = useMemo(
+    () =>
+      (signingRequests as TApprovalRequest[]).filter(
+        (r) => r.status === ApprovalRequestStatus.Pending
+      ).length,
+    [signingRequests]
+  );
+
+  // resolve names only for the applications actually referenced by the visible
+  // requests, rather than loading the project's entire application list
+  const referencedAppIds = useMemo(() => {
+    const ids = new Set<string>();
+    (requests as TApprovalRequest[]).forEach((r) => {
+      if (r.scopeType === ApprovalPolicyScope.PkiApplication && r.scopeId) ids.add(r.scopeId);
+    });
+    return Array.from(ids);
+  }, [requests]);
+
+  const { data: appsResponse } = useListPkiApplications(
+    { applicationIds: referencedAppIds, limit: 100 },
+    { enabled: referencedAppIds.length > 0 }
+  );
   const appById = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
-    apps.forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
+    (appsResponse?.applications ?? []).forEach((a) => map.set(a.id, { id: a.id, name: a.name }));
     return map;
-  }, [apps]);
+  }, [appsResponse]);
 
   const filtered = useMemo(() => {
     const norm = debouncedSearch.trim().toLowerCase();
@@ -205,9 +234,7 @@ export const RequestsPage = () => {
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
-        const signerName = isCodeSigningData(r.requestData)
-          ? (r.requestData.requestData.signerName ?? "")
-          : "";
+        const signerName = getCodeSigningData(r.requestData)?.signerName ?? "";
         const requester = `${r.requesterName} ${r.requesterEmail}`;
         return signerName.toLowerCase().includes(norm) || requester.toLowerCase().includes(norm);
       });
@@ -218,9 +245,9 @@ export const RequestsPage = () => {
       <Helmet>
         <title>Requests</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
@@ -237,16 +264,26 @@ export const RequestsPage = () => {
                 })
               }
             >
-              <TabList>
-                <Tab variant="project" value="application-requests">
+              <TabsList variant="project" aria-label="Approval request sections">
+                <TabsTrigger value="application-requests" className="gap-2">
                   Application Requests
-                </Tab>
-                <Tab variant="project" value="signing-requests">
+                  {Boolean(pendingApplicationCount) && (
+                    <Badge variant="warning" isSquare>
+                      {pendingApplicationCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="signing-requests" className="gap-2">
                   Signing Requests
-                </Tab>
-              </TabList>
+                  {Boolean(pendingSigningCount) && (
+                    <Badge variant="warning" isSquare>
+                      {pendingSigningCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-              <TabPanel value="application-requests">
+              <TabsContent value="application-requests">
                 <Card>
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
@@ -402,9 +439,9 @@ export const RequestsPage = () => {
                     )}
                   </CardContent>
                 </Card>
-              </TabPanel>
+              </TabsContent>
 
-              <TabPanel value="signing-requests">
+              <TabsContent value="signing-requests">
                 <Card>
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
@@ -484,9 +521,7 @@ export const RequestsPage = () => {
                         </TableHeader>
                         <TableBody>
                           {filteredSigning.map((r) => {
-                            const signingData = isCodeSigningData(r.requestData)
-                              ? r.requestData.requestData
-                              : null;
+                            const signingData = getCodeSigningData(r.requestData);
                             const signerName = signingData?.signerName ?? "—";
                             const badge = STATUS_BADGE[r.status as ApprovalRequestStatus] ?? {
                               label: r.status,
@@ -530,7 +565,7 @@ export const RequestsPage = () => {
                     )}
                   </CardContent>
                 </Card>
-              </TabPanel>
+              </TabsContent>
             </Tabs>
           </div>
         </div>

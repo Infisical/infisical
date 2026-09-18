@@ -1,40 +1,28 @@
 import { useMemo } from "react";
-import {
-  faClipboardCheck,
-  faEdit,
-  faEllipsisV,
-  faTrash,
-  faUser,
-  faUserGroup
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { BanIcon, EllipsisIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GenericFieldLabel,
   IconButton,
-  Td,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  TableCell,
+  TableRow
+} from "@app/components/v3";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
-import { useToggle } from "@app/hooks";
 import { Approver } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
-import { ApproverType } from "@app/hooks/api/secretApproval/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
+
+import { groupApproversBySequence } from "./approvalPolicyRowUtils";
 
 interface IPolicy {
   id: string;
@@ -53,6 +41,9 @@ type Props = {
   policy: IPolicy;
   members?: TWorkspaceUser[];
   groups?: TGroupMembership[];
+  canEdit: boolean;
+  canDelete: boolean;
+  editDisabledReason?: string;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -61,33 +52,18 @@ export const ApprovalPolicyRow = ({
   policy,
   members = [],
   groups = [],
+  canEdit,
+  canDelete,
+  editDisabledReason,
   onEdit,
   onDelete
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle();
-
   const labels = useMemo(() => {
-    const sortedSteps = policy.approvers?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0));
-    const entityInSameSequence = sortedSteps?.reduce(
-      (acc, curr) => {
-        if (acc.length && acc[acc.length - 1].sequence === (curr.sequence || 1)) {
-          acc[acc.length - 1][curr.type]?.push(curr);
-          return acc;
-        }
-        const approvals = curr.approvalsRequired || policy.approvals;
-        acc.push(
-          curr.type === ApproverType.User
-            ? { user: [curr], group: [], sequence: 1, approvals }
-            : { group: [curr], user: [], sequence: 1, approvals }
-        );
-        return acc;
-      },
-      [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
-    );
+    const entityInSameSequence = groupApproversBySequence(policy.approvers, policy.approvals);
 
-    return entityInSameSequence?.map((el) => {
+    return entityInSameSequence.map((el) => {
       return {
-        sequence: el.sequence || policy.approvals,
+        sequence: el.sequence ?? 1,
 
         users: el.user.map((approver) => {
           const member = members.find((m) => m.user.id === approver.id);
@@ -105,175 +81,140 @@ export const ApprovalPolicyRow = ({
 
   const { variant, Icon } = policyDetails[policy.policyType];
 
+  const environmentNames = policy.environments.map((env) => env.name).join(", ");
+
   return (
-    <>
-      <Tr
-        isHoverable
-        isSelectable
-        role="button"
-        tabIndex={0}
-        onKeyDown={(evt) => {
-          if (evt.key === "Enter") setIsExpanded.toggle();
-        }}
-        onClick={() => setIsExpanded.toggle()}
-      >
-        <Td>{policy.name || <span className="text-mineshaft-400">Unnamed Policy</span>}</Td>
-        <Td>{policy.environments.map((env) => env.name).join(", ")}</Td>
-        <Td>{policy.secretPath || "*"}</Td>
-        <Td>
-          <Badge variant={variant}>
-            <Icon />
-            <span>{policyDetails[policy.policyType].name}</span>
-          </Badge>
-        </Td>
-        <Td>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild className="cursor-pointer rounded-lg">
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Options"
-                  colorSchema="secondary"
-                  className="w-6"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
-              </DropdownMenuTrigger>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={2} align="end" className="min-w-48 p-1">
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.SecretApproval}
+    <TableRow>
+      <TableCell title={policy.name || "Unnamed Policy"}>
+        {policy.name || <span className="text-muted">Unnamed Policy</span>}
+      </TableCell>
+      <TableCell title={environmentNames}>{environmentNames}</TableCell>
+      <TableCell title={policy.secretPath || "*"}>{policy.secretPath || "*"}</TableCell>
+      <TableCell>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Badge asChild variant={variant}>
+              <button
+                type="button"
+                className="outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`View approvers for ${policy.name || "unnamed policy"}`}
               >
-                {(isAllowed) => (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faEdit} />}
-                  >
-                    Edit Policy
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Delete}
-                a={ProjectPermissionSub.SecretApproval}
-              >
-                {(isAllowed) => (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete();
-                    }}
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faTrash} />}
-                  >
-                    Delete Policy
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Td>
-      </Tr>
-      <Tr>
-        <Td colSpan={6} className="border-none! p-0">
-          <div
-            className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ease-in-out ${
-              isExpanded ? "max-h-104 thin-scrollbar overflow-y-auto! opacity-100" : "max-h-0"
-            }`}
+                <Icon />
+                <span>{policyDetails[policy.policyType].name}</span>
+              </button>
+            </Badge>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="max-h-96 thin-scrollbar w-64 overflow-y-auto px-3 py-2.5"
+            aria-label={`Approvers for ${policy.name || "unnamed policy"}`}
           >
-            <div className="p-4">
-              <div className="border-b-2 border-mineshaft-500 pb-2">Approvers</div>
-              {labels?.map((el, index) => (
-                <div key={`approval-list-${index + 1}`} className="flex">
-                  {labels.length > 1 && (
-                    <div className="flex w-12 flex-col items-center gap-2 pr-4">
-                      <div
-                        className={twMerge("grow border-mineshaft-600", index !== 0 && "border-r")}
-                      />
-                      {labels.length > 1 && (
-                        <Badge variant="neutral">
-                          <span>{index + 1}</span>
-                        </Badge>
-                      )}
-                      <div
-                        className={twMerge(
-                          "grow border-mineshaft-600",
-                          index < labels.length - 1 && "border-r"
-                        )}
-                      />
+            {labels && labels.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {labels.map((el) => (
+                  <div
+                    key={`approval-list-${el.sequence}`}
+                    className="border-b border-foreground/10 pb-3 last:border-0 last:pb-0"
+                  >
+                    <div className="mb-1.5 font-medium text-foreground">
+                      {labels.length > 1 && `Step ${el.sequence} · `}
+                      {el.approvals} {el.approvals === 1 ? "approval" : "approvals"} required
                     </div>
-                  )}
-                  <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
-                    <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
-                      {Boolean(el.users.length) && (
-                        <div className="flex flex-row flex-wrap gap-2">
-                          {el.users.map(({ member, approver }, idx) => {
-                            if (!member) {
-                              return (
-                                <div className="flex items-center" key={approver.id}>
-                                  <span className="flex items-center gap-2 opacity-40">
-                                    {approver.name || approver.id}
-                                    <span className="text-xs">
-                                      <Tooltip content="This user has been removed from the project.">
-                                        <div>
-                                          <Badge variant="neutral">
-                                            <BanIcon />
-                                            Removed
-                                          </Badge>
-                                        </div>
-                                      </Tooltip>
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                      <dt className="text-muted">Users</dt>
+                      <dd className="min-w-0 text-foreground">
+                        {el.users.length ? (
+                          <div className="flex flex-row flex-wrap gap-x-1 gap-y-1">
+                            {el.users.map(({ member, approver }, idx) => {
+                              const isLast = idx === el.users.length - 1;
+
+                              if (!member) {
+                                return (
+                                  <span key={approver.id} className="flex items-center gap-1">
+                                    <span className="flex items-center gap-1.5 opacity-40">
+                                      {approver.name || approver.id}
+                                      <Badge variant="neutral">
+                                        <BanIcon />
+                                        Removed
+                                      </Badge>
+                                      <span className="sr-only">
+                                        This user has been removed from the project.
+                                      </span>
+                                    </span>
+                                    {!isLast && ","}
+                                  </span>
+                                );
+                              }
+
+                              return member.user.isOrgMembershipActive ? (
+                                <span key={member.id}>
+                                  {getMemberLabel(member)}
+                                  {!isLast && ","}
+                                </span>
+                              ) : (
+                                <span key={member.id} className="flex items-center gap-1">
+                                  <span className="flex items-center gap-1.5 opacity-40">
+                                    {getMemberLabel(member)}
+                                    <Badge variant="neutral">
+                                      <BanIcon />
+                                      Inactive
+                                    </Badge>
+                                    <span className="sr-only">
+                                      This user has been deactivated and no longer has an active
+                                      organization membership.
                                     </span>
                                   </span>
-                                  {idx < el.users.length - 1 && ","}
-                                </div>
-                              );
-                            }
-
-                            return member.user.isOrgMembershipActive ? (
-                              <div className="flex items-center" key={member.id}>
-                                <span>{getMemberLabel(member)}</span>
-                                {idx < el.users.length - 1 && ","}
-                              </div>
-                            ) : (
-                              <div className="flex items-center" key={member.id}>
-                                <span className="flex items-center gap-2 opacity-40">
-                                  {getMemberLabel(member)}
-                                  <span className="text-xs">
-                                    <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                      <div>
-                                        <Badge variant="neutral">
-                                          <BanIcon />
-                                          Inactive
-                                        </Badge>
-                                      </div>
-                                    </Tooltip>
-                                  </span>
+                                  {!isLast && ","}
                                 </span>
-                                {idx < el.users.length - 1 && ","}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </GenericFieldLabel>
-                    <GenericFieldLabel className="col-span-2" icon={faUserGroup} label="Groups">
-                      {el.groupLabels}
-                    </GenericFieldLabel>
-                    <GenericFieldLabel icon={faClipboardCheck} label="Approvals Required">
-                      {el.approvals}
-                    </GenericFieldLabel>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-muted">None</span>
+                        )}
+                      </dd>
+                      <dt className="text-muted">Groups</dt>
+                      <dd className="min-w-0 text-foreground">
+                        {el.groupLabels || <span className="text-muted">None</span>}
+                      </dd>
+                    </dl>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Td>
-      </Tr>
-    </>
+                ))}
+              </div>
+            ) : (
+              <span className="text-sm text-muted">No approvers configured.</span>
+            )}
+          </PopoverContent>
+        </Popover>
+      </TableCell>
+      <TableCell variant="action">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton aria-label="Options" variant="ghost" size="xs">
+              <EllipsisIcon />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent sideOffset={2} align="end" className="min-w-48 p-1">
+            <DropdownMenuItem
+              onClick={onEdit}
+              isDisabled={!canEdit}
+              title={canEdit ? undefined : (editDisabledReason ?? "Access restricted")}
+            >
+              <PencilIcon />
+              Edit Policy
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="danger"
+              onClick={onDelete}
+              isDisabled={!canDelete}
+              title={canDelete ? undefined : "Access restricted"}
+            >
+              <Trash2Icon />
+              Delete Policy
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TAzureKeyVaultSync } from "@app/hooks/api/secretSyncs/types/azure-key-vault-sync";
 
 type Props = {
@@ -10,5 +10,10 @@ export const AzureKeyVaultSyncDestinationSection = ({ secretSync }: Props) => {
     destinationConfig: { vaultBaseUrl }
   } = secretSync;
 
-  return <GenericFieldLabel label="Vault URL">{vaultBaseUrl}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>Vault URL</DetailLabel>
+      <DetailValue>{vaultBaseUrl}</DetailValue>
+    </Detail>
+  );
 };

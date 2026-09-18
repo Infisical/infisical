@@ -1,14 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Input, Tooltip } from "@app/components/v2";
 import {
-  TWindmillWorkspace,
-  useWindmillConnectionListWorkspaces
-} from "@app/hooks/api/appConnections/windmill";
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useWindmillConnectionListWorkspaces } from "@app/hooks/api/appConnections/windmill";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -28,7 +34,7 @@ export const WindmillSyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.workspace", "");
@@ -39,67 +45,80 @@ export const WindmillSyncFields = () => {
         name="destinationConfig.workspace"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Workspace"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure the workspace exists in the connection's Windmill instance URL."
-              >
-                <div>
-                  <span>Don&#39;t see the workspace you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
+          <Field>
+            <FieldLabel
+              id="secret-sync-windmill-workspace-label"
+              htmlFor="secret-sync-windmill-workspace"
+            >
+              Workspace
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  Ensure the workspace exists in the connection&apos;s Windmill instance URL.
+                </TooltipContent>
               </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isWorkspacesLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={workspaces?.find((workspace) => workspace.name === value) ?? null}
-              onChange={(option) =>
-                onChange((option as SingleValue<TWindmillWorkspace>)?.name ?? null)
-              }
-              options={workspaces}
-              placeholder="Select a workspace..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.name}
-            />
-          </FormControl>
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-windmill-workspace-label"
+                aria-describedby={error ? "secret-sync-windmill-workspace-error" : undefined}
+                id="secret-sync-windmill-workspace"
+                isError={Boolean(error)}
+                isLoading={isWorkspacesLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={workspaces?.find((workspace) => workspace.name === value) ?? null}
+                onValueChange={(option) => onChange(option.name ?? null)}
+                options={workspaces}
+                placeholder="Select a workspace..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.name}
+                modal
+              />
+              <FieldError id="secret-sync-windmill-workspace-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         name="destinationConfig.path"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipClassName="max-w-sm"
-            tooltipText={
-              <>
-                The workspace path where secrets should be synced to. Path must follow Windmill{" "}
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://www.windmill.dev/docs/core_concepts/roles_and_permissions#path"
-                >
-                  <span className="cursor-pointer underline decoration-primary underline-offset-2 hover:text-mineshaft-200">
-                    owner path convention
-                  </span>
-                  .
-                </a>
-              </>
-            }
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Path"
-          >
-            <Input value={value} onChange={onChange} placeholder="f/folder-name/" />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Path
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The workspace path where secrets should be synced to. Path must follow Windmill{" "}
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href="https://www.windmill.dev/docs/core_concepts/roles_and_permissions#path"
+                  >
+                    <span className="cursor-pointer underline decoration-project underline-offset-2 hover:text-foreground-secondary">
+                      owner path convention
+                    </span>
+                    .
+                  </a>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={value}
+                onChange={onChange}
+                placeholder="f/folder-name/"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

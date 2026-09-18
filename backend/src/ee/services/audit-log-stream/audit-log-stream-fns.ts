@@ -1,13 +1,32 @@
-import { TAuditLogStreams } from "@app/db/schemas";
+import { TAuditLogs, TAuditLogStreams } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { AuditLogStreamProduct } from "./audit-log-stream-enums";
+import { TAuditLogStreamFilters } from "./audit-log-stream-schemas";
 import { TAuditLogStream, TAuditLogStreamCredentials } from "./audit-log-stream-types";
 import { getAzureProviderListItem } from "./azure/azure-provider-fns";
 import { getCriblProviderListItem } from "./cribl/cribl-provider-fns";
 import { getCustomProviderListItem } from "./custom/custom-provider-fns";
 import { getDatadogProviderListItem } from "./datadog/datadog-provider-fns";
 import { getSplunkProviderListItem } from "./splunk/splunk-provider-fns";
+import { getSumoLogicProviderListItem } from "./sumo-logic/sumo-logic-provider-fns";
+
+export const blockAuditLogStreamInternalIps = (url: string) =>
+  blockLocalAndPrivateIpAddresses(url, false, getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP);
+
+// The instant a provider should report the event at. Delivery can lag the event by minutes
+// (retry backoff tops out around 240s) or by months during a backfill, so a provider that
+// stamps its own send time misdates the record. Falls back to now for payloads that carry no
+// createdAt
+export const resolveEventTimestamp = (event: { createdAt?: Date | string | null }): Date => {
+  if (!event.createdAt) return new Date();
+
+  const createdAt = new Date(event.createdAt);
+  return Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
+};
 
 export const listProviderOptions = () => {
   return [
@@ -15,7 +34,8 @@ export const listProviderOptions = () => {
     getSplunkProviderListItem(),
     getCustomProviderListItem(),
     getAzureProviderListItem(),
-    getCriblProviderListItem()
+    getCriblProviderListItem(),
+    getSumoLogicProviderListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -59,6 +79,27 @@ export const decryptLogStreamCredentials = async ({
   });
 
   return JSON.parse(decryptedPlainTextBlob.toString()) as TAuditLogStreamCredentials;
+};
+
+export const streamHasProductFilter = (stream: Pick<TAuditLogStreams, "filters">): boolean =>
+  ((stream.filters as TAuditLogStreamFilters | null)?.products?.length ?? 0) > 0;
+
+export const resolveAuditLogProduct = (
+  log: Pick<TAuditLogs, "projectId">,
+  projectTypeById: Map<string, string>
+): AuditLogStreamProduct | null => {
+  if (!log.projectId) return AuditLogStreamProduct.Organization;
+  return (projectTypeById.get(log.projectId) as AuditLogStreamProduct | undefined) ?? null;
+};
+
+export const auditLogMatchesStreamFilter = (
+  product: AuditLogStreamProduct | null,
+  filters?: TAuditLogStreamFilters | null
+): boolean => {
+  const products = filters?.products;
+  if (!products || products.length === 0) return true;
+  if (product === null) return false;
+  return products.includes(product);
 };
 
 export const decryptLogStream = async (

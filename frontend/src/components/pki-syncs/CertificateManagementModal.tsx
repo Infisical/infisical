@@ -1,43 +1,48 @@
 import React, { useEffect, useState } from "react";
-import { faSearch, faX } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ScrollText, Search, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
-  EmptyState,
-  Input,
-  Modal,
-  ModalContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import {
-  CertStatus,
-  useAddCertificatesToPkiSync,
-  useListPkiSyncCertificates,
-  useRemoveCertificatesFromPkiSync
-} from "@app/hooks/api";
-import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { getCertificateDisplayName, truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
+import { CertStatus } from "@app/hooks/api";
+import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  pkiSync?: TPkiSync;
+  destination?: PkiSync;
   applicationId?: string;
-  onCertificatesUpdated?: () => void;
-  selectedCertificateIds?: string[];
-  onCertificateSelectionChange?: (certificateIds: string[]) => void;
+  selectedOrderIds?: string[];
+  maxSelectable?: number;
+  onOrderSelectionChange?: (orderIds: string[], orderNames: [string, string][]) => void;
   title?: string;
   subtitle?: string;
   saveButtonText?: string;
@@ -46,11 +51,11 @@ type Props = {
 export const CertificateManagementModal = ({
   isOpen,
   onClose,
-  pkiSync,
+  destination,
   applicationId: applicationIdProp,
-  onCertificatesUpdated,
-  selectedCertificateIds,
-  onCertificateSelectionChange,
+  selectedOrderIds,
+  maxSelectable,
+  onOrderSelectionChange,
   title = "Manage Certificate Sync",
   subtitle = "Select which certificates should be synced.",
   saveButtonText = "Save Changes"
@@ -61,8 +66,11 @@ export const CertificateManagementModal = ({
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const pageSize = 10;
 
-  const isCreateMode = !pkiSync;
-  const scopedApplicationId = pkiSync?.applicationId ?? applicationIdProp;
+  const scopedApplicationId = applicationIdProp;
+
+  const { syncOption } = usePkiSyncOption(destination as PkiSync);
+  const selectionLimit = maxSelectable ?? syncOption?.maxCertificates;
+  const isSingleSelect = selectionLimit === 1;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -88,38 +96,67 @@ export const CertificateManagementModal = ({
   const allCertificates = data?.certificates || [];
   const totalCount = data?.totalCount || 0;
 
-  const { data: syncData } = useListPkiSyncCertificates(pkiSync?.id || "");
-  const syncCertificates = syncData?.certificates || [];
-  const addCertificatesToSync = useAddCertificatesToPkiSync();
-  const removeCertificatesFromSync = useRemoveCertificatesFromPkiSync();
-
-  const syncedCertificateIds = isCreateMode
-    ? selectedCertificateIds || []
-    : syncCertificates.map((sc) => sc.certificateId);
+  const preselectedOrderIds = selectedOrderIds ?? [];
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const orderNamesSeen = React.useRef(new Map<string, string>());
 
   React.useEffect(() => {
-    setSelectedIds(syncedCertificateIds);
-  }, [JSON.stringify(syncedCertificateIds)]);
+    setSelectedIds(preselectedOrderIds);
+  }, [JSON.stringify(preselectedOrderIds)]);
 
-  const handleToggleSelection = (certId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(certId) ? prev.filter((id) => id !== certId) : [...prev, certId]
-    );
+  React.useEffect(() => {
+    allCertificates.forEach((cert) => {
+      if (cert.orderId) orderNamesSeen.current.set(cert.orderId, cert.commonName);
+    });
+  }, [allCertificates]);
+
+  const handleToggleSelection = (orderId: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(orderId)) {
+        return prev.filter((id) => id !== orderId);
+      }
+
+      if (isSingleSelect) return [orderId];
+
+      if (selectionLimit !== undefined && prev.length >= selectionLimit) {
+        createNotification({
+          text: `This sync holds at most ${selectionLimit} certificates. Deselect one first.`,
+          type: "error"
+        });
+        return prev;
+      }
+
+      return [...prev, orderId];
+    });
   };
 
   const handleSelectAll = () => {
-    const currentPageIds = allCertificates.map((cert) => cert.id);
-    const allCurrentPageSelected = currentPageIds.every((id) => selectedIds.includes(id));
+    const currentPageOrderIds = allCertificates
+      .map((cert) => cert.orderId)
+      .filter((orderId): orderId is string => Boolean(orderId));
+    const allCurrentPageSelected = currentPageOrderIds.every((id) => selectedIds.includes(id));
 
     if (allCurrentPageSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !currentPageIds.includes(id)));
-    } else {
-      setSelectedIds((prev) => [...new Set([...prev, ...currentPageIds])]);
+      setSelectedIds((prev) => prev.filter((id) => !currentPageOrderIds.includes(id)));
+      return;
     }
+
+    setSelectedIds((prev) => {
+      const next = [...new Set([...prev, ...currentPageOrderIds])];
+
+      if (selectionLimit !== undefined && next.length > selectionLimit) {
+        createNotification({
+          text: `This sync holds at most ${selectionLimit} certificates. Only the first ${selectionLimit} were selected.`,
+          type: "error"
+        });
+        return next.slice(0, selectionLimit);
+      }
+
+      return next;
+    });
   };
 
   const clearSearch = () => {
@@ -134,315 +171,187 @@ export const CertificateManagementModal = ({
     }
   }, [isOpen]);
 
-  const handleSaveCertificates = async () => {
-    try {
-      if (isCreateMode) {
-        if (onCertificateSelectionChange) {
-          onCertificateSelectionChange(selectedIds);
-          onClose();
-        }
-        return;
-      }
+  const handleSaveCertificates = () => {
+    const orderNames = selectedIds
+      .filter((orderId) => orderNamesSeen.current.has(orderId))
+      .map(
+        (orderId) => [orderId, orderNamesSeen.current.get(orderId) as string] as [string, string]
+      );
 
-      if (!pkiSync) return;
-
-      const certificatesToAdd = selectedIds.filter((id) => !syncedCertificateIds.includes(id));
-      const certificatesToRemove = syncedCertificateIds.filter((id) => !selectedIds.includes(id));
-
-      const invalidCertificates = certificatesToAdd
-        .map((id) => allCertificates.find((cert) => cert.id === id))
-        .filter((cert) => {
-          if (!cert) return false;
-          const isExpired = new Date(cert.notAfter) < new Date();
-          const isRevoked = cert.status === CertStatus.REVOKED;
-          return isExpired || isRevoked;
-        });
-
-      if (invalidCertificates.length > 0) {
-        const invalidNames = invalidCertificates.map((cert) => cert?.commonName).join(", ");
-        createNotification({
-          text: `Cannot add expired or revoked certificates: ${invalidNames}`,
-          type: "error"
-        });
-        return;
-      }
-
-      const operations = [];
-
-      if (certificatesToAdd.length > 0) {
-        operations.push(
-          addCertificatesToSync
-            .mutateAsync({
-              pkiSyncId: pkiSync.id,
-              certificateIds: certificatesToAdd
-            })
-            .then(() => ({
-              type: "add",
-              count: certificatesToAdd.length,
-              success: true
-            }))
-            .catch((error) => ({
-              type: "add",
-              count: certificatesToAdd.length,
-              success: false,
-              error
-            }))
-        );
-      }
-
-      if (certificatesToRemove.length > 0) {
-        operations.push(
-          removeCertificatesFromSync
-            .mutateAsync({
-              pkiSyncId: pkiSync.id,
-              certificateIds: certificatesToRemove
-            })
-            .then(() => ({
-              type: "remove",
-              count: certificatesToRemove.length,
-              success: true
-            }))
-            .catch((error) => ({
-              type: "remove",
-              count: certificatesToRemove.length,
-              success: false,
-              error
-            }))
-        );
-      }
-
-      if (operations.length === 0) {
-        createNotification({
-          text: "No changes to save",
-          type: "info"
-        });
-        onClose();
-        return;
-      }
-
-      const results = await Promise.all(operations);
-      const failures = results.filter((r) => !r.success);
-      const successes = results.filter((r) => r.success);
-
-      if (failures.length === 0) {
-        const addCount = successes.find((r) => r.type === "add")?.count || 0;
-        const removeCount = successes.find((r) => r.type === "remove")?.count || 0;
-
-        let message = "Certificate selection updated successfully";
-        if (addCount > 0 && removeCount > 0) {
-          message = `Added ${addCount} and removed ${removeCount} certificate(s)`;
-        } else if (addCount > 0) {
-          message = `Added ${addCount} certificate(s)`;
-        } else if (removeCount > 0) {
-          message = `Removed ${removeCount} certificate(s)`;
-        }
-
-        createNotification({
-          text: message,
-          type: "success"
-        });
-
-        if (onCertificatesUpdated) {
-          onCertificatesUpdated();
-        }
-        onClose();
-      } else {
-        const partialSuccess = successes.length > 0;
-        console.error("Certificate sync operation failures:", failures);
-
-        createNotification({
-          text: partialSuccess
-            ? "Some certificate changes failed. Check console for details."
-            : "Failed to update certificate selection",
-          type: partialSuccess ? "warning" : "error"
-        });
-
-        if (partialSuccess && onCertificatesUpdated) {
-          onCertificatesUpdated();
-        }
-      }
-    } catch (error) {
-      console.error("Unexpected error during certificate sync operation:", error);
-      createNotification({
-        text: "An unexpected error occurred while updating certificates",
-        type: "error"
-      });
-    }
+    onOrderSelectionChange?.(selectedIds, orderNames);
+    onClose();
   };
 
-  const isLoading = addCertificatesToSync.isPending || removeCertificatesFromSync.isPending;
-
   return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <ModalContent title={title} subTitle={subtitle} className="max-w-4xl">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{subtitle}</DialogDescription>
+        </DialogHeader>
+
         <div className="space-y-4">
-          <div className="space-y-3">
-            <div className="relative">
-              <Input
-                placeholder="Search by common name, serial number, or SAN..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9"
-              />
-              <FontAwesomeIcon
-                icon={faSearch}
-                className="absolute top-1/2 left-3 h-3 w-3 -translate-y-1/2 transform text-bunker-300"
-              />
-              {searchTerm && (
+          <InputGroup>
+            <InputGroupAddon align="inline-start">
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder="Search by common name, serial number, or SAN..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+            {searchTerm && (
+              <InputGroupAddon align="inline-end">
                 <button
                   type="button"
+                  aria-label="Clear search"
                   onClick={clearSearch}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 transform text-bunker-300 hover:text-bunker-100"
+                  className="cursor-pointer text-muted transition-colors hover:text-foreground"
                 >
-                  <FontAwesomeIcon icon={faX} className="h-3 w-3" />
+                  <X className="size-3.5" />
                 </button>
-              )}
-            </div>
-          </div>
-
-          <TableContainer>
-            <Table>
-              <THead>
-                <Tr>
-                  <Th className="w-12">
-                    <Checkbox
-                      id="select-all-certificates"
-                      isChecked={
-                        allCertificates.length > 0 &&
-                        allCertificates.every((cert) => selectedIds.includes(cert.id))
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </Th>
-                  <Th className="w-1/3">SAN / CN</Th>
-                  <Th className="w-1/4">Serial Number</Th>
-                  <Th className="w-1/6">Issued At</Th>
-                  <Th className="w-1/6">Expires At</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {allCertificates.map((cert) => {
-                  const isExpired = new Date(cert.notAfter) < new Date();
-                  const isRevoked = cert.status === CertStatus.REVOKED;
-                  const cannotBeAdded = isExpired || isRevoked;
-                  const isAlreadySynced = syncedCertificateIds.includes(cert.id);
-
-                  let originalDisplayName = "—";
-                  if (cert.altNames && cert.altNames.trim()) {
-                    originalDisplayName = cert.altNames.trim();
-                  } else if (cert.commonName && cert.commonName.trim()) {
-                    originalDisplayName = cert.commonName.trim();
-                  }
-
-                  let displayName = originalDisplayName;
-                  let isTruncated = false;
-                  if (originalDisplayName.length > 34) {
-                    displayName = `${originalDisplayName.substring(0, 34)}...`;
-                    isTruncated = true;
-                  }
-
-                  const truncatedSerial =
-                    cert.serialNumber.length > 8
-                      ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
-                      : cert.serialNumber;
-
-                  return (
-                    <Tr
-                      key={cert.id}
-                      className={`cursor-pointer hover:bg-mineshaft-700 ${
-                        cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
-                      }`}
-                      onClick={() => {
-                        if (!cannotBeAdded || isAlreadySynced) {
-                          handleToggleSelection(cert.id);
-                        }
-                      }}
-                    >
-                      <Td className="max-w-0" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          id={cert.id}
-                          isChecked={selectedIds.includes(cert.id)}
-                          onCheckedChange={() => {
-                            if (!cannotBeAdded || isAlreadySynced) {
-                              handleToggleSelection(cert.id);
-                            }
-                          }}
-                          isDisabled={cannotBeAdded && !isAlreadySynced}
-                        />
-                      </Td>
-                      <Td className="max-w-0">
-                        {isTruncated ? (
-                          <Tooltip content={originalDisplayName} className="max-w-lg">
-                            <div className="truncate">{displayName}</div>
-                          </Tooltip>
-                        ) : (
-                          <div className="truncate">{displayName}</div>
-                        )}
-                      </Td>
-                      <Td className="max-w-0">
-                        <div
-                          className="font-mono text-xs text-bunker-300"
-                          title={cert.serialNumber}
-                        >
-                          {truncatedSerial}
-                        </div>
-                      </Td>
-                      <Td className="max-w-0">
-                        <span className="text-sm text-bunker-300">
-                          {new Date(cert.notBefore).toLocaleDateString()}
-                        </span>
-                      </Td>
-                      <Td className="max-w-0">
-                        <span
-                          className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
-                        >
-                          {new Date(cert.notAfter).toLocaleDateString()}
-                        </span>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </TBody>
-            </Table>
-            {allCertificates.length === 0 && (
-              <EmptyState title="No certificates found">
-                {searchTerm
-                  ? "No certificates match your search criteria."
-                  : "No certificates available for sync."}
-              </EmptyState>
+              </InputGroupAddon>
             )}
-          </TableContainer>
+          </InputGroup>
 
-          {totalPages > 1 && (
-            <div className="mt-4 flex justify-center">
+          <div>
+            {allCertificates.length === 0 ? (
+              <Empty className="border">
+                <EmptyMedia variant="icon">
+                  <ScrollText />
+                </EmptyMedia>
+                <EmptyTitle>No certificates found</EmptyTitle>
+                <EmptyDescription>
+                  {searchTerm
+                    ? "No certificates match your search criteria."
+                    : "No certificates available for sync."}
+                </EmptyDescription>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      {!isSingleSelect && (
+                        <Checkbox
+                          id="select-all-certificates"
+                          variant="project"
+                          aria-label="Select every certificate on this page"
+                          isChecked={
+                            allCertificates.length > 0 &&
+                            allCertificates.every(
+                              (cert) => cert.orderId && selectedIds.includes(cert.orderId)
+                            )
+                          }
+                          onCheckedChange={handleSelectAll}
+                        />
+                      )}
+                    </TableHead>
+                    <TableHead className="w-1/3">SAN / CN</TableHead>
+                    <TableHead className="w-1/4">Serial Number</TableHead>
+                    <TableHead className="w-1/6">Issued At</TableHead>
+                    <TableHead className="w-1/6">Expires At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allCertificates.map((cert) => {
+                    const isExpired = new Date(cert.notAfter) < new Date();
+                    const isRevoked = cert.status === CertStatus.REVOKED;
+                    const cannotBeAdded = isExpired || isRevoked;
+                    const isAlreadySynced = Boolean(
+                      cert.orderId && preselectedOrderIds.includes(cert.orderId)
+                    );
+                    const { orderId } = cert;
+                    const isSelectable = Boolean(orderId) && (!cannotBeAdded || isAlreadySynced);
+                    const isSelected = Boolean(orderId && selectedIds.includes(orderId));
+
+                    const { originalDisplayName, displayName, isTruncated } =
+                      getCertificateDisplayName(cert);
+                    const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
+
+                    return (
+                      <TableRow
+                        key={cert.id}
+                        data-state={isSelected ? "selected" : undefined}
+                        className={
+                          isSelectable ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                        }
+                        onClick={() => {
+                          if (orderId && isSelectable) handleToggleSelection(orderId);
+                        }}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            id={`select-certificate-${cert.id}`}
+                            variant="project"
+                            aria-label={`Select ${originalDisplayName}`}
+                            isChecked={isSelected}
+                            isDisabled={!isSelectable}
+                            onCheckedChange={() => {
+                              if (orderId && isSelectable) handleToggleSelection(orderId);
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          {isTruncated ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="truncate">{displayName}</div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-lg">
+                                {originalDisplayName}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <div className="truncate">{displayName}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <div className="font-mono text-xs text-muted" title={cert.serialNumber}>
+                            {truncatedSerial}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <span className="text-sm text-muted">
+                            {new Date(cert.notBefore).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <span className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}>
+                            {new Date(cert.notAfter).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+            {totalPages > 1 && (
               <Pagination
                 count={totalCount}
                 page={currentPage}
                 perPage={pageSize}
                 onChangePage={(page: number) => setCurrentPage(page)}
                 onChangePerPage={() => {}}
+                perPageList={[pageSize]}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline_bg" onClick={onClose}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            variant="solid"
-            colorSchema="primary"
-            onClick={handleSaveCertificates}
-            isLoading={isLoading}
-          >
+          <Button variant="project" onClick={handleSaveCertificates}>
             {saveButtonText}
           </Button>
-        </div>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

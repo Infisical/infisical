@@ -22,11 +22,11 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
   The **Key Vault Certificates Officer** role includes all required permissions.
 </Note>
 
-## Create a Key Vault Sync
+## Create a Key Vault sync
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **Azure Key Vault** option.
 
@@ -38,7 +38,7 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
             - **Enable Versioning on Renewal**: Create a new version of the certificate on renewal instead of a new certificate.
             - **Include Root CA**: Include the Root CA certificate in the chain.
-            - **Certificate Name Schema**: Customize certificate names using `{{certificateId}}` placeholder.
+            - **Certificate Name Schema**: Customize certificate names using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         <Tip>
@@ -59,8 +59,9 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
         ### Sample request
 
         <Note>
-          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
-          If not provided, you can add certificates later using the certificate management endpoints.
+          Pass `filters` to describe the certificates this sync holds. Anything in the Application that matches is
+          attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
         </Note>
 
         ```bash Request
@@ -75,10 +76,12 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
             "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "azure-key-vault",
             "isAutoSyncEnabled": true,
-            "certificateIds": [
-                "550e8400-e29b-41d4-a716-446655440000",
-                "660f1234-e29b-41d4-a716-446655440001"
-            ],
+            "filters": {
+                "certificateOrderIds": [
+                    "550e8400-e29b-41d4-a716-446655440000",
+                    "660f1234-e29b-41d4-a716-446655440001"
+                ]
+            },
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "enableVersioningOnRenewal": true,
@@ -121,7 +124,7 @@ Store certificates in Azure Key Vault as certificate objects. Certificates synce
 
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 The Azure Key Vault Certificate Sync provides:
 
@@ -133,10 +136,10 @@ The Azure Key Vault Certificate Sync provides:
 <Note>
   Azure Key Vault Certificate Syncs support both automatic and manual
   synchronization modes. When auto-sync is enabled, certificates are
-  automatically deployed as they are issued or renewed.
+  automatically deployed as they're issued or renewed.
 </Note>
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to Azure Key Vault using the sync certificates functionality. This is useful for:
 
@@ -150,24 +153,24 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 ## FAQ
 
 <Accordion title="Can I import certificates from Azure Key Vault back into Infisical?">
-  Azure Key Vault does not support importing certificates back into Infisical
-  due to security limitations where private keys cannot be extracted from Azure
+  Azure Key Vault doesn't support importing certificates back into Infisical
+  due to security limitations where private keys can't be extracted from Azure
   Key Vault.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+  <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for AWS services.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

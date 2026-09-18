@@ -1,8 +1,10 @@
 import argon2 from "argon2";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 
 import { crypto, SymmetricKeySize } from "./cryptography";
+import { getLegacyDecryptionCandidates } from "./legacy-key";
 
 type TBuildSecretBlindIndexDTO = {
   secretName: string;
@@ -27,20 +29,43 @@ export const buildSecretBlindIndexFromName = async ({
   encryptionKey,
   rootEncryptionKey
 }: TBuildSecretBlindIndexDTO) => {
-  if (!encryptionKey && !rootEncryptionKey) throw new Error("Missing secret blind index key");
-  let salt = "";
-  if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
-    salt = crypto
-      .encryption()
-      .symmetric()
-      .decrypt({ iv, ciphertext, key: rootEncryptionKey, tag, keySize: SymmetricKeySize.Bits256 });
-  } else if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
-    salt = crypto
-      .encryption()
-      .symmetric()
-      .decrypt({ iv, ciphertext, key: encryptionKey, tag, keySize: SymmetricKeySize.Bits128 });
+  // Snapshot over the passed-in env keys: after a rotation the environment holds the new key while
+  // this salt is still under the old one.
+  const candidates = getLegacyDecryptionCandidates();
+  if (!candidates.length) candidates.push({ ENCRYPTION_KEY: encryptionKey, ROOT_ENCRYPTION_KEY: rootEncryptionKey });
+
+  if (!candidates.some((candidate) => candidate.ENCRYPTION_KEY || candidate.ROOT_ENCRYPTION_KEY)) {
+    throw new Error("Missing secret blind index key");
   }
-  if (!salt) throw new Error("Missing secret blind index key");
+
+  let salt = "";
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      if (candidate.ROOT_ENCRYPTION_KEY && keyEncoding === SecretKeyEncoding.BASE64) {
+        salt = crypto
+          .encryption()
+          .symmetric()
+          .decrypt({ iv, ciphertext, key: candidate.ROOT_ENCRYPTION_KEY, tag, keySize: SymmetricKeySize.Bits256 });
+      } else if (candidate.ENCRYPTION_KEY && keyEncoding === SecretKeyEncoding.UTF8) {
+        salt = crypto
+          .encryption()
+          .symmetric()
+          .decrypt({ iv, ciphertext, key: candidate.ENCRYPTION_KEY, tag, keySize: SymmetricKeySize.Bits128 });
+      }
+    } catch (err) {
+      lastError = err;
+      salt = "";
+    }
+    if (salt) break;
+  }
+  if (!salt) {
+    if (lastError) {
+      logger.error({ err: lastError }, "No configured encryption key decrypts this secret blind index salt");
+      throw new Error("No configured encryption key decrypts this secret blind index");
+    }
+    throw new Error("Missing secret blind index key");
+  }
 
   const secretBlindIndex = await argon2.hash(secretName, {
     type: argon2.argon2id,

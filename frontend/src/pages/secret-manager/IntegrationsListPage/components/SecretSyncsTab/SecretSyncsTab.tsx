@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Button, Spinner } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -83,45 +90,39 @@ export const SecretSyncsTab = () => {
     }
   );
 
-  if (isSecretSyncsPending)
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-2">
-        <Spinner />
-      </div>
-    );
-
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <p className="text-lg font-medium text-mineshaft-100">Secret Syncs</p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/secret-syncs/overview" />
-            </div>
-            <p className="text-sm text-bunker-300">
-              Use App Connections to sync secrets to third-party services.
-            </p>
-          </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionSecretSyncActions.Create}
-            a={ProjectPermissionSub.SecretSyncs}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("addSync")}
-                isDisabled={!isAllowed}
-              >
-                Add Sync
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
-        <SecretSyncsTable secretSyncs={secretSyncs} />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Secret Syncs
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/secret-syncs/overview" />
+          </CardTitle>
+          <CardDescription>
+            Use App Connections to sync secrets to third-party services.
+          </CardDescription>
+          <CardAction>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretSyncActions.Create}
+              a={ProjectPermissionSub.SecretSyncs}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="project"
+                  onClick={() => handlePopUpOpen("addSync")}
+                  isDisabled={!isAllowed}
+                >
+                  <PlusIcon />
+                  Add Sync
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <SecretSyncsTable secretSyncs={secretSyncs} isPending={isSecretSyncsPending} />
+        </CardContent>
+      </Card>
       <CreateSecretSyncModal
         selectSync={popUp.addSync.data}
         isOpen={popUp.addSync.isOpen}

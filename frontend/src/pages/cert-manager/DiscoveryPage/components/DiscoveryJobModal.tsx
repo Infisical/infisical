@@ -157,7 +157,7 @@ const formSchema = z.object({
     .min(1, "Name is required")
     .max(100, "Name must be less than 100 characters")
     .regex(/^[a-z0-9-]+$/, "Name must contain only lowercase letters, numbers, and hyphens"),
-  description: z.string().max(500).optional(),
+  description: z.string().max(255).optional(),
   targets: z
     .string()
     .min(1, "At least one target is required")
@@ -350,7 +350,12 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="my-discovery-job" />
+                <Input
+                  {...field}
+                  placeholder="my-discovery-job"
+                  autoComplete="off"
+                  name="discovery-job-name"
+                />
               </FormControl>
             )}
           />
@@ -425,7 +430,7 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
                       {!isInfisicalCloud() && (
                         <p>
                           Alternatively, you can set the{" "}
-                          <span className="font-medium text-bunker-200">
+                          <span className="font-medium text-foreground-soft">
                             ALLOW_INTERNAL_IP_CONNECTIONS
                           </span>{" "}
                           environment variable to <span className="font-medium">true</span> on your
@@ -458,9 +463,9 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
               <FormControl>
                 <Switch
                   id="auto-scan"
-                  className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  className="mr-2 ml-0 bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
                   containerClassName="flex-row-reverse w-fit"
-                  thumbClassName="bg-mineshaft-800"
+                  thumbClassName="bg-surface-raised"
                   isChecked={field.value}
                   onCheckedChange={field.onChange}
                 >

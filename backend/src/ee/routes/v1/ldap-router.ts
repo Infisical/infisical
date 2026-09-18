@@ -30,7 +30,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "ldap", userProperty: "passportUser" });
-  await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 
@@ -257,7 +257,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             provider: "ldap",
-            action: "create"
+            action: "create",
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -320,7 +321,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             provider: "ldap",
-            action: "update"
+            action: "update",
+            orgId: req.permission.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -335,7 +337,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       params: z.object({
         configId: z.string().trim()

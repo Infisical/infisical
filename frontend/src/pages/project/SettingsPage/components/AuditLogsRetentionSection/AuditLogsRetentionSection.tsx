@@ -4,7 +4,19 @@ import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
@@ -77,41 +89,55 @@ export const AuditLogsRetentionSection = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex w-full items-center justify-between">
-          <p className="text-xl font-medium">Audit Logs Retention</p>
-        </div>
-        <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
-          Set the number of days to keep your project audit logs.
-        </p>
-        <form onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)} autoComplete="off">
-          <div className="max-w-xs">
+      <form
+        onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)}
+        autoComplete="off"
+        className="mb-6"
+      >
+        <Card className="gap-0 overflow-hidden p-0">
+          <CardHeader className="p-6">
+            <CardTitle className="font-alliance">Audit Logs Retention</CardTitle>
+            <CardDescription>
+              Set the number of days to keep your project audit logs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-w-xs px-6 pb-6">
             <Controller
               control={control}
               defaultValue={0}
               name="auditLogsRetentionDays"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Number of days"
-                >
-                  <Input {...field} type="number" min={1} step={1} isDisabled={!isAdmin} />
-                </FormControl>
+                <Field className="max-w-xs" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="audit-logs-retention-days">Number of days</FieldLabel>
+                  <Input
+                    id="audit-logs-retention-days"
+                    {...field}
+                    type="number"
+                    min={1}
+                    step={1}
+                    disabled={!isAdmin}
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-          </div>
-          <Button
-            colorSchema="secondary"
-            type="submit"
-            isLoading={isSubmitting}
-            disabled={!isAdmin || !isDirty}
-          >
-            Save
-          </Button>
-        </form>
-      </div>
+          </CardContent>
+          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+            <Button
+              variant="project"
+              size="sm"
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={!isAdmin || !isDirty}
+            >
+              Save changes
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
       <UpgradePlanModal
+        paywallKey="project.audit-logs-retention"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

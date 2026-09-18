@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const OCIVaultSyncReviewFields = () => {
@@ -12,15 +12,18 @@ export const OCIVaultSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Compartment OCID" truncate>
-        {compartmentOcid}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Vault OCID" truncate>
-        {vaultOcid}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Key OCID" truncate>
-        {keyOcid}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Compartment OCID</DetailLabel>
+        <DetailValue className="truncate">{compartmentOcid}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Vault OCID</DetailLabel>
+        <DetailValue className="truncate">{vaultOcid}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Key OCID</DetailLabel>
+        <DetailValue className="truncate">{keyOcid}</DetailValue>
+      </Detail>
     </>
   );
 };

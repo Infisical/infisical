@@ -260,7 +260,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "listOrganizationIdentityMemberships",
@@ -317,7 +317,15 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true })
+              identity: IdentitiesSchema.pick({
+                name: true,
+                id: true,
+                orgId: true,
+                projectId: true
+              }).extend({
+                authMethods: z.array(z.string()),
+                activeLockoutAuthMethods: z.array(z.string())
+              })
             })
             .array(),
           totalCount: z.number()
@@ -349,7 +357,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "getOrganizationIdentityMembershipById",
@@ -412,7 +420,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listAvailableOrganizationIdentities",

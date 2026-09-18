@@ -1,30 +1,41 @@
 import { useMemo } from "react";
 import {
-  faArrowDown,
-  faArrowUp,
-  faMagnifyingGlass,
-  faSearch,
-  faTag,
-  faTrashCan
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  ArrowDownIcon,
+  ArrowUpIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  EmptyState,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -33,18 +44,13 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useGetWsTags } from "@app/hooks/api/tags";
+import { WsTag } from "@app/hooks/api/tags/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteTagConfirmation"]>,
-    {
-      name,
-      id
-    }: {
-      name: string;
-      id: string;
-    }
+    popUpName: keyof UsePopUpState<["deleteTagConfirmation", "editSecretTag"]>,
+    data: { name: string; id: string } | WsTag
   ) => void;
 };
 
@@ -54,6 +60,7 @@ enum TagsOrderBy {
 
 export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { data: tags = [], isPending } = useGetWsTags(currentProject?.id ?? "");
 
   const {
@@ -95,69 +102,120 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search tags..."
-      />
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-full">
-                <div className="flex items-center">
-                  Slug
-                  <IconButton
-                    variant="plain"
-                    className="ml-2"
-                    ariaLabel="sort"
-                    onClick={toggleOrderDirection}
-                  >
-                    <FontAwesomeIcon
-                      icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
-                    />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th aria-label="button" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={3} innerKey="secret-tags" />}
-            {!isPending &&
-              filteredTags.slice(offset, perPage * page).map(({ id, slug }) => (
-                <Tr key={id}>
-                  <Td>{slug}</Td>
-                  <Td className="flex items-center justify-end">
-                    <ProjectPermissionCan
-                      I={ProjectPermissionActions.Delete}
-                      a={ProjectPermissionSub.Tags}
+      <InputGroup className="mb-4">
+        <InputGroupAddon>
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search tags..."
+        />
+      </InputGroup>
+      {isPending && (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <Skeleton key={`secret-tags-skeleton-${idx}`} className="h-10 w-full" />
+          ))}
+        </div>
+      )}
+      {!isPending && !filteredTags.length && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>{tags.length ? "No tags match search" : "No tags found"}</EmptyTitle>
+            <EmptyDescription>
+              {tags.length
+                ? "Try a different search term."
+                : "Create a tag to organize secrets in this project."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+      {!isPending && filteredTags.length > 0 && (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-full">
+                  <div className="flex items-center gap-2">
+                    Slug
+                    <IconButton
+                      aria-label="Sort by slug"
+                      variant="ghost-muted"
+                      size="xs"
+                      onClick={toggleOrderDirection}
                     >
-                      {(isAllowed) => (
-                        <IconButton
-                          onClick={() =>
-                            handlePopUpOpen("deleteTagConfirmation", {
-                              name: slug,
-                              id
-                            })
-                          }
-                          size="xs"
-                          colorSchema="danger"
-                          ariaLabel="update"
-                          variant="plain"
-                          isDisabled={!isAllowed}
-                        >
-                          <FontAwesomeIcon icon={faTrashCan} />
-                        </IconButton>
+                      {orderDirection === OrderByDirection.DESC ? (
+                        <ArrowUpIcon className="size-4" />
+                      ) : (
+                        <ArrowDownIcon className="size-4" />
                       )}
-                    </ProjectPermissionCan>
-                  </Td>
-                </Tr>
-              ))}
-          </TBody>
-        </Table>
-        {Boolean(filteredTags.length) && (
+                    </IconButton>
+                  </div>
+                </TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTags.slice(offset, perPage * page).map((tag) => {
+                const { id, slug } = tag;
+
+                return (
+                  <TableRow key={id}>
+                    <TableCell>{slug}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end">
+                        {permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags) ||
+                        permission.can(
+                          ProjectPermissionActions.Delete,
+                          ProjectPermissionSub.Tags
+                        ) ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton aria-label="Tag options" variant="ghost" size="xs">
+                                <MoreHorizontalIcon className="size-4" />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              {permission.can(
+                                ProjectPermissionActions.Edit,
+                                ProjectPermissionSub.Tags
+                              ) && (
+                                <DropdownMenuItem
+                                  onClick={() => handlePopUpOpen("editSecretTag", tag)}
+                                >
+                                  <PencilIcon />
+                                  Edit Tag
+                                </DropdownMenuItem>
+                              )}
+                              {permission.can(
+                                ProjectPermissionActions.Delete,
+                                ProjectPermissionSub.Tags
+                              ) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={() =>
+                                    handlePopUpOpen("deleteTagConfirmation", {
+                                      name: slug,
+                                      id
+                                    })
+                                  }
+                                >
+                                  <TrashIcon />
+                                  Delete Tag
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
           <Pagination
             count={filteredTags.length}
             page={page}
@@ -165,14 +223,8 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
             onChangePage={setPage}
             onChangePerPage={handlePerPageChange}
           />
-        )}
-        {!isPending && !filteredTags?.length && (
-          <EmptyState
-            title={tags.length ? "No tags match search..." : "No tags found for project"}
-            icon={tags.length ? faSearch : faTag}
-          />
-        )}
-      </TableContainer>
+        </>
+      )}
     </div>
   );
 };

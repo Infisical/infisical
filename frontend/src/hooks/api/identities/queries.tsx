@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { useOrganization } from "@app/context";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import {
@@ -14,6 +15,7 @@ import {
   IdentityKubernetesAuth,
   IdentityLdapAuth,
   IdentityMembershipOrg,
+  IdentityMembershipSearchResult,
   IdentityOciAuth,
   IdentityOidcAuth,
   IdentityProjectMembershipV1,
@@ -21,6 +23,9 @@ import {
   IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
+  SearchIdentitiesScope,
+  TCountIdentitiesDTO,
+  TIdentityMembershipCounts,
   TSearchIdentitiesDTO
 } from "./types";
 
@@ -29,6 +34,9 @@ export const identitiesKeys = {
   searchIdentitiesRoot: ["identity", "search"] as const,
   searchIdentities: (dto: TSearchIdentitiesDTO) =>
     [...identitiesKeys.searchIdentitiesRoot, dto] as const,
+  countIdentitiesRoot: ["identity", "search", "count"] as const,
+  countIdentities: (dto: TCountIdentitiesDTO) =>
+    [...identitiesKeys.countIdentitiesRoot, dto] as const,
   getIdentityUniversalAuth: (identityId: string) =>
     [{ identityId }, "identity-universal-auth"] as const,
   getIdentityUniversalAuthClientSecrets: (identityId: string) =>
@@ -51,7 +59,11 @@ export const identitiesKeys = {
   getIdentityTokensTokenAuth: (identityId: string) =>
     [{ identityId }, "identity-tokens-token-auth"] as const,
   getIdentityProjectMemberships: (identityId: string) =>
-    [{ identityId }, "identity-project-memberships"] as const
+    [{ identityId }, "identity-project-memberships"] as const,
+  // The membership list is filtered to the viewing org (Membership.scopeOrgId),
+  // so a sub-org and its parent must not share this cache entry.
+  getIdentityProjectMembershipsForOrg: (orgId: string, identityId: string) =>
+    [...identitiesKeys.getIdentityProjectMemberships(identityId), orgId] as const
 };
 
 export const useGetOrgIdentityMembershipById = (identityId: string) => {
@@ -70,18 +82,19 @@ export const useGetOrgIdentityMembershipById = (identityId: string) => {
 };
 
 export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
-  const { limit, search, offset, orderBy, orderDirection } = dto;
+  const { limit, search, offset, orderBy, orderDirection, scope } = dto;
   return useQuery({
     queryKey: identitiesKeys.searchIdentities(dto),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
-        identities: IdentityMembershipOrg[];
+        identities: IdentityMembershipSearchResult[];
         totalCount: number;
-      }>("/api/v1/identities/search", {
+      }>("/api/v2/identities/search", {
         limit,
         offset,
         orderBy,
         orderDirection,
+        scope: scope ?? [SearchIdentitiesScope.OrganizationScope],
         search
       });
       return data;
@@ -90,10 +103,28 @@ export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
   });
 };
 
+export const useCountOrgIdentityMemberships = (dto: TCountIdentitiesDTO) => {
+  const { scope, search } = dto;
+  return useQuery({
+    queryKey: identitiesKeys.countIdentities(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ counts: TIdentityMembershipCounts }>(
+        "/api/v2/identities/search/count",
+        { scope, search }
+      );
+      return data.counts;
+    },
+    placeholderData: (previousData) => previousData
+  });
+};
+
 export const useGetIdentityProjectMemberships = (identityId: string) => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
+
   return useQuery({
     enabled: Boolean(identityId),
-    queryKey: identitiesKeys.getIdentityProjectMemberships(identityId),
+    queryKey: identitiesKeys.getIdentityProjectMembershipsForOrg(orgId, identityId),
     queryFn: async () => {
       const {
         data: { identityMemberships }

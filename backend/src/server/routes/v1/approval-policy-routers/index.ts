@@ -6,7 +6,6 @@ import {
   CertRequestRequestGrantSchema,
   CertRequestRequestSchema,
   CreateCertRequestPolicySchema,
-  CreateCertRequestRequestSchema,
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
@@ -18,37 +17,13 @@ import {
   CreateCodeSigningRequestSchema,
   UpdateCodeSigningPolicySchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
-import {
-  CreatePamAccessPolicySchema,
-  CreatePamAccessRequestSchema,
-  PamAccessCheckPolicyMatchResponseSchema,
-  PamAccessPolicyInputsSchema,
-  PamAccessPolicySchema,
-  PamAccessRequestGrantSchema,
-  PamAccessRequestSchema,
-  UpdatePamAccessPolicySchema
-} from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
 
 import { registerApprovalPolicyEndpoints } from "./approval-policy-endpoints";
 
-export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
-  ApprovalPolicyType,
-  (server: FastifyZodProvider) => Promise<void>
+// PamAccess is intentionally absent; PAM access requests are served only by /v1/pam/access-requests
+export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
+  Record<ApprovalPolicyType, (server: FastifyZodProvider) => Promise<void>>
 > = {
-  [ApprovalPolicyType.PamAccess]: async (server: FastifyZodProvider) => {
-    registerApprovalPolicyEndpoints({
-      server,
-      policyType: ApprovalPolicyType.PamAccess,
-      createPolicySchema: CreatePamAccessPolicySchema,
-      updatePolicySchema: UpdatePamAccessPolicySchema,
-      policyResponseSchema: PamAccessPolicySchema,
-      createRequestSchema: CreatePamAccessRequestSchema,
-      requestResponseSchema: PamAccessRequestSchema,
-      grantResponseSchema: PamAccessRequestGrantSchema,
-      inputsSchema: PamAccessPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: PamAccessCheckPolicyMatchResponseSchema
-    });
-  },
   [ApprovalPolicyType.CertRequest]: async (server: FastifyZodProvider) => {
     registerApprovalPolicyEndpoints({
       server,
@@ -56,11 +31,17 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       createPolicySchema: CreateCertRequestPolicySchema,
       updatePolicySchema: UpdateCertRequestPolicySchema,
       policyResponseSchema: CertRequestPolicySchema,
-      createRequestSchema: CreateCertRequestRequestSchema,
       requestResponseSchema: CertRequestRequestSchema,
       grantResponseSchema: CertRequestRequestGrantSchema,
       inputsSchema: CertRequestPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema,
+      // Certificate approval requests are only ever opened server-side by the issuance flow
+      // (certificate-v3-service -> createRequestFromPolicy), atomically with the certificate
+      // request row they gate. There is no caller-driven path: a request cannot be opened
+      // before its certificate request row exists, and once it exists the row already carries
+      // its own approval request. Exposing creation would let a caller pick which policy gates
+      // a certificate request they did not create, so it stays off.
+      allowRequestCreation: false
     });
   },
   [ApprovalPolicyType.CertCodeSigning]: async (server: FastifyZodProvider) => {

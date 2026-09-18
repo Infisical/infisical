@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const AzureDevOpsSyncReviewFields = () => {
@@ -12,9 +12,15 @@ export const AzureDevOpsSyncReviewFields = () => {
   return (
     <>
       {devopsProjectName && (
-        <GenericFieldLabel label="Project">{devopsProjectName}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Project</DetailLabel>
+          <DetailValue>{devopsProjectName}</DetailValue>
+        </Detail>
       )}
-      <GenericFieldLabel label="Project ID">{devopsProjectId}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project ID</DetailLabel>
+        <DetailValue>{devopsProjectId}</DetailValue>
+      </Detail>
     </>
   );
 };

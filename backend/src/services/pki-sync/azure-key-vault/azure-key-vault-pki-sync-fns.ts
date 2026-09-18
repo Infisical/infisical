@@ -13,6 +13,7 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
@@ -43,8 +44,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = "global";
-    return matchesCertificateNameSchema(certificateName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(certificateName, certificateNameSchema);
   }
 
   return certificateName.startsWith("Infisical-PKI-Sync-");
@@ -448,21 +448,23 @@ export const azureKeyVaultPkiSyncFactory = ({
         }
       });
 
-      Object.keys(vaultCertificates).forEach((certificateName) => {
-        const isInfisicalManaged = isInfisicalManagedCertificate(certificateName, pkiSync);
+      if (!certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema)) {
+        Object.keys(vaultCertificates).forEach((certificateName) => {
+          const isInfisicalManaged = isInfisicalManagedCertificate(certificateName, pkiSync);
 
-        if (isInfisicalManaged) {
-          const isTrackedInSyncRecords = existingSyncRecords.some(
-            (record) => record.externalIdentifier === certificateName
-          );
+          if (isInfisicalManaged) {
+            const isTrackedInSyncRecords = existingSyncRecords.some(
+              (record) => record.externalIdentifier === certificateName
+            );
 
-          const isInActiveSet = activeExternalIdentifiers.has(certificateName);
+            const isInActiveSet = activeExternalIdentifiers.has(certificateName);
 
-          if (!isTrackedInSyncRecords && !isInActiveSet && !certificatesToRemove.includes(certificateName)) {
-            certificatesToRemove.push(certificateName);
+            if (!isTrackedInSyncRecords && !isInActiveSet && !certificatesToRemove.includes(certificateName)) {
+              certificatesToRemove.push(certificateName);
+            }
           }
-        }
-      });
+        });
+      }
     }
 
     // Upload certificates to Azure Key Vault with rate limiting

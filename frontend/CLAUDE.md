@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 6, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
@@ -28,15 +28,15 @@ Each page directory has a `route.tsx` that defines its route:
 createFileRoute(path)({ component, validateSearch: zodValidator(schema), beforeLoad })
 ```
 
-Route middleware chain: root → `authenticate` → `inject-org-details` → org-layout → product-specific layouts (secret-manager-layout, cert-manager-layout, kms-layout, ssh-layout, etc.).
+Route middleware chain: root → `authenticate` → `inject-org-details` → org-layout → product-specific layouts (secret-manager-layout, cert-manager-layout, kms-layout, etc.).
 
 Middleware pages in `src/pages/middlewares/`: `authenticate.tsx` (auth guard + redirect), `inject-org-details.tsx` (org context), `restrict-login-signup.tsx` (prevents auth pages when logged in).
 
 ### Pages / Views / Components Hierarchy
 
-- **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, ssh, pam, organization, project, admin, auth, ai). Each has `route.tsx` + page component + local `components/`.
+- **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, pam, secret-scanning, organization, project, admin, auth). Each has `route.tsx` + page component + local `components/`.
 - **`src/views/`** — Reusable page-level UI composed into multiple pages. Pages import views with configuration props.
-- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist.
+- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components such as `PageHeader`, scope icons, `ProjectPermissionSubjects`, and `SecretManagerResources`). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist. Policy group tiles look up `getProjectPermissionSubjectPresentation`. Secret Manager overview resources (name/slug/icon/color) come from `SecretManagerResources`, which points at that subject catalog.
 - **`src/components/v2/`** — Legacy shared UI components built on Radix UI primitives + Tailwind. Uses `cva` (class-variance-authority) for variants and `tailwind-merge` for class conflict resolution. Being superseded by v3 — do not use for new features if a v3 alternative exists.
 
 ### API Layer (React Query + Axios)
@@ -55,10 +55,18 @@ The `QueryClient` sets these global defaults for all queries:
 - **`refetchOnWindowFocus: false`** — queries do not refetch when the browser tab regains focus.
 - **`retry: 1`** — failed queries retry once.
 
+Mutation failures are reported globally by `MutationCache.onError` using the server error message. Do not add another error `createNotification` in a mutation `catch` or `onError`, because it produces duplicate toasts. Local error handling may still restore optimistic state, keep a dialog open, or perform other control flow without displaying a second notification.
+
 When adding new queries, consider whether the default 60s staleTime is appropriate:
 - For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
+
+### Product Analytics
+
+Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
+
+Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It defines naming, ownership between frontend and backend producers, property cardinality and privacy rules, and lifecycle semantics. Frontend events describe UI exposure and intent; decisive product outcomes belong to backend telemetry so web activity is not double-counted against CLI, machine identity, or other clients.
 
 ### State Management
 
@@ -72,11 +80,17 @@ CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermi
 
 ### Styling
 
-Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (@theme directive). Custom breakpoint `dashboard: 1100px`. Font: Inter. Color palette: primary (blue), mineshaft (dark gray), bunker (darker bg), success/warning/danger/info.
+Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Colors use semantic roles from `src/index.css`, including surfaces, content, structure, status, scope, and product/resource accents.
 
 ### Layouts
 
-13 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `CertManagerLayout`, `KmsLayout`, `SshLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+
+### Org-scoped products
+
+PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implicit project, so their URLs carry no `$projectId`. Their layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves — which throws into `ErrorPage`. Reading the matches keeps these products in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`, which had exactly this bug when it arrived from main with a pathname check; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).
+
+A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id, patches it into the cached org, and returns both `implicitProjectId` and `implicitProductType` (see `pages/agent-vault/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
 
 ## Conventions
 
@@ -84,3 +98,5 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 - Import ordering via `simple-import-sort`: node builtins → react/external packages → `@app/` → internal → relative → styles.
 - Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).
 - Search params validated with `zodValidator()` from `@tanstack/zod-adapter`.
+- Toasts: call `createNotification({ title?, text, type, callToAction?, copyActions? })` from `@app/components/notifications`. Backed by **sonner** (the v3 `Toaster` in `components/v3/generic/Toast`), mounted once via `NotificationContainer` in `pages/root.tsx`. `react-toastify` has been removed, so do not reintroduce it.
+- Unsaved changes: use `useDiscardChangesGuard` with `DiscardChangesAlertDialog` when dismissing an overlay editor would remove unsaved form changes. Wire dismiss/close to `requestDiscard`. Do not use `window.confirm`. Do not use `useNavigationBlocker` — that hook is secrets batch-mode only.

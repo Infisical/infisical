@@ -1,8 +1,20 @@
 import { EyeIcon } from "lucide-react";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Detail,
+  DetailLabel,
+  DetailValue,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
 
 type Props = {
@@ -16,42 +28,54 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      {keyId && <GenericFieldLabel label="KMS Key">{keyId}</GenericFieldLabel>}
+      {keyId && (
+        <Detail>
+          <DetailLabel>KMS Key</DetailLabel>
+          <DetailValue>{keyId}</DetailValue>
+        </Detail>
+      )}
       {tags && tags.length > 0 && (
-        <GenericFieldLabel label="Resource Tags">
-          <Tooltip
-            side="right"
-            className="max-w-xl p-1"
-            content={
-              <Table>
-                <THead>
-                  <Th className="p-2 whitespace-nowrap">Key</Th>
-                  <Th className="p-2">Value</Th>
-                </THead>
-                <TBody>
-                  {tags.map((tag) => (
-                    <Tr key={tag.key}>
-                      <Td className="p-2">{tag.key}</Td>
-                      <Td className="p-2">{tag.value}</Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
-            }
-          >
-            <div className="w-min">
-              <Badge variant="neutral">
-                <EyeIcon />
-                {tags.length} Tag{tags.length > 1 ? "s" : ""}
-              </Badge>
-            </div>
-          </Tooltip>
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Resource Tags</DetailLabel>
+          <DetailValue>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <span className="inline-block w-min">
+                  <Badge variant="neutral">
+                    <EyeIcon />
+                    {tags.length} Tag{tags.length > 1 ? "s" : ""}
+                  </Badge>
+                </span>
+              </HoverCardTrigger>
+              <HoverCardContent side="top" className="w-fit max-w-xl">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="p-2 whitespace-nowrap">Key</TableHead>
+                      <TableHead className="p-2">Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tags.map((tag) => (
+                      <TableRow key={tag.key}>
+                        <TableCell className="p-2">{tag.key}</TableCell>
+                        <TableCell className="p-2">{tag.value}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </HoverCardContent>
+            </HoverCard>
+          </DetailValue>
+        </Detail>
       )}
       {syncSecretMetadataAsTags && (
-        <GenericFieldLabel label="Sync Secret Metadata as Resource Tags">
-          <Badge variant="success">Enabled</Badge>
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Sync Secret Metadata as Resource Tags</DetailLabel>
+          <DetailValue>
+            <Badge variant="success">Enabled</Badge>
+          </DetailValue>
+        </Detail>
       )}
     </>
   );

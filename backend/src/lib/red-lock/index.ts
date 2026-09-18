@@ -2,6 +2,7 @@
 // Source code credits: https://github.com/mike-marcacci/node-redlock
 // Taken to avoid external dependency
 import { crypto } from "@app/lib/crypto/cryptography";
+import { logger } from "@app/lib/logger";
 import { EventEmitter } from "events";
 
 // AbortController became available as a global in node version 16. Once version
@@ -155,8 +156,21 @@ export class Lock {
     public expiration: number
   ) {}
 
+  // Release is best-effort: the lock auto-expires on TTL, and callers run
+  // this in `finally` blocks after the protected work has already committed.
+  // A throw here would propagate past the committed work and skip downstream
+  // side effects (audit logs, response writes), so failures are logged and
+  // swallowed.
   async release(): Promise<ExecutionResult> {
-    return this.redlock.release(this);
+    try {
+      return await this.redlock.release(this);
+    } catch (error) {
+      logger.error(
+        { err: error, resources: this?.resources },
+        `Failed to release redlock [resources=${this?.resources?.join(",") || "unknown"}]`
+      );
+      return { attempts: [], start: Date.now() };
+    }
   }
 
   async extend(duration: number): Promise<Lock> {

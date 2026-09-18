@@ -23,7 +23,7 @@ type FormProps = Pick<Props, "cmek">;
 const ExportKeyForm = ({ cmek }: FormProps) => {
   const { permission } = useProjectPermission();
   const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
-    cmek?.encryptionAlgorithm as AsymmetricKeyAlgorithm
+    cmek?.algorithm as AsymmetricKeyAlgorithm
   );
 
   const canReadPublicKey = permission.can(
@@ -36,11 +36,13 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
     ProjectPermissionSub.Cmek
   );
 
+  const canExportKeyMaterial = canExportPrivateKey && cmek.isExportable;
+
   const { data: privateKeyData, isPending: isPrivateKeyPending } = useGetCmekPrivateKey(
     cmek?.id ?? "",
     {
-      // Only fetch private key if user has ExportPrivateKey permission
-      enabled: Boolean(cmek?.id) && canExportPrivateKey
+      // Only fetch private key if user has ExportPrivateKey permission and the key allows export
+      enabled: Boolean(cmek?.id) && canExportKeyMaterial
     }
   );
 
@@ -66,7 +68,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
   };
 
   const isLoading =
-    (canExportPrivateKey && isPrivateKeyPending) ||
+    (canExportKeyMaterial && isPrivateKeyPending) ||
     (isAsymmetricKey && canReadPublicKey && isPublicKeyPending);
 
   if (isLoading) {
@@ -79,7 +81,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
 
   return (
     <div>
-      {canExportPrivateKey && privateKeyData?.privateKey && (
+      {canExportKeyMaterial && privateKeyData?.privateKey && (
         <>
           <div className="mb-4 flex items-center justify-between">
             <h2>{isAsymmetricKey ? "Private Key (Base64)" : "Key Material (Base64)"}</h2>
@@ -114,7 +116,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground-inverse/[0.07] p-2 text-base text-muted-cool">
             <p className="mr-4 break-all whitespace-pre-wrap">{privateKeyData?.privateKey}</p>
           </div>
         </>
@@ -152,7 +154,7 @@ const ExportKeyForm = ({ cmek }: FormProps) => {
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground-inverse/[0.07] p-2 text-base text-muted-cool">
             <p className="mr-4 break-all whitespace-pre-wrap">{publicKeyData?.publicKey}</p>
           </div>
         </>

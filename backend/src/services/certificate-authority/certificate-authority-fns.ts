@@ -6,15 +6,25 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { CertKeySource } from "@app/services/signer/signer-enums";
 
-import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
-import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CertStatus,
+  TAltNameType
+} from "../certificate/certificate-types";
+import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
   TDNParts,
   TGetCaCertChainDTO,
   TGetCaCertChainsDTO,
   TGetCaCredentialsDTO,
+  TGetCaSignerDTO,
   TRebuildCaCrlDTO
 } from "./internal/internal-certificate-authority-types";
 
@@ -24,6 +34,12 @@ export const createSerialNumber = () => {
   randomBytes[0] &= 0x7f; // ensure the first bit is 0
   return randomBytes.toString("hex");
 };
+
+// on anything short-lived these belong together: backdating the start without pushing out the
+// expiry leaves the certificate rejected as expired by a host whose clock runs ahead of ours
+export const getNotBeforeWithClockSkew = (issuedAt: Date) => new Date(issuedAt.getTime() - CERT_CLOCK_SKEW_MS);
+
+export const getNotAfterWithClockSkew = (expiresAt: Date) => new Date(expiresAt.getTime() + CERT_CLOCK_SKEW_MS);
 
 export const assertCaInProfileProject = (ca: { projectId: string }, profile: { projectId: string }) => {
   if (ca.projectId !== profile.projectId) {
@@ -40,6 +56,12 @@ export const assertCaInProfileProject = (ca: { projectId: string }, profile: { p
 export const createDistinguishedName = (parts: TDNParts) => {
   // Build JSON array for x509.Name - the library handles all RFC 4514 escaping
   const jsonName: Array<{ [type: string]: string[] }> = [];
+
+  if (parts.domainComponents) {
+    for (const dc of [...parts.domainComponents].reverse()) {
+      if (dc) jsonName.push({ DC: [dc] });
+    }
+  }
   if (parts.country) jsonName.push({ C: [parts.country] });
   if (parts.organization) jsonName.push({ O: [parts.organization] });
   if (parts.ou) jsonName.push({ OU: [parts.ou] });
@@ -62,18 +84,87 @@ const getNameField = (name: x509.Name, field: string): string | undefined => {
   return values.length > 0 ? values[values.length - 1] : undefined;
 };
 
+const DOMAIN_COMPONENT_RDN_KEYS = new Set(["DC", "0.9.2342.19200300.100.1.25"]);
+
+/**
+ * Reads a DC chain into display order, most specific component first. An RDNSequence is encoded
+ * root-first, so the encoded order is reversed. Reading it any other way would let the same bytes
+ * denote two different domains, and a CSR forwarded to an external CA keeps whatever it encoded.
+ */
+const extractDomainComponentsInDisplayOrder = (name: x509.Name): string[] | undefined => {
+  const domainComponents = name
+    .toJSON()
+    .flatMap((rdn) =>
+      Object.entries(rdn).flatMap(([key, values]) => (DOMAIN_COMPONENT_RDN_KEYS.has(key) ? values : []))
+    );
+
+  if (domainComponents.length === 0) return undefined;
+
+  return domainComponents.reverse();
+};
+
 /**
  * Extract DN parts directly from an x509 Name object.
  * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
  */
-export const extractDnParts = (name: x509.Name): TDNParts => ({
-  country: getNameField(name, "C"),
-  organization: getNameField(name, "O"),
-  ou: getNameField(name, "OU"),
-  province: getNameField(name, "ST"),
-  commonName: getNameField(name, "CN"),
-  locality: getNameField(name, "L")
-});
+export const extractDnParts = (name: x509.Name): TDNParts => {
+  return {
+    country: getNameField(name, "C"),
+    organization: getNameField(name, "O"),
+    ou: getNameField(name, "OU"),
+    province: getNameField(name, "ST"),
+    commonName: getNameField(name, "CN"),
+    locality: getNameField(name, "L"),
+    domainComponents: extractDomainComponentsInDisplayOrder(name)
+  };
+};
+
+/**
+ * Extract the common name, SANs, key usages, and extended key usages from an issued X.509
+ * certificate. Used by external CAs (DigiCert, GoDaddy, ...) to populate the local certificate
+ * record from a downloaded leaf certificate.
+ */
+export const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
+  const subject = extractDnParts(certObj.subjectName);
+  const commonName = subject.commonName ?? "";
+
+  const sanExt = certObj.getExtension("2.5.29.17");
+  const altNames: string[] = [];
+  if (sanExt) {
+    const sanNames = new x509.GeneralNames(sanExt.value);
+    for (const item of sanNames.items) {
+      if (
+        item.type === TAltNameType.DNS ||
+        item.type === TAltNameType.IP ||
+        item.type === TAltNameType.EMAIL ||
+        item.type === TAltNameType.URL
+      ) {
+        altNames.push(item.value);
+      }
+    }
+  }
+
+  const keyUsages: CertKeyUsage[] = [];
+  const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
+  if (keyUsagesExt) {
+    for (const keyUsage of Object.values(CertKeyUsage)) {
+      if ((x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0) {
+        keyUsages.push(keyUsage);
+      }
+    }
+  }
+
+  const extendedKeyUsages: CertExtendedKeyUsage[] = [];
+  const ekuExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
+  if (ekuExt) {
+    for (const oid of ekuExt.usages) {
+      const mapped = CertExtendedKeyUsageOIDToName[oid as string];
+      if (mapped) extendedKeyUsages.push(mapped);
+    }
+  }
+
+  return { commonName, altNames, keyUsages, extendedKeyUsages };
+};
 
 /**
  * Parse a DN string into its component parts.
@@ -310,6 +401,11 @@ export const getCaCredentials = async ({
 
   const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
   if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
+  if (!caSecret.encryptedPrivateKey) {
+    throw new BadRequestError({
+      message: `Certificate authority '${caId}' is HSM-backed; its signing key is not available locally.`
+    });
+  }
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
@@ -363,6 +459,80 @@ export const getCaCredentials = async ({
     caPrivateKey,
     caPublicKey
   };
+};
+
+/**
+ * Return a signer for CA with id [caId] that abstracts over where the signing key lives.
+ * For locally-keyed CAs it decrypts the KMS-stored private key; for HSM-backed CAs it routes
+ * signing through the HSM Connector. Every issuance / renewal / CRL path uses this so the
+ * call sites never branch on key source.
+ */
+export const getCaSigner = async ({
+  caId,
+  certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  projectDAL,
+  kmsService,
+  hsmConnectorService,
+  signatureAlgorithm
+}: TGetCaSignerDTO): Promise<{
+  caSecret: Awaited<ReturnType<typeof getCaCredentials>>["caSecret"];
+  signer: TCaSigner;
+}> => {
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
+
+  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
+  if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
+
+  const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
+
+  if (caSecret.keySource === CertKeySource.Hsm) {
+    if (!caSecret.hsmConnectorId || !caSecret.hsmKeyLabel || !caSecret.hsmPublicKeySpki) {
+      throw new BadRequestError({ message: "HSM-backed CA secret is missing its connector, key label, or public key" });
+    }
+
+    const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
+    const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
+      "spki",
+      caSecret.hsmPublicKeySpki,
+      shape.importParams,
+      true,
+      ["verify"]
+    );
+
+    const connectorId = caSecret.hsmConnectorId;
+    const keyLabel = caSecret.hsmKeyLabel;
+    const signer = buildHsmCaSigner({
+      caPublicKey,
+      keyAlgorithm,
+      signingAlgorithm: signatureAlgorithm,
+      sign: (data, mechanism, isDigest) =>
+        hsmConnectorService.sign({
+          connectorId,
+          projectId: ca.projectId,
+          keyLabel,
+          mechanism,
+          data,
+          isDigest
+        })
+    });
+
+    return { caSecret, signer };
+  }
+
+  const { caPrivateKey, caPublicKey } = await getCaCredentials({
+    caId,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    signatureAlgorithm
+  });
+  const signingAlgorithm = signatureAlgorithm || keyAlgorithmToAlgCfg(keyAlgorithm);
+  const signer = buildLocalCaSigner({ privateKey: caPrivateKey, publicKey: caPublicKey, signingAlgorithm });
+
+  return { caSecret, signer };
 };
 
 /**
@@ -466,43 +636,26 @@ export const rebuildCaCrl = async ({
   certificateAuthoritySecretDAL,
   projectDAL,
   certificateDAL,
-  kmsService
+  kmsService,
+  hsmConnectorService
 }: TRebuildCaCrlDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
-  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
-
-  const keyAlgorithm = ca.internalCa.keyAlgorithm as CertKeyAlgorithm;
-  const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
+  const { signer } = await getCaSigner({
+    caId: ca.id,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    hsmConnectorService
+  });
 
   const keyId = await getProjectKmsCertificateKeyId({
     projectId: ca.projectId,
     projectDAL,
     kmsService
   });
-
-  const kmsDecryptor = await kmsService.decryptWithKmsKey({
-    kmsId: keyId
-  });
-
-  const privateKey = await kmsDecryptor({
-    cipherTextBlob: caSecret.encryptedPrivateKey
-  });
-
-  let sk: CryptoKey;
-  if (isPqcAlgorithm(keyAlgorithm)) {
-    sk = await getPqcCrypto().subtle.importKey("pkcs8", privateKey, alg, true, ["sign"]);
-  } else {
-    const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "der", type: "pkcs8" });
-    sk = await crypto.nativeCrypto.subtle.importKey(
-      "pkcs8",
-      skObj.export({ format: "der", type: "pkcs8" }),
-      alg,
-      true,
-      ["sign"]
-    );
-  }
 
   const revokedCerts = await certificateDAL.find({
     caId: ca.id,
@@ -513,7 +666,7 @@ export const rebuildCaCrl = async ({
   const nextUpdate = new Date(thisUpdate);
   nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
 
-  const crl = await x509.X509CrlGenerator.create({
+  const crl = await signer.createCrl({
     issuer: ca.internalCa.dn,
     thisUpdate,
     nextUpdate,
@@ -524,9 +677,7 @@ export const rebuildCaCrl = async ({
         revocationDate,
         reason: revokedCert.revocationReason as number
       };
-    }),
-    signingAlgorithm: alg,
-    signingKey: sk
+    })
   });
 
   const kmsEncryptor = await kmsService.encryptWithKmsKey({

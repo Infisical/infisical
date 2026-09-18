@@ -19,6 +19,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -61,9 +62,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      signingAlgorithm: cmek?.encryptionAlgorithm?.startsWith("RSA")
-        ? SigningAlgorithm.RSASSA_PSS_SHA_512
-        : SigningAlgorithm.ECDSA_SHA_256,
+      signingAlgorithm: getDefaultSigningAlgorithm(cmek),
       isBase64Encoded: false
     }
   });
@@ -92,11 +91,11 @@ const VerifyForm = ({ cmek }: FormProps) => {
   const signatureValid = cmekVerify.data?.signatureValid;
   const signingAlgorithm = cmekVerify.data?.signingAlgorithm;
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) =>
-    cmek?.encryptionAlgorithm?.startsWith("RSA")
-      ? a.toLowerCase().startsWith("rsa")
-      : a.toLowerCase().startsWith("ecdsa")
-  );
+  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
+    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
+    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    return a.toLowerCase().startsWith("ecdsa");
+  });
 
   return (
     <form onSubmit={handleSubmit(handleVerifyData)}>
@@ -123,13 +122,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words whitespace-pre-wrap">
+            <div className="rounded-md border border-border-subtle bg-surface-base p-2 text-sm break-words whitespace-pre-wrap">
               {signature}
             </div>
           </div>
           <div>
             <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
+            <div className="rounded-md border border-border-subtle bg-surface-base p-2 text-sm">
               {isBase64Encoded ? decodeBase64(data).toString() : data}
             </div>
           </div>
@@ -180,7 +179,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
                 <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
                   Data is Base64 encoded{" "}
                   <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                   </Tooltip>
                 </Switch>
               )}

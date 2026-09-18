@@ -1,3 +1,4 @@
+import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -18,24 +19,38 @@ export const gitlabConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const projects = await listGitLabProjects({ appConnection, appConnectionDAL, kmsService });
+      const projects = await listGitLabProjects({
+        appConnection,
+        appConnectionDAL,
+        kmsService,
+        search,
+        limit
+      });
       return projects;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
+      if (error instanceof RateLimitError) throw error;
       return [];
     }
   };
 
-  const listGroups = async (connectionId: string, actor: OrgServiceActor) => {
+  const listGroups = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
-      const groups = await listGitLabGroups({ appConnection, appConnectionDAL, kmsService });
+      const groups = await listGitLabGroups({
+        appConnection,
+        appConnectionDAL,
+        kmsService,
+        search,
+        limit
+      });
       return groups;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
+      if (error instanceof RateLimitError) throw error;
       return [];
     }
   };

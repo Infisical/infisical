@@ -1,1 +1,0 @@
-export { SecretValidationRulesTab } from "./SecretValidationRulesTab";

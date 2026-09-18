@@ -1,0 +1,35 @@
+version: v0.162.13
+releasedAt: 2026-07-23T22:15:06-03:00
+sourceTag: v0.162.13
+previousTag: v0.162.12
+impactLevel: low
+summary: Adds a startup database migration for new indexes. Interactive password
+  flows now enforce the shared password policy, while bootstrap automation stays
+  compatible.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Org actor count indexes
+    description: Startup adds concurrent indexes on organizations.rootOrgId and
+      identities.orgId. The migration also raises statement_timeout to 60
+      minutes and lock_timeout to 30 seconds for its session.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260723090000_add-org-actor-count-indexes.ts
+        path: backend/src/db/migrations/20260723090000_add-org-actor-count-indexes.ts
+        description: Adds concurrent indexes with transaction disabled
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-24T02:00:01.333Z
+  sourceRange:
+    from: v0.162.12
+    to: v0.162.13

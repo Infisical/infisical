@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"testing"
 
-	goa "goa.design/goa/v3/pkg"
-
 	"github.com/infisical/api/internal/libs/errutil"
 )
 
@@ -154,22 +152,17 @@ func TestError_WithDetails(t *testing.T) {
 	}
 }
 
-func TestNewFormatter_FormatsErrors(t *testing.T) {
+func TestFormatError_FormatsErrors(t *testing.T) {
 	t.Parallel()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	formatter := errutil.NewFormatter(logger)
 	ctx := context.Background()
 
 	t.Run("4xx errutil.Error sends message to client", func(t *testing.T) {
 		t.Parallel()
 
-		resp := formatter(ctx, errutil.NotFound("project %s not found", "abc"))
+		body := errutil.FormatError(logger, ctx, errutil.NotFound("project %s not found", "abc"))
 
-		body, ok := resp.(*errutil.ErrorBody)
-		if !ok {
-			t.Fatal("expected *errutil.ErrorBody")
-		}
 		if body.Code != http.StatusNotFound {
 			t.Errorf("Code = %d, want %d", body.Code, http.StatusNotFound)
 		}
@@ -188,12 +181,8 @@ func TestNewFormatter_FormatsErrors(t *testing.T) {
 		t.Parallel()
 
 		details := map[string]string{"slug": "taken"}
-		resp := formatter(ctx, errutil.BadRequest("slug exists").WithDetails(details))
+		body := errutil.FormatError(logger, ctx, errutil.BadRequest("slug exists").WithDetails(details))
 
-		body, ok := resp.(*errutil.ErrorBody)
-		if !ok {
-			t.Fatal("expected *errutil.ErrorBody")
-		}
 		if body.Details == nil {
 			t.Fatal("Details should not be nil for 4xx")
 		}
@@ -202,12 +191,8 @@ func TestNewFormatter_FormatsErrors(t *testing.T) {
 	t.Run("5xx errutil.Error masks message", func(t *testing.T) {
 		t.Parallel()
 
-		resp := formatter(ctx, errutil.DatabaseErr("pg: unique constraint on users_email_key"))
+		body := errutil.FormatError(logger, ctx, errutil.DatabaseErr("pg: unique constraint on users_email_key"))
 
-		body, ok := resp.(*errutil.ErrorBody)
-		if !ok {
-			t.Fatal("expected *errutil.ErrorBody")
-		}
 		if body.Code != http.StatusInternalServerError {
 			t.Errorf("Code = %d, want %d", body.Code, http.StatusInternalServerError)
 		}
@@ -219,30 +204,11 @@ func TestNewFormatter_FormatsErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("goa.ServiceError maps to status", func(t *testing.T) {
-		t.Parallel()
-
-		goaErr := goa.MissingFieldError("name", "payload")
-		resp := formatter(ctx, goaErr)
-
-		body, ok := resp.(*errutil.ErrorBody)
-		if !ok {
-			t.Fatal("expected *errutil.ErrorBody")
-		}
-		if body.Code != http.StatusBadRequest {
-			t.Errorf("Code = %d, want %d", body.Code, http.StatusBadRequest)
-		}
-	})
-
 	t.Run("unknown error returns safe 500", func(t *testing.T) {
 		t.Parallel()
 
-		resp := formatter(ctx, fmt.Errorf("something unexpected"))
+		body := errutil.FormatError(logger, ctx, fmt.Errorf("something unexpected"))
 
-		body, ok := resp.(*errutil.ErrorBody)
-		if !ok {
-			t.Fatal("expected *errutil.ErrorBody")
-		}
 		if body.Code != http.StatusInternalServerError {
 			t.Errorf("Code = %d, want %d", body.Code, http.StatusInternalServerError)
 		}
@@ -259,12 +225,8 @@ func TestNewFormatter_FormatsErrors(t *testing.T) {
 
 		inner := errutil.Forbidden("no access")
 		wrapped := fmt.Errorf("permission check: %w", inner)
-		resp := formatter(ctx, wrapped)
+		body := errutil.FormatError(logger, ctx, wrapped)
 
-		body, ok := resp.(*errutil.ErrorBody)
-		if !ok {
-			t.Fatal("expected *errutil.ErrorBody")
-		}
 		if body.Code != http.StatusForbidden {
 			t.Errorf("Code = %d, want %d", body.Code, http.StatusForbidden)
 		}

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TChefSync } from "@app/hooks/api/secretSyncs/types/chef-sync";
 
 type Props = {
@@ -10,10 +10,14 @@ export const ChefSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Data Bag">{destinationConfig.dataBagName}</GenericFieldLabel>
-      <GenericFieldLabel label="Data Bag Item">
-        {destinationConfig.dataBagItemName}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Data Bag</DetailLabel>
+        <DetailValue>{destinationConfig.dataBagName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Data Bag Item</DetailLabel>
+        <DetailValue>{destinationConfig.dataBagItemName}</DetailValue>
+      </Detail>
     </>
   );
 };

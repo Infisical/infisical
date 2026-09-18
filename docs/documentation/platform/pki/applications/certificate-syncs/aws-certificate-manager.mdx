@@ -19,15 +19,19 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
   - `acm:DeleteCertificate`
   - `acm:ListTagsForCertificate`
 
+<Tip>
+  If your AWS Connection uses the **Assume Role** method and is created within Certificate Manager, use your **Organization ID** as the External ID in your AWS IAM role trust policy. You can find the Organization ID in your organization settings. See the [AWS Connection docs](/integrations/app-connections/aws) for more details.
+</Tip>
+
 <Note>
   Certificates synced to ACM are stored as imported certificates, preserving both the certificate and private key.
 </Note>
 
-## Create an ACM Sync
+## Create an ACM sync
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **AWS Certificate Manager** option.
 
@@ -39,7 +43,7 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active in Infisical.
             - **Preserve ARN on Renewal**: Sync renewed certificates under the same ARN instead of creating a new one.
             - **Include Root CA**: Include the Root CA certificate in the certificate chain.
-            - **Certificate Name Schema**: Customize certificate tags. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`.
+            - **Certificate Name Schema**: Customize certificate tags using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}`. Defaults to `Infisical-{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Details**:
@@ -56,8 +60,9 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
         ### Sample request
 
         <Note>
-          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
-          If not provided, you can add certificates later using the certificate management endpoints.
+          Pass `filters` to describe the certificates this sync holds. Anything in the Application that matches is
+          attached automatically, as it is issued. Omit it and the sync starts empty, and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
         </Note>
 
         ```bash Request
@@ -72,10 +77,12 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
             "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "destination": "aws-certificate-manager",
             "isAutoSyncEnabled": true,
-            "certificateIds": [
-                "550e8400-e29b-41d4-a716-446655440000",
-                "660f1234-e29b-41d4-a716-446655440001"
-            ],
+            "filters": {
+                "certificateOrderIds": [
+                    "550e8400-e29b-41d4-a716-446655440000",
+                    "660f1234-e29b-41d4-a716-446655440001"
+                ]
+            },
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "preserveArnOnRenewal": true,
@@ -118,7 +125,7 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
 
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 The AWS Certificate Manager Certificate Sync provides:
 
@@ -130,10 +137,10 @@ The AWS Certificate Manager Certificate Sync provides:
 <Note>
   AWS Certificate Manager Certificate Syncs support both automatic and manual
   synchronization modes. When auto-sync is enabled, certificates are
-  automatically deployed as they are issued or renewed.
+  automatically deployed as they're issued or renewed.
 </Note>
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to AWS Certificate Manager using the sync certificates functionality. This is useful for:
 
@@ -147,25 +154,25 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 ## FAQ
 
 <Accordion title="Can I import certificates from AWS Certificate Manager back into Infisical?">
-  AWS Certificate Manager does not support importing certificates back into
-  Infisical due to security limitations where private keys cannot be extracted
+  AWS Certificate Manager doesn't support importing certificates back into
+  Infisical due to security limitations where private keys can't be extracted
   from AWS Certificate Manager. Only certificates imported into ACM (not
   AWS-issued certificates) can be managed by the sync.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="AWS Elastic Load Balancer" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer">
+  <Card title="AWS Elastic Load Balancer" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer">
     Deploy certificates directly to ALB/NLB listeners.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

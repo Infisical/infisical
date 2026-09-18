@@ -6,7 +6,13 @@ import { registerAwsSecretsManagerPkiSyncRouter } from "./aws-secrets-manager-pk
 import { registerAzureKeyVaultPkiSyncRouter } from "./azure-key-vault-pki-sync-router";
 import { registerChefPkiSyncRouter } from "./chef-pki-sync-router";
 import { registerCloudflareCustomCertificatePkiSyncRouter } from "./cloudflare-custom-certificate-pki-sync-router";
+import { registerF5BigIpPkiSyncRouter } from "./f5-big-ip-pki-sync-router";
+import { registerGcpCertificateManagerPkiSyncRouter } from "./gcp-certificate-manager-pki-sync-router";
+import { registerKempLoadMasterPkiSyncRouter } from "./kemp-loadmaster-pki-sync-router";
+import { registerLinuxServerPkiSyncRouter } from "./linux-server-pki-sync-router";
 import { registerNetScalerPkiSyncRouter } from "./netscaler-pki-sync-router";
+import { registerNutanixPrismCentralPkiSyncRouter } from "./nutanix-prism-central-pki-sync-router";
+import { registerWindowsServerPkiSyncRouter } from "./windows-server-pki-sync-router";
 
 export * from "./pki-sync-router";
 
@@ -19,6 +25,12 @@ export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<
   [PkiSync.AwsSecretsManager]: registerAwsSecretsManagerPkiSyncRouter,
   [PkiSync.AwsElasticLoadBalancer]: registerAwsElasticLoadBalancerPkiSyncRouter,
   [PkiSync.Chef]: registerChefPkiSyncRouter,
+  [PkiSync.GcpCertificateManager]: registerGcpCertificateManagerPkiSyncRouter,
   [PkiSync.CloudflareCustomCertificate]: registerCloudflareCustomCertificatePkiSyncRouter,
-  [PkiSync.NetScaler]: registerNetScalerPkiSyncRouter
+  [PkiSync.NetScaler]: registerNetScalerPkiSyncRouter,
+  [PkiSync.F5BigIp]: registerF5BigIpPkiSyncRouter,
+  [PkiSync.KempLoadMaster]: registerKempLoadMasterPkiSyncRouter,
+  [PkiSync.LinuxServer]: registerLinuxServerPkiSyncRouter,
+  [PkiSync.WindowsServer]: registerWindowsServerPkiSyncRouter,
+  [PkiSync.NutanixPrismCentral]: registerNutanixPrismCentralPkiSyncRouter
 };

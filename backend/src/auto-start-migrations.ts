@@ -38,6 +38,33 @@ const migrationConfig = {
   tableName: "infisical_migrations"
 };
 
+const getImageVersionTag = (): string => {
+  const version = getConfig().INFISICAL_PLATFORM_VERSION;
+  if (!version) {
+    return "development";
+  }
+  return version.startsWith("v") ? version : `v${version}`;
+};
+
+const getMigrationDateRange = (migrationNames: string[]): { earliest: string; latest: string } | null => {
+  if (!migrationNames.length) {
+    return null;
+  }
+  const timestamps = migrationNames
+    .map((name) => name.match(/^(\d{8})/)?.[1])
+    .filter((timestamp): timestamp is string => Boolean(timestamp))
+    .sort();
+  if (!timestamps.length) {
+    return null;
+  }
+  const formatDate = (timestamp: string) =>
+    `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)}`;
+  return {
+    earliest: formatDate(timestamps[0]),
+    latest: formatDate(timestamps[timestamps.length - 1])
+  };
+};
+
 const logUnknownAppliedMigrations = ({
   databaseName,
   logger,
@@ -47,13 +74,31 @@ const logUnknownAppliedMigrations = ({
   logger: Logger;
   unknownAppliedMigrationNames: string[];
 }) => {
+  const imageVersion = getImageVersionTag();
+  const dateRange = getMigrationDateRange(unknownAppliedMigrationNames);
+
+  const sections = [
+    `Database has applied migrations that this image does not bundle [database=${databaseName}] [imageVersion=${imageVersion}].`,
+    `This image has nothing pending to apply, so startup migrations are skipped.`,
+    `This is expected during rolling deployments or rollbacks when a peer instance on a different image has already applied them.`
+  ];
+  if (dateRange) {
+    sections.push(
+      `The database contains migrations dated up to ${dateRange.latest} that this image does not bundle. If this is not a rolling deployment, verify the intended image version is deployed — an Infisical image released on or after ${dateRange.latest} should include them.`
+    );
+  } else {
+    sections.push(`If this is not a rolling deployment, verify that the intended image version is deployed.`);
+  }
+
   logger.warn(
     {
       databaseName,
+      imageVersion,
       unknownAppliedMigrationCount: unknownAppliedMigrationNames.length,
+      unknownAppliedMigrationDateRange: dateRange,
       unknownAppliedMigrationNames: unknownAppliedMigrationNames.slice(-5)
     },
-    `Database has migrations newer than this image [database=${databaseName}]. Skipping startup migrations.`
+    sections.join(" ")
   );
 };
 
@@ -66,13 +111,40 @@ const throwInvalidMigrationHistory = ({
   pendingMigrationNames: string[];
   unknownAppliedMigrationNames: string[];
 }): never => {
-  throw new Error(
-    [
-      `Invalid migration history detected [database=${databaseName}].`,
-      `Unknown applied migrations: ${unknownAppliedMigrationNames.join(", ") || "none"}.`,
-      `Pending bundled migrations: ${pendingMigrationNames.join(", ") || "none"}.`
-    ].join(" ")
-  );
+  const imageVersion = getImageVersionTag();
+  const unknownAppliedList = unknownAppliedMigrationNames.join(", ") || "none";
+  const pendingList = pendingMigrationNames.join(", ") || "none";
+  const unknownDateRange = getMigrationDateRange(unknownAppliedMigrationNames);
+  const pendingDateRange = getMigrationDateRange(pendingMigrationNames);
+
+  const sections = [
+    `Database migration history does not match this image [database=${databaseName}] [imageVersion=${imageVersion}].`,
+    `This usually means the database was migrated by a different (typically newer) Infisical image than the one currently running — for example after a rollback or a mixed-version rollout.`,
+    `Unknown applied migrations (in DB but not in this image, count=${unknownAppliedMigrationNames.length}): ${unknownAppliedList}.`,
+    `Pending bundled migrations (in this image but not yet applied, count=${pendingMigrationNames.length}): ${pendingList}.`
+  ];
+
+  if (unknownDateRange && pendingDateRange) {
+    sections.push(
+      `Timeline: this image's pending migrations are dated ${pendingDateRange.earliest} to ${pendingDateRange.latest}; the unknown applied migrations in the database are dated ${unknownDateRange.earliest} to ${unknownDateRange.latest}.`
+    );
+  } else if (unknownDateRange) {
+    sections.push(
+      `Timeline: the unknown applied migrations in the database are dated ${unknownDateRange.earliest} to ${unknownDateRange.latest}.`
+    );
+  }
+
+  if (unknownDateRange) {
+    sections.push(
+      `To resolve: deploy an Infisical image released on or after ${unknownDateRange.latest} so its bundled migrations include the unknown ones above, or restore the database to a state matching this image's migrations.`
+    );
+  } else {
+    sections.push(
+      `To resolve: deploy a newer Infisical image whose bundled migrations include the unknown ones above, or restore the database to a state matching this image's migrations.`
+    );
+  }
+
+  throw new Error(sections.join(" "));
 };
 
 const getLockTableName = (tableName: string): string => {
@@ -327,6 +399,29 @@ const withStartupLock = async (db: Knex, logger: Logger, doMigrations: () => Pro
 export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClient, logger }: TArgs) => {
   const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
   const failOnSanitizedSchemaError = process.env.FAIL_ON_SANITIZED_SCHEMA_ERROR === "true";
+
+  // Only API should run migrations. Workers don't run them to prevent
+  // API nodes to fall behind the schema and start failing while they are not updated.
+  if (!getConfig().isApiRunModeEnabled) {
+    const bootState = await getMigrationBootState({ db: applicationDb, migrationConfig });
+
+    if (bootState.direction === "invalid") {
+      throwInvalidMigrationHistory({
+        databaseName: "application",
+        pendingMigrationNames: bootState.pendingMigrationNames,
+        unknownAppliedMigrationNames: bootState.unknownAppliedMigrationNames
+      });
+    }
+
+    if (bootState.direction === "behind") {
+      logger.warn(
+        `Skipping migrations: not an api run mode [direction=behind] [pendingCount=${bootState.pendingMigrationNames.length}]. Waiting on an api pod to apply them.`
+      );
+    } else {
+      logger.info(`Skipping migrations: not an api run mode [direction=${bootState.direction}]`);
+    }
+    return;
+  }
 
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this

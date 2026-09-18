@@ -13,6 +13,7 @@ export type TCreateProjectIdentityDTO = {
   name: string;
   hasDeleteProtection?: boolean;
   metadata?: TMetadata[];
+  roles?: { role: string }[];
 };
 
 export type TUpdateProjectIdentityDTO = {

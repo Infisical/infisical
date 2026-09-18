@@ -1,0 +1,608 @@
+import { z } from "zod";
+
+import { TAlertChannelInput } from "./alert-channel-service-types";
+import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
+import { alertProviderRegistryFactory } from "./alert-provider-registry";
+import { alertServiceFactory, TAlertServiceFactoryDep } from "./alert-service";
+import { AlertPrincipalType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
+
+const RESOURCE_TYPE = "test.resource";
+
+type TChannelRow = {
+  id: string;
+  name: string;
+  channelType: AlertChannelType | string;
+  enabled: boolean;
+  orgId: string;
+  projectId: string | null;
+  recipients: { principalType: string; principalId: string }[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const buildService = (opts?: {
+  assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
+  resourceScopeThrows?: boolean;
+  duplicateExists?: boolean;
+  // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
+  // committing between two statements of ours.
+  afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
+}) => {
+  const permissionCalls: TAlertPermissionInput[] = [];
+  const provider: IResourceAlertProvider = {
+    resourceType: RESOURCE_TYPE,
+    eventTypes: ["test.resource.expiration"],
+    conditionSchema: z.object({ alertBefore: z.string() }),
+    findDueTargets: async () => [],
+    buildViewUrl: async () => "https://app.infisical.com/x",
+    buildPayload: () => ({}) as TAlertPayload,
+    targetId: () => "t",
+    assertPermission: async (input) => {
+      permissionCalls.push(input);
+      if (opts?.assertPermission) await opts.assertPermission(input);
+    },
+    assertResourceInScope: async (input) => {
+      if (input.resourceId && opts?.resourceScopeThrows) throw new Error("resource out of scope");
+    }
+  };
+  const registry = alertProviderRegistryFactory();
+  registry.register(provider);
+
+  const alerts = new Map<string, Record<string, unknown>>();
+  const channels = new Map<string, TChannelRow>(); // channelId -> row
+  const memberships = new Map<string, string[]>(); // alertId -> channelIds
+  const findFilters: Array<Record<string, unknown>> = [];
+  let channelSeq = 0;
+
+  const detach = (channelId: string) => {
+    memberships.forEach((ids, alertId) =>
+      memberships.set(
+        alertId,
+        ids.filter((id) => id !== channelId)
+      )
+    );
+  };
+
+  const service = alertServiceFactory({
+    alertDAL: {
+      transaction: async (cb: (tx: unknown) => unknown) => cb({}),
+      create: async (data: Record<string, unknown>) => {
+        const row = {
+          id: "alert-1",
+          ...data,
+          condition: data.condition ? (JSON.parse(data.condition as string) as unknown) : null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        alerts.set(row.id, row);
+        return row;
+      },
+      findActiveById: async (id: string) => alerts.get(id),
+      findActiveByScope: async (filter: Record<string, unknown>) => {
+        findFilters.push(filter);
+        return [...alerts.values()].filter((row) =>
+          Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
+        );
+      },
+      findScopedDuplicate: async () => (opts?.duplicateExists ? { id: "dup" } : undefined),
+      updateById: async (id: string, data: Record<string, unknown>) => {
+        // Mirror knex, which throws "Empty .update() call detected!" on an empty patch.
+        if (Object.keys(data).length === 0) throw new Error("Empty .update() call detected!");
+        alerts.set(id, { ...alerts.get(id), ...data });
+        return alerts.get(id);
+      },
+      deleteById: async (id: string) => alerts.delete(id),
+      find: async (filter: Record<string, unknown>) => {
+        findFilters.push(filter);
+        const rows = [...alerts.values()].filter((row) =>
+          Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
+        );
+        opts?.afterFindAlerts?.(alerts);
+        return rows;
+      },
+      delete: async (filter: Record<string, unknown> & { $in?: { id?: string[] } }) => {
+        const { $in: inFilter, ...equality } = filter;
+        const removed = [...alerts.values()].filter((row) => {
+          if (inFilter?.id && !inFilter.id.includes(row.id as string)) return false;
+          return Object.entries(equality).every(([key, value]) => value === undefined || row[key] === value);
+        });
+        removed.forEach((row) => alerts.delete(row.id as string));
+        return removed;
+      }
+    },
+    alertChannelDAL: {
+      findByAlertId: async (alertId: string) =>
+        (memberships.get(alertId) ?? []).map((id) => channels.get(id)).filter(Boolean),
+      findByAlertIds: async (alertIds: string[]) =>
+        alertIds.flatMap((alertId) =>
+          (memberships.get(alertId) ?? [])
+            .map((id) => channels.get(id))
+            .filter(Boolean)
+            .map((c) => ({ ...(c as TChannelRow), alertId }))
+        ),
+      delete: async (filter: { $in?: { id?: string[] } }) => {
+        const ids = filter.$in?.id ?? [];
+        ids.forEach((id) => {
+          channels.delete(id);
+          detach(id);
+        });
+        return [];
+      }
+    },
+    alertChannelMembershipDAL: {
+      insertMany: async (data: Array<{ alertId: string; channelId: string }>) => {
+        data.forEach(({ alertId, channelId }) =>
+          memberships.set(alertId, [...(memberships.get(alertId) ?? []), channelId])
+        );
+        return data;
+      }
+    },
+    alertChannelService: {
+      createChannelInTx: async (input: {
+        name: string;
+        channelType: AlertChannelType | string;
+        enabled?: boolean;
+        recipients?: { principalType: string; principalId: string }[];
+        orgId: string;
+        projectId?: string | null;
+      }) => {
+        channelSeq += 1;
+        const row: TChannelRow = {
+          id: `ch-${channelSeq}`,
+          name: input.name,
+          channelType: input.channelType,
+          enabled: input.enabled ?? true,
+          orgId: input.orgId,
+          projectId: input.projectId ?? null,
+          recipients: input.recipients ?? [],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        channels.set(row.id, row);
+        return row;
+      },
+      updateChannelInTx: async (input: {
+        channelId: string;
+        name?: string;
+        enabled?: boolean;
+        recipients?: { principalType: string; principalId: string }[];
+      }) => {
+        const existing = channels.get(input.channelId) as TChannelRow;
+        channels.set(input.channelId, {
+          ...existing,
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+          ...(input.recipients !== undefined ? { recipients: input.recipients } : {})
+        });
+        return {};
+      },
+      deleteChannelInTx: async (channelId: string) => {
+        channels.delete(channelId);
+        detach(channelId);
+      },
+      getDetailsForChannels: async (chans: TChannelRow[]) =>
+        chans.map((c) => ({
+          id: c.id,
+          name: c.name,
+          channelType: c.channelType,
+          enabled: c.enabled,
+          config: {},
+          recipients: c.recipients ?? []
+        }))
+    },
+    kmsService: {
+      createCipherPairWithDataKey: async () => ({
+        encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
+        decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
+      })
+    },
+    alertProviderRegistry: registry
+  } as unknown as TAlertServiceFactoryDep);
+
+  return { service, permissionCalls, alerts, memberships, channels, findFilters };
+};
+
+const actor = {
+  actor: "user" as never,
+  actorId: "user-1",
+  actorAuthMethod: null as never,
+  actorOrgId: "org-1"
+};
+
+const emailChannel: TAlertChannelInput = {
+  name: "email-ch",
+  channelType: AlertChannelType.EMAIL,
+  recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }]
+};
+
+const webhookChannel: TAlertChannelInput = {
+  name: "webhook-ch",
+  channelType: AlertChannelType.WEBHOOK,
+  config: { url: "https://example.com/hook" }
+};
+
+const validCreate = {
+  name: "test-alert",
+  resourceType: RESOURCE_TYPE,
+  resourceId: "resource-1",
+  eventType: "test.resource.expiration",
+  condition: { alertBefore: "30d" },
+  channels: [emailChannel, webhookChannel],
+  ...actor
+};
+
+describe("alert service", () => {
+  test("creates an alert, inlines channels, and checks Create permission", async () => {
+    const { service, permissionCalls, memberships } = buildService();
+    const alert = await service.createAlert(validCreate);
+
+    expect(alert.id).toBe("alert-1");
+    expect(alert.orgId).toBe("org-1");
+    expect(alert.channels).toHaveLength(2);
+    expect(alert.channels.map((c) => c.channelType).sort()).toEqual(
+      [AlertChannelType.EMAIL, AlertChannelType.WEBHOOK].sort()
+    );
+    expect(memberships.get("alert-1")).toHaveLength(2);
+    expect(permissionCalls[0].action).toBe("create");
+  });
+
+  test("rejects an unknown resource type", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, resourceType: "nope.unknown" })).rejects.toThrow();
+  });
+
+  test("rejects a duplicate alert in the same scope", async () => {
+    const { service } = buildService({ duplicateExists: true });
+    await expect(service.createAlert(validCreate)).rejects.toThrow(/already exists/);
+  });
+
+  test("runs the provider resource-scope check when resourceId is set", async () => {
+    const { service } = buildService({ resourceScopeThrows: true });
+    await expect(service.createAlert({ ...validCreate, resourceId: "foreign-resource" })).rejects.toThrow(
+      "resource out of scope"
+    );
+  });
+
+  test("rejects a resource-less (scope-wide) alert as unsupported", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(/not supported yet/);
+  });
+
+  test("rejects a condition that fails the provider schema", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, condition: { wrong: 1 } })).rejects.toThrow();
+  });
+
+  test("rejects a create with no condition when the provider requires one", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, condition: undefined })).rejects.toThrow(
+      /Invalid alert condition/
+    );
+  });
+
+  test("rejects an event type the provider does not support", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, eventType: "test.resource.renewal" })).rejects.toThrow();
+  });
+
+  test("propagates a permission denial from the provider", async () => {
+    const { service } = buildService({
+      assertPermission: async () => {
+        throw new Error("forbidden");
+      }
+    });
+    await expect(service.createAlert(validCreate)).rejects.toThrow("forbidden");
+  });
+
+  test("rejects an empty channel list", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, channels: [] })).rejects.toThrow(
+      "At least one channel is required"
+    );
+  });
+
+  const listBase = {
+    resourceType: RESOURCE_TYPE,
+    resourceId: null,
+    eventType: "test.resource.expiration",
+    condition: null,
+    enabled: true,
+    orgId: "org-1",
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  test("org-scoped list returns only org-level alerts, never other projects'", async () => {
+    const { service, alerts, findFilters } = buildService();
+    alerts.set("org-alert", { id: "org-alert", name: "org", projectId: null, ...listBase });
+    alerts.set("proj-alert", { id: "proj-alert", name: "proj", projectId: "proj-x", ...listBase });
+
+    const result = await service.listAlerts({ resourceType: RESOURCE_TYPE, ...actor });
+
+    expect(result.map((a) => a.id)).toEqual(["org-alert"]);
+    expect(findFilters[0]).toMatchObject({ projectId: null });
+  });
+
+  test("project-scoped list filters to the requested project", async () => {
+    const { service, alerts, findFilters } = buildService();
+    alerts.set("org-alert", { id: "org-alert", name: "org", projectId: null, ...listBase });
+    alerts.set("proj-alert", { id: "proj-alert", name: "proj", projectId: "proj-x", ...listBase });
+
+    const result = await service.listAlerts({ resourceType: RESOURCE_TYPE, projectId: "proj-x", ...actor });
+
+    expect(result.map((a) => a.id)).toEqual(["proj-alert"]);
+    expect(findFilters[0]).toMatchObject({ projectId: "proj-x" });
+  });
+
+  test("update reconciles channels: keeps the referenced ones, deletes the rest, adds new", async () => {
+    const { service, memberships } = buildService();
+    const created = await service.createAlert(validCreate);
+    expect(memberships.get("alert-1")).toHaveLength(2);
+
+    const keep = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+    const updated = await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: keep.id, name: keep.name, channelType: AlertChannelType.WEBHOOK },
+        { name: "new-slack", channelType: AlertChannelType.SLACK }
+      ],
+      ...actor
+    });
+
+    expect(updated.channels.map((c) => c.channelType).sort()).toEqual([
+      AlertChannelType.SLACK,
+      AlertChannelType.WEBHOOK
+    ]);
+    expect(memberships.get("alert-1")).toContain(keep.id);
+    expect(memberships.get("alert-1")).toHaveLength(2);
+  });
+
+  test("update rejects a channel id that does not belong to the alert", async () => {
+    const { service } = buildService();
+    await service.createAlert(validCreate);
+    await expect(
+      service.updateAlert({
+        alertId: "alert-1",
+        channels: [{ id: "ch-foreign", name: "x", channelType: AlertChannelType.WEBHOOK }],
+        ...actor
+      })
+    ).rejects.toThrow(/does not belong to this alert/);
+  });
+
+  test("update rejects an empty channel list", async () => {
+    const { service } = buildService();
+    await service.createAlert(validCreate);
+    await expect(service.updateAlert({ alertId: "alert-1", channels: [], ...actor })).rejects.toThrow(
+      "At least one channel is required"
+    );
+  });
+
+  test("deletes an alert and its owned channels after checking Delete permission", async () => {
+    const { service, permissionCalls, alerts, channels } = buildService();
+    await service.createAlert(validCreate);
+    expect(channels.size).toBe(2);
+
+    const result = await service.deleteAlert({ alertId: "alert-1", ...actor });
+
+    expect(result.id).toBe("alert-1");
+    expect(permissionCalls.some((c) => c.action === "delete")).toBe(true);
+    expect(alerts.size).toBe(0);
+    // Same reaping as deleteAlertsForResource: no channel is left dangling.
+    expect(channels.size).toBe(0);
+  });
+
+  test("deleteAlertsForResource reaps a resource's alerts and their owned channels", async () => {
+    const { service, alerts, channels, memberships } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    expect(alerts.size).toBe(1);
+    expect(channels.size).toBe(2);
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect(alerts.size).toBe(0);
+    // The alert's two inline channels are removed too, not left dangling.
+    expect(channels.size).toBe(0);
+    expect(memberships.get("alert-1") ?? []).toHaveLength(0);
+  });
+
+  test("deleteAlertsForResource narrowed to a project spares the resource's org-scoped alerts", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    // A second alert on the same identity, this one bound to a project. Inserted directly because
+    // the fake create() always mints "alert-1".
+    alerts.set("alert-2", {
+      id: "alert-2",
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+
+    // The identity only left proj-1, so its org-scoped alert must survive.
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()]).toEqual(["alert-1"]);
+  });
+
+  test("deleteAlertsForResource is a no-op when nothing matches", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-other"
+    });
+
+    expect(deleted).toBe(0);
+    expect(alerts.size).toBe(1);
+  });
+
+  test("deleteAlertsForResource leaves the resource's alerts in other orgs alone", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    // The same identity watched from a second org it was invited into. Inserted directly because
+    // the fake create() always mints "alert-1".
+    alerts.set("alert-2", {
+      id: "alert-2",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()]).toEqual(["alert-2"]);
+  });
+
+  test("deleteAlertsForDeletedResource reaps the resource's alerts in every org and project", async () => {
+    const { service, alerts, channels } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    expect(channels.size).toBe(2);
+    // A root-org identity can be invited into a child org and watched from there, so a hard delete
+    // has to reach alerts outside the org that owns the identity.
+    alerts.set("alert-2", {
+      id: "alert-2",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+    alerts.set("alert-3", {
+      id: "alert-3",
+      orgId: "org-2",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+
+    const deleted = await service.deleteAlertsForDeletedResource({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(3);
+    expect(alerts.size).toBe(0);
+    expect(channels.size).toBe(0);
+  });
+
+  test("deleteAlertsForDeletedResource reaps an alert created between the find and the delete", async () => {
+    let raced = false;
+    const { service, alerts, channels } = buildService({
+      afterFindAlerts: (rows) => {
+        if (raced) return;
+        raced = true;
+        // Another transaction created an alert on the same resource and committed after our find took
+        // its snapshot. Reaping by the ids the find returned would leave this row dangling, so the
+        // delete has to run off the resource filter instead.
+        rows.set("alert-race", {
+          id: "alert-race",
+          orgId: "org-1",
+          projectId: null,
+          resourceType: RESOURCE_TYPE,
+          resourceId: "ident-1",
+          eventType: "test.resource.expiration"
+        });
+      }
+    });
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+
+    const deleted = await service.deleteAlertsForDeletedResource({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(raced).toBe(true);
+    expect(deleted).toBe(2);
+    expect(alerts.size).toBe(0);
+    expect(channels.size).toBe(0);
+  });
+
+  test("deleteAlertsForResource reaps an alert created in scope between the find and the delete", async () => {
+    let raced = false;
+    const { service, alerts } = buildService({
+      afterFindAlerts: (rows) => {
+        if (raced) return;
+        raced = true;
+        rows.set("alert-race", {
+          id: "alert-race",
+          orgId: "org-1",
+          projectId: "proj-1",
+          resourceType: RESOURCE_TYPE,
+          resourceId: "ident-1",
+          eventType: "test.resource.expiration"
+        });
+        // Out of the reaped scope, so it must survive even though it races the same way.
+        rows.set("alert-other-project", {
+          id: "alert-other-project",
+          orgId: "org-1",
+          projectId: "proj-2",
+          resourceType: RESOURCE_TYPE,
+          resourceId: "ident-1",
+          eventType: "test.resource.expiration"
+        });
+      }
+    });
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()].sort()).toEqual(["alert-1", "alert-other-project"]);
+  });
+
+  test("deleteAlertsForDeletedResource spares other resources and other resource types", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    alerts.set("other-resource", {
+      id: "other-resource",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-2",
+      eventType: "test.resource.expiration"
+    });
+    alerts.set("other-type", {
+      id: "other-type",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: "other.resource",
+      resourceId: "ident-1",
+      eventType: "other.resource.expiration"
+    });
+
+    const deleted = await service.deleteAlertsForDeletedResource({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()]).toEqual(["other-resource", "other-type"]);
+  });
+});

@@ -7,12 +7,15 @@ import {
   removeChefDataBagItem,
   updateChefDataBagItem
 } from "@app/ee/services/app-connections/chef";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TChefDataBagItemContent } from "@app/ee/services/secret-sync/chef";
 import { logger } from "@app/lib/logger";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
+import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap, TPkiSyncWithCredentials } from "@app/services/pki-sync/pki-sync-types";
 
@@ -35,8 +38,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = CHEF_PKI_SYNC_DEFAULTS.DEFAULT_ENVIRONMENT;
-    return matchesCertificateNameSchema(certificateName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(certificateName, certificateNameSchema);
   }
 
   return certificateName.startsWith(CHEF_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);
@@ -72,11 +74,28 @@ type TChefPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
     | "updateSyncStatus"
   >;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChefPkiSyncFactoryDeps) => {
+export const chefPkiSyncFactory = ({
+  certificateDAL,
+  certificateSyncDAL,
+  gatewayV2Service,
+  gatewayPoolService
+}: TChefPkiSyncFactoryDeps) => {
+  const $resolveGateway = async (pkiSync: TChefPkiSyncWithCredentials): Promise<string | null> => {
+    return gatewayPoolService
+      ? gatewayPoolService.resolveEffectiveGatewayId({
+          gatewayId: pkiSync.connection.gatewayId,
+          gatewayPoolId: pkiSync.connection.gatewayPoolId
+        })
+      : (pkiSync.connection.gatewayId ?? null);
+  };
+
   const $getChefDataBagItems = async (
     pkiSync: TChefPkiSyncWithCredentials,
+    gatewayId: string | null,
     syncId = "unknown"
   ): Promise<Record<string, boolean>> => {
     const {
@@ -89,9 +108,11 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
       () =>
         listChefDataBagItems(
           {
-            credentials: { serverUrl, userName, privateKey, orgName }
-          } as Parameters<typeof listChefDataBagItems>[0],
-          dataBagName
+            credentials: { serverUrl, userName, privateKey, orgName },
+            gatewayId
+          },
+          dataBagName,
+          gatewayV2Service
         ),
       {
         operation: "list-chef-data-bag-items",
@@ -118,7 +139,9 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
     } = chefPkiSync;
     const { serverUrl, userName, privateKey, orgName } = connection.credentials;
 
-    const chefDataBagItems = await $getChefDataBagItems(chefPkiSync, pkiSync.id);
+    const effectiveGatewayId = await $resolveGateway(chefPkiSync);
+
+    const chefDataBagItems = await $getChefDataBagItems(chefPkiSync, effectiveGatewayId, pkiSync.id);
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
     const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
@@ -154,6 +177,7 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
       | {
           canRemoveCertificates?: boolean;
           preserveItemOnRenewal?: boolean;
+          certificateNameSchema?: string;
           fieldMappings?: {
             certificate?: string;
             privateKey?: string;
@@ -277,15 +301,19 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
         if (itemExists) {
           await withRateLimitRetry(
             () =>
-              updateChefDataBagItem({
-                serverUrl,
-                userName,
-                privateKey,
-                orgName,
-                dataBagName,
-                dataBagItemName: targetItemName,
-                data: chefDataBagItem as unknown as TChefDataBagItemContent
-              }),
+              updateChefDataBagItem(
+                {
+                  serverUrl,
+                  userName,
+                  privateKey,
+                  orgName,
+                  dataBagName,
+                  dataBagItemName: targetItemName,
+                  data: chefDataBagItem as unknown as TChefDataBagItemContent,
+                  gatewayId: effectiveGatewayId
+                },
+                gatewayV2Service
+              ),
             {
               operation: "update-chef-data-bag-item",
               syncId: pkiSync.id
@@ -294,14 +322,18 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
         } else {
           await withRateLimitRetry(
             () =>
-              createChefDataBagItem({
-                serverUrl,
-                userName,
-                privateKey,
-                orgName,
-                dataBagName,
-                data: chefDataBagItem as unknown as TChefDataBagItemContent
-              }),
+              createChefDataBagItem(
+                {
+                  serverUrl,
+                  userName,
+                  privateKey,
+                  orgName,
+                  dataBagName,
+                  data: chefDataBagItem as unknown as TChefDataBagItemContent,
+                  gatewayId: effectiveGatewayId
+                },
+                gatewayV2Service
+              ),
             {
               operation: "create-chef-data-bag-item",
               syncId: pkiSync.id
@@ -345,8 +377,15 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
     if (canRemoveCertificates) {
       const itemsToRemove: string[] = [];
 
+      const trackedExternalIds = new Set(
+        existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
+      );
+      const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
+
       Object.keys(chefDataBagItems).forEach((itemName) => {
-        if (!activeExternalIdentifiers.has(itemName) && isInfisicalManagedCertificate(itemName, pkiSync)) {
+        if (activeExternalIdentifiers.has(itemName)) return;
+        const isTracked = trackedExternalIds.has(itemName);
+        if (isTracked || (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync))) {
           itemsToRemove.push(itemName);
         }
       });
@@ -356,14 +395,18 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
           try {
             await withRateLimitRetry(
               () =>
-                removeChefDataBagItem({
-                  serverUrl,
-                  userName,
-                  privateKey,
-                  orgName,
-                  dataBagName,
-                  dataBagItemName: itemName
-                }),
+                removeChefDataBagItem(
+                  {
+                    serverUrl,
+                    userName,
+                    privateKey,
+                    orgName,
+                    dataBagName,
+                    dataBagItemName: itemName,
+                    gatewayId: effectiveGatewayId
+                  },
+                  gatewayV2Service
+                ),
               {
                 operation: "remove-chef-data-bag-item",
                 syncId: pkiSync.id
@@ -527,6 +570,8 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
     } = chefPkiSync;
     const { serverUrl, userName, privateKey, orgName } = connection.credentials;
 
+    const effectiveGatewayId = await $resolveGateway(chefPkiSync);
+
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(sync.id);
     const certificateIdsToRemove: string[] = [];
     const itemsToRemove: string[] = [];
@@ -555,14 +600,18 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
       try {
         await withRateLimitRetry(
           () =>
-            removeChefDataBagItem({
-              serverUrl,
-              userName,
-              privateKey,
-              orgName,
-              dataBagName,
-              dataBagItemName: itemName
-            }),
+            removeChefDataBagItem(
+              {
+                serverUrl,
+                userName,
+                privateKey,
+                orgName,
+                dataBagName,
+                dataBagItemName: itemName,
+                gatewayId: effectiveGatewayId
+              },
+              gatewayV2Service
+            ),
           {
             operation: "remove-chef-data-bag-item",
             syncId: sync.id

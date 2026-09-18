@@ -17,6 +17,35 @@ export const findOrgMembershipRole = (roles: TOrgRole[], roleIdOrSlug: string) =
     ? roles.find((r) => r.id === roleIdOrSlug)
     : roles.find((r) => r.slug === roleIdOrSlug);
 
+// PAM has no externally visible project, so the generic project role copy ("...over a project") does
+// not apply. These describe the product roles in PAM's own terms.
+export const PAM_PRODUCT_ROLE_OPTIONS = [
+  {
+    value: ProjectMembershipRole.Admin,
+    label: "Admin",
+    description:
+      "Manage account templates, folders, and product access control. Access to individual accounts and folders is still granted per-resource."
+  },
+  {
+    value: ProjectMembershipRole.Member,
+    label: "Member",
+    description: "Access limited to the folders and accounts they're granted."
+  }
+];
+
+export const AGENT_VAULT_PRODUCT_ROLE_OPTIONS = [
+  {
+    value: ProjectMembershipRole.Admin,
+    label: "Admin",
+    description: "Full administrative access over Agent Vault"
+  },
+  {
+    value: ProjectMembershipRole.Member,
+    label: "Member",
+    description: "Create sessions with the access bundles they're granted"
+  }
+];
+
 export const formatProjectRoleName = (role: string, customRoleName?: string) => {
   switch (role) {
     case ProjectMembershipRole.Admin:
@@ -29,8 +58,6 @@ export const formatProjectRoleName = (role: string, customRoleName?: string) => 
       return "No Access";
     case ProjectMembershipRole.Custom:
       return customRoleName ?? role;
-    case ProjectMembershipRole.SshHostBootstrapper:
-      return "SSH Host Bootstrapper";
     case ProjectMembershipRole.KmsCryptographicOperator:
       return "Cryptographic Operator";
     default:

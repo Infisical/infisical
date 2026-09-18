@@ -130,7 +130,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.revokeLease({
@@ -161,6 +161,21 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.DynamicSecretLeaseRevoked,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            provider: dynamicSecret.type,
+            projectId,
+            environment,
+            secretPath,
+            dynamicSecretId: dynamicSecret.id
+          }
+        })
+        .catch(() => {});
 
       return { lease };
     }
@@ -288,7 +303,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.getLeaseDetails({

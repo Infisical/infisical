@@ -8,7 +8,7 @@ description: "Understand how approval workflows protect sensitive environments a
 
 Updating secrets in high-stakes environments like production carries real risk:
 
-- **Broad access creates exposure.** Most developers should not have direct access to production secrets, yet they are often the ones who need to add or change them. Organizations rely on informal processes — Slack messages, manual handoffs — to gate these changes, which slows development and is error-prone.
+- **Broad access creates exposure.** Most developers shouldn't have direct access to production secrets, yet they're often the ones who need to add or change them. Organizations rely on informal processes — Slack messages, manual handoffs — to gate these changes, which slows development and is error-prone.
 - **Unreviewed changes cause incidents.** A mistyped value or accidental deletion in production can take down a service. Requiring a second set of eyes before a change takes effect reduces the likelihood of human error reaching production.
 - **Propagation is often manual.** After secrets change, the corresponding applications need to be redeployed with the correct values. Without automation, this step is frequently missed or done incorrectly.
 
@@ -34,7 +34,7 @@ Policies support several configuration options:
 | **Hard** | Every matching change requires full approval before it can be merged. No exceptions. |
 | **Soft** | Designated users can bypass the approval requirement in break-glass situations. All approvers are notified by email when a bypass occurs. |
 
-When bypass is enabled, you can restrict it to specific users or groups. If no restriction is set, anyone can bypass. A bypass can only be performed by the person who created the change request — bypassers cannot bypass requests submitted by others.
+When bypass is enabled, you can restrict it to specific users or groups. If no restriction is set, anyone can bypass. A bypass can only be performed by the person who created the change request — bypassers can't bypass requests submitted by others.
 
 ### Change requests
 
@@ -54,8 +54,16 @@ Approvers are notified through email, [Slack](/documentation/platform/workflow-i
 
 After a change request is merged, the updated secrets are automatically synced to connected applications — for example, through the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes) — removing the manual propagation step.
 
-## Learn more
+## Next steps
 
-- [Set up approval workflows](/documentation/platform/pr-workflows) — Step-by-step guide to creating and using change policies
-- [Access requests](/documentation/platform/access-controls/access-requests) — Request-based access to environments and paths
-- [Scoping secrets](/documentation/platform/secrets-mgmt/concepts/access-control) — How access to secrets is controlled in Infisical
+<CardGroup cols={2}>
+  <Card title="Set Up Approval Workflows" icon="git-pull-request" href="/documentation/platform/pr-workflows">
+    Create and use change policies step by step.
+  </Card>
+  <Card title="Access Requests" icon="hand" href="/documentation/platform/access-controls/access-requests">
+    Grant request-based access to environments and paths.
+  </Card>
+  <Card title="Access Control" icon="shield-half" href="/documentation/platform/secrets-mgmt/concepts/access-control">
+    Learn how access to secrets is controlled in Infisical.
+  </Card>
+</CardGroup>

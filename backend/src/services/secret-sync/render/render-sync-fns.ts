@@ -5,6 +5,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { RenderSyncScope } from "./render-sync-enums";
@@ -258,6 +259,7 @@ const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
         await makeRequestWithRetry(() =>
           request.request({
             ...req,
+            method: "POST",
             url: `/services/${link.id}/deploys`,
             data: {}
           })
@@ -272,7 +274,8 @@ const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
 };
 
 export const RenderSyncFns = {
-  syncSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TRenderSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
     const environmentSlug = secretSync.environment?.slug || "";
     const { disableSecretDeletion, keySchema } = secretSync.syncOptions;
@@ -333,7 +336,8 @@ export const RenderSyncFns = {
     return Object.fromEntries(renderSecrets.map((secret) => [secret.key, { value: secret.value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TRenderSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
     const finalEnvVars: Array<{ key: string; value: string }> = [];
 

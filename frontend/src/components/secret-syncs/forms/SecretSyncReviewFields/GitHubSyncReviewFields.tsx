@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { GitHubSyncScope, TGitHubSync } from "@app/hooks/api/secretSyncs/types/github-sync";
 
@@ -16,30 +16,41 @@ export const GitHubSyncReviewFields = () => {
   switch (config.scope) {
     case GitHubSyncScope.Repository:
       ScopeComponents = (
-        <GenericFieldLabel label="Repository">
-          {config.owner}/{config.repo}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Repository</DetailLabel>
+          <DetailValue>
+            {config.owner}/{config.repo}
+          </DetailValue>
+        </Detail>
       );
       break;
     case GitHubSyncScope.Organization:
       ScopeComponents = (
         <>
-          <GenericFieldLabel label="Organization">{config.org}</GenericFieldLabel>
-          <GenericFieldLabel className="capitalize" label="Visibility">
-            {config.visibility}
-          </GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Organization</DetailLabel>
+            <DetailValue>{config.org}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Visibility</DetailLabel>
+            <DetailValue className="capitalize">{config.visibility}</DetailValue>
+          </Detail>
         </>
       );
       break;
     case GitHubSyncScope.RepositoryEnvironment:
       ScopeComponents = (
         <>
-          <GenericFieldLabel label="Repository">
-            {config.owner}/{config.repo}
-          </GenericFieldLabel>
-          <GenericFieldLabel className="capitalize" label="Environment">
-            {config.env}
-          </GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Repository</DetailLabel>
+            <DetailValue>
+              {config.owner}/{config.repo}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Environment</DetailLabel>
+            <DetailValue className="capitalize">{config.env}</DetailValue>
+          </Detail>
         </>
       );
 
@@ -52,9 +63,10 @@ export const GitHubSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel className="capitalize" label="Scope">
-        {config.scope.replace("-", " ")}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue className="capitalize">{config.scope.replace("-", " ")}</DetailValue>
+      </Detail>
       {ScopeComponents}
     </>
   );

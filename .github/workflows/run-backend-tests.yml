@@ -8,21 +8,32 @@ on:
       - "!backend/README.md"
       - "!backend/.*"
       - "backend/.eslintrc.js"
+      - "build-versions.env"
   workflow_call:
+
+concurrency:
+  group: run-backend-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check-be-pr:
-    name: Run integration test
+    name: Backend tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Free up disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          docker system prune -af
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: true
 
       - name: ☁️ Checkout source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -46,40 +57,57 @@ jobs:
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
         working-directory: backend
-      - name: Start postgres and redis
-        run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
       - name: Start Secret Rotation testing databases
-        run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
-      - name: Run unit test
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d
+      - name: Run unit tests
         run: npm run test:unit
         working-directory: backend
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-      - name: Build FIPS test image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+      - name: Log in to GHCR
+        continue-on-error: true
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          context: backend
-          file: backend/Dockerfile.dev.fips
-          load: true
-          tags: infisical-backend-fips:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Run integration test
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve FIPS toolchain image
         run: |
-          docker run --rm --network host \
-            -e DB_CONNECTION_URI="postgres://infisical:infisical@localhost:5432/infisical?sslmode=disable" \
-            -e REDIS_URL="redis://localhost:6379" \
-            -e AUTH_SECRET="something-random" \
-            -e ENCRYPTION_KEY="p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=" \
-            -e NODE_ENV="test" \
-            -e NODE_OPTIONS="--force-fips" \
-            -e TELEMETRY_ENABLED="false" \
-            -e E2E_TEST_ORACLE_DB_19_HOST="${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}" \
-            -e E2E_TEST_ORACLE_DB_19_USERNAME="${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}" \
-            -e E2E_TEST_ORACLE_DB_19_PASSWORD="${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}" \
-            -e E2E_TEST_ORACLE_DB_19_DATABASE="${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}" \
-            infisical-backend-fips:latest \
-            npm run test:e2e
+          set -euo pipefail
+          # Lowercased: GHCR rejects uppercase repository names and the owner is "Infisical".
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER}/backend-fips-toolchain"
+          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain', 'build-versions.env') }}"
+          if docker pull --quiet "$IMAGE:$TAG"; then
+            echo "Using published toolchain $IMAGE:$TAG"
+            TOOLCHAIN="$IMAGE:$TAG"
+          else
+            echo "::notice::No published toolchain for $TAG (this PR changes backend/Dockerfile.fips-toolchain or build-versions.env); building from source."
+            TOOLCHAIN="backend-fips-toolchain:$TAG"
+            set -a; . ./build-versions.env; set +a
+            docker build \
+              -f backend/Dockerfile.fips-toolchain \
+              --build-arg "INFISICAL_CLI_VERSION=$INFISICAL_CLI_VERSION" \
+              -t "$TOOLCHAIN" \
+              backend
+          fi
+          # Carried to the next step, which builds the app image through compose so the build
+          # arguments and image name live in docker-compose.test.yml rather than here.
+          echo "TOOLCHAIN_IMAGE=$TOOLCHAIN" >> "$GITHUB_ENV"
+      - name: Report disk space
+        if: always()
+        run: df -h /
+      - name: Wait for Secret Rotation testing databases
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
+      # The same command a developer runs. The rotation databases above share the test stack's
+      # compose project, so the suite reaches them by service name and CI needs no networking of
+      # its own. Connection strings, mounts and the image build all live in the compose files.
+      - name: Run end-to-end tests
+        run: make test-api-e2e
+        env:
+          E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
+          E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
+          E2E_TEST_ORACLE_DB_19_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}
+          E2E_TEST_ORACLE_DB_19_DATABASE: ${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}
       - name: cleanup
+        if: always()
         run: |
-          docker compose -f "docker-compose.dev.yml" down
+          make down-test-suite-containers

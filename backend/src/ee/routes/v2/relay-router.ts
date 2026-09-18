@@ -4,6 +4,7 @@ import { RelaysSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -24,28 +25,6 @@ const SanitizedRelaySchema = RelaysSchema.pick({
   canRevoke: z.boolean()
 });
 
-const AwsAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
-  stsEndpoint: z.string(),
-  allowedPrincipalArns: z.string(),
-  allowedAccountIds: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
-
-const TokenAuthMethodConfigSchema = z.object({});
-
-const IdentityAuthMethodConfigSchema = z.object({
-  identityId: z.string(),
-  identityName: z.string().nullable()
-});
-
-const AuthMethodViewSchema = z.discriminatedUnion("method", [
-  z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Identity), config: IdentityAuthMethodConfigSchema })
-]);
-
 const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
   authMethod: AuthMethodViewSchema
 });
@@ -53,9 +32,12 @@ const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
 const AwsAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Aws),
-    stsEndpoint: z.string().trim().min(1).default("https://sts.amazonaws.com/"),
+    stsEndpoint: z.string().trim().min(1).max(255).default("https://sts.amazonaws.com/"),
     allowedPrincipalArns: validatePrincipalArns,
-    allowedAccountIds: validateAccountIds
+    allowedAccountIds: validateAccountIds.refine(
+      (val) => val.length <= 2048,
+      "Allowed account IDs must be at most 2048 characters"
+    )
   })
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
@@ -140,7 +122,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: RelayWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const relay = await server.services.relay.getOrgRelay({
         relayId: req.params.relayId,
@@ -176,7 +158,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.relay.getConnectedGateways({
         relayId: req.params.relayId,
@@ -310,7 +292,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ relayId: z.string().uuid() }),
       response: {
-        200: z.object({ method: z.string(), deletedTokenCount: z.number() })
+        200: z.object({ method: z.string() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -329,13 +311,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             resourceType: "relay",
             resourceId: req.params.relayId,
             method: result.method,
-            resourceName: result.resourceName,
-            deletedTokenCount: result.deletedTokenCount
+            resourceName: result.resourceName
           }
         }
       });
 
-      return { method: result.method, deletedTokenCount: result.deletedTokenCount };
+      return { method: result.method };
     }
   });
 

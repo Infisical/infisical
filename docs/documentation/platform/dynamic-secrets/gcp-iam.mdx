@@ -6,11 +6,17 @@ description: "Learn how to dynamically generate GCP service account tokens."
 The Infisical GCP IAM dynamic secret allows you to generate GCP service account tokens on demand based on service account permissions.
 
 <Warning>
-    GCP service account access tokens cannot be revoked. As such, revoking or regenerating a token does not invalidate the old one; it remains active until it expires.
+  GCP service account access tokens can't be revoked. As such, revoking or
+  regenerating a token doesn't invalidate the old one; it remains active until
+  it expires.
 </Warning>
 
 <Note>
-    You must enable the [IAM API](https://console.cloud.google.com/apis/library/iam.googleapis.com) and [IAM Credentials API](https://console.cloud.google.com/apis/library/iamcredentials.googleapis.com) in your GCP console as a prerequisite
+  You must enable the [IAM
+  API](https://console.cloud.google.com/apis/library/iam.googleapis.com) and
+  [IAM Credentials
+  API](https://console.cloud.google.com/apis/library/iamcredentials.googleapis.com)
+  in your GCP console as a prerequisite
 </Note>
 
 <Accordion title="Self-Hosted Instance">
@@ -39,17 +45,42 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
             2. Set it as a string value for the `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` environment variable.
             3. Restart your Infisical instance to apply the changes.
             4. You can now use GCP integration with service account impersonation.
+
+            <Note>
+                Workload identity federation is also supported. Instead of a service account key, you may
+                set `INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL` to an `external_account` credential
+                configuration JSON (the file produced by `gcloud iam workload-identity-pools create-cred-config`).
+                Infisical detects the credential type from the `type` field automatically. The federated identity
+                needs the `roles/iam.serviceAccountTokenCreator` role on the service accounts it impersonates.
+
+                For **AWS** providers, Infisical resolves the instance's AWS credentials through the standard AWS
+                SDK credential chain, so federation works on EC2, ECS/Fargate, EKS (IRSA), and Lambda, or from
+                `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` environment variables. The region defaults to
+                `us-east-1`; set `AWS_REGION` (or `AWS_DEFAULT_REGION`) to use a specific regional STS endpoint.
+
+                For other providers, the referenced credential source (a mounted file or URL) must be reachable
+                from the Infisical instance at runtime.
+            </Note>
         </Step>
     </Steps>
+
 </Accordion>
 
-## Create GCP Service Account
+## Create GCP service account
 
 <Steps>
     <Step title="Navigate to IAM & Admin > Service Accounts">
         ![Service Account Page](/images/app-connections/gcp/service-account-overview.png)
     </Step>
     <Step title="Create Service Account">
+        Create a new service account with an ID that follows this requirement:
+
+        Your service account ID must end with the first two sections of your Infisical organization ID.
+
+        Example:
+        - Infisical organization ID: `df92581a-0fe9-42b5-b526-0a1e88ec8085`
+        - Required service account ID suffix: `df92581a-0fe9`
+
         ![Create Service Account](/images/app-connections/gcp/create-service-account.png)
     </Step>
     <Step title="Configure Service Account Permissions">
@@ -72,9 +103,10 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
 
         ![Service Account Page](/images/app-connections/gcp/service-account-grant-access.png)
     </Step>
+
 </Steps>
 
-## Set up Dynamic Secrets with GCP IAM
+## Set up dynamic secrets with GCP IAM
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -91,22 +123,25 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
     		Name by which you want the secret to be referenced
     	</ParamField>
     	<ParamField path="Default TTL" type="string" required>
-    		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
+    		Default time-to-live for a generated secret (it's possible to modify this value after a secret is generated)
     	</ParamField>
     	<ParamField path="Max TTL" type="string" required>
     		Maximum time-to-live for a generated secret
     	</ParamField>
     	<ParamField path="Service Account Email" type="string" required>
-       		The email tied to the service account created in earlier steps.
+       		The email tied to the service account created in earlier steps. The service account ID (the part of the email before `@`) must end with the first two sections of your Infisical organization ID, e.g. `my-service-account-df92581a-0fe9@my-project.iam.gserviceaccount.com` for organization ID `df92581a-0fe9-42b5-b526-0a1e88ec8085`.
+    	</ParamField>
+    	<ParamField path="Token Scopes" type="string[]" default="https://www.googleapis.com/auth/iam, https://www.googleapis.com/auth/cloud-platform">
+       		The OAuth scopes granted to the generated access token. Defaults to `https://www.googleapis.com/auth/iam` and `https://www.googleapis.com/auth/cloud-platform` scopes. You can add additional scopes such as `https://www.googleapis.com/auth/drive`.
     	</ParamField>
   </Step>
   <Step title="Click `Submit`">
-      After submitting the form, you will see a dynamic secret created in the dashboard.
+      After submitting the form, you'll see a dynamic secret created in the dashboard.
   </Step>
 
   <Step title="Generate dynamic secrets">
     	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-    	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+    	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
     	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
     	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -123,23 +158,25 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
     	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
 
     	![Dynamic Secret Lease](/images/platform/dynamic-secrets/dynamic-secret-gcp-iam-lease.png)
+
   </Step>
 </Steps>
 
-## Audit or Revoke Leases
+## Audit or revoke leases
 
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 
 This will allow you to see the expiration time of the lease or delete a lease before its set time to live.
 
 ![Lease Data](/images/platform/dynamic-secrets/lease-data.png)
 
-## Renew Leases
+## Renew leases
 
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
 
 ![Lease Renew](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+  Lease renewals can't exceed the maximum TTL set when configuring the dynamic
+  secret
 </Warning>

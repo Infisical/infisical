@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TCloudflarePagesSync } from "@app/hooks/api/secretSyncs/types/cloudflare-pages-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const CloudflarePagesSyncDestinationSection = ({ secretSync }: Props) => 
 
   return (
     <>
-      <GenericFieldLabel label="Project">{projectName}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">{environment}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{projectName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{environment}</DetailValue>
+      </Detail>
     </>
   );
 };

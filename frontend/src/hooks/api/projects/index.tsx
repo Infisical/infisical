@@ -1,11 +1,11 @@
 export {
   useAddGroupToWorkspace,
   useDeleteGroupFromWorkspace,
+  useEnableSecretBlindIndex,
   useLeaveProject,
   useMigrateProjectToV3,
   useRequestProjectAccess,
-  useUpdateGroupWorkspaceRole,
-  useUpdateProjectSshConfig
+  useUpdateGroupWorkspaceRole
 } from "./mutations";
 export {
   useCreateWorkspace,
@@ -14,11 +14,11 @@ export {
   useDeleteWorkspace,
   useDeleteWsEnvironment,
   useGetMembershipPermissionAudit,
-  useGetProjectSshConfig,
+  useGetMyPendingProjectAccessRequests,
   useGetUpgradeProjectStatus,
   useGetUserProjects,
+  useGetUserProjectsByType,
   useGetUserWorkspaceMemberships,
-  useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
@@ -32,11 +32,7 @@ export {
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
   useListWorkspacePkiSubscribers,
-  useListWorkspaceSshCas,
-  useListWorkspaceSshCertificates,
-  useListWorkspaceSshCertificateTemplates,
-  useListWorkspaceSshHostGroups,
-  useListWorkspaceSshHosts,
+  useRestoreEnvironment,
   useSearchProjects,
   useUpdateProject,
   useUpdateUserWorkspaceRole,

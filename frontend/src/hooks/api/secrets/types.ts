@@ -51,6 +51,7 @@ export type SecretV3RawSanitized = {
   reminder?: Reminder;
   isEmpty?: boolean;
   isOverrideEmpty?: boolean;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export type SecretV3Raw = {
@@ -79,6 +80,7 @@ export type SecretV3Raw = {
   secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
   isEmpty?: boolean;
+  revokedProjectFolderGrant?: boolean;
 };
 
 export type SecretV3RawResponse = {
@@ -331,6 +333,7 @@ export type TSecretDependencyTreeNode = {
   key: string;
   environment: string;
   secretPath: string;
+  project?: { id: string; slug: string; name: string };
   children: TSecretDependencyTreeNode[];
 };
 

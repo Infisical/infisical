@@ -1,9 +1,8 @@
 import { ReactNode } from "react";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Td, Tooltip } from "@app/components/v2";
+import { TableCell, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 export type SecretSyncTableCellProps = {
   primaryText: string;
@@ -23,49 +22,36 @@ export const SecretSyncTableCell = ({
   secondaryClassName
 }: SecretSyncTableCellProps) => {
   return (
-    <Td className="max-w-0 min-w-32!">
-      <Tooltip
-        side="left"
-        className="max-w-2xl break-words"
-        content={
-          <>
-            <p className="text-sm">{primaryText}</p>
-            {secondaryText && (
-              <p className={twMerge("text-xs leading-3 text-bunker-300", secondaryClassName)}>
-                {secondaryText}
-              </p>
-            )}
-            {additionalTooltipContent}
-          </>
-        }
-      >
-        <div>
-          <p className={twMerge("truncate text-sm", primaryClassName)}>
-            {primaryText}
-            {infoBadge === "primary" && (
-              <FontAwesomeIcon
-                size="xs"
-                icon={faInfoCircle}
-                className="ml-1 inline-block text-bunker-300"
-              />
-            )}
-          </p>
-          {secondaryText && (
-            <p
-              className={twMerge("truncate text-xs leading-4 text-bunker-300", secondaryClassName)}
-            >
-              {secondaryText}
-              {infoBadge === "secondary" && (
-                <FontAwesomeIcon
-                  size="xs"
-                  icon={faInfoCircle}
-                  className="ml-1 inline-block text-bunker-300"
-                />
+    <TableCell className="max-w-0 min-w-32!">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>
+            <p className={twMerge("truncate text-sm", primaryClassName)}>
+              {primaryText}
+              {infoBadge === "primary" && (
+                <InfoIcon className="ml-1 inline-block size-3 text-accent" />
               )}
             </p>
+            {secondaryText && (
+              <p className={twMerge("truncate text-xs leading-4 text-accent", secondaryClassName)}>
+                {secondaryText}
+                {infoBadge === "secondary" && (
+                  <InfoIcon className="ml-1 inline-block size-3 text-accent" />
+                )}
+              </p>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-2xl break-words">
+          <p className="text-sm">{primaryText}</p>
+          {secondaryText && (
+            <p className={twMerge("text-xs leading-3 text-accent", secondaryClassName)}>
+              {secondaryText}
+            </p>
           )}
-        </div>
+          {additionalTooltipContent}
+        </TooltipContent>
       </Tooltip>
-    </Td>
+    </TableCell>
   );
 };

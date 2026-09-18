@@ -3,6 +3,23 @@
 
 echo "🔥 Pre-commit hook is running!"
 
+# Prevent committing binary files in backend-go/
+binaries=""
+for file in $(git diff --cached --name-only --diff-filter=ACM | grep '^backend-go/'); do
+    if [ -f "$file" ]; then
+        if file "$file" | grep -qE 'executable|binary|ELF|Mach-O'; then
+            binaries="$binaries $file"
+        fi
+    fi
+done
+if [ -n "$binaries" ]; then
+    echo "ERROR: Attempting to commit binary files in backend-go/:"
+    echo "$binaries"
+    echo ""
+    echo "Remove them with: git reset HEAD <file>"
+    exit 1
+fi
+
 # Check if infisical is installed
 if ! command -v infisical >/dev/null 2>&1; then
     echo "\nError: Infisical CLI is not installed. Please install the Infisical CLI before committing.\n You can refer to the documentation at https://infisical.com/docs/cli/overview\n\n"

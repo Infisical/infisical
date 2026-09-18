@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { GcpSyncScope, TGcpSync } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 
 type Props = {
@@ -10,13 +10,27 @@ export const GcpSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Project ID">{destinationConfig.projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Scope" className="capitalize">
-        {destinationConfig.scope}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project ID</DetailLabel>
+        <DetailValue>{destinationConfig.projectId}</DetailValue>
+      </Detail>
+      <Detail className="capitalize">
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>{destinationConfig.scope}</DetailValue>
+      </Detail>
       {destinationConfig.scope === GcpSyncScope.Region && (
-        <GenericFieldLabel label="Region">{destinationConfig.locationId}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Region</DetailLabel>
+          <DetailValue>{destinationConfig.locationId}</DetailValue>
+        </Detail>
       )}
+      {destinationConfig.scope === GcpSyncScope.Global &&
+        Boolean(destinationConfig.userReplicaLocationIds?.length) && (
+          <Detail>
+            <DetailLabel>Replica Regions</DetailLabel>
+            <DetailValue>{destinationConfig.userReplicaLocationIds?.join(", ")}</DetailValue>
+          </Detail>
+        )}
     </>
   );
 };

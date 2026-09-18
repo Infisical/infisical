@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, AccessScopeData, MembershipsSchema, TableName } from "@app/db/schemas";
+import { AccessScope, AccessScopeData, MembershipsSchema, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
@@ -315,5 +315,37 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findUsers, getUserById, listAvailableUsers };
+  const countActiveAdmins = async ({
+    scopeOrgId,
+    excludeMembershipIds,
+    tx
+  }: {
+    scopeOrgId: string;
+    excludeMembershipIds?: string[];
+    tx?: Knex;
+  }): Promise<number> => {
+    try {
+      // Always read from primary — this powers a safety guard against zero-admin state, so
+      // replica lag cannot be tolerated.
+      const query = (tx || db)(TableName.Membership)
+        .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
+        .where(`${TableName.MembershipRole}.isTemporary`, false)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, scopeOrgId);
+
+      if (excludeMembershipIds?.length) {
+        void query.whereNotIn(`${TableName.Membership}.id`, excludeMembershipIds);
+      }
+
+      const result = await query.countDistinct<{ count: string }[]>(`${TableName.Membership}.id as count`).first();
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "MembershipUserCountActiveAdmins" });
+    }
+  };
+
+  return { ...orm, findUsers, getUserById, listAvailableUsers, countActiveAdmins };
 };

@@ -25,6 +25,10 @@ export type TDeleteWebhookDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetWebhookByIdDTO = {
+  id: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TListWebhookDTO = {
   environment?: string;
   secretPath?: string;
@@ -39,10 +43,46 @@ export enum WebhookType {
 export enum WebhookEvents {
   SecretModified = "secrets.modified",
   SecretRotationFailed = "secrets.rotation-failed",
+  HoneyTokenTriggered = "honey-token.triggered",
+  ChangeRequestModified = "secrets.change-request.modified",
+  AccessRequestModified = "secrets.access-request.modified",
   TestEvent = "test"
 }
 
-export const SUBSCRIBABLE_WEBHOOK_EVENTS = [WebhookEvents.SecretModified, WebhookEvents.SecretRotationFailed] as const;
+export const SUBSCRIBABLE_WEBHOOK_EVENTS = [
+  WebhookEvents.SecretModified,
+  WebhookEvents.SecretRotationFailed,
+  WebhookEvents.HoneyTokenTriggered,
+  WebhookEvents.ChangeRequestModified,
+  WebhookEvents.AccessRequestModified
+] as const;
+
+export enum ChangeRequestWebhookAction {
+  Created = "created",
+  Reviewed = "reviewed",
+  Closed = "closed",
+  Reopened = "reopened",
+  Merged = "merged"
+}
+
+export enum AccessRequestWebhookAction {
+  Created = "created",
+  Edited = "edited",
+  Reviewed = "reviewed",
+  Revoked = "revoked"
+}
+
+export type TWebhookRequestedPermission = {
+  subject: string;
+  actions: string[];
+};
+
+export type TWebhookActor = {
+  type: ActorType.USER | ActorType.IDENTITY;
+  id: string;
+  name: string;
+  email: string | null;
+};
 
 export type TSubscribableWebhookEvent = (typeof SUBSCRIBABLE_WEBHOOK_EVENTS)[number];
 
@@ -52,6 +92,7 @@ type TWebhookSecretModifiedEventPayload = {
     projectName?: string;
     projectId: string;
     environment: string;
+    environmentName: string;
     secretPath?: string;
     type?: string | null;
     changedBy?: string;
@@ -67,10 +108,27 @@ type TWebhookSecretRotationFailedEventPayload = {
     projectName?: string;
     projectId: string;
     environment: string;
+    environmentName: string;
     secretPath?: string;
     triggeredManually?: boolean;
     errorMessage?: string;
     type?: string | null;
+  };
+};
+
+type TWebhookHoneyTokenTriggeredEventPayload = {
+  type: WebhookEvents.HoneyTokenTriggered;
+  payload: {
+    honeyTokenName: string;
+    projectName?: string;
+    projectId: string;
+    environment: string;
+    environmentName: string;
+    secretPath?: string;
+    type?: string | null;
+    eventName: string;
+    sourceIp?: string;
+    awsRegion: string;
   };
 };
 
@@ -80,12 +138,77 @@ type TWebhookTestEventPayload = {
     projectName?: string;
     projectId: string;
     environment: string;
+    environmentName: string;
     secretPath?: string;
     type?: string | null;
+  };
+};
+
+type TWebhookChangeRequestModifiedEventPayload = {
+  type: WebhookEvents.ChangeRequestModified;
+  payload: {
+    projectId: string;
+    projectName?: string;
+    environment: string;
+    environmentName?: string;
+    secretPath?: string;
+    type?: string | null;
+    action: ChangeRequestWebhookAction;
+    request: {
+      id: string;
+      slug: string;
+      url: string;
+      status: string;
+      hasMerged: boolean;
+      isBypassed: boolean;
+      policy: { id: string; name: string; enforcementLevel: string };
+      requestedBy: TWebhookActor | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+};
+
+type TWebhookAccessRequestModifiedEventPayload = {
+  type: WebhookEvents.AccessRequestModified;
+  payload: {
+    projectId: string;
+    projectName?: string;
+    environment: string;
+    environmentName?: string;
+    secretPath?: string;
+    type?: string | null;
+    action: AccessRequestWebhookAction;
+    request: {
+      id: string;
+      url: string;
+      status: string;
+      isBypassed: boolean;
+      policy: {
+        id: string;
+        name: string;
+        enforcementLevel: string;
+        hasSequencedApprovers: boolean;
+      };
+      requestedAccess: {
+        isTemporary: boolean;
+        temporaryRange: string | null;
+        permissions: TWebhookRequestedPermission[];
+      };
+      requestedBy: TWebhookActor | null;
+      expiresAt: string | null;
+      approvedAt: string | null;
+      revokedAt: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
   };
 };
 
 export type TWebhookPayloads =
   | TWebhookSecretModifiedEventPayload
   | TWebhookSecretRotationFailedEventPayload
+  | TWebhookHoneyTokenTriggeredEventPayload
+  | TWebhookChangeRequestModifiedEventPayload
+  | TWebhookAccessRequestModifiedEventPayload
   | TWebhookTestEventPayload;

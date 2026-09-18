@@ -1,8 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Badge } from "@app/components/v3";
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
@@ -12,17 +11,14 @@ export const RenderSyncOptionsReviewFields = () => {
   const [{ autoRedeployServices }] = watch(["syncOptions"]);
 
   return (
-    <div>
-      {autoRedeployServices ? (
-        <GenericFieldLabel label="Auto Redeploy Services">
-          <Badge variant="success">Enabled</Badge>
-        </GenericFieldLabel>
-      ) : (
-        <GenericFieldLabel label="Auto Redeploy Services">
-          <Badge variant="danger">Disabled</Badge>
-        </GenericFieldLabel>
-      )}
-    </div>
+    <Detail>
+      <DetailLabel>Auto Redeploy Services</DetailLabel>
+      <DetailValue>
+        <Badge variant={autoRedeployServices ? "success" : "danger"}>
+          {autoRedeployServices ? "Enabled" : "Disabled"}
+        </Badge>
+      </DetailValue>
+    </Detail>
   );
 };
 
@@ -32,15 +28,20 @@ export const RenderSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Scope">{config.scope}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue>{config.scope}</DetailValue>
+      </Detail>
       {config.scope === RenderSyncScope.Service ? (
-        <GenericFieldLabel label="Service">
-          {config.serviceName ?? config.serviceId}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Service</DetailLabel>
+          <DetailValue>{config.serviceName ?? config.serviceId}</DetailValue>
+        </Detail>
       ) : (
-        <GenericFieldLabel label="Service">
-          {config.environmentGroupName ?? config.environmentGroupId}
-        </GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Service</DetailLabel>
+          <DetailValue>{config.environmentGroupName ?? config.environmentGroupId}</DetailValue>
+        </Detail>
       )}
     </>
   );

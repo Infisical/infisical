@@ -1,5 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge } from "@app/components/v3";
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TRenderSync } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 type Props = {
@@ -12,10 +11,13 @@ export const RenderSyncOptionsSection = ({ secretSync }: Props) => {
   } = secretSync;
 
   return (
-    <GenericFieldLabel label="Auto Redeploy Services">
-      <Badge variant={autoRedeployServices ? "success" : "danger"}>
-        {autoRedeployServices ? "Enabled" : "Disabled"}
-      </Badge>
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Auto Redeploy Services</DetailLabel>
+      <DetailValue>
+        <Badge variant={autoRedeployServices ? "success" : "danger"}>
+          {autoRedeployServices ? "Enabled" : "Disabled"}
+        </Badge>
+      </DetailValue>
+    </Detail>
   );
 };

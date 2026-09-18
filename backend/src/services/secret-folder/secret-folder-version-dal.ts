@@ -19,6 +19,10 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .where({ parentId: folderId, isReserved: false })
         .join<TSecretFolderVersions>(
           (tx || db)(TableName.SecretFolderVersion)
+            .whereIn(
+              "folderId",
+              (qb) => void qb.select("id").from(TableName.SecretFolder).where({ parentId: folderId, isReserved: false })
+            )
             .groupBy("envId", "folderId")
             .max("version")
             .select("folderId")
@@ -45,6 +49,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
         .join(
           (tx || db.replicaNode())(TableName.SecretFolderVersion)
+            .whereIn("folderId", folderIds)
             .groupBy("folderId")
             .max("version")
             .select("folderId")
@@ -56,10 +61,11 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
             );
           }
         );
-      return docs.reduce<Record<string, TSecretFolderVersions>>(
-        (prev, curr) => ({ ...prev, [curr.folderId || ""]: curr }),
-        {}
-      );
+      return docs.reduce<Record<string, TSecretFolderVersions>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.folderId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindLatestFolderVersions" });
     }
@@ -86,6 +92,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .whereRaw(`folder_cte.row_num > ${TableName.Project}."pitVersionLimit"`)
         // Projects with version >= 3 will require to have all folder versions for PIT
         .andWhere(`${TableName.Project}.version`, "<", 3)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .delete();
     } catch (error) {
       throw new DatabaseError({
@@ -105,6 +112,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
       .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
       .join(
         knexInstance(TableName.SecretFolderVersion)
+          .whereIn("folderId", folderIds)
           .groupBy("folderId")
           .max("version")
           .select("folderId")
@@ -170,10 +178,11 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
       const allDocs = [...latestVersions, ...specificVersionsWithLatest];
 
       // Convert array to record with folderId as key
-      return allDocs.reduce<Record<string, TSecretFolderVersions>>(
-        (prev, curr) => ({ ...prev, [curr.folderId || ""]: curr }),
-        {}
-      );
+      return allDocs.reduce<Record<string, TSecretFolderVersions>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.folderId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdsWithLatestVersion" });
     }

@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const TeamCitySyncReviewFields = () => {
@@ -11,8 +11,14 @@ export const TeamCitySyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{project}</GenericFieldLabel>
-      <GenericFieldLabel label="Build Configuration">{buildConfig}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{project}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Build Configuration</DetailLabel>
+        <DetailValue>{buildConfig}</DetailValue>
+      </Detail>
     </>
   );
 };

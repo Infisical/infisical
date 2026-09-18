@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const HerokuSyncReviewFields = () => {
@@ -11,8 +11,14 @@ export const HerokuSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="App">{appName}</GenericFieldLabel>
-      <GenericFieldLabel label="App ID">{appId}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>App</DetailLabel>
+        <DetailValue>{appName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>App ID</DetailLabel>
+        <DetailValue>{appId}</DetailValue>
+      </Detail>
     </>
   );
 };

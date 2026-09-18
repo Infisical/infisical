@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { projectKeys } from "../projects";
 import { CaRenewalStatus, CaType } from "./enums";
 import { caKeys } from "./queries";
@@ -72,6 +73,10 @@ export const useCreateCa = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
       });
+      // Both caps count every CA type, so creating or deleting either kind moves the quota.
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaQuota()
+      });
     }
   });
 };
@@ -94,6 +99,9 @@ export const useDeleteCa = () => {
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaQuota()
       });
     }
   });
@@ -131,6 +139,9 @@ export const useImportCaCertificate = () => {
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByProjectId()
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("project-cas")
       });
     }
   });
@@ -171,7 +182,7 @@ export const useCreateCertificateV3 = () => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles"]
+        queryKey: certificateProfileKeys.all
       });
     }
   });
@@ -216,7 +227,21 @@ export const useRenewCa = () => {
   });
 };
 
-export const useInstallCaCertificateVenafi = () => {
+const invalidateCaInstallQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  caId: string
+) => {
+  queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
+  queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
+  queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
+  queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+  queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+  queryClient.invalidateQueries({ queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL) });
+  queryClient.invalidateQueries({ queryKey: caKeys.listCasByProjectId() });
+  queryClient.invalidateQueries({ predicate: (query) => query.queryKey.includes("project-cas") });
+};
+
+const useInstallCaCertificate = (endpoint: string) => {
   const queryClient = useQueryClient();
   return useMutation<
     { message: string; caId: string },
@@ -225,56 +250,21 @@ export const useInstallCaCertificateVenafi = () => {
   >({
     mutationFn: async ({ caId, ...body }) => {
       const { data } = await apiRequest.post<{ message: string; caId: string }>(
-        `/api/v1/cert-manager/ca/internal/${caId}/install-certificate-venafi`,
+        `/api/v1/cert-manager/ca/internal/${caId}/${endpoint}`,
         body
       );
       return data;
     },
-    onSuccess: (_, { caId }) => {
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
-      queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
-      });
-      queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByProjectId()
-      });
-    }
+    onSuccess: (_, { caId }) => invalidateCaInstallQueries(queryClient, caId)
   });
 };
 
-export const useInstallCaCertificateAdcs = () => {
-  const queryClient = useQueryClient();
-  return useMutation<
-    { message: string; caId: string },
-    object,
-    { caId: string; maxPathLength?: number }
-  >({
-    mutationFn: async ({ caId, ...body }) => {
-      const { data } = await apiRequest.post<{ message: string; caId: string }>(
-        `/api/v1/cert-manager/ca/internal/${caId}/install-certificate-adcs`,
-        body
-      );
-      return data;
-    },
-    onSuccess: (_, { caId }) => {
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaAutoRenewal(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaSigningConfig(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
-      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
-      queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL)
-      });
-      queryClient.invalidateQueries({
-        queryKey: caKeys.listCasByProjectId()
-      });
-    }
-  });
-};
+export const useInstallCaCertificateVenafi = () =>
+  useInstallCaCertificate("install-certificate-venafi");
+export const useInstallCaCertificateAdcs = () =>
+  useInstallCaCertificate("install-certificate-adcs");
+export const useInstallCaCertificateAdcsNative = () =>
+  useInstallCaCertificate("install-certificate-microsoft-adcs");
 
 export const useCreateCaSigningConfig = () => {
   const queryClient = useQueryClient();
@@ -390,6 +380,9 @@ export const useGenerateCaCertificate = () => {
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByProjectId()
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("project-cas")
       });
     }
   });

@@ -1,5 +1,5 @@
 ---
-title: "Project Permissions"
+title: "Project permissions"
 description: "Comprehensive guide to Infisical's project-level permissions"
 ---
 
@@ -12,13 +12,13 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `identity`, `app-connections`, `mcp-endpoints`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
 
-## Available Project Permissions
+## Available project permissions
 
 Below is a comprehensive list of all available project-level subjects and their supported actions.
 
-### Core Platform & Access Control
+### Core platform & access control
 
 #### Subject: `role`
 
@@ -72,6 +72,7 @@ Supports conditions and permission inversion.
 | `assign-additional-privileges` | Grant additional privileges to project identities | `identityId`, `assignableSubject`, `assignableAction` |
 | `assume-privileges` | Temporarily assume another identity's privileges | `identityId` |
 | `revoke-auth` | Revoke authentication for a machine identity | `identityId` |
+| `edit-auth` | Modify authentication methods for a machine identity | `identityId` |
 | `create-token` | Generate access tokens for machine identities | `identityId` |
 | `get-token` | View existing access tokens | `identityId` |
 | `delete-token` | Revoke access tokens | `identityId` |
@@ -164,7 +165,7 @@ Supports conditions and permission inversion.
 | `delete-app-connections`  | Remove app connections             | `connectionId` |
 | `connect-app-connections` | Use app connections                | `connectionId` |
 
-### Secrets Management
+### Secrets management
 
 #### Subject: `secrets`
 
@@ -173,7 +174,7 @@ Supports conditions and permission inversion.
 | Action | Description | Condition keys |
 | -------- | ------------------------------- | ----- |
 | `read` | View secrets and their values. This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. | `environment`, `secretPath`, `secretName`, `secretTags` |
-| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you're using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `readValue` | View the value of a secret. In order to read secret values, the `describeSecret` action must also be granted. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |
@@ -242,7 +243,7 @@ Supports conditions and permission inversion.
 | `read` | List and view all secret approval requests in the project                   |
 
 <Note>
-  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they are committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
+  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they're committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
 </Note>
 
 #### Subject: `secret-rotation`
@@ -258,6 +259,19 @@ Supports conditions and permission inversion.
 | `rotate-secrets` | Rotate the generated credentials of a rotation | `environment`, `secretPath`, `connectionId` |
 | `delete` | Remove secret rotation configurations | `environment`, `secretPath`, `connectionId` |
 
+#### Subject: `honey-tokens`
+
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
+| ------------------------------ | ---------------------------------------------- | ----- |
+| `read` | View honey tokens and their status | `environment`, `secretPath` |
+| `read-credentials` | View the decoy credentials of a honey token | `environment`, `secretPath` |
+| `create` | Create honey tokens | `environment`, `secretPath` |
+| `edit` | Modify existing honey tokens | `environment`, `secretPath` |
+| `reset` | Reset a triggered honey token back to active | `environment`, `secretPath` |
+| `revoke` | Revoke a honey token | `environment`, `secretPath` |
+
 #### Subject: `secret-syncs`
 
 Supports conditions and permission inversion.
@@ -271,6 +285,15 @@ Supports conditions and permission inversion.
 | `sync-secrets`   | Execute synchronization of secrets between systems | `environment`, `secretPath`, `connectionId` |
 | `import-secrets` | Import secrets from sync sources                   | `environment`, `secretPath`, `connectionId` |
 | `remove-secrets` | Remove secrets from sync destinations              | `environment`, `secretPath`, `connectionId` |
+
+#### Subject: `secret-validation-rules`
+
+| Action   | Description                                   |
+| -------- | --------------------------------------------- |
+| `read`   | View secret validation rules                  |
+| `create` | Add new secret validation rules               |
+| `edit`   | Modify existing secret validation rules       |
+| `delete` | Remove secret validation rules                |
 
 #### Subject: `dynamic-secrets`
 
@@ -290,7 +313,7 @@ Supports conditions and permission inversion.
 | ------ | ------------------------------------------------------------------------------------ |
 | `read` | View project insights dashboard, including secret access volume, access locations, auth method distribution, and rotation/reminder calendar |
 
-### Key Management Service (KMS)
+### Key management service (KMS)
 
 #### Subject: `kms`
 
@@ -310,9 +333,12 @@ Supports conditions and permission inversion.
 | `decrypt`            | Use keys for decryption operations                                          |
 | `sign`               | Use keys for signing operations                                             |
 | `verify`             | Use keys for signature verification operations                              |
+| `generate-mac`       | Use keys to generate message authentication codes (MACs)                    |
+| `verify-mac`         | Use keys to verify message authentication codes (MACs)                      |
+| `rotate`             | Rotate key material for encryption keys                                     |
 | `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
 
-### Public Key Infrastructure (PKI)
+### Public key infrastructure (PKI)
 
 #### Subject: `certificate-authorities`
 
@@ -387,7 +413,7 @@ Supports conditions and permission inversion.
 | `edit`   | Modify certificate installations |
 | `delete` | Remove certificate installations |
 
-### Secret Scanning
+### Secret scanning
 
 #### Subject: `secret-scanning-data-sources`
 
@@ -415,21 +441,7 @@ Supports conditions and permission inversion.
 | `read-configs`   | View Secret Scanning Project Configuration   |
 | `update-configs` | Update Secret Scanning Project Configuration |
 
-### Agent Sentinel
-
-#### Subject: `mcp-endpoints`
-
-Supports conditions and permission inversion.
-
-| Action    | Description                         | Condition keys |
-| --------- | ----------------------------------- | ----- |
-| `read`    | View MCP endpoints                  | `name` |
-| `create`  | Create new MCP endpoints            | `name` |
-| `edit`    | Modify MCP endpoint configurations  | `name` |
-| `delete`  | Remove MCP endpoints                | `name` |
-| `connect` | Connect AI clients to MCP endpoints | `name` |
-
-### Privileged Access Management (PAM)
+### Privileged access management (PAM)
 
 #### Subject: `pam-resources`
 
@@ -461,7 +473,7 @@ Supports conditions and permission inversion.
 | ------ | ----------- |
 | `read` | View the PAM insights dashboard, including resource and account totals, session activity, top actors, resource breakdown, and upcoming rotations |
 
-## Condition Operators
+## Condition operators
 
 When defining conditions for permissions, you can use the following operators to match values:
 
@@ -474,16 +486,18 @@ When defining conditions for permissions, you can use the following operators to
 | `$elemMatch` | Element match for nested objects/arrays | `object` |
 
 <Note>
-When using `$glob`, note that `*` does **not** match across `/` boundaries. Use `**` to match across multiple path segments.
+When using `$glob`, note that `*` doesn't match across `/` boundaries. Use `**` to match across multiple path segments.
 
-| Pattern | Matches | Does not match |
+A trailing `/*` also doesn't match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
+
+| Pattern | Matches | Doesn't match |
 |---------|---------|----------------|
-| `/app/*` | `/app/config`, `/app/secrets` | `/app/config/db` |
-| `/app/**` | `/app/config`, `/app/config/db`, `/app/config/db/primary` | `/other/config` |
+| `/app/*` | `/app/config`, `/app/secrets` | `/app` (the folder itself), `/app/config/db` |
+| `/app/**` | `/app`, `/app/config`, `/app/config/db/primary` | `/other/config` |
 | `/{dev,staging}/*` | `/dev/secrets`, `/staging/config` | `/prod/secrets` |
 </Note>
 
-## Condition Keys Reference
+## Condition keys reference
 
 The following condition keys can be used to restrict permissions. Each key is available only for specific subjects as indicated in the tables above.
 
@@ -506,7 +520,7 @@ The following condition keys can be used to restrict permissions. Each key is av
 | `assignableSubject` | Assignable subjects - The permission subjects that can be granted in additional privileges | `string` |
 | `assignableAction` | Assignable actions - The permission actions that can be granted in additional privileges. Format: `subject:action` (e.g., `secrets:read`) | `string` |
 
-## Usage Examples
+## Usage examples
 
 These permission objects are used when creating or updating [custom project roles](/api-reference/endpoints/project-roles/create) via the API. Each permission in the `permissions` array defines what actions a role can perform on which resources.
 
@@ -583,18 +597,16 @@ curl --request POST \
   }'
 ```
 
-## Auditing a User's Effective Permissions
+## Auditing a user's effective permissions
 
-Because a member can receive access from direct roles, group-inherited roles, and additional privileges at the same time, it isn't always obvious what they can actually do. The **Permission Audit** view resolves all sources into a single, effective answer per subject and action.
+A member can hold a direct role, a group-inherited role, and additional privileges at the same time, so what they can actually do isn't always obvious. The **Permission Audit** view resolves every source into one effective answer per subject and action.
 
-Open **Access Control → Users**, click a member, then click **Permission Audit** in the page header.
+Open **Access Control**, select the **Users** tab, select the member, then select **Permission Audit** in the page header.
 
-<Frame caption="Open a member from Access Control → Users and click Permission Audit.">
-  <img src="/images/internals/permissions/permission-audit-button.png" alt="Permission Audit button on the member details page" />
-</Frame>
-
-Each action is shown as **Allow**, **Conditional** (hover for the matching conditions), or **Forbid** (red icon = explicit forbid; muted dash = no rule grants it). The **Granted by** column lists every contributing source — direct role, group-inherited role, or additional privilege — with the source's role/group name. Use the search box to filter by resource, action, or source, and **Export CSV** to download a flat report.
-
-<Frame caption="Effective access for a member, grouped by resource with per-action state and source attribution.">
+<Frame caption="Permission Audit for a project member, grouped by resource.">
   <img src="/images/internals/permissions/permission-audit-sheet.png" alt="Permission Audit sheet showing effective access per resource" />
 </Frame>
+
+Each action reads as **Allow**, **Conditional**, or **Forbid**. Hover over a conditional action to see the conditions that have to match. A red icon means an explicit forbid, and a muted dash means nothing grants the action at all. The **Granted by** column names every source that contributes: the direct role, the group-inherited role, or the additional privilege.
+
+Use the search box to filter by resource, action, or source, and the **All** dropdown to show only allowed, conditional, or forbidden actions. Select the **Export CSV** icon next to the search box to download the full list.

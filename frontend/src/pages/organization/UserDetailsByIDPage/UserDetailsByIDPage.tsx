@@ -16,7 +16,7 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -105,7 +105,7 @@ const Page = withPermission(
               search={{
                 selectedTab: OrgAccessControlTabSections.Member
               }}
-              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
             >
               <ChevronLeftIcon size={16} />
               {isSubOrganization ? "Sub-" : ""}Organization Users
@@ -143,7 +143,7 @@ const Page = withPermission(
                       Copy User ID
                     </DropdownMenuItem>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
+                      I={OrgPermissionMemberActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -163,7 +163,7 @@ const Page = withPermission(
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionMemberActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -193,7 +193,7 @@ const Page = withPermission(
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionMemberActions.Delete}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -254,6 +254,7 @@ const Page = withPermission(
         />
 
         <UpgradePlanModal
+          paywallKey="organization.user-details-by-id"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan?.data?.text}
@@ -268,8 +269,9 @@ const Page = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Member
+    action: OrgPermissionMemberActions.Read,
+    subject: OrgPermissionSubjects.Member,
+    accessRestrictedMode: "dialog"
   }
 );
 

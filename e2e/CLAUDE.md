@@ -92,7 +92,7 @@ These external dependencies have to stay in sync — if you change the backend o
 - **Worker changes ship via `wrangler deploy`**, not the gamma deploy. After editing Worker code (`/saml-idp/*` routes, IdP templates), deploy from the `preview-environments` repo before running the test or it'll hit the previous version. `tsc` passing here doesn't prove the Worker is up to date.
 - **SCIM POST + SAML signup leak a user row per test run** because the SAML signup branch creates a fresh `users` row even though SCIM already created one. SCIM `DELETE /Users/:id` removes the membership but not the orphan user. Tractable but accumulates; revisit if it becomes noisy.
 - **Don't add a `.npmrc` here for the 7-day minimum-release-age rule** — `e2e/` is a test harness, not a runtime artifact. The supply-chain concern that motivates the rule in `backend/`/`frontend/` doesn't apply.
-- **CI uses `npm install`, not `npm ci`** — we don't commit a lockfile yet. If you commit `package-lock.json`, switch the workflow to `npm ci` for determinism. Both are fine; just keep them consistent.
+- **CI uses `npm ci`** against the committed `package-lock.json` for determinism. If you change deps, regenerate the lockfile (`npm install`) and commit it in the same change, otherwise `npm ci` fails the prod gate.
 - **Don't widen what the seed script creates** unless you've thought through the safety. It already refuses prod (host/dbname regex + `INFISICAL_ENV=prod` + interactive confirmation). Adding more powerful operations means re-evaluating the guard surface.
 
 ## Where context lives

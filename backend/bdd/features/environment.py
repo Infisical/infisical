@@ -43,7 +43,7 @@ def bootstrap_infisical(context: Context):
             "/api/v1/admin/signup",
             json={
                 "email": f"{faker.user_name()}@infisical.com",
-                "password": faker.password(),
+                "password": "BddAdminPassword7!",
                 "firstName": faker.first_name(),
                 "lastName": faker.last_name(),
             },
@@ -79,11 +79,16 @@ def bootstrap_infisical(context: Context):
         )
         resp.raise_for_status()
         workspaces = resp.json()["workspaces"]
-        if not workspaces:
+        # The org bootstrap creates one project per org-scoped product, and this endpoint
+        # sorts them by name, so the first one is not the Cert Manager project.
+        project = next(
+            (w for w in workspaces if w["slug"].startswith("cert-manager-")),
+            None,
+        )
+        if project is None:
             raise RuntimeError(
                 "Expected an auto-provisioned Cert Manager project after admin signup"
             )
-        project = workspaces[0]
 
         ca_slug = faker.slug()
         resp = client.post(

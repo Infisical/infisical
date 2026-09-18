@@ -1,9 +1,21 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient
+} from "@tanstack/react-query";
 import { format } from "date-fns";
 
 import { apiRequest } from "@app/config/request";
 
-import { Commit, CommitHistoryItem, CommitWithChanges, RollbackPreview } from "./types";
+import {
+  Commit,
+  CommitAuthor,
+  CommitAuthorFilter,
+  CommitWithChanges,
+  RollbackPreview
+} from "./types";
 
 export const commitKeys = {
   count: ({
@@ -25,6 +37,16 @@ export const commitKeys = {
     environment: string;
     directory?: string;
   }) => [{ projectId, environment, directory }, "folder-commits"] as const,
+
+  authors: ({
+    projectId,
+    environment,
+    directory
+  }: {
+    projectId: string;
+    environment: string;
+    directory?: string;
+  }) => [{ projectId, environment, directory }, "folder-commit-authors"] as const,
 
   details: ({ projectId, commitId }: { projectId: string; commitId: string }) =>
     [{ projectId, commitId }, "commit-details"] as const,
@@ -73,14 +95,15 @@ const fetchFolderCommitHistory = async (
   offset: number = 0,
   limit: number = 20,
   search?: string,
-  sort: "asc" | "desc" = "desc"
+  sort: "asc" | "desc" = "desc",
+  author?: CommitAuthorFilter
 ): Promise<{
-  commits: CommitHistoryItem[];
+  commits: Commit[];
   total: number;
   hasMore: boolean;
 }> => {
   const res = await apiRequest.get<{
-    commits: CommitHistoryItem[];
+    commits: Commit[];
     total: number;
     hasMore: boolean;
   }>("/api/v1/pit/commits", {
@@ -91,10 +114,31 @@ const fetchFolderCommitHistory = async (
       offset,
       limit,
       search,
-      sort
+      sort,
+      actorId: author?.actorId,
+      actorType: author?.actorType
     }
   });
   return res.data;
+};
+
+const fetchFolderCommitAuthors = async ({
+  projectId,
+  environment,
+  directory
+}: {
+  projectId: string;
+  environment: string;
+  directory?: string;
+}) => {
+  const res = await apiRequest.get<{ authors: CommitAuthor[] }>("/api/v1/pit/commits/authors", {
+    params: {
+      environment,
+      path: directory,
+      projectId
+    }
+  });
+  return res.data.authors;
 };
 
 export const fetchCommitDetails = async (projectId: string, commitId: string) => {
@@ -245,7 +289,9 @@ export const useGetFolderCommitHistory = ({
   directory,
   limit = 20,
   search,
-  sort = "desc"
+  sort = "desc",
+  author,
+  isPaused
 }: {
   projectId: string;
   environment: string;
@@ -253,32 +299,71 @@ export const useGetFolderCommitHistory = ({
   limit?: number;
   search?: string;
   sort?: "asc" | "desc";
+  author?: CommitAuthorFilter;
+  isPaused?: boolean;
 }) => {
   return useInfiniteQuery({
     initialPageParam: 0,
-    queryKey: [commitKeys.history({ projectId, environment, directory }), limit, search, sort],
+    queryKey: [
+      commitKeys.history({ projectId, environment, directory }),
+      limit,
+      search,
+      sort,
+      author?.actorId,
+      author?.actorType
+    ],
     queryFn: ({ pageParam }) =>
-      fetchFolderCommitHistory(projectId, environment, directory, pageParam, limit, search, sort),
-    enabled: Boolean(projectId && environment),
+      fetchFolderCommitHistory(
+        projectId,
+        environment,
+        directory,
+        pageParam,
+        limit,
+        search,
+        sort,
+        author
+      ),
+    enabled: Boolean(projectId && environment) && !isPaused,
     select: (data) => {
-      return (data?.pages ?? [])
-        ?.map((page) => page.commits)
-        .flat()
-        .reduce(
-          (acc, commit) => {
-            const date = format(new Date(commit.createdAt), "MMM d, yyyy");
-            if (!acc[date]) {
-              acc[date] = [];
-            }
-            acc[date].push(commit);
-            return acc;
-          },
-          {} as Record<string, Commit[]>
-        );
+      const commits = (data?.pages ?? []).flatMap((page) => page.commits);
+      const groups: { date: string; commits: Commit[] }[] = [];
+
+      commits.forEach((commit) => {
+        const date = format(new Date(commit.createdAt), "MMM d, yyyy");
+        const group = groups.at(-1);
+        if (group?.date === date) {
+          group.commits.push(commit);
+        } else {
+          groups.push({ date, commits: [commit] });
+        }
+      });
+
+      return {
+        groups,
+        loadedCount: commits.length,
+        total: data?.pages?.[0]?.total ?? 0
+      };
     },
     getNextPageParam: (lastPage, pages) => (lastPage.hasMore ? pages.length * limit : undefined)
   });
 };
+
+export const useGetCommitAuthors = ({
+  projectId,
+  environment,
+  directory,
+  isPaused
+}: {
+  projectId: string;
+  environment: string;
+  directory: string;
+  isPaused?: boolean;
+}) =>
+  useQuery({
+    enabled: Boolean(projectId && environment) && !isPaused,
+    queryKey: commitKeys.authors({ projectId, environment, directory }),
+    queryFn: () => fetchFolderCommitAuthors({ projectId, environment, directory })
+  });
 
 export const useGetCommitDetails = (projectId: string, commitId: string) => {
   return useQuery({
@@ -300,6 +385,9 @@ export const useGetRollbackPreview = (
     queryKey: commitKeys.rollbackPreview({ folderId, commitId, envSlug, projectId, deepRollback }),
     queryFn: () =>
       fetchRollbackPreview(folderId, commitId, envSlug, projectId, deepRollback, secretPath),
-    enabled: Boolean(folderId) && Boolean(commitId)
+    enabled: Boolean(folderId) && Boolean(commitId),
+    // Toggling deep rollback swaps query keys, so hold the previous preview instead of
+    // tearing the whole panel down to skeletons on every toggle
+    placeholderData: keepPreviousData
   });
 };

@@ -6,6 +6,8 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 
+import { MAX_UA_CLIENT_SECRET_TTL_SECONDS } from "./identity-ua-types";
+
 export type TIdentityUaClientSecretDALFactory = ReturnType<typeof identityUaClientSecretDALFactory>;
 
 export const identityUaClientSecretDALFactory = (db: TDbClient) => {
@@ -27,7 +29,6 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
   const removeExpiredClientSecrets = async (tx?: Knex) => {
     const BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
-    const MAX_TTL = 315_360_000; // Maximum TTL value in seconds (10 years)
 
     let deletedClientSecret: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
@@ -54,7 +55,7 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
               .where("clientSecretTTL", ">", 0)
               .andWhereRaw(
                 `"${TableName.IdentityUaClientSecret}"."createdAt" + make_interval(secs => LEAST("${TableName.IdentityUaClientSecret}"."clientSecretTTL", ?)) < NOW()`,
-                [MAX_TTL]
+                [MAX_UA_CLIENT_SECRET_TTL_SECONDS]
               );
           })
           .select("id")

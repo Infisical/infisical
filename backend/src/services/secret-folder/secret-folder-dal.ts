@@ -48,6 +48,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where(`${TableName.Environment}.slug`, environment)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -86,6 +87,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .whereIn(`${TableName.Environment}.slug`, environments)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -145,6 +147,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
         .where(`${TableName.Environment}.slug`, environment)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -216,9 +219,11 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
-          db.ref("slug").withSchema(TableName.Environment).as("environmentSlug")
+          db.ref("slug").withSchema(TableName.Environment).as("environmentSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("environmentName")
         );
 
       if (!targetFolders.length) {
@@ -232,14 +237,15 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .whereIn(`${TableName.SecretFolder}.id`, folderIds)
           .where(`${TableName.Environment}.projectId`, projectId)
+          .whereNull(`${TableName.Environment}.deleteAfter`)
       );
 
       const idMap = buildFolderIdMap(allEnvFolders);
 
-      // Map environmentSlug by envId from target folders
-      const envSlugMap: Record<string, string> = {};
+      // Map env slug/name by envId from target folders
+      const envMap: Record<string, (typeof targetFolders)[number]> = {};
       for (const f of targetFolders) {
-        envSlugMap[f.envId] = (f as typeof f & { environmentSlug: string }).environmentSlug;
+        envMap[f.envId] = f;
       }
 
       return folderIds.map((folderId) => {
@@ -247,7 +253,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         if (!folder) return undefined;
 
         const path = buildFolderPath(folder, idMap);
-        return { ...folder, path, environmentSlug: envSlugMap[folder.envId] };
+        return {
+          ...folder,
+          path,
+          environmentSlug: envMap[folder.envId].environmentSlug,
+          environmentName: envMap[folder.envId].environmentName
+        };
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });
@@ -272,6 +283,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const folder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .where({ [`${TableName.SecretFolder}.id` as "id"]: id })
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .select(
@@ -296,6 +308,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .where({ projectId })
@@ -343,7 +356,11 @@ export const secretFolderDALFactory = (db: TDbClient) => {
             void bd.whereILike(`${TableName.SecretFolder}.name`, `%${sanitizeSqlLikeString(search)}%`);
           }
         })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.raw(
@@ -385,6 +402,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const parentFolders = await (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, parentIds)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
@@ -429,7 +447,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         const nameA = a[orderBy as keyof TSecretFolders] as string;
         const nameB = b[orderBy as keyof TSecretFolders] as string;
         const cmp = nameA.localeCompare(nameB, "en");
-        return orderDirection === OrderByDirection.ASC ? cmp : -cmp;
+        if (cmp !== 0) return orderDirection === OrderByDirection.ASC ? cmp : -cmp;
+        // (depth, name) ties are the norm across environments and the fetches above have no ORDER BY,
+        // so break them deterministically or cross-request offset paging duplicates/skips folders
+        const envCmp = a.environment.localeCompare(b.environment, "en");
+        if (envCmp !== 0) return envCmp;
+        return a.id.localeCompare(b.id, "en");
       });
 
       return results;
@@ -443,6 +466,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const rootFolder = await (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.SecretFolder}.id`, rootId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
@@ -507,6 +531,39 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
+  // acquires a row-level lock on the given folders so that concurrent secret inserts into them block
+  // until the surrounding transaction commits (the secret -> folder FK insert needs a conflicting FOR KEY SHARE lock).
+  const lockFoldersForUpdate = async (folderIds: string[], tx: Knex) => {
+    if (!folderIds.length) return [];
+    try {
+      const folders = await tx(TableName.SecretFolder)
+        .whereIn("id", folderIds)
+        .forUpdate()
+        .select(selectAllTableCols(TableName.SecretFolder));
+      return folders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "lockFoldersForUpdate" });
+    }
+  };
+
+  const countByProject = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.SecretFolder)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(`${TableName.SecretFolder}.isReserved`, false)
+        // exclude per-environment root folders (parentId null) so a fresh project reports 0
+        .whereNotNull(`${TableName.SecretFolder}.parentId`)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countByProject" });
+    }
+  };
+
   return {
     ...secretFolderOrm,
     update,
@@ -521,6 +578,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     findByEnvsDeep,
     findByParentId,
     findByEnvId,
-    findFoldersByRootAndIds
+    findFoldersByRootAndIds,
+    lockFoldersForUpdate,
+    countByProject
   };
 };

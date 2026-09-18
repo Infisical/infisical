@@ -8,9 +8,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { safeRequest } from "@app/lib/validator";
 import { getDatadogAuthHeaders, getDatadogBaseUrl, getDatadogErrorMessage } from "@app/services/app-connection/datadog";
 
 import {
@@ -42,13 +42,13 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
     secretsMapping
   } = secretRotation;
 
-  const authHeaders = getDatadogAuthHeaders(connection.credentials);
+  const authHeaders = getDatadogAuthHeaders(connection);
 
   const $createApplicationKey = async () => {
     const baseUrl = await getDatadogBaseUrl(connection);
 
     try {
-      const { data } = await request.post<TDatadogCreateApplicationKeyResponse>(
+      const { data } = await safeRequest.post<TDatadogCreateApplicationKeyResponse>(
         `${baseUrl}/api/v2/service_accounts/${encodeURIComponent(serviceAccountId)}/application_keys`,
         {
           data: {
@@ -82,7 +82,7 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
     const baseUrl = await getDatadogBaseUrl(connection);
 
     try {
-      await request.delete(
+      await safeRequest.delete(
         `${baseUrl}/api/v2/service_accounts/${encodeURIComponent(serviceAccountId)}/application_keys/${encodeURIComponent(applicationKeyId)}`,
         { headers: authHeaders }
       );
@@ -163,8 +163,8 @@ export const datadogApplicationKeySecretRotationFactory: TRotationFactory<
     const baseUrl = await getDatadogBaseUrl(connection);
 
     try {
-      await request.get(`${baseUrl}/api/v2/permissions`, {
-        headers: { "DD-API-KEY": connection.credentials.apiKey, "DD-APPLICATION-KEY": applicationKey }
+      await safeRequest.get(`${baseUrl}/api/v2/permissions`, {
+        headers: { ...getDatadogAuthHeaders(connection), "DD-APPLICATION-KEY": applicationKey }
       });
     } catch (error: unknown) {
       if (error instanceof BadRequestError) throw error;

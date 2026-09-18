@@ -113,7 +113,11 @@ export const opensslVerify = async (publicDer: Buffer, signature: Buffer, data: 
       writeFile(sigPath, signature, { mode: 0o600 }),
       writeFile(dataPath, data, { mode: 0o600 })
     ]);
-    const { code, stderr } = await execOpenSSL([
+    const {
+      code,
+      stderr,
+      stdout: stdoutBuf
+    } = await execOpenSSL([
       "pkeyutl",
       "-verify",
       "-pubin",
@@ -128,7 +132,8 @@ export const opensslVerify = async (publicDer: Buffer, signature: Buffer, data: 
     ]);
     if (code === 0) return true;
 
-    if (stderr.includes("Signature Verification Failure")) return false;
+    const output = `${stderr} ${String(stdoutBuf)}`;
+    if (output.includes("Signature Verification Failure")) return false;
 
     throw new Error(`PQC OpenSSL verification failed (exit ${code}): ${stderr}`);
   });

@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -24,23 +24,23 @@ export const OpenRouterApiKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Key Name">{parameters.name}</GenericFieldLabel>
+        <ReviewField label="Key Name">{parameters.name}</ReviewField>
         {parameters.limit != null && (
-          <GenericFieldLabel label="Credit Limit">${parameters.limit} USD</GenericFieldLabel>
+          <ReviewField label="Credit Limit">${parameters.limit} USD</ReviewField>
         )}
         {parameters.limitReset && (
-          <GenericFieldLabel label="Reset Limit">
+          <ReviewField label="Reset Limit">
             {LIMIT_RESET_LABELS[parameters.limitReset] || parameters.limitReset}
-          </GenericFieldLabel>
+          </ReviewField>
         )}
         {parameters.includeByokInLimit != null && (
-          <GenericFieldLabel label="Include BYOK in limit">
+          <ReviewField label="Include BYOK in limit">
             {parameters.includeByokInLimit ? "Yes" : "No"}
-          </GenericFieldLabel>
+          </ReviewField>
         )}
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>
+        <ReviewField label="API Key">{apiKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

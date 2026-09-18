@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -65,6 +65,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import { useSlashFocusSearch } from "@app/hooks";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
@@ -88,14 +89,18 @@ import {
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
+  getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
-  isExpiringWithinOneDay
+  isExpiringWithinOneDay,
+  isManagedCertificate,
+  RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
 import { certificatesToCSV, downloadCSV } from "./csvExport";
@@ -181,6 +186,8 @@ export const CertificatesTable = ({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const [search, setSearch] = useState(externalFilter?.search || "");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
@@ -296,9 +303,40 @@ export const CertificatesTable = ({
     applicationId
   });
 
-  const { data: applicationsData } = useListPkiApplications(undefined, {
-    enabled: !applicationId
-  });
+  const [applicationFilterSearch, setApplicationFilterSearch] = useState("");
+  const [debouncedApplicationFilterSearch] = useDebounce(applicationFilterSearch);
+  const { data: applicationOptionsResponse } = useListPkiApplications(
+    { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
+    { enabled: !applicationId }
+  );
+
+  const selectedApplicationIds = useMemo(() => {
+    const ids = new Set<string>();
+    [...appliedFilters, ...pendingFilters].forEach((rule) => {
+      if (rule.field === "applicationId" && Array.isArray(rule.value)) {
+        rule.value.forEach((v) => {
+          if (typeof v === "string") ids.add(v);
+        });
+      }
+    });
+    return Array.from(ids);
+  }, [appliedFilters, pendingFilters]);
+
+  const { data: selectedApplicationsResponse } = useListPkiApplications(
+    { applicationIds: selectedApplicationIds, limit: 100 },
+    { enabled: !applicationId && selectedApplicationIds.length > 0 }
+  );
+
+  const applicationOptions = useMemo(() => {
+    const byId = new Map<string, { value: string; label: string }>();
+    (applicationOptionsResponse?.applications ?? []).forEach((app) => {
+      byId.set(app.id, { value: app.id, label: app.name });
+    });
+    (selectedApplicationsResponse?.applications ?? []).forEach((app) => {
+      byId.set(app.id, { value: app.id, label: app.name });
+    });
+    return Array.from(byId.values());
+  }, [applicationOptionsResponse, selectedApplicationsResponse]);
 
   const { data: caData } = useListCasByProjectId();
   const { data: viewsData } = useListCertificateInventoryViews(applicationId);
@@ -330,14 +368,11 @@ export const CertificatesTable = ({
         label: p.slug
       }));
     }
-    if (applicationsData) {
-      options.applicationId = applicationsData.map((app) => ({
-        value: app.id,
-        label: app.name
-      }));
+    if (applicationOptions.length) {
+      options.applicationId = applicationOptions;
     }
     return options;
-  }, [caData, profilesData, applicationsData]);
+  }, [caData, profilesData, applicationOptions]);
 
   const filterSearchParams = useMemo(() => filtersToSearchParams(appliedFilters), [appliedFilters]);
 
@@ -363,6 +398,7 @@ export const CertificatesTable = ({
       ? new Date(filterSearchParams.notBeforeTo)
       : undefined,
     source: filterSearchParams.source,
+    metadataFilter: filterSearchParams.metadata,
     applicationId,
     applicationIds: filterSearchParams.applicationIds,
     sortBy,
@@ -461,7 +497,7 @@ export const CertificatesTable = ({
         const now = new Date();
         const in7d = new Date(now.getTime() + 7 * MS_PER_DAY);
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["active"] },
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.ACTIVE] },
           {
             id: "sv-expiry",
             field: "notAfter",
@@ -473,7 +509,7 @@ export const CertificatesTable = ({
         const now = new Date();
         const in30d = new Date(now.getTime() + 30 * MS_PER_DAY);
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["active"] },
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.ACTIVE] },
           {
             id: "sv-expiry",
             field: "notAfter",
@@ -481,13 +517,17 @@ export const CertificatesTable = ({
             value: in30d.toISOString().split("T")[0]
           }
         ]);
+      } else if (viewId === "system-renewed") {
+        setAppliedFilters([
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.RENEWED] }
+        ]);
       } else if (viewId === "system-expired") {
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["expired"] }
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.EXPIRED] }
         ]);
       } else if (viewId === "system-revoked") {
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["revoked"] }
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.REVOKED] }
         ]);
       } else if (viewId === "system-pqc") {
         setAppliedFilters([
@@ -609,6 +649,16 @@ export const CertificatesTable = ({
             value: sourceValue
           });
         }
+        if (customFilters.metadata && customFilters.metadata.length > 0) {
+          customFilters.metadata.forEach((m, i) => {
+            rules.push({
+              id: `cv-meta-${i}`,
+              field: "metadata",
+              operator: "is",
+              value: [m.key, m.value ?? ""]
+            });
+          });
+        }
         setAppliedFilters(rules);
       }
     },
@@ -687,6 +737,7 @@ export const CertificatesTable = ({
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
             placeholder="Search by SAN, CN, ID or Serial Number"
           />
         </InputGroup>
@@ -717,7 +768,7 @@ export const CertificatesTable = ({
               )}
             </div>
           </PopoverTrigger>
-          <PopoverContent sideOffset={4} className="w-[680px] overflow-visible p-0" align="end">
+          <PopoverContent className="w-[680px] overflow-visible p-0" align="end">
             <FilterBuilder
               rules={pendingFilters}
               onChange={setPendingFilters}
@@ -732,6 +783,7 @@ export const CertificatesTable = ({
               }}
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
+              onDynamicFieldSearch={{ applicationId: setApplicationFilterSearch }}
               hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
             />
           </PopoverContent>
@@ -840,6 +892,7 @@ export const CertificatesTable = ({
               {!isPending &&
                 certificates.map((certificate) => {
                   const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
+                  const displayStatus = getCertificateDisplayStatus(certificate);
                   const isRevoked = certificate.status === CertStatus.REVOKED;
                   const isExpired = new Date(certificate.notAfter) < new Date();
                   const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
@@ -878,7 +931,11 @@ export const CertificatesTable = ({
                       !isExpired &&
                       !isExpiringWithinDay
                   );
-                  const { originalDisplayName } = getCertificateDisplayName(certificate, 64, "—");
+                  const { originalDisplayName } = getCertificateDisplayName(
+                    certificate,
+                    64,
+                    certificate.id
+                  );
 
                   return (
                     <TableRow
@@ -898,7 +955,11 @@ export const CertificatesTable = ({
                     >
                       {visibleColumns.has("sanCn") && (
                         <TableCell isTruncatable>
-                          <CertificateDisplayName cert={certificate} maxLength={64} fallback="—" />
+                          <CertificateDisplayName
+                            cert={certificate}
+                            maxLength={64}
+                            fallback={certificate.id}
+                          />
                         </TableCell>
                       )}
                       {visibleColumns.has("serialNumber") && (
@@ -913,13 +974,7 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("status") && (
                         <TableCell>
-                          {isRevoked ? (
-                            <Badge variant="danger">Revoked</Badge>
-                          ) : isExpired ? (
-                            <Badge variant="danger">Expired</Badge>
-                          ) : (
-                            <Badge variant="success">Active</Badge>
-                          )}
+                          <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                         </TableCell>
                       )}
                       {visibleColumns.has("health") && (
@@ -1163,19 +1218,21 @@ export const CertificatesTable = ({
                                 );
                               })()}
                               {(() => {
-                                const canRenew =
+                                const isRenewable =
                                   !isInventoryView &&
-                                  (certificate.profileId || certificate.caId) &&
-                                  certificate.hasPrivateKey !== false &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired;
 
-                                if (!canRenew) return null;
+                                if (!isRenewable) return null;
 
-                                return (
+                                const profileMissing = !certificate.profileId;
+                                if (profileMissing && !isManagedCertificate(certificate))
+                                  return null;
+
+                                const item = (
                                   <DropdownMenuItem
-                                    isDisabled={!canEditCertificate}
+                                    isDisabled={!canEditCertificate || profileMissing}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("renewCertificate", {
@@ -1187,6 +1244,23 @@ export const CertificatesTable = ({
                                     <RefreshCwIcon />
                                     Renew Now
                                   </DropdownMenuItem>
+                                );
+
+                                if (!profileMissing) return item;
+
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>{item}</div>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="left"
+                                      sideOffset={20}
+                                      className="max-w-72"
+                                    >
+                                      {RENEWAL_UNAVAILABLE_NO_PROFILE}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 );
                               })()}
                               {!isInventoryView &&

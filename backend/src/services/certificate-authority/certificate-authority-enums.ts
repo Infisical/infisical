@@ -2,10 +2,12 @@ export enum CaType {
   INTERNAL = "internal",
   ACME = "acme",
   AZURE_AD_CS = "azure-ad-cs",
+  ADCS = "adcs",
   AWS_PCA = "aws-pca",
   DIGICERT = "digicert",
   AWS_ACM_PUBLIC_CA = "aws-acm-public-ca",
-  VENAFI_TPP = "venafi-tpp"
+  VENAFI_TPP = "venafi-tpp",
+  GODADDY = "godaddy"
 }
 
 export enum InternalCaType {
@@ -32,5 +34,6 @@ export enum CaRenewalStatus {
 export enum CaCapability {
   ISSUE_CERTIFICATES = "issue-certificates",
   REVOKE_CERTIFICATES = "revoke-certificates",
-  RENEW_CERTIFICATES = "renew-certificates"
+  RENEW_CERTIFICATES = "renew-certificates",
+  CUSTOM_EXTENSIONS = "custom-extensions"
 }

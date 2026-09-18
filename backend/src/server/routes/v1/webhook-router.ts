@@ -45,7 +45,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "createWebhook",
       body: z
@@ -118,7 +118,8 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           projectId: req.body.projectId,
           environment: webhook.environment.slug,
           webhookId: webhook.id,
-          type: req.body.type
+          type: req.body.type,
+          eventTypes: req.body.eventsFilter?.map((e) => e.eventName)
         }
       });
 
@@ -132,7 +133,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "updateWebhook",
       params: z.object({
@@ -188,6 +189,15 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.WebhookUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { webhookId: webhook.id, projectId: webhook.projectId }
+        })
+        .catch(() => {});
+
       return { message: "Successfully updated webhook", webhook };
     }
   });
@@ -198,7 +208,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "deleteWebhook",
       params: z.object({
@@ -227,6 +237,15 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.WebhookDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { webhookId: webhook.id, projectId: webhook.projectId }
+        })
+        .catch(() => {});
 
       return { message: "Successfully deleted webhook", webhook };
     }
@@ -265,11 +284,41 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:webhookId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getWebhookById",
+      params: z.object({
+        webhookId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          webhook: sanitizedWebhookSchema.extend({ url: z.string() })
+        })
+      }
+    },
+    handler: async (req) => {
+      const webhook = await server.services.webhook.getWebhookById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.webhookId
+      });
+      return { webhook };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listWebhooks",
       querystring: z.object({

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TAzureEntraIdScimSync } from "@app/hooks/api/secretSyncs/types/azure-entra-id-scim-sync";
 
 type Props = {
@@ -11,8 +11,9 @@ export const AzureEntraIdScimSyncDestinationSection = ({ secretSync }: Props) =>
   } = secretSync;
 
   return (
-    <GenericFieldLabel label="SCIM Service Principal">
-      {servicePrincipalDisplayName || servicePrincipalId}
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>SCIM Service Principal</DetailLabel>
+      <DetailValue>{servicePrincipalDisplayName || servicePrincipalId}</DetailValue>
+    </Detail>
   );
 };

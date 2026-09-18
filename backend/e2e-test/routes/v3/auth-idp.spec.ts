@@ -4,7 +4,7 @@ import { Knex } from "knex";
 
 import { AccessScope, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { ProviderAuthResult } from "@app/services/auth/auth-type";
+import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
 
@@ -116,6 +116,49 @@ describe("Auth IdP Service-Level Tests", () => {
       expect(result2.userId).toBe(result1.userId);
     });
 
+    test("Backfills name for a pre-invited user with null firstName/lastName", async () => {
+      const externalId = `saml-preinvite-${crypto.randomUUID()}`;
+      const email = `samlpreinvite-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+      const db = getDb();
+
+      // Simulate an org/project invite: a user record created without a name
+      // (mirrors membership-user-service.createOrGetUserToAdd — both names NULL)
+      const [invitedUser] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: false,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(invitedUser.id);
+      expect(invitedUser.firstName).toBeNull();
+      expect(invitedUser.lastName).toBeNull();
+
+      // First SAML login for that pre-invited user, with names from the IdP
+      await getServices().saml.samlLogin({
+        externalId,
+        email,
+        firstName: "Saml",
+        lastName: "Invitee",
+        authProvider: "okta-saml",
+        orgId: TEST_ORG_ID,
+        ip: "127.0.0.1",
+        userAgent: "test-agent"
+      });
+
+      // The existing invited user is reused (not duplicated)...
+      const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+      expect(alias?.userId).toBe(invitedUser.id);
+
+      // ...and its name is backfilled from the IdP claims instead of staying NULL
+      const updatedUser = await db(TableName.Users).where({ id: invitedUser.id }).first();
+      expect(updatedUser?.firstName).toBe("Saml");
+      expect(updatedUser?.lastName).toBe("Invitee");
+    });
+
     test("Login without verified domain throws", async () => {
       await expect(
         getServices().saml.samlLogin({
@@ -193,6 +236,50 @@ describe("Auth IdP Service-Level Tests", () => {
 
       const alias2 = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
       expect(alias2?.userId).toBe(alias1?.userId);
+    });
+
+    test("Backfills name for a pre-invited user with null firstName/lastName", async () => {
+      const externalId = `ldap-preinvite-${crypto.randomUUID()}`;
+      const email = `ldappreinvite-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+      const db = getDb();
+
+      // Simulate an org/project invite: a user record created without a name
+      // (mirrors membership-user-service.createOrGetUserToAdd — both names NULL)
+      const [invitedUser] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: false,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(invitedUser.id);
+      expect(invitedUser.firstName).toBeNull();
+      expect(invitedUser.lastName).toBeNull();
+
+      // First LDAP login for that pre-invited user, with names from the directory
+      await getServices().ldap.ldapLogin({
+        ldapConfigId,
+        externalId,
+        username: email,
+        email,
+        firstName: "Ldap",
+        lastName: "Invitee",
+        orgId: TEST_ORG_ID,
+        ip: "127.0.0.1",
+        userAgent: "test-agent"
+      });
+
+      // The existing invited user is reused (not duplicated)...
+      const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+      expect(alias?.userId).toBe(invitedUser.id);
+
+      // ...and its name is backfilled from the IdP claims instead of staying NULL
+      const updatedUser = await db(TableName.Users).where({ id: invitedUser.id }).first();
+      expect(updatedUser?.firstName).toBe("Ldap");
+      expect(updatedUser?.lastName).toBe("Invitee");
     });
 
     test("Login without verified domain throws", async () => {
@@ -281,6 +368,48 @@ describe("Auth IdP Service-Level Tests", () => {
       expect(result2.userId).toBe(result1.userId);
     });
 
+    test("Backfills name for a pre-invited user with null firstName/lastName", async () => {
+      const externalId = `oidc-preinvite-${crypto.randomUUID()}`;
+      const email = `oidcpreinvite-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+      const db = getDb();
+
+      // Simulate an org/project invite: a user record created without a name
+      // (mirrors membership-user-service.createOrGetUserToAdd — both names NULL)
+      const [invitedUser] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          isAccepted: false,
+          isGhost: false,
+          authMethods: [AuthMethod.EMAIL]
+        })
+        .returning("*");
+      createdUserIds.push(invitedUser.id);
+      expect(invitedUser.firstName).toBeNull();
+      expect(invitedUser.lastName).toBeNull();
+
+      // First OIDC login for that pre-invited user, with names from the IdP
+      await getServices().oidc.oidcLogin({
+        externalId,
+        email,
+        firstName: "Oidc",
+        lastName: "Invitee",
+        orgId: TEST_ORG_ID,
+        ip: "127.0.0.1",
+        userAgent: "test-agent"
+      });
+
+      // The existing invited user is reused (not duplicated)...
+      const alias = await db(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+      expect(alias?.userId).toBe(invitedUser.id);
+
+      // ...and its name is backfilled from the IdP claims instead of staying NULL
+      const updatedUser = await db(TableName.Users).where({ id: invitedUser.id }).first();
+      expect(updatedUser?.firstName).toBe("Oidc");
+      expect(updatedUser?.lastName).toBe("Invitee");
+    });
+
     test("Login without verified domain throws", async () => {
       await expect(
         getServices().oidc.oidcLogin({
@@ -341,6 +470,116 @@ describe("Auth IdP Service-Level Tests", () => {
       });
 
       expect(result2.user.id).toBe(result1.user.id);
+    });
+  });
+
+  // syncSsoUserProfile is unit-tested in isolation; these cover the wiring, that each provider's
+  // login actually calls it, after the alias has been promoted to verified, with the assertion's
+  // values rather than the stored ones.
+  describe("SSO profile sync", () => {
+    type TIdpLoginArgs = { externalId: string; email: string; firstName: string; lastName: string };
+
+    const idpLogins: { name: string; slug: string; login: (args: TIdpLoginArgs) => Promise<unknown> }[] = [
+      {
+        name: "SAML",
+        slug: "saml",
+        login: (args) =>
+          getServices().saml.samlLogin({
+            ...args,
+            authProvider: "okta-saml",
+            orgId: TEST_ORG_ID,
+            ip: "127.0.0.1",
+            userAgent: "test-agent"
+          })
+      },
+      {
+        name: "LDAP",
+        slug: "ldap",
+        login: (args) =>
+          getServices().ldap.ldapLogin({
+            ...args,
+            username: args.email,
+            ldapConfigId,
+            orgId: TEST_ORG_ID,
+            ip: "127.0.0.1",
+            userAgent: "test-agent"
+          })
+      },
+      {
+        name: "OIDC",
+        slug: "oidc",
+        login: (args) =>
+          getServices().oidc.oidcLogin({
+            ...args,
+            orgId: TEST_ORG_ID,
+            ip: "127.0.0.1",
+            userAgent: "test-agent"
+          })
+      }
+    ];
+
+    const setAuthEnforced = async (authEnforced: boolean) => {
+      await getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).update({ authEnforced });
+    };
+
+    afterEach(async () => {
+      await setAuthEnforced(false);
+    });
+
+    describe.each(idpLogins)("$name Login", ({ slug, login }) => {
+      // Enforcement is on for the first login of both tests so the alias is created verified,
+      // which is what syncSsoUserProfile requires before it will trust the assertion.
+      const seedVerifiedAlias = async (externalId: string, email: string) => {
+        await setAuthEnforced(true);
+        await login({ externalId, email, firstName: "Original", lastName: "Name" });
+
+        const alias = await getDb()(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+        if (!alias) throw new Error(`No alias created for external id '${externalId}'`);
+        expect(alias.isEmailVerified).toBe(true);
+        createdUserIds.push(alias.userId);
+
+        return alias;
+      };
+
+      test("Carries a renamed mailbox and name onto the account when the org enforces SSO", async () => {
+        const externalId = `${slug}-sync-${crypto.randomUUID()}`;
+        const email = `${slug}sync-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+        const renamedEmail = `${slug}renamed-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+        const alias = await seedVerifiedAlias(externalId, email);
+
+        // Same externalId, new mailbox and surname: the person was renamed at the IdP.
+        await login({ externalId, email: renamedEmail, firstName: "Original", lastName: "Renamed" });
+
+        const db = getDb();
+        const user = await db(TableName.Users).where({ id: alias.userId }).first();
+        expect(user?.username).toBe(renamedEmail);
+        expect(user?.email).toBe(renamedEmail);
+        expect(user?.lastName).toBe("Renamed");
+
+        // The old address stays on the alias so a login in flight from before the rename
+        // does not read as stale.
+        const updatedAlias = await db(TableName.UserAliases).where({ id: alias.id }).first();
+        expect(updatedAlias?.emails).toEqual(expect.arrayContaining([email, renamedEmail]));
+      });
+
+      test("Leaves the account alone when the org does not enforce SSO", async () => {
+        const externalId = `${slug}-nosync-${crypto.randomUUID()}`;
+        const email = `${slug}nosync-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+        const renamedEmail = `${slug}nosyncrenamed-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+        const alias = await seedVerifiedAlias(externalId, email);
+
+        // Enforcement dropped, so the IdP is no longer authoritative for identity. The alias
+        // stays verified, which isolates the enforcement gate from the stale-alias guard.
+        await setAuthEnforced(false);
+        await login({ externalId, email: renamedEmail, firstName: "Original", lastName: "Renamed" });
+
+        const user = await getDb()(TableName.Users).where({ id: alias.userId }).first();
+        expect(user?.username).toBe(email);
+        expect(user?.email).toBe(email);
+        expect(user?.lastName).toBe("Name");
+      });
     });
   });
 });

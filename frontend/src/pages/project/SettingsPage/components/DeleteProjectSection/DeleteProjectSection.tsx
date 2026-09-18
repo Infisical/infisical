@@ -1,22 +1,44 @@
-import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
-import { LeaveProjectModal } from "@app/components/v2/LeaveProjectModal";
+import {
+  Alert,
+  AlertDescription as AlertContent,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardAction,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
-  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission,
-  useUser
+  useProjectPermission
 } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
+import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+
+const CONFIRM_KEYWORD = "confirm";
 
 export const DeleteProjectSection = () => {
   const navigate = useNavigate();
@@ -26,37 +48,16 @@ export const DeleteProjectSection = () => {
     "leaveWorkspace"
   ] as const);
 
-  const { user } = useUser();
   const { currentOrg } = useOrganization();
-  const { permission } = useProjectPermission();
   const { currentProject } = useProject();
+  const { memberships } = useProjectPermission();
+  const isDirectMember = Boolean(memberships?.some((membership) => !membership.actorGroupId));
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
   const deleteWorkspace = useDeleteWorkspace();
   const leaveProject = useLeaveProject();
-  const { data: members, isPending: isMembersLoading } = useGetWorkspaceUsers(
-    currentProject?.id || ""
-  );
-
-  const canReadMembers = permission.can(
-    ProjectPermissionMemberActions.Read,
-    ProjectPermissionSub.Member
-  );
-
-  const isOnlyAdminMember = useMemo(() => {
-    if (!members) return false;
-
-    const currentUserIsAdmin = members.some(
-      (member) => member.user.id === user.id && member.roles.some((r) => r.role === "admin")
-    );
-    if (!currentUserIsAdmin) return false;
-
-    const otherAdminMembers = members.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.user.id !== user.id
-    );
-
-    return otherAdminMembers.length === 0;
-  }, [members, user]);
+  const { mutateAsync: updateProject, isPending: isUpdatingDeleteProtection } = useUpdateProject();
+  const hasDeleteProtection = currentProject?.hasDeleteProtection ?? false;
 
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
@@ -84,33 +85,9 @@ export const DeleteProjectSection = () => {
 
   const handleLeaveWorkspaceSubmit = async () => {
     try {
+      if (!currentProject) return;
+
       setIsLeaving.on();
-
-      if (!currentProject?.id || !currentOrg?.id) return;
-
-      // If the user can read members, perform client-side validation
-      if (canReadMembers) {
-        // If there's no members data but user should be able to read them, something went wrong
-        if (!members) return;
-
-        if (members.length < 2) {
-          createNotification({
-            text: "You can't leave the project as you are the only member",
-            type: "error"
-          });
-          return;
-        }
-        // If the user is the only admin, they can't leave
-        if (isOnlyAdminMember) {
-          createNotification({
-            text: "You can't leave a project with no admin members left. Promote another member to admin first.",
-            type: "error"
-          });
-          return;
-        }
-      }
-
-      // If the user can't read members (e.g., limited permissions), let the backend handle validation
 
       await leaveProject.mutateAsync({
         projectId: currentProject.id
@@ -120,65 +97,218 @@ export const DeleteProjectSection = () => {
         to: "/organizations/$orgId/projects",
         params: { orgId: currentOrg.id }
       });
+      handlePopUpClose("leaveWorkspace");
     } finally {
       setIsLeaving.off();
     }
   };
 
+  const handleToggleDeleteProjectProtection = async (state: boolean) => {
+    if (!currentProject) return;
+
+    await updateProject({
+      projectId: currentProject.id,
+      hasDeleteProtection: state
+    });
+
+    createNotification({
+      text: `Successfully ${state ? "enabled" : "disabled"} delete protection`,
+      type: "success"
+    });
+  };
+
+  const leaveButton = (
+    <Button
+      size="sm"
+      isPending={isLeaving}
+      isDisabled={!isDirectMember}
+      variant="neutral"
+      onClick={() => handlePopUpOpen("leaveWorkspace")}
+    >
+      {`Leave ${currentProject?.name}`}
+    </Button>
+  );
+
+  const renderDeleteButton = (isAllowed: boolean) => {
+    const isDisabled =
+      !isAllowed || isDeleting || isUpdatingDeleteProtection || hasDeleteProtection;
+    const deleteButton = (
+      <Button
+        size="sm"
+        isPending={isDeleting}
+        isDisabled={isDisabled}
+        variant="danger"
+        onClick={() => handlePopUpOpen("deleteWorkspace")}
+      >
+        <Trash2Icon />
+        {`Delete ${currentProject?.name}`}
+      </Button>
+    );
+
+    if (!isAllowed || (!hasDeleteProtection && !isUpdatingDeleteProtection)) return deleteButton;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip explains why the inner button is disabled */}
+          <span tabIndex={0}>{deleteButton}</span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {hasDeleteProtection
+            ? "Disable delete protection before deleting this project."
+            : "Updating delete protection."}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-medium text-mineshaft-100">Danger Zone</p>
-      <div className="space-x-4">
-        <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
-          {(isAllowed) => (
-            <Button
-              isLoading={isDeleting}
-              isDisabled={!isAllowed || isDeleting}
-              colorSchema="danger"
-              variant="outline_bg"
-              type="submit"
-              onClick={() => handlePopUpOpen("deleteWorkspace")}
+    <>
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Delete Protection</CardTitle>
+          <CardDescription>Prevent this project from being accidentally deleted.</CardDescription>
+          <CardAction className="@xs:self-center">
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Settings}
             >
-              {`Delete ${currentProject?.name}`}
-            </Button>
+              {(isAllowed) => (
+                <Toggle
+                  id="hasDeleteProtection"
+                  variant="project"
+                  checked={hasDeleteProtection}
+                  disabled={!isAllowed || isUpdatingDeleteProtection}
+                  aria-label="Toggle delete protection"
+                  onCheckedChange={handleToggleDeleteProjectProtection}
+                />
+              )}
+            </ProjectPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="min-h-8 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
+          <p className="text-sm text-muted">
+            {hasDeleteProtection
+              ? "Delete protection is enabled. Disable it before deleting this project."
+              : "Delete protection is disabled. This project can be deleted by members with permission."}
+          </p>
+        </CardFooter>
+      </Card>
+
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Leave Project</CardTitle>
+          <CardDescription>Remove your access to this project and its contents.</CardDescription>
+        </CardHeader>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          {isDirectMember ? (
+            leaveButton
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip explains why the inner button is disabled */}
+                <span tabIndex={0}>{leaveButton}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                You&apos;re a member through a group. Leave the group to remove access.
+              </TooltipContent>
+            </Tooltip>
           )}
-        </ProjectPermissionCan>
-        {!isOnlyAdminMember && (
-          <Button
-            disabled={
-              (canReadMembers && isMembersLoading) ||
-              (canReadMembers && members && members.length < 2)
-            }
-            isLoading={isLeaving}
-            colorSchema="danger"
-            variant="outline_bg"
-            type="submit"
-            onClick={() => handlePopUpOpen("leaveWorkspace")}
+        </CardFooter>
+      </Card>
+
+      <Card className="mb-6 gap-0 overflow-hidden border-danger/25 p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Danger Zone</CardTitle>
+          <CardDescription>Permanently delete this project and all of its data.</CardDescription>
+        </CardHeader>
+        <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Delete}
+            a={ProjectPermissionSub.Project}
           >
-            {`Leave ${currentProject?.name}`}
-          </Button>
-        )}
-      </div>
+            {renderDeleteButton}
+          </ProjectPermissionCan>
+        </CardFooter>
+      </Card>
 
-      <DeleteActionModal
-        isOpen={popUp.deleteWorkspace.isOpen}
-        title="Are you sure you want to delete this project?"
-        subTitle={`Permanently delete ${currentProject?.name} and all of its data. This action is not reversible, so please be careful.`}
-        onChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
-        deleteKey="confirm"
-        buttonText="Delete Project"
-        onDeleteApproved={handleDeleteWorkspaceSubmit}
-      />
+      <AlertDialog
+        open={popUp.deleteWorkspace.isOpen}
+        confirmationValue={CONFIRM_KEYWORD}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <Alert variant="danger" appearance="borderless">
+                <AlertContent>
+                  Permanently delete {currentProject?.name} and all of its data. This action is not
+                  reversible.
+                </AlertContent>
+              </Alert>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
+            onConfirm={() => {
+              if (!isDeleting) handleDeleteWorkspaceSubmit();
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteWorkspaceSubmit();
+              }}
+            >
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <LeaveProjectModal
-        isOpen={popUp.leaveWorkspace.isOpen}
-        title="Are you sure you want to leave this project?"
-        subTitle={`If you leave ${currentProject?.name} you will lose access to the project and its contents.`}
-        onChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
-        deleteKey="confirm"
-        buttonText="Leave Project"
-        onLeaveApproved={handleLeaveWorkspaceSubmit}
-      />
-    </div>
+      <AlertDialog
+        open={popUp.leaveWorkspace.isOpen}
+        confirmationValue={CONFIRM_KEYWORD}
+        onOpenChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to leave this project?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <Alert variant="warning" appearance="borderless">
+                <AlertContent>
+                  Leaving {currentProject?.name} removes your access to the project and its
+                  contents.
+                </AlertContent>
+              </Alert>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
+            onConfirm={() => {
+              if (!isLeaving) handleLeaveWorkspaceSubmit();
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isLeaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="warning"
+              isPending={isLeaving}
+              onClick={(event) => {
+                event.preventDefault();
+                handleLeaveWorkspaceSubmit();
+              }}
+            >
+              Leave Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

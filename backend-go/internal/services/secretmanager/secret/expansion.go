@@ -20,12 +20,13 @@ func (r AbsoluteSecretRef) CacheKey() string {
 // ExpandOpts configures the expansion behavior.
 type ExpandOpts struct {
 	// CanAccessAbsolute checks if the actor can access an absolute reference.
-	// Called before fetching. Return false to deny (ref becomes empty string).
-	// If nil, all absolute refs are allowed.
-	CanAccessAbsolute func(ref AbsoluteSecretRef) bool
+	// Called AFTER fetching, with actual tags from the database.
+	// Return false to deny (ref becomes empty string and is tracked as denied).
+	// If nil, all fetched absolute refs are allowed.
+	CanAccessAbsolute func(ref AbsoluteSecretRef, tags []string) bool
 
 	// FetchAbsoluteSecrets fetches secrets for absolute references.
-	// Only called for refs that passed the permission check.
+	// Should return all requested secrets - permission filtering happens after via CanAccessAbsolute.
 	// If nil, absolute refs resolve to empty string.
 	FetchAbsoluteSecrets func(refs []AbsoluteSecretRef) []*ProcessedSecret
 }
@@ -78,7 +79,7 @@ func (e *SecretExpander) Expand() {
 			break
 		}
 
-		var allowed []AbsoluteSecretRef
+		var toFetch []AbsoluteSecretRef
 		for _, ref := range needed {
 			cacheKey := ref.CacheKey()
 
@@ -87,18 +88,33 @@ func (e *SecretExpander) Expand() {
 				continue
 			}
 
-			if e.opts.CanAccessAbsolute == nil || e.opts.CanAccessAbsolute(ref) {
-				allowed = append(allowed, ref)
-				e.requestedRefs[cacheKey] = struct{}{}
-			} else {
-				e.deniedRefs[cacheKey] = struct{}{}
-				e.requestedRefs[cacheKey] = struct{}{}
-			}
+			toFetch = append(toFetch, ref)
+			e.requestedRefs[cacheKey] = struct{}{}
 		}
 
-		if len(allowed) > 0 && e.opts.FetchAbsoluteSecrets != nil {
-			absolutes := e.opts.FetchAbsoluteSecrets(allowed)
-			e.addAbsoluteSecrets(absolutes)
+		if len(toFetch) > 0 && e.opts.FetchAbsoluteSecrets != nil {
+			fetched := e.opts.FetchAbsoluteSecrets(toFetch)
+
+			// Post-fetch permission check with actual tags
+			var allowed []*ProcessedSecret
+			for _, sec := range fetched {
+				ref := AbsoluteSecretRef{Env: sec.Environment, Path: sec.SecretPath, Key: sec.Secret.Key}
+
+				if e.opts.CanAccessAbsolute != nil {
+					tagSlugs := make([]string, len(sec.Secret.Tags))
+					for i, tag := range sec.Secret.Tags {
+						tagSlugs[i] = tag.Slug
+					}
+					if !e.opts.CanAccessAbsolute(ref, tagSlugs) {
+						e.deniedRefs[ref.CacheKey()] = struct{}{}
+						continue
+					}
+				}
+
+				allowed = append(allowed, sec)
+			}
+
+			e.addAbsoluteSecrets(allowed)
 		} else {
 			break
 		}

@@ -1,11 +1,18 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
-import { THerokuApp } from "@app/hooks/api/appConnections/heroku";
+import {
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useHerokuConnectionListApps } from "@app/hooks/api/appConnections/heroku/queries";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -23,7 +30,7 @@ export const HerokuSyncFields = () => {
   });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.app", "");
@@ -35,42 +42,43 @@ export const HerokuSyncFields = () => {
         name="destinationConfig.app"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="App"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure the app exists in the connection's Heroku instance URL."
-              >
-                <div>
-                  <span>Don&#39;t see the app you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
+          <Field>
+            <FieldLabel id="secret-sync-heroku-app-label" htmlFor="secret-sync-heroku-app">
+              App
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  Ensure the app exists in the connection&apos;s Heroku instance URL.
+                </TooltipContent>
               </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isAppsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={apps?.find((app) => app.id === value) ?? null}
-              onChange={(option) => {
-                onChange((option as SingleValue<THerokuApp>)?.id ?? "");
-                setValue(
-                  "destinationConfig.appName",
-                  (option as SingleValue<THerokuApp>)?.name ?? ""
-                );
-              }}
-              options={apps}
-              placeholder="Select an app..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-heroku-app-label"
+                aria-describedby={error ? "secret-sync-heroku-app-error" : undefined}
+                id="secret-sync-heroku-app"
+                isError={Boolean(error)}
+                isLoading={isAppsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={apps?.find((app) => app.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id ?? "");
+                  setValue("destinationConfig.appName", option.name ?? "");
+                }}
+                options={apps}
+                placeholder="Select an app..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldError id="secret-sync-heroku-app-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

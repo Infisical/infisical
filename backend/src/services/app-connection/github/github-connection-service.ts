@@ -1,4 +1,3 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { OrgServiceActor } from "@app/lib/types";
@@ -6,7 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   getGitHubEnvironments,
   getGitHubOrganizations,
-  getGitHubRepositories
+  getGitHubRepositories,
+  TGitHubAppCredentialResolverDeps
 } from "@app/services/app-connection/github/github-connection-fns";
 import { TGitHubConnection } from "@app/services/app-connection/github/github-connection-types";
 
@@ -24,18 +24,18 @@ type TListGitHubEnvironmentsDTO = {
 
 export const githubConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  gitHubAppDeps: TGitHubAppCredentialResolverDeps
 ) => {
   const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
     const repositories = await getGitHubRepositories(
       appConnection,
-      gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
 
     return repositories;
@@ -46,9 +46,9 @@ export const githubConnectionService = (
 
     const organizations = await getGitHubOrganizations(
       appConnection,
-      gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      gitHubAppDeps
     );
 
     return organizations;
@@ -62,11 +62,11 @@ export const githubConnectionService = (
 
     const environments = await getGitHubEnvironments(
       appConnection,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       owner,
-      repo
+      repo,
+      gitHubAppDeps
     );
 
     return environments;

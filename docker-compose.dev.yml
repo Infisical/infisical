@@ -53,10 +53,11 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    profiles: [clickhouse]
 
   redis-commander:
     container_name: infisical-dev-redis-commander
-    image: rediscommander/redis-commander
+    image: ghcr.io/joeferner/redis-commander:0.9.0
     restart: always
     depends_on:
       - redis
@@ -80,28 +81,17 @@ services:
       - "3008:3000"
     profiles: [queue]
 
-  db-test:
-    profiles: ["test"]
-    image: postgres:14-alpine
-    ports:
-      - "5430:5432"
-    environment:
-      POSTGRES_PASSWORD: infisical
-      POSTGRES_USER: infisical
-      POSTGRES_DB: infisical-test
-    command: postgres -c max_locks_per_transaction=512
-
   backend:
     container_name: infisical-dev-api
     build:
       context: ./backend
       dockerfile: Dockerfile.dev.fips
+      args:
+        TOOLCHAIN_IMAGE: ${TOOLCHAIN_IMAGE:-ghcr.io/infisical/backend-fips-toolchain:main}
     depends_on:
       db:
         condition: service_started
       redis:
-        condition: service_started
-      clickhouse:
         condition: service_started
     env_file:
       - .env
@@ -113,11 +103,21 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - TELEMETRY_ENABLED=false
+      # Dev-only: lets the backend accept PingFederate's self-signed cert when testing
+      # OIDC locally via `make up-dev-pingfed`. NEVER set this in production.
+      # - NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
       - ./backend/src:/app/src
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "pf.local:host-gateway" # PingFederate dev container — resolves the same on host and inside compose
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
 
   prometheus:
     image: prom/prometheus
@@ -167,6 +167,10 @@ services:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
       - ./frontend/index.html:/app/index.html
+      # Persist Vite's optimized dep cache across container recreation. Without it a fresh
+      # container re-prebundles and hands out new chunk hashes, so an open tab 404s on
+      # /node_modules/.vite/deps/chunk-*.js ("error loading dynamically imported module").
+      - frontend_vite_cache:/app/node_modules/.vite
     env_file: .env
 
   backend-go:
@@ -179,6 +183,8 @@ services:
         condition: service_started
       redis:
         condition: service_started
+      backend:
+        condition: service_healthy
     ports:
       - 4040:4040
     volumes:
@@ -205,7 +211,7 @@ services:
 
   smtp-server:
     container_name: infisical-dev-smtp-server
-    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
+    image: jcalonso/mailhog:v1.0.1 # multi-arch fork; upstream mailhog/mailhog is amd64-only
     restart: always
     logging:
       driver: "none" # disable saving logs
@@ -215,11 +221,13 @@ services:
 
   openldap:
     # note: more advanced configuration is available
+    # Starts empty (base dc=ldap,dc=com + admin only). Seed test users/groups with
+    # `make seed-dev-ldap` once it is up. See sso.md.
     image: osixia/openldap:1.5.0
     restart: always
     environment:
-      LDAP_ORGANISATION: Acme
-      LDAP_DOMAIN: acme.com
+      LDAP_ORGANISATION: LDAP
+      LDAP_DOMAIN: ldap.com
       LDAP_ADMIN_PASSWORD: admin
     ports:
       - 389:389
@@ -230,7 +238,7 @@ services:
     profiles: [ldap]
 
   phpldapadmin:
-    # username: cn=admin,dc=acme,dc=com, pass is admin
+    # username: cn=admin,dc=ldap,dc=com, pass is admin
     image: osixia/phpldapadmin:latest
     restart: always
     environment:
@@ -243,15 +251,166 @@ services:
     profiles: [ldap]
 
   keycloak:
+    # Admin console: http://localhost:8088 (admin / admin).
+    # Imports the pre-seeded `infisical` realm on boot: clients `infisical-dev` (SSO login) and
+    # `infisical-mcp` (token exchange), users john/alice/admin. No volume, so it's fresh every start.
+    # See sso.md.
     image: quay.io/keycloak/keycloak:26.1.0
     restart: always
     environment:
       - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
-    command: start-dev
+      # Pin the browser-facing (frontend) URL so the OIDC issuer and authorization endpoint are
+      # always http://localhost:8088, while backchannel calls (discovery/token/jwks) use whatever
+      # URL the caller connected with. The backend therefore reaches Keycloak over the internal
+      # compose network (keycloak:8080) yet the browser is sent to localhost:8088, so no
+      # keycloak.local /etc/hosts entry is needed. See sso.md.
+      - KC_HOSTNAME=http://localhost:8088
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
+    command: start-dev --import-realm
     ports:
       - 8088:8080
-    profiles: [sso]
+    volumes:
+      - ./docker/keycloak/realm-infisical.json:/opt/keycloak/data/import/realm-infisical.json:ro
+    profiles: [oidc]
+
+  keycloak-config:
+    # Dev-only one-shot: Keycloak's built-in `master` realm (the admin console) defaults to
+    # sslRequired=external, which blocks http://localhost:8088 on Docker Desktop because the
+    # container sees published-port traffic as a non-local client IP ("HTTPS required" page).
+    # The realm import can't fix this (master already exists, so the bootstrap import skips it),
+    # so we flip it with kcadm once Keycloak is up. The imported `infisical` realm is already
+    # sslRequired=none, so the OIDC login flow itself is unaffected. See sso.md.
+    image: quay.io/keycloak/keycloak:26.1.0
+    depends_on:
+      - keycloak
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        until /opt/keycloak/bin/kcadm.sh config credentials \
+          --server http://keycloak:8080 --realm master --user admin --password admin >/dev/null 2>&1; do
+          echo "waiting for keycloak..."; sleep 3;
+        done
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE \
+          && echo "master realm sslRequired=NONE (dev only)"
+    profiles: [oidc]
+
+  pingfederate:
+    # Requires free Ping Identity DevOps credentials — register at
+    # https://devops.pingidentity.com/how-to/devopsRegistration/
+    # then set PING_IDENTITY_DEVOPS_USER and PING_IDENTITY_DEVOPS_KEY in your .env.
+    # Alternatively, leave both unset to run in Trial Product mode using the
+    # bundled license from pingidentity-server-profiles (expires periodically).
+    # Admin console: https://localhost:9999/pingfederate (administrator / 2FederateM0re)
+    # Runtime endpoint (SAML/OIDC/SCIM): https://localhost:9031
+    image: pingidentity/pingfederate:2604
+    restart: always
+    environment:
+      - PING_IDENTITY_ACCEPT_EULA=YES
+      - PING_IDENTITY_DEVOPS_USER=${PING_IDENTITY_DEVOPS_USER}
+      - PING_IDENTITY_DEVOPS_KEY=${PING_IDENTITY_DEVOPS_KEY}
+      - SERVER_PROFILE_URL=https://github.com/pingidentity/pingidentity-server-profiles.git
+      - SERVER_PROFILE_PATH=getting-started/pingfederate
+      # Enable Outbound Provisioning runtime for SCIM testing.
+      # Maps to pf.provisioner.mode in run.properties. STANDALONE = single node.
+      - PF_PROVISIONER_MODE=STANDALONE
+    ports:
+      - 9999:9999 # admin console
+      - 9031:9031 # runtime (SAML/OIDC/SCIM)
+    volumes:
+      - pingfederate_data:/opt/out
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles: [pingfed]
+
+  samba-ad:
+    # Samba 4 Active Directory Domain Controller for SCIM/SSO testing.
+    # Bootstraps an ACME.LOCAL domain on first start (~60s).
+    # Admin: Administrator / value of SAMBA_ADMIN_PASSWORD (defaults to Passw0rd!).
+    # Reachable from compose network at samba-ad:389; from host at localhost:1389.
+    image: nowsci/samba-domain:latest
+    container_name: infisical-dev-samba-ad
+    hostname: dc1
+    cap_add:
+      - SYS_ADMIN
+    privileged: true
+    environment:
+      - DOMAIN=ACME.LOCAL
+      - DOMAIN_DC=dc=acme,dc=local
+      - DOMAINPASS=${SAMBA_ADMIN_PASSWORD:-Passw0rd!}
+      - DNSFORWARDER=8.8.8.8
+      - HOSTIP=0.0.0.0
+      - INSECURELDAP=true # dev only — allows ldap:// without TLS
+    ports:
+      - 1389:389 # ldap (mapped off 389 to coexist with the openldap profile)
+      - 1636:636 # ldaps
+      - 88:88 # kerberos
+      - 88:88/udp
+    volumes:
+      - samba_data:/var/lib/samba
+      - samba_etc:/etc/samba/external
+    profiles: [ad]
+
+  # Authentik: open-source IdP for SAML + real (non-mock) SCIM provisioning. Admin UI at
+  # http://localhost:9100 (akadmin / password123!), API token `authentik-dev-bootstrap-token`.
+  # Has its own Postgres and reuses the dev Redis (DB 1). Configure via blueprints or its API.
+  # See sso.md.
+  authentik-postgres:
+    image: postgres:16-alpine
+    container_name: infisical-dev-authentik-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik
+    volumes:
+      - authentik_postgres:/var/lib/postgresql/data
+    profiles: [saml]
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2026.2.2
+    container_name: infisical-dev-authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: insecure-dev-only-key-do-not-use-in-prod-0000000000
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_REDIS__DB: "1"
+      AUTHENTIK_BOOTSTRAP_PASSWORD: password123!
+      AUTHENTIK_BOOTSTRAP_TOKEN: authentik-dev-bootstrap-token
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@saml.com
+    ports:
+      - 9100:9000
+    depends_on:
+      - authentik-postgres
+      - redis
+    profiles: [saml]
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2026.2.2
+    container_name: infisical-dev-authentik-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: insecure-dev-only-key-do-not-use-in-prod-0000000000
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_REDIS__DB: "1"
+      AUTHENTIK_BOOTSTRAP_PASSWORD: password123!
+      AUTHENTIK_BOOTSTRAP_TOKEN: authentik-dev-bootstrap-token
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@saml.com
+    depends_on:
+      - authentik-postgres
+      - redis
+    profiles: [saml]
 
 volumes:
   postgres-data:
@@ -264,6 +423,13 @@ volumes:
     driver: local
   ldap_data:
   ldap_config:
+  pingfederate_data:
+  samba_data:
+  samba_etc:
   grafana_storage:
   softhsm_tokens:
+    driver: local
+  authentik_postgres:
+    driver: local
+  frontend_vite_cache:
     driver: local

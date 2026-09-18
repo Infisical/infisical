@@ -1,0 +1,73 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Shared Types
+  description: Shared types across all API domains
+
+paths: {}
+
+components:
+  schemas:
+    Error:
+      type: object
+      required: [reqId, statusCode, error, message]
+      properties:
+        reqId:
+          type: string
+          description: Request ID for tracing
+        statusCode:
+          type: integer
+          description: HTTP status code
+        error:
+          type: string
+          description: Error type/name
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ValidationError:
+      type: object
+      required: [reqId, statusCode, error, message]
+      properties:
+        reqId:
+          type: string
+          description: Request ID for tracing
+        statusCode:
+          type: integer
+          description: HTTP status code
+        error:
+          type: string
+          description: Error type/name
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    PaginationMeta:
+      type: object
+      required: [page, perPage, total]
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer

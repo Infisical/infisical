@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { useCamundaConnectionListClusters } from "@app/hooks/api/appConnections/camunda";
 import { TCamundaSync } from "@app/hooks/api/secretSyncs/types/camunda-sync";
 
@@ -13,9 +13,19 @@ export const CamundaSyncDestinationSection = ({ secretSync }: Props) => {
   } = secretSync;
 
   if (isPending) {
-    return <GenericFieldLabel label="Cluster">Loading...</GenericFieldLabel>;
+    return (
+      <Detail>
+        <DetailLabel>Cluster</DetailLabel>
+        <DetailValue>Loading...</DetailValue>
+      </Detail>
+    );
   }
 
   const clusterName = clusters?.find((cluster) => cluster.uuid === clusterUUID)?.name;
-  return <GenericFieldLabel label="Cluster">{clusterName ?? clusterUUID}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>Cluster</DetailLabel>
+      <DetailValue>{clusterName ?? clusterUUID}</DetailValue>
+    </Detail>
+  );
 };

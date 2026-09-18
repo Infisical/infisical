@@ -1,0 +1,904 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
+import { useState } from "react";
+import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  CopyIcon,
+  EllipsisVerticalIcon,
+  InfoIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  TriangleAlertIcon
+} from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import { GlobPatternTooltip, ProjectPermissionCan } from "@app/components/permissions";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  FilterableSelect,
+  IconButton,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useProject, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionSecretValidationRuleActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
+  SecretValidationRuleType,
+  useCreateSecretValidationRule,
+  useDeleteSecretValidationRule,
+  useListSecretValidationRules,
+  useUpdateSecretValidationRule
+} from "@app/hooks/api/secretValidationRules";
+
+import { ConstraintCard } from "./ConstraintCard";
+import {
+  CONSTRAINT_OPTIONS,
+  ConstraintTarget,
+  ConstraintType,
+  DYNAMIC_SECRET_PROVIDER_OPTIONS,
+  DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS,
+  DynamicSecretRuleProvider,
+  flattenConstraints,
+  groupConstraintsByTarget,
+  RULE_TYPE_LABELS,
+  ruleFormSchema,
+  RuleType,
+  SECRET_ROTATION_PROVIDER_OPTIONS,
+  SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS,
+  SecretRotationRuleProvider,
+  TProviderOption,
+  TRuleForm
+} from "./SecretValidationRulesSection.utils";
+
+const ProviderMultiSelect = <T extends string>({
+  label,
+  options,
+  control,
+  error
+}: {
+  label: string;
+  options: TProviderOption<T>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: any;
+  error?: string;
+}) => {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-muted">{label}</label>
+      <Controller
+        control={control}
+        name="enforcement.providers"
+        render={({ field }) => {
+          const selected = options.filter((opt) =>
+            (field.value as T[] | undefined)?.includes(opt.value)
+          );
+          return (
+            <FilterableSelect
+              isMulti
+              placeholder="Select provider(s)..."
+              value={selected}
+              onChange={(next) => {
+                const arr = (next as TProviderOption<T>[] | null) ?? [];
+                field.onChange(arr.map((o) => o.value));
+              }}
+              options={options}
+              getOptionValue={(o) => (o as TProviderOption<T>).value}
+              getOptionLabel={(o) => (o as TProviderOption<T>).label}
+              isError={Boolean(error)}
+            />
+          );
+        }}
+      />
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+    </div>
+  );
+};
+
+const RuleFormContent = ({
+  defaultValues,
+  isEditing,
+  initialIsActive = true,
+  environments,
+  onClose,
+  onSubmit
+}: {
+  defaultValues?: Partial<TRuleForm>;
+  isEditing: boolean;
+  initialIsActive?: boolean;
+  environments: { slug: string; name: string }[];
+  onClose: () => void;
+  onSubmit: (data: TRuleForm, isActive?: boolean) => void;
+}) => {
+  const [isActive, setIsActive] = useState(initialIsActive);
+
+  const form = useForm<TRuleForm>({
+    resolver: zodResolver(ruleFormSchema),
+    defaultValues: defaultValues || {
+      name: "",
+      description: "",
+      environment: null,
+      folderPath: "/**",
+      enforcement: {
+        type: RuleType.StaticSecrets,
+        constraints: []
+      }
+    }
+  });
+
+  const {
+    handleSubmit,
+    control,
+    formState: { errors }
+  } = form;
+
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: "enforcement.constraints"
+  });
+
+  const watchedConstraints = form.watch("enforcement.constraints");
+  const watchedRuleType = form.watch("enforcement.type");
+  const isGeneratedCredentialRule =
+    watchedRuleType === RuleType.DynamicSecrets || watchedRuleType === RuleType.SecretRotations;
+  const disallowedConstraintTypes = (() => {
+    if (watchedRuleType === RuleType.DynamicSecrets)
+      return DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS;
+    if (watchedRuleType === RuleType.SecretRotations)
+      return SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS;
+    return [] as ConstraintType[];
+  })();
+  const usedConstraintPairs = new Set(watchedConstraints?.map((c) => `${c.type}:${c.appliesTo}`));
+  // Regex generation uses RandExp on the produced string and cannot honor
+  // separate min/max length constraints — the regex pattern dictates the
+  // output length. Warn when both are configured.
+  const hasRegexLengthConflict = (() => {
+    const hasRegex = watchedConstraints?.some((c) => c.type === ConstraintType.RegexPattern);
+    const hasLength = watchedConstraints?.some(
+      (c) => c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength
+    );
+    return Boolean(hasRegex && hasLength);
+  })();
+
+  // Oracle 12c and older limits passwords to 30 characters. Show a heads-up
+  // when OracleDB is selected and a constraint actually exceeds that limit:
+  // min/max length > 30, or any regex (whose output length can't be checked
+  // statically).
+  const ORACLE_12C_MAX_PASSWORD_LENGTH = 30;
+  const watchedEnforcement = form.watch("enforcement");
+  const showOracleLengthWarning = (() => {
+    if (watchedEnforcement.type !== RuleType.SecretRotations) return false;
+    if (!watchedEnforcement.providers.includes(SecretRotationRuleProvider.OracleDBCredentials))
+      return false;
+    return watchedConstraints?.some((c) => {
+      if (c.type === ConstraintType.RegexPattern) return true;
+      if (c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength) {
+        return Number(c.value) > ORACLE_12C_MAX_PASSWORD_LENGTH;
+      }
+      return false;
+    });
+  })();
+  const availableConstraintOptions = CONSTRAINT_OPTIONS.filter((opt) => {
+    if (disallowedConstraintTypes.includes(opt.type)) return false;
+    const targets = isGeneratedCredentialRule
+      ? [ConstraintTarget.GeneratedPassword]
+      : opt.allowedTargets || [ConstraintTarget.SecretKey, ConstraintTarget.SecretValue];
+    return targets.some((target) => !usedConstraintPairs.has(`${opt.type}:${target}`));
+  });
+
+  return (
+    <FormProvider {...form}>
+      <form
+        onSubmit={handleSubmit((data) => onSubmit(data, isEditing ? isActive : undefined))}
+        className="flex h-full flex-col"
+      >
+        {isEditing && (
+          <div className="flex items-center justify-between border-b border-border px-6 py-3">
+            <span className="text-xs text-muted">{isActive ? "Enabled" : "Disabled"}</span>
+            <Toggle checked={isActive} onCheckedChange={setIsActive} variant="project" />
+          </div>
+        )}
+        <div
+          className={`flex-1 space-y-6 p-6 transition-opacity ${!isActive ? "pointer-events-none opacity-40" : ""}`}
+        >
+          {/* Name & Description */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Name</label>
+              <Controller
+                control={control}
+                name="name"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="e.g. Production key naming"
+                    isError={Boolean(errors.name)}
+                    autoComplete="off"
+                    name="validation-rule-name"
+                  />
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Description (optional)</label>
+              <Controller
+                control={control}
+                name="description"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="Brief description of this rule"
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Rule Type */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Rule Type</label>
+            <Controller
+              control={control}
+              name="enforcement.type"
+              render={({ field: { value, onChange } }) => (
+                <Select
+                  value={value}
+                  onValueChange={(next) => {
+                    onChange(next);
+                    replace([]);
+                    if (next !== RuleType.StaticSecrets) {
+                      form.setValue("enforcement.providers" as never, [] as never, {
+                        shouldDirty: true,
+                        shouldValidate: false
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {(Object.values(RuleType) as RuleType[]).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {RULE_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          {/* Providers */}
+          {watchedRuleType === RuleType.DynamicSecrets && (
+            <ProviderMultiSelect<DynamicSecretRuleProvider>
+              label="Dynamic Secret Providers"
+              options={DYNAMIC_SECRET_PROVIDER_OPTIONS}
+              control={control}
+              error={
+                // discriminated form types: providers only exists on this arm
+                (errors.enforcement as { providers?: { message?: string } } | undefined)?.providers
+                  ?.message
+              }
+            />
+          )}
+          {watchedRuleType === RuleType.SecretRotations && (
+            <ProviderMultiSelect<SecretRotationRuleProvider>
+              label="Rotation Providers"
+              options={SECRET_ROTATION_PROVIDER_OPTIONS}
+              control={control}
+              error={
+                (errors.enforcement as { providers?: { message?: string } } | undefined)?.providers
+                  ?.message
+              }
+            />
+          )}
+
+          {/* Scope */}
+          <div>
+            <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">Environment</label>
+                <Controller
+                  control={control}
+                  name="environment"
+                  render={({ field: { value, onChange } }) => (
+                    <Select
+                      value={value ?? "all"}
+                      onValueChange={(val) => onChange(val === "all" ? null : val)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="All Environments" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value="all">All Environments</SelectItem>
+                        {environments.map((env) => (
+                          <SelectItem key={env.slug} value={env.slug}>
+                            {env.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">
+                  <div className="flex items-center gap-2">
+                    <p>Folder Path</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-4 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-wrap">
+                        <GlobPatternTooltip />
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </label>
+                <Controller
+                  control={control}
+                  name="folderPath"
+                  render={({ field, fieldState: { error } }) => (
+                    <div>
+                      <Input {...field} placeholder="/**" isError={Boolean(error)} />
+                      {error?.message && (
+                        <p className="mt-1 text-xs text-danger">{error.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          {hasRegexLengthConflict && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Regex pattern takes precedence over length constraints</AlertTitle>
+              <AlertDescription>
+                <p>
+                  When a regex pattern is set, generated values are produced directly from the
+                  pattern and the min/max length constraints are ignored. Define the length
+                  requirement inside the regex pattern itself
+                  <br /> (e.g.{" "}
+                  <code className="rounded-md bg-surface-hover px-1 py-0.5">{"[A-Z]{12,20}"}</code>
+                  ).
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showOracleLengthWarning && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Oracle 12c password length limitation</AlertTitle>
+              <AlertDescription>
+                If you are using Oracle 12c or older, passwords are limited to 30 characters. Make
+                sure your length and pattern constraints stay within this limit to avoid rotation
+                failures.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Constraints */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-medium text-foreground">Validation Constraints</h4>
+              {availableConstraintOptions.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="xs">
+                      <PlusIcon className="size-4" />
+                      Add Constraint
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {availableConstraintOptions.map((opt) => {
+                      const targets = isGeneratedCredentialRule
+                        ? [ConstraintTarget.GeneratedPassword]
+                        : opt.allowedTargets || [
+                            ConstraintTarget.SecretValue,
+                            ConstraintTarget.SecretKey
+                          ];
+                      const defaultTarget =
+                        targets.find((t) => !usedConstraintPairs.has(`${opt.type}:${t}`)) ??
+                        targets[0];
+
+                      return (
+                        <DropdownMenuItem
+                          key={opt.type}
+                          onClick={() =>
+                            append({
+                              type: opt.type,
+                              appliesTo: defaultTarget,
+                              value:
+                                opt.type === ConstraintType.PreventValueReuse
+                                  ? String(opt.placeholder || 10)
+                                  : ""
+                            })
+                          }
+                        >
+                          <opt.icon className="mr-2 size-4" />
+                          <div>
+                            <div className="text-sm">{opt.label}</div>
+                            <div className="text-xs text-muted">{opt.description}</div>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+
+            {fields.length === 0 && (
+              <div className="rounded-md border border-dashed border-border py-8 text-center">
+                <p className="text-sm text-muted">No constraints added yet</p>
+                {(errors.enforcement?.constraints?.root?.message ||
+                  errors.enforcement?.constraints?.message) && (
+                  <p className="mt-1 text-xs text-danger">
+                    {errors.enforcement?.constraints?.root?.message ||
+                      errors.enforcement?.constraints?.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {fields.map((field, idx) => (
+                <ConstraintCard key={field.id} index={idx} onRemove={() => remove(idx)} />
+              ))}
+            </div>
+
+            {fields.length > 0 &&
+              (errors.enforcement?.constraints?.root?.message ||
+                errors.enforcement?.constraints?.message) && (
+                <p className="mt-1 text-xs text-danger">
+                  {errors.enforcement?.constraints?.root?.message ||
+                    errors.enforcement?.constraints?.message}
+                </p>
+              )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <SheetFooter className="border-t">
+          <Button variant="project" type="submit">
+            {isEditing ? "Save Changes" : "Create Rule"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+        </SheetFooter>
+      </form>
+    </FormProvider>
+  );
+};
+
+type SheetState =
+  | { open: false }
+  | { open: true; mode: "create" }
+  | { open: true; mode: "edit"; ruleId: string };
+
+export const SecretValidationRulesSection = () => {
+  const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+
+  const canReadRules = permission.can(
+    ProjectPermissionSecretValidationRuleActions.Read,
+    ProjectPermissionSub.SecretValidationRules
+  );
+
+  const [sheetState, setSheetState] = useState<SheetState>({ open: false });
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+
+  const { data: rules = [], isLoading } = useListSecretValidationRules(
+    { projectId: currentProject.id },
+    { enabled: canReadRules }
+  );
+
+  const createRule = useCreateSecretValidationRule();
+  const updateRule = useUpdateSecretValidationRule();
+  const deleteRule = useDeleteSecretValidationRule();
+
+  const ruleToDelete = rules.find((rule) => rule.id === deleteRuleId);
+
+  const handleDelete = async () => {
+    if (!ruleToDelete) return;
+    await deleteRule
+      .mutateAsync({
+        projectId: currentProject.id,
+        ruleId: ruleToDelete.id,
+        type: ruleToDelete.type
+      })
+      .finally(() => setDeleteRuleId(null));
+  };
+
+  const handleClose = () => setSheetState({ open: false });
+
+  const handleSubmit = async (data: TRuleForm, isActive?: boolean) => {
+    // The editor keeps constraints in a list; the API groups them by what they apply to.
+    const { type } = data.enforcement;
+    const grouped = groupConstraintsByTarget(data.enforcement.constraints);
+    const isStaticRule = type === RuleType.StaticSecrets;
+
+    const generatedConfig = {
+      providers: "providers" in data.enforcement ? data.enforcement.providers : [],
+      passwordConstraints: grouped[ConstraintTarget.GeneratedPassword] ?? {}
+    };
+
+    const scope = {
+      projectId: currentProject.id,
+      type,
+      name: data.name,
+      description: data.description,
+      secretPath: data.folderPath
+    };
+
+    if (sheetState.open && sheetState.mode === "edit") {
+      await updateRule.mutateAsync({
+        ...scope,
+        ruleId: sheetState.ruleId,
+        isActive,
+        environment: data.environment,
+        // A target with no constraints left is sent as null, so removing its last card clears it on
+        // the rule rather than reading as "leave it alone".
+        ...(isStaticRule
+          ? {
+              keyConstraints: grouped[ConstraintTarget.SecretKey] ?? null,
+              valueConstraints: grouped[ConstraintTarget.SecretValue] ?? null
+            }
+          : generatedConfig)
+      });
+      createNotification({ text: "Rule updated", type: "success" });
+    } else {
+      await createRule.mutateAsync({
+        ...scope,
+        environment: data.environment ?? undefined,
+        ...(isStaticRule
+          ? {
+              keyConstraints: grouped[ConstraintTarget.SecretKey],
+              valueConstraints: grouped[ConstraintTarget.SecretValue]
+            }
+          : generatedConfig)
+      });
+      createNotification({ text: "Rule created", type: "success" });
+    }
+    handleClose();
+  };
+
+  const editingRule =
+    sheetState.open && sheetState.mode === "edit"
+      ? rules.find((r) => r.id === sheetState.ruleId)
+      : undefined;
+
+  const editingDefaults: Partial<TRuleForm> | undefined = editingRule
+    ? ({
+        name: editingRule.name,
+        description: editingRule.description ?? undefined,
+        environment: editingRule.environment?.slug ?? null,
+        folderPath: editingRule.secretPath,
+        enforcement: {
+          type: editingRule.type,
+          constraints:
+            editingRule.type === SecretValidationRuleType.StaticSecrets
+              ? [
+                  ...flattenConstraints(editingRule.keyConstraints, ConstraintTarget.SecretKey),
+                  ...flattenConstraints(editingRule.valueConstraints, ConstraintTarget.SecretValue)
+                ]
+              : flattenConstraints(
+                  editingRule.passwordConstraints,
+                  ConstraintTarget.GeneratedPassword
+                ),
+          ...("providers" in editingRule && { providers: editingRule.providers })
+        }
+      } as Partial<TRuleForm>)
+    : undefined;
+
+  const isEditing = sheetState.open && sheetState.mode === "edit";
+
+  if (!canReadRules) return null;
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Secret Validation Rules</CardTitle>
+        <CardDescription>
+          Define constraints applied to static secret keys and values on write, and to the passwords
+          generated for dynamic secrets and secret rotations.
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionSecretValidationRuleActions.Create}
+            a={ProjectPermissionSub.SecretValidationRules}
+          >
+            {(isAllowed) => (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      isDisabled={!isAllowed}
+                      variant="project"
+                      size="sm"
+                      onClick={() => setSheetState({ open: true, mode: "create" })}
+                    >
+                      <PlusIcon className="size-4" />
+                      Create Rule
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" hidden={isAllowed}>
+                  <p>Access restricted</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-muted">Loading rules...</p>
+          </div>
+        )}
+        {!isLoading && rules.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No validation rules configured</EmptyTitle>
+              <EmptyDescription>
+                Create a rule to enforce validation constraints on secret keys and values
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretValidationRuleActions.Create}
+                a={ProjectPermissionSub.SecretValidationRules}
+              >
+                {(isAllowed) => (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          isDisabled={!isAllowed}
+                          onClick={() => setSheetState({ open: true, mode: "create" })}
+                        >
+                          <PlusIcon className="size-4" />
+                          Create Rule
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" hidden={isAllowed}>
+                      <p>Access restricted</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </ProjectPermissionCan>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          !isLoading && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Scope</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rules.map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="py-3">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-foreground">{rule.name}</span>
+                        {rule.description && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoIcon className="ml-1.5 size-3.5 text-muted" />
+                            </TooltipTrigger>
+                            <TooltipContent>{rule.description}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant="neutral">{RULE_TYPE_LABELS[rule.type]}</Badge>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="neutral">
+                          {rule.environment?.name ?? "All Environments"}
+                        </Badge>
+                        <Badge variant="neutral">{rule.secretPath}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <Badge variant={rule.isActive ? "success" : "neutral"}>
+                        {rule.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell variant="action" className="py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="Actions" variant="ghost" size="xs">
+                            <EllipsisVerticalIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigator.clipboard.writeText(rule.id);
+                              createNotification({
+                                text: "Rule ID copied to clipboard",
+                                type: "success"
+                              });
+                            }}
+                          >
+                            <CopyIcon className="mr-2 size-4" />
+                            Copy Rule ID
+                          </DropdownMenuItem>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionSecretValidationRuleActions.Edit}
+                            a={ProjectPermissionSub.SecretValidationRules}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                onClick={() =>
+                                  setSheetState({ open: true, mode: "edit", ruleId: rule.id })
+                                }
+                              >
+                                <PencilIcon className="mr-2 size-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                          <ProjectPermissionCan
+                            I={ProjectPermissionSecretValidationRuleActions.Delete}
+                            a={ProjectPermissionSub.SecretValidationRules}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                variant="danger"
+                                isDisabled={!isAllowed}
+                                onClick={() => setDeleteRuleId(rule.id)}
+                              >
+                                <TrashIcon className="mr-2 size-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )
+        )}
+      </CardContent>
+
+      <AlertDialog
+        open={deleteRuleId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteRuleId(null);
+            setDeleteConfirmation("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Validation Rule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this rule? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="w-full pb-4">
+            <p className="mb-2 text-sm text-muted">
+              Enter the rule name{" "}
+              <span className="font-medium text-foreground">{ruleToDelete?.name}</span> to confirm
+              the deletion
+            </p>
+            <Input
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder={ruleToDelete?.name}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleDelete}
+              disabled={deleteConfirmation !== ruleToDelete?.name}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Sheet open={sheetState.open} onOpenChange={(open) => !open && handleClose()}>
+        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
+          <SheetHeader className="border-b">
+            <SheetTitle>{isEditing ? "Edit Rule" : "Create Rule"}</SheetTitle>
+            <SheetDescription>
+              {isEditing ? "Modify this validation rule" : "Define a new secret validation rule"}
+            </SheetDescription>
+          </SheetHeader>
+          {sheetState.open && (
+            <RuleFormContent
+              key={isEditing ? editingRule?.id : "create"}
+              defaultValues={editingDefaults}
+              isEditing={isEditing}
+              initialIsActive={editingRule?.isActive ?? true}
+              environments={currentProject.environments}
+              onClose={handleClose}
+              onSubmit={handleSubmit}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </Card>
+  );
+};

@@ -1,10 +1,13 @@
 import { z } from "zod";
 
-import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { AuditLogStreamFiltersSchema } from "@app/ee/services/audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
   server,
@@ -20,9 +23,16 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
   }>;
   updateSchema: z.ZodType<{
     credentials: T["credentials"];
+    streamMode?: StreamMode;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
+  // Product scoping is common to every provider, so it's merged onto each provider's body schema
+  // here rather than duplicated across all five provider schemas.
+  const FiltersBodySchema = z.object({
+    filters: AuditLogStreamFiltersSchema.nullish()
+  });
+
   server.route({
     method: "GET",
     url: "/:logStreamId",
@@ -39,7 +49,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { logStreamId } = req.params;
 
@@ -56,7 +66,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       rateLimit: writeLimit
     },
     schema: {
-      body: createSchema,
+      body: createSchema.and(FiltersBodySchema),
       response: {
         200: z.object({
           auditLogStream: sanitizedResponseSchema
@@ -65,15 +75,25 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials } = req.body;
+      const { credentials, filters } = req.body;
 
       const auditLogStream = await server.services.auditLogStream.create(
         {
           provider,
-          credentials
+          credentials,
+          filters
         },
         req.permission
       );
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
 
       return { auditLogStream };
     }
@@ -89,7 +109,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       params: z.object({
         logStreamId: z.string().uuid()
       }),
-      body: updateSchema,
+      body: updateSchema.and(FiltersBodySchema),
       response: {
         200: z.object({
           auditLogStream: sanitizedResponseSchema
@@ -99,16 +119,27 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { logStreamId } = req.params;
-      const { credentials } = req.body;
+      const { credentials, streamMode, filters } = req.body;
 
       const auditLogStream = await server.services.auditLogStream.updateById(
         {
           logStreamId,
           provider,
-          credentials
+          credentials,
+          streamMode,
+          filters
         },
         req.permission
       );
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
 
       return { auditLogStream };
     }
@@ -135,6 +166,15 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
       const { logStreamId } = req.params;
 
       const auditLogStream = await server.services.auditLogStream.deleteById(logStreamId, provider, req.permission);
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AuditLogStreamDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { streamId: auditLogStream.id, destinationType: provider }
+        })
+        .catch(() => {});
 
       return { auditLogStream };
     }

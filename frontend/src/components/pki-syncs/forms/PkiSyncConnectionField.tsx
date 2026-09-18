@@ -1,17 +1,27 @@
+import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouterState } from "@tanstack/react-router";
+import { Info } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import { PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
+import { getPkiSyncConnectionApps, PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp } from "@app/hooks";
-import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { useListAvailableAppConnectionsForApps } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -20,14 +30,31 @@ type Props = {
   onChange?: VoidFunction;
 };
 
+const LDAP_TARGET_FIELDS = [
+  "host",
+  "port",
+  "sslEnabled",
+  "sslRejectUnauthorized",
+  "sslCertificate"
+] as const;
+
 export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
   const { permission } = useProjectPermission();
   const { control, watch, setValue } = useFormContext<TPkiSyncForm>();
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
+  const [appToCreate, setAppToCreate] = useState<AppConnection | null>(null);
 
   const destination = watch("destination");
   const app = PKI_SYNC_CONNECTION_MAP[destination];
+  const apps = getPkiSyncConnectionApps(destination);
+
+  const clearLdapTargetFields = (nextApp?: AppConnection) => {
+    if (nextApp === AppConnection.LDAP) return;
+    LDAP_TARGET_FIELDS.forEach((field) =>
+      setValue(`destinationConfig.${field}` as never, undefined as never, { shouldDirty: true })
+    );
+  };
 
   const { currentProject } = useProject();
 
@@ -46,38 +73,49 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
     return pathname;
   };
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(
-    app,
+  const { connections: availableConnections, isPending } = useListAvailableAppConnectionsForApps(
+    apps,
     currentProject.id
   );
 
-  const connectionName = APP_CONNECTION_MAP[app].name;
+  const connectionLabel =
+    apps.length > 1 ? "Connection" : `${APP_CONNECTION_MAP[app].name} Connection`;
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
   );
 
-  const appName = APP_CONNECTION_MAP[PKI_SYNC_CONNECTION_MAP[destination]].name;
+  const appNames = apps.map((accepted) => APP_CONNECTION_MAP[accepted].name).join(" or ");
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Specify the {appName} Connection to use to connect to {connectionName} and configure
-        destination parameters.
-      </p>
       <Controller
+        control={control}
+        name="connection"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipText="App Connections can be created from the Project Settings page."
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label={`${connectionName} Connection`}
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              {connectionLabel}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  App Connections can be created from the Project Settings page.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FilterableSelect
               value={value}
               onChange={(newValue) => {
-                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                const selected = newValue as SingleValue<{
+                  id: string;
+                  name: string;
+                  app?: AppConnection;
+                }>;
+                if (selected?.id?.startsWith("_create")) {
+                  setAppToCreate(selected.app ?? app);
                   handlePopUpOpen("addConnection");
                   onChange(null);
                   const formData = { ...watch(), returnUrl: getPkiSyncReturnUrl() };
@@ -87,29 +125,39 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
                 }
 
                 onChange(newValue);
+                clearLdapTargetFields((newValue as SingleValue<{ app?: AppConnection }>)?.app);
                 if (callback) callback();
               }}
               isLoading={isPending}
               options={[
-                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                ...(availableConnections ?? [])
+                ...(canCreateConnection
+                  ? apps.map((creatable) => ({
+                      id: `_create:${creatable}`,
+                      name: `Create ${APP_CONNECTION_MAP[creatable].name} Connection`,
+                      app: creatable
+                    }))
+                  : []),
+                ...availableConnections
               ]}
+              groupBy={apps.length > 1 ? "app" : null}
+              getGroupHeaderLabel={(groupApp: AppConnection) => APP_CONNECTION_MAP[groupApp].name}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
               components={{ Option: AppConnectionOption }}
+              isError={Boolean(error)}
             />
-          </FormControl>
+            {!isPending && !availableConnections.length && !canCreateConnection ? (
+              <FieldDescription className="text-warning">
+                You do not have access to any {appNames} Connections. Contact an admin to create
+                one.
+              </FieldDescription>
+            ) : (
+              <FieldError errors={[error]} />
+            )}
+          </Field>
         )}
-        control={control}
-        name="connection"
       />
-      {!isPending && !availableConnections?.length && !canCreateConnection && (
-        <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
-          <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          You do not have access to any {appName} Connections. Contact an admin to create one.
-        </p>
-      )}
       <AddAppConnectionModal
         isOpen={popUp.addConnection.isOpen}
         onOpenChange={(isOpen) => {
@@ -118,10 +166,11 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
         }}
         projectType={currentProject.type}
         projectId={currentProject.id}
-        app={app}
+        app={appToCreate ?? app}
         onComplete={(connection) => {
           if (connection) {
             setValue("connection", connection);
+            clearLdapTargetFields(connection.app);
           }
         }}
       />

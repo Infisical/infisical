@@ -1,7 +1,5 @@
 import { components, OptionProps } from "react-select";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon, PlusIcon } from "lucide-react";
 
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 
@@ -16,21 +14,17 @@ export const CertificatePolicyOption = ({
 
   return (
     <components.Option isSelected={isSelected} {...props}>
-      <div className="flex items-center">
-        {isCreateOption ? (
-          <div className="flex items-center gap-x-1 text-mineshaft-400">
-            <FontAwesomeIcon icon={faPlus} size="sm" />
-            <span>Add Certificate Policy</span>
-          </div>
-        ) : (
-          <>
-            <p className="mr-auto truncate">{children}</p>
-            {isSelected && (
-              <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
-            )}
-          </>
-        )}
-      </div>
+      {isCreateOption ? (
+        <div className="flex cursor-pointer flex-row items-center gap-x-1.5 text-muted">
+          <PlusIcon className="size-4 shrink-0" />
+          <span>Add Certificate Policy</span>
+        </div>
+      ) : (
+        <div className="flex cursor-pointer flex-row items-center justify-between">
+          <p className="truncate">{children}</p>
+          {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
+        </div>
+      )}
     </components.Option>
   );
 };

@@ -11,11 +11,14 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
+  getNotAfterWithClockSkew,
+  getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -31,9 +34,6 @@ import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
-import { SshCertType } from "../ssh/ssh-certificate-authority-types";
-import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
 import { TInstanceRelayConfigDALFactory } from "./instance-relay-config-dal";
 import { TOrgRelayConfigDALFactory } from "./org-relay-config-dal";
 import { RELAY_CONNECTING_GATEWAY_INFO } from "./relay-constants";
@@ -86,8 +86,8 @@ export const relayServiceFactory = ({
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
         name: `O=Infisical,CN=Infisical Instance Root Relay CA`,
         serialNumber: rootCaSerialNumber,
-        notBefore: rootCaIssuedAt,
-        notAfter: rootCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(rootCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(rootCaExpiration),
         signingAlgorithm: alg,
         keys: rootCaKeys,
         extensions: [
@@ -107,8 +107,8 @@ export const relayServiceFactory = ({
         serialNumber: orgRelayCaSerialNumber,
         subject: `O=Infisical,CN=Infisical Organization Relay CA`,
         issuer: rootCaCert.subject,
-        notBefore: orgRelayCaIssuedAt,
-        notAfter: orgRelayCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(orgRelayCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(orgRelayCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: orgRelayCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -138,8 +138,8 @@ export const relayServiceFactory = ({
         serialNumber: instanceRelayCaSerialNumber,
         subject: `O=Infisical,CN=Infisical Instance Relay CA`,
         issuer: rootCaCert.subject,
-        notBefore: instanceRelayCaIssuedAt,
-        notAfter: instanceRelayCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(instanceRelayCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(instanceRelayCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: instanceRelayCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -169,8 +169,8 @@ export const relayServiceFactory = ({
         serialNumber: instanceRelayClientCaSerialNumber,
         subject: `O=Infisical,CN=Infisical Instance Relay Client CA`,
         issuer: instanceRelayCaCert.subject,
-        notBefore: instanceRelayClientCaIssuedAt,
-        notAfter: instanceRelayClientCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(instanceRelayClientCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(instanceRelayClientCaExpiration),
         signingKey: instanceRelayCaKeys.privateKey,
         publicKey: instanceRelayClientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -200,8 +200,8 @@ export const relayServiceFactory = ({
         serialNumber: instanceRelayServerCaSerialNumber,
         subject: `O=Infisical,CN=Infisical Instance Relay Server CA`,
         issuer: instanceRelayCaCert.subject,
-        notBefore: instanceRelayServerCaIssuedAt,
-        notAfter: instanceRelayServerCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(instanceRelayServerCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(instanceRelayServerCaExpiration),
         signingKey: instanceRelayCaKeys.privateKey,
         publicKey: instanceRelayServerCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -455,8 +455,8 @@ export const relayServiceFactory = ({
         serialNumber: orgRelayClientCaSerialNumber,
         subject: `O=${orgId},CN=Infisical Org Relay Client CA`,
         issuer: orgRelayCaCert.subject,
-        notBefore: orgRelayClientCaIssuedAt,
-        notAfter: orgRelayClientCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(orgRelayClientCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(orgRelayClientCaExpiration),
         signingKey: orgRelayCaPrivateKey,
         publicKey: orgRelayClientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -490,8 +490,8 @@ export const relayServiceFactory = ({
         serialNumber: orgRelayServerCaSerialNumber,
         subject: `O=${orgId},CN=Infisical Org Relay Server CA`,
         issuer: orgRelayCaCert.subject,
-        notBefore: orgRelayServerCaIssuedAt,
-        notAfter: orgRelayServerCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(orgRelayServerCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(orgRelayServerCaExpiration),
         signingKey: orgRelayCaPrivateKey,
         publicKey: orgRelayServerCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -681,8 +681,8 @@ export const relayServiceFactory = ({
       serialNumber: relayServerSerialNumber,
       subject: `CN=${host},O=${orgId ?? "Infisical"},OU=Relay`,
       issuer: relayServerCaCert.subject,
-      notBefore: relayServerCertIssuedAt,
-      notAfter: relayServerCertExpireAt,
+      notBefore: getNotBeforeWithClockSkew(relayServerCertIssuedAt),
+      notAfter: getNotAfterWithClockSkew(relayServerCertExpireAt),
       signingKey: relayServerCaPrivateKey,
       publicKey: relayServerKeys.publicKey,
       signingAlgorithm: alg,
@@ -795,8 +795,8 @@ export const relayServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgName}-${orgId},OU=relay-client,CN=${gatewayId}`,
       issuer: relayClientCaCert.subject,
-      notAfter: clientCertExpiration,
-      notBefore: clientCertIssuedAt,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
+      notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedRelayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,

@@ -12,10 +12,9 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh",
   SecretScanning = "secret-scanning",
   PAM = "pam",
-  AI = "ai"
+  AgentVault = "agent-vault"
 }
 
 export enum ProjectUserMembershipTemporaryMode {
@@ -34,6 +33,7 @@ export type Project = {
   updatedAt: string;
   autoCapitalization: boolean;
   environments: ProjectEnv[];
+  deletedEnvironments: ProjectDeletedEnv[];
   pitVersionLimit: number;
   auditLogsRetentionDays: number;
   slug: string;
@@ -44,12 +44,32 @@ export type Project = {
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
   enforceEncryptedSecretManagerSecretMetadata: boolean;
+  isLegacyAdditionalPrivilegesEnabled: boolean;
 };
+
+export type TProjectNavigation = Pick<Project, "id" | "orgId" | "name" | "slug" | "type">;
 
 export type ProjectEnv = {
   id: string;
   name: string;
   slug: string;
+};
+
+export type ProjectDeletedEnvActor =
+  | {
+      type: "user";
+      id: string;
+      email: string | null;
+      username: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: "identity"; id: string; name: string };
+
+export type ProjectDeletedEnv = ProjectEnv & {
+  deleteAfter: string;
+  softDeletedAt: string;
+  deletedBy: ProjectDeletedEnvActor | null;
 };
 
 export type ProjectTag = { id: string; name: string; slug: string };
@@ -121,7 +141,9 @@ export type UpdateEnvironmentDTO = {
   position?: number;
 };
 
-export type DeleteEnvironmentDTO = { projectId: string; id: string };
+export type DeleteEnvironmentDTO = { projectId: string; id: string; hardDelete?: boolean };
+
+export type RestoreEnvironmentDTO = { projectId: string; id: string };
 
 export type TUpdateWorkspaceUserRoleDTO = {
   membershipId: string;
@@ -175,6 +197,13 @@ export type TListProjectIdentitiesDTO = {
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }
+
+export enum SearchProjectSortBy {
+  Name = "name",
+  Description = "description",
+  CreatedAt = "createdAt"
+}
+
 export type TSearchProjectsDTO = {
   name?: string;
   limit?: number;
@@ -182,23 +211,8 @@ export type TSearchProjectsDTO = {
   projectIds?: string[];
   type?: ProjectType;
   options?: { enabled?: boolean };
-  orderBy?: ProjectIdentityOrderBy;
+  orderBy?: SearchProjectSortBy;
   orderDirection?: OrderByDirection;
-};
-
-export type TProjectSshConfig = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  projectId: string;
-  defaultUserSshCaId: string | null;
-  defaultHostSshCaId: string | null;
-};
-
-export type TUpdateProjectSshConfigDTO = {
-  projectId: string;
-  defaultUserSshCaId?: string;
-  defaultHostSshCaId?: string;
 };
 
 export type TPermissionAuditSourceType = "role" | "group_role" | "additional_privilege";
@@ -222,4 +236,8 @@ export type TGetMembershipPermissionAuditResponse = {
 
 export type TGetIdentityPermissionAuditResponse = {
   sources: TPermissionAuditSource[];
+};
+
+export type TMyPendingProjectAccessRequestsResponse = {
+  requests: { projectId: string; createdAt: string }[];
 };

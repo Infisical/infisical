@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { logger } from "@app/lib/logger";
+
 import { cronJobFactory } from "./cron-job";
 
 vi.mock("@app/lib/logger", () => ({
@@ -27,6 +29,14 @@ const makeRedlock = () => ({
     return fn(controller.signal);
   })
 });
+
+// Slot claims/refreshes are serialized through a promise chain, so a tick's
+// Redis write lands several microtasks after the tick itself. A single
+// `await Promise.resolve()` doesn't drain that; this does.
+// `advanceTimersByTimeAsync` yields to the real event loop, which drains the
+// whole pending microtask queue — deterministic, unlike counting `await
+// Promise.resolve()` hops.
+const flushSlotOps = () => vi.advanceTimersByTimeAsync(0);
 
 // Use a cast via unknown to satisfy the type system for the mocks
 type FakeDeps = {
@@ -223,7 +233,7 @@ describe("slot election", () => {
     const { start, stop } = makeFactory({ redis });
     start();
     // Let the immediate claimOrRefreshSlot call in start() complete
-    await Promise.resolve();
+    await flushSlotOps();
     expect(redis.set).toHaveBeenCalledWith("{cron}:slot:0", expect.any(String), "PX", expect.any(Number), "NX");
     await stop();
   });
@@ -233,7 +243,7 @@ describe("slot election", () => {
     redis.set.mockResolvedValueOnce(null).mockResolvedValueOnce("OK");
     const { start, stop } = makeFactory({ redis });
     start();
-    await Promise.resolve();
+    await flushSlotOps();
     expect(redis.set).toHaveBeenNthCalledWith(1, "{cron}:slot:0", expect.any(String), "PX", expect.any(Number), "NX");
     expect(redis.set).toHaveBeenNthCalledWith(2, "{cron}:slot:1", expect.any(String), "PX", expect.any(Number), "NX");
     await stop();
@@ -245,7 +255,7 @@ describe("slot election", () => {
     const { register, start, stop } = makeFactory({ redis });
     register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 3600 });
     start();
-    await Promise.resolve();
+    await flushSlotOps();
     expect(redis.eval).not.toHaveBeenCalled();
     await stop();
   });
@@ -255,9 +265,9 @@ describe("slot election", () => {
     redis.set.mockResolvedValueOnce("OK").mockResolvedValue("OK");
     const { start, stop } = makeFactory({ redis });
     start();
-    await Promise.resolve();
+    await flushSlotOps();
     vi.advanceTimersByTime(60);
-    await Promise.resolve();
+    await flushSlotOps();
     const xxCalls = redis.set.mock.calls.filter((c) => (c as string[]).includes("XX"));
     expect(xxCalls.length).toBeGreaterThan(0);
     await stop();
@@ -268,10 +278,66 @@ describe("slot election", () => {
     redis.set.mockResolvedValueOnce("OK").mockResolvedValueOnce(null).mockResolvedValueOnce("OK");
     const { start, stop } = makeFactory({ redis });
     start();
+    await flushSlotOps();
     vi.advanceTimersByTime(60);
-    await Promise.resolve();
+    await flushSlotOps();
+    // Claim (NX) → refresh loses the slot (XX returns null) → re-claim (NX).
     const nxCalls = redis.set.mock.calls.filter((c) => (c as string[]).includes("NX"));
     expect(nxCalls.length).toBeGreaterThanOrEqual(2);
+    await stop();
+  });
+
+  // Regression guard for the double-claim race: two refresh ticks that overlap
+  // must not each run the NX loop and leave the pod holding two slots — only
+  // the last-assigned one would ever be released.
+  test("overlapping refresh ticks never claim two different slots", async () => {
+    const redis = makeRedis();
+    // Models real SET NX/XX semantics against an in-memory slot table, with the
+    // held slot expiring right as the refresh observes it (XX misses). Without
+    // serialization, two ticks both observe the loss, both null `currentSlot`,
+    // and the second walks past the slot the first just re-took.
+    const held = new Map<string, string>();
+    redis.set.mockImplementation(async (key: string, value: string, _px: string, _ttl: number, mode: string) => {
+      if (mode === "NX") {
+        if (held.has(key)) return null;
+        held.set(key, value);
+        return "OK";
+      }
+      held.delete(key); // XX: the slot's TTL lapsed before this refresh landed
+      return null;
+    });
+
+    const { start, stop } = makeFactory({ redis });
+    start();
+    await flushSlotOps();
+
+    // Two refresh intervals fire back-to-back with no drain in between.
+    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(50);
+    await flushSlotOps();
+
+    expect([...held.keys()]).toEqual(["{cron}:slot:0"]);
+    await stop();
+  });
+
+  // These two strings are what alerting matches on, so pin them. The initial
+  // claim and the periodic refresh share one code path now, and it would be easy
+  // to collapse them into a single message without noticing.
+  test("slot failures are logged under their own labels", async () => {
+    const redis = makeRedis();
+    redis.set.mockRejectedValue(new Error("redis unavailable"));
+    const { start, stop } = makeFactory({ redis });
+    vi.mocked(logger.error).mockClear();
+
+    start(); // initial claim fails
+    await flushSlotOps();
+    vi.advanceTimersByTime(50); // refresh tick fails
+    await flushSlotOps();
+
+    const messages = vi.mocked(logger.error).mock.calls.map(([, message]) => message);
+    expect(messages).toContain("cron: initial slot claim failed");
+    expect(messages).toContain("cron: slot refresh failed");
+
     await stop();
   });
 });
@@ -284,10 +350,11 @@ describe("claim and execute", () => {
     const { register, start, stop } = makeFactory({ redis });
     register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 3600 });
     start();
-    await Promise.resolve();
+    await flushSlotOps();
     vi.advanceTimersByTime(300);
     await Promise.resolve();
     const firstCount = redis.eval.mock.calls.length;
+    expect(firstCount).toBeGreaterThan(0);
     vi.advanceTimersByTime(30_000);
     await Promise.resolve();
     expect(redis.eval.mock.calls.length).toBe(firstCount);

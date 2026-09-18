@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const NorthflankSyncReviewFields = () => {
@@ -13,8 +13,14 @@ export const NorthflankSyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{projectName || projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Secret Group">{secretGroupName || secretGroupId}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{projectName || projectId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Secret Group</DetailLabel>
+        <DetailValue>{secretGroupName || secretGroupId}</DetailValue>
+      </Detail>
     </>
   );
 };

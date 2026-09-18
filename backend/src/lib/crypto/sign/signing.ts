@@ -4,11 +4,14 @@ import path from "path";
 import { promisify } from "util";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { opensslDerivePublicKey, opensslGenpkey, opensslSign, opensslVerify } from "@app/lib/crypto/pqc/pqc-openssl";
 import { BadRequestError } from "@app/lib/errors";
 import { cleanTemporaryDirectory, createTemporaryDirectory, writeToTemporaryFile } from "@app/lib/files";
 import { logger } from "@app/lib/logger";
 
 import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
+
+export const isPqcKeyAlgorithm = (algo: string): boolean => algo.startsWith("ML_DSA");
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +32,12 @@ const COMMAND_TIMEOUT = 15_000;
 const SHA256_DIGEST_LENGTH = 32;
 const SHA384_DIGEST_LENGTH = 48;
 const SHA512_DIGEST_LENGTH = 64;
+
+export const KMS_TO_OPENSSL_NAME: Partial<Record<AsymmetricKeyAlgorithm, string>> = {
+  [AsymmetricKeyAlgorithm.ML_DSA_44]: "ML-DSA-44",
+  [AsymmetricKeyAlgorithm.ML_DSA_65]: "ML-DSA-65",
+  [AsymmetricKeyAlgorithm.ML_DSA_87]: "ML-DSA-87"
+};
 
 /**
  * Service for cryptographic signing and verification operations using asymmetric keys
@@ -93,10 +102,11 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     // We will support more in the future
     switch (keyAlgorithm) {
       case AsymmetricKeyAlgorithm.ECC_NIST_P256:
-        return {
-          full: "prime256v1",
-          short: "p256"
-        };
+        return { full: "prime256v1", short: "p256" };
+      case AsymmetricKeyAlgorithm.ECC_NIST_P384:
+        return { full: "secp384r1", short: "p384" };
+      case AsymmetricKeyAlgorithm.ECC_NIST_P521:
+        return { full: "secp521r1", short: "p521" };
       default:
         throw new Error(`Unsupported EC curve: ${keyAlgorithm}`);
     }
@@ -105,9 +115,11 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   const $validateAlgorithmWithKeyType = (signingAlgorithm: SigningAlgorithm) => {
     const isRsaKey = algorithm.startsWith("RSA");
     const isEccKey = algorithm.startsWith("ECC");
+    const isPqcKey = isPqcKeyAlgorithm(algorithm);
 
     const isRsaAlgorithm = signingAlgorithm.startsWith("RSASSA");
     const isEccAlgorithm = signingAlgorithm.startsWith("ECDSA");
+    const isPqcAlgorithm = isPqcKeyAlgorithm(signingAlgorithm);
 
     if (isRsaKey && !isRsaAlgorithm) {
       throw new BadRequestError({ message: `KMS RSA key cannot be used with ${signingAlgorithm}` });
@@ -115,6 +127,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
     if (isEccKey && !isEccAlgorithm) {
       throw new BadRequestError({ message: `KMS ECC key cannot be used with ${signingAlgorithm}` });
+    }
+
+    if (isPqcKey) {
+      if (!isPqcAlgorithm || (signingAlgorithm as string) !== (algorithm as string)) {
+        throw new BadRequestError({
+          message: `KMS ${algorithm} key can only be used with ${algorithm} signing algorithm`
+        });
+      }
     }
   };
 
@@ -342,24 +362,32 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
   };
 
-  const verifyDigestFunctionsMap: Record<
-    AsymmetricKeyAlgorithm,
-    (data: Buffer, signature: Buffer, publicKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => Promise<boolean>
+  const verifyDigestFunctionsMap: Partial<
+    Record<
+      AsymmetricKeyAlgorithm,
+      (data: Buffer, signature: Buffer, publicKey: Buffer, hashAlgorithm: SupportedHashAlgorithm) => Promise<boolean>
+    >
   > = {
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $verifyEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $verifyEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $verifyRsaDigest
   };
 
-  const signDigestFunctionsMap: Record<
-    AsymmetricKeyAlgorithm,
-    (
-      data: Buffer,
-      privateKey: Buffer,
-      hashAlgorithm: SupportedHashAlgorithm,
-      signingAlgorithm: SigningAlgorithm
-    ) => Promise<Buffer>
+  const signDigestFunctionsMap: Partial<
+    Record<
+      AsymmetricKeyAlgorithm,
+      (
+        data: Buffer,
+        privateKey: Buffer,
+        hashAlgorithm: SupportedHashAlgorithm,
+        signingAlgorithm: SigningAlgorithm
+      ) => Promise<Buffer>
+    >
   > = {
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $signEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $signEccDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $signEccDigest,
     [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest
   };
 
@@ -370,6 +398,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     isDigest: boolean
   ): Promise<Buffer> => {
     $validateAlgorithmWithKeyType(signingAlgorithm);
+
+    if (isPqcKeyAlgorithm(algorithm)) {
+      if (isDigest) {
+        throw new BadRequestError({ message: "ML-DSA does not support digested input" });
+      }
+      const sig = await opensslSign(privateKey, data);
+      return sig;
+    }
 
     const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
 
@@ -430,6 +466,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     signingAlgorithm: SigningAlgorithm,
     isDigest: boolean
   ): Promise<boolean> => {
+    if (isPqcKeyAlgorithm(algorithm)) {
+      $validateAlgorithmWithKeyType(signingAlgorithm);
+      if (isDigest) {
+        throw new BadRequestError({ message: "ML-DSA does not support digested input" });
+      }
+      return opensslVerify(publicKey, signature, data);
+    }
+
     try {
       $validateAlgorithmWithKeyType(signingAlgorithm);
 
@@ -500,6 +544,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   };
 
   const generateAsymmetricPrivateKey = async () => {
+    if (isPqcKeyAlgorithm(algorithm)) {
+      const opensslName = KMS_TO_OPENSSL_NAME[algorithm];
+      if (!opensslName) {
+        throw new Error(`Unsupported PQC algorithm: ${algorithm}`);
+      }
+      return opensslGenpkey(opensslName);
+    }
+
     const { privateKey } = await new Promise<{ privateKey: string }>((resolve, reject) => {
       if (algorithm.startsWith("RSA")) {
         crypto.nativeCrypto.generateKeyPair(
@@ -543,7 +595,11 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     return Buffer.from(privateKey);
   };
 
-  const getPublicKeyFromPrivateKey = (privateKey: Buffer) => {
+  const getPublicKeyFromPrivateKey = async (privateKey: Buffer): Promise<Buffer> => {
+    if (isPqcKeyAlgorithm(algorithm)) {
+      return opensslDerivePublicKey(privateKey);
+    }
+
     const privateKeyObj = crypto.nativeCrypto.createPrivateKey({
       key: privateKey,
       format: "pem",

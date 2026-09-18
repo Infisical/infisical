@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+
 import { TAppConnectionCredentialRotations } from "../../../db/schemas/app-connection-credential-rotations";
 import { TAppConnectionRaw } from "../app-connection-types";
 import { CreateAppConnectionCredentialRotationSchema } from "./app-connection-credential-rotation-schemas";
@@ -8,6 +11,11 @@ import {
   TAzureClientSecretGeneratedCredential,
   TAzureClientSecretStrategyConfig
 } from "./providers/azure-client-secret/azure-client-secret-credential-rotation-types";
+import {
+  TLdapCredentialRotationCredentials,
+  TLdapGeneratedCredential,
+  TLdapStrategyConfig
+} from "./providers/ldap/ldap-credential-rotation-types";
 
 export type TAppConnectionCredentialRotationRaw = TAppConnectionCredentialRotations;
 
@@ -21,13 +29,17 @@ export type TAppConnectionCredentialRotation = Omit<
 export type TCreateAppConnectionCredentialRotationSchema = z.infer<typeof CreateAppConnectionCredentialRotationSchema>;
 
 // Union of all strategy configs — expands as providers are added
-export type TAppConnectionCredentialRotationStrategyConfig = TAzureClientSecretStrategyConfig;
+export type TAppConnectionCredentialRotationStrategyConfig = TAzureClientSecretStrategyConfig | TLdapStrategyConfig;
 
 // Union of all individual generated credential types — expands as providers are added
-export type TAppConnectionCredentialRotationGeneratedCredential = TAzureClientSecretGeneratedCredential;
+export type TAppConnectionCredentialRotationGeneratedCredential =
+  | TAzureClientSecretGeneratedCredential
+  | TLdapGeneratedCredential;
 
 // Union of all individual credentials types — expands as providers are added
-export type TAppConnectionCredentialCredentials = TAzureClientSecretCredentialRotationCredentials;
+export type TAppConnectionCredentialCredentials =
+  | TAzureClientSecretCredentialRotationCredentials
+  | TLdapCredentialRotationCredentials;
 
 export type TAppConnectionCredentialRotationGeneratedCredentials =
   (TAppConnectionCredentialRotationGeneratedCredential | null)[];
@@ -68,12 +80,20 @@ export type TCredentialRotationRevokeCredential<
   C extends TAppConnectionCredentialRotationGeneratedCredential
 > = (inactiveCredential: C, strategyConfig: S, credentials: TAppConnectionCredentialCredentials) => Promise<void>;
 
+export type TCredentialRotationProviderServices = {
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+};
+
 // Factory type — takes connection context, returns typed operations.
 // Mirrors TRotationFactory in secret-rotation-v2.
 export type TCredentialRotationProviderFactory<
   S extends TAppConnectionCredentialRotationStrategyConfig = TAppConnectionCredentialRotationStrategyConfig,
   C extends TAppConnectionCredentialRotationGeneratedCredential = TAppConnectionCredentialRotationGeneratedCredential
-> = (connection: TAppConnectionRaw) => {
+> = (
+  connection: TAppConnectionRaw,
+  services: TCredentialRotationProviderServices
+) => {
   validateConnectionMethod: TCredentialRotationValidateMethod;
   issueInitialCredentials: TCredentialRotationIssueInitialCredentials<S, C>;
   createCredential: TCredentialRotationCreateCredential<S, C>;

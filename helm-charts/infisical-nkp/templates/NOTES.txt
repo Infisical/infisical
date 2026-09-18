@@ -1,0 +1,17 @@
+Infisical has been deployed.
+
+1. Wait for the pod to become ready:
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "infisical.fullname" . }}
+
+2. Reach the UI at the ingress host (served via the NKP kommander-traefik controller):
+   {{ .Values.config.siteUrl }}
+
+   Ensure DNS for "{{ .Values.ingress.host }}" points at the Traefik ingress
+   IP/hostname of the workload cluster.
+
+{{- if not .Values.secrets.encryptionKey }}
+
+NOTE: ENCRYPTION_KEY was auto-generated on first install and is stored in the
+Secret "{{ include "infisical.fullname" . }}-secrets". Do not delete it — losing
+it makes existing encrypted data unrecoverable.
+{{- end }}

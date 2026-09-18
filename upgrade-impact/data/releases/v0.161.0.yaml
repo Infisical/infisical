@@ -1,0 +1,56 @@
+version: v0.161.0
+releasedAt: 2026-06-12T09:57:03-03:00
+sourceTag: v0.161.0
+previousTag: v0.160.12
+impactLevel: low
+summary: Startup applies additive database migrations for OAuth clients, GitHub
+  apps, KMIP servers, audit log streaming, and project secret indexing. No
+  operator config changes are required.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Platform startup migrations
+    description: Database changes add tables and columns for OAuth clients, GitHub
+      apps, KMIP servers, audit log stream delivery, and project secret
+      blind-index flags. Existing audit log custom and Cribl streams are
+      backfilled to single-event mode for compatibility.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260522191822_audit-log-stream-outbox.ts
+        path: backend/src/db/migrations/20260522191822_audit-log-stream-outbox.ts
+      - type: file
+        ref: backend/src/db/migrations/20260601120000_audit-log-stream-mode.ts
+        path: backend/src/db/migrations/20260601120000_audit-log-stream-mode.ts
+        description: Backfills custom and Cribl streams to single mode
+      - type: file
+        ref: backend/src/db/migrations/20260603120000_kmip-server-resource-auth.ts
+        path: backend/src/db/migrations/20260603120000_kmip-server-resource-auth.ts
+      - type: file
+        ref: backend/src/db/migrations/20260605000000_create-oauth-clients.ts
+        path: backend/src/db/migrations/20260605000000_create-oauth-clients.ts
+  - title: Project secret blind index
+    description: A new project flag defaults to true for new projects, but existing
+      projects are backfilled to false. This preserves current behavior for
+      older projects after upgrade.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260604100000_add-secret-blind-index-enabled-to-project.ts
+        path: backend/src/db/migrations/20260604100000_add-secret-blind-index-enabled-to-project.ts
+        description: Existing projects are updated to false
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-06-12T13:59:00.416Z
+  sourceRange:
+    from: v0.160.12
+    to: v0.161.0

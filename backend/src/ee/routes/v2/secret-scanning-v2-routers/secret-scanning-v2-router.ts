@@ -20,8 +20,10 @@ import {
   SecretScanningFindings
 } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
   GitHubDataSourceListItemSchema,
@@ -47,7 +49,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const dataSourceOptions = server.services.secretScanningV2.listSecretScanningDataSourceOptions();
       return { dataSourceOptions };
@@ -72,7 +74,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ dataSources: SecretScanningDataSourceSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -118,7 +120,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ findings: SecretScanningFindingSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -168,7 +170,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ finding: SecretScanningFindingSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { findingId },
@@ -192,6 +194,17 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           }
         }
       });
+
+      if (body.status === SecretScanningFindingStatus.Resolved) {
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.SecretScanningFindingResolved,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: permission.orgId,
+            properties: { findingId, projectId }
+          })
+          .catch(() => {});
+      }
 
       return { finding };
     }
@@ -220,7 +233,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ findings: SecretScanningFindingSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { body, permission } = req;
 
@@ -272,7 +285,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -368,7 +381,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -412,7 +425,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ unresolvedFindings: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },

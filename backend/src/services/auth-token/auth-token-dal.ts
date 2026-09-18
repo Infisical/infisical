@@ -14,10 +14,12 @@ export const tokenDALFactory = (db: TDbClient) => {
 
   const findOneTokenSession = async (
     filter: Partial<TAuthTokenSessions>,
-    tx?: Knex
+    tx?: Knex,
+    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
   ): Promise<TAuthTokenSessions | undefined> => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.AuthTokenSession).where(filter).first();
+      const reader = tx || (readFromPrimary ? db : db.replicaNode());
+      const doc = await reader(TableName.AuthTokenSession).where(filter).first();
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindOneTokenSession" });
@@ -34,6 +36,26 @@ export const tokenDALFactory = (db: TDbClient) => {
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "DeleteTokenForUser" });
+    }
+  };
+
+  // Bulk-deletes tokens for many (type, userId, orgId) tuples in a single query.
+  // Used to refresh a batch of tokens without opening one transaction per user.
+  // Note: tuples with a null orgId are not matched (composite IN ignores NULL rows).
+  const deleteTokensForUsers = async (
+    tuples: { type: string; userId: string; orgId: string }[],
+    tx?: Knex
+  ): Promise<void> => {
+    if (!tuples.length) return;
+    try {
+      await (tx || db)(TableName.AuthTokens)
+        .whereIn(
+          ["type", "userId", "orgId"],
+          tuples.map(({ type, userId, orgId }) => [type, userId, orgId])
+        )
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteTokensForUsers" });
     }
   };
 
@@ -126,6 +148,7 @@ export const tokenDALFactory = (db: TDbClient) => {
     ...authOrm,
     findTokenSessions,
     deleteTokenForUser,
+    deleteTokensForUsers,
     decrementTriesField,
     findOneTokenSession,
     insertTokenSession,

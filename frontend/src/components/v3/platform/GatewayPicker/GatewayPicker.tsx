@@ -1,14 +1,25 @@
-import { faGlobe, faLayerGroup, faServer } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { twMerge } from "tailwind-merge";
+import { Link } from "@tanstack/react-router";
+import { GlobeIcon, Layers3Icon, type LucideIcon, ServerIcon } from "lucide-react";
 
-import { Select, SelectItem, Tooltip } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "../../generic/Select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 
 type GatewayPickerValue = {
   gatewayId: string | null;
@@ -22,14 +33,18 @@ type Props = {
   className?: string;
   isRequired?: boolean;
   placeholder?: string;
-  variant?: "v2" | "v3";
+  isError?: boolean;
+  noGatewayLabel?: string;
+  noGatewayIcon?: LucideIcon;
+  // Hides one gateway from the list, for callers where selecting it would be self-referential.
+  excludeGatewayId?: string;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="px-2 pt-2 pb-1 text-xs text-mineshaft-400">{children}</div>
+  <div className="px-2 pt-2 pb-1 text-xs text-muted">{children}</div>
 );
 
-const SectionDivider = () => <div className="my-1 h-px bg-mineshaft-600" />;
+const SectionDivider = () => <div className="my-1 h-px bg-border" />;
 
 export const GatewayPicker = ({
   value,
@@ -38,9 +53,14 @@ export const GatewayPicker = ({
   className,
   isRequired,
   placeholder,
-  variant = "v2"
+  isError,
+  noGatewayLabel = "Internet Gateway",
+  noGatewayIcon: NoGatewayIcon = GlobeIcon,
+  excludeGatewayId
 }: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
   const showPools = subscription?.gatewayPool;
 
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
@@ -68,99 +88,111 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => !g.isV1) ?? [];
+  const v2Gateways = gateways?.filter((g) => g.id !== excludeGatewayId) ?? [];
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
-  const itemHoverV3 =
-    "[&_[data-radix-collection-item]:hover]:bg-foreground/5 [&_[data-radix-collection-item][data-highlighted]]:bg-foreground/5";
+  const poolCount = pools?.length ?? 0;
+  const hasAnyGateways = v2Gateways.length > 0 || poolCount > 0;
+  const canCreateGateway = permission.can(
+    OrgGatewayPermissionActions.CreateGateways,
+    OrgPermissionSubjects.Gateway
+  );
 
   return (
-    <Select
-      value={selectValue}
-      onValueChange={handleChange}
-      isDisabled={isDisabled}
-      isLoading={Boolean(isLoading)}
-      containerClassName="contents"
-      className={twMerge(
-        "w-full",
-        variant === "v3" && "h-9 border-border bg-transparent text-foreground",
-        className
-      )}
-      dropdownContainerClassName={twMerge(
-        "max-w-none",
-        variant === "v3" && `border-border bg-popover text-foreground ${itemHoverV3}`
-      )}
-      position="popper"
-      side="bottom"
-      placeholder={placeholder}
-    >
-      {!isRequired && (
-        <SelectItem value="internet">
-          <div className="flex items-center gap-2">
-            <FontAwesomeIcon icon={faGlobe} className="size-3.5 text-mineshaft-400" />
-            Internet Gateway
-          </div>
-        </SelectItem>
-      )}
+    <Select value={selectValue} onValueChange={handleChange} disabled={isDisabled || isLoading}>
+      <SelectTrigger className={className ?? "w-full"} isError={isError}>
+        <SelectValue placeholder={placeholder ?? "Select gateway..."} />
+      </SelectTrigger>
+      <SelectContent position="popper" className="z-[70]">
+        {!isRequired && (
+          <SelectItem value="internet">
+            <span className="flex items-center gap-2">
+              <NoGatewayIcon className="size-3.5 text-muted" />
+              {noGatewayLabel}
+            </span>
+          </SelectItem>
+        )}
 
-      {showPools && pools && pools.length > 0 && (
-        <>
-          {!isRequired && <SectionDivider />}
-          <SectionLabel>
-            <div className="flex items-center justify-between">
+        {showPools && pools && pools.length > 0 && (
+          <>
+            {!isRequired && <SectionDivider />}
+            <SectionLabel>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers3Icon className="size-3" />
+                  Gateway Pools
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-default rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-semibold text-info">
+                      HA
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>High Availability</TooltipContent>
+                </Tooltip>
+              </div>
+            </SectionLabel>
+            {pools.map((pool) => (
+              <SelectItem value={`pool:${pool.id}`} key={`pool-${pool.id}`}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <Layers3Icon className="size-3.5 shrink-0 text-muted" />
+                  <span className="truncate">{pool.name}</span>
+                  <span className="shrink-0 text-xs">
+                    <PoolHealthBadge pool={pool} />
+                  </span>
+                </span>
+              </SelectItem>
+            ))}
+          </>
+        )}
+
+        {v2Gateways.length > 0 && (
+          <>
+            {(!isRequired || (showPools && pools && pools.length > 0)) && <SectionDivider />}
+            <SectionLabel>
               <div className="flex items-center gap-2">
-                <FontAwesomeIcon icon={faLayerGroup} className="size-3" />
-                Gateway Pools
+                <ServerIcon className="size-3" />
+                Individual Gateways
               </div>
-              <Tooltip content="High Availability" className="z-[110]">
-                <span className="cursor-default rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                  HA
+            </SectionLabel>
+            {v2Gateways.map((gw) => (
+              <SelectItem value={`gateway:${gw.id}`} key={`gw-${gw.id}`}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <ServerIcon className="size-3.5 shrink-0 text-muted" />
+                  <span className="truncate">{gw.name}</span>
+                  <span
+                    className={`shrink-0 text-xs ${isOnline(gw) ? "text-success" : "text-danger"}`}
+                  >
+                    {isOnline(gw) ? "Online" : "Offline"}
+                  </span>
                 </span>
-              </Tooltip>
-            </div>
-          </SectionLabel>
-          {pools.map((pool) => (
-            <SelectItem value={`pool:${pool.id}`} key={`pool-${pool.id}`}>
-              <div className="flex min-w-0 items-center gap-2">
-                <FontAwesomeIcon
-                  icon={faLayerGroup}
-                  className="size-3.5 shrink-0 text-mineshaft-400"
-                />
-                <span className="truncate">{pool.name}</span>
-                <span className="shrink-0 text-xs">
-                  <PoolHealthBadge pool={pool} />
-                </span>
-              </div>
-            </SelectItem>
-          ))}
-        </>
-      )}
+              </SelectItem>
+            ))}
+          </>
+        )}
 
-      {v2Gateways.length > 0 && (
-        <>
-          {(!isRequired || (showPools && pools && pools.length > 0)) && <SectionDivider />}
-          <SectionLabel>
-            <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faServer} className="size-3" />
-              Individual Gateways
-            </div>
-          </SectionLabel>
-          {v2Gateways.map((gw) => (
-            <SelectItem value={`gateway:${gw.id}`} key={`gw-${gw.id}`}>
-              <div className="flex min-w-0 items-center gap-2">
-                <FontAwesomeIcon icon={faServer} className="size-3.5 shrink-0 text-mineshaft-400" />
-                <span className="truncate">{gw.name}</span>
-                <span
-                  className={`shrink-0 text-xs ${isOnline(gw) ? "text-green-500" : "text-red-400"}`}
+        {isRequired && !hasAnyGateways && (
+          <div className="px-2 py-4 text-center text-sm text-muted">
+            {canCreateGateway ? (
+              <>
+                No gateways configured.{" "}
+                <Link
+                  to="/organizations/$orgId/networking"
+                  params={{ orgId: currentOrg.id }}
+                  target="_blank"
+                  className="text-foreground underline underline-offset-2 hover:text-info"
                 >
-                  {isOnline(gw) ? "Online" : "Offline"}
-                </span>
-              </div>
-            </SelectItem>
-          ))}
-        </>
-      )}
+                  Set one up
+                </Link>{" "}
+                to continue.
+              </>
+            ) : (
+              "No gateways configured. Ask your organization admin to set one up."
+            )}
+          </div>
+        )}
+      </SelectContent>
     </Select>
   );
 };

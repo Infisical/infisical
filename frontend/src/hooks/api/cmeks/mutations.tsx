@@ -12,12 +12,17 @@ import {
   TCmekDecryptResponse,
   TCmekEncrypt,
   TCmekEncryptResponse,
+  TCmekGenerateMac,
+  TCmekGenerateMacResponse,
   TCmekSign,
   TCmekSignResponse,
   TCmekVerify,
+  TCmekVerifyMac,
+  TCmekVerifyMacResponse,
   TCmekVerifyResponse,
   TCreateCmek,
   TDeleteCmek,
+  TRotateCmek,
   TUpdateCmek
 } from "@app/hooks/api/cmeks/types";
 
@@ -38,12 +43,33 @@ export const useCreateCmek = () => {
 export const useUpdateCmek = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ keyId, name, description, isDisabled }: TUpdateCmek) => {
+    mutationFn: async ({
+      keyId,
+      name,
+      description,
+      isDisabled,
+      hasDeleteProtection
+    }: TUpdateCmek) => {
       const { data } = await apiRequest.patch(`/api/v1/kms/keys/${keyId}`, {
         name,
         description,
-        isDisabled
+        isDisabled,
+        hasDeleteProtection
       });
+
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: cmekKeys.getCmeksByProjectId({ projectId }) });
+    }
+  });
+};
+
+export const useRotateCmek = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ keyId }: TRotateCmek) => {
+      const { data } = await apiRequest.post(`/api/v1/kms/keys/${keyId}/rotate`);
 
       return data;
     },
@@ -114,6 +140,46 @@ export const useCmekVerify = () => {
         signature,
         signingAlgorithm
       });
+
+      return res.data;
+    }
+  });
+};
+
+export const useCmekGenerateMac = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+      isBase64Encoded
+    }: TCmekGenerateMac & { isBase64Encoded: boolean }) => {
+      const res = await apiRequest.post<TCmekGenerateMacResponse>(
+        `/api/v1/kms/keys/${keyId}/generate-mac`,
+        {
+          data: isBase64Encoded ? data : encodeBase64(Buffer.from(data))
+        }
+      );
+
+      return res.data;
+    }
+  });
+};
+
+export const useCmekVerifyMac = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+      mac,
+      isBase64Encoded
+    }: TCmekVerifyMac & { isBase64Encoded: boolean }) => {
+      const res = await apiRequest.post<TCmekVerifyMacResponse>(
+        `/api/v1/kms/keys/${keyId}/verify-mac`,
+        {
+          data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+          mac
+        }
+      );
 
       return res.data;
     }

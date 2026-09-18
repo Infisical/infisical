@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const NetlifySyncReviewFields = () => {
@@ -12,11 +12,30 @@ export const NetlifySyncReviewFields = () => {
   const siteId = watch("destinationConfig.siteId");
   const context = watch("destinationConfig.context");
 
+  const site = siteName || siteId;
+
   return (
     <>
-      <GenericFieldLabel label="Account">{accountName || accountId}</GenericFieldLabel>
-      <GenericFieldLabel label="Site">{siteName || siteId || "None"}</GenericFieldLabel>
-      <GenericFieldLabel label="Context">{context || "None"}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Account</DetailLabel>
+        <DetailValue>{accountName || accountId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Site</DetailLabel>
+        {site ? (
+          <DetailValue>{site}</DetailValue>
+        ) : (
+          <DetailValue className="text-muted">—</DetailValue>
+        )}
+      </Detail>
+      <Detail>
+        <DetailLabel>Context</DetailLabel>
+        {context ? (
+          <DetailValue>{context}</DetailValue>
+        ) : (
+          <DetailValue className="text-muted">—</DetailValue>
+        )}
+      </Detail>
     </>
   );
 };

@@ -19,18 +19,19 @@ type TGetAppConnectionFunc = (
 ) => Promise<TBitbucketConnection>;
 
 export const bitbucketConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listWorkspaces = async (connectionId: string, actor: OrgServiceActor) => {
+  const listWorkspaces = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
-    const workspaces = await listBitbucketWorkspaces(appConnection);
+    const workspaces = await listBitbucketWorkspaces(appConnection, search);
     return workspaces;
   };
 
   const listRepositories = async (
     { connectionId, workspaceSlug }: TGetBitbucketRepositoriesDTO,
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    search?: string
   ) => {
     const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
-    const repositories = await listBitbucketRepositories(appConnection, workspaceSlug);
+    const repositories = await listBitbucketRepositories(appConnection, workspaceSlug, search);
     return repositories;
   };
 

@@ -1022,28 +1022,6 @@ export const useSaveIntegrationAccessToken = () => {
   });
 };
 
-export const useDeleteIntegrationAuths = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<object, object, { integration: string; workspaceId: string }>({
-    mutationFn: ({ integration, workspaceId }) =>
-      apiRequest.delete(
-        `/api/v1/integration-auth?${new URLSearchParams({
-          integration,
-          projectId: workspaceId
-        })}`
-      ),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectAuthorization(workspaceId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectIntegrations(workspaceId)
-      });
-    }
-  });
-};
-
 export const useDeleteIntegrationAuth = () => {
   // not used
   const queryClient = useQueryClient();

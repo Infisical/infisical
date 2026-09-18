@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
@@ -38,7 +36,14 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-type SidebarScope = "org" | "sub-org" | "project" | "admin";
+type SidebarScope = "org" | "sub-org" | "project" | "pam" | "agent-vault" | "admin";
+
+// Products that own a colour repoint the shared --color-project variable rather than adding a parallel
+// set of scope classes.
+const SIDEBAR_SCOPE_COLOR_OVERRIDE: Partial<Record<SidebarScope, Record<string, string>>> = {
+  pam: { "--color-project": "#ed3453" },
+  "agent-vault": { "--color-project": "var(--color-product-av)" }
+};
 
 const SidebarScopeContext = React.createContext<SidebarScope>("org");
 
@@ -197,15 +202,17 @@ function Sidebar({
               data-slot="sidebar"
               data-mobile="true"
               className={cn(
-                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
-                scope === "project" && "from-project/5",
+                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground in-data-[theme=light]:bg-none [&>button]:hidden",
+                (scope === "project" || scope === "pam" || scope === "agent-vault") &&
+                  "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
                 scope === "admin" && "from-admin/5"
               )}
               style={
                 {
-                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE
+                  "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+                  ...(SIDEBAR_SCOPE_COLOR_OVERRIDE[scope] ?? {})
                 } as React.CSSProperties
               }
               side={side}
@@ -231,14 +238,16 @@ function Sidebar({
         >
           <div
             className={cn(
-              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
+              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear in-data-[theme=light]:bg-none",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
-              scope === "project" && "from-project/5",
+              (scope === "project" || scope === "pam" || scope === "agent-vault") &&
+                "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
               scope === "admin" && "from-admin/5",
               className
             )}
+            style={SIDEBAR_SCOPE_COLOR_OVERRIDE[scope] as React.CSSProperties | undefined}
             {...props}
           >
             {children}
@@ -302,7 +311,7 @@ function Sidebar({
           data-slot="sidebar-container"
           data-side={side}
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) border-border transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+            "fixed inset-y-0 z-[var(--z-index-sticky)] hidden h-svh w-(--sidebar-width) border-border transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
@@ -376,7 +385,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        "relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}
       {...props}
@@ -508,6 +517,7 @@ function SidebarCollapsibleGroup({
   label,
   collapsedLabel,
   defaultOpen = true,
+  collapsible = true,
   children,
   className
 }: {
@@ -515,6 +525,8 @@ function SidebarCollapsibleGroup({
   /** Short label shown when the sidebar is collapsed. Defaults to initials of the label. */
   collapsedLabel?: string;
   defaultOpen?: boolean;
+  /** When false, the group is always expanded and renders a static (non-clickable) label. */
+  collapsible?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -524,8 +536,11 @@ function SidebarCollapsibleGroup({
   const contentRef = React.useRef<HTMLDivElement>(null);
   const previousHasActiveChildRef = React.useRef<boolean | undefined>(undefined);
 
+  // A non-collapsible group is always open.
+  const open = collapsible ? isOpen : true;
+
   React.useEffect(() => {
-    if (isCollapsed) return;
+    if (isCollapsed || !collapsible) return;
     const hasActiveChild = !!contentRef.current?.querySelector('[data-active="true"]');
     const previous = previousHasActiveChildRef.current;
     if (hasActiveChild && previous !== true && !isOpen) {
@@ -540,6 +555,24 @@ function SidebarCollapsibleGroup({
       .split(" ")
       .map((w) => w[0])
       .join("");
+
+  const expandedHeader = collapsible ? (
+    <button
+      type="button"
+      aria-expanded={isOpen}
+      onClick={() => setIsOpen((prev) => !prev)}
+      className="flex h-7 shrink-0 cursor-pointer items-center gap-1 px-4 text-xs font-medium tracking-wide text-muted outline-hidden transition-colors select-none hover:text-muted focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+    >
+      <span className="truncate">{label}</span>
+      <ChevronDown
+        className={cn("size-3 shrink-0 transition-transform duration-200", !isOpen && "-rotate-90")}
+      />
+    </button>
+  ) : (
+    <div className="flex h-7 shrink-0 items-center gap-1 px-4 text-xs font-medium tracking-wide text-muted select-none">
+      <span className="truncate">{label}</span>
+    </div>
+  );
 
   return (
     <SidebarGroup className={cn(isCollapsed ? "mt-1" : "mt-3", className)}>
@@ -561,27 +594,14 @@ function SidebarCollapsibleGroup({
           </TooltipContent>
         </Tooltip>
       ) : (
-        <button
-          type="button"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="flex h-7 shrink-0 cursor-pointer items-center gap-1 px-4 text-[0.65rem] font-semibold tracking-wide text-muted/60 outline-hidden transition-colors select-none hover:text-muted focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-        >
-          <span className="truncate uppercase">{label}</span>
-          <ChevronDown
-            className={cn(
-              "size-3 shrink-0 transition-transform duration-200",
-              !isOpen && "-rotate-90"
-            )}
-          />
-        </button>
+        expandedHeader
       )}
       <div
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...(!isCollapsed && !isOpen ? { inert: "" as any } : {})}
+        {...(!isCollapsed && !open ? { inert: "" as any } : {})}
         className={cn(
           "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
-          isCollapsed || isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          isCollapsed || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         )}
       >
         <div ref={contentRef} className="overflow-hidden">
@@ -632,6 +652,8 @@ const sidebarMenuButtonVariants = cva(
         org: "data-active:border-l-org data-active:[&_svg]:text-org",
         "sub-org": "data-active:border-l-sub-org data-active:[&_svg]:text-sub-org",
         project: "data-active:border-l-project data-active:[&_svg]:text-project",
+        pam: "data-active:border-l-project data-active:[&_svg]:text-project",
+        "agent-vault": "data-active:border-l-project data-active:[&_svg]:text-project",
         admin: "data-active:border-l-admin data-active:[&_svg]:text-admin"
       }
     },
@@ -645,20 +667,23 @@ const sidebarMenuButtonVariants = cva(
 
 function SidebarMenuButton({
   asChild = false,
+  closeOnMobile = false,
   isActive = false,
   variant = "default",
   size = "default",
   scope: scopeProp,
   tooltip,
   className,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean;
+  closeOnMobile?: boolean;
   isActive?: boolean;
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, setOpenMobile, state } = useSidebar();
   const contextScope = useSidebarScope();
   const scope = scopeProp ?? contextScope;
 
@@ -669,6 +694,12 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive || undefined}
       className={cn(sidebarMenuButtonVariants({ variant, size, scope }), className)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (closeOnMobile && isMobile) {
+          setOpenMobile(false);
+        }
+      }}
       {...props}
     />
   );

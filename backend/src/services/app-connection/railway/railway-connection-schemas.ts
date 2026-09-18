@@ -100,10 +100,17 @@ export const RailwayAccountWorkspaceListSchema = z.object({
     workspaces: z.array(
       z.object({
         id: z.string(),
-        name: z.string(),
-        team: RailwayProjectsListSchema
+        name: z.string()
       })
     )
+  })
+});
+
+export const RailwayWorkspaceProjectsListSchema = z.object({
+  workspace: z.object({
+    projects: z.object({
+      edges: z.array(RailwayProjectEdgeSchema)
+    })
   })
 });
 

@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
-import { faStar } from "@fortawesome/free-regular-svg-icons";
-import {
-  faArrowDownAZ,
-  faArrowUpZA,
-  faBorderAll,
-  faList,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch,
-  faStar as faSolidStar
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { CheckIcon, ChevronLeftIcon } from "lucide-react";
+import { format } from "date-fns";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ClockIcon,
+  LayersIcon,
+  LayoutGridIcon,
+  ListIcon,
+  PlusIcon,
+  SearchIcon,
+  StarIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -23,27 +23,53 @@ import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
+  Badge,
   Button,
+  ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
-  Input,
-  Lottie,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  PageHeader,
   Pagination,
   Skeleton,
-  Tooltip
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription
 } from "@app/context";
-import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import {
-  getProjectDescription,
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionProjectActions
+} from "@app/context/OrgPermissionContext/types";
+import {
   getProjectHomePage,
-  getProjectLottieIcon,
+  getProjectLucideIcon,
   getProjectTitle,
+  PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
 import {
@@ -51,11 +77,27 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useGetUserProjects, useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
+import {
+  useDebounce,
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch
+} from "@app/hooks";
+import {
+  useGetMyPendingProjectAccessRequests,
+  useGetUserProjects,
+  useOrgAdminAccessProject,
+  useSearchProjects
+} from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
+import {
+  Project,
+  ProjectEnv,
+  ProjectType,
+  SearchProjectSortBy
+} from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
@@ -67,6 +109,116 @@ enum ProjectsViewMode {
   GRID = "grid",
   LIST = "list"
 }
+
+type TableSortDirection = NonNullable<ComponentProps<typeof TableHead>["sortDirection"]>;
+
+const getProjectSortDirection = (
+  column: SearchProjectSortBy,
+  orderBy: SearchProjectSortBy,
+  orderDirection: OrderByDirection
+): TableSortDirection => {
+  if (orderBy !== column) return "none";
+  return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+};
+
+const compareProjects = (
+  projectA: Project,
+  projectB: Project,
+  column: SearchProjectSortBy,
+  direction: OrderByDirection
+) => {
+  if (column === SearchProjectSortBy.Description) {
+    const descriptionA = projectA.description?.trim();
+    const descriptionB = projectB.description?.trim();
+
+    if (!descriptionA && descriptionB) return 1;
+    if (descriptionA && !descriptionB) return -1;
+  }
+
+  let comparison = 0;
+  if (column === SearchProjectSortBy.CreatedAt) {
+    comparison = new Date(projectA.createdAt).getTime() - new Date(projectB.createdAt).getTime();
+  } else {
+    const valueA =
+      column === SearchProjectSortBy.Description ? projectA.description || "" : projectA.name;
+    const valueB =
+      column === SearchProjectSortBy.Description ? projectB.description || "" : projectB.name;
+    comparison = valueA.localeCompare(valueB, undefined, { sensitivity: "base" });
+  }
+
+  if (comparison !== 0) {
+    return direction === OrderByDirection.ASC ? comparison : -comparison;
+  }
+
+  const nameComparison = projectA.name.localeCompare(projectB.name, undefined, {
+    sensitivity: "base"
+  });
+  return nameComparison || projectA.id.localeCompare(projectB.id);
+};
+
+const ProjectTableHeaderRow = ({
+  orderBy,
+  orderDirection,
+  onSortChange,
+  hasStatusColumn = false
+}: {
+  orderBy: SearchProjectSortBy;
+  orderDirection: OrderByDirection;
+  onSortChange: (column: SearchProjectSortBy, direction: TableSortDirection) => void;
+  hasStatusColumn?: boolean;
+}) => {
+  const nameSortDirection = getProjectSortDirection(
+    SearchProjectSortBy.Name,
+    orderBy,
+    orderDirection
+  );
+  const descriptionSortDirection = getProjectSortDirection(
+    SearchProjectSortBy.Description,
+    orderBy,
+    orderDirection
+  );
+  const createdAtSortDirection = getProjectSortDirection(
+    SearchProjectSortBy.CreatedAt,
+    orderBy,
+    orderDirection
+  );
+
+  const getSortIconClassName = (direction: TableSortDirection) =>
+    twMerge(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+
+  return (
+    <TableRow>
+      <TableHead aria-label="Icon" className="w-0" />
+      <TableHead
+        sortDirection={nameSortDirection}
+        onSortChange={(direction) => onSortChange(SearchProjectSortBy.Name, direction)}
+      >
+        Name
+        <ChevronDownIcon className={getSortIconClassName(nameSortDirection)} />
+      </TableHead>
+      <TableHead
+        sortDirection={descriptionSortDirection}
+        onSortChange={(direction) => onSortChange(SearchProjectSortBy.Description, direction)}
+      >
+        Description
+        <ChevronDownIcon className={getSortIconClassName(descriptionSortDirection)} />
+      </TableHead>
+      <TableHead
+        className="w-40"
+        sortDirection={createdAtSortDirection}
+        onSortChange={(direction) => onSortChange(SearchProjectSortBy.CreatedAt, direction)}
+      >
+        Created
+        <ChevronDownIcon className={getSortIconClassName(createdAtSortDirection)} />
+      </TableHead>
+      <TableHead className="w-0">{hasStatusColumn ? "Status" : null}</TableHead>
+    </TableRow>
+  );
+};
 
 export const ProjectTypePage = () => {
   const navigate = useNavigate();
@@ -91,6 +243,26 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
 
+  useEffect(() => {
+    if (projectType === ProjectType.PAM) {
+      navigate({
+        to: "/organizations/$orgId/pam/access",
+        params: { orgId }
+      });
+    }
+  }, [projectType, orgId, navigate]);
+
+  // An org-scoped product has one implicit project, so listing it here would offer a project view we
+  // hide everywhere else, plus a create button the backend refuses.
+  useEffect(() => {
+    if (projectType === ProjectType.AgentVault) {
+      navigate({
+        to: "/organizations/$orgId/agent-vault/sessions",
+        params: { orgId }
+      });
+    }
+  }, [projectType, orgId, navigate]);
+
   if (projectType === ProjectType.CertificateManager) {
     return (
       <CertManagerNotConfiguredModal
@@ -108,6 +280,10 @@ export const ProjectTypePage = () => {
     );
   }
 
+  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
+    return null;
+  }
+
   return <ProjectTypeContent projectType={projectType} orgId={orgId} />;
 };
 
@@ -119,6 +295,11 @@ const ProjectTypeContent = ({
   orgId: string;
 }) => {
   const { subscription } = useSubscription();
+  const { permission } = useOrgPermission();
+  const canRequestAccess = permission.can(
+    OrgPermissionProjectActions.RequestAccess,
+    OrgPermissionSubjects.Project
+  );
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
@@ -127,6 +308,7 @@ const ProjectTypeContent = ({
     const storedView = localStorage.getItem("projectListView");
     if (
       storedView &&
+      canRequestAccess &&
       (storedView === ProjectListView.AllProjects || storedView === ProjectListView.MyProjects)
     ) {
       return storedView;
@@ -148,30 +330,23 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="mx-auto flex max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <Link
-        to="/organizations/$orgId/projects"
-        params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-      >
-        <ChevronLeftIcon size={16} />
-        Organization
-      </Link>
-      <div className="mb-10">
-        <h1 className="flex items-center text-2xl font-medium text-white underline decoration-project/90 underline-offset-4">
-          <Lottie
-            icon={getProjectLottieIcon(projectType)}
-            className="mr-3 h-[26px] w-[26px] shrink-0"
-          />
-          {typeTitle}
-        </h1>
-        <div className="mt-1.5 text-mineshaft-300">{getProjectDescription(projectType)}</div>
-      </div>
-      {projectListView === ProjectListView.MyProjects ? (
+      <PageHeader
+        title={typeTitle}
+        scope={projectType}
+        icon={getProjectLucideIcon(projectType)}
+        backLink={
+          <Link to="/organizations/$orgId/projects" params={{ orgId }}>
+            <ChevronLeftIcon aria-hidden className="size-4" />
+            Organization
+          </Link>
+        }
+      />
+      {projectListView === ProjectListView.MyProjects || !canRequestAccess ? (
         <MyProjectsForType
           projectType={projectType}
           projectListView={projectListView}
@@ -179,6 +354,7 @@ const ProjectTypeContent = ({
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          hideProjectListToggle={!canRequestAccess}
         />
       ) : (
         <AllProjectsForType
@@ -188,6 +364,7 @@ const ProjectTypeContent = ({
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
+          hideProjectListToggle={!canRequestAccess}
         />
       )}
       <NewProjectModal
@@ -196,6 +373,7 @@ const ProjectTypeContent = ({
         projectType={projectType}
       />
       <UpgradePlanModal
+        paywallKey="organization.project-type"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects."
@@ -211,17 +389,18 @@ type SubViewProps = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
+  hideProjectListToggle: boolean;
 };
 
 const MyProjectsForType = ({
   projectType,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
 }: SubViewProps) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
@@ -241,11 +420,19 @@ const MyProjectsForType = ({
     page,
     offset,
     limit,
-    toggleOrderDirection,
-    orderDirection
-  } = usePagination("name", {
+    orderBy,
+    orderDirection,
+    setOrderBy,
+    setOrderDirection
+  } = usePagination<SearchProjectSortBy>(SearchProjectSortBy.Name, {
     initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
   });
+
+  const handleSort = (column: SearchProjectSortBy, direction: TableSortDirection) => {
+    setOrderBy(column);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+    setPage(1);
+  };
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -262,12 +449,8 @@ const MyProjectsForType = ({
     () =>
       workspaces
         .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
-        .sort((a, b) =>
-          orderDirection === OrderByDirection.ASC
-            ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
-        ),
-    [searchFilter, orderDirection, workspaces]
+        .sort((a, b) => compareProjects(a, b, orderBy, orderDirection)),
+    [searchFilter, orderBy, orderDirection, workspaces]
   );
 
   useResetPageHelper({
@@ -306,178 +489,241 @@ const MyProjectsForType = ({
     }
   };
 
-  const navigateToProject = (workspace: Project) => {
-    navigate({
-      to: getProjectHomePage(workspace.type, workspace.environments),
-      params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-    });
+  const renderFavoriteButton = (workspace: Project & { isFavorite: boolean }) =>
+    workspace.isFavorite ? (
+      <IconButton
+        variant="ghost"
+        size="xs"
+        aria-label="Remove from favorites"
+        className="text-warning hover:text-warning/75"
+        onClick={(e) => {
+          e.stopPropagation();
+          removeProjectFromFavorites(workspace.id);
+        }}
+      >
+        <StarIcon fill="currentColor" />
+      </IconButton>
+    ) : (
+      <IconButton
+        variant="ghost-muted"
+        size="xs"
+        aria-label="Add to favorites"
+        onClick={(e) => {
+          e.stopPropagation();
+          addProjectToFavorites(workspace.id);
+        }}
+      >
+        <StarIcon />
+      </IconButton>
+    );
+
+  const ProductIcon = getProjectLucideIcon(projectType);
+
+  const renderProjectGridItem = (workspace: Project & { isFavorite: boolean }) => {
+    const WorkspaceIcon = getProjectLucideIcon(workspace.type);
+    const tileStyle = PROJECT_TILE_STYLE;
+    const environmentCount = workspace.environments?.length ?? 0;
+    return (
+      <Card
+        key={workspace.id}
+        className={`group relative h-full cursor-pointer bg-container transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+      >
+        <CardHeader>
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+              <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <CardDescription className="text-base font-semibold text-foreground">
+                {/* The name is the card's link, so the accessible name comes from visible text
+                    rather than a duplicated label, and its stretched pseudo-element covers the
+                    card. Siblings raised above it (CardAction) stay outside the anchor. */}
+                <Link
+                  to={getProjectHomePage(workspace.type, workspace.environments)}
+                  params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                  className="block truncate outline-0 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                >
+                  {workspace.name}
+                </Link>
+              </CardDescription>
+              <p className="truncate text-sm leading-5 text-muted">
+                {getProjectTitle(workspace.type)}
+              </p>
+            </div>
+          </div>
+          <CardAction className="relative z-10">{renderFavoriteButton(workspace)}</CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="line-clamp-2 text-sm leading-relaxed text-accent">
+            {workspace.description || <span className="text-muted italic">No description</span>}
+          </p>
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+            <span className="flex items-center gap-1.5 text-muted">
+              <LayersIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
+                <span className="text-xs">
+                  {environmentCount === 1 ? "Environment" : "Environments"}
+                </span>
+              </span>
+            </span>
+            <span className="text-muted">
+              <span className="text-xs">Created </span>
+              <span className="text-xs font-medium text-foreground">
+                {format(new Date(workspace.createdAt), "MMM d, yyyy")}
+              </span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
-  const renderProjectGridItem = (workspace: Project & { isFavorite: boolean }) => (
-    <div
-      onClick={() => navigateToProject(workspace)}
-      key={workspace.id}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") navigateToProject(workspace);
-      }}
-      className="cursor-pointer overflow-clip rounded-sm border border-l-4 border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700"
-    >
-      <div className="flex items-center gap-4">
-        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
-          <Lottie className="h-7 w-7 shrink-0" icon={getProjectLottieIcon(workspace.type)} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-medium text-mineshaft-100">{workspace.name}</p>
-          <p className="truncate text-sm leading-4 text-mineshaft-300">
-            {getProjectTitle(workspace.type)}
-          </p>
-        </div>
-        <div className="mt-0.5 self-start">
-          {workspace.isFavorite ? (
-            <FontAwesomeIcon
-              icon={faSolidStar}
-              className="text-sm text-yellow-600 hover:text-mineshaft-400"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeProjectFromFavorites(workspace.id);
-              }}
-            />
-          ) : (
-            <FontAwesomeIcon
-              icon={faStar}
-              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
-              onClick={(e) => {
-                e.stopPropagation();
-                addProjectToFavorites(workspace.id);
-              }}
-            />
-          )}
-        </div>
-      </div>
-      <p className="mt-4 truncate text-sm text-mineshaft-400">
-        {workspace.description || "No description"}
-      </p>
-    </div>
-  );
+  const hasProjects =
+    !isProjectViewLoading && filteredWorkspaces.length > 0 && workspacesWithFaveProp.length > 0;
+  const isWorkspaceEmpty = !isProjectViewLoading && workspaces.length === 0;
+  const isNoSearchMatch =
+    !isProjectViewLoading && workspaces.length > 0 && !filteredWorkspaces.length;
 
-  const renderProjectListItem = (workspace: Project & { isFavorite: boolean }, index: number) => (
-    <div
-      onClick={() => navigateToProject(workspace)}
-      key={workspace.id}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") navigateToProject(workspace);
-      }}
-      className={`group flex min-w-72 cursor-pointer border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
-        index === 0 && "rounded-t-md"
-      }`}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
-          <Lottie
-            className="h-[1.35rem] w-[1.35rem] shrink-0"
-            icon={getProjectLottieIcon(workspace.type)}
-          />
-        </div>
-        <div className="-mt-0.5 flex min-w-0 flex-col">
-          <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
-          <p className="truncate text-xs leading-4 text-mineshaft-300">
-            {getProjectTitle(workspace.type)}{" "}
-            {workspace.description ? `- ${workspace.description}` : ""}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center justify-end">
-        {workspace.isFavorite ? (
-          <FontAwesomeIcon
-            icon={faSolidStar}
-            className="ml-6 text-sm text-yellow-600 hover:text-mineshaft-400"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeProjectFromFavorites(workspace.id);
-            }}
-          />
-        ) : (
-          <FontAwesomeIcon
-            icon={faStar}
-            className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              addProjectToFavorites(workspace.id);
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-
-  let projectsComponents: ReactNode;
-
-  if (filteredWorkspaces.length || isProjectViewLoading) {
-    switch (projectsViewMode) {
-      case ProjectsViewMode.GRID:
-        projectsComponents = (
-          <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
-            {isProjectViewLoading &&
-              Array.apply(0, Array(3)).map((_x, i) => (
-                <div
-                  key={`workspace-cards-loading-${i + 1}`}
-                  className="flex h-40 min-w-72 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-                >
-                  <Skeleton className="w-3/4 bg-mineshaft-600" />
-                  <Skeleton className="w-1/2 bg-mineshaft-600" />
+  let contentBody: ReactNode;
+  if (isProjectViewLoading) {
+    contentBody =
+      projectsViewMode === ProjectsViewMode.GRID ? (
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+          {Array.apply(0, Array(3)).map((_x, i) => (
+            <Card key={`workspace-cards-loading-${i + 1}`} className="h-full bg-container">
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-surface-active" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <Skeleton className="h-4 w-1/2 bg-surface-active" />
+                    <Skeleton className="h-3 w-1/3 bg-surface-active" />
+                  </div>
                 </div>
-              ))}
-            {!isProjectViewLoading &&
-              workspacesWithFaveProp.map((workspace) => renderProjectGridItem(workspace))}
-          </div>
-        );
-        break;
-      case ProjectsViewMode.LIST:
-      default:
-        projectsComponents = (
-          <div className="mt-4 w-full rounded-md">
-            {isProjectViewLoading &&
-              Array.apply(0, Array(3)).map((_x, i) => (
-                <div
-                  key={`workspace-cards-loading-${i + 1}`}
-                  className={`group flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
-                    i === 0 && "rounded-t-md"
-                  } ${i === 2 && "rounded-b-md border-b"}`}
-                >
-                  <Skeleton className="w-full bg-mineshaft-600" />
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-3 w-full bg-surface-active" />
+                  <Skeleton className="h-3 w-2/3 bg-surface-active" />
                 </div>
-              ))}
-            {!isProjectViewLoading &&
-              workspacesWithFaveProp.map((workspace, ind) => renderProjectListItem(workspace, ind))}
-          </div>
-        );
-        break;
-    }
-  } else if (workspaces.length && searchFilter) {
-    projectsComponents = (
-      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
-        <FontAwesomeIcon
-          icon={faSearch}
-          className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
-        />
-        <div className="text-center font-light">No projects match search...</div>
-      </div>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <Skeleton className="h-3 w-16 bg-surface-active" />
+                  <Skeleton className="h-3 w-24 bg-surface-active" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <ProjectTableHeaderRow
+              orderBy={orderBy}
+              orderDirection={orderDirection}
+              onSortChange={handleSort}
+            />
+          </TableHeader>
+          <TableBody>
+            {Array.apply(0, Array(3)).map((_x, i) => (
+              <TableRow key={`workspace-rows-loading-${i + 1}`}>
+                <TableCell>
+                  <Skeleton className="h-4 w-4 bg-surface-active" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-1/2 bg-surface-active" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-3/4 bg-surface-active" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24 bg-surface-active" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-7 bg-surface-active" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      );
+  } else if (hasProjects) {
+    contentBody =
+      projectsViewMode === ProjectsViewMode.GRID ? (
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+          {workspacesWithFaveProp.map((workspace) => renderProjectGridItem(workspace))}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <ProjectTableHeaderRow
+              orderBy={orderBy}
+              orderDirection={orderDirection}
+              onSortChange={handleSort}
+            />
+          </TableHeader>
+          <TableBody>
+            {workspacesWithFaveProp.map((workspace) => {
+              const WorkspaceIcon = getProjectLucideIcon(workspace.type);
+              return (
+                <TableRow key={workspace.id} className="group relative cursor-pointer">
+                  <TableCell className="w-0">
+                    <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+                      <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
+                    </div>
+                  </TableCell>
+                  <TableCell isTruncatable>
+                    <Link
+                      to={getProjectHomePage(workspace.type, workspace.environments)}
+                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                    >
+                      {workspace.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell isTruncatable>
+                    {workspace.description || <span className="text-muted">—</span>}
+                  </TableCell>
+                  <TableCell className="w-0 text-xs whitespace-nowrap">
+                    {format(new Date(workspace.createdAt), "MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell className="relative z-10 w-0 text-right">
+                    {renderFavoriteButton(workspace)}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      );
+  } else if (isNoSearchMatch) {
+    contentBody = (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SearchIcon />
+          </EmptyMedia>
+          <EmptyTitle>No projects match your search</EmptyTitle>
+          <EmptyDescription>Try a different search term.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  } else if (isWorkspaceEmpty) {
+    contentBody = (
+      <EmptyState
+        projectType={projectType}
+        ProductIcon={ProductIcon}
+        onAddNewProject={onAddNewProject}
+        onUpgradePlan={onUpgradePlan}
+        isAddingProjectsAllowed={isAddingProjectsAllowed}
+      />
     );
   }
 
-  const isWorkspaceEmpty = !isProjectViewLoading && workspaces.length === 0;
-
   return (
-    <div>
+    <div className="@container flex flex-col gap-5">
       <Toolbar
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
-        orderDirection={orderDirection}
-        onToggleOrderDirection={toggleOrderDirection}
         projectsViewMode={projectsViewMode}
         onViewModeChange={(mode) => {
           localStorage.setItem("projectsViewMode", mode);
@@ -485,32 +731,20 @@ const MyProjectsForType = ({
         }}
         projectListView={projectListView}
         onProjectListViewChange={onProjectListViewChange}
+        hideProjectListToggle={hideProjectListToggle}
         onAddNewProject={onAddNewProject}
         onUpgradePlan={onUpgradePlan}
         isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
-      {projectsComponents}
-      {!isProjectViewLoading && Boolean(filteredWorkspaces.length) && (
+      {contentBody}
+      {hasProjects && (
         <Pagination
-          className={
-            projectsViewMode === ProjectsViewMode.GRID
-              ? "col-span-full justify-start! border-transparent bg-transparent pl-2"
-              : "rounded-b-md border border-mineshaft-600"
-          }
           perPage={perPage}
           perPageList={[12, 24, 48, 96]}
           count={filteredWorkspaces.length}
           page={page}
           onChangePage={setPage}
           onChangePerPage={handlePerPageChange}
-        />
-      )}
-      {isWorkspaceEmpty && (
-        <EmptyState
-          projectType={projectType}
-          onAddNewProject={onAddNewProject}
-          onUpgradePlan={onUpgradePlan}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
         />
       )}
     </div>
@@ -521,6 +755,7 @@ const AllProjectsForType = ({
   projectType,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
@@ -537,13 +772,26 @@ const AllProjectsForType = ({
     page,
     offset,
     limit,
-    toggleOrderDirection,
-    orderDirection
-  } = usePagination("name", {
+    orderBy,
+    orderDirection,
+    setOrderBy,
+    setOrderDirection
+  } = usePagination<SearchProjectSortBy>(SearchProjectSortBy.Name, {
     initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
   });
 
+  const handleSort = (column: SearchProjectSortBy, direction: TableSortDirection) => {
+    setOrderBy(column);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+    setPage(1);
+  };
+
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const { permission } = useOrgPermission();
+  const canAccessAllProjects = permission.can(
+    OrgPermissionAdminConsoleAction.AccessAllProjects,
+    OrgPermissionSubjects.AdminConsole
+  );
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -558,8 +806,13 @@ const AllProjectsForType = ({
     limit,
     offset,
     name: debouncedSearch || undefined,
+    orderBy,
     orderDirection,
     type: projectType
+  });
+
+  const { data: pendingAccessRequestByProjectId } = useGetMyPendingProjectAccessRequests({
+    enabled: !canAccessAllProjects
   });
 
   const handleAccessProject = async (
@@ -582,94 +835,103 @@ const AllProjectsForType = ({
   });
 
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
+  const ProductIcon = getProjectLucideIcon(projectType);
 
-  return (
-    <div>
-      <Toolbar
-        searchFilter={searchFilter}
-        onSearchChange={setSearchFilter}
-        orderDirection={orderDirection}
-        onToggleOrderDirection={toggleOrderDirection}
-        projectsViewMode={ProjectsViewMode.LIST}
-        onViewModeChange={() => {}}
-        projectListView={projectListView}
-        onProjectListViewChange={onProjectListViewChange}
-        onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
-        isGridDisabled
-      />
-      <div className="mt-4 w-full rounded-md">
-        {isProjectLoading &&
-          Array.apply(0, Array(3)).map((_x, i) => (
-            <div
-              key={`workspace-cards-loading-${i + 1}`}
-              className={twMerge(
-                "flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700",
-                i === 0 && "rounded-t-md",
-                i === 2 && "rounded-b-md border-b"
-              )}
-            >
-              <Skeleton className="w-full bg-mineshaft-600" />
-            </div>
+  const hasProjects = !isProjectLoading && Boolean(searchedProjects?.totalCount);
+  const isEmpty = !isProjectLoading && !searchedProjects?.totalCount;
+
+  let contentBody: ReactNode;
+  if (isProjectLoading) {
+    contentBody = (
+      <Table>
+        <TableHeader>
+          <ProjectTableHeaderRow
+            orderBy={orderBy}
+            orderDirection={orderDirection}
+            onSortChange={handleSort}
+            hasStatusColumn
+          />
+        </TableHeader>
+        <TableBody>
+          {Array.apply(0, Array(3)).map((_x, i) => (
+            <TableRow key={`workspace-rows-loading-${i + 1}`}>
+              <TableCell>
+                <Skeleton className="h-4 w-4 bg-surface-active" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-1/2 bg-surface-active" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-3/4 bg-surface-active" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24 bg-surface-active" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20 bg-surface-active" />
+              </TableCell>
+            </TableRow>
           ))}
-        {!isProjectLoading &&
-          searchedProjects?.projects?.map((workspace) => (
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={(evt) => {
-                if (evt.key === "Enter" && workspace.isMember) {
-                  navigate({
-                    to: getProjectHomePage(workspace.type, workspace.environments),
-                    params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-                  });
-                }
-              }}
-              onClick={() => {
-                if (workspace.isMember) {
-                  navigate({
-                    to: getProjectHomePage(workspace.type, workspace.environments),
-                    params: { orgId: currentOrg?.id || "", projectId: workspace.id }
-                  });
-                }
-              }}
-              key={workspace.id}
-              className={twMerge(
-                "group flex min-w-72 items-center justify-center border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
-                workspace.isMember ? "cursor-pointer hover:bg-mineshaft-700" : "cursor-default"
-              )}
-            >
-              <div className="mr-3 flex min-w-0 flex-1 items-center gap-3">
-                <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
-                  <Lottie
-                    className="h-[1.35rem] w-[1.35rem] shrink-0"
-                    icon={getProjectLottieIcon(workspace.type)}
-                  />
-                </div>
-                <div className="-mt-0.5 flex min-w-0 flex-col">
-                  <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
-                  <p className="truncate text-xs leading-4 text-mineshaft-300">
-                    {getProjectTitle(workspace.type)}{" "}
-                    {workspace.description ? `- ${workspace.description}` : ""}
-                  </p>
-                </div>
-              </div>
-              {workspace.isMember ? (
-                <Badge variant="info">
-                  <CheckIcon />
-                  Joined
-                </Badge>
-              ) : (
-                <OrgPermissionCan
-                  I={OrgPermissionAdminConsoleAction.AccessAllProjects}
-                  an={OrgPermissionSubjects.AdminConsole}
-                >
-                  {(isAllowed) =>
-                    isAllowed ? (
+        </TableBody>
+      </Table>
+    );
+  } else if (hasProjects) {
+    contentBody = (
+      <Table>
+        <TableHeader>
+          <ProjectTableHeaderRow
+            orderBy={orderBy}
+            orderDirection={orderDirection}
+            onSortChange={handleSort}
+            hasStatusColumn
+          />
+        </TableHeader>
+        <TableBody>
+          {searchedProjects?.projects?.map((workspace) => {
+            const WorkspaceIcon = getProjectLucideIcon(workspace.type);
+            return (
+              <TableRow
+                key={workspace.id}
+                className={twMerge("group relative", workspace.isMember && "cursor-pointer")}
+              >
+                <TableCell className="w-0">
+                  <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+                    <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
+                  </div>
+                </TableCell>
+                <TableCell isTruncatable>
+                  {/* Only members can open the project, so only their rows get the stretched
+                      anchor; everyone else sees plain text with no navigation. */}
+                  {workspace.isMember ? (
+                    <Link
+                      to={getProjectHomePage(workspace.type, workspace.environments)}
+                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                    >
+                      {workspace.name}
+                    </Link>
+                  ) : (
+                    workspace.name
+                  )}
+                </TableCell>
+                <TableCell isTruncatable>
+                  {workspace.description || <span className="text-muted">—</span>}
+                </TableCell>
+                <TableCell className="w-0 text-xs whitespace-nowrap">
+                  {format(new Date(workspace.createdAt), "MMM d, yyyy")}
+                </TableCell>
+                <TableCell className="relative z-10 w-0 pr-3 text-right">
+                  {(() => {
+                    const joinedBadge = (
+                      <Badge variant="info">
+                        <CheckIcon />
+                        Joined
+                      </Badge>
+                    );
+                    const adminAccessButton = (label: string) => (
                       <Button
                         size="xs"
-                        variant="outline_bg"
+                        variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
@@ -680,45 +942,130 @@ const AllProjectsForType = ({
                             workspace.orgId
                           );
                         }}
-                        disabled={
+                        isDisabled={
                           orgAdminAccessProject.variables?.projectId === workspace.id &&
                           orgAdminAccessProject.isPending
                         }
                       >
-                        Join as Admin
+                        {label}
                       </Button>
-                    ) : (
+                    );
+
+                    if (workspace.isDirectMember) {
+                      return joinedBadge;
+                    }
+                    if (workspace.isMember) {
+                      if (!canAccessAllProjects) {
+                        return joinedBadge;
+                      }
+                      return (
+                        <div className="flex items-center justify-end gap-2">
+                          {joinedBadge}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {adminAccessButton("Become Admin")}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              You have access through a group. Become a direct admin.
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      );
+                    }
+                    if (canAccessAllProjects) {
+                      return adminAccessButton("Join as Admin");
+                    }
+                    const requestedAt = pendingAccessRequestByProjectId?.get(workspace.id);
+                    if (requestedAt) {
+                      return (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="warning" asChild>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("requestAccessConfirmation", workspace);
+                                }}
+                              >
+                                <ClockIcon />
+                                Requested
+                              </button>
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Requested on {format(requestedAt, "MMM d, yyyy 'at' h:mm a")}. Click to
+                            resend.
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return (
                       <Button
                         size="xs"
-                        variant="outline_bg"
-                        onClick={() => handlePopUpOpen("requestAccessConfirmation", workspace)}
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePopUpOpen("requestAccessConfirmation", workspace);
+                        }}
                       >
                         Request Access
                       </Button>
-                    )
-                  }
-                </OrgPermissionCan>
-              )}
-            </div>
-          ))}
-      </div>
-      {!isProjectLoading && Boolean(searchedProjects?.totalCount) && (
+                    );
+                  })()}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  } else if (isEmpty) {
+    contentBody = debouncedSearch ? (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SearchIcon />
+          </EmptyMedia>
+          <EmptyTitle>No projects match your search</EmptyTitle>
+          <EmptyDescription>Try a different search term.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    ) : (
+      <EmptyState
+        projectType={projectType}
+        ProductIcon={ProductIcon}
+        onAddNewProject={onAddNewProject}
+        onUpgradePlan={onUpgradePlan}
+        isAddingProjectsAllowed={isAddingProjectsAllowed}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Toolbar
+        searchFilter={searchFilter}
+        onSearchChange={setSearchFilter}
+        projectsViewMode={ProjectsViewMode.LIST}
+        onViewModeChange={() => {}}
+        projectListView={projectListView}
+        onProjectListViewChange={onProjectListViewChange}
+        hideProjectListToggle={hideProjectListToggle}
+        onAddNewProject={onAddNewProject}
+        onUpgradePlan={onUpgradePlan}
+        isAddingProjectsAllowed={isAddingProjectsAllowed}
+        isGridDisabled
+      />
+      {contentBody}
+      {hasProjects && (
         <Pagination
-          className="rounded-b-md border border-mineshaft-600"
           perPage={perPage}
           perPageList={[12, 24, 48, 96]}
           count={searchedProjects?.totalCount || 0}
           page={page}
           onChangePage={setPage}
           onChangePerPage={handlePerPageChange}
-        />
-      )}
-      {!isProjectLoading && !searchedProjects?.totalCount && (
-        <EmptyState
-          projectType={projectType}
-          onAddNewProject={onAddNewProject}
-          onUpgradePlan={onUpgradePlan}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
         />
       )}
       <RequestProjectAccessModal
@@ -733,12 +1080,11 @@ const AllProjectsForType = ({
 const Toolbar = ({
   searchFilter,
   onSearchChange,
-  orderDirection,
-  onToggleOrderDirection,
   projectsViewMode,
   onViewModeChange,
   projectListView,
   onProjectListViewChange,
+  hideProjectListToggle,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed,
@@ -746,116 +1092,113 @@ const Toolbar = ({
 }: {
   searchFilter: string;
   onSearchChange: (value: string) => void;
-  orderDirection: OrderByDirection;
-  onToggleOrderDirection: () => void;
   projectsViewMode: ProjectsViewMode;
   onViewModeChange: (mode: ProjectsViewMode) => void;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
+  hideProjectListToggle: boolean;
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
-}) => (
-  <div className="flex w-full flex-row flex-wrap gap-2 md:flex-nowrap md:gap-0">
-    <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-    <Input
-      className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
-      containerClassName="w-full ml-2"
-      placeholder="Search by project name..."
-      value={searchFilter}
-      onChange={(e) => onSearchChange(e.target.value)}
-      leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-    />
-    <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-      <Tooltip content="Toggle Sort Direction">
-        <IconButton
-          className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
-          ariaLabel={`Sort ${orderDirection === OrderByDirection.ASC ? "descending" : "ascending"}`}
-          variant="plain"
-          size="xs"
-          colorSchema="secondary"
-          onClick={onToggleOrderDirection}
-        >
-          <FontAwesomeIcon
-            icon={orderDirection === OrderByDirection.ASC ? faArrowDownAZ : faArrowUpZA}
+}) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
+
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
+      <div className="flex min-w-72 flex-1 items-center gap-2">
+        <InputGroup className="min-w-48 flex-1">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            ref={searchInputRef}
+            placeholder="Search by project name..."
+            value={searchFilter}
+            onChange={(e) => onSearchChange(e.target.value)}
           />
-        </IconButton>
-      </Tooltip>
-    </div>
-    <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-      {isGridDisabled ? (
-        <Tooltip content="Disabled across All Project view.">
-          <div className="flex cursor-not-allowed items-center justify-center">
+        </InputGroup>
+        {!hideProjectListToggle && (
+          <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <ButtonGroup>
+          {isGridDisabled ? (
+            <Tooltip>
+              <TooltipTrigger tabIndex={-1} asChild>
+                <span className="cursor-not-allowed">
+                  <IconButton
+                    variant="outline"
+                    size="sm"
+                    aria-label="Grid view"
+                    className="rounded-r-none"
+                    isDisabled
+                  >
+                    <LayoutGridIcon />
+                  </IconButton>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Disabled across All Project view.</TooltipContent>
+            </Tooltip>
+          ) : (
             <IconButton
-              variant="outline_bg"
-              ariaLabel="grid"
-              size="xs"
-              isDisabled
-              className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
+              variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+              size="sm"
+              aria-label="Grid view"
+              className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
+              onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
             >
-              <FontAwesomeIcon icon={faBorderAll} />
+              <LayoutGridIcon />
             </IconButton>
-          </div>
-        </Tooltip>
-      ) : (
-        <IconButton
-          variant="outline_bg"
-          onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
-          ariaLabel="grid"
-          size="xs"
-          className={`${
-            projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
-          } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-        >
-          <FontAwesomeIcon icon={faBorderAll} />
-        </IconButton>
-      )}
-      <IconButton
-        variant="outline_bg"
-        onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
-        ariaLabel="list"
-        size="xs"
-        className={`${
-          projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-      >
-        <FontAwesomeIcon icon={faList} />
-      </IconButton>
-    </div>
-    <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-      {(isOldProjectV1Allowed) => (
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed && !isOldProjectV1Allowed}
-              colorSchema="secondary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
-              className="ml-2"
-            >
-              Add New Project
-            </Button>
+          )}
+          <IconButton
+            variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
+            size="sm"
+            aria-label="List view"
+            onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
+          >
+            <ListIcon />
+          </IconButton>
+        </ButtonGroup>
+        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+          {(isOldProjectV1Allowed) => (
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                  size="sm"
+                  variant="project"
+                  onClick={() => {
+                    if (isAddingProjectsAllowed) {
+                      onAddNewProject();
+                    } else {
+                      onUpgradePlan();
+                    }
+                  }}
+                >
+                  <PlusIcon />
+                  New Project
+                </Button>
+              )}
+            </OrgPermissionCan>
           )}
         </OrgPermissionCan>
-      )}
-    </OrgPermissionCan>
-  </div>
-);
+      </div>
+    </div>
+  );
+};
 
 const EmptyState = ({
   projectType,
+  ProductIcon,
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed
 }: {
   projectType: ProjectType;
+  ProductIcon: ReturnType<typeof getProjectLucideIcon>;
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
@@ -863,21 +1206,20 @@ const EmptyState = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-10 text-base text-mineshaft-300">
-      <div className="flex justify-center">
-        <Lottie icon={getProjectLottieIcon(projectType)} className="mb-4 h-16 w-16" />
-      </div>
-      <div className="text-center text-lg font-light">No {typeTitle} projects yet</div>
-      <div className="mt-1 text-center text-sm font-light text-mineshaft-400">
-        Create your first {typeTitle} project to get started.
-      </div>
-      <div className="mt-4 flex justify-center">
+    <Empty className="border">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <ProductIcon />
+        </EmptyMedia>
+        <EmptyTitle>No {typeTitle} projects yet</EmptyTitle>
+        <EmptyDescription>Create your first {typeTitle} project to get started.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
           {(isAllowed) => (
             <Button
+              variant="project"
               isDisabled={!isAllowed}
-              colorSchema="primary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
                 if (isAddingProjectsAllowed) {
                   onAddNewProject();
@@ -886,11 +1228,12 @@ const EmptyState = ({
                 }
               }}
             >
+              <PlusIcon />
               Create Project
             </Button>
           )}
         </OrgPermissionCan>
-      </div>
-    </div>
+      </EmptyContent>
+    </Empty>
   );
 };

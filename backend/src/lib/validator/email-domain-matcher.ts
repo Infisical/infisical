@@ -1,3 +1,52 @@
+import { z } from "zod";
+
+import { isValidEmailDomain } from "./validate-email";
+
+const MAX_ALLOWED_EMAIL_DOMAINS_LENGTH = 255;
+
+const getDomainEntries = (allowedDomainsConfig: string) =>
+  allowedDomainsConfig
+    .split(",")
+    .map((domain) => domain.trim())
+    .filter(Boolean);
+
+const normalizeDomain = (domain: string) => domain.replace(/^@/, "").trim().toLowerCase();
+
+export const normalizeAllowedEmailDomains = (allowedDomainsConfig: string): string =>
+  Array.from(new Set(getDomainEntries(allowedDomainsConfig).map(normalizeDomain))).join(", ");
+
+export const AllowedEmailDomainsSchema = z
+  .string()
+  .superRefine((value, context) => {
+    const domainEntries = getDomainEntries(value);
+    const invalidDomains = domainEntries.filter((domain) => !isValidEmailDomain(normalizeDomain(domain)));
+
+    if (value.trim() && !domainEntries.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter at least one valid email domain"
+      });
+    }
+
+    if (invalidDomains.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid email domain${invalidDomains.length > 1 ? "s" : ""}: ${invalidDomains.join(", ")}`
+      });
+    }
+
+    if (normalizeAllowedEmailDomains(value).length > MAX_ALLOWED_EMAIL_DOMAINS_LENGTH) {
+      context.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: MAX_ALLOWED_EMAIL_DOMAINS_LENGTH,
+        inclusive: true,
+        type: "string",
+        message: `Email domains must be ${MAX_ALLOWED_EMAIL_DOMAINS_LENGTH} characters or fewer`
+      });
+    }
+  })
+  .transform(normalizeAllowedEmailDomains);
+
 /**
  * Checks if an email's domain matches the allowed domains configuration.
  * Supports exact domains (e.g. "example.com") and wildcard patterns (e.g. "*.example.com").
@@ -27,7 +76,7 @@ export const matchesAllowedEmailDomain = (email: string, allowedDomainsConfig: s
     .filter(Boolean);
 
   for (const pattern of patterns) {
-    const patternLower = pattern.toLowerCase();
+    const patternLower = normalizeDomain(pattern);
 
     if (patternLower.startsWith("*.")) {
       // Wildcard: *.suffix - matches exact suffix or subdomains only (domain === suffix or domain ends with .suffix)

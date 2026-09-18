@@ -3,13 +3,13 @@ import { z } from "zod";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
-import { QueueWorkerProfile } from "@app/lib/types";
+import { RunMode } from "@app/lib/types";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
-import { CustomLogger } from "../logger/logger";
+import { CustomLogger, logger as rootLogger } from "../logger/logger";
 import { ms } from "../ms";
 import { zpStr } from "../zod";
 
@@ -37,6 +37,115 @@ const zodStrBool = z
   .optional()
   .transform((val) => val === "true");
 
+// Which responsibilities this process takes on, as a comma-separated list. Splitting the fleet by
+// run mode is what lets an API pod, a general worker pod and a secret scanning pod share one image.
+export const runModesSchema = zpStr(z.string().optional())
+  .transform((val) =>
+    (val ?? Object.values(RunMode).join(","))
+      .split(",")
+      .map((mode) => mode.trim().toLowerCase())
+      .filter(Boolean)
+  )
+  .pipe(
+    z
+      .nativeEnum(RunMode, {
+        errorMap: () => ({
+          message: `INFISICAL_RUN_MODES must be a comma-separated list of: ${Object.values(RunMode).join(", ")}`
+        })
+      })
+      .array()
+      .nonempty("INFISICAL_RUN_MODES must name at least one run mode")
+  );
+
+/**
+ * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
+ * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
+ * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan, and
+ * as the scan lock TTL headroom so the lock outlives any scan the reaper would consider healthy.
+ */
+export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
+
+const zodTimeoutMs = ({
+  envVar,
+  description,
+  defaultValue,
+  legacyMsEnvVar
+}: {
+  envVar: string;
+  description: string;
+  defaultValue: string;
+  // only for a timeout that predates this helper; a new one has no deprecated spelling to honour
+  legacyMsEnvVar?: string;
+}) =>
+  zpStr(
+    z
+      .string()
+      .optional()
+      .describe(description)
+      .transform((val, ctx) => {
+        const legacyValue = legacyMsEnvVar ? process.env[legacyMsEnvVar]?.trim() || undefined : undefined;
+        // the singleton logger is undefined on the first parse, which happens during telemetry setup
+        if (legacyValue) {
+          (rootLogger ?? console).warn(
+            `Warning: The environment variable ${legacyMsEnvVar} has been deprecated. Please use ${envVar} instead.`
+          );
+        }
+
+        const raw = val ?? legacyValue ?? defaultValue;
+
+        const duration = ms(raw);
+        if (duration === undefined || duration < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              raw === legacyValue
+                ? `Invalid value "${raw}" in ${legacyMsEnvVar}. Expected a positive number of milliseconds.`
+                : `Invalid duration "${raw}" in ${envVar}. Expected a positive duration string such as "30s", "10m" or "6h".`
+          });
+          return z.NEVER;
+        }
+
+        return duration;
+      })
+  );
+
+export const secretScanningTimeoutsSchema = z.object({
+  SECRET_SCANNING_SCAN_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_SCAN_TIMEOUT",
+    description: "Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed",
+    defaultValue: "10m",
+    legacyMsEnvVar: "SECRET_SCANNING_SCAN_TIMEOUT_MS"
+  }),
+  SECRET_SCANNING_CLONE_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_CLONE_TIMEOUT",
+    description: "Wall-clock ceiling for a single `git clone` invocation before its process group is killed",
+    defaultValue: "10m",
+    legacyMsEnvVar: "SECRET_SCANNING_CLONE_TIMEOUT_MS"
+  }),
+  SECRET_SCANNING_STUCK_SCAN_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT",
+    description:
+      "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined.",
+    defaultValue: "1h",
+    legacyMsEnvVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"
+  })
+});
+
+export const validateSecretScanningTimeouts = (
+  data: z.infer<typeof secretScanningTimeoutsSchema>,
+  ctx: z.RefinementCtx
+) => {
+  const scanBudgetMs =
+    data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+  if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT <= scanBudgetMs) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT"],
+      message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_SCAN_OVERHEAD}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+    });
+  }
+};
+
 const databaseReadReplicaSchema = z
   .object({
     DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
@@ -55,6 +164,7 @@ const envSchema = z
       .default("false")
       .transform((el) => el === "true"),
     DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
+    DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -158,6 +268,32 @@ const envSchema = z
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
     DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
+    DB_POOL_MIN: z.coerce.number().int().min(0).default(0).describe("Minimum primary Postgres pool connections"),
+    DB_POOL_MAX: z.coerce.number().int().min(1).default(10).describe("Maximum primary Postgres pool connections"),
+    DB_REPLICA_POOL_MIN: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe("Minimum pool connections per Postgres read replica"),
+    DB_REPLICA_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10)
+      .describe("Maximum pool connections per Postgres read replica"),
+    AUDIT_LOGS_DB_POOL_MIN: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe("Minimum audit log Postgres pool connections"),
+    AUDIT_LOGS_DB_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10)
+      .describe("Maximum audit log Postgres pool connections"),
     BCRYPT_SALT_ROUND: z.number().optional(), // note(daniel): this is deprecated, use SALT_ROUNDS instead. only keeping this for backwards compatibility.
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
@@ -165,8 +301,10 @@ const envSchema = z
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
-    QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
-    QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
+    // A convergence window, not a rollback window: it lets instances that have not restarted onto the
+    // new key keep booting, and covers a new key that turns out to be lost. Then the old key is gone.
+    KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+    INFISICAL_RUN_MODES: runModesSchema,
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
@@ -215,10 +353,7 @@ const envSchema = z
     SMTP_CUSTOM_CA_CERT: zpStr(
       z.string().optional().describe("Base64 encoded custom CA certificate PEM(s) for the SMTP server")
     ),
-    COOKIE_SECRET_SIGN_KEY: z
-      .string()
-      .min(32)
-      .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
+    COOKIE_SECRET_SIGN_KEY: zpStr(z.string().min(32).optional()),
 
     // Ensure that the SITE_URL never ends with a trailing slash
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
@@ -238,6 +373,10 @@ const envSchema = z
     CONTENTFUL_ENVIRONMENT: zpStr(z.string().optional().default("master")),
     // GitHub API token for upgrade path tool
     GITHUB_API_TOKEN: zpStr(z.string().optional()),
+    // Secrets activation nudge tuning. Controls the org size/age window in which the
+    // member-invite activation banner appears.
+    SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS: z.coerce.number().default(2),
+    SECRETS_ACTIVATION_ORG_MAX_MEMBERS: z.coerce.number().default(5),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
@@ -313,11 +452,35 @@ const envSchema = z
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
+    ...secretScanningTimeoutsSchema.shape,
+    SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(2048)
+      .describe(
+        "Soft memory ceiling (GOMEMLIMIT) handed to the Go scanner process. The runtime GCs harder as it approaches the limit rather than growing. Set to 0 to disable."
+      ),
+    SECRET_SCANNING_CPU_THREADS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(1)
+      .describe(
+        "CPU thread ceiling for scanning child processes, applied as GOMAXPROCS to the Go scanner and pack.threads to git clone. Both otherwise use every core on the host, so one full scan can saturate the instance. Set to 0 to remove the cap."
+      ),
+    SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5120)
+      .describe("Repositories larger than this are rejected before/after cloning. Set to 0 to disable."),
     // LICENSE
+    // The License Server host. Serves both the self-hosted token endpoint and the entitlement API.
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
-    LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
+    LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -339,6 +502,7 @@ const envSchema = z
     OTEL_COLLECTOR_BASIC_AUTH_USERNAME: zpStr(z.string().optional()),
     OTEL_COLLECTOR_BASIC_AUTH_PASSWORD: zpStr(z.string().optional()),
     OTEL_EXPORT_TYPE: z.enum(["prometheus", "otlp"]).optional(),
+    OTEL_DROP_HIGH_CARDINALITY_METERS: zodStrBool.default("false"),
 
     PYLON_API_KEY: zpStr(z.string().optional()),
     DISABLE_AUDIT_LOG_GENERATION: zodStrBool.default("false"),
@@ -374,14 +538,10 @@ const envSchema = z
     SHOULD_INIT_PG_QUEUE: zodStrBool.default("false"),
 
     /* Gateway----------------------------------------------------------------------------- */
-    GATEWAY_INFISICAL_STATIC_IP_ADDRESS: zpStr(z.string().optional()),
-    GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
-    GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
-    GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
-
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
+    AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
     ),
@@ -397,6 +557,11 @@ const envSchema = z
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
 
+    // Forces outbound requests made through the SSRF-safe HTTP client to use
+    // direct egress (axios `proxy: false`), so the resolved-and-pinned target
+    // IP cannot be bypassed by an ambient HTTP(S)_PROXY.
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
+
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
@@ -411,6 +576,7 @@ const envSchema = z
     INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_SLUG: zpStr(z.string().optional()),
     INF_APP_CONNECTION_GITHUB_APP_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_GITHUB_APP_HOST: zpStr(z.string().optional()),
 
     // github radar app
     INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID: zpStr(z.string().optional()),
@@ -495,6 +661,10 @@ const envSchema = z
 
     /* Go Sidecar ----------------------------------------------------------------------------- */
     GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
+    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
+    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
+    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
+    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
@@ -503,6 +673,25 @@ const envSchema = z
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
     "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
+  .superRefine((data, ctx) => {
+    (
+      [
+        ["DB_POOL_MIN", "DB_POOL_MAX"],
+        ["DB_REPLICA_POOL_MIN", "DB_REPLICA_POOL_MAX"],
+        ["AUDIT_LOGS_DB_POOL_MIN", "AUDIT_LOGS_DB_POOL_MAX"]
+      ] as const
+    ).forEach(([minKey, maxKey]) => {
+      if (data[minKey] > data[maxKey]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [minKey],
+          message: `${minKey} (${data[minKey]}) must be less than or equal to ${maxKey} (${data[maxKey]}).`
+        });
+      }
+    });
+
+    validateSecretScanningTimeouts(data, ctx);
+  })
   .transform((data) => ({
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
@@ -511,7 +700,8 @@ const envSchema = z
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
-    isCloud: Boolean(data.LICENSE_SERVER_KEY),
+    // Only cloud holds the License Server service key; self-hosted authenticates with a license key.
+    isCloud: Boolean(data.LICENSE_SERVER_V2_SERVICE_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),
@@ -523,6 +713,9 @@ const envSchema = z
       data.NODE_ENV === "development" && data.DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE,
     isAcmeDevelopmentMode: data.NODE_ENV === "development" && data.ACME_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
+    isApiRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.Api),
+    isGeneralWorkerRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.GeneralWorkers),
+    isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
@@ -547,7 +740,7 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
-    isSecretScanningV2Configured:
+    isGithubRadarConfigured:
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG) &&
@@ -642,6 +835,7 @@ export const getTelemetryConfig = () => {
   return {
     useOtel: parsedEnv.data.OTEL_TELEMETRY_COLLECTION_ENABLED,
     useDataDogTracer: parsedEnv.data.SHOULD_USE_DATADOG_TRACER,
+    dropHighCardinalityMeters: parsedEnv.data.OTEL_DROP_HIGH_CARDINALITY_METERS,
     OTEL: {
       otlpURL: parsedEnv.data.OTEL_EXPORT_OTLP_ENDPOINT,
       otlpUser: parsedEnv.data.OTEL_COLLECTOR_BASIC_AUTH_USERNAME,
@@ -673,7 +867,9 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
     readReplicas: parsedEnv.data.DB_READ_REPLICAS?.map((el) => ({
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
-    }))
+    })),
+    pool: { min: parsedEnv.data.DB_POOL_MIN, max: parsedEnv.data.DB_POOL_MAX },
+    replicaPool: { min: parsedEnv.data.DB_REPLICA_POOL_MIN, max: parsedEnv.data.DB_REPLICA_POOL_MAX }
   };
 };
 
@@ -783,7 +979,8 @@ export const overwriteSchema: {
     fields: [
       {
         key: "INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL",
-        description: "The GCP Service Account JSON credentials."
+        description:
+          'The GCP credentials JSON used as the impersonation source. Accepts either a service account key (type "service_account") or a workload identity federation config (type "external_account"). For external_account, the referenced credential source (file, URL, or metadata endpoint) must be reachable from the instance.'
       }
     ]
   },
@@ -809,6 +1006,11 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY",
         description: "The Private Key of your GitHub application."
+      },
+      {
+        key: "INF_APP_CONNECTION_GITHUB_APP_HOST",
+        description:
+          "The hostname of the GitHub instance used by the shared GitHub App (e.g. github.example.com for GitHub Enterprise Server). Defaults to github.com. Must be set when the shared app is registered on a GHES instance."
       }
     ]
   },
@@ -921,6 +1123,16 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  secretSharing: {
+    name: "Secret Sharing",
+    fields: [
+      {
+        key: "DISABLE_PUBLIC_SECRET_SHARING",
+        description:
+          "Disable creation of unauthenticated public secret shares (the /share-secret page). Set to 'true' to block public sharing."
       }
     ]
   }

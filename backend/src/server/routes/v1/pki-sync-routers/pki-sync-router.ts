@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, PKI_SYNC_FILTERS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -9,7 +9,18 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
-import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
+import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
+import { PkiSyncFiltersField, PkiSyncStoredFiltersField } from "@app/services/pki-sync/pki-sync-schemas";
+
+const PkiSyncCertificateRefSchema = z.object({
+  id: z.string().uuid(),
+  commonName: z.string(),
+  altNames: z.string().nullable().optional(),
+  serialNumber: z.string().optional(),
+  notAfter: z.date().optional(),
+  orderId: z.string().uuid().optional(),
+  profileName: z.string().nullable().optional()
+});
 
 export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
@@ -30,6 +41,9 @@ export const PkiSyncSchema = z.object({
   lastSyncJobId: z.string().nullable().optional(),
   lastSyncMessage: z.string().nullable().optional(),
   lastSyncedAt: z.date().nullable().optional(),
+  lastHealthCheckRanAt: z.date().nullable().optional(),
+  lastHealthCheckStatus: z.nativeEnum(PkiSyncStatus).nullable().optional(),
+  lastHealthCheckMessage: z.string().nullable().optional(),
   // Import status fields
   importStatus: z.string().nullable().optional(),
   lastImportJobId: z.string().nullable().optional(),
@@ -65,15 +79,20 @@ export const PkiSyncSchema = z.object({
     })
     .nullable()
     .optional(),
-  hasCertificate: z.boolean().optional()
+  hasCertificate: z.boolean().optional(),
+  filters: PkiSyncStoredFiltersField
 });
 
 const PkiSyncOptionsSchema = z.object({
   name: z.string(),
   connection: z.nativeEnum(AppConnection),
+  additionalConnections: z.nativeEnum(AppConnection).array().optional(),
   destination: z.nativeEnum(PkiSync),
   canImportCertificates: z.boolean(),
   canRemoveCertificates: z.boolean(),
+  canRunPostSyncCommand: z.boolean().optional(),
+  canRunHealthCheckCommand: z.boolean().optional(),
+  maxCertificates: z.number().optional(),
   defaultCertificateNameSchema: z.string().optional(),
   forbiddenCharacters: z.string().optional(),
   allowedCharacterPattern: z.string().optional(),
@@ -92,6 +111,7 @@ const PkiSyncCertificateSchema = z.object({
   updatedAt: z.date(),
   certificateSerialNumber: z.string().optional(),
   certificateCommonName: z.string().optional(),
+  certificateOrderId: z.string().uuid().optional(),
   certificateAltNames: z.string().optional(),
   certificateStatus: z.string().optional(),
   certificateNotBefore: z.date().optional(),
@@ -100,6 +120,7 @@ const PkiSyncCertificateSchema = z.object({
   certificateRenewalError: z.string().nullish(),
   pkiSyncName: z.string().optional(),
   pkiSyncDestination: z.string().optional(),
+  externalIdentifier: z.string().nullish(),
   syncMetadata: SyncMetadataSchema
 });
 
@@ -121,7 +142,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const pkiSyncOptions = server.services.pkiSync.getPkiSyncOptions();
       return { pkiSyncOptions };
@@ -148,7 +169,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { certificateId, applicationId },
@@ -194,7 +215,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         200: PkiSyncSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -208,7 +229,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           metadata: {
             syncId: pkiSyncId,
             destination: pkiSync.destination,
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });
@@ -242,7 +264,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { offset, limit } = req.query;
@@ -262,12 +284,106 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
             destination: pkiSyncInfo.destination,
             count: certificates.length,
             certificateIds: certificates.map((c) => c.certificateId),
-            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
+            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId }),
+            ...(pkiSyncInfo.applicationName && { applicationName: pkiSyncInfo.applicationName })
           }
         }
       });
 
       return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/certificates/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      ...(enableOperationId ? { operationId: "searchPkiSyncFilterCertificates" } : {}),
+      tags: [ApiDocsTags.PkiSyncs],
+      description: "List the certificates a set of filters matches, for an existing PKI Sync or an Application.",
+      body: z
+        .object({
+          pkiSyncId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
+          applicationId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
+          filters: PkiSyncFiltersField,
+          offset: z.coerce.number().min(0).default(0).describe(PKI_SYNC_FILTERS.previewOffset),
+          limit: z.coerce.number().min(1).max(500).default(100).describe(PKI_SYNC_FILTERS.previewLimit)
+        })
+        .refine((body) => Boolean(body.pkiSyncId) !== Boolean(body.applicationId), {
+          message: "Provide either pkiSyncId or applicationId."
+        }),
+      response: {
+        200: z.object({
+          matchedCount: z.number(),
+          certificates: PkiSyncCertificateRefSchema.array(),
+          toUnlink: PkiSyncCertificateRefSchema.array(),
+          willRemoveFromDestination: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const preview = await server.services.pkiSync.previewPkiSyncFilters(
+        {
+          pkiSyncId: req.body.pkiSyncId,
+          applicationId: req.body.applicationId,
+          filters: req.body.filters,
+          offset: req.body.offset,
+          limit: req.body.limit
+        },
+        req.permission
+      );
+
+      return preview;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/certificate-orders/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      ...(enableOperationId ? { operationId: "searchPkiSyncCertificateOrders" } : {}),
+      tags: [ApiDocsTags.PkiSyncs],
+      description: "Resolve certificate orders to the certificate each one currently holds.",
+      body: z
+        .object({
+          pkiSyncId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
+          applicationId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
+          certificateOrderIds: z.string().uuid().array().max(200).describe(PKI_SYNC_FILTERS.certificateOrderIds)
+        })
+        .refine((body) => Boolean(body.pkiSyncId) !== Boolean(body.applicationId), {
+          message: "Provide either pkiSyncId or applicationId."
+        }),
+      response: {
+        200: z.object({
+          orders: z
+            .object({
+              certificateOrderId: z.string().uuid(),
+              commonName: z.string(),
+              altNames: z.string().nullish()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.pkiSync.searchPkiSyncCertificateOrders(
+        {
+          pkiSyncId: req.body.pkiSyncId,
+          applicationId: req.body.applicationId,
+          certificateOrderIds: req.body.certificateOrderIds
+        },
+        req.permission
+      );
     }
   });
 
@@ -305,28 +421,15 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { certificateIds } = req.body;
 
-      const { addedCertificates, pkiSyncInfo } = await server.services.pkiSync.addCertificatesToPkiSync(
-        { pkiSyncId, certificateIds },
+      const { addedCertificates } = await server.services.pkiSync.addCertificatesToPkiSync(
+        { pkiSyncId, certificateIds, auditLogInfo: req.auditLogInfo },
         req.permission
       );
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: pkiSyncInfo.projectId,
-        event: {
-          type: EventType.UPDATE_PKI_SYNC,
-          metadata: {
-            pkiSyncId,
-            name: pkiSyncInfo.name,
-            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
-          }
-        }
-      });
 
       return { addedCertificates };
     }
@@ -355,28 +458,15 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
       const { certificateIds } = req.body;
 
-      const { removedCount, pkiSyncInfo } = await server.services.pkiSync.removeCertificatesFromPkiSync(
-        { pkiSyncId, certificateIds },
+      const { removedCount } = await server.services.pkiSync.removeCertificatesFromPkiSync(
+        { pkiSyncId, certificateIds, auditLogInfo: req.auditLogInfo },
         req.permission
       );
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: pkiSyncInfo.projectId,
-        event: {
-          type: EventType.UPDATE_PKI_SYNC,
-          metadata: {
-            pkiSyncId,
-            name: pkiSyncInfo.name,
-            ...(pkiSyncInfo.applicationId && { applicationId: pkiSyncInfo.applicationId })
-          }
-        }
-      });
 
       return { removedCount };
     }

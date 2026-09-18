@@ -1,0 +1,57 @@
+version: v0.162.14
+releasedAt: 2026-07-27T15:09:35-07:00
+sourceTag: v0.162.14
+previousTag: v0.162.13
+impactLevel: low
+summary: Adds two startup-run database migrations and one optional update-check
+  setting for self-hosted instances.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM dependencies migration
+    description: PAM account dependency storage is rebuilt and discovery run
+      counters are added. Existing startup applies the schema change
+      automatically.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260720183403_pam-account-dependencies-rework.ts
+        path: backend/src/db/migrations/20260720183403_pam-account-dependencies-rework.ts
+  - title: Proxied service last-used column
+    description: Proxied services gain a nullable lastUsedAt column for usage
+      reporting. Existing startup applies the schema change automatically.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260722000118_add-proxied-service-last-used.ts
+        path: backend/src/db/migrations/20260722000118_add-proxied-service-last-used.ts
+        description: Adds nullable lastUsedAt column
+configChanges:
+  - title: Update check setting
+    description: Infisical now supports DISABLE_UPDATE_CHECK. Set it to true to stop
+      startup and weekly GitHub version checks, which is useful for air-gapped
+      environments.
+    action: Set DISABLE_UPDATE_CHECK=true if outbound GitHub access is not allowed
+      or not wanted.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: Adds DISABLE_UPDATE_CHECK env var
+      - type: file
+        ref: docs/self-hosting/configuration/envars.mdx
+        path: docs/self-hosting/configuration/envars.mdx
+        description: Documents GitHub update check behavior
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-27T23:41:26.204Z
+  sourceRange:
+    from: v0.162.13
+    to: v0.162.14

@@ -1,37 +1,69 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
+import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
+import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
+import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionKmipServerActions,
   OrgPermissionRelayActions,
   OrgPermissionSubjects
 } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
+import { TGatewayProxyRegistry } from "./gateway-proxy-registry";
+import { TResourceKubernetesAuthDALFactory } from "./kubernetes-auth-dal";
+import {
+  assertKubernetesHostAllowed,
+  buildDirectKubernetesExecutor,
+  reviewServiceAccountToken,
+  TKubernetesRequestExecutor,
+  validateKubernetesAllowlists,
+  validateKubernetesConfigReachable
+} from "./kubernetes-auth-fns";
+import { buildGatewayKubernetesExecutor, resolveKubernetesProxyTarget } from "./kubernetes-gateway-executor";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
 import {
   assertGatewayResource,
+  assertKmipServerResource,
   assertRelayResource,
+  KubernetesTokenReviewMode,
+  mintAgentVaultProxyJwt,
   mintGatewayJwt,
+  mintKmipServerJwt,
   mintRelayJwt,
+  RESOURCE_TYPE_AGENT_VAULT_PROXY,
   RESOURCE_TYPE_GATEWAY,
+  RESOURCE_TYPE_KMIP,
   RESOURCE_TYPE_RELAY,
+  ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
   type ResourceRef
 } from "./resource-auth-method-fns";
 import {
   TAuthMethodView,
   TAwsAuthMethodConfig,
+  TEncryptedKubernetesSecrets,
   TGetAuthMethodDTO,
+  TKubernetesAuthMethodConfig,
   TLoginWithAwsDTO,
+  TLoginWithKubernetesDTO,
   TLoginWithTokenDTO,
   TMintTokenDTO,
   TRevokeTokenDTO,
@@ -41,8 +73,18 @@ import { TResourceTokenAuthDALFactory } from "./token-auth-dal";
 
 const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
 
-const $generateEnrollmentToken = () => {
-  const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
+// Bounds the reviewer chain walk; nobody legitimately chains proxies this deep.
+const MAX_PROXY_CHAIN_DEPTH = 10;
+
+const ENROLLMENT_TOKEN_PREFIX: Record<ResourceRef["type"], string> = {
+  [RESOURCE_TYPE_GATEWAY]: "gwe_",
+  [RESOURCE_TYPE_RELAY]: "gwe_",
+  [RESOURCE_TYPE_KMIP]: "gwe_",
+  [RESOURCE_TYPE_AGENT_VAULT_PROXY]: "avp_"
+};
+
+const $generateEnrollmentToken = (prefix: string) => {
+  const plainToken = `${prefix}${crypto.randomBytes(32).toString("base64url")}`;
   const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
   const expiresAt = new Date(Date.now() + ENROLLMENT_TOKEN_TTL_SECONDS * 1000);
   return { plainToken, tokenHash, expiresAt };
@@ -51,11 +93,19 @@ const $generateEnrollmentToken = () => {
 type TResourceAuthMethodServiceFactoryDep = {
   resourceAuthMethodDAL: TResourceAuthMethodDALFactory;
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
+  resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
+  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
+  kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
+  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayProxyRegistry: TGatewayProxyRegistry;
 };
 
 export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMethodServiceFactory>;
@@ -64,29 +114,166 @@ export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMe
 const GATEWAY_PERMISSION_MAP = {
   list: OrgPermissionGatewayActions.ListGateways,
   edit: OrgPermissionGatewayActions.EditGateways,
+  create: OrgPermissionGatewayActions.EditGateways,
+  issue: OrgPermissionGatewayActions.EditGateways,
   revoke: OrgPermissionGatewayActions.RevokeGatewayAccess
 } as const;
 
 const RELAY_PERMISSION_MAP = {
   list: OrgPermissionRelayActions.ListRelays,
   edit: OrgPermissionRelayActions.EditRelays,
+  create: OrgPermissionRelayActions.EditRelays,
+  issue: OrgPermissionRelayActions.EditRelays,
   revoke: OrgPermissionRelayActions.RevokeRelayAccess
 } as const;
+
+// create and issue exist for products that gate them separately; these three keep them on edit, which
+// is the action that has always covered minting here.
+const KMIP_SERVER_PERMISSION_MAP = {
+  list: OrgPermissionKmipServerActions.ListKmipServers,
+  edit: OrgPermissionKmipServerActions.EditKmipServers,
+  create: OrgPermissionKmipServerActions.EditKmipServers,
+  issue: OrgPermissionKmipServerActions.EditKmipServers,
+  revoke: OrgPermissionKmipServerActions.RevokeKmipServerAccess
+} as const;
+
+const RESOURCE_LABEL: Record<ResourceRef["type"], string> = {
+  [RESOURCE_TYPE_GATEWAY]: "Gateway",
+  [RESOURCE_TYPE_RELAY]: "Relay",
+  [RESOURCE_TYPE_KMIP]: "KMIP server",
+  [RESOURCE_TYPE_AGENT_VAULT_PROXY]: "Agent Vault proxy"
+};
+
+const AGENT_VAULT_PROXY_PERMISSION_MAP = {
+  list: ProjectPermissionAgentVaultProxyActions.Read,
+  edit: ProjectPermissionAgentVaultProxyActions.Edit,
+  create: ProjectPermissionAgentVaultProxyActions.Create,
+  issue: ProjectPermissionAgentVaultProxyActions.IssueToken,
+  revoke: ProjectPermissionAgentVaultProxyActions.Revoke
+} as const;
+
+type TBasicResource = { id: string; name: string; orgId: string | null; identityId: string | null };
 
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
+  resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
+  kmsService,
   gatewayV2DAL,
+  gatewayPoolDAL,
+  gatewayPoolMembershipDAL,
   relayDAL,
+  kmipServerDAL,
+  agentVaultProxyDAL,
   identityDAL,
-  permissionService
+  permissionService,
+  licenseService,
+  gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
+  // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId).
+  const $registryFilter = (resource: ResourceRef) => {
+    if (resource.type === RESOURCE_TYPE_GATEWAY) return { gatewayId: resource.id };
+    if (resource.type === RESOURCE_TYPE_RELAY) return { relayId: resource.id };
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) return { agentVaultProxyId: resource.id };
+    return { kmipServerId: resource.id };
+  };
+
+  // Loads the minimal resource shape the auth-method flows need. KMIP servers have no
+  // identityId column — they're always enrollment-based, never machine-identity — so it's
+  // reported as null, which keeps them out of the legacy "identity" auth-method path.
+  const $loadResource = async (resource: ResourceRef, tx?: Knex): Promise<TBasicResource | null> => {
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const gateway = await gatewayV2DAL.findById(resource.id, tx);
+      return gateway
+        ? { id: gateway.id, name: gateway.name, orgId: gateway.orgId, identityId: gateway.identityId ?? null }
+        : null;
+    }
+    if (resource.type === RESOURCE_TYPE_RELAY) {
+      const relay = await relayDAL.findById(resource.id, tx);
+      return relay
+        ? { id: relay.id, name: relay.name, orgId: relay.orgId ?? null, identityId: relay.identityId ?? null }
+        : null;
+    }
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      const proxy = await agentVaultProxyDAL.findByIdWithOrg(resource.id, tx);
+      return proxy ? { id: proxy.id, name: proxy.name, orgId: proxy.orgId, identityId: null } : null;
+    }
+    // Unmatched types load as a KMIP server rather than failing, so a new resource type needs its own arm above.
+    const kmipServer = await kmipServerDAL.findById(resource.id, tx);
+    return kmipServer ? { id: kmipServer.id, name: kmipServer.name, orgId: kmipServer.orgId, identityId: null } : null;
+  };
+
+  // Bumps tokenVersion and clears every liveness probe. KMIP servers have no heartbeat columns.
+  const $bumpTokenVersion = async (resource: ResourceRef, tx?: Knex): Promise<number> => {
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      const refreshed = await gatewayV2DAL.updateById(
+        resource.id,
+        { $incr: { tokenVersion: 1 }, heartbeat: null, directHeartbeat: null, heartbeatTTL: null },
+        tx
+      );
+      return refreshed.tokenVersion;
+    }
+    if (resource.type === RESOURCE_TYPE_RELAY) {
+      const refreshed = await relayDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
+      return refreshed.tokenVersion;
+    }
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      const refreshed = await agentVaultProxyDAL.updateById(
+        resource.id,
+        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
+        tx
+      );
+      return refreshed.tokenVersion;
+    }
+    const refreshed = await kmipServerDAL.updateById(resource.id, { $incr: { tokenVersion: 1 } }, tx);
+    return refreshed.tokenVersion;
+  };
+
+  const $mintJwt = (resource: ResourceRef, orgId: string, tokenVersion: number): string => {
+    if (resource.type === RESOURCE_TYPE_GATEWAY) {
+      return mintGatewayJwt({ gatewayId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
+    }
+    if (resource.type === RESOURCE_TYPE_RELAY) {
+      return mintRelayJwt({ relayId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
+    }
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      return mintAgentVaultProxyJwt({ agentVaultProxyId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
+    }
+    return mintKmipServerJwt({ kmipServerId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
+  };
+
   const $checkPermission = async (
     actor: TSetAuthMethodDTO["actor"],
-    intent: "list" | "edit" | "revoke",
-    resourceType: ResourceRef["type"]
+    intent: "list" | "edit" | "create" | "issue" | "revoke",
+    resourceType: ResourceRef["type"],
+    resourceId?: string
   ) => {
+    // A project subject, not an org one: the else branch below would reintroduce the org-admin fallback
+    // the product forbids.
+    if (resourceType === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      if (!resourceId) {
+        throw new BadRequestError({ message: "Agent Vault proxy permission check requires the proxy id" });
+      }
+      const proxy = await agentVaultProxyDAL.findByIdWithOrg(resourceId);
+      if (!proxy || proxy.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `Agent Vault proxy ${resourceId} not found` });
+      }
+      const { permission: projectPermission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId: proxy.projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.AgentVault
+      });
+      ForbiddenError.from(projectPermission).throwUnlessCan(
+        AGENT_VAULT_PROXY_PERMISSION_MAP[intent],
+        ProjectPermissionSub.AgentVaultProxies
+      );
+      return;
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
@@ -97,47 +284,73 @@ export const resourceAuthMethodServiceFactory = ({
     });
     if (resourceType === RESOURCE_TYPE_GATEWAY) {
       ForbiddenError.from(permission).throwUnlessCan(GATEWAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Gateway);
-    } else {
+    } else if (resourceType === RESOURCE_TYPE_RELAY) {
       ForbiddenError.from(permission).throwUnlessCan(RELAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Relay);
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        KMIP_SERVER_PERMISSION_MAP[intent],
+        OrgPermissionSubjects.KmipServer
+      );
+    }
+  };
+
+  // Attaching a gateway to something is its own permission, and pools are a licensed feature.
+  // Machine identity Kubernetes auth gates its gateway selection the same way.
+  const $assertCanAttachProxy = async (
+    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+  ) => {
+    if (!proxy.gatewayV2Id && !proxy.gatewayPoolId) return;
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    if (proxy.gatewayV2Id) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
+    // Pools carry their own attach permission, so holding it for gateways is not sufficient.
+    if (proxy.gatewayPoolId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
     }
   };
 
   const $loadAuthMethodView = async (resource: ResourceRef): Promise<TAuthMethodView | null> => {
+    const loaded = await $loadResource(resource);
+    if (!loaded) return null;
+
     // Identity is checked first — it's the authoritative legacy-state signal
     // and overrides any registry row.
-    if (resource.type === RESOURCE_TYPE_GATEWAY) {
-      const gateway = await gatewayV2DAL.findById(resource.id);
-      if (!gateway) return null;
-
-      if (gateway.identityId) {
-        const identity = await identityDAL.findById(gateway.identityId);
-        return {
-          method: ResourceAuthMethodType.Identity,
-          config: {
-            identityId: gateway.identityId,
-            identityName: identity?.name ?? null
-          }
-        };
-      }
-    } else {
-      const relay = await relayDAL.findById(resource.id);
-      if (!relay) return null;
-
-      if (relay.identityId) {
-        const identity = await identityDAL.findById(relay.identityId);
-        return {
-          method: ResourceAuthMethodType.Identity,
-          config: {
-            identityId: relay.identityId,
-            identityName: identity?.name ?? null
-          }
-        };
-      }
+    if (loaded.identityId) {
+      const identity = await identityDAL.findById(loaded.identityId);
+      return {
+        method: ResourceAuthMethodType.Identity,
+        config: {
+          identityId: loaded.identityId,
+          identityName: identity?.name ?? null
+        }
+      };
     }
 
-    const registryFilter =
-      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
-    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
     if (!registry) return null;
 
     if (registry.method === ResourceAuthMethodType.Aws) {
@@ -158,6 +371,41 @@ export const resourceAuthMethodServiceFactory = ({
       };
     }
 
+    if (registry.method === ResourceAuthMethodType.Kubernetes) {
+      const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+      if (!config) {
+        throw new NotFoundError({ message: `Kubernetes auth config missing for ${resource.type}` });
+      }
+
+      let caCertificate = "";
+      if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: loaded.orgId
+        });
+        caCertificate = decryptor({ cipherTextBlob: config.encryptedKubernetesCaCertificate }).toString();
+      }
+
+      return {
+        method: ResourceAuthMethodType.Kubernetes,
+        config: {
+          id: config.id,
+          kubernetesHost: config.kubernetesHost ?? "",
+          tokenReviewMode: config.tokenReviewMode,
+          gatewayId: config.gatewayV2Id ?? null,
+          gatewayPoolId: config.gatewayPoolId ?? null,
+          allowedNamespaces: config.allowedNamespaces,
+          allowedNames: config.allowedNames,
+          allowedAudience: config.allowedAudience,
+          verifyTlsCertificate: config.verifyTlsCertificate,
+          caCertificate,
+          hasTokenReviewerJwt: Boolean(config.encryptedKubernetesTokenReviewerJwt),
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt
+        }
+      };
+    }
+
     if (registry.method === ResourceAuthMethodType.Token) {
       return {
         method: ResourceAuthMethodType.Token,
@@ -172,8 +420,8 @@ export const resourceAuthMethodServiceFactory = ({
     assertGatewayResource(resource, "auth-method");
     await $checkPermission(actor, "list", RESOURCE_TYPE_GATEWAY);
 
-    const gateway = await gatewayV2DAL.findById(resource.id);
-    if (!gateway || gateway.orgId !== actor.orgId) {
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
       throw new NotFoundError({ message: `Gateway ${resource.id} not found` });
     }
 
@@ -188,14 +436,30 @@ export const resourceAuthMethodServiceFactory = ({
     assertRelayResource(resource, "auth-method");
     await $checkPermission(actor, "list", RESOURCE_TYPE_RELAY);
 
-    const relay = await relayDAL.findById(resource.id);
-    if (!relay || relay.orgId !== actor.orgId) {
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
       throw new NotFoundError({ message: `Relay ${resource.id} not found` });
     }
 
     const view = await $loadAuthMethodView(resource);
     if (!view) {
       throw new NotFoundError({ message: "Relay has no auth method configured" });
+    }
+    return view;
+  };
+
+  const getByKmipServerId = async ({ resource, actor }: TGetAuthMethodDTO) => {
+    assertKmipServerResource(resource, "auth-method");
+    await $checkPermission(actor, "list", RESOURCE_TYPE_KMIP);
+
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `KMIP server ${resource.id} not found` });
+    }
+
+    const view = await $loadAuthMethodView(resource);
+    if (!view) {
+      throw new NotFoundError({ message: "KMIP server has no auth method configured" });
     }
     return view;
   };
@@ -210,12 +474,256 @@ export const resourceAuthMethodServiceFactory = ({
   ) => {
     if (resourceInfo.identityId) return false;
     if (resourceInfo.tokenVersion > 0) return true;
-    const registryFilter =
-      resourceType === RESOURCE_TYPE_GATEWAY ? { gatewayId: resourceInfo.id } : { relayId: resourceInfo.id };
-    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter({ type: resourceType, id: resourceInfo.id }));
     if (!registry || registry.method !== ResourceAuthMethodType.Token) return false;
     const pending = await resourceTokenAuthDAL.findOne({ authMethodId: registry.id });
     return Boolean(pending);
+  };
+
+  // Resolves a proxy selection to the gateways it could actually route through: the one named, or
+  // every member of the pool, since any of them can be picked.
+  const $expandProxyToGateways = async (proxy: {
+    gatewayV2Id?: string | null;
+    gatewayPoolId?: string | null;
+  }): Promise<string[]> => {
+    if (proxy.gatewayV2Id) return [proxy.gatewayV2Id];
+    if (!proxy.gatewayPoolId) return [];
+    const members = await gatewayPoolMembershipDAL.find({ gatewayPoolId: proxy.gatewayPoolId });
+    return members.map((member) => member.gatewayId);
+  };
+
+  const $storedProxyOf = async (gatewayId: string) => {
+    const registry = await resourceAuthMethodDAL.findOne({ gatewayId });
+    if (!registry || registry.method !== ResourceAuthMethodType.Kubernetes) return {};
+    const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+    return { gatewayV2Id: config?.gatewayV2Id, gatewayPoolId: config?.gatewayPoolId };
+  };
+
+  // Reviewing through a gateway that reviews back through this one leaves neither able to log in,
+  // since each waits on a tunnel the other has not built yet. Recursive so a wide pool fans out in
+  // parallel; the depth bound also stops a cycle already in the data from spinning here.
+  const $assertProxyChainAvoids = async (
+    gatewayId: string,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null },
+    depth = 0,
+    seen = new Set<string>()
+  ): Promise<void> => {
+    if (depth >= MAX_PROXY_CHAIN_DEPTH) return;
+
+    const candidates = await $expandProxyToGateways(proxy);
+    if (candidates.includes(gatewayId)) {
+      throw new BadRequestError({
+        message:
+          "The selected reviewer eventually reviews through this gateway, so neither could ever authenticate. Point one of them at a gateway outside the chain."
+      });
+    }
+
+    await Promise.all(
+      candidates
+        .filter((candidate) => !seen.has(candidate))
+        .map(async (candidate) => {
+          seen.add(candidate);
+          await $assertProxyChainAvoids(gatewayId, await $storedProxyOf(candidate), depth + 1, seen);
+        })
+    );
+  };
+
+  // A gateway cannot vouch for itself: the proxy runs over its own tunnel, which only exists once
+  // it has authenticated. Covers pools too, since selecting a healthy member can land on itself
+  // while a stale heartbeat is still within its TTL.
+  const $assertProxyNotSelf = async (
+    resource: ResourceRef,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+  ) => {
+    if (resource.type !== RESOURCE_TYPE_GATEWAY) return;
+
+    if (proxy.gatewayV2Id === resource.id) {
+      throw new BadRequestError({
+        message:
+          "A gateway cannot review its own Kubernetes token. Select a different gateway, one that is already enrolled and connected."
+      });
+    }
+
+    if (proxy.gatewayPoolId) {
+      const members = await gatewayPoolMembershipDAL.find({ gatewayPoolId: proxy.gatewayPoolId });
+      if (members.some((member) => member.gatewayId === resource.id)) {
+        throw new BadRequestError({
+          message:
+            "This gateway is a member of the selected pool, so the pool could be asked to review its own token. Choose a pool it does not belong to."
+        });
+      }
+    }
+
+    await $assertProxyChainAvoids(resource.id, proxy);
+  };
+
+  // Picks the route to the API server: straight out from Infisical, or tunnelled through a gateway.
+  // Makes network calls when proxied, so call it outside a transaction.
+  const $buildKubernetesExecutor = async (
+    config: {
+      kubernetesHost?: string | null;
+      caCertificate?: string;
+      verifyTlsCertificate: boolean;
+      tokenReviewMode?: string | null;
+      gatewayV2Id?: string | null;
+      gatewayPoolId?: string | null;
+    },
+    orgId: string
+  ): Promise<{ executor: TKubernetesRequestExecutor; target: string; isGatewayReviewer: boolean }> => {
+    const proxyId = config.gatewayV2Id ?? config.gatewayPoolId;
+    const isGatewayReviewer = config.tokenReviewMode === KubernetesTokenReviewMode.Gateway;
+
+    if (!proxyId) {
+      if (!config.kubernetesHost) {
+        throw new BadRequestError({ message: "A Kubernetes host is required unless the review runs via a gateway." });
+      }
+      return {
+        executor: buildDirectKubernetesExecutor({
+          kubernetesHost: config.kubernetesHost,
+          caCertificate: config.caCertificate,
+          verifyTlsCertificate: config.verifyTlsCertificate
+        }),
+        target: config.kubernetesHost,
+        isGatewayReviewer: false
+      };
+    }
+
+    // In gateway review mode the gateway calls its own API server, so no host is involved.
+    const proxiedHost = isGatewayReviewer ? undefined : config.kubernetesHost;
+    if (!isGatewayReviewer && !proxiedHost) {
+      throw new BadRequestError({
+        message: "A Kubernetes host is required when the review mode is the token reviewer JWT."
+      });
+    }
+
+    // Without this an editor could name another tenant's gateway UUID and have us mint proxy
+    // credentials for it, sending requests into that tenant's network. The resolvers below look
+    // their argument up by id alone, so ownership has to be established here.
+    if (config.gatewayV2Id) {
+      const proxyGateway = await gatewayV2DAL.findById(config.gatewayV2Id);
+      if (!proxyGateway || proxyGateway.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway with ID '${config.gatewayV2Id}' not found` });
+      }
+    }
+    if (config.gatewayPoolId) {
+      const proxyPool = await gatewayPoolDAL.findById(config.gatewayPoolId);
+      if (!proxyPool || proxyPool.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID '${config.gatewayPoolId}' not found` });
+      }
+    }
+
+    const { targetHost, targetPort } = resolveKubernetesProxyTarget(proxiedHost ?? undefined);
+    const connectionDetails = await gatewayProxyRegistry.resolve({
+      gatewayV2Id: config.gatewayV2Id,
+      gatewayPoolId: config.gatewayPoolId,
+      targetHost,
+      targetPort
+    });
+
+    if (!connectionDetails) {
+      throw new BadRequestError({
+        message: `The gateway selected to review Kubernetes tokens is not reachable. It must be enrolled and connected before another gateway can authenticate through it.`
+      });
+    }
+
+    return {
+      executor: buildGatewayKubernetesExecutor({
+        connectionDetails,
+        kubernetesHost: proxiedHost ?? undefined,
+        caCertificate: config.caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate
+      }),
+      target: proxiedHost || "the Kubernetes API server via the selected gateway",
+      isGatewayReviewer
+    };
+  };
+
+  // Whole config-time check for a Kubernetes auth method: the host is only reachable-checked when
+  // Infisical dials it directly, since a proxied address is resolved inside the customer network.
+  // Makes network calls, so call it outside a transaction.
+  const preflightKubernetesConfig = async (
+    config: Pick<
+      TKubernetesAuthMethodConfig,
+      | "kubernetesHost"
+      | "caCertificate"
+      | "tokenReviewerJwt"
+      | "verifyTlsCertificate"
+      | "tokenReviewMode"
+      | "gatewayV2Id"
+      | "gatewayPoolId"
+    >,
+    orgId: string,
+    // Absent when the resource does not exist yet, where it cannot be its own proxy.
+    resource?: ResourceRef,
+    // Absent on paths where the caller was already authorized to attach, e.g. an unauthenticated login.
+    actor?: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">
+  ) => {
+    if (resource) await $assertProxyNotSelf(resource, config);
+    if (actor) await $assertCanAttachProxy(actor, config);
+
+    const isProxied = Boolean(config.gatewayV2Id ?? config.gatewayPoolId);
+    if (!isProxied && config.kubernetesHost) {
+      await assertKubernetesHostAllowed(config.kubernetesHost);
+    }
+
+    const { executor, target, isGatewayReviewer } = await $buildKubernetesExecutor(
+      {
+        kubernetesHost: config.kubernetesHost,
+        caCertificate: config.caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate,
+        tokenReviewMode: config.tokenReviewMode,
+        gatewayV2Id: config.gatewayV2Id,
+        gatewayPoolId: config.gatewayPoolId
+      },
+      orgId
+    );
+
+    await validateKubernetesConfigReachable({
+      executor,
+      target,
+      tokenReviewerJwt: config.tokenReviewerJwt,
+      isGatewayReviewer
+    });
+  };
+
+  // Names the gateways that would break if this one were deleted, so the delete path can say so
+  // instead of surfacing a bare foreign key violation.
+  const findKubernetesProxyDependents = async (gatewayV2Id: string): Promise<string[]> => {
+    const configs = await resourceKubernetesAuthDAL.find({ gatewayV2Id });
+    if (!configs.length) return [];
+
+    const registries = await Promise.all(configs.map((config) => resourceAuthMethodDAL.findById(config.authMethodId)));
+    const dependentIds = registries.map((registry) => registry?.gatewayId).filter(Boolean) as string[];
+
+    const gateways = await Promise.all(dependentIds.map((id) => gatewayV2DAL.findById(id)));
+    return gateways.map((gateway) => gateway?.name).filter(Boolean) as string[];
+  };
+
+  // Call before opening a transaction: the KMS round-trip must not hold a pool connection.
+  const encryptKubernetesSecrets = async (
+    orgId: string,
+    config: Pick<TKubernetesAuthMethodConfig, "caCertificate" | "tokenReviewerJwt">
+  ): Promise<TEncryptedKubernetesSecrets> => {
+    if (config.caCertificate === undefined && config.tokenReviewerJwt === undefined) {
+      return {};
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+
+    const encrypt = (value: string | undefined) => {
+      if (value === undefined) return undefined;
+      if (value === "") return null;
+      return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+    };
+
+    return {
+      ...(config.caCertificate !== undefined && {
+        encryptedKubernetesCaCertificate: encrypt(config.caCertificate)
+      }),
+      ...(config.tokenReviewerJwt !== undefined && {
+        encryptedKubernetesTokenReviewerJwt: encrypt(config.tokenReviewerJwt)
+      })
+    };
   };
 
   const initAtCreate = async (
@@ -226,16 +734,18 @@ export const resourceAuthMethodServiceFactory = ({
       resource: ResourceRef;
       authMethod:
         | { method: typeof ResourceAuthMethodType.Aws; config: TAwsAuthMethodConfig }
+        | {
+            method: typeof ResourceAuthMethodType.Kubernetes;
+            config: TKubernetesAuthMethodConfig & TEncryptedKubernetesSecrets;
+          }
         | { method: typeof ResourceAuthMethodType.Token };
     },
     tx: Knex
   ) => {
-    const registryRow =
-      resource.type === RESOURCE_TYPE_GATEWAY
-        ? { gatewayId: resource.id, method: authMethod.method }
-        : { relayId: resource.id, method: authMethod.method };
-
-    const registry = await resourceAuthMethodDAL.create(registryRow, tx);
+    const registry = await resourceAuthMethodDAL.create(
+      { ...$registryFilter(resource), method: authMethod.method },
+      tx
+    );
     if (authMethod.method === ResourceAuthMethodType.Aws) {
       await resourceAwsAuthDAL.create(
         {
@@ -247,40 +757,127 @@ export const resourceAuthMethodServiceFactory = ({
         tx
       );
     }
+    if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+      await resourceKubernetesAuthDAL.create(
+        {
+          authMethodId: registry.id,
+          kubernetesHost: authMethod.config.kubernetesHost || null,
+          tokenReviewMode: authMethod.config.tokenReviewMode ?? KubernetesTokenReviewMode.Api,
+          gatewayV2Id: authMethod.config.gatewayV2Id ?? null,
+          gatewayPoolId: authMethod.config.gatewayPoolId ?? null,
+          allowedNamespaces: authMethod.config.allowedNamespaces,
+          allowedNames: authMethod.config.allowedNames,
+          allowedAudience: authMethod.config.allowedAudience,
+          verifyTlsCertificate: authMethod.config.verifyTlsCertificate,
+          encryptedKubernetesCaCertificate: authMethod.config.encryptedKubernetesCaCertificate ?? null,
+          encryptedKubernetesTokenReviewerJwt: authMethod.config.encryptedKubernetesTokenReviewerJwt ?? null
+        },
+        tx
+      );
+    }
   };
 
   // tokenVersion is intentionally NOT bumped on method change — running resources keep
   // their JWT until the next restart, avoiding forced downtime. Use revoke for that.
   const setMethod = async ({ resource, authMethod, actor }: TSetAuthMethodDTO): Promise<TAuthMethodView> => {
-    await $checkPermission(actor, "edit", resource.type);
+    await $checkPermission(actor, "edit", resource.type, resource.id);
 
-    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
-    let identityId: string | null | undefined;
-
-    if (resource.type === RESOURCE_TYPE_GATEWAY) {
-      const gateway = await gatewayV2DAL.findById(resource.id);
-      if (!gateway || gateway.orgId !== actor.orgId) {
-        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-      }
-      identityId = gateway.identityId;
-    } else {
-      const relay = await relayDAL.findById(resource.id);
-      if (!relay || relay.orgId !== actor.orgId) {
-        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-      }
-      identityId = relay.identityId;
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
     }
 
-    if (identityId) {
+    if (loaded.identityId) {
       throw new BadRequestError({
         message: `This ${resourceLabel.toLowerCase()} is using legacy machine identity auth. Create a new ${resourceLabel.toLowerCase()} with the desired auth method instead of migrating this one.`
       });
     }
 
-    const registryFilter =
-      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
+    const registryFilter = $registryFilter(resource);
     const current = await resourceAuthMethodDAL.findOne(registryFilter);
     const previousMethod = current?.method ?? null;
+
+    let encryptedKubernetesSecrets: TEncryptedKubernetesSecrets = {};
+    if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+      const isProxied = Boolean(authMethod.gatewayV2Id ?? authMethod.gatewayPoolId);
+      if (!isProxied && authMethod.kubernetesHost) {
+        await assertKubernetesHostAllowed(authMethod.kubernetesHost);
+      }
+
+      // Switching in from another method has no stored secret to preserve, so omitted means null.
+      const isMethodChange = previousMethod !== ResourceAuthMethodType.Kubernetes;
+
+      // Validate against the credentials that will actually be stored. An omitted secret keeps the
+      // stored one, so validating with only what this request carried would check a different
+      // config than the one a gateway later logs in with.
+      let effectiveCa = authMethod.caCertificate;
+      let effectiveReviewer = authMethod.tokenReviewerJwt;
+      let destinationChanged = false;
+      if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
+        const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: actor.orgId
+        });
+        const storedCa = stored?.encryptedKubernetesCaCertificate
+          ? decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString()
+          : undefined;
+
+        // Everything that decides where the reviewer token would be sent, and who could read it in
+        // transit. The host alone is not enough: the review mode, the proxying gateway, the trusted
+        // CA and TLS verification all move it somewhere it was never validated against.
+        destinationChanged =
+          (stored?.tokenReviewMode ?? KubernetesTokenReviewMode.Api) !==
+            (authMethod.tokenReviewMode ?? KubernetesTokenReviewMode.Api) ||
+          stored?.kubernetesHost !== authMethod.kubernetesHost ||
+          (stored?.gatewayV2Id ?? null) !== (authMethod.gatewayV2Id ?? null) ||
+          (stored?.gatewayPoolId ?? null) !== (authMethod.gatewayPoolId ?? null) ||
+          stored?.verifyTlsCertificate !== authMethod.verifyTlsCertificate ||
+          (authMethod.caCertificate !== undefined && authMethod.caCertificate !== (storedCa ?? ""));
+
+        // The CA is public key material, so it always carries over.
+        if (effectiveCa === undefined && storedCa !== undefined) {
+          effectiveCa = storedCa;
+        }
+
+        // Only reuse the stored token against a destination it has already been validated against.
+        if (effectiveReviewer === undefined && !destinationChanged && stored?.encryptedKubernetesTokenReviewerJwt) {
+          effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
+        }
+      }
+
+      await $assertProxyNotSelf(resource, authMethod);
+      await $assertCanAttachProxy(actor, authMethod);
+
+      const validation = await $buildKubernetesExecutor(
+        {
+          kubernetesHost: authMethod.kubernetesHost,
+          caCertificate: effectiveCa,
+          verifyTlsCertificate: authMethod.verifyTlsCertificate,
+          tokenReviewMode: authMethod.tokenReviewMode,
+          gatewayV2Id: authMethod.gatewayV2Id,
+          gatewayPoolId: authMethod.gatewayPoolId
+        },
+        actor.orgId
+      );
+
+      await validateKubernetesConfigReachable({
+        executor: validation.executor,
+        target: validation.target,
+        tokenReviewerJwt: effectiveReviewer,
+        isGatewayReviewer: validation.isGatewayReviewer
+      });
+
+      encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.orgId, {
+        caCertificate: authMethod.caCertificate ?? (isMethodChange ? "" : undefined),
+        // Dropped rather than carried over when the destination moves. Keeping it would have the
+        // next login send a credential the operator never authorised for that address, and refusing
+        // the save instead just walls off an ordinary host edit. The response reports it as no
+        // longer configured, so the change is visible rather than silent.
+        tokenReviewerJwt: authMethod.tokenReviewerJwt ?? (isMethodChange || destinationChanged ? "" : undefined)
+      });
+    }
 
     await resourceAuthMethodDAL.transaction(async (tx) => {
       // 1. Upsert registry row to the new method.
@@ -288,11 +885,7 @@ export const resourceAuthMethodServiceFactory = ({
       if (current) {
         registryRow = await resourceAuthMethodDAL.updateById(current.id, { method: authMethod.method }, tx);
       } else {
-        const createPayload =
-          resource.type === RESOURCE_TYPE_GATEWAY
-            ? { gatewayId: resource.id, method: authMethod.method }
-            : { relayId: resource.id, method: authMethod.method };
-        registryRow = await resourceAuthMethodDAL.create(createPayload, tx);
+        registryRow = await resourceAuthMethodDAL.create({ ...registryFilter, method: authMethod.method }, tx);
       }
 
       // 2. Drop the previous method's config artifacts.
@@ -302,6 +895,13 @@ export const resourceAuthMethodServiceFactory = ({
         current
       ) {
         await resourceAwsAuthDAL.delete({ authMethodId: current.id }, tx);
+      }
+      if (
+        previousMethod === ResourceAuthMethodType.Kubernetes &&
+        authMethod.method !== ResourceAuthMethodType.Kubernetes &&
+        current
+      ) {
+        await resourceKubernetesAuthDAL.delete({ authMethodId: current.id }, tx);
       }
       if (
         previousMethod === ResourceAuthMethodType.Token &&
@@ -336,6 +936,39 @@ export const resourceAuthMethodServiceFactory = ({
           );
         }
       }
+
+      if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+        const sharedFields = {
+          kubernetesHost: authMethod.kubernetesHost || null,
+          tokenReviewMode: authMethod.tokenReviewMode ?? KubernetesTokenReviewMode.Api,
+          gatewayV2Id: authMethod.gatewayV2Id ?? null,
+          gatewayPoolId: authMethod.gatewayPoolId ?? null,
+          allowedNamespaces: authMethod.allowedNamespaces,
+          allowedNames: authMethod.allowedNames,
+          allowedAudience: authMethod.allowedAudience,
+          verifyTlsCertificate: authMethod.verifyTlsCertificate
+        };
+
+        const existingKubernetes = await resourceKubernetesAuthDAL.findOne({ authMethodId: registryRow.id }, tx);
+        if (existingKubernetes) {
+          await resourceKubernetesAuthDAL.updateById(
+            existingKubernetes.id,
+            { ...sharedFields, ...encryptedKubernetesSecrets },
+            tx
+          );
+        } else {
+          await resourceKubernetesAuthDAL.create(
+            {
+              authMethodId: registryRow.id,
+              ...sharedFields,
+              encryptedKubernetesCaCertificate: encryptedKubernetesSecrets.encryptedKubernetesCaCertificate ?? null,
+              encryptedKubernetesTokenReviewerJwt:
+                encryptedKubernetesSecrets.encryptedKubernetesTokenReviewerJwt ?? null
+            },
+            tx
+          );
+        }
+      }
     });
 
     const view = await $loadAuthMethodView(resource);
@@ -347,39 +980,23 @@ export const resourceAuthMethodServiceFactory = ({
 
   // Non-destructive: minting a new token does NOT bump tokenVersion or clear heartbeat,
   // so a running resource keeps working. The next login (with the new token) does the bump.
-  const mintToken = async ({ resource, actor }: TMintTokenDTO) => {
-    await $checkPermission(actor, "edit", resource.type);
+  const mintToken = async ({ resource, actor, intent = "issue" }: TMintTokenDTO) => {
+    await $checkPermission(actor, intent, resource.type, resource.id);
 
-    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
-    let resourceName: string;
-    let resourceOrgId: string;
-
-    if (resource.type === RESOURCE_TYPE_GATEWAY) {
-      const gateway = await gatewayV2DAL.findById(resource.id);
-      if (!gateway || gateway.orgId !== actor.orgId) {
-        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-      }
-      resourceName = gateway.name;
-      resourceOrgId = gateway.orgId;
-    } else {
-      const relay = await relayDAL.findById(resource.id);
-      if (!relay || relay.orgId !== actor.orgId) {
-        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-      }
-      resourceName = relay.name;
-      resourceOrgId = relay.orgId!;
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
     }
 
-    const registryFilter =
-      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
-    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
     if (!registry || registry.method !== ResourceAuthMethodType.Token) {
       throw new BadRequestError({
         message: `${resourceLabel} is not configured for token authentication (current method: ${registry?.method ?? "none"})`
       });
     }
 
-    const generated = $generateEnrollmentToken();
+    const generated = $generateEnrollmentToken(ENROLLMENT_TOKEN_PREFIX[resource.type]);
 
     const record = await resourceTokenAuthDAL.transaction(async (tx) => {
       await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
@@ -398,75 +1015,44 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       ...record,
       token: generated.plainToken,
-      resourceName,
-      orgId: resourceOrgId
+      resourceName: loaded.name,
+      orgId: loaded.orgId
     };
   };
 
   const revokeAccess = async ({ resource, actor }: TRevokeTokenDTO) => {
-    await $checkPermission(actor, "revoke", resource.type);
+    await $checkPermission(actor, "revoke", resource.type, resource.id);
 
-    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
-    let resourceName: string;
-    let resourceOrgId: string;
-    let identityId: string | null | undefined;
-
-    if (resource.type === RESOURCE_TYPE_GATEWAY) {
-      const gateway = await gatewayV2DAL.findById(resource.id);
-      if (!gateway || gateway.orgId !== actor.orgId) {
-        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-      }
-      resourceName = gateway.name;
-      resourceOrgId = gateway.orgId;
-      identityId = gateway.identityId;
-    } else {
-      const relay = await relayDAL.findById(resource.id);
-      if (!relay || relay.orgId !== actor.orgId) {
-        throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
-      }
-      resourceName = relay.name;
-      resourceOrgId = relay.orgId!;
-      identityId = relay.identityId;
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
     }
 
-    const registryFilter =
-      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
-    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
     if (!registry) {
       throw new NotFoundError({ message: `${resourceLabel} has no auth method configured` });
     }
-    if (identityId) {
+    if (loaded.identityId) {
       throw new BadRequestError({
-        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS or Token auth instead.`
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, Kubernetes, or Token auth instead.`
       });
     }
 
-    const result = await resourceTokenAuthDAL.transaction(async (tx) => {
-      let deletedTokenCount = 0;
+    await resourceTokenAuthDAL.transaction(async (tx) => {
       if (registry.method === ResourceAuthMethodType.Token) {
         const tokens = await resourceTokenAuthDAL.find({ authMethodId: registry.id }, { tx });
-        deletedTokenCount = tokens.length;
         if (tokens.length > 0) {
           await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
         }
       }
-      if (resource.type === RESOURCE_TYPE_GATEWAY) {
-        await gatewayV2DAL.updateById(
-          resource.id,
-          { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
-          tx
-        );
-      } else {
-        await relayDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
-      }
-      return { deletedTokenCount };
+      await $bumpTokenVersion(resource, tx);
     });
 
     return {
-      resourceName,
-      orgId: resourceOrgId,
-      method: registry.method as "aws" | "token",
-      deletedTokenCount: result.deletedTokenCount
+      resourceName: loaded.name,
+      orgId: loaded.orgId,
+      method: registry.method as "aws" | "kubernetes" | "token"
     };
   };
 
@@ -476,33 +1062,23 @@ export const resourceAuthMethodServiceFactory = ({
     iamRequestBody,
     iamRequestHeaders
   }: TLoginWithAwsDTO) => {
-    const resourceLabel = resource.type === RESOURCE_TYPE_GATEWAY ? "Gateway" : "Relay";
-    let resourceName: string;
-    let resourceOrgId: string;
-
-    if (resource.type === RESOURCE_TYPE_GATEWAY) {
-      const gateway = await gatewayV2DAL.findById(resource.id);
-      if (!gateway) {
-        throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
-      }
-      resourceName = gateway.name;
-      resourceOrgId = gateway.orgId;
-    } else {
-      const relay = await relayDAL.findById(resource.id);
-      if (!relay || !relay.orgId) {
-        throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
-      }
-      resourceName = relay.name;
-      resourceOrgId = relay.orgId;
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || !loaded.orgId) {
+      throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
     }
+    const resourceName = loaded.name;
+    const resourceOrgId = loaded.orgId;
 
-    const registryFilter =
-      resource.type === RESOURCE_TYPE_GATEWAY ? { gatewayId: resource.id } : { relayId: resource.id };
-    const registry = await resourceAuthMethodDAL.findOne(registryFilter);
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
     if (!registry || registry.method !== ResourceAuthMethodType.Aws) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for AWS authentication`,
-        detail: { reasonCode: "method_mismatch", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -510,7 +1086,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!config) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for AWS authentication`,
-        detail: { reasonCode: "config_missing", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -532,36 +1112,9 @@ export const resourceAuthMethodServiceFactory = ({
       errorContext
     });
 
-    let refreshedTokenVersion: number;
-    if (resource.type === RESOURCE_TYPE_GATEWAY) {
-      const refreshed = await gatewayV2DAL.updateById(resource.id, {
-        $incr: { tokenVersion: 1 },
-        heartbeat: null,
-        heartbeatTTL: null
-      });
-      refreshedTokenVersion = refreshed.tokenVersion;
-    } else {
-      const refreshed = await relayDAL.updateById(resource.id, {
-        $incr: { tokenVersion: 1 },
-        heartbeat: null
-      });
-      refreshedTokenVersion = refreshed.tokenVersion;
-    }
+    const refreshedTokenVersion = await $bumpTokenVersion(resource);
 
-    const accessToken =
-      resource.type === RESOURCE_TYPE_GATEWAY
-        ? mintGatewayJwt({
-            gatewayId: resource.id,
-            orgId: resourceOrgId,
-            tokenVersion: refreshedTokenVersion,
-            accessTokenTTL: 0
-          })
-        : mintRelayJwt({
-            relayId: resource.id,
-            orgId: resourceOrgId,
-            tokenVersion: refreshedTokenVersion,
-            accessTokenTTL: 0
-          });
+    const accessToken = $mintJwt(resource, resourceOrgId, refreshedTokenVersion);
 
     return {
       accessToken,
@@ -571,6 +1124,103 @@ export const resourceAuthMethodServiceFactory = ({
       config,
       principalArn: Arn,
       accountId: Account
+    };
+  };
+
+  const loginWithKubernetes = async ({ resource, jwt }: TLoginWithKubernetesDTO) => {
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || !loaded.orgId) {
+      throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+    }
+    const resourceName = loaded.name;
+    const resourceOrgId = loaded.orgId;
+
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
+    if (!registry || registry.method !== ResourceAuthMethodType.Kubernetes) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for Kubernetes authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+    if (!config) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for Kubernetes authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const errorContext = { resourceId: resource.id, orgId: resourceOrgId, resourceName };
+
+    let caCertificate = "";
+    let tokenReviewerJwt = "";
+    if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: resourceOrgId
+      });
+      if (config.encryptedKubernetesCaCertificate) {
+        caCertificate = decryptor({ cipherTextBlob: config.encryptedKubernetesCaCertificate }).toString();
+      }
+      if (config.encryptedKubernetesTokenReviewerJwt) {
+        tokenReviewerJwt = decryptor({ cipherTextBlob: config.encryptedKubernetesTokenReviewerJwt }).toString();
+      }
+    }
+
+    const login = await $buildKubernetesExecutor(
+      {
+        kubernetesHost: config.kubernetesHost,
+        caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate,
+        tokenReviewMode: config.tokenReviewMode,
+        gatewayV2Id: config.gatewayV2Id,
+        gatewayPoolId: config.gatewayPoolId
+      },
+      resourceOrgId
+    );
+
+    const { namespace, serviceAccountName, audiences } = await reviewServiceAccountToken({
+      jwt,
+      executor: login.executor,
+      target: login.target,
+      tokenReviewerJwt,
+      isGatewayReviewer: login.isGatewayReviewer,
+      allowedAudience: config.allowedAudience,
+      errorContext
+    });
+
+    validateKubernetesAllowlists({
+      namespace,
+      serviceAccountName,
+      audiences,
+      allowedNamespaces: config.allowedNamespaces,
+      allowedNames: config.allowedNames,
+      allowedAudience: config.allowedAudience,
+      errorContext
+    });
+
+    const refreshedTokenVersion = await $bumpTokenVersion(resource);
+
+    const accessToken = $mintJwt(resource, resourceOrgId, refreshedTokenVersion);
+
+    return {
+      accessToken,
+      resourceId: resource.id,
+      resourceName,
+      orgId: resourceOrgId,
+      configId: config.id,
+      namespace,
+      serviceAccountName
     };
   };
 
@@ -592,77 +1242,52 @@ export const resourceAuthMethodServiceFactory = ({
       throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
     }
 
-    // Determine resource type from which FK is set on the registry row.
-    const isGateway = Boolean(registry.gatewayId);
-    const isRelay = Boolean(registry.relayId);
-    if (!isGateway && !isRelay) {
+    // Determine resource type from which FK is set on the registry row — exactly one must be set.
+    const linkedResourceId =
+      registry.gatewayId ?? registry.relayId ?? registry.kmipServerId ?? registry.agentVaultProxyId;
+    if (!linkedResourceId) {
       throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
     }
 
-    const actualResourceType = isGateway ? RESOURCE_TYPE_GATEWAY : RESOURCE_TYPE_RELAY;
+    let actualResourceType: ResourceRef["type"];
+    if (registry.gatewayId) actualResourceType = RESOURCE_TYPE_GATEWAY;
+    else if (registry.relayId) actualResourceType = RESOURCE_TYPE_RELAY;
+    else if (registry.agentVaultProxyId) actualResourceType = RESOURCE_TYPE_AGENT_VAULT_PROXY;
+    else actualResourceType = RESOURCE_TYPE_KMIP;
+
     if (actualResourceType !== expectedResourceType) {
       throw new BadRequestError({
         message: `Enrollment token belongs to a ${actualResourceType}, not a ${expectedResourceType}`
       });
     }
 
-    const linkedResourceId = (isGateway ? registry.gatewayId : registry.relayId)!;
+    const linkedResource: ResourceRef = { type: actualResourceType, id: linkedResourceId };
 
-    if (isGateway) {
-      const gateway = await resourceTokenAuthDAL.transaction(async (tx) => {
-        const deleted = await resourceTokenAuthDAL.delete({ id: tokenRecord.id }, tx);
-        if (deleted.length === 0) {
-          throw new BadRequestError({ message: "Enrollment token has already been used" });
-        }
-        const existing = await gatewayV2DAL.findById(linkedResourceId, tx);
-        if (!existing) throw new NotFoundError({ message: `Gateway ${linkedResourceId} not found` });
-        return gatewayV2DAL.updateById(
-          existing.id,
-          { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
-          tx
-        );
-      });
-
-      const accessToken = mintGatewayJwt({
-        gatewayId: gateway.id,
-        orgId: gateway.orgId,
-        tokenVersion: gateway.tokenVersion,
-        accessTokenTTL: 0
-      });
-
-      return {
-        accessToken,
-        resourceType: "gateway" as const,
-        resourceId: gateway.id,
-        resourceName: gateway.name,
-        orgId: gateway.orgId,
-        enrollmentTokenId: tokenRecord.id
-      };
-    }
-
-    const relay = await resourceTokenAuthDAL.transaction(async (tx) => {
+    const result = await resourceTokenAuthDAL.transaction(async (tx) => {
       const deleted = await resourceTokenAuthDAL.delete({ id: tokenRecord.id }, tx);
       if (deleted.length === 0) {
         throw new BadRequestError({ message: "Enrollment token has already been used" });
       }
-      const existing = await relayDAL.findById(linkedResourceId, tx);
-      if (!existing) throw new NotFoundError({ message: `Relay ${linkedResourceId} not found` });
-      return relayDAL.updateById(existing.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
+      const existing = await $loadResource(linkedResource, tx);
+      if (!existing) {
+        throw new NotFoundError({ message: `${RESOURCE_LABEL[actualResourceType]} ${linkedResourceId} not found` });
+      }
+      const tokenVersion = await $bumpTokenVersion(linkedResource, tx);
+      return { name: existing.name, orgId: existing.orgId, tokenVersion };
     });
 
-    const accessToken = mintRelayJwt({
-      relayId: relay.id,
-      orgId: relay.orgId!,
-      tokenVersion: relay.tokenVersion,
-      accessTokenTTL: 0
-    });
+    if (!result.orgId) {
+      throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
+    }
+
+    const accessToken = $mintJwt(linkedResource, result.orgId, result.tokenVersion);
 
     return {
       accessToken,
-      resourceType: "relay" as const,
-      resourceId: relay.id,
-      resourceName: relay.name,
-      orgId: relay.orgId!,
+      resourceType: actualResourceType,
+      resourceId: linkedResourceId,
+      resourceName: result.name,
+      orgId: result.orgId,
       enrollmentTokenId: tokenRecord.id
     };
   };
@@ -670,13 +1295,18 @@ export const resourceAuthMethodServiceFactory = ({
   return {
     getByGatewayId,
     getByRelayId,
+    getByKmipServerId,
     loadView,
     canRevoke,
+    preflightKubernetesConfig,
+    findKubernetesProxyDependents,
+    encryptKubernetesSecrets,
     initAtCreate,
     setMethod,
     mintToken,
     revokeAccess,
     loginWithAws,
+    loginWithKubernetes,
     loginWithToken
   };
 };

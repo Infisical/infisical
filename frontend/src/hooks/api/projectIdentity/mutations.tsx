@@ -22,8 +22,12 @@ export const useCreateProjectIdentity = () => {
       );
       return data.identity;
     },
-    onSuccess: () => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: projectIdentityQuery.allKey() });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
+      });
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.all()
       });
@@ -46,6 +50,7 @@ export const useUpdateProjectIdentity = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectIdentityMembershipDetails(projectId, identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };
@@ -68,6 +73,7 @@ export const useDeleteProjectIdentity = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.all()
       });

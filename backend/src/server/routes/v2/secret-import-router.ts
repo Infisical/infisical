@@ -34,6 +34,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.environment),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.path),
         import: z.object({
+          sourceProjectId: z.string().trim().optional().describe(SECRET_IMPORTS.CREATE.import.projectId),
           environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.import.environment),
           path: z.string().trim().transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.import.path)
         }),
@@ -50,7 +51,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.createImport({
         actorId: req.permission.id,
@@ -140,7 +147,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.updateImport({
         actorId: req.permission.id,
@@ -167,6 +180,15 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretImportUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { importId: secretImport.id, projectId: req.body.projectId }
+        })
+        .catch(() => {});
 
       return { message: "Successfully updated secret import", secretImport };
     }
@@ -207,7 +229,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.deleteImport({
         actorId: req.permission.id,
@@ -234,6 +262,16 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretImportDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: { importId: secretImport.id, projectId: req.body.projectId }
+        })
+        .catch(() => {});
+
       return { message: "Successfully deleted secret import", secretImport };
     }
   });
@@ -266,7 +304,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { message } = await server.services.secretImport.resyncSecretImportReplication({
         actorId: req.permission.id,
@@ -308,13 +346,25 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           message: z.string(),
           secretImports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: z.object({
+                name: z.string(),
+                slug: z.string(),
+                id: z.string(),
+                projectId: z.string().optional()
+              }),
+              sourceProjectName: z.string().optional()
             })
             .array()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImports = await server.services.secretImport.getImports({
         actorId: req.permission.id,
@@ -376,7 +426,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       }
     },
 
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.getImportById({
         actorId: req.permission.id,
@@ -435,7 +491,13 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,

@@ -1,11 +1,18 @@
-import { useCallback } from "react";
+import { type ReactNode, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  BadgeCheckIcon,
+  BracesIcon,
+  FileKeyIcon,
+  GlobeIcon,
+  KeyIcon,
+  NetworkIcon
+} from "lucide-react";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Combobox, Field, FieldError, FieldLabel, ProviderIcon } from "@app/components/v3";
 import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -40,29 +47,103 @@ type Props = {
   };
   initialAuthMethod: IdentityAuthMethod;
   setSelectedAuthMethod: (authMethod: IdentityAuthMethod) => void;
+  isUpdate: boolean;
+  onSubmittingChange: (isSubmitting: boolean) => void;
 };
 
 type TRevokeMethods = {
   render: () => JSX.Element;
 };
 
-const identityAuthMethods = [
-  { label: "Token Auth", value: IdentityAuthMethod.TOKEN_AUTH },
-  { label: "Universal Auth", value: IdentityAuthMethod.UNIVERSAL_AUTH },
-  { label: "Kubernetes Auth", value: IdentityAuthMethod.KUBERNETES_AUTH },
-  { label: "GCP Auth", value: IdentityAuthMethod.GCP_AUTH },
-  { label: "Alibaba Cloud Auth", value: IdentityAuthMethod.ALICLOUD_AUTH },
-  { label: "AWS Auth", value: IdentityAuthMethod.AWS_AUTH },
-  { label: "Azure Auth", value: IdentityAuthMethod.AZURE_AUTH },
-  { label: "OCI Auth", value: IdentityAuthMethod.OCI_AUTH },
-  { label: "OIDC Auth", value: IdentityAuthMethod.OIDC_AUTH },
-  { label: "LDAP Auth", value: IdentityAuthMethod.LDAP_AUTH },
-  { label: "TLS Certificate Auth", value: IdentityAuthMethod.TLS_CERT_AUTH },
+type TIdentityAuthMethodOption = {
+  icon: ReactNode;
+  label: string;
+  value: IdentityAuthMethod;
+};
+
+type TIdentityAuthMethodSelectOption = TIdentityAuthMethodOption & {
+  isConfigured: boolean;
+  showConfiguredBadge: boolean;
+};
+
+const getProviderIcon = (fileName: string) => (
+  <ProviderIcon icon={fileName} alt="" aria-hidden className="size-4 object-contain" />
+);
+
+const commonIdentityAuthMethods: TIdentityAuthMethodOption[] = [
   {
+    icon: <GlobeIcon className="size-4 text-accent" />,
+    label: "Universal Auth",
+    value: IdentityAuthMethod.UNIVERSAL_AUTH
+  },
+  {
+    icon: <KeyIcon className="size-4 text-accent" />,
+    label: "Token Auth",
+    value: IdentityAuthMethod.TOKEN_AUTH
+  }
+];
+
+const otherIdentityAuthMethods: TIdentityAuthMethodOption[] = [
+  {
+    icon: getProviderIcon("Kubernetes.png"),
+    label: "Kubernetes Auth",
+    value: IdentityAuthMethod.KUBERNETES_AUTH
+  },
+  {
+    icon: getProviderIcon("Google Cloud Platform.png"),
+    label: "GCP Auth",
+    value: IdentityAuthMethod.GCP_AUTH
+  },
+  {
+    icon: getProviderIcon("Alibaba Cloud.png"),
+    label: "Alibaba Cloud Auth",
+    value: IdentityAuthMethod.ALICLOUD_AUTH
+  },
+  {
+    icon: getProviderIcon("Amazon Web Services.png"),
+    label: "AWS Auth",
+    value: IdentityAuthMethod.AWS_AUTH
+  },
+  {
+    icon: getProviderIcon("Microsoft Azure.png"),
+    label: "Azure Auth",
+    value: IdentityAuthMethod.AZURE_AUTH
+  },
+  {
+    icon: getProviderIcon("Oracle.png"),
+    label: "OCI Auth",
+    value: IdentityAuthMethod.OCI_AUTH
+  },
+  {
+    icon: <BadgeCheckIcon className="size-4 text-accent" />,
+    label: "OIDC Auth",
+    value: IdentityAuthMethod.OIDC_AUTH
+  },
+  {
+    icon: getProviderIcon("LDAP.png"),
+    label: "LDAP Auth",
+    value: IdentityAuthMethod.LDAP_AUTH
+  },
+  {
+    icon: <FileKeyIcon className="size-4 text-accent" />,
+    label: "TLS Certificate Auth",
+    value: IdentityAuthMethod.TLS_CERT_AUTH
+  },
+  {
+    icon: <BracesIcon className="size-4 text-accent" />,
     label: "JWT Auth",
     value: IdentityAuthMethod.JWT_AUTH
   },
-  { label: "SPIFFE Auth", value: IdentityAuthMethod.SPIFFE_AUTH }
+  {
+    icon: <NetworkIcon className="size-4 text-accent" />,
+    label: "SPIFFE Auth",
+    value: IdentityAuthMethod.SPIFFE_AUTH
+  }
+].sort((a, b) => a.label.localeCompare(b.label));
+
+export const identityAuthMethodOptions = [
+  ...commonIdentityAuthMethods,
+  ...otherIdentityAuthMethods
 ];
 
 const schema = z
@@ -79,7 +160,9 @@ export const IdentityAuthMethodModalContent = ({
   handlePopUpToggle,
   identity,
   initialAuthMethod,
-  setSelectedAuthMethod
+  setSelectedAuthMethod,
+  isUpdate,
+  onSubmittingChange
 }: Props) => {
   const { control, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -87,7 +170,7 @@ export const IdentityAuthMethodModalContent = ({
       let authMethod = initialAuthMethod;
 
       if (!authMethod) {
-        const firstAuthMethodNotConfiguredAuthMethod = identityAuthMethods.find(
+        const firstAuthMethodNotConfiguredAuthMethod = identityAuthMethodOptions.find(
           ({ value }) => !identity?.authMethods?.includes(value)
         );
 
@@ -132,6 +215,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -142,6 +227,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -153,6 +240,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -164,6 +253,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -175,6 +266,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -186,6 +279,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -197,6 +292,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -208,6 +305,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -219,6 +318,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -230,6 +331,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -241,6 +344,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -252,6 +357,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     },
@@ -263,6 +370,8 @@ export const IdentityAuthMethodModalContent = ({
           handlePopUpOpen={handlePopUpOpen}
           handlePopUpToggle={handlePopUpToggle}
           maxAccessTokenTTL={maxAccessTokenTTL}
+          isUpdate={isUpdate}
+          onSubmittingChange={onSubmittingChange}
         />
       )
     }
@@ -280,47 +389,65 @@ export const IdentityAuthMethodModalContent = ({
         control={control}
         name="authMethod"
         defaultValue={IdentityAuthMethod.UNIVERSAL_AUTH}
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Auth Method" errorText={error?.message} isError={Boolean(error)}>
-            <Select
-              isDisabled={isSelectedAuthAlreadyConfigured}
-              defaultValue={field.value}
-              {...field}
-              onValueChange={(e) => {
-                if (!isAlreadyConfigured(e as IdentityAuthMethod)) {
-                  setSelectedAuthMethod(e as IdentityAuthMethod);
-                  onChange(e);
-                }
-              }}
-              className="w-full"
-            >
-              {identityAuthMethods.map(({ label, value }) => {
-                const alreadyConfigured = isAlreadyConfigured(value);
-                return (
-                  <Tooltip
-                    key={`auth-method-${value}`}
-                    content="Authentication method already configured"
-                    isDisabled={!alreadyConfigured}
-                  >
-                    <SelectItem
-                      isDisabled={alreadyConfigured}
-                      value={String(value || "")}
-                      key={label}
-                    >
-                      {label}{" "}
-                      {alreadyConfigured && !isSelectedAuthAlreadyConfigured && (
-                        <Badge variant="info">Configured</Badge>
-                      )}
-                    </SelectItem>
-                  </Tooltip>
-                );
-              })}
-            </Select>
-          </FormControl>
-        )}
+        render={({ field: { onChange, value }, fieldState: { error } }) => {
+          const authMethodOptions = identityAuthMethodOptions.map((authMethod) => {
+            const isConfigured = Boolean(isAlreadyConfigured(authMethod.value));
+
+            return {
+              ...authMethod,
+              isConfigured,
+              showConfiguredBadge: isConfigured && !isSelectedAuthAlreadyConfigured
+            };
+          });
+          const selectedAuthMethod = authMethodOptions.find(
+            ({ value: methodValue }) => methodValue === value
+          );
+
+          return (
+            <Field className="mb-2">
+              <FieldLabel htmlFor="auth-method">Auth Method</FieldLabel>
+              <Combobox<TIdentityAuthMethodSelectOption>
+                id="auth-method"
+                value={selectedAuthMethod}
+                options={authMethodOptions}
+                isDisabled={isSelectedAuthAlreadyConfigured}
+                isError={Boolean(error)}
+                isOptionDisabled={({ isConfigured }) => isConfigured}
+                getOptionLabel={({ label }) => label}
+                getOptionValue={({ value: methodValue }) => methodValue}
+                placeholder="Select auth method..."
+                searchPlaceholder="Search auth methods..."
+                searchAriaLabel="Search auth methods"
+                emptyMessage="No auth methods found."
+                modal
+                onValueChange={(nextAuthMethod) => {
+                  if (!nextAuthMethod.isConfigured) {
+                    setSelectedAuthMethod(nextAuthMethod.value);
+                    onChange(nextAuthMethod.value);
+                  }
+                }}
+                renderOption={(option) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    {option.icon}
+                    <span className="truncate">{option.label}</span>
+                    {option.showConfiguredBadge && <Badge variant="info">Configured</Badge>}
+                  </span>
+                )}
+                renderValue={(option) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    {option.icon}
+                    <span className="truncate">{option.label}</span>
+                  </span>
+                )}
+              />
+              <FieldError>{error?.message}</FieldError>
+            </Field>
+          );
+        }}
       />
       {selectedMethodItem?.render ? selectedMethodItem.render() : <div />}
       <UpgradePlanModal
+        paywallKey="organization.identity-auth-method-modal"
         isOpen={popUp?.upgradePlan?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}

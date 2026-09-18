@@ -1,5 +1,5 @@
 ---
-title: Token Auth
+title: Token auth
 description: "Learn how to authenticate to Infisical from any platform or environment using an access token."
 ---
 
@@ -38,11 +38,11 @@ using the Token Auth authentication method.
 
 <Steps>
   <Step title="Creating an identity">
-    To create an identity, head to your Organization Settings > Access Control > Identities and press **Create identity**.
+    To create an identity, go to **Access Control** > **Machine Identities** in your organization and select **Create**.
 
     ![identities organization](/images/platform/identities/identities-org.png)
 
-    When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
+    When creating an identity, you specify an organization level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in **Access Control** > **Roles**.
 
     ![identities organization create](/images/platform/identities/identities-org-create.png)
 
@@ -64,8 +64,8 @@ using the Token Auth authentication method.
 
     Here's some more guidance on each field:
 
-    - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
-    - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
+    - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an access token in seconds. This value will be referenced at renewal time.
+    - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
     - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
     - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
 
@@ -78,7 +78,7 @@ using the Token Auth authentication method.
   </Step>
   <Step title="Creating a Token">
     In order to use the identity with Token Auth, you'll need to create an (access) token; you can think of this token akin
-    to an API Key used to authenticate with the Infisical API. With that, press **Create Token**.
+    to an API Key used to authenticate with the Infisical API. With that, select **Add Token**.
 
     ![identities client secret create](/images/platform/identities/identities-token-auth-create-1.png)
 
@@ -92,9 +92,9 @@ using the Token Auth authentication method.
   <Step title="Adding an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
 
-    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
+    To do this, open the project you want to add the identity to, go to **Access Control** > **Machine Identities**, and select **Add Machine Identity to Project**.
 
-    Next, select the identity you want to add to the project and the project level role you want to allow it to assume. The project role assigned will determine what project level resources this identity can have access to.
+    Next, select **Assign Existing**, choose the identity you want to add, and set the project role it should assume. The project role assigned will determine what project level resources this identity can have access to.
 
     ![identities project](/images/platform/identities/identities-project.png)
 

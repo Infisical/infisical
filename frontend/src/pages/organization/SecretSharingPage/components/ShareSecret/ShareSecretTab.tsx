@@ -58,7 +58,7 @@ export const ShareSecretTab = () => {
         <CardDescription>Manage and view your shared secrets</CardDescription>
         <CardAction>
           <Button
-            variant="org"
+            variant="project"
             onClick={() => {
               handlePopUpOpen("createSharedSecret");
             }}

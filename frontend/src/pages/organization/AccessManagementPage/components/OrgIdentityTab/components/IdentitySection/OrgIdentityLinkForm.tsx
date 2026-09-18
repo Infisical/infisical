@@ -5,7 +5,16 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl } from "@app/components/v2";
+import { RoleOption } from "@app/components/roles";
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  SheetFooter
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetOrgRoles } from "@app/hooks/api";
 import { useCreateOrgIdentityMembership } from "@app/hooks/api/orgIdentityMembership";
@@ -73,61 +82,63 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="identity"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Machine Identity" errorText={error?.message} isError={Boolean(error)}>
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              placeholder="Select machine identity..."
-              // onInputChange={setSearchValue}
-              autoFocus
-              options={rootOrgIdentities}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-              isLoading={isRootOrgLoading}
-            />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="role"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Role"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            className="mt-4"
-          >
-            <FilterableSelect
-              value={value}
-              onChange={onChange}
-              options={roles}
-              placeholder="Select role..."
-              getOptionValue={(option) => option.slug}
-              getOptionLabel={(option) => option.name}
-            />
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          Link
+    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <Controller
+          control={control}
+          name="identity"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Machine Identity</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  value={value}
+                  onChange={onChange}
+                  placeholder="Select machine identity..."
+                  // onInputChange={setSearchValue}
+                  autoFocus
+                  options={rootOrgIdentities}
+                  getOptionValue={(option) => option.id}
+                  getOptionLabel={(option) => option.name}
+                  isLoading={isRootOrgLoading}
+                  isError={Boolean(error)}
+                />
+              </FieldContent>
+              {error && <FieldError>{error.message}</FieldError>}
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="role"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Role</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  value={value}
+                  onChange={onChange}
+                  options={roles}
+                  placeholder="Select role..."
+                  getOptionValue={(option) => option.slug}
+                  getOptionLabel={(option) => option.name}
+                  components={{ Option: RoleOption }}
+                  isError={Boolean(error)}
+                />
+              </FieldContent>
+              {error && <FieldError>{error.message}</FieldError>}
+            </Field>
+          )}
+        />
+      </div>
+      <SheetFooter className="border-t">
+        <Button type="submit" variant="sub-org" isPending={isSubmitting} isDisabled={isSubmitting}>
+          Assign to Sub-Organization
         </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => onClose()}>
+        <Button type="button" variant="outline" onClick={() => onClose()}>
           Cancel
         </Button>
-      </div>
+      </SheetFooter>
     </form>
   );
 };

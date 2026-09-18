@@ -4,5 +4,6 @@ export {
   useGetFoldersByEnv,
   useGetOrCreateFolder,
   useGetProjectFolders,
+  useMoveFolder,
   useUpdateFolder
 } from "./queries";

@@ -23,6 +23,7 @@ import {
 } from "@app/services/app-connection/venafi-tpp/venafi-tpp-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { linkRenewedCertificate, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -33,6 +34,7 @@ import {
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
 import { calculateRenewalThreshold, parseTtlToDays } from "@app/services/certificate-common/certificate-issuance-utils";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -40,7 +42,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   TCreateVenafiTppCertificateAuthorityDTO,
@@ -53,7 +55,8 @@ const VENAFI_SAN_TYPE_BY_SAN_TYPE: Record<CertSubjectAlternativeNameType, number
   [CertSubjectAlternativeNameType.DNS_NAME]: 2,
   [CertSubjectAlternativeNameType.IP_ADDRESS]: 7,
   [CertSubjectAlternativeNameType.EMAIL]: 1,
-  [CertSubjectAlternativeNameType.URI]: 6
+  [CertSubjectAlternativeNameType.URI]: 6,
+  [CertSubjectAlternativeNameType.UPN]: 0
 };
 
 type TVenafiTppCertificateRequest = {
@@ -275,19 +278,18 @@ const retrieveCertificateFromTpp = async ({
 
   const decodedData = Buffer.from(data.CertificateData, "base64").toString("utf8");
 
-  const certBlocks = decodedData.match(new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g"));
+  const [leafCert, ...chainBlocks] = splitPemChain(decodedData);
 
-  if (!certBlocks || certBlocks.length === 0) {
+  if (!leafCert) {
     throw new BadRequestError({ message: "Failed to parse certificate data from Venafi TPP response" });
   }
 
-  const leafCert = certBlocks[0];
-  const chainCerts = certBlocks.length > 1 ? certBlocks.slice(1).join("\n") : "";
+  const chainCerts = chainBlocks.join("\n");
 
   logger.info(
     {
       certificateDN,
-      chainCertCount: certBlocks.length - 1
+      chainCertCount: chainBlocks.length
     },
     "Venafi TPP: Certificate retrieved successfully"
   );
@@ -342,7 +344,7 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
@@ -538,7 +540,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     return cas.map(castDbEntryToVenafiTppCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -555,10 +557,11 @@ export const VenafiTppCertificateAuthorityFns = ({
     organizationalUnit,
     country,
     state,
-    locality
+    locality,
+    isCancelled
   }: {
     caId: string;
-    profileId: string;
+    profileId?: string;
     commonName: string;
     altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
     keyUsages?: CertKeyUsage[];
@@ -574,6 +577,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     country?: string;
     state?: string;
     locality?: string;
+    isCancelled?: () => Promise<boolean>;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.VENAFI_TPP) {
@@ -668,13 +672,16 @@ export const VenafiTppCertificateAuthorityFns = ({
       const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
       skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-      const dnParts: string[] = [`CN=${commonName}`];
-      if (organization) dnParts.push(`O=${organization}`);
-      if (organizationalUnit) dnParts.push(`OU=${organizationalUnit}`);
-      if (locality) dnParts.push(`L=${locality}`);
-      if (state) dnParts.push(`ST=${state}`);
-      if (country) dnParts.push(`C=${country}`);
-      const subjectDN = dnParts.join(", ");
+      // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
+      // special characters in the attributes cannot inject additional RDNs.
+      const subjectDN = createDistinguishedName({
+        commonName,
+        organization,
+        ou: organizationalUnit,
+        locality,
+        province: state,
+        country
+      });
 
       const sanExtensions: x509.SubjectAlternativeNameExtension[] = [];
       if (altNames.length > 0) {
@@ -718,14 +725,12 @@ export const VenafiTppCertificateAuthorityFns = ({
 
       if (requestResponse.CertificateData) {
         const decodedData = Buffer.from(requestResponse.CertificateData, "base64").toString("utf8");
-        const certBlocks = decodedData.match(
-          new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g")
-        );
+        const [leafCert, ...chainBlocks] = splitPemChain(decodedData);
 
-        if (certBlocks && certBlocks.length > 0) {
+        if (leafCert) {
           certificateResult = {
-            certificate: certBlocks[0],
-            chain: certBlocks.length > 1 ? certBlocks.slice(1).join("\n") : ""
+            certificate: leafCert,
+            chain: chainBlocks.join("\n")
           };
         }
       }
@@ -830,6 +835,10 @@ export const VenafiTppCertificateAuthorityFns = ({
         plainText: Buffer.from(certificateChainPem)
       });
 
+      if (isCancelled && (await isCancelled())) {
+        throw new CertificateRequestCancelledError();
+      }
+
       let certificateId: string;
 
       await certificateDAL.transaction(async (tx) => {
@@ -857,7 +866,7 @@ export const VenafiTppCertificateAuthorityFns = ({
         certificateId = cert.id;
 
         if (isRenewal && originalCertificateId) {
-          await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+          await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
         }
 
         await certificateBodyDAL.create(
@@ -955,6 +964,6 @@ export const VenafiTppCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile
+    orderCertificate
   };
 };

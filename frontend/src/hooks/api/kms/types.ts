@@ -134,7 +134,7 @@ export const ExternalKmsUpdateInputSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(ExternalKmsProvider.Aws), inputs: ExternalKmsAwsSchema.partial() }),
   z.object({
     type: z.literal(ExternalKmsProvider.Gcp),
-    inputs: ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })
+    inputs: ExternalKmsGcpSchema.partial()
   })
 ]);
 
@@ -156,6 +156,21 @@ export type UpdateExternalKmsType = z.infer<typeof UpdateExternalKmsSchema>;
 const GCP_CREDENTIAL_MAX_FILE_SIZE = 8 * 1024; // 8KB
 const GCP_CREDENTIAL_ACCEPTED_FILE_TYPES = ["application/json"];
 
+const GcpCredentialFileSchema =
+  typeof window === "undefined"
+    ? z.any()
+    : z
+        .instanceof(FileList)
+        .refine((files) => files?.length === 1, "Credential file is required.")
+        .refine(
+          (files) => files?.[0]?.size <= GCP_CREDENTIAL_MAX_FILE_SIZE,
+          "Max file size is 8KB."
+        )
+        .refine(
+          (files) => GCP_CREDENTIAL_ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
+          "Only .json files are accepted."
+        );
+
 const AddExternalKmsGcpFormSchemaStandardInputs = z.object({
   keyObject: z
     .object({ label: z.string().trim(), value: z.string().trim() })
@@ -168,26 +183,16 @@ export const AddExternalKmsGcpFormSchema = z.discriminatedUnion("formType", [
     .object({
       formType: z.literal("newGcpKms"),
       // `FileList` is a browser-only (window-specific) type, so we need to handle it differently on the server to avoid SSR errors
-      credentialFile:
-        typeof window === "undefined"
-          ? z.any()
-          : z
-              .instanceof(FileList)
-              .refine((files) => files?.length === 1, "Image is required.")
-              .refine(
-                (files) => files?.[0]?.size <= GCP_CREDENTIAL_MAX_FILE_SIZE,
-                "Max file size is 8KB."
-              )
-              .refine(
-                (files) => GCP_CREDENTIAL_ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
-                "Only .json files are accepted."
-              )
+      credentialFile: GcpCredentialFileSchema
     })
     .merge(AddExternalKmsGcpFormSchemaStandardInputs)
     .merge(AddExternalKmsSchema.pick({ name: true, description: true })),
   z
-    .object({ formType: z.literal("updateGcpKms") })
-    .merge(AddExternalKmsGcpFormSchemaStandardInputs)
+    .object({
+      formType: z.literal("updateGcpKms"),
+      credentialFile: GcpCredentialFileSchema.optional()
+    })
+    .merge(AddExternalKmsGcpFormSchemaStandardInputs.partial())
     .merge(AddExternalKmsSchema.pick({ name: true, description: true }))
 ]);
 

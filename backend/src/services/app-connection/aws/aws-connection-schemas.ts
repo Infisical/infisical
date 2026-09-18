@@ -11,8 +11,35 @@ import {
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AwsConnectionMethod } from "./aws-connection-enums";
 
+// AWS-owned DNS suffixes permitted as STS endpoints. Covers all supported AWS partitions:
+// commercial + FIPS + GovCloud + VPC PrivateLink all live under .amazonaws.com (GovCloud and
+// FIPS differ only by region label / sts-fips prefix, not by domain suffix); China lives under
+// .amazonaws.com.cn. The leading dot enforces the suffix as a real DNS boundary so a hostname
+// like "amazonaws.com.attacker.com" cannot bypass the check.
+const AWS_STS_ALLOWED_HOST_SUFFIXES = [".amazonaws.com", ".amazonaws.com.cn"] as const;
+
+export const isAwsStsHostnameAllowed = (stsEndpoint: string): boolean => {
+  try {
+    const { hostname } = new URL(stsEndpoint);
+    return AWS_STS_ALLOWED_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+  } catch {
+    return false;
+  }
+};
+
 export const AwsConnectionAssumeRoleCredentialsSchema = z.object({
-  roleArn: z.string().trim().min(1, "Role ARN required")
+  roleArn: z.string().trim().min(1, "Role ARN required"),
+  stsEndpoint: z
+    .string()
+    .trim()
+    .url("STS endpoint must be a valid URL")
+    .startsWith("https://", "STS endpoint must use HTTPS")
+    .refine(
+      isAwsStsHostnameAllowed,
+      "STS endpoint hostname must be an AWS-owned domain (e.g. .amazonaws.com or .amazonaws.com.cn). Custom or third-party hosts are not permitted."
+    )
+    .optional()
+    .describe(AppConnections.CREATE(AppConnection.AWS).stsEndpoint)
 });
 
 export const AwsConnectionAccessTokenCredentialsSchema = z.object({
@@ -39,7 +66,7 @@ export const AwsConnectionSchema = z.intersection(
 export const SanitizedAwsConnectionSchema = z.discriminatedUnion("method", [
   BaseAwsConnectionSchema.extend({
     method: z.literal(AwsConnectionMethod.AssumeRole),
-    credentials: AwsConnectionAssumeRoleCredentialsSchema.pick({})
+    credentials: AwsConnectionAssumeRoleCredentialsSchema.pick({ stsEndpoint: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AWS]} (Assume Role)` })),
   BaseAwsConnectionSchema.extend({
     method: z.literal(AwsConnectionMethod.AccessKey),

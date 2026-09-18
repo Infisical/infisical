@@ -1,39 +1,29 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
+import { PlusIcon, TrashIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
-  FormLabel,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
   Input,
-  ModalClose,
-  Switch
-} from "@app/components/v2";
+  Label,
+  Toggle
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
-import {
-  TProjectIdentity,
-  useCreateProjectIdentity,
-  useGetProjectRoles,
-  useUpdateProjectIdentity,
-  useUpdateProjectIdentityMembership
-} from "@app/hooks/api";
-import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
   hasDeleteProtection: z.boolean(),
-  role: z.object({ slug: z.string(), name: z.string() }).optional(),
   metadata: z
     .object({
       key: z.string().trim().min(1),
@@ -47,28 +37,14 @@ export type FormData = z.infer<typeof schema>;
 
 type ContentProps = {
   onClose: () => void;
-  identity?: TProjectIdentity;
+  identity: TProjectIdentity;
 };
 
 export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
-  const navigate = useNavigate();
-
   const { currentProject } = useProject();
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const accentVariant = currentProject.type === ProjectType.AgentVault ? "av" : "project";
 
-  const isUpdate = Boolean(identity);
-
-  // Roles list is sourced product-aware (cert-manager filters to Admin + Member server-side).
-  const { data: roles } = useGetProjectRoles(currentProject.id, currentProject.type);
-  // For cert-manager, default to Member instead of No Access (No Access is filtered out server-side).
-  const defaultRole = isCertManager
-    ? { slug: ProjectMembershipRole.Member, name: "Member" }
-    : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
-
-  const { mutateAsync: createMutateAsync } = useCreateProjectIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
-  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
-  const { mutateAsync: updateMembershipMutateAsync } = useUpdateProjectIdentityMembership();
 
   const {
     control,
@@ -79,9 +55,8 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
     resolver: zodResolver(schema),
     defaultValues: {
       name: identity?.name ?? "",
-      hasDeleteProtection: identity?.hasDeleteProtection ?? false,
-      metadata: identity?.metadata ?? [],
-      role: isUpdate ? undefined : defaultRole
+      hasDeleteProtection: identity?.hasDeleteProtection ?? true,
+      metadata: identity?.metadata ?? []
     }
   });
 
@@ -90,209 +65,154 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
     name: "metadata"
   });
 
-  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
+  const onFormSubmit = async ({ name, metadata, hasDeleteProtection }: FormData) => {
     try {
-      if (identity) {
-        // update
-        await updateMutateAsync({
-          identityId: identity.id,
-          name,
-          hasDeleteProtection,
-          projectId: currentProject.id,
-          metadata
-        });
+      await updateMutateAsync({
+        identityId: identity.id,
+        name,
+        hasDeleteProtection,
+        projectId: currentProject.id,
+        metadata
+      });
 
-        onClose();
-      } else {
-        const created = await createMutateAsync({
-          name,
-          projectId: currentProject.id,
-          hasDeleteProtection,
-          metadata
-        });
-        const createdId = created.id;
-
-        if (role) {
-          await updateMembershipMutateAsync({
-            roles: [{ role: role.slug }],
-            identityId: createdId,
-            projectId: currentProject.id,
-            projectType: currentProject.type
-          });
-        }
-
-        await addMutateAsync({
-          projectId: currentProject.id,
-          identityId: createdId,
-          clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTTL: 2592000,
-          accessTokenMaxTTL: 2592000,
-          accessTokenNumUsesLimit: 0,
-          accessTokenPeriod: 0,
-          lockoutEnabled: true,
-          lockoutThreshold: 3,
-          lockoutDurationSeconds: 300,
-          lockoutCounterResetSeconds: 30
-        });
-
-        onClose();
-        navigate({
-          to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId`,
-          params: {
-            identityId: createdId
-          }
-        });
-      }
+      onClose();
 
       createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} machine identity`,
+        text: "Successfully updated machine identity",
         type: "success"
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${isUpdate ? "update" : "create"} machine identity`;
-
-      createNotification({
-        text,
-        type: "error"
-      });
+    } catch {
+      // Error is handled by the mutation's onError handler
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
         defaultValue=""
         name="name"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            className="mb-4"
-            label="Name"
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} autoFocus placeholder="Machine 1" />
-          </FormControl>
+          <Field>
+            <FieldLabel>Name</FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                autoFocus
+                placeholder="Machine 1"
+                isError={Boolean(error)}
+                autoComplete="off"
+                name="project-identity-name"
+              />
+            </FieldContent>
+            {error && <FieldError>{error.message}</FieldError>}
+          </Field>
         )}
       />
-      {!isUpdate && (
-        <Controller
-          control={control}
-          name="role"
-          render={({ field: { onChange, value }, fieldState: { error } }) => (
-            <FormControl label="Role" errorText={error?.message} isError={Boolean(error)}>
-              <FilterableSelect
-                placeholder="Select role..."
-                options={roles}
-                onChange={onChange}
-                value={value}
-                getOptionValue={(option) => option.slug}
-                getOptionLabel={(option) => option.name}
-                components={{ Option: RoleOption }}
-              />
-            </FormControl>
-          )}
-        />
-      )}
       <Controller
         control={control}
         name="hasDeleteProtection"
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl errorText={error?.message} isError={Boolean(error)}>
-            <Switch
-              className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-              containerClassName="flex-row-reverse w-fit"
+        render={({ field: { onChange, value } }) => (
+          <Field orientation="horizontal">
+            <Toggle
               id="delete-protection-enabled"
-              thumbClassName="bg-mineshaft-800"
+              variant={accentVariant}
+              checked={value}
               onCheckedChange={onChange}
-              isChecked={value}
-            >
-              <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
-            </Switch>
-          </FormControl>
+            />
+            <FieldContent>
+              <Label htmlFor="delete-protection-enabled">Delete Protection</Label>
+              <FieldDescription>
+                Prevents this identity from being deleted while enabled.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
         )}
       />
-      <div>
-        <FormLabel label="Metadata" />
-      </div>
-      <div className="mb-3 flex flex-col space-y-2">
-        {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
-          <div key={metadataFieldId} className="flex items-end space-x-2">
-            <div className="grow">
-              {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
-              <Controller
-                control={control}
-                name={`metadata.${i}.key`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0"
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <div className="grow">
-              {i === 0 && <FormLabel label="Value" className="text-xs text-mineshaft-400" />}
-              <Controller
-                control={control}
-                name={`metadata.${i}.value`}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0"
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-            </div>
-            <IconButton
-              ariaLabel="delete key"
-              className="bottom-0.5 h-9"
-              variant="outline_bg"
-              onClick={() => metadataFormFields.remove(i)}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </IconButton>
-          </div>
-        ))}
-        <div className="mt-2 flex justify-end">
+      <div className="flex flex-col gap-2">
+        <Label>Metadata</Label>
+        <div
+          className={`flex max-h-[30vh] thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4 ${
+            metadataFormFields.fields.length === 0 ? "border-dashed" : ""
+          }`}
+        >
+          {metadataFormFields.fields.length === 0 ? (
+            <p className="text-center text-sm text-muted">
+              No metadata entries. Click below to add.
+            </p>
+          ) : (
+            metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
+              <div key={metadataFieldId} className="flex items-start gap-2">
+                <Field className="flex-1">
+                  {i === 0 && <FieldLabel className="text-xs">Key</FieldLabel>}
+                  <FieldContent>
+                    <Controller
+                      control={control}
+                      name={`metadata.${i}.key`}
+                      render={({ field, fieldState: { error } }) => (
+                        <>
+                          <Input {...field} isError={Boolean(error)} />
+                          {error && <FieldError>{error.message}</FieldError>}
+                        </>
+                      )}
+                    />
+                  </FieldContent>
+                </Field>
+                <Field className="flex-1">
+                  {i === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
+                  <FieldContent>
+                    <Controller
+                      control={control}
+                      name={`metadata.${i}.value`}
+                      render={({ field, fieldState: { error } }) => (
+                        <>
+                          <Input {...field} isError={Boolean(error)} />
+                          {error && <FieldError>{error.message}</FieldError>}
+                        </>
+                      )}
+                    />
+                  </FieldContent>
+                </Field>
+                <IconButton
+                  aria-label="Remove metadata entry"
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className={twMerge(i === 0 ? "mt-[27px]" : "mt-[3px]", "hover:text-danger")}
+                  onClick={() => metadataFormFields.remove(i)}
+                >
+                  <TrashIcon />
+                </IconButton>
+              </div>
+            ))
+          )}
+        </div>
+        <div>
           <Button
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            variant="ghost"
             size="xs"
-            variant="outline_bg"
+            type="button"
             onClick={() => metadataFormFields.append({ key: "", value: "" })}
           >
-            Add Key
+            <PlusIcon className="mr-1 size-4" />
+            Add Entry
           </Button>
         </div>
       </div>
-      <div className="flex items-center">
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
-          className="mr-4"
-          size="sm"
           type="submit"
-          isLoading={isSubmitting}
+          variant={accentVariant}
+          isPending={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {isUpdate ? "Update" : "Create"}
+          Update
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
       </div>
     </form>
   );

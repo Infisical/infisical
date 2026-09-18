@@ -15,9 +15,11 @@ import { CamundaSyncFields } from "./CamundaSyncFields";
 import { ChecklySyncFields } from "./ChecklySyncFields";
 import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
+import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
+import { DaytonaSyncFields } from "./DaytonaSyncFields";
 import { DevinSyncFields } from "./DevinSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
 import { ExternalInfisicalSyncFields } from "./ExternalInfisicalSyncFields";
@@ -25,6 +27,7 @@ import { FlyioSyncFields } from "./FlyioSyncFields";
 import { GcpSyncFields } from "./GcpSyncFields";
 import { GitHubSyncFields } from "./GitHubSyncFields";
 import { GitLabSyncFields } from "./GitLabSyncFields";
+import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
@@ -35,13 +38,17 @@ import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OnaSyncFields } from "./OnaSyncFields";
 import { OvhSyncFields } from "./OvhSyncFields";
+import { QoverySyncFields } from "./QoverySyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
+import { RundeckSyncFields } from "./RundeckSyncFields";
 import { SnowflakeSyncFields } from "./SnowflakeSyncFields";
+import { SpaceliftSyncFields } from "./SpaceliftSyncFields";
 import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { TravisCISyncFields } from "./TravisCISyncFields";
+import { TriggerDevSyncFields } from "./TriggerDevSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
 import { ZabbixSyncFields } from "./ZabbixSyncFields";
@@ -106,6 +113,8 @@ export const SecretSyncDestinationFields = () => {
       return <ChecklySyncFields />;
     case SecretSync.Supabase:
       return <SupabaseSyncFields />;
+    case SecretSync.Rundeck:
+      return <RundeckSyncFields />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncFields />;
     case SecretSync.Netlify:
@@ -136,6 +145,18 @@ export const SecretSyncDestinationFields = () => {
       return <TravisCISyncFields />;
     case SecretSync.Snowflake:
       return <SnowflakeSyncFields />;
+    case SecretSync.TriggerDev:
+      return <TriggerDevSyncFields />;
+    case SecretSync.HasuraCloud:
+      return <HasuraCloudSyncFields />;
+    case SecretSync.Qovery:
+      return <QoverySyncFields />;
+    case SecretSync.Cloud66:
+      return <Cloud66SyncFields />;
+    case SecretSync.Daytona:
+      return <DaytonaSyncFields />;
+    case SecretSync.Spacelift:
+      return <SpaceliftSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

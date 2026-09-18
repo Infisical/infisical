@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
@@ -95,33 +96,72 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateStatus = async (
+  const transitionFromPending = async (
     id: string,
     status: string,
     errorMessage?: string,
     tx?: Knex
-  ): Promise<TCertificateRequests> => {
+  ): Promise<TCertificateRequests | null> => {
     try {
-      const updateData: Partial<TCertificateRequests> = { status };
+      const updateData: Partial<TCertificateRequests> = { status, pendingMessage: null };
       if (errorMessage !== undefined) {
         updateData.errorMessage = errorMessage;
       }
-      return await certificateRequestOrm.updateById(id, updateData, tx);
+      const [updated] = await (tx || db)(TableName.CertificateRequests)
+        .where({ id })
+        .whereIn("status", [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION])
+        .update(updateData)
+        .returning("*");
+      return updated ?? null;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Update certificate request status" });
+      throw new DatabaseError({ error, name: "Transition certificate request from pending status" });
     }
   };
 
-  const attachCertificate = async (id: string, certificateId: string, tx?: Knex): Promise<TCertificateRequests> => {
+  const setPendingMessage = async (id: string, pendingMessage: string, tx?: Knex): Promise<void> => {
     try {
-      return await certificateRequestOrm.updateById(
-        id,
-        {
-          certificateId,
-          status: "issued"
-        },
-        tx
-      );
+      await (tx || db)(TableName.CertificateRequests)
+        .where({ id })
+        .whereIn("status", [CertificateRequestStatus.PENDING, CertificateRequestStatus.PENDING_VALIDATION])
+        .update({ pendingMessage });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Set certificate request pending message" });
+    }
+  };
+
+  const transitionToPendingValidation = async (
+    id: string,
+    fields: Partial<TCertificateRequests>,
+    tx?: Knex
+  ): Promise<TCertificateRequests | null> => {
+    try {
+      const [updated] = await (tx || db)(TableName.CertificateRequests)
+        .where({ id })
+        .where("status", CertificateRequestStatus.PENDING)
+        .update({ ...fields, status: CertificateRequestStatus.PENDING_VALIDATION })
+        .returning("*");
+      return updated ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Transition certificate request to pending validation" });
+    }
+  };
+
+  const attachCertificate = async (
+    id: string,
+    certificateId: string,
+    tx?: Knex
+  ): Promise<TCertificateRequests | null> => {
+    try {
+      const [updated] = await (tx || db)(TableName.CertificateRequests)
+        .where({ id })
+        .whereIn("status", [
+          CertificateRequestStatus.PENDING,
+          CertificateRequestStatus.PENDING_VALIDATION,
+          CertificateRequestStatus.ISSUED
+        ])
+        .update({ certificateId, status: CertificateRequestStatus.ISSUED, pendingMessage: null })
+        .returning("*");
+      return updated ?? null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Attach certificate to request" });
     }
@@ -414,15 +454,14 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const markExpiredApprovalRequests = async (expiredApprovalRequestIds: string[]): Promise<number> => {
+  const markExpiredApprovalRequests = async (): Promise<number> => {
     try {
-      if (expiredApprovalRequestIds.length === 0) {
-        return 0;
-      }
-
       const result = await db(TableName.CertificateRequests)
-        .whereIn("approvalRequestId", expiredApprovalRequestIds)
         .where("status", CertificateRequestStatus.PENDING_APPROVAL)
+        .whereIn(
+          "approvalRequestId",
+          db.select("id").from(TableName.ApprovalRequests).where("status", ApprovalRequestStatus.Expired)
+        )
         .update({ status: CertificateRequestStatus.REJECTED, errorMessage: "Approval request expired" });
 
       return result;
@@ -469,7 +508,9 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     findByIdWithCertificate,
     findPendingByProjectId,
     findPendingValidationByCaType,
-    updateStatus,
+    transitionFromPending,
+    setPendingMessage,
+    transitionToPendingValidation,
     attachCertificate,
     findByProjectId,
     countByProjectId,

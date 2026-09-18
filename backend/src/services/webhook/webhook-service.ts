@@ -3,7 +3,8 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -18,6 +19,7 @@ import {
   SUBSCRIBABLE_WEBHOOK_EVENTS,
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
+  TGetWebhookByIdDTO,
   TListWebhookDTO,
   TSubscribableWebhookEvent,
   TTestWebhookDTO,
@@ -188,6 +190,7 @@ export const webhookServiceFactory = ({
           projectName: project.name,
           projectId: webhook.projectId,
           environment: webhook.environment.slug,
+          environmentName: webhook.environment.name,
           secretPath: webhook.secretPath,
           type: webhook.type
         }
@@ -201,7 +204,11 @@ export const webhookServiceFactory = ({
         payload
       );
     } catch (err) {
-      webhookError = (err as Error).message;
+      webhookError = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        { webhookId: webhook.id, projectId: webhook.projectId, environment: webhook.environment.slug, err },
+        `Webhook test delivery failed [webhookId=${webhook.id}] [projectId=${webhook.projectId}] [environment=${webhook.environment.slug}] [error=${webhookError}]`
+      );
     }
     const isSuccess = !webhookError;
     const updatedWebhook = await webhookDAL.updateById(webhook.id, {
@@ -245,10 +252,48 @@ export const webhookServiceFactory = ({
     });
   };
 
+  const getWebhookById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetWebhookByIdDTO) => {
+    // Unauthorized callers get the same 404 as a missing webhook so the endpoint can't be used to enumerate webhook IDs.
+    const notFound = new NotFoundError({ message: `Webhook with ID '${id}' not found` });
+
+    const webhook = await webhookDAL.findById(id);
+    if (!webhook) {
+      throw notFound;
+    }
+
+    try {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: webhook.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.Any
+      });
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+    } catch (error) {
+      if (error instanceof ForbiddenError || error instanceof ForbiddenRequestError) {
+        throw notFound;
+      }
+      throw error;
+    }
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: webhook.projectId
+    });
+    const { url } = decryptWebhookDetails(webhook, (value) =>
+      secretManagerDecryptor({ cipherTextBlob: value }).toString()
+    );
+
+    return { ...withEventsFilter(webhook), url };
+  };
+
   return {
     createWebhook,
     deleteWebhook,
     listWebhooks,
+    getWebhookById,
     updateWebhook,
     testWebhook
   };

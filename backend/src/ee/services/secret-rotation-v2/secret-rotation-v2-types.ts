@@ -1,10 +1,10 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TSqlCredentialsRotationGeneratedCredentials } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials/sql-credentials-rotation-types";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
+import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -30,12 +30,40 @@ import {
   TAzureClientSecretRotationWithConnection
 } from "./azure-client-secret";
 import {
+  TCloudflareApiTokenRotation,
+  TCloudflareApiTokenRotationGeneratedCredentials,
+  TCloudflareApiTokenRotationInput,
+  TCloudflareApiTokenRotationListItem,
+  TCloudflareApiTokenRotationWithConnection
+} from "./cloudflare-api-token";
+import {
+  TCloudflareR2AccessKeyRotation,
+  TCloudflareR2AccessKeyRotationGeneratedCredentials,
+  TCloudflareR2AccessKeyRotationInput,
+  TCloudflareR2AccessKeyRotationListItem,
+  TCloudflareR2AccessKeyRotationWithConnection
+} from "./cloudflare-r2-access-key";
+import {
+  TConvexAccessKeyRotation,
+  TConvexAccessKeyRotationGeneratedCredentials,
+  TConvexAccessKeyRotationInput,
+  TConvexAccessKeyRotationListItem,
+  TConvexAccessKeyRotationWithConnection
+} from "./convex-access-key";
+import {
   TDatabricksServicePrincipalSecretRotation,
   TDatabricksServicePrincipalSecretRotationGeneratedCredentials,
   TDatabricksServicePrincipalSecretRotationInput,
   TDatabricksServicePrincipalSecretRotationListItem,
   TDatabricksServicePrincipalSecretRotationWithConnection
 } from "./databricks-service-principal-secret";
+import {
+  TDatadogApiKeyRotation,
+  TDatadogApiKeyRotationGeneratedCredentials,
+  TDatadogApiKeyRotationInput,
+  TDatadogApiKeyRotationListItem,
+  TDatadogApiKeyRotationWithConnection
+} from "./datadog-api-key";
 import {
   TDatadogApplicationKeySecretRotation,
   TDatadogApplicationKeySecretRotationGeneratedCredentials,
@@ -51,6 +79,13 @@ import {
   TDbtServiceTokenRotationWithConnection
 } from "./dbt-service-token/dbt-service-token-rotation-types";
 import {
+  TFireworksApiKeyRotation,
+  TFireworksApiKeyRotationGeneratedCredentials,
+  TFireworksApiKeyRotationInput,
+  TFireworksApiKeyRotationListItem,
+  TFireworksApiKeyRotationWithConnection
+} from "./fireworks-api-key";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput,
@@ -64,6 +99,13 @@ import {
   TLdapPasswordRotationListItem,
   TLdapPasswordRotationWithConnection
 } from "./ldap-password";
+import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentials,
+  TLiteLLMApiKeyRotationInput,
+  TLiteLLMApiKeyRotationListItem,
+  TLiteLLMApiKeyRotationWithConnection
+} from "./litellm-api-key";
 import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationInput,
@@ -97,6 +139,13 @@ import {
   TOpenRouterApiKeyRotationWithConnection
 } from "./open-router-api-key";
 import {
+  TOpenAIServiceAccountRotation,
+  TOpenAIServiceAccountRotationGeneratedCredentials,
+  TOpenAIServiceAccountRotationInput,
+  TOpenAIServiceAccountRotationListItem,
+  TOpenAIServiceAccountRotationWithConnection
+} from "./openai-service-account";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
   TOracleDBCredentialsRotationListItem,
@@ -115,8 +164,22 @@ import {
   TRedisCredentialsRotationListItem,
   TRedisCredentialsRotationWithConnection
 } from "./redis-credentials/redis-credentials-rotation-types";
+import {
+  TSalesforceOauthCredentialsRotation,
+  TSalesforceOauthCredentialsRotationGeneratedCredentials,
+  TSalesforceOauthCredentialsRotationInput,
+  TSalesforceOauthCredentialsRotationListItem,
+  TSalesforceOauthCredentialsRotationWithConnection
+} from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
+import {
+  TSnowflakeUserKeyPairRotation,
+  TSnowflakeUserKeyPairRotationGeneratedCredentials,
+  TSnowflakeUserKeyPairRotationInput,
+  TSnowflakeUserKeyPairRotationListItem,
+  TSnowflakeUserKeyPairRotationWithConnection
+} from "./snowflake-user-key-pair";
 import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentials,
@@ -156,9 +219,18 @@ export type TSecretRotationV2 =
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
+  | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
-  | TDatadogApplicationKeySecretRotation;
+  | TSalesforceOauthCredentialsRotation
+  | TDatadogApplicationKeySecretRotation
+  | TDatadogApiKeyRotation
+  | TConvexAccessKeyRotation
+  | TFireworksApiKeyRotation
+  | TSnowflakeUserKeyPairRotation
+  | TCloudflareApiTokenRotation
+  | TCloudflareR2AccessKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -177,9 +249,18 @@ export type TSecretRotationV2WithConnection =
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
+  | TLiteLLMApiKeyRotationWithConnection
+  | TOpenAIServiceAccountRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
-  | TDatadogApplicationKeySecretRotationWithConnection;
+  | TSalesforceOauthCredentialsRotationWithConnection
+  | TDatadogApplicationKeySecretRotationWithConnection
+  | TDatadogApiKeyRotationWithConnection
+  | TConvexAccessKeyRotationWithConnection
+  | TFireworksApiKeyRotationWithConnection
+  | TSnowflakeUserKeyPairRotationWithConnection
+  | TCloudflareApiTokenRotationWithConnection
+  | TCloudflareR2AccessKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -194,9 +275,18 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
+  | TLiteLLMApiKeyRotationGeneratedCredentials
+  | TOpenAIServiceAccountRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
-  | TDatadogApplicationKeySecretRotationGeneratedCredentials;
+  | TSalesforceOauthCredentialsRotationGeneratedCredentials
+  | TDatadogApplicationKeySecretRotationGeneratedCredentials
+  | TDatadogApiKeyRotationGeneratedCredentials
+  | TConvexAccessKeyRotationGeneratedCredentials
+  | TFireworksApiKeyRotationGeneratedCredentials
+  | TSnowflakeUserKeyPairRotationGeneratedCredentials
+  | TCloudflareApiTokenRotationGeneratedCredentials
+  | TCloudflareR2AccessKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -215,9 +305,18 @@ export type TSecretRotationV2Input =
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
+  | TLiteLLMApiKeyRotationInput
+  | TOpenAIServiceAccountRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
-  | TDatadogApplicationKeySecretRotationInput;
+  | TSalesforceOauthCredentialsRotationInput
+  | TDatadogApplicationKeySecretRotationInput
+  | TDatadogApiKeyRotationInput
+  | TConvexAccessKeyRotationInput
+  | TFireworksApiKeyRotationInput
+  | TSnowflakeUserKeyPairRotationInput
+  | TCloudflareApiTokenRotationInput
+  | TCloudflareR2AccessKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -236,9 +335,18 @@ export type TSecretRotationV2ListItem =
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
+  | TLiteLLMApiKeyRotationListItem
+  | TOpenAIServiceAccountRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
-  | TDatadogApplicationKeySecretRotationListItem;
+  | TSalesforceOauthCredentialsRotationListItem
+  | TDatadogApplicationKeySecretRotationListItem
+  | TDatadogApiKeyRotationListItem
+  | TConvexAccessKeyRotationListItem
+  | TFireworksApiKeyRotationListItem
+  | TSnowflakeUserKeyPairRotationListItem
+  | TCloudflareApiTokenRotationListItem
+  | TCloudflareR2AccessKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]
@@ -398,6 +506,15 @@ export type TRotationFactoryCheckActiveCredentials<T extends TSecretRotationV2Ge
   activeCredentials: T[number]
 ) => Promise<void>;
 
+// Password validation context passed to factories when an active
+// secret-validation rule covers the rotation's project/env/path/provider.
+// When present, factories that generate passwords must satisfy these
+// constraints and ignore any user-provided passwordRequirements.
+export type TRotationPasswordValidationContext = {
+  constraints: TConstraints;
+  ruleNames: string[];
+};
+
 export type TRotationFactory<
   T extends TSecretRotationV2WithConnection,
   C extends TSecretRotationV2GeneratedCredentials,
@@ -406,9 +523,9 @@ export type TRotationFactory<
   secretRotation: T,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
+  passwordValidationContext?: TRotationPasswordValidationContext
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { Button, type ButtonProps } from "../Button";
 import {
   Field,
   FieldContent,
@@ -74,6 +75,81 @@ export const Default: Story = {
         <RadioGroupItem id="rg-default-prod" value="prod" />
         <Label htmlFor="rg-default-prod">Production</Label>
       </div>
+    </RadioGroup>
+  )
+};
+
+const buttonVariantOptions = [
+  { label: "Outline", variant: "outline" },
+  { label: "Neutral", variant: "neutral" },
+  { label: "Project", variant: "project" },
+  { label: "Organization", variant: "org" },
+  { label: "Danger", variant: "danger" },
+  { label: "PAM", variant: "pam" }
+] satisfies Array<{ label: string; variant: NonNullable<ButtonProps["variant"]> }>;
+
+export const WithButtonVariants: Story = {
+  name: "Example: With Button Variants",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `Button asChild` to turn each associated label into a compact choice button. The radio border and selected indicator inherit the Button's actual variant colors across neutral, scope, status, and product variants."
+      }
+    }
+  },
+  render: () => (
+    <RadioGroup defaultValue="org" className="grid-cols-2">
+      {buttonVariantOptions.map(({ label, variant }) => {
+        const id = `rg-button-${variant}`;
+
+        return (
+          <Button key={variant} variant={variant} asChild isFullWidth>
+            <Label htmlFor={id} className="justify-start">
+              <RadioGroupItem id={id} value={variant} />
+              {label}
+            </Label>
+          </Button>
+        );
+      })}
+    </RadioGroup>
+  )
+};
+
+const fieldLabelVariantOptions = [
+  { label: "Project", variant: "project" },
+  { label: "Organization", variant: "org" },
+  { label: "Sub-organization", variant: "sub-org" },
+  { label: "PAM", variant: "pam" }
+] as const;
+
+export const WithFieldLabelVariants: Story = {
+  name: "Example: With Field Label Variants",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use a variant `FieldLabel` for richer radio cards. The selected radio indicator follows the label's project, organization, sub-organization, or PAM scope color."
+      }
+    }
+  },
+  render: () => (
+    <RadioGroup defaultValue="org" className="grid-cols-2">
+      {fieldLabelVariantOptions.map(({ label, variant }) => {
+        const id = `rg-field-label-${variant}`;
+
+        return (
+          <FieldLabel key={variant} htmlFor={id} variant={variant}>
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>{label}</FieldTitle>
+                <FieldDescription>Scope variant</FieldDescription>
+              </FieldContent>
+              <RadioGroupItem id={id} value={variant} />
+            </Field>
+          </FieldLabel>
+        );
+      })}
     </RadioGroup>
   )
 };

@@ -23,7 +23,7 @@ export const useCreateCertificateProfile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
@@ -42,7 +42,7 @@ export const useUpdateCertificateProfile = () => {
     },
     onSuccess: (_, { profileId }) => {
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: certificateProfileKeys.getById(profileId)
@@ -64,7 +64,7 @@ export const useDeleteCertificateProfile = () => {
     },
     onSuccess: (_, { profileId }) => {
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.removeQueries({
         queryKey: certificateProfileKeys.getById(profileId)

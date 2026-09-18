@@ -3,18 +3,17 @@ import { authenticator } from "otplib";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { MfaMethod } from "../auth/auth-type";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserServiceFactory } from "../user/user-service";
 import { TTotpConfigDALFactory } from "./totp-config-dal";
-import { generateRecoveryCode } from "./totp-fns";
 import {
-  TCreateUserTotpRecoveryCodesDTO,
   TDeleteUserTotpConfigDTO,
   TGetUserTotpConfigDTO,
   TRegisterUserTotpDTO,
   TVerifyUserTotpConfigDTO,
-  TVerifyUserTotpDTO,
-  TVerifyWithUserRecoveryCodeDTO
+  TVerifyUserTotpDTO
 } from "./totp-types";
 
 type TTotpServiceFactoryDep = {
@@ -22,15 +21,20 @@ type TTotpServiceFactoryDep = {
   totpConfigDAL: TTotpConfigDALFactory;
   kmsService: TKmsServiceFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+  userService: Pick<TUserServiceFactory, "resolveMfaMethodAfterRemoval">;
 };
 
 authenticator.options = { window: 1 };
 
 export type TTotpServiceFactory = ReturnType<typeof totpServiceFactory>;
 
-const MAX_RECOVERY_CODE_LIMIT = 10;
-
-export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStore }: TTotpServiceFactoryDep) => {
+export const totpServiceFactory = ({
+  totpConfigDAL,
+  kmsService,
+  userDAL,
+  keyStore,
+  userService
+}: TTotpServiceFactoryDep) => {
   const getUserTotpConfig = async ({ userId }: TGetUserTotpConfigDTO) => {
     const totpConfig = await totpConfigDAL.findOne({
       userId
@@ -48,12 +52,8 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
       });
     }
 
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
-
     return {
-      isVerified: totpConfig.isVerified,
-      recoveryCodes
+      isVerified: totpConfig.isVerified
     };
   };
 
@@ -87,11 +87,8 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
       // create new TOTP configuration
       const secret = authenticator.generateSecret();
       const encryptedSecret = encryptWithRoot(Buffer.from(secret));
-      const recoveryCodes = Array.from({ length: MAX_RECOVERY_CODE_LIMIT }).map(generateRecoveryCode);
-      const encryptedRecoveryCodes = encryptWithRoot(Buffer.from(recoveryCodes.join(",")));
       const newTotpConfig = await totpConfigDAL.create({
         userId,
-        encryptedRecoveryCodes,
         encryptedSecret
       });
 
@@ -102,12 +99,10 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
     const decryptWithRoot = kmsService.decryptWithRootKey();
 
     const secret = decryptWithRoot(totpConfig.encryptedSecret).toString();
-    const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
     const otpUrl = authenticator.keyuri(user.username, "Infisical", secret);
 
     return {
-      otpUrl,
-      recoveryCodes
+      otpUrl
     };
   };
 
@@ -145,9 +140,8 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
       isVerified: true
     });
 
-    const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
     return {
-      recoveryCodes
+      success: true
     };
   };
 
@@ -191,45 +185,8 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
     }
   };
 
-  const verifyWithUserRecoveryCode = async ({ userId, recoveryCode }: TVerifyWithUserRecoveryCodeDTO) => {
-    const totpConfig = await totpConfigDAL.findOne({
-      userId
-    });
-
-    if (!totpConfig) {
-      throw new NotFoundError({
-        message: "TOTP configuration not found"
-      });
-    }
-
-    if (!totpConfig.isVerified) {
-      throw new BadRequestError({
-        message: "TOTP configuration has not been verified"
-      });
-    }
-
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const encryptWithRoot = kmsService.encryptWithRootKey();
-
-    const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
-    const matchingCode = recoveryCodes.find((code) => recoveryCode === code);
-    if (!matchingCode) {
-      throw new ForbiddenRequestError({
-        message: "Invalid TOTP recovery code"
-      });
-    }
-
-    const updatedRecoveryCodes = recoveryCodes.filter((code) => code !== matchingCode);
-    const encryptedRecoveryCodes = encryptWithRoot(Buffer.from(updatedRecoveryCodes.join(",")));
-    await totpConfigDAL.updateById(totpConfig.id, {
-      encryptedRecoveryCodes
-    });
-  };
-
   const deleteUserTotpConfig = async ({ userId }: TDeleteUserTotpConfigDTO) => {
-    const totpConfig = await totpConfigDAL.findOne({
-      userId
-    });
+    const totpConfig = await totpConfigDAL.findOne({ userId });
 
     if (!totpConfig) {
       throw new NotFoundError({
@@ -237,42 +194,13 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
       });
     }
 
-    await totpConfigDAL.deleteById(totpConfig.id);
-  };
+    const replacementMfaMethod = await userService.resolveMfaMethodAfterRemoval(userId, MfaMethod.TOTP);
 
-  const createUserTotpRecoveryCodes = async ({ userId }: TCreateUserTotpRecoveryCodesDTO) => {
-    const decryptWithRoot = kmsService.decryptWithRootKey();
-    const encryptWithRoot = kmsService.encryptWithRootKey();
-
-    return totpConfigDAL.transaction(async (tx) => {
-      const totpConfig = await totpConfigDAL.findOne(
-        {
-          userId,
-          isVerified: true
-        },
-        tx
-      );
-
-      if (!totpConfig) {
-        throw new NotFoundError({
-          message: "Valid TOTP configuration not found"
-        });
+    await totpConfigDAL.transaction(async (tx) => {
+      await totpConfigDAL.deleteById(totpConfig.id, tx);
+      if (replacementMfaMethod) {
+        await userDAL.updateById(userId, { selectedMfaMethod: replacementMfaMethod }, tx);
       }
-
-      const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
-      if (recoveryCodes.length >= MAX_RECOVERY_CODE_LIMIT) {
-        throw new BadRequestError({
-          message: `Cannot have more than ${MAX_RECOVERY_CODE_LIMIT} recovery codes at a time`
-        });
-      }
-
-      const toGenerateCount = MAX_RECOVERY_CODE_LIMIT - recoveryCodes.length;
-      const newRecoveryCodes = Array.from({ length: toGenerateCount }).map(generateRecoveryCode);
-      const encryptedRecoveryCodes = encryptWithRoot(Buffer.from([...recoveryCodes, ...newRecoveryCodes].join(",")));
-
-      await totpConfigDAL.updateById(totpConfig.id, {
-        encryptedRecoveryCodes
-      });
     });
   };
 
@@ -281,8 +209,6 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL, keyStor
     verifyUserTotpConfig,
     getUserTotpConfig,
     verifyUserTotp,
-    verifyWithUserRecoveryCode,
-    deleteUserTotpConfig,
-    createUserTotpRecoveryCodes
+    deleteUserTotpConfig
   };
 };

@@ -7,15 +7,15 @@ description: "Understand Infisical's core architectural components and how they 
 
 Infisical is architected around several key components that work in concert to provide a secure and streamlined secret management experience. These components span the client, API, and storage layers, ensuring that secrets are protected at every stage of their lifecycle.
 
-## 1. API (Backend)
+## 1. API (backend)
 
 Infisical exposes a well-documented [REST API](https://infisical.com/docs/api-reference/overview/introduction) that enables programmatic interaction with the platform, enabling a wide range of use cases.
 
-## 2. Storage Backend
+## 2. Storage backend
 
 Infisical relies on a robust storage backend to durably store secrets, users, and other platform data. Infisical's storage backend is [PostgreSQL](https://www.postgresql.org/).
 
-## 3. Caching Layer
+## 3. Caching layer
 
 Infisical uses [Redis](https://redis.com) to enable more complex workflows including a queuing system to manage long-running asynchronous tasks, cron jobs, as well as reliable cache for frequently used resources.
 

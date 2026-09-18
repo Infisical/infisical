@@ -1,12 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
-  TCloudflareWorkersScript,
-  useCloudflareConnectionListWorkersScripts
-} from "@app/hooks/api/appConnections/cloudflare";
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel
+} from "@app/components/v3";
+import { useCloudflareConnectionListWorkersScripts } from "@app/hooks/api/appConnections/cloudflare";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -24,7 +27,7 @@ export const CloudflareWorkersSyncFields = () => {
     });
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.scriptId", "");
@@ -34,26 +37,38 @@ export const CloudflareWorkersSyncFields = () => {
         name="destinationConfig.scriptId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            errorText={error?.message}
-            isError={Boolean(error?.message)}
-            label="Worker Script"
-          >
-            <FilterableSelect
-              isLoading={isScriptsPending && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={scripts?.find((script) => script.id === value) || []}
-              onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareWorkersScript>)?.id ?? null);
-              }}
-              options={scripts}
-              placeholder="Select a worker script..."
-              getOptionLabel={(option) => option.id}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-cloudflare-workers-script-id-label"
+              htmlFor="secret-sync-cloudflare-workers-script-id"
+            >
+              Worker Script
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-cloudflare-workers-script-id-label"
+                aria-describedby={
+                  error ? "secret-sync-cloudflare-workers-script-id-error" : undefined
+                }
+                id="secret-sync-cloudflare-workers-script-id"
+                isError={Boolean(error)}
+                isLoading={isScriptsPending && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={scripts?.find((script) => script.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
+                }}
+                options={scripts}
+                placeholder="Select a worker script..."
+                getOptionLabel={(option) => option.id}
+                getOptionValue={(option) => option.id}
+                modal
+              />
+              <FieldError id="secret-sync-cloudflare-workers-script-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

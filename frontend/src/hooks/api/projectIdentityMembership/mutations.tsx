@@ -41,6 +41,7 @@ export const useCreateProjectIdentityMembership = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
       queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });
@@ -77,6 +78,7 @@ export const useUpdateProjectIdentityMembership = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getIdentityPermissionAudit(projectId, identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
     }
   });
 };
@@ -104,6 +106,7 @@ export const useDeleteProjectIdentityMembership = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
       queryClient.invalidateQueries({ queryKey: pkiApplicationKeys.all });
     }
   });

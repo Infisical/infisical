@@ -3,9 +3,9 @@ import { packRules } from "@casl/ability/extra";
 
 import {
   ActionProjectType,
-  ApplicationMembershipRole,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
+  ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -26,6 +26,8 @@ import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-
 import { ActorType } from "../auth/auth-type";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncFilters } from "../pki-sync/pki-sync-types";
 import { TPkiApplicationDALFactory } from "./pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "./pki-application-profile-dal";
 import {
@@ -60,6 +62,7 @@ type TPkiApplicationServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "delete">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
@@ -72,6 +75,7 @@ export const pkiApplicationServiceFactory = ({
   membershipRoleDAL,
   approvalPolicyDAL,
   approvalRequestDAL,
+  pkiSyncDAL,
   permissionService
 }: TPkiApplicationServiceFactoryDep) => {
   const $loadProjectPermission = (
@@ -176,7 +180,7 @@ export const pkiApplicationServiceFactory = ({
             },
             tx
           );
-          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ApplicationMembershipRole.Admin }, tx);
+          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ResourceMembershipRole.Admin }, tx);
         }
 
         return application;
@@ -249,6 +253,7 @@ export const pkiApplicationServiceFactory = ({
     search,
     limit,
     offset,
+    applicationIds,
     projectId,
     actor,
     actorId,
@@ -269,8 +274,8 @@ export const pkiApplicationServiceFactory = ({
 
     if (hasRole(ProjectMembershipRole.Admin)) {
       const [applications, total] = await Promise.all([
-        pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset }),
-        pkiApplicationDAL.countByProjectId(projectId, search)
+        pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset, applicationIds }),
+        pkiApplicationDAL.countByProjectId(projectId, search, undefined, applicationIds)
       ]);
       return { applications, total };
     }
@@ -286,7 +291,9 @@ export const pkiApplicationServiceFactory = ({
       new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
     );
 
-    if (allowedIds.length === 0) {
+    const scopedIds = applicationIds ? allowedIds.filter((id) => applicationIds.includes(id)) : allowedIds;
+
+    if (scopedIds.length === 0) {
       return { applications: [], total: 0 };
     }
 
@@ -295,9 +302,9 @@ export const pkiApplicationServiceFactory = ({
         search,
         limit,
         offset,
-        applicationIds: allowedIds
+        applicationIds: scopedIds
       }),
-      pkiApplicationDAL.countByProjectId(projectId, search, undefined, allowedIds)
+      pkiApplicationDAL.countByProjectId(projectId, search, undefined, scopedIds)
     ]);
     return { applications, total };
   };
@@ -469,7 +476,7 @@ export const pkiApplicationServiceFactory = ({
       );
     }
 
-    return pkiApplicationDAL.transaction(async (tx) => {
+    const profiles = await pkiApplicationDAL.transaction(async (tx) => {
       const existing = await pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
       const existingProfileIds = new Set(existing.map((row) => row.profileId));
       const toAttach = profileIds.filter((id) => !existingProfileIds.has(id));
@@ -483,6 +490,8 @@ export const pkiApplicationServiceFactory = ({
 
       return pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
     });
+
+    return { profiles, applicationName: application.name };
   };
 
   const detachProfile = async ({
@@ -534,8 +543,27 @@ export const pkiApplicationServiceFactory = ({
       subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
     );
 
+    const pkiSyncs = await pkiSyncDAL.find({ applicationId });
+    const syncsFilteringOnProfile = pkiSyncs.filter((pkiSync) =>
+      ((pkiSync.filters as TPkiSyncFilters | null)?.profileIds ?? []).includes(profileId)
+    );
+
+    if (syncsFilteringOnProfile.length > 0) {
+      const names = syncsFilteringOnProfile.map(({ name }) => name).sort();
+      const preview = names.slice(0, 5).join(", ");
+      const remaining = names.length - 5;
+      const isSingular = names.length === 1;
+      throw new BadRequestError({
+        message: `Cannot detach this certificate profile while ${names.length} certificate sync${
+          isSingular ? " selects" : "s select"
+        } certificates by it (${
+          remaining > 0 ? `${preview}, and ${remaining} more` : preview
+        }). Remove the certificate profile filter from ${isSingular ? "that sync" : "those syncs"} first.`
+      });
+    }
+
     await pkiApplicationProfileDAL.delete({ applicationId, profileId });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const getApplicationPermissions = async ({

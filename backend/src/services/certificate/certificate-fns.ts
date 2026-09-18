@@ -1,14 +1,24 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import {
+  parseIssuedCustomExtensions,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import type { TCertificateDALFactory } from "./certificate-dal";
 import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
+  CertKeyUsage,
+  CertSignatureAlgorithm,
   CrlReason,
   TCertificateFingerprints,
   TCertificateSubject,
@@ -75,6 +85,17 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
 
 export const prependCertToPemChain = (cert: x509.X509Certificate, pemChain: string) =>
   `${cert.toString("pem")}\n${pemChain}`;
+
+// Concatenates a certificate, its chain, and its private key into a single PEM bundle. Used by sync
+// destinations that upload the full certificate as one file.
+export const buildCertificateBundle = (cert: string, privateKey: string, certificateChain?: string): string => {
+  const parts = [cert.trim()];
+  if (certificateChain) {
+    parts.push(certificateChain.trim());
+  }
+  parts.push(privateKey.trim());
+  return `${parts.join("\n")}\n`;
+};
 
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
@@ -145,10 +166,19 @@ export const generatePkcs12FromCertificate = async ({
       throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
     }
 
-    // node-forge doesn't support PQC keys
+    // node-forge only builds keystores from RSA keys, and cannot read PQC keys at all
+    let keyType: string | undefined;
     try {
-      crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "pem", type: "pkcs8" });
+      keyType = crypto.nativeCrypto.createPrivateKey({
+        key: privateKey,
+        format: "pem",
+        type: "pkcs8"
+      }).asymmetricKeyType;
     } catch {
+      keyType = undefined;
+    }
+
+    if (keyType !== "rsa") {
       throw new BadRequestError({
         message: "PKCS#12 export is not supported for this key type. Use PEM format instead."
       });
@@ -188,6 +218,40 @@ export const generatePkcs12FromCertificate = async ({
 };
 
 /**
+ * Format a raw hex digest as an upper-cased, colon-delimited fingerprint (e.g., "1A:2F:73:...").
+ */
+export const formatFingerprint = (hash: string) =>
+  new RE2(".{2}", "g").match(hash.toUpperCase())?.join(":") ?? hash.toUpperCase();
+
+export enum CertificateThumbprintAlgorithm {
+  SHA1 = "sha1",
+  SHA256 = "sha256"
+}
+
+/**
+ * Normalize a user-supplied certificate thumbprint into the colon-delimited fingerprint format
+ * stored on the certificate (e.g., "1A:2F:..."). Accepts thumbprints with or without colons,
+ * whitespace, or other separators, in any case. Returns the matching algorithm based on digest
+ * length (40 hex chars => SHA-1, 64 hex chars => SHA-256).
+ */
+export const normalizeThumbprint = (thumbprint: string) => {
+  const hex = thumbprint.replace(new RE2("[^a-fA-F0-9]", "g"), "");
+
+  let algorithm: CertificateThumbprintAlgorithm;
+  if (hex.length === 40) {
+    algorithm = CertificateThumbprintAlgorithm.SHA1;
+  } else if (hex.length === 64) {
+    algorithm = CertificateThumbprintAlgorithm.SHA256;
+  } else {
+    throw new BadRequestError({
+      message: "Invalid thumbprint. Expected a SHA-1 (40 hex characters) or SHA-256 (64 hex characters) digest"
+    });
+  }
+
+  return { algorithm, fingerprint: formatFingerprint(hex) };
+};
+
+/**
  * Parse and extract subject, fingerprints, and basicConstraints from a decrypted certificate.
  * Returns empty object on failure (graceful degradation).
  */
@@ -205,11 +269,10 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
       state: parsedDn.province,
       locality: parsedDn.locality
     };
+    if (parsedDn.domainComponents?.length) subject.domainComponents = parsedDn.domainComponents;
 
     // Calculate fingerprints and format with colons (e.g., "1A:2F:73:...")
     const rawData = Buffer.from(certObj.rawData);
-    const formatFingerprint = (hash: string) =>
-      new RE2(".{2}", "g").match(hash.toUpperCase())?.join(":") ?? hash.toUpperCase();
     const fingerprints: TCertificateFingerprints = {
       sha256: formatFingerprint(crypto.nativeCrypto.createHash("sha256").update(rawData).digest("hex")),
       sha1: formatFingerprint(crypto.nativeCrypto.createHash("sha1").update(rawData).digest("hex"))
@@ -225,19 +288,100 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
       };
     }
 
-    return { subject, fingerprints, basicConstraints };
+    let keyUsages: CertKeyUsage[] | undefined;
+    const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
+    if (keyUsagesExt) {
+      keyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
+      );
+    }
+
+    let extendedKeyUsages: CertExtendedKeyUsage[] | undefined;
+    const extendedKeyUsagesExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
+    if (extendedKeyUsagesExt) {
+      extendedKeyUsages = extendedKeyUsagesExt.usages
+        .map((oid) => CertExtendedKeyUsageOIDToName[oid as string])
+        .filter(Boolean);
+    }
+
+    return { subject, fingerprints, basicConstraints, keyUsages, extendedKeyUsages };
   } catch {
     // If we can't parse the certificate, return empty object (graceful degradation)
     return {};
   }
 };
 
+const EC_CURVE_KEY_ALGORITHMS: Record<string, CertKeyAlgorithm> = {
+  "P-256": CertKeyAlgorithm.ECDSA_P256,
+  "P-384": CertKeyAlgorithm.ECDSA_P384,
+  "P-521": CertKeyAlgorithm.ECDSA_P521
+};
+
+const RSA_KEY_ALGORITHMS: Record<number, CertKeyAlgorithm> = {
+  2048: CertKeyAlgorithm.RSA_2048,
+  3072: CertKeyAlgorithm.RSA_3072,
+  4096: CertKeyAlgorithm.RSA_4096
+};
+
+const RSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+  "SHA-256": CertSignatureAlgorithm.RSA_SHA256,
+  "SHA-384": CertSignatureAlgorithm.RSA_SHA384,
+  "SHA-512": CertSignatureAlgorithm.RSA_SHA512
+};
+
+const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
+  "SHA-256": CertSignatureAlgorithm.ECDSA_SHA256,
+  "SHA-384": CertSignatureAlgorithm.ECDSA_SHA384,
+  "SHA-512": CertSignatureAlgorithm.ECDSA_SHA512
+};
+
+// Import accepts certificates the issuance enums do not cover, such as Ed25519 and secp256k1, so an
+// unrecognised algorithm is recorded under its own name rather than rejected. The UI falls back to
+// the raw value when it is not one it has a label for.
+export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
+  let certObj: x509.X509Certificate;
+  try {
+    certObj = new x509.X509Certificate(decryptedCertificate);
+  } catch {
+    return {};
+  }
+
+  const publicKeyAlgorithm = certObj.publicKey.algorithm as {
+    name: string;
+    modulusLength?: number;
+    namedCurve?: string;
+  };
+  const signature = certObj.signatureAlgorithm as unknown as { name: string; hash?: { name: string } };
+  const hashName = signature.hash?.name ?? "";
+
+  let keyAlgorithm: string = publicKeyAlgorithm.name;
+  if (publicKeyAlgorithm.name.startsWith("RSA")) {
+    const bits = publicKeyAlgorithm.modulusLength;
+    keyAlgorithm = (bits && RSA_KEY_ALGORITHMS[bits]) || (bits ? `RSA_${bits}` : "RSA");
+  } else if (publicKeyAlgorithm.name === "ECDSA") {
+    const curve = publicKeyAlgorithm.namedCurve ?? "";
+    keyAlgorithm = EC_CURVE_KEY_ALGORITHMS[curve] ?? (curve ? `EC_${curve}` : "EC");
+  }
+
+  let signatureAlgorithm: string = signature.name;
+  if (signature.name.startsWith("RSA")) {
+    signatureAlgorithm = RSA_SIGNATURE_ALGORITHMS[hashName] ?? `RSA-${hashName || "UNKNOWN"}`;
+  } else if (signature.name === "ECDSA") {
+    signatureAlgorithm = ECDSA_SIGNATURE_ALGORITHMS[hashName] ?? `ECDSA-${hashName || "UNKNOWN"}`;
+  }
+
+  return { keyAlgorithm, signatureAlgorithm };
+};
+
 /**
  * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
  * Returns all parsed fields as separate properties.
  */
-export const extractCertificateFields = (decryptedCertificate: Buffer) => {
+export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?: TResolvedCustomExtension[]) => {
   const parsed = parseCertificateBody(decryptedCertificate);
+
+  const issuedCustomExtensions = parseIssuedCustomExtensions(decryptedCertificate, resolved);
 
   return {
     // Subject attributes
@@ -246,6 +390,10 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
     subjectCountry: parsed.subject?.country ?? null,
     subjectState: parsed.subject?.state ?? null,
     subjectLocality: parsed.subject?.locality ?? null,
+    // DC labels contain no commas, so a comma-joined string round-trips cleanly.
+    subjectDomainComponents: parsed.subject?.domainComponents?.length
+      ? parsed.subject.domainComponents.join(",")
+      : null,
 
     // Fingerprints
     fingerprintSha256: parsed.fingerprints?.sha256 ?? null,
@@ -253,6 +401,29 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
 
     // Basic constraints
     isCA: parsed.basicConstraints?.isCA ?? null,
-    pathLength: parsed.basicConstraints?.pathLength ?? null
+    pathLength: parsed.basicConstraints?.pathLength ?? null,
+
+    customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null,
+
+    // Callers spread these last so the issued values win over the requested ones. Absent when the
+    // certificate does not carry them, leaving the requested values in place.
+    ...(parsed.subject?.commonName && { commonName: parsed.subject.commonName }),
+    ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
+    ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
   };
+};
+
+export const linkRenewedCertificate = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
+  originalCertificateId: string,
+  renewedCertificateId: string,
+  tx?: Knex
+) => {
+  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
+
+  if (originalCertificate?.orderId) {
+    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
+  }
+
+  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
 };

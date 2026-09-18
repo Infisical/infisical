@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { useRailwayConnectionListProjects } from "@app/hooks/api/appConnections/railway";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -20,10 +20,14 @@ export const RailwaySyncReviewFields = () => {
 
   return (
     <>
-      <GenericFieldLabel label="Project">{project?.name ?? projectId}</GenericFieldLabel>
-      <GenericFieldLabel label="Environment">
-        {environment?.name ?? environmentId}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{project?.name ?? projectId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Environment</DetailLabel>
+        <DetailValue>{environment?.name ?? environmentId}</DetailValue>
+      </Detail>
     </>
   );
 };

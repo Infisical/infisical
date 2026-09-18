@@ -10,14 +10,15 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { deleteIntegrationSecrets } from "../integration-auth/integration-delete-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -25,7 +26,6 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TIntegrationDALFactory } from "./integration-dal";
 import {
-  TCreateIntegrationDTO,
   TDeleteIntegrationDTO,
   TGetIntegrationDTO,
   TSyncIntegrationDTO,
@@ -44,6 +44,8 @@ type TIntegrationServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TIntegrationServiceFactory = ReturnType<typeof integrationServiceFactory>;
@@ -59,94 +61,10 @@ export const integrationServiceFactory = ({
   secretV2BridgeDAL,
   secretImportDAL,
   kmsService,
-  secretDAL
+  secretDAL,
+  projectFolderGrantDAL,
+  orgDAL
 }: TIntegrationServiceFactoryDep) => {
-  const createIntegration = async ({
-    app,
-    actor,
-    actorOrgId,
-    path,
-    appId,
-    owner,
-    scope,
-    actorId,
-    region,
-    url,
-    isActive,
-    metadata,
-    secretPath,
-    targetService,
-    actorAuthMethod,
-    targetServiceId,
-    integrationAuthId,
-    sourceEnvironment,
-    targetEnvironment,
-    targetEnvironmentId
-  }: TCreateIntegrationDTO) => {
-    const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
-    if (!integrationAuth)
-      throw new NotFoundError({ message: `Integration auth with ID '${integrationAuthId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: integrationAuth.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
-
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment: sourceEnvironment,
-      secretPath
-    });
-
-    const folder = await folderDAL.findBySecretPath(integrationAuth.projectId, sourceEnvironment, secretPath);
-    if (!folder) {
-      throw new NotFoundError({
-        message: `Folder with path '${secretPath}' not found in environment with slug'${sourceEnvironment}'`
-      });
-    }
-
-    if (url) {
-      await blockLocalAndPrivateIpAddresses(url);
-    }
-
-    const integration = await integrationDAL.create({
-      envId: folder.envId,
-      secretPath,
-      isActive,
-      integrationAuthId,
-      targetEnvironmentId,
-      targetEnvironment,
-      targetServiceId,
-      targetService,
-      metadata,
-      region,
-      scope,
-      owner,
-      url,
-      appId,
-      path,
-      app,
-      integration: integrationAuth.integration
-    });
-
-    await secretQueueService.syncIntegrations({
-      environment: sourceEnvironment,
-      secretPath,
-      projectId: integrationAuth.projectId
-    });
-    return {
-      integration: {
-        ...integration,
-        environment: folder.environment
-      },
-      integrationAuth
-    };
-  };
-
   const updateIntegration = async ({
     actorId,
     actor,
@@ -324,7 +242,10 @@ export const integrationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         secretDAL,
-        kmsService
+        kmsService,
+        projectFolderGrantDAL,
+        orgDAL,
+        actorOrgId
       });
     }
 
@@ -381,7 +302,6 @@ export const integrationServiceFactory = ({
   };
 
   return {
-    createIntegration,
     updateIntegration,
     deleteIntegration,
     listIntegrationByProject,

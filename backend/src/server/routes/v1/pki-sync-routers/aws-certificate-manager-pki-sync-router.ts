@@ -20,7 +20,8 @@ export const registerAwsCertificateManagerPkiSyncRouter = async (
     updateSchema: UpdateAwsCertificateManagerPkiSyncSchema,
     syncOptions: {
       canImportCertificates: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

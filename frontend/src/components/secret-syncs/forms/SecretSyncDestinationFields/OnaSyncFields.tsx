@@ -1,10 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel
+} from "@app/components/v3";
 import { useOnaConnectionListProjects } from "@app/hooks/api/appConnections/ona";
-import { TOnaProject } from "@app/hooks/api/appConnections/ona/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -22,7 +27,7 @@ export const OnaSyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
@@ -34,25 +39,36 @@ export const OnaSyncFields = () => {
         name="destinationConfig.projectId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Ona Project">
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isProjectsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={projects?.find((p) => p.id === value) ?? null}
-              onChange={(option) => {
-                const selected = option as SingleValue<TOnaProject>;
-                onChange(selected?.id ?? "");
-                setValue("destinationConfig.projectName", selected?.name ?? "");
-              }}
-              options={projects ?? []}
-              placeholder="Select a project..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel id="secret-sync-ona-project-id-label" htmlFor="secret-sync-ona-project-id">
+              Ona Project
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-ona-project-id-label"
+                aria-describedby={error ? "secret-sync-ona-project-id-error" : undefined}
+                id="secret-sync-ona-project-id"
+                isError={Boolean(error)}
+                isLoading={isProjectsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={projects?.find((p) => p.id === value) ?? null}
+                onValueChange={(option) => {
+                  const selected = option;
+                  onChange(selected?.id ?? "");
+                  setValue("destinationConfig.projectName", selected?.name ?? "");
+                }}
+                options={projects ?? []}
+                placeholder="Select a project..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldError id="secret-sync-ona-project-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

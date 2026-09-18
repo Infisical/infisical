@@ -227,10 +227,14 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
+          // Match the privilege against the request's actor literal, not against
+          // Membership.actor*Id. Group-derived memberships have actorUserId/actorIdentityId
+          // NULL, so the column-to-column predicate dropped privileges for any user
+          // whose only project access is via a group.
           if (actorType === ActorType.IDENTITY) {
-            qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`);
+            qb.on(`${TableName.AdditionalPrivilege}.actorIdentityId`, db.raw("?", [actorId]));
           } else {
-            qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`);
+            qb.on(`${TableName.AdditionalPrivilege}.actorUserId`, db.raw("?", [actorId]));
           }
 
           if (scopeData.scope === AccessScope.Organization) {
@@ -238,6 +242,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           } else if (scopeData.scope === AccessScope.Project) {
             qb.andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`);
           }
+
+          // Folder-scoped privileges are resolved separately and must never reach the project
+          // ability: they would apply project-wide, and they carry a role slug with a NULL
+          // permissions blob that the unpackRules path cannot read.
+          qb.andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           if (actorType === ActorType.USER) {
@@ -425,6 +434,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where(`${TableName.Membership}.scopeResourceType`, resourceType)
         .where(`${TableName.Membership}.scopeResourceId`, resourceId)
+        .where(`${TableName.Membership}.isActive`, true)
         .where((qb) => {
           if (actorType === ActorType.USER) {
             void qb
@@ -623,10 +633,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`).andOn(
-            `${TableName.Membership}.scopeProjectId`,
-            `${TableName.AdditionalPrivilege}.projectId`
-          );
+          qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`)
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`)
+            // Folder-scoped privileges are resolved separately, so they are not part of a
+            // project-wide listing.
+            .andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
@@ -814,10 +825,11 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`).andOn(
-            `${TableName.Membership}.scopeProjectId`,
-            `${TableName.AdditionalPrivilege}.projectId`
-          );
+          qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`)
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`)
+            // Folder-scoped privileges are resolved separately, so they are not part of a
+            // project-wide listing.
+            .andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
@@ -966,18 +978,18 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
-          const memberActorCol =
-            actorType === ActorType.IDENTITY
-              ? `${TableName.Membership}.actorIdentityId`
-              : `${TableName.Membership}.actorUserId`;
+          // Match by literal actor id, not Membership.actor*Id — see getPermission for the
+          // group-derived membership rationale. Read and fingerprint must stay aligned, or
+          // the cache will think nothing changed and serve stale abilities.
           const privActorCol =
             actorType === ActorType.IDENTITY
               ? `${TableName.AdditionalPrivilege}.actorIdentityId`
               : `${TableName.AdditionalPrivilege}.actorUserId`;
-          qb.on(memberActorCol, privActorCol).andOn(
-            `${TableName.Membership}.scopeProjectId`,
-            `${TableName.AdditionalPrivilege}.projectId`
-          );
+          qb.on(privActorCol, db.raw("?", [actorId]))
+            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`)
+            // Folder-scoped privileges are excluded from getPermission, so excluding them here too
+            // is what keeps the fingerprint aligned with the data it validates.
+            .andOnNull(`${TableName.AdditionalPrivilege}.folderId`);
         })
         .leftJoin(TableName.IdentityMetadata, (qb) => {
           if (actorType === ActorType.IDENTITY) {
@@ -988,6 +1000,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
           }
         })
+        .leftJoin(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where((scopeQb) => {
           void scopeQb
@@ -1012,7 +1025,13 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         })
         .select(
           db.ref("id").withSchema(TableName.Membership).as("mId"),
-          db.ref("updatedAt").withSchema(TableName.Membership).as("mUp"),
+          // Track isActive/status rather than updatedAt: every login bumps Membership.updatedAt
+          // (lastLoginTime/lastLoginAuthMethod), which would needlessly bust the fingerprint/ETag on
+          // every auth. isActive/status are the membership columns that actually gate permissions.
+          db.ref("isActive").withSchema(TableName.Membership).as("mActive"),
+          db.ref("status").withSchema(TableName.Membership).as("mStatus"),
+          // project soft-delete state — flips the fingerprint when the project is soft-deleted
+          db.ref("deleteAfter").withSchema(TableName.Project).as("pDel"),
           db.ref("id").withSchema(TableName.MembershipRole).as("rId"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("rUp"),
           db.ref("updatedAt").withSchema(TableName.Role).as("crUp"),
@@ -1026,7 +1045,15 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.raw(
             `CASE WHEN "${TableName.AdditionalPrivilege}"."isTemporary" AND NOW() >= "${TableName.AdditionalPrivilege}"."temporaryAccessEndTime" THEN true ELSE false END AS "pExp"`
           )
-        );
+        )
+        // deterministic row order — Postgres doesn't guarantee ordering without it, and an unstable
+        // order would flip the hashed fingerprint between calls, silently breaking ETag/cache hits.
+        .orderBy([
+          { column: `${TableName.Membership}.id` },
+          { column: `${TableName.MembershipRole}.id` },
+          { column: `${TableName.AdditionalPrivilege}.id` },
+          { column: `${TableName.IdentityMetadata}.id` }
+        ]);
 
       return generateCacheKeyFromData(rows);
     } catch (error) {

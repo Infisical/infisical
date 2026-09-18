@@ -3,6 +3,8 @@ import RE2 from "re2";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
+import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
@@ -14,6 +16,7 @@ import {
   mapLegacyExtendedKeyUsageToStandard,
   mapLegacyKeyUsageToStandard
 } from "./certificate-constants";
+import { assertCertificateQuota, TCertificateQuotaDeps } from "./certificate-quota-fns";
 
 export const validatePqcLicense = async ({
   keyAlgorithm,
@@ -36,6 +39,80 @@ export const validatePqcLicense = async ({
         "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
     });
   }
+};
+
+// Call with the request as it will actually be signed. A PQC algorithm or wildcard that only appears
+// in a CSR or a profile default is invisible until applyProfileDefaults has run.
+//
+// Submit-time gate only; certificate-approval-fns re-checks the caps when it materializes an approval.
+export const validateCertificateRequestLicense = async ({
+  request,
+  altNames,
+  projectId,
+  projectDAL,
+  licenseService,
+  quotaDeps,
+  isRenewal = false
+}: {
+  request: {
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    commonName?: string;
+  };
+  // The SANs that will actually be issued, comma-joined as the row stores them. Passed by the caller
+  // rather than read off the request: a request holds its SANs in altNames or subjectAlternativeNames
+  // depending on where it came from, and applyProfileDefaults fills the unused one, so a CSR request
+  // against a profile with default SANs would otherwise be keyed on names it never issues.
+  altNames?: string | null;
+  projectId: string;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  // When absent the caps are skipped, so an issuance entry point that forgets it is silently uncapped.
+  quotaDeps?: TCertificateQuotaDeps;
+  // Nothing sets this today: renewal does not route through here. Kept because a refused renewal lets
+  // a live certificate expire, so the exemption should already exist if that ever changes.
+  isRenewal?: boolean;
+}) => {
+  const pqcAlgorithm = [request.keyAlgorithm, request.signatureAlgorithm].find(
+    (algorithm): algorithm is string => !!algorithm && isPqcAlgorithm(algorithm)
+  );
+
+  const distinctSanCount = new Set(
+    (altNames ?? "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  ).size;
+
+  const project = await projectDAL.findById(projectId);
+  if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+  const plan = await licenseService.getPlan(project.orgId);
+
+  if (pqcAlgorithm && !plan.pkiPqc) {
+    throw new BadRequestError({
+      message:
+        "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
+    });
+  }
+
+  const { maxSansPerCertificate } = plan;
+  if (typeof maxSansPerCertificate === "number" && distinctSanCount > maxSansPerCertificate) {
+    throw new BadRequestError({
+      message: `This certificate requests ${distinctSanCount} subject alternative names, above the ${maxSansPerCertificate} allowed on your plan. Upgrade plan to issue certificates with more SANs.`
+    });
+  }
+
+  if (!quotaDeps || isRenewal) return undefined;
+
+  const { isNewQuotaKey, quotaOrgId, isWildcard } = await assertCertificateQuota({
+    orgId: project.orgId,
+    commonName: request.commonName,
+    altNames,
+    deps: quotaDeps
+  });
+
+  return { orgId: quotaOrgId, isNewQuotaKey, isWildcard };
 };
 
 interface CertificateRequestInput {
@@ -78,12 +155,7 @@ export const bufferToString = (data: Buffer | string): string => {
 
 export const buildCertificateSubjectFromTemplate = (
   request: Record<string, unknown>,
-  templateAttributes?: Array<{
-    type: string;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>
+  templateAttributes?: TSubjectRule[]
 ): Record<string, string | undefined> => {
   const subject: Record<string, string> = {};
   const attributeMap: Record<string, string> = {
@@ -96,6 +168,12 @@ export const buildCertificateSubjectFromTemplate = (
   };
 
   if (!templateAttributes || templateAttributes.length === 0) {
+    Object.entries(attributeMap).forEach(([attrType, requestKey]) => {
+      const value = request[requestKey];
+      if (value && typeof value === "string") {
+        subject[attrType] = value;
+      }
+    });
     return subject;
   }
 
@@ -111,41 +189,13 @@ export const buildCertificateSubjectFromTemplate = (
   return subject;
 };
 
-const isWildcardPattern = (value: string): boolean => {
-  return value.includes("*");
-};
-
-const createWildcardRegex = (pattern: string): RE2 => {
-  const escapeRegex = new RE2(/[.+?^${}()|[\]\\]/g);
-  const escaped = pattern.replace(escapeRegex, "\\$&");
-  const wildcardRegex = new RE2(/\*/g);
-  const regexPattern = escaped.replace(wildcardRegex, ".*");
-  return new RE2(`^${regexPattern}$`);
-};
-
 const validateValueAgainstPatterns = (value: string, patterns: string[]): boolean => {
   if (!patterns || patterns.length === 0) {
     return false;
   }
 
-  for (const pattern of patterns) {
-    if (isWildcardPattern(pattern)) {
-      try {
-        const regex = createWildcardRegex(pattern);
-        if (regex.test(value)) {
-          return true;
-        }
-      } catch {
-        if (pattern === value) {
-          return true;
-        }
-      }
-    } else if (pattern === value) {
-      return true;
-    }
-  }
-
-  return false;
+  const normalizedValue = value.toLowerCase();
+  return patterns.some((pattern) => matchesNormalizedPattern(normalizedValue, pattern.toLowerCase()));
 };
 
 export const buildSubjectAlternativeNamesFromTemplate = (
@@ -176,7 +226,7 @@ export const buildSubjectAlternativeNamesFromTemplate = (
     }
 
     if (templateSan.denied && validateValueAgainstPatterns(san.value, templateSan.denied)) {
-      throw new Error(`SAN value '${san.value}' is explicitly denied for type '${san.type}'`);
+      throw new BadRequestError({ message: `SAN value '${san.value}' is explicitly denied for type '${san.type}'` });
     }
 
     const isRequired = templateSan.required && validateValueAgainstPatterns(san.value, templateSan.required);
@@ -185,7 +235,7 @@ export const buildSubjectAlternativeNamesFromTemplate = (
     if (isRequired || isAllowed || (!templateSan.allowed && !templateSan.required)) {
       allowedSans.push(san.value);
     } else {
-      throw new Error(`SAN value '${san.value}' is not allowed for type '${san.type}'`);
+      throw new BadRequestError({ message: `SAN value '${san.value}' is not allowed for type '${san.type}'` });
     }
   });
 

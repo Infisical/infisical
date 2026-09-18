@@ -12,7 +12,7 @@ type TSendApprovalEmails = {
   projectDAL: Pick<TProjectDALFactory, "findProjectWithOrg">;
   smtpService: Pick<TSmtpService, "sendMail">;
   projectId: string;
-  secretApprovalRequest: TSecretApprovalRequests;
+  secretApprovalRequest: Pick<TSecretApprovalRequests, "id" | "policyId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -56,4 +56,33 @@ export const sendApprovalEmailsFn = async ({
       template: SmtpTemplates.SecretApprovalRequestNeedsReview
     });
   }
+};
+
+export type TSecretUpdateCommitCandidate = {
+  key: string;
+  secretId?: string | null;
+  secret?: { id: string; key: string } | null;
+  secretVersion?: { key: string } | null;
+};
+
+/**
+ * Decides whether an update commit of a secret approval request can no longer be applied at merge time.
+ * `commit.secret` is the referenced secret in its current DB state (nullish if since deleted) and
+ * `secretWithSameKey` is the folder secret currently holding the commit's key, if any.
+ *
+ * Updates apply last-writer-wins by secret identity: a rename still applies even if the secret was
+ * renamed by another merge in the meantime.
+ */
+export const hasSecretUpdateCommitConflict = (
+  commit: TSecretUpdateCommitCandidate,
+  secretWithSameKey?: { id: string }
+): boolean => {
+  if (!commit.secretId || !commit.secret) return true; // referenced secret was deleted (or recreated)
+  // whoever currently holds the commit's key must be the referenced secret itself
+  if (secretWithSameKey) return secretWithSameKey.id !== commit.secretId;
+  // the key is free: only a rename may claim it. rename intent is read from the secret version the
+  // commit was based on (falling back to the live key if that version was pruned), so a plain update
+  // whose secret was renamed externally stays a conflict instead of dragging the old name back
+  const reviewedKey = commit.secretVersion?.key ?? commit.secret.key;
+  return commit.key === reviewedKey;
 };

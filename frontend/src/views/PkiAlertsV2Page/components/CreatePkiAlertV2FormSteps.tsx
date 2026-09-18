@@ -51,7 +51,7 @@ import {
   AccordionTrigger,
   Badge
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import {
   PkiAlertChannelTypeV2,
   PkiAlertEventTypeV2,
@@ -110,6 +110,7 @@ export const CreatePkiAlertV2FormSteps = ({
     formState: { errors }
   } = useFormContext<TCreatePkiAlertV2>();
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const [certificatesPage, setCertificatesPage] = useState(1);
   const certificatesPerPage = 6;
@@ -185,9 +186,11 @@ export const CreatePkiAlertV2FormSteps = ({
   };
 
   const isChannelLimitReached = watchedChannels.length >= MAX_CHANNELS;
+  const isEnterpriseAlertingAllowed = Boolean(subscription?.pkiEnterpriseAlerting);
 
   const addChannel = (type: PkiAlertChannelTypeV2) => {
     if (isChannelLimitReached) return;
+    if (type !== PkiAlertChannelTypeV2.EMAIL && !isEnterpriseAlertingAllowed) return;
     justAddedRef.current = true;
 
     let config:
@@ -340,7 +343,7 @@ export const CreatePkiAlertV2FormSteps = ({
     <>
       <Tab.Panel>
         <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="mb-4 text-sm text-label-secondary">
             Choose the event type and configure basic details for your alert.
           </p>
 
@@ -376,7 +379,12 @@ export const CreatePkiAlertV2FormSteps = ({
             name="name"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Alert Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g., tls-expiry-alert" />
+                <Input
+                  {...field}
+                  placeholder="e.g., tls-expiry-alert"
+                  autoComplete="off"
+                  name="pki-alert-name"
+                />
               </FormControl>
             )}
           />
@@ -419,8 +427,8 @@ export const CreatePkiAlertV2FormSteps = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm text-bunker-300">Repeat daily until expiry</span>
-                    <p className="text-xs text-bunker-400">
+                    <span className="text-sm text-label-secondary">Repeat daily until expiry</span>
+                    <p className="text-xs text-muted-secondary">
                       Send a reminder every day from the alert threshold until the certificate
                       expires.
                     </p>
@@ -440,7 +448,7 @@ export const CreatePkiAlertV2FormSteps = ({
       {showFilters && (
         <Tab.Panel>
           <div className="space-y-6">
-            <p className="mb-4 text-sm text-bunker-300">
+            <p className="mb-4 text-sm text-label-secondary">
               Add filter rules to specify which certificates should trigger this alert. Leave empty
               to monitor all certificates.
             </p>
@@ -462,10 +470,10 @@ export const CreatePkiAlertV2FormSteps = ({
               {watchedFilters?.map((filter, index) => (
                 <div
                   key={`filter-${index}`}
-                  className="space-y-2 rounded-md border border-mineshaft-600 p-3"
+                  className="space-y-2 rounded-md border border-border-control p-3"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-mineshaft-100">
+                    <h4 className="text-sm font-medium text-foreground">
                       Filter Rule #{index + 1}
                     </h4>
                     <IconButton
@@ -580,7 +588,7 @@ export const CreatePkiAlertV2FormSteps = ({
               ))}
 
               {(!watchedFilters || watchedFilters.length === 0) && (
-                <div className="py-8 text-center text-bunker-400">
+                <div className="py-8 text-center text-muted-secondary">
                   No filter rules configured. This alert will monitor all certificates.
                 </div>
               )}
@@ -592,7 +600,7 @@ export const CreatePkiAlertV2FormSteps = ({
       {showPreview && (
         <Tab.Panel>
           <div className="space-y-6">
-            <p className="mb-4 text-sm text-bunker-300">
+            <p className="mb-4 text-sm text-label-secondary">
               {watchedEventType === PkiAlertEventTypeV2.EXPIRATION &&
                 "Preview certificates that will expire within the configured alert window and match your filter criteria."}
               {watchedEventType === PkiAlertEventTypeV2.RENEWAL &&
@@ -666,7 +674,7 @@ export const CreatePkiAlertV2FormSteps = ({
 
                       return (
                         <Tr>
-                          <Td colSpan={3} className="py-8 text-center text-gray-400">
+                          <Td colSpan={3} className="py-8 text-center text-muted-cool">
                             No certificates currently match this alert&apos;s criteria
                           </Td>
                         </Tr>
@@ -696,9 +704,7 @@ export const CreatePkiAlertV2FormSteps = ({
         <div className="flex min-h-[400px] flex-col gap-6">
           <div className="flex items-center justify-end gap-3">
             {isChannelLimitReached && (
-              <span className="text-xs text-mineshaft-400">
-                Maximum of {MAX_CHANNELS} channels reached
-              </span>
+              <span className="text-xs text-muted">Maximum of {MAX_CHANNELS} channels reached</span>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={isChannelLimitReached}>
@@ -717,17 +723,35 @@ export const CreatePkiAlertV2FormSteps = ({
                   <FontAwesomeIcon icon={faEnvelope} className="mr-2" />
                   Email
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.WEBHOOK)}>
-                  <FontAwesomeIcon icon={faLink} className="mr-2" />
-                  Webhook
+                <DropdownMenuItem
+                  isDisabled={!isEnterpriseAlertingAllowed}
+                  onClick={() => addChannel(PkiAlertChannelTypeV2.WEBHOOK)}
+                >
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faLink} />
+                    Webhook
+                    {!isEnterpriseAlertingAllowed && <Badge variant="info">Enterprise</Badge>}
+                  </span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.SLACK)}>
-                  <FontAwesomeIcon icon={faSlack} className="mr-2" />
-                  Slack
+                <DropdownMenuItem
+                  isDisabled={!isEnterpriseAlertingAllowed}
+                  onClick={() => addChannel(PkiAlertChannelTypeV2.SLACK)}
+                >
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faSlack} />
+                    Slack
+                    {!isEnterpriseAlertingAllowed && <Badge variant="info">Enterprise</Badge>}
+                  </span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.PAGERDUTY)}>
-                  <FontAwesomeIcon icon={faBell} className="mr-2" />
-                  PagerDuty
+                <DropdownMenuItem
+                  isDisabled={!isEnterpriseAlertingAllowed}
+                  onClick={() => addChannel(PkiAlertChannelTypeV2.PAGERDUTY)}
+                >
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faBell} />
+                    PagerDuty
+                    {!isEnterpriseAlertingAllowed && <Badge variant="info">Enterprise</Badge>}
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -739,24 +763,24 @@ export const CreatePkiAlertV2FormSteps = ({
               collapsible
               value={expandedChannel}
               onValueChange={setExpandedChannel}
-              className="border-mineshaft-500 bg-mineshaft-600"
+              className="border-border-strong bg-surface-active"
             >
               {channelFields.map((field, index) => {
                 const channel = watchedChannels[index];
                 const channelError = errors.channels?.[index];
                 return (
-                  <AccordionItem key={field.id} value={field.id} className="border-mineshaft-600">
-                    <AccordionTrigger className="group overflow-hidden bg-mineshaft-800 hover:bg-mineshaft-600 data-[state=open]:bg-mineshaft-700 data-[state=open]:hover:bg-mineshaft-600">
+                  <AccordionItem key={field.id} value={field.id} className="border-border-control">
+                    <AccordionTrigger className="group overflow-hidden bg-surface-raised hover:bg-surface-active data-[state=open]:bg-surface-hover data-[state=open]:hover:bg-surface-active">
                       <div className="flex w-0 flex-1 items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <FontAwesomeIcon
                             icon={getChannelIcon(channel?.channelType)}
-                            className="shrink-0 text-mineshaft-300"
+                            className="shrink-0 text-label"
                           />
                           <span className="shrink-0 text-sm font-medium">
                             {channel?.channelType && getChannelDisplayName(channel.channelType)}
                           </span>
-                          <span className="truncate text-xs text-mineshaft-400 group-data-[state=open]:hidden">
+                          <span className="truncate text-xs text-muted group-data-[state=open]:hidden">
                             {channel && getChannelSummary(channel)}
                           </span>
                         </div>
@@ -792,7 +816,7 @@ export const CreatePkiAlertV2FormSteps = ({
                         </div>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="bg-mineshaft-800">
+                    <AccordionContent className="bg-surface-raised p-6">
                       {channel?.channelType === PkiAlertChannelTypeV2.EMAIL && (
                         <Controller
                           control={control}
@@ -891,13 +915,13 @@ export const CreatePkiAlertV2FormSteps = ({
                               Test
                             </Button>
                             {channelUIStates[field.id]?.webhookTest?.success === true && (
-                              <span className="flex items-center gap-1 text-sm text-green-500">
+                              <span className="flex items-center gap-1 text-sm text-success">
                                 <FontAwesomeIcon icon={faCheck} />
                                 Success
                               </span>
                             )}
                             {channelUIStates[field.id]?.webhookTest?.success === false && (
-                              <span className="flex items-center gap-1 text-sm text-red-500">
+                              <span className="flex items-center gap-1 text-sm text-danger">
                                 <FontAwesomeIcon icon={faXmark} />
                                 {channelUIStates[field.id]?.webhookTest?.error || "Failed"}
                               </span>
@@ -959,17 +983,17 @@ export const CreatePkiAlertV2FormSteps = ({
           )}
 
           {channelFields.length > 0 && errors.channels?.message && (
-            <span className="text-sm text-red-500">{errors.channels.message}</span>
+            <span className="text-sm text-danger">{errors.channels.message}</span>
           )}
 
           {channelFields.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
-              <span className="text-bunker-400">
+              <span className="text-muted-secondary">
                 At least one notification channel is required. Click &quot;Add Channel&quot; to add
                 one.
               </span>
               {errors.channels?.message && (
-                <span className="text-sm text-red-500">{errors.channels.message}</span>
+                <span className="text-sm text-danger">{errors.channels.message}</span>
               )}
             </div>
           )}
@@ -978,13 +1002,13 @@ export const CreatePkiAlertV2FormSteps = ({
 
       <Tab.Panel>
         <div className="mb-4 flex flex-col gap-6">
-          <p className="text-sm text-bunker-300">
+          <p className="text-sm text-label-secondary">
             Please review the settings below before creating your alert.
           </p>
 
           <div className="flex flex-col gap-3">
-            <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Basic Information</span>
+            <div className="w-full border-b border-border-control">
+              <span className="text-sm text-label">Basic Information</span>
             </div>
             <div className="flex flex-wrap gap-x-8 gap-y-2">
               <GenericFieldLabel label="Name">{watch("name") || "Not specified"}</GenericFieldLabel>
@@ -1016,8 +1040,8 @@ export const CreatePkiAlertV2FormSteps = ({
 
           {showFilters && (
             <div className="flex flex-col gap-3">
-              <div className="w-full border-b border-mineshaft-600">
-                <span className="text-sm text-mineshaft-300">Filter Rules</span>
+              <div className="w-full border-b border-border-control">
+                <span className="text-sm text-label">Filter Rules</span>
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-2">
                 {watchedFilters && watchedFilters.length > 0 ? (
@@ -1037,7 +1061,7 @@ export const CreatePkiAlertV2FormSteps = ({
                     </GenericFieldLabel>
                   ))
                 ) : (
-                  <span className="text-bunker-400">
+                  <span className="text-muted-secondary">
                     No filter rules - will monitor all certificates
                   </span>
                 )}
@@ -1046,43 +1070,40 @@ export const CreatePkiAlertV2FormSteps = ({
           )}
 
           <div className="flex flex-col gap-3">
-            <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Notification Channels</span>
+            <div className="w-full border-b border-border-control">
+              <span className="text-sm text-label">Notification Channels</span>
             </div>
             {watchedChannels.length > 0 ? (
               <div className="space-y-2">
                 {watchedChannels.map((channel, index) => (
                   <div
                     key={`review-channel-${index}`}
-                    className="flex items-center gap-3 rounded-md border border-mineshaft-600 px-3 py-2"
+                    className="flex items-center gap-3 rounded-md border border-border-control px-3 py-2"
                   >
                     <FontAwesomeIcon
                       icon={getChannelIcon(channel.channelType)}
-                      className="text-mineshaft-400"
+                      className="text-muted"
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-mineshaft-100">
+                        <span className="text-sm font-medium text-foreground">
                           {getChannelDisplayName(channel.channelType)}
                         </span>
                         {channel.channelType === PkiAlertChannelTypeV2.WEBHOOK &&
                           ((channel.config as TPkiAlertChannelConfigWebhook).signingSecret ? (
                             <Tooltip content="Signed webhook - requests will include signature verification">
-                              <FontAwesomeIcon
-                                icon={faKey}
-                                className="text-xs text-mineshaft-400"
-                              />
+                              <FontAwesomeIcon icon={faKey} className="text-xs text-muted" />
                             </Tooltip>
                           ) : (
                             <Tooltip content="Unsigned webhook - consider adding a signing secret for security">
                               <FontAwesomeIcon
                                 icon={faTriangleExclamation}
-                                className="text-xs text-mineshaft-400"
+                                className="text-xs text-muted"
                               />
                             </Tooltip>
                           ))}
                       </div>
-                      <span className="truncate text-xs text-mineshaft-400">
+                      <span className="truncate text-xs text-muted">
                         {(() => {
                           if (channel.channelType === PkiAlertChannelTypeV2.EMAIL) {
                             const config = channel.config as TPkiAlertChannelConfigEmail;
@@ -1137,7 +1158,7 @@ export const CreatePkiAlertV2FormSteps = ({
                 ))}
               </div>
             ) : (
-              <span className="text-sm text-red-400">
+              <span className="text-sm text-danger">
                 No channels configured - at least one is required
               </span>
             )}

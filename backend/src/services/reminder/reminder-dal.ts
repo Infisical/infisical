@@ -49,18 +49,24 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretV2}.folderId`,
         `${TableName.SecretFolder}.id`
       )
-      .leftJoin<TProjectEnvironments>(
-        TableName.Environment,
-        `${TableName.SecretFolder}.envId`,
-        `${TableName.Environment}.id`
-      )
+      .leftJoin<TProjectEnvironments>(TableName.Environment, function joinActiveEnvForFolder() {
+        this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+          `${TableName.Environment}.deleteAfter`
+        );
+      })
       .leftJoin<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .leftJoin<TOrganizations>(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
       .select(selectAllTableCols(TableName.Reminder))
       .select(db.ref("email").withSchema(TableName.Users))
       .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
       .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
-      .select(db.ref("name").withSchema(TableName.Organization).as("organizationName"));
+      .select(db.ref("name").withSchema(TableName.Organization).as("organizationName"))
+      .select(db.ref("id").withSchema(TableName.Organization).as("organizationId"))
+      .select(db.ref("key").withSchema(TableName.SecretV2).as("secretKey"))
+      .select(db.ref("folderId").withSchema(TableName.SecretV2).as("secretFolderId"))
+      .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
+      .select(db.ref("name").withSchema(TableName.Environment).as("envName"));
 
     const reminders = sqlNestRelationships({
       data: rawReminders,
@@ -70,7 +76,12 @@ export const reminderDALFactory = (db: TDbClient) => {
         ...RemindersSchema.parse(el),
         projectName: el.projectName,
         projectId: el.projectId,
-        organizationName: el.organizationName
+        organizationName: el.organizationName,
+        organizationId: el.organizationId,
+        secretKey: el.secretKey,
+        folderId: el.secretFolderId,
+        envSlug: el.envSlug,
+        envName: el.envName
       }),
       childrenMapper: [
         {
@@ -170,6 +181,7 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretFolder}.envId`,
         `${TableName.Environment}.id`
       )
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .where(`${TableName.Environment}.projectId`, projectId);
 
     const rawReminders = await query

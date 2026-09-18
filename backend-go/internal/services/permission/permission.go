@@ -28,7 +28,6 @@ const (
 	ActionProjectTypeSecretManager      ActionProjectType = "secret-manager"
 	ActionProjectTypeCertificateManager ActionProjectType = "certificate-manager"
 	ActionProjectTypeKMS                ActionProjectType = "kms"
-	ActionProjectTypeSSH                ActionProjectType = "ssh"
 	ActionProjectTypeSecretScanning     ActionProjectType = "secret-scanning"
 	ActionProjectTypeAny                ActionProjectType = "any"
 )
@@ -106,12 +105,16 @@ func (p *Service) GetProjectPermission(ctx context.Context, args *GetProjectPerm
 		return p.getServiceTokenProjectPermission(ctx, args.ActorID.String(), args.ProjectID, args.ActorOrgID, args.ActionProjectType)
 	}
 
-	// 2. TODO(go): assumed privilege check — allows users to assume another actor's privileges
-	// (identity impersonation). Port of permission-service.ts:427-436.
-	// Implementation requires:
-	// - Request context key for AssumedPrivilegeDetails
-	// - Check if current user is assuming another identity's privileges
-	// - Swap actor/actorId if assumption is valid
+	// 2. Assumed privilege check — allows users to assume another actor's privileges.
+	// Port of permission-service.ts:482-492.
+	if assumed := auth.AssumedPrivilegeFromContext(ctx); assumed != nil {
+		if args.Actor == auth.ActorTypeUser &&
+			args.ActorID == assumed.RequesterID &&
+			args.ProjectID == assumed.ProjectID {
+			args.Actor = assumed.ActorType
+			args.ActorID = assumed.ActorID
+		}
+	}
 
 	// 3. Validate actor type
 	if args.Actor != auth.ActorTypeUser && args.Actor != auth.ActorTypeIdentity {
@@ -400,15 +403,16 @@ func checkProjectEnforcement(projectDetails *projectDetail) func(string) bool {
 	}
 }
 
-// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from request context
+// buildIdentityAuthMap extracts identity auth info (OIDC/Kubernetes/AWS claims) from Identity
 // for use in permission template variable interpolation.
 // Port of permission-service.ts:528-532.
 func buildIdentityAuthMap(ctx context.Context, actorID uuid.UUID) map[string]any {
-	authInfo := auth.AuthInfoFromContext(ctx)
-	if authInfo == nil {
+	identity, err := auth.IdentityFromContext(ctx)
+	if err != nil || identity.IdentityAuthInfo == nil {
 		return map[string]any{}
 	}
 
+	authInfo := identity.IdentityAuthInfo
 	if authInfo.IdentityID != actorID {
 		return map[string]any{}
 	}
@@ -571,12 +575,16 @@ func (s *Service) getPermission(ctx context.Context, params *getPermissionParams
 		where.Add("membership.scope = 'project'").Add(`membership."scopeProjectId" = @projectID`)
 	}
 
-	// Build additional privilege join condition
+	// Build additional privilege join condition.
+	// Match the privilege against the request's actor literal, not against
+	// membership.actor*Id. Group-derived memberships have actorUserId/actorIdentityId
+	// NULL, so the column-to-column predicate dropped privileges for any user/identity
+	// whose only project access is via a group.
 	apJoinCond := qb.NewWhere()
 	if params.ActorType == auth.ActorTypeIdentity {
-		apJoinCond.Add(`membership."actorIdentityId" = addlPriv."actorIdentityId"`)
+		apJoinCond.Add(`addlPriv."actorIdentityId" = @actorID`)
 	} else {
-		apJoinCond.Add(`membership."actorUserId" = addlPriv."actorUserId"`)
+		apJoinCond.Add(`addlPriv."actorUserId" = @actorID`)
 	}
 	if params.Scope == AccessScopeOrganization {
 		apJoinCond.Add(`membership."scopeOrgId" = addlPriv."orgId"`)

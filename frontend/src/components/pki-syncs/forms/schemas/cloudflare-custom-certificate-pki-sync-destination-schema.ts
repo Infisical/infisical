@@ -9,14 +9,22 @@ const CloudflareCustomCertificateSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (val) => {
-        if (!val) return true;
+        const allowedOptionalPlaceholders = [
+          "{{profileId}}",
+          "{{applicationId}}",
+          "{{applicationName}}",
+          "{{commonName}}"
+        ];
 
-        const allowedOptionalPlaceholders = ["{{environment}}"];
-
-        const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+        const allowedPlaceholdersRegexPart = [
+          "{{certificateId}}",
+          "{{shortCertificateId}}",
+          ...allowedOptionalPlaceholders
+        ]
           .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
           .join("|");
 
@@ -25,17 +33,13 @@ const CloudflareCustomCertificateSyncOptionsSchema = z.object({
         );
         const contentIsValid = allowedContentRegex.test(val);
 
-        if (val.trim()) {
-          const certificateIdRegex = /\{\{certificateId\}\}/;
-          const certificateIdIsPresent = certificateIdRegex.test(val);
-          return contentIsValid && certificateIdIsPresent;
-        }
-
-        return contentIsValid;
+        const certificateIdIsPresent =
+          val.includes("{{certificateId}}") || val.includes("{{shortCertificateId}}");
+        return contentIsValid && certificateIdIsPresent;
       },
       {
         message:
-          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), and underscores (_) are allowed besides the placeholders."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), and underscores (_) are allowed besides the placeholders."
       }
     )
 });

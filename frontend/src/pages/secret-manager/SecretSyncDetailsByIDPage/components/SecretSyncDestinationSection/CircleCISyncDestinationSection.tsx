@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TCircleCISync } from "@app/hooks/api/secretSyncs/types/circleci-sync";
 
 type Props = {
@@ -12,8 +12,14 @@ export const CircleCISyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Organization">{orgName}</GenericFieldLabel>
-      <GenericFieldLabel label="Project">{projectName}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Organization</DetailLabel>
+        <DetailValue>{orgName}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Project</DetailLabel>
+        <DetailValue>{projectName}</DetailValue>
+      </Detail>
     </>
   );
 };

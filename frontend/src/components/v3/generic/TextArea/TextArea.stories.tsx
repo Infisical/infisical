@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { Button } from "../Button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "../Field";
 import { TextArea } from "./TextArea";
 
@@ -25,6 +27,10 @@ const meta = {
   },
   tags: ["autodocs"],
   argTypes: {
+    variant: {
+      control: "select",
+      options: ["default", "outlined"]
+    },
     rows: {
       control: "number"
     },
@@ -45,6 +51,7 @@ const meta = {
     }
   },
   args: {
+    variant: "default",
     placeholder: "Tell us a little about your team...",
     isError: false,
     disabled: false,
@@ -76,6 +83,20 @@ export const Default: Story = {
   }
 };
 
+export const Outlined: Story = {
+  args: {
+    variant: "outlined"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms."
+      }
+    }
+  }
+};
+
 export const Disabled: Story = {
   name: "State: Disabled",
   args: {
@@ -87,7 +108,7 @@ export const Disabled: Story = {
     docs: {
       description: {
         story:
-          "`disabled` removes the textarea from the tab order, dims it, and signals non-interactivity through the cursor. Use for fields that aren't editable in the current state — but prefer `readOnly` when the value is still meaningful and copy-able."
+          "`disabled` removes the textarea from the tab order and pointer interaction while softening its border and text. Use for fields that aren't available in the current state — but prefer `readOnly` when the value is still meaningful and copy-able."
       }
     }
   }
@@ -104,7 +125,7 @@ export const Readonly: Story = {
     docs: {
       description: {
         story:
-          "`readOnly` keeps the textarea focusable and selectable but blocks edits. It looks visually identical to a normal textarea — that's intentional, since the value is still part of the form. Use for derived or immutable values (audit notes, owner-set descriptions)."
+          "`readOnly` keeps the textarea focusable and selectable but blocks edits. Only its border is softened; the value remains full-strength because it is still meaningful and part of the form. Use for derived or immutable values (audit notes, owner-set descriptions)."
       }
     }
   }
@@ -185,6 +206,48 @@ export const WithValidationError: Story = {
       <FieldError>Provide at least 20 characters of context for the auditor.</FieldError>
     </Field>
   )
+};
+
+export const ErrorAnimation: Story = {
+  name: "Example: Error Animation",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Submit the form to transition the textarea into its invalid state. The shell shakes once while the error message appears below it. Reset the example before submitting again to replay the transition."
+      }
+    }
+  },
+  render: function ErrorAnimationRender() {
+    const [isError, setIsError] = useState(false);
+
+    return (
+      <form
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setIsError(true);
+        }}
+      >
+        <Field data-invalid={isError}>
+          <FieldLabel htmlFor="textarea-error-animation">Reason for access</FieldLabel>
+          <TextArea id="textarea-error-animation" defaultValue="no" isError={isError} />
+          <FieldError isOpen={isError}>
+            Provide at least 20 characters of context for the auditor.
+          </FieldError>
+        </Field>
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" isDisabled={isError}>
+            Trigger Error
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setIsError(false)}>
+            Reset
+          </Button>
+        </div>
+      </form>
+    );
+  }
 };
 
 export const InFieldGroup: Story = {

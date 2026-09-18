@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  DocumentationLinkBadge,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -17,6 +23,19 @@ export const AlertingPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
   const [selectedTab, setSelectedTab] = useState("rule-based");
+  const [tabsOrientation, setTabsOrientation] = useState<"horizontal" | "vertical">(() =>
+    window.matchMedia("(min-width: 80rem)").matches ? "vertical" : "horizontal"
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 80rem)");
+    const updateOrientation = () =>
+      setTabsOrientation(mediaQuery.matches ? "vertical" : "horizontal");
+
+    mediaQuery.addEventListener("change", updateOrientation);
+
+    return () => mediaQuery.removeEventListener("change", updateOrientation);
+  }, []);
 
   const { data: v1AlertsData } = useListWorkspacePkiAlerts({
     projectId: currentProject?.id || ""
@@ -25,11 +44,11 @@ export const AlertingPage = () => {
   const hasV1Alerts = v1AlertsData?.alerts && v1AlertsData.alerts.length > 0;
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <title>{t("common.head-title", { title: "Alerting" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title={
@@ -52,26 +71,22 @@ export const AlertingPage = () => {
               <PkiAlertsV2Page hideContainer />
             </div>
           ) : (
-            <Tabs orientation="vertical" value={selectedTab} onValueChange={setSelectedTab}>
-              <TabList>
-                <Tab variant="project" value="rule-based">
-                  Certificate Alerts
-                </Tab>
-                <Tab variant="project" value="legacy">
-                  Collection Alerts (Legacy)
-                </Tab>
-              </TabList>
+            <Tabs orientation={tabsOrientation} value={selectedTab} onValueChange={setSelectedTab}>
+              <TabsList variant="project" aria-label="Alerting sections">
+                <TabsTrigger value="rule-based">Certificate Alerts</TabsTrigger>
+                <TabsTrigger value="legacy">Collection Alerts (Legacy)</TabsTrigger>
+              </TabsList>
 
-              <TabPanel value="rule-based">
+              <TabsContent value="rule-based">
                 <PkiAlertsV2Page />
-              </TabPanel>
+              </TabsContent>
 
-              <TabPanel value="legacy">
+              <TabsContent value="legacy">
                 <div className="space-y-6">
                   <PkiAlertsSection />
                   <PkiCollectionSection />
                 </div>
-              </TabPanel>
+              </TabsContent>
             </Tabs>
           )}
         </ProjectPermissionCan>

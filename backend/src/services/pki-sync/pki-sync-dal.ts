@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TPkiSyncs } from "@app/db/schemas";
+import { ProjectMembershipRole, RESOURCE_SCOPE, ResourceType, TableName, TPkiSyncs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 import {
@@ -9,7 +9,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
-import { PkiSync } from "./pki-sync-enums";
+import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 
 export type TPkiSyncDALFactory = ReturnType<typeof pkiSyncDALFactory>;
 
@@ -18,6 +18,7 @@ type PkiSyncFindFilter = Parameters<typeof buildFindFilter<TPkiSyncs>>[0];
 const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncFindFilter; tx?: Knex }) => {
   const query = (tx || db.replicaNode())(TableName.PkiSync)
     .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
+    .leftJoin(TableName.PkiApplication, `${TableName.PkiSync}.applicationId`, `${TableName.PkiApplication}.id`)
     .select(selectAllTableCols(TableName.PkiSync))
     .select(
       // app connection fields
@@ -36,7 +37,8 @@ const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncF
       db
         .ref("isPlatformManagedCredentials")
         .withSchema(TableName.AppConnection)
-        .as("appConnectionIsPlatformManagedCredentials")
+        .as("appConnectionIsPlatformManagedCredentials"),
+      db.ref("name").withSchema(TableName.PkiApplication).as("applicationName")
     );
 
   if (filter) {
@@ -61,6 +63,7 @@ const basePkiSyncWithSubscriberQuery = ({
   let query = (tx || db.replicaNode())(TableName.PkiSync)
     .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
     .leftJoin(TableName.PkiSubscriber, `${TableName.PkiSync}.subscriberId`, `${TableName.PkiSubscriber}.id`)
+    .leftJoin(TableName.PkiApplication, `${TableName.PkiSync}.applicationId`, `${TableName.PkiApplication}.id`)
     .select(selectAllTableCols(TableName.PkiSync))
     .select(
       // app connection fields
@@ -80,6 +83,7 @@ const basePkiSyncWithSubscriberQuery = ({
         .ref("isPlatformManagedCredentials")
         .withSchema(TableName.AppConnection)
         .as("appConnectionIsPlatformManagedCredentials"),
+      db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"),
       // pki subscriber fields
       db.ref("id").withSchema(TableName.PkiSubscriber).as("pkiSubscriberId"),
       db.ref("name").withSchema(TableName.PkiSubscriber).as("subscriberName")
@@ -204,12 +208,15 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     projectId: string,
     processedRules?: ProcessedPermissionRules,
     tx?: Knex,
-    options?: { applicationId?: string | null }
+    options?: { applicationId?: string | null; destination?: PkiSync }
   ) => {
     try {
       const filter: PkiSyncFindFilter = { projectId };
       if (options?.applicationId !== undefined) {
         (filter as Record<string, unknown>).applicationId = options.applicationId;
+      }
+      if (options?.destination) {
+        (filter as Record<string, unknown>).destination = options.destination;
       }
       const pkiSyncs = await basePkiSyncWithSubscriberQuery({
         filter,
@@ -286,13 +293,35 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     return expandPkiSync(pkiSync);
   };
 
-  const updateById = async (syncId: string, data: Parameters<(typeof pkiSyncOrm)["updateById"]>[1]) => {
-    const pkiSync = (await pkiSyncOrm.transaction(async (tx) => {
+  const updateById = async (syncId: string, data: Parameters<(typeof pkiSyncOrm)["updateById"]>[1], outerTx?: Knex) => {
+    const run = async (tx: Knex) => {
       const sync = await pkiSyncOrm.updateById(syncId, data, tx);
       return basePkiSyncQuery({ filter: { id: sync.id }, db, tx }).first();
-    }))!;
+    };
+
+    const pkiSync = (outerTx ? await run(outerTx) : await pkiSyncOrm.transaction(run))!;
 
     return expandPkiSync(pkiSync);
+  };
+
+  const findFilteredSyncIds = async (limit: number, afterId?: string): Promise<string[]> => {
+    try {
+      let query = db
+        .replicaNode()(TableName.PkiSync)
+        .whereNotNull(`${TableName.PkiSync}.applicationId`)
+        .whereNotNull(`${TableName.PkiSync}.filters`);
+
+      if (afterId) query = query.where(`${TableName.PkiSync}.id`, ">", afterId);
+
+      const rows = (await query
+        .select(`${TableName.PkiSync}.id`)
+        .orderBy(`${TableName.PkiSync}.id`, "asc")
+        .limit(limit)) as Array<{ id: string }>;
+
+      return rows.map(({ id }) => id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find filtered PKI sync ids" });
+    }
   };
 
   const findPkiSyncsWithExpiredCertificates = async (): Promise<Array<{ id: string; subscriberId: string }>> => {
@@ -327,8 +356,98 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const $whereHealthCheckStillConfigured = (builder: Knex.QueryBuilder) => {
+    void builder.whereRaw(
+      `("${TableName.PkiSync}"."syncOptions" ->> '${HEALTH_CHECK_COMMAND_OPTION_KEY}') IS NOT NULL`
+    );
+  };
+
+  const recordHealthCheckOutcome = async (
+    syncId: string,
+    outcome: { status: PkiSyncStatus.Succeeded | PkiSyncStatus.Failed; message: string | null; ranAt: Date },
+    tx?: Knex
+  ) => {
+    try {
+      return await (tx || db)(TableName.PkiSync).where({ id: syncId }).where($whereHealthCheckStillConfigured).update({
+        lastHealthCheckRanAt: outcome.ranAt,
+        lastHealthCheckStatus: outcome.status,
+        lastHealthCheckMessage: outcome.message
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Record health check outcome - PKI Sync" });
+    }
+  };
+
+  const findFailureNotificationRecipients = async (
+    pkiSync: { projectId: string; applicationId: string },
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      const knex = tx || db.replicaNode();
+      const query = knex(TableName.Membership)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where((builder) => {
+          void builder
+            .whereNull(`${TableName.MembershipRole}.temporaryAccessEndTime`)
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+        })
+        .where(`${TableName.Membership}.scopeProjectId`, pkiSync.projectId);
+
+      void query
+        .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
+        .where(`${TableName.Membership}.scopeResourceType`, ResourceType.CertificateApplication)
+        .where(`${TableName.Membership}.scopeResourceId`, pkiSync.applicationId);
+
+      const rows = await query.select(
+        `${TableName.Membership}.actorUserId`,
+        `${TableName.UserGroupMembership}.userId as groupUserId`
+      );
+
+      return [
+        ...new Set(
+          rows
+            .map(
+              (row) =>
+                (row as { actorUserId?: string; groupUserId?: string }).actorUserId ??
+                (row as { groupUserId?: string }).groupUserId
+            )
+            .filter(Boolean)
+        )
+      ] as string[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI sync failure notification recipients" });
+    }
+  };
+
+  const findPkiSyncsWithHealthCheckCommand = async () => {
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiSync)
+        .join(TableName.Project, `${TableName.PkiSync}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(`${TableName.PkiSync}.id`)
+        .where($whereHealthCheckStillConfigured)
+        .orderBy(`${TableName.PkiSync}.createdAt`, "asc")) as Array<{ id: string }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI syncs with a healthCheck command" });
+    }
+  };
+
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     ...pkiSyncOrm,
+    recordHealthCheckOutcome,
+    findFailureNotificationRecipients,
+    findPkiSyncsWithHealthCheckCommand,
     findByProjectId,
     findByProjectIdWithSubscribers,
     findBySubscriberId,
@@ -339,6 +458,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     find,
     create,
     updateById,
+    findFilteredSyncIds,
     findPkiSyncsWithExpiredCertificates
   };
 };

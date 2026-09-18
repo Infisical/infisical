@@ -22,7 +22,10 @@ func opGlob(fieldValue, constraint any) bool {
 	}
 
 	// doublestar.Match handles *, **, ?, and character classes.
-	matched, _ := doublestar.Match(pattern, val)
+	matched, err := doublestar.Match(pattern, val)
+	if err != nil {
+		return false
+	}
 
 	return matched
 }

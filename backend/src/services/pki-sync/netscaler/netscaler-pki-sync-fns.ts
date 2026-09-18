@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError, AxiosRequestConfig } from "axios";
-import handlebars from "handlebars";
 import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
@@ -14,6 +13,14 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
+import {
+  buildManagedCertificateNameRegexSource,
+  certificateNameSchemaHasFreeTextPlaceholder,
+  compileCertificateNameSchema,
+  SHORT_UUID_NAME_REGEX_FRAGMENT,
+  UUID_NAME_REGEX_FRAGMENT
+} from "../pki-sync-certificate-name-fns";
+import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TNetScalerPkiSyncConfig } from "./netscaler-pki-sync-types";
@@ -110,18 +117,6 @@ const saveNetScalerConfig = async (session: TNetScalerSession): Promise<void> =>
   });
 };
 
-const deleteFile = async (session: TNetScalerSession, filename: string): Promise<void> => {
-  try {
-    await session.makeRequest({
-      method: "DELETE",
-      url: `${session.baseUrl}/systemfile/${encodeURIComponent(filename)}?args=filelocation:${encodeURIComponent("/nsconfig/ssl")}`,
-      headers: session.headers
-    });
-  } catch {
-    // Ignore errors if file doesn't exist
-  }
-};
-
 const uploadFileToNetScaler = async (
   session: TNetScalerSession,
   filename: string,
@@ -129,40 +124,19 @@ const uploadFileToNetScaler = async (
 ): Promise<void> => {
   const contentBase64 = Buffer.from(fileContent).toString("base64");
 
-  try {
-    await session.makeRequest({
-      method: "POST",
-      url: `${session.baseUrl}/systemfile`,
-      data: {
-        systemfile: {
-          filename,
-          filelocation: "/nsconfig/ssl",
-          filecontent: contentBase64,
-          fileencoding: "BASE64"
-        }
-      },
-      headers: session.headers
-    });
-  } catch (error: unknown) {
-    if (error instanceof AxiosError && error.response?.status === 409) {
-      await deleteFile(session, filename);
-      await session.makeRequest({
-        method: "POST",
-        url: `${session.baseUrl}/systemfile`,
-        data: {
-          systemfile: {
-            filename,
-            filelocation: "/nsconfig/ssl",
-            filecontent: contentBase64,
-            fileencoding: "BASE64"
-          }
-        },
-        headers: session.headers
-      });
-      return;
-    }
-    throw error;
-  }
+  await session.makeRequest({
+    method: "POST",
+    url: `${session.baseUrl}/systemfile?override=yes`,
+    data: {
+      systemfile: {
+        filename,
+        filelocation: "/nsconfig/ssl",
+        filecontent: contentBase64,
+        fileencoding: "BASE64"
+      }
+    },
+    headers: session.headers
+  });
 };
 
 const createOrUpdateCertKey = async (
@@ -185,19 +159,34 @@ const createOrUpdateCertKey = async (
       },
       headers: session.headers
     });
-  } catch {
-    await session.makeRequest({
-      method: "POST",
-      url: `${session.baseUrl}/sslcertkey`,
-      data: {
-        sslcertkey: {
-          certkey: certKeyName,
-          cert: `/nsconfig/ssl/${certFilename}`,
-          key: `/nsconfig/ssl/${keyFilename}`
-        }
-      },
-      headers: session.headers
-    });
+  } catch (changeError: unknown) {
+    const isNotFound =
+      changeError instanceof AxiosError && (changeError.response?.data as { errorcode?: number })?.errorcode === 1540;
+
+    if (!isNotFound) {
+      throw changeError;
+    }
+
+    try {
+      await session.makeRequest({
+        method: "POST",
+        url: `${session.baseUrl}/sslcertkey`,
+        data: {
+          sslcertkey: {
+            certkey: certKeyName,
+            cert: `/nsconfig/ssl/${certFilename}`,
+            key: `/nsconfig/ssl/${keyFilename}`
+          }
+        },
+        headers: session.headers
+      });
+    } catch (addError: unknown) {
+      if (addError instanceof AxiosError && addError.response?.status === 409) {
+        logger.info(`NetScaler certkey "${certKeyName}" already exists, treating as success`);
+        return;
+      }
+      throw addError;
+    }
   }
 };
 
@@ -298,23 +287,19 @@ const removeNetScalerCertificate = async (
   await deleteCertKey(session, certKeyName, true);
 };
 
-const escapeRegex = (s: string) => s.replace(new RE2("[\\\\^$.*+?()\\[\\]{}|/]", "g"), "\\$&");
-
-const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
+export const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
   if (!certificateNameSchema) {
     return new RE2("^Infisical-[0-9a-f]{32}(-[a-zA-Z0-9]*)?$");
   }
 
-  const CERT_ID_TOKEN = "__INFISICAL_CERT_ID_PLACEHOLDER__";
-  const ENV_TOKEN = "__INFISICAL_ENV_PLACEHOLDER__";
-
-  const tokenized = certificateNameSchema
-    .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), CERT_ID_TOKEN)
-    .replace(new RE2("\\{\\{environment\\}\\}", "g"), ENV_TOKEN);
-
-  const pattern = escapeRegex(tokenized)
-    .replace(new RE2(CERT_ID_TOKEN, "g"), "[0-9a-f]{32}")
-    .replace(new RE2(ENV_TOKEN, "g"), "global");
+  // {{certificateId}}, {{profileId}}, and {{applicationId}} resolve to 32-char dash-stripped UUIDs;
+  // {{shortCertificateId}} resolves to a 22-char base62 string.
+  // {{commonName}} and {{applicationName}} are arbitrary, so match any run of NetScaler-safe characters.
+  const pattern = buildManagedCertificateNameRegexSource(certificateNameSchema, {
+    uuid: UUID_NAME_REGEX_FRAGMENT,
+    shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
+    freeText: "[a-zA-Z0-9._-]*"
+  });
 
   return new RE2(`^${pattern}$`);
 };
@@ -450,10 +435,17 @@ export const netScalerPkiSyncFactory = ({
               } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
                 const certIdClean = certificateId.replace(new RE2("-", "g"), "");
                 if (certificateNameSchema) {
-                  targetCertKeyName = handlebars.compile(certificateNameSchema)({
-                    certificateId: certIdClean,
-                    environment: "global"
-                  });
+                  targetCertKeyName = compileCertificateNameSchema(
+                    certificateNameSchema,
+                    {
+                      certificateId,
+                      profileId: certData.profileId,
+                      applicationId: pkiSync.applicationId,
+                      applicationName: pkiSync.applicationName,
+                      commonName: certData.commonName
+                    },
+                    PkiSync.NetScaler
+                  );
                 } else {
                   targetCertKeyName = `Infisical-${certIdClean}`;
                 }
@@ -588,11 +580,13 @@ export const netScalerPkiSyncFactory = ({
               }
             }
 
-            const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
+            if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
+              const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
 
-            for (const certKeyName of existingCertKeyNames) {
-              if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
-                certKeysToRemove.add(certKeyName);
+              for (const certKeyName of existingCertKeyNames) {
+                if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
+                  certKeysToRemove.add(certKeyName);
+                }
               }
             }
 

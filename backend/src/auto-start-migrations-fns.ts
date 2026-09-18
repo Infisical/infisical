@@ -14,8 +14,6 @@ type TMigrationBootDirection = {
   pendingMigrationNames: string[];
 };
 
-const getMigrationTimestamp = (migrationName: string) => migrationName.match(/^(\d+)/)?.[1] ?? "";
-
 export const getMigrationBootDirection = ({
   appliedMigrationNames,
   bundledMigrationNames
@@ -34,6 +32,9 @@ export const getMigrationBootDirection = ({
     (migrationName) => !appliedMigrationNameSet.has(migrationName)
   );
 
+  // A true fork: the database has migrations this image lacks AND this image has migrations to apply on
+  // top of that diverged history. Applying pending migrations onto a divergent DB is the only genuinely
+  // unsafe case, so this is the one that must fail loud.
   if (unknownAppliedMigrationNames.length && pendingMigrationNames.length) {
     return {
       direction: "invalid",
@@ -42,24 +43,15 @@ export const getMigrationBootDirection = ({
     };
   }
 
-  const latestBundledMigrationTimestamp = bundledMigrationNames.map(getMigrationTimestamp).sort().at(-1) ?? "";
-  const hasOnlyNewerUnknownMigrations = unknownAppliedMigrationNames.every(
-    (migrationName) => getMigrationTimestamp(migrationName) > latestBundledMigrationTimestamp
-  );
-
-  if (unknownAppliedMigrationNames.length && hasOnlyNewerUnknownMigrations) {
+  // The database has migrations this image lacks, but this image has nothing pending to apply — its bundled
+  // migrations are a strict subset of what's already applied. This is safe to skip and boot regardless of
+  // timestamp ordering: backdated / late-merged migrations (common on long-lived branches) leave the history
+  // interleaved-but-compatible, not forked.
+  if (unknownAppliedMigrationNames.length) {
     return {
       direction: "ahead",
       unknownAppliedMigrationNames,
       pendingMigrationNames: []
-    };
-  }
-
-  if (unknownAppliedMigrationNames.length) {
-    return {
-      direction: "invalid",
-      unknownAppliedMigrationNames,
-      pendingMigrationNames
     };
   }
 

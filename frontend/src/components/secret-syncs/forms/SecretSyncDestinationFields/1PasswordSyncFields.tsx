@@ -1,14 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl, Input, Tooltip } from "@app/components/v2";
 import {
-  TOnePassVault,
-  useOnePassConnectionListVaults
-} from "@app/hooks/api/appConnections/1password";
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useOnePassConnectionListVaults } from "@app/hooks/api/appConnections/1password";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -28,7 +34,7 @@ export const OnePassSyncFields = () => {
   );
 
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.vaultId", "");
@@ -40,52 +46,76 @@ export const OnePassSyncFields = () => {
         name="destinationConfig.vaultId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Vault"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content="Ensure the vault exists in the connection's OnePass instance URL."
-              >
-                <div>
-                  <span>Don&#39;t see the vault you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
+          <Field>
+            <FieldLabel
+              id="secret-sync-1-password-vault-id-label"
+              htmlFor="secret-sync-1-password-vault-id"
+            >
+              Vault
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  Ensure the vault exists in the connection&apos;s OnePass instance URL.
+                </TooltipContent>
               </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
-              isLoading={isVaultsLoading && Boolean(connectionId)}
-              isDisabled={!connectionId}
-              value={vaults?.find((v) => v.id === value) || null}
-              onChange={(option) => onChange((option as SingleValue<TOnePassVault>)?.id ?? null)}
-              options={vaults}
-              placeholder="Select a vault..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-            />
-          </FormControl>
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-1-password-vault-id-label"
+                aria-describedby={error ? "secret-sync-1-password-vault-id-error" : undefined}
+                id="secret-sync-1-password-vault-id"
+                isError={Boolean(error)}
+                isLoading={isVaultsLoading && Boolean(connectionId)}
+                isDisabled={!connectionId}
+                value={vaults?.find((v) => v.id === value) || null}
+                onValueChange={(option) => onChange(option.id ?? null)}
+                options={vaults}
+                placeholder="Select a vault..."
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
+              />
+              <FieldError id="secret-sync-1-password-vault-id-error" errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isOptional
-            label="Value Label"
-            tooltipText="It's the label of the 1Password item field which will hold your secret value. For example, if you were to sync Infisical secret 'foo: bar', the 1Password item equivalent would have an item title of 'foo', and a field on that item 'value: bar'. The field label 'value' is what gets changed by this option."
-          >
-            <Input value={value} onChange={onChange} placeholder="value" />
-          </FormControl>
+          <Field>
+            <FieldLabel>
+              Value Label (Optional)
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  It&apos;s the label of the 1Password item field which will hold your secret value.
+                  For example, if you were to sync Infisical secret &apos;foo: bar&apos;, the
+                  1Password item equivalent would have an item title of &apos;foo&apos;, and a field
+                  on that item &apos;value: bar&apos;. The field label &apos;value&apos; is what
+                  gets changed by this option.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={value}
+                onChange={onChange}
+                placeholder="value"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
         control={control}
         name="destinationConfig.valueLabel"
       />
-    </>
+    </FieldGroup>
   );
 };

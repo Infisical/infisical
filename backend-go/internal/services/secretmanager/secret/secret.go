@@ -39,7 +39,7 @@ const (
 type SecretTag struct {
 	ID    uuid.UUID
 	Slug  string
-	Color string
+	Color sql.Null[string]
 }
 
 type SecretMetadata struct {
@@ -77,6 +77,8 @@ type Secret struct {
 	FolderID              uuid.UUID
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	ReminderNote          sql.Null[string]
+	ReminderRepeatDays    sql.Null[int32]
 
 	Tags                     []SecretTag
 	SecretMetadata           []SecretMetadata
@@ -115,41 +117,6 @@ type FindByFolderIdsFilter struct {
 }
 
 // accessChecker verifies if a user can access secrets at given locations.
-type accessChecker interface {
-	CanDescribeSecret(env, path, key string, tagSlugs []string) bool
-	CanReadSecretValue(env, path, key string, tagSlugs []string) bool
-}
-
-// AccessControl wraps permission checking with explicit opt-out.
-// To skip checks, set SkipChecks=true (Checker can be nil in that case).
-// If SkipChecks=false and Checker=nil, permission checks will fail-closed.
-type AccessControl struct {
-	Checker    accessChecker
-	SkipChecks bool
-}
-
-// CanDescribe returns true if the caller can describe the secret.
-func (ac *AccessControl) CanDescribe(env, path, key string, tagSlugs []string) bool {
-	if ac.SkipChecks {
-		return true
-	}
-	if ac.Checker == nil {
-		return false // fail-closed
-	}
-	return ac.Checker.CanDescribeSecret(env, path, key, tagSlugs)
-}
-
-// CanReadValue returns true if the caller can read the secret value.
-func (ac *AccessControl) CanReadValue(env, path, key string, tagSlugs []string) bool {
-	if ac.SkipChecks {
-		return true
-	}
-	if ac.Checker == nil {
-		return false // fail-closed
-	}
-	return ac.Checker.CanReadSecretValue(env, path, key, tagSlugs)
-}
-
 // DecryptedMetadata holds a decrypted metadata entry.
 type DecryptedMetadata struct {
 	Key         string
@@ -187,7 +154,7 @@ type SecretImportService interface {
 
 // KMSService creates cipher pairs for encryption/decryption.
 type KMSService interface {
-	CreateCipherPairWithDataKey(ctx context.Context, dto kms.CreateCipherPairDTO) (*kms.CipherPair, error)
+	CreateCipherPairWithProjectDataKey(ctx context.Context, projectID string) (*kms.CipherPair, error)
 }
 
 // --- Service ---
@@ -289,13 +256,14 @@ func (s *Service) FindByFolderIds(
 	}
 
 	// Build ORDER BY clause with orthogonal column and direction selection
+	// Include secondary ordering by createdAt for deterministic results with LEFT JOINs
 	orderCol, orderDir := "secret.key", "ASC"
 	if filters != nil {
 		if filters.OrderDirection != nil && *filters.OrderDirection == OrderByDirectionDESC {
 			orderDir = "DESC"
 		}
 	}
-	orderBy := orderCol + " " + orderDir
+	orderBy := orderCol + " " + orderDir + `, meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 
 	limitClause := ""
 	if filters != nil && filters.Limit != nil {
@@ -309,6 +277,7 @@ func (s *Service) FindByFolderIds(
 			tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
 			meta.id AS meta_id, meta.key AS meta_key, meta.value AS meta_value, meta."encryptedValue" AS meta_encrypted_value,
 			rotationMapping."rotationId",
+			reminder.message AS reminder_note, reminder."repeatDays" AS reminder_repeat_days,
 			recipient.id AS recipient_id, recipientUser.id AS recipient_user_id, recipientUser.username AS recipient_username, recipientUser.email AS recipient_email
 		FROM secrets_v2 secret
 		LEFT JOIN secret_v2_tag_junction tagJunction ON secret.id = tagJunction."secrets_v2Id"
@@ -393,6 +362,7 @@ func (s *Service) FindByKey(
 			tag.id AS tag_id, tag.slug AS tag_slug, tag.color AS tag_color,
 			meta.id AS meta_id, meta.key AS meta_key, meta.value AS meta_value, meta."encryptedValue" AS meta_encrypted_value,
 			rotationMapping."rotationId",
+			reminder.message AS reminder_note, reminder."repeatDays" AS reminder_repeat_days,
 			recipient.id AS recipient_id, recipientUser.id AS recipient_user_id, recipientUser.username AS recipient_username, recipientUser.email AS recipient_email
 		FROM secrets_v2 secret
 		LEFT JOIN secret_v2_tag_junction tagJunction ON secret.id = tagJunction."secrets_v2Id"
@@ -402,7 +372,8 @@ func (s *Service) FindByKey(
 		LEFT JOIN reminders reminder ON secret.id = reminder."secretId"
 		LEFT JOIN reminders_recipients recipient ON reminder.id = recipient."reminderId"
 		LEFT JOIN users recipientUser ON recipient."userId" = recipientUser.id
-		WHERE ` + where.String()
+		WHERE ` + where.String() + `
+		ORDER BY meta."createdAt" ASC NULLS FIRST, meta.id ASC NULLS FIRST, tag."createdAt" ASC NULLS FIRST, tag.id ASC NULLS FIRST`
 
 	args := pgx.NamedArgs{
 		"folderID":   folderID,
@@ -451,6 +422,8 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 		metaValue             sql.Null[string]
 		metaEncryptedValue    []byte
 		rotationID            sql.Null[uuid.UUID]
+		reminderNote          sql.Null[string]
+		reminderRepeatDays    sql.Null[int32]
 		recipientID           sql.Null[uuid.UUID]
 		recipientUserID       sql.Null[uuid.UUID]
 		recipientUsername     sql.Null[string]
@@ -463,6 +436,7 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 		&tagID, &tagSlug, &tagColor,
 		&metaID, &metaKey, &metaValue, &metaEncryptedValue,
 		&rotationID,
+		&reminderNote, &reminderRepeatDays,
 		&recipientID, &recipientUserID, &recipientUsername, &recipientEmail,
 	); err != nil {
 		return Secret{}, err
@@ -481,13 +455,15 @@ func scanSecretRow(row pgx.CollectableRow) (Secret, error) {
 		FolderID:              folderID,
 		CreatedAt:             createdAt,
 		UpdatedAt:             updatedAt,
+		ReminderNote:          reminderNote,
+		ReminderRepeatDays:    reminderRepeatDays,
 	}
 
 	if tagID.Valid {
 		secret.Tags = []SecretTag{{
 			ID:    tagID.V,
 			Slug:  tagSlug.V,
-			Color: tagColor.V,
+			Color: tagColor,
 		}}
 	}
 
@@ -536,11 +512,22 @@ func (e *DecryptErrors) HasErrors() bool {
 	return e.ValueErr != nil || e.CommentErr != nil || e.MetadataErr != nil
 }
 
-// decryptSecretFields decrypts the value, comment, and metadata of a secret.
+// ResolvedImport is a resolved import with folder ID. Re-exported from secretimport.
+type ResolvedImport = secretimport.ResolvedImport
+
+// ImportLookup provides import chain resolution. Re-exported from secretimport.
+type ImportLookup = secretimport.ImportLookup
+
+// LoadProjectImports loads all imports for a project.
+func (s *Service) LoadProjectImports(ctx context.Context, projectID string) (*secretimport.ImportLookup, error) {
+	return s.secretImportService.LoadProjectImports(ctx, projectID)
+}
+
+// DecryptSecretFields decrypts the value, comment, and metadata of a secret.
 // If valueHidden is true, the displayValue is replaced with the hidden mask.
 // Returns rawValue (actual decrypted), displayValue (masked if hidden), comment, metadata,
 // and any decryption errors encountered (callers should log these).
-func decryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata, decryptErrs *DecryptErrors) {
+func DecryptSecretFields(sec *Secret, cipherPair *kms.CipherPair, valueHidden bool) (rawValue, displayValue, comment string, metadata []DecryptedMetadata, decryptErrs *DecryptErrors) {
 	decryptErrs = &DecryptErrors{}
 
 	// Decrypt value

@@ -1,0 +1,63 @@
+version: v0.161.11
+releasedAt: 2026-07-02T19:28:16-03:00
+sourceTag: v0.161.11
+previousTag: v0.161.10
+impactLevel: low
+summary: Startup applies additive database changes for audit reports, approval
+  requests, and DigiCert certificate indexing. No required config or deployment
+  changes were added for self-hosted operators.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Audit reports tables
+    description: Adds a new audit_reports table for project audit report jobs and
+      metadata. The migration is additive and guarded for existing installs.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260629120000_create-audit-reports.ts
+        path: backend/src/db/migrations/20260629120000_create-audit-reports.ts
+        description: Creates audit_reports table
+  - title: Approval request metadata
+    description: Adds nullable bypassReason and commitMessage fields, and widens
+      secret approval bypassReason to text. Existing records remain compatible.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260626214559_add-bypass-reason-access-approval-requests.ts
+        path: backend/src/db/migrations/20260626214559_add-bypass-reason-access-approval-requests.ts
+        description: Adds access approval bypassReason
+      - type: file
+        ref: backend/src/db/migrations/20260629120000_add-commit-message-to-secret-approval-request.ts
+        path: backend/src/db/migrations/20260629120000_add-commit-message-to-secret-approval-request.ts
+        description: Adds secret approval commitMessage
+      - type: file
+        ref: backend/src/db/migrations/20260629120001_widen-secret-approval-request-bypass-reason.ts
+        path: backend/src/db/migrations/20260629120001_widen-secret-approval-request-bypass-reason.ts
+        description: Widens bypassReason to text
+  - title: DigiCert certificate index
+    description: Adds a concurrent PostgreSQL index on DigiCert certificate order
+      metadata. The migration disables transactions and raises statement timeout
+      to allow index creation.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260630173512_add-certificates-digicert-order-index.ts
+        path: backend/src/db/migrations/20260630173512_add-certificates-digicert-order-index.ts
+        description: Creates concurrent DigiCert order index
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-02T23:16:06.192Z
+  sourceRange:
+    from: v0.161.10
+    to: v0.161.11

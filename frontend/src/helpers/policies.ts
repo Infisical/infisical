@@ -8,12 +8,12 @@ export const policyDetails: Record<
   { name: string; variant: TBadgeProps["variant"]; Icon: LucideIcon }
 > = {
   [PolicyType.AccessPolicy]: {
-    variant: "ghost",
+    variant: "info",
     name: "Access Policy",
     Icon: UserCheckIcon
   },
   [PolicyType.ChangePolicy]: {
-    variant: "ghost",
+    variant: "neutral",
     name: "Change Policy",
     Icon: UserPenIcon
   }

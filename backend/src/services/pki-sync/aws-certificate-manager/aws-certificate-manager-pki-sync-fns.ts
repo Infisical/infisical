@@ -25,7 +25,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
+import { buildAwsConnectionConfig, getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import {
   AwsConnectionAccessTokenCredentialsSchema,
   AwsConnectionAssumeRoleCredentialsSchema
@@ -49,6 +49,7 @@ import {
 } from "./aws-certificate-manager-pki-sync-types";
 
 const INFISICAL_CERTIFICATE_TAG = "InfisicalCertificate";
+const INFISICAL_PKI_SYNC_TAG = "InfisicalPkiSyncId";
 const AWS_CERTIFICATE_ARN_PATTERN = new RE2("^arn:aws:acm:[a-z0-9-]+:\\d{12}:certificate/[a-f0-9-]{36}$");
 
 type TAwsAssumeRoleCredentials = z.infer<typeof AwsConnectionAssumeRoleCredentialsSchema>;
@@ -140,10 +141,7 @@ const generateCertificateName = (certificateName: string, pkiSync: TPkiSyncWithC
       throw new Error(`Certificate ID cannot be empty after processing certificate name: ${certificateName}`);
     }
 
-    const environment = "global";
-    const generatedName = certificateNameSchema
-      .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId)
-      .replace(new RE2("\\{\\{environment\\}\\}", "g"), environment);
+    const generatedName = certificateNameSchema.replace(new RE2("\\{\\{certificateId\\}\\}", "g"), certificateId);
 
     if (generatedName.length > 256 || generatedName.length < 1) {
       throw new Error(
@@ -204,20 +202,10 @@ const getAwsAcmClient = async (
   let awsConnectionConfig: TAwsConnectionConfig;
   switch (appConnection.method) {
     case AwsConnectionMethod.AssumeRole:
-      awsConnectionConfig = {
-        app: AppConnection.AWS,
-        method: AwsConnectionMethod.AssumeRole,
-        credentials: decryptedCredentials as TAwsAssumeRoleCredentials,
-        orgId: appConnection.orgId
-      };
+      awsConnectionConfig = buildAwsConnectionConfig(appConnection, decryptedCredentials as TAwsAssumeRoleCredentials);
       break;
     case AwsConnectionMethod.AccessKey:
-      awsConnectionConfig = {
-        app: AppConnection.AWS,
-        method: AwsConnectionMethod.AccessKey,
-        credentials: decryptedCredentials as TAwsAccessKeyCredentials,
-        orgId: appConnection.orgId
-      };
+      awsConnectionConfig = buildAwsConnectionConfig(appConnection, decryptedCredentials as TAwsAccessKeyCredentials);
       break;
     default:
       throw new BadRequestError({
@@ -488,11 +476,18 @@ export const awsCertificateManagerPkiSyncFactory = ({
 
           if (currentSyncRecord?.externalIdentifier) {
             const existingAcmCert = acmCertificatesByArn.get(currentSyncRecord.externalIdentifier);
+            const alreadyDelivered =
+              currentSyncRecord.syncStatus === CertificateSyncStatus.Succeeded &&
+              Boolean(currentSyncRecord.lastSyncedAt);
 
             if (existingAcmCert) {
-              if (!preserveArn && oldSyncRecord?.externalIdentifier === currentSyncRecord.externalIdentifier) {
+              if (alreadyDelivered) {
+                targetArn = currentSyncRecord.externalIdentifier;
+                activeExternalIdentifiers.add(targetArn);
+                shouldCreateNew = false;
+              } else if (!preserveArn) {
                 shouldCreateNew = true;
-              } else if (preserveArn && oldSyncRecord?.externalIdentifier === currentSyncRecord.externalIdentifier) {
+              } else {
                 targetArn = currentSyncRecord.externalIdentifier;
                 shouldCreateNew = true;
                 activeExternalIdentifiers.add(targetArn);
@@ -500,10 +495,6 @@ export const awsCertificateManagerPkiSyncFactory = ({
                 if (oldCertificateId && oldSyncRecord) {
                   await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateId]);
                 }
-              } else {
-                targetArn = currentSyncRecord.externalIdentifier;
-                activeExternalIdentifiers.add(targetArn);
-                shouldCreateNew = false;
               }
             } else {
               shouldCreateNew = true;
@@ -558,6 +549,43 @@ export const awsCertificateManagerPkiSyncFactory = ({
       }
     }
 
+    const untaggedTrackedArns = existingSyncRecords
+      .map((syncRecord) => syncRecord.externalIdentifier)
+      .filter((arn): arn is string => {
+        if (!arn) return false;
+
+        const acmCert = acmCertificatesByArn.get(arn);
+        return Boolean(
+          acmCert?.Tags && !acmCert.Tags.some((tag) => tag.Key === INFISICAL_PKI_SYNC_TAG && tag.Value === pkiSync.id)
+        );
+      });
+
+    if (untaggedTrackedArns.length > 0) {
+      await executeWithConcurrencyLimit(
+        untaggedTrackedArns,
+        async (certificateArn) => {
+          try {
+            await withRateLimitRetry(
+              () =>
+                acm.send(
+                  new AddTagsToCertificateCommand({
+                    CertificateArn: certificateArn,
+                    Tags: [{ Key: INFISICAL_PKI_SYNC_TAG, Value: pkiSync.id }]
+                  })
+                ),
+              { operation: "tag-existing-certificate", syncId: pkiSync.id }
+            );
+          } catch (error) {
+            logger.warn(
+              error,
+              `Could not tag an existing AWS Certificate Manager certificate with its sync [syncId=${pkiSync.id}]`
+            );
+          }
+        },
+        { operation: "tag-existing-certificates", syncId: pkiSync.id }
+      );
+    }
+
     const certificatesToRemove: string[] = [];
 
     if (canRemoveCertificates) {
@@ -572,9 +600,11 @@ export const awsCertificateManagerPkiSyncFactory = ({
 
       Object.values(acmCertificates).forEach((acmCert) => {
         if (acmCert.arn && acmCert.Tags) {
-          const hasInfisicalTag = acmCert.Tags.some((tag) => tag.Key === INFISICAL_CERTIFICATE_TAG && tag.Value);
+          const belongsToThisSync = acmCert.Tags.some(
+            (tag) => tag.Key === INFISICAL_PKI_SYNC_TAG && tag.Value === pkiSync.id
+          );
 
-          if (hasInfisicalTag) {
+          if (belongsToThisSync) {
             const isTrackedInSyncRecords = existingSyncRecords.some(
               (record) => record.externalIdentifier === acmCert.arn
             );
@@ -601,6 +631,10 @@ export const awsCertificateManagerPkiSyncFactory = ({
               {
                 Key: INFISICAL_CERTIFICATE_TAG,
                 Value: key
+              },
+              {
+                Key: INFISICAL_PKI_SYNC_TAG,
+                Value: pkiSync.id
               }
             ];
           }
@@ -633,6 +667,10 @@ export const awsCertificateManagerPkiSyncFactory = ({
                         {
                           Key: INFISICAL_CERTIFICATE_TAG,
                           Value: key
+                        },
+                        {
+                          Key: INFISICAL_PKI_SYNC_TAG,
+                          Value: pkiSync.id
                         }
                       ]
                     })

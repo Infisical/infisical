@@ -1,33 +1,51 @@
 import { format } from "date-fns";
+import { CircleCheckIcon, CircleDashedIcon, CircleXIcon } from "lucide-react";
 
-import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { getLastSeenHeartbeat, isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 export const GatewayHealthStatus = ({
   heartbeat,
+  relayId,
+  directAddress,
+  directHeartbeat,
   heartbeatTTL
 }: {
   heartbeat?: string | null;
+  relayId?: string | null;
+  directAddress?: string | null;
+  directHeartbeat?: string | null;
   heartbeatTTL?: number | null;
 }) => {
-  if (!heartbeat && !heartbeatTTL) {
-    return <span className="cursor-default text-yellow-500">Unregistered</span>;
+  const lastSeen = getLastSeenHeartbeat({ heartbeat, directHeartbeat });
+  if (!lastSeen && heartbeatTTL === null && !directAddress && !relayId) {
+    return (
+      <Badge variant="warning" iconPosition="left">
+        <CircleDashedIcon />
+        Unregistered
+      </Badge>
+    );
   }
 
-  const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
-  const isHealthy = isGatewayHealthy({ heartbeat, heartbeatTTL });
+  const heartbeatDate = lastSeen ? new Date(lastSeen) : null;
+  const isHealthy = isGatewayHealthy({
+    heartbeat,
+    relayId: relayId ?? null,
+    directAddress,
+    directHeartbeat,
+    heartbeatTTL
+  });
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+        <Badge variant={isHealthy ? "success" : "danger"} iconPosition="left">
+          {isHealthy ? <CircleCheckIcon /> : <CircleXIcon />}
           {isHealthy ? "Healthy" : "Unreachable"}
-        </span>
+        </Badge>
       </TooltipTrigger>
       <TooltipContent>
-        {heartbeatDate
-          ? `Last seen: ${format(heartbeatDate, "PPpp")} (${heartbeatDate.toUTCString()})`
-          : "No data available"}
+        {heartbeatDate ? `Last seen ${format(heartbeatDate, "PPp")}` : "No data available"}
       </TooltipContent>
     </Tooltip>
   );

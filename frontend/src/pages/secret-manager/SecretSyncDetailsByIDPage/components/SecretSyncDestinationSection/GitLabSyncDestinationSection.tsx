@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { GitLabSyncScope, TGitLabSync } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 
 type Props = {
@@ -19,32 +19,46 @@ export const GitLabSyncDestinationSection = ({ secretSync }: Props) => {
     <>
       {secretSync.destinationConfig.scope === GitLabSyncScope.Project && (
         <>
-          <GenericFieldLabel label="Project Name">
-            {secretSync.destinationConfig.projectName}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Project ID">
-            {secretSync.destinationConfig.projectId}
-          </GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Project Name</DetailLabel>
+            <DetailValue>{secretSync.destinationConfig.projectName}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Project ID</DetailLabel>
+            <DetailValue>{secretSync.destinationConfig.projectId}</DetailValue>
+          </Detail>
         </>
       )}
       {secretSync.destinationConfig.scope === GitLabSyncScope.Group && (
         <>
-          <GenericFieldLabel label="Group Name">
-            {secretSync.destinationConfig.groupName}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Group ID">
-            {secretSync.destinationConfig.groupId}
-          </GenericFieldLabel>
+          <Detail>
+            <DetailLabel>Group Name</DetailLabel>
+            <DetailValue>{secretSync.destinationConfig.groupName}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Group ID</DetailLabel>
+            <DetailValue>{secretSync.destinationConfig.groupId}</DetailValue>
+          </Detail>
         </>
       )}
       {targetEnvironment && (
-        <GenericFieldLabel label="Environment">{targetEnvironment}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Environment</DetailLabel>
+          <DetailValue>{targetEnvironment}</DetailValue>
+        </Detail>
       )}
-      <GenericFieldLabel label="Protect Secrets">
-        {shouldProtectSecrets ? "Yes" : "No"}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Mask Secrets">{shouldMaskSecrets ? "Yes" : "No"}</GenericFieldLabel>
-      <GenericFieldLabel label="Hide Secrets">{shouldHideSecrets ? "Yes" : "No"}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Protect Secrets</DetailLabel>
+        <DetailValue>{shouldProtectSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Mask Secrets</DetailLabel>
+        <DetailValue>{shouldMaskSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Hide Secrets</DetailLabel>
+        <DetailValue>{shouldHideSecrets ? "Yes" : "No"}</DetailValue>
+      </Detail>
     </>
   );
 };

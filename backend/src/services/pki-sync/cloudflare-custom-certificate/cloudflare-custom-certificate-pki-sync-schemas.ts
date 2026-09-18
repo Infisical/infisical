@@ -1,10 +1,16 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  HostCommandSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING } from "./cloudflare-custom-certificate-pki-sync-constants";
 
@@ -15,16 +21,19 @@ export const CloudflareCustomCertificatePkiSyncConfigSchema = z.object({
 // API-facing schema - only exposes user-configurable options
 export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
-    .optional()
+    .trim()
+    .min(1, "Certificate name schema is required")
     .refine(
       (schema) => {
-        if (!schema) return true;
+        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
+          return false;
+        }
 
-        const testName = schema
-          .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
-          .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
+        const testName = buildCertificateNameSchemaTestName(schema);
 
         const hasForbiddenChars = CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
           testName.includes(char)
@@ -34,7 +43,7 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare"
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-255 characters long when compiled for Cloudflare. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
       }
     )
 });
@@ -47,25 +56,27 @@ export const CloudflareCustomCertificatePkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema,
-  syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema.optional().default({}),
+  syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema,
   subscriberId: z.string().nullish(),
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateCloudflareCustomCertificatePkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema.optional(),
   syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const CloudflareCustomCertificatePkiSyncListItemSchema = z.object({

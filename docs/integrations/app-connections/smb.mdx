@@ -7,7 +7,7 @@ The SMB Connection allows Infisical to connect to Windows servers using the SMB 
 
 ## Prerequisites
 
-You will need the following information to establish an SMB connection:
+You'll need the following information to establish an SMB connection:
 
 - **Host** - The hostname or IP address of the Windows server where the local accounts to be managed reside. This must be a member server or standalone machine, not a Domain Controller.
 - **Port** - The SMB port (default is 445)
@@ -15,7 +15,7 @@ You will need the following information to establish an SMB connection:
 - **Password** - The password for the administrator account
 - **Domain** (optional) - The Windows domain name if using domain credentials to authenticate. When provided, Infisical authenticates as a domain user (e.g., `MYDOMAIN\Administrator`) to manage local accounts on the target machine. This allows domain administrators to rotate local account passwords on domain-joined member servers.
 
-### Windows Server Requirements
+### Windows Server requirements
 
 - **SMB3 Support** - This connection uses SMB3 with encryption enabled for secure communication with Windows servers.
 - **Firewall Configuration** - The server must be accessible from Infisical or from the Infisical Gateway if using it.
@@ -34,7 +34,7 @@ You will need the following information to establish an SMB connection:
     ```
 </Accordion>
 
-## Setup SMB Connection in Infisical
+## Setup SMB connection in Infisical
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -44,7 +44,7 @@ You will need the following information to establish an SMB connection:
                 ![App Connections Tab](/images/app-connections/general/add-connection.png)
             </Step>
             <Step title="Select SMB Connection">
-                Click the **+ Add Connection** button and select **SMB** from the available options.
+                Select the **+ Add Connection** button and select **SMB** from the available options.
 
                 ![Select SMB Connection](/images/app-connections/smb/smb-app-connection-option.png)
             </Step>

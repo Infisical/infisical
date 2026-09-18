@@ -105,6 +105,8 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         note?: string | null | undefined;
         privilegeDeletedAt?: Date | null | undefined;
         expiresAt?: Date | null | undefined;
+        approvedAt?: Date | null | undefined;
+        revokedAt?: Date | null | undefined;
         reviewers: {
           userId: string;
           status: string;
@@ -352,7 +354,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               `reviewerOrgMembership.actorUserId`
             ).andOn(`reviewerOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
           })
-          .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+          .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicy() {
+            this.on(`${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`).andOnNull(
+              `${TableName.Environment}.deleteAfter`
+            );
+          })
 
           .select(selectAllTableCols(TableName.AccessApprovalRequest))
           .select(
@@ -644,11 +650,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         `${TableName.AccessApprovalPolicyEnvironment}.policyId`
       )
 
-      .leftJoin(
-        TableName.Environment,
-        `${TableName.AccessApprovalPolicyEnvironment}.envId`,
-        `${TableName.Environment}.id`
-      )
+      .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicyEnvironment() {
+        this.on(`${TableName.AccessApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`).andOnNull(
+          `${TableName.Environment}.deleteAfter`
+        );
+      })
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
@@ -881,7 +887,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.AccessApprovalRequest}.policyId`,
           `${TableName.AccessApprovalPolicy}.id`
         )
-        .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForApprovalPolicy() {
+          this.on(`${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
         .leftJoin(
           TableName.AdditionalPrivilege,
           `${TableName.AccessApprovalRequest}.privilegeId`,

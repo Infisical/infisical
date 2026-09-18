@@ -43,10 +43,14 @@ import {
   getIdentityAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
-import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import {
+  GeneralPermissionPolicies,
+  PermissionScope
+} from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 import {
   formRolePermission2API,
+  isConditionalSubjects,
   PROJECT_PERMISSION_OBJECT,
   projectRoleFormSchema,
   rolePermission2Form
@@ -441,13 +445,20 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                       return (
                         <GeneralPermissionPolicies
                           subject={permissionSubject}
+                          subjectScope={PermissionScope.Project}
                           actions={filteredActions}
                           title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
                           description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
                           key={`project-permission-${permissionSubject}`}
                           isDisabled={isDisabled}
                           isOpen={openPolicies.includes(permissionSubject)}
+                          onPolicyAdded={() =>
+                            setOpenPolicies((prev) =>
+                              prev.includes(permissionSubject) ? prev : [...prev, permissionSubject]
+                            )
+                          }
                           menuPortalContainerRef={menuPortalContainerRef}
+                          isConditional={isConditionalSubjects(permissionSubject)}
                         >
                           {renderConditionalComponents(permissionSubject, isDisabled)}
                         </GeneralPermissionPolicies>

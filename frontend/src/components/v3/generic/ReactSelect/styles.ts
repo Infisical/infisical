@@ -17,22 +17,26 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
     "gap-1 max-h-40 !pointer-events-auto !overflow-y-auto thin-scrollbar flex-wrap",
   multiValue: () => "bg-foreground/10 rounded px-1.5 py-0.5 gap-1 text-xs items-center",
   multiValueLabel: () => "text-foreground/85",
-  multiValueRemove: () => "[&>svg]:size-3 hover:text-danger text-muted cursor-pointer ml-0.5",
+  multiValueRemove: () =>
+    "shrink-0 [&>svg]:size-3 [&>svg]:shrink-0 hover:text-danger text-muted cursor-pointer ml-0.5",
   menu: () => "my-2 w-full rounded-[6px] border border-border bg-popover p-1 shadow-md",
-  menuList: () => "max-h-48 text-sm overflow-y-auto thin-scrollbar",
+  menuList: () => "max-h-48 text-sm overflow-y-auto overscroll-contain thin-scrollbar",
   option: ({ isFocused }) =>
     cn(
       "cursor-pointer rounded-sm truncate px-2 py-1.5 text-sm text-foreground",
       isFocused && "bg-foreground/5"
     ),
   dropdownIndicator: () =>
-    "opacity-50 p-1 hover:bg-foreground/10 cursor-pointer rounded-md [&>svg]:size-4",
+    "opacity-50 p-1 hover:bg-foreground/10 cursor-pointer rounded-md [&>svg]:size-4 [&>svg]:shrink-0",
   indicatorsContainer: () => "gap-1 flex items-center text-foreground",
   indicatorSeparator: () => "bg-accent/20",
   clearIndicator: () =>
-    "opacity-50 hover:opacity-100 hover:bg-foreground/10 cursor-pointer rounded-md p-1 text-danger [&>svg]:size-4",
+    "opacity-50 hover:opacity-100 hover:bg-foreground/10 cursor-pointer rounded-md p-1 text-danger [&>svg]:size-4 [&>svg]:shrink-0",
   noOptionsMessage: () => "text-muted p-2 text-sm",
-  loadingMessage: () => "text-muted p-2 text-sm"
+  loadingMessage: () => "text-muted p-2 text-sm",
+  group: () => "pb-1",
+  groupHeading: () => "px-2 pt-2 pb-1 text-xs font-medium text-muted",
+  menuPortal: () => "react-select-menu-portal"
 };
 
 export const selectStyles: StylesConfig<unknown, boolean, GroupBase<unknown>> = {
@@ -50,7 +54,8 @@ export const selectStyles: StylesConfig<unknown, boolean, GroupBase<unknown>> = 
   }),
   menuPortal: (provided) => ({
     ...provided,
-    zIndex: 99999
+    zIndex: "var(--z-index-combobox)",
+    pointerEvents: "auto"
   })
 };
 

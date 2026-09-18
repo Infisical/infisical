@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TOvhSync } from "@app/hooks/api/secretSyncs/types/ovh-sync";
 
 type Props = {
@@ -10,5 +10,10 @@ export const OvhSyncDestinationSection = ({ secretSync }: Props) => {
     destinationConfig: { path }
   } = secretSync;
 
-  return <GenericFieldLabel label="Path">{path}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>Path</DetailLabel>
+      <DetailValue>{path}</DetailValue>
+    </Detail>
+  );
 };

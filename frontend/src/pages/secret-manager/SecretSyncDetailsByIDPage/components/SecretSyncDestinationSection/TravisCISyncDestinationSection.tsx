@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TTravisCISync } from "@app/hooks/api/secretSyncs/types/travis-ci-sync";
 
 type Props = {
@@ -10,9 +10,15 @@ export const TravisCISyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Repository">{destinationConfig.repositorySlug}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Repository</DetailLabel>
+        <DetailValue>{destinationConfig.repositorySlug}</DetailValue>
+      </Detail>
       {destinationConfig.branch && (
-        <GenericFieldLabel label="Branch">{destinationConfig.branch}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Branch</DetailLabel>
+          <DetailValue>{destinationConfig.branch}</DetailValue>
+        </Detail>
       )}
     </>
   );

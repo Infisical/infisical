@@ -24,9 +24,6 @@ export type TGatewayPoolConnectedResources = {
     identityName: string | null;
   }[];
   pkiDiscoveryConfigs: ConnectedProjectResource[];
-  pamDomains: ConnectedProjectResource[];
-  pamResources: (ConnectedProjectResource & { resourceType: string })[];
-  pamDiscoverySources: (ConnectedProjectResource & { discoveryType: string })[];
   appConnections: {
     id: string;
     name: string;
@@ -48,8 +45,11 @@ export type TGatewayPoolConnectedResources = {
 export type TGatewayPoolMember = {
   id: string;
   name: string;
+  relayId: string | null;
   heartbeat: string | null;
   heartbeatTTL: number | null;
+  directAddress: string | null;
+  directHeartbeat: string | null;
 };
 
 export type TGatewayPoolWithMembers = {

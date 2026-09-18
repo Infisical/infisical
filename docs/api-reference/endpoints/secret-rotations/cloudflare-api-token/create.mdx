@@ -1,0 +1,104 @@
+---
+title: "Create"
+openapi: "POST /api/v2/secret-rotations/cloudflare-api-token"
+---
+
+<Note>
+    Check out the configuration docs for [Cloudflare API Token Rotations](/documentation/platform/secret-rotation/cloudflare-api-token) to learn how to obtain the required parameters.
+</Note>
+
+Creates a Cloudflare API Token secret rotation. Infisical will create and rotate API tokens via your [Cloudflare connection](/integrations/app-connections/cloudflare) and write them to the specified secret path.
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique name for the rotation (max 100 characters). |
+| `projectId` | string (UUID) | Yes | The project ID. |
+| `connectionId` | string (UUID) | Yes | ID of the Cloudflare app connection. |
+| `environment` | string | Yes | Environment slug (e.g. `dev`, `prod`). |
+| `secretPath` | string | Yes | Path where the generated API token secrets will be stored. |
+| `isAutoRotationEnabled` | boolean | No | Whether to rotate automatically on the schedule. Defaults to `true`. |
+| `rotationInterval` | number | Yes | Days between rotations (minimum `1`). |
+| `rotateAtUtc` | object | No | Time of day (UTC) to run rotation: `{ "hours", "minutes" }`. Defaults to `{ "hours": 0, "minutes": 0 }`. |
+| `parameters.name` | string | Yes | The name for the generated Cloudflare API token (max 100 characters). A timestamp is appended to each generated token. |
+| `parameters.policies` | array | Yes | The access policies to attach to the generated Cloudflare API token. Each policy scopes a set of permission groups to either the entire account or a set of zones. At least one policy is required. |
+| `parameters.policies[].effect` | string | Yes | Whether the policy grants or denies the permission groups: `"allow"` or `"deny"`. |
+| `parameters.policies[].scope` | string | Yes | The resources the policy applies to: `"account"` (the entire account), `"all-zones"` (every zone in the account), or `"zones"` (specific zones). |
+| `parameters.policies[].zoneIds` | string[] | Conditional | The IDs of the zones the policy applies to. Required when `scope` is `"zones"`, and rejected for the other scopes. |
+| `parameters.policies[].permissionGroupIds` | string[] | Yes | The IDs of the Cloudflare permission groups to grant. At least one is required. |
+| `parameters.allowedIps` | string[] | No | The IP addresses or CIDR blocks the generated Cloudflare API token is restricted to. |
+| `parameters.disallowedIps` | string[] | No | The IP addresses or CIDR blocks the generated Cloudflare API token is denied from. |
+| `secretsMapping.tokenId` | string | Yes | Secret key name to store the generated API token's ID (e.g. `CLOUDFLARE_API_TOKEN_ID`). |
+| `secretsMapping.apiToken` | string | Yes | Secret key name to store the generated API token's value (e.g. `CLOUDFLARE_API_TOKEN`). |
+| `description` | string | No | Optional description. |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://us.infisical.com/api/v2/secret-rotations/cloudflare-api-token \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-cloudflare-rotation",
+    "projectId": "<project-id>",
+    "description": "Cloudflare API token rotation",
+    "connectionId": "<cloudflare-connection-id>",
+    "environment": "dev",
+    "secretPath": "/",
+    "isAutoRotationEnabled": true,
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "parameters": {
+      "name": "infisical-rotated-token",
+      "policies": [
+        {
+          "effect": "allow",
+          "scope": "zones",
+          "zoneIds": ["<zone-id>"],
+          "permissionGroupIds": ["<permission-group-id>"]
+        }
+      ],
+      "allowedIps": ["203.0.113.0/24"]
+    },
+    "secretsMapping": {
+      "tokenId": "CLOUDFLARE_API_TOKEN_ID",
+      "apiToken": "CLOUDFLARE_API_TOKEN"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "secretRotation": {
+    "id": "<rotation-id>",
+    "name": "my-cloudflare-rotation",
+    "description": "Cloudflare API token rotation",
+    "secretsMapping": {
+      "tokenId": "CLOUDFLARE_API_TOKEN_ID",
+      "apiToken": "CLOUDFLARE_API_TOKEN"
+    },
+    "isAutoRotationEnabled": true,
+    "activeIndex": 0,
+    "connectionId": "<cloudflare-connection-id>",
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "type": "cloudflare-api-token",
+    "parameters": {
+      "name": "infisical-rotated-token",
+      "policies": [
+        {
+          "effect": "allow",
+          "scope": "zones",
+          "zoneIds": ["<zone-id>"],
+          "permissionGroupIds": ["<permission-group-id>"]
+        }
+      ],
+      "allowedIps": ["203.0.113.0/24"]
+    }
+  }
+}
+```

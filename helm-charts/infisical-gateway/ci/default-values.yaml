@@ -1,0 +1,7 @@
+# Values applied automatically by chart-testing (ct install) in CI.
+# Dummy token + explicit name/relay: the gateway fails auth, then stays
+# in its reconnect loop so the pod remains Running.
+gateway:
+  name: ci-test-gateway
+extraArgs:
+  - --target-relay-name=ci-test-relay

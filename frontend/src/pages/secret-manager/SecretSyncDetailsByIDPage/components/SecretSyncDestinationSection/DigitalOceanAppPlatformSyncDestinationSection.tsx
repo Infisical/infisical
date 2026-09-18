@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TDigitalOceanAppPlatformSync } from "@app/hooks/api/secretSyncs/types/digital-ocean-app-platform-sync";
 
 type Props = {
@@ -8,5 +8,10 @@ type Props = {
 export const DigitalOceanAppPlatformSyncDestinationSection = ({ secretSync }: Props) => {
   const { destinationConfig } = secretSync;
 
-  return <GenericFieldLabel label="App">{destinationConfig.appName}</GenericFieldLabel>;
+  return (
+    <Detail>
+      <DetailLabel>App</DetailLabel>
+      <DetailValue>{destinationConfig.appName}</DetailValue>
+    </Detail>
+  );
 };

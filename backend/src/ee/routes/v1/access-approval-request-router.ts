@@ -59,7 +59,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request, projectId } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
         actor: req.permission.type,
@@ -124,7 +124,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { count } = await server.services.accessApprovalRequest.getCount({
         projectSlug: req.query.projectSlug,
@@ -201,7 +201,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests } = await server.services.accessApprovalRequest.listApprovalRequests({
         projectSlug: req.query.projectSlug,
@@ -236,15 +236,16 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, policyId, ...review } = await server.services.accessApprovalRequest.reviewAccessRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        requestId: req.params.requestId,
-        status: req.body.status,
-        bypassReason: req.body.bypassReason
-      });
+      const { projectId, policyId, isBypass, ...review } =
+        await server.services.accessApprovalRequest.reviewAccessRequest({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
+          requestId: req.params.requestId,
+          status: req.body.status,
+          bypassReason: req.body.bypassReason
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -255,7 +256,9 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
           metadata: {
             requestId: review.requestId,
             policyId,
-            reviewStatus: req.body.status
+            reviewStatus: req.body.status,
+            isBypass,
+            bypassReason: isBypass ? req.body.bypassReason : undefined
           }
         }
       });
@@ -294,7 +297,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.accessApprovalRequest.revokeAccessRequest({
         requestId: req.params.requestId,

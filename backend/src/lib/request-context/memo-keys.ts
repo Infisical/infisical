@@ -64,5 +64,7 @@ export const requestMemoKeys = {
 
   orgFindById: (orgId: string) => `org:findById:${orgId}`,
 
-  orgFindOrgById: (orgId: string) => `org:findOrgById:${orgId}`
+  orgFindOrgById: (orgId: string) => `org:findOrgById:${orgId}`,
+
+  orgFindRootOrgDetails: (orgId: string) => `org:findRootOrgDetails:${orgId}`
 };

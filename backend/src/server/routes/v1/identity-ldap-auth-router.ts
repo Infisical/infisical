@@ -18,7 +18,6 @@ import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
-import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -32,9 +31,8 @@ import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider) => {
-  const appCfg = getConfig();
   const passport = new Authenticator({ key: "ldap-identity-auth", userProperty: "passportMachineIdentity" });
-  await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 
@@ -155,8 +153,18 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       description: "Login with LDAP Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().uuid("Identity ID must be a valid UUID").describe(LDAP_AUTH.LOGIN.identityId),
-        username: z.string().trim().nonempty("Username is required").describe(LDAP_AUTH.LOGIN.username),
-        password: z.string().trim().nonempty("Password is required").describe(LDAP_AUTH.LOGIN.password),
+        username: z
+          .string()
+          .trim()
+          .nonempty("Username is required")
+          .max(255, "Username cannot be longer than 255 characters")
+          .describe(LDAP_AUTH.LOGIN.username),
+        password: z
+          .string()
+          .trim()
+          .nonempty("Password is required")
+          .max(1024, "Password cannot be longer than 1024 characters")
+          .describe(LDAP_AUTH.LOGIN.password),
         organizationSlug: slugSchema().optional().describe(LDAP_AUTH.LOGIN.organizationSlug)
       }),
       response: {
@@ -568,7 +576,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -640,7 +649,6 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
             encryptedLdapCaCertificate: true
           }).extend({
             bindDN: z.string(),
-            bindPass: z.string(),
             ldapCaCertificate: z.string().optional(),
             templateId: z.string().optional().nullable()
           })
@@ -707,7 +715,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

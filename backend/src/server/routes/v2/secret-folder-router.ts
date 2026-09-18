@@ -57,7 +57,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
@@ -145,7 +151,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
@@ -169,6 +181,20 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretFolderUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            folderId: folder.id
+          }
+        })
+        .catch(() => {});
+
       return { folder };
     }
   });
@@ -220,7 +246,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const { newFolders, oldFolders, projectId } = await server.services.folder.updateManyFolders({
         ...req.body,
@@ -291,7 +323,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
@@ -315,6 +353,20 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           }
         }
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretFolderDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            folderId: folder.id
+          }
+        })
+        .catch(() => {});
+
       return { folder };
     }
   });
@@ -355,7 +407,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
@@ -401,7 +459,13 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       const folder = await server.services.folder.getFolderById({
         actorId: req.permission.id,
@@ -411,6 +475,70 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         id: req.params.id
       });
       return { folder };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/move",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "moveSecretFolder",
+      tags: [ApiDocsTags.Folders],
+      description: "Move a folder and its static-secret contents to a new path, optionally in a different environment",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim(),
+        folderId: z.string().trim().uuid(),
+        destinationEnvironment: z.string().trim(),
+        destinationPath: z.string().trim().default("/").transform(prefixWithSlash).transform(removeTrailingSlash)
+      }),
+      response: {
+        200: z.object({
+          folderId: z.string(),
+          sourceEnvironment: z.string(),
+          sourcePath: z.string(),
+          destinationEnvironment: z.string(),
+          destinationPath: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const result = await server.services.folder.moveFolder({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.body.projectId,
+        folderId: req.body.folderId,
+        destinationEnvironment: req.body.destinationEnvironment,
+        destinationPath: req.body.destinationPath
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.MOVE_FOLDER,
+          metadata: {
+            folderId: result.folderId,
+            sourceEnvironment: result.sourceEnvironment,
+            sourcePath: result.sourcePath,
+            destinationEnvironment: result.destinationEnvironment,
+            destinationPath: result.destinationPath
+          }
+        }
+      });
+
+      return result;
     }
   });
 };

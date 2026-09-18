@@ -4,53 +4,56 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
-	goahttp "goa.design/goa/v3/http"
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/infisical/api/internal/libs/errutil"
+	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
 	"github.com/infisical/api/internal/server/middlewares"
 )
 
+// Server is the HTTP server for the Infisical API.
 type Server struct {
-	svc       *api.Registry
-	logger    *slog.Logger
-	mux       goahttp.Muxer
-	dec       func(*http.Request) goahttp.Decoder
-	enc       func(context.Context, http.ResponseWriter) goahttp.Encoder
-	eh        func(context.Context, http.ResponseWriter, error)
-	formatter func(ctx context.Context, err error) goahttp.Statuser
+	services *api.Services
+	config   *config.Config
+	logger   *slog.Logger
+	router   chi.Router
 }
 
-func NewServer(svc *api.Registry, logger *slog.Logger) *Server {
-	s := &Server{
-		svc:       svc,
-		logger:    logger,
-		mux:       goahttp.NewMuxer(),
-		dec:       goahttp.RequestDecoder,
-		enc:       goahttp.ResponseEncoder,
-		formatter: errutil.NewFormatter(logger),
-	}
-	// eh only fires when encoding the error response itself fails.
-	s.eh = func(ctx context.Context, w http.ResponseWriter, err error) {
-		logger.ErrorContext(ctx, "failed to encode error response", slog.Any("error", err))
-	}
+// NewServer creates a new HTTP server with chi routing.
+func NewServer(services *api.Services, cfg *config.Config, logger *slog.Logger) *Server {
+	router := chi.NewRouter()
 
-	s.mountPlatform()
-	s.mountSecretManager()
+	// Register domain routes
+	api.RegisterPlatformRoutes(router, logger, services.Platform)
+	api.RegisterSecretManagerRoutes(router, logger, services.Platform, services.SecretManager)
 
-	return s
+	return &Server{
+		services: services,
+		config:   cfg,
+		logger:   logger,
+		router:   router,
+	}
 }
 
+// Listen starts the HTTP server.
 func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, errc chan error) {
-	var handler http.Handler = s.mux
-	// the order is other way around. Last one wraps the previous one, so request ID is set before logging.
+	var handler http.Handler = s.router
+
+	// Middleware stack (applied in reverse order - last wraps first)
+	// Inner middlewares (closest to handler) first, outer middlewares last
 	handler = requestLogger(handler, s.logger)
-	handler = middlewares.HTTPInfoMiddleware(handler)
-	handler = requestid.Middleware(handler)
+	handler = chimw.StripSlashes(handler)
+	handler = middlewares.Timeout(100 * time.Second)(handler) // Match Node.js connectionTimeout
+	handler = middlewares.CORS(s.buildCORSConfig())(handler)
+	handler = middlewares.SecurityHeaders(handler)
+	handler = middlewares.Recoverer(s.logger)(handler)
+	handler = requestid.Middleware(requestid.OriginPrefix(s.config.InfisicalCloud, s.config.InternalRegion))(handler)
 
 	srv := &http.Server{
 		Addr:              addr,
@@ -59,7 +62,6 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	}
 
 	wg.Go(func() {
-
 		go func() {
 			s.logger.InfoContext(ctx, "HTTP server listening", slog.String("addr", addr))
 			errc <- srv.ListenAndServe()
@@ -77,16 +79,67 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	})
 }
 
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.statusCode = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
 func requestLogger(next http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
-		logger.InfoContext(r.Context(), "request",
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+		logger.InfoContext(r.Context(), "request completed",
 			slog.String("reqId", requestid.FromContext(r.Context())),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
+			slog.Int("statusCode", recorder.statusCode),
 			slog.String("duration", time.Since(start).String()),
 			slog.String("remote", r.RemoteAddr),
 		)
 	})
+}
+
+// buildCORSConfig creates CORS config from server configuration.
+// Matches the Node.js @fastify/cors configuration.
+func (s *Server) buildCORSConfig() *middlewares.CORSConfig {
+	cfg := &middlewares.CORSConfig{
+		AllowCredentials: true,
+	}
+
+	// Parse comma-separated allowed headers
+	if s.config.CORSAllowedHeaders != "" {
+		for h := range strings.SplitSeq(s.config.CORSAllowedHeaders, ",") {
+			if h = strings.TrimSpace(h); h != "" {
+				cfg.AllowedHeaders = append(cfg.AllowedHeaders, h)
+			}
+		}
+	}
+
+	// Parse comma-separated allowed origins
+	if s.config.CORSAllowedOrigins != "" {
+		for o := range strings.SplitSeq(s.config.CORSAllowedOrigins, ",") {
+			if o = strings.TrimSpace(o); o != "" {
+				cfg.AllowedOrigins = append(cfg.AllowedOrigins, o)
+			}
+		}
+	}
+
+	// Add site URL to allowed origins
+	if s.config.SiteURL != "" {
+		cfg.AllowedOrigins = append(cfg.AllowedOrigins, s.config.SiteURL)
+	}
+
+	// If no origins configured, allow all (matches Node.js behavior)
+	if len(cfg.AllowedOrigins) == 0 {
+		cfg.AllowedOrigins = []string{"*"}
+		cfg.AllowCredentials = false // Can't use credentials with wildcard
+	}
+
+	return cfg
 }

@@ -1,6 +1,6 @@
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
@@ -14,6 +14,7 @@ import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
 import { GithubProvider } from "./github";
+import { IbmApiConnectProvider } from "./ibm-api-connect";
 import { KubernetesProvider } from "./kubernetes";
 import { LdapProvider } from "./ldap";
 import { MilvusProvider } from "./milvus";
@@ -26,22 +27,23 @@ import { SapAseProvider } from "./sap-ase";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
 import { SshProvider } from "./ssh";
+import { TailscaleProvider } from "./tailscale";
 import { TotpProvider } from "./totp";
 import { VerticaProvider } from "./vertica";
 
 type TBuildDynamicSecretProviderDTO = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const buildDynamicSecretProviders = ({
-  gatewayService,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  projectDAL
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
-  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
+  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayV2Service, gatewayPoolService }),
+  [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),
@@ -52,21 +54,19 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
   [DynamicSecretProviders.RabbitMq]: RabbitMqProvider(),
   [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider(),
-  [DynamicSecretProviders.AzureSqlDatabase]: AzureSqlDatabaseProvider({
-    gatewayService,
-    gatewayV2Service,
-    gatewayPoolService
-  }),
+  [DynamicSecretProviders.AzureSqlDatabase]: AzureSqlDatabaseProvider({ gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Ldap]: LdapProvider(),
   [DynamicSecretProviders.SapHana]: SapHanaProvider(),
   [DynamicSecretProviders.Snowflake]: SnowflakeProvider(),
   [DynamicSecretProviders.Totp]: TotpProvider(),
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
-  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
+  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayV2Service, gatewayPoolService }),
+  [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayV2Service, gatewayPoolService }),
+  [DynamicSecretProviders.GcpIam]: GcpIamProvider({ projectDAL }),
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
-  [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.Ssh]: SshProvider()
+  [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayV2Service, gatewayPoolService }),
+  [DynamicSecretProviders.Ssh]: SshProvider(),
+  [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
+  [DynamicSecretProviders.Tailscale]: TailscaleProvider()
 });

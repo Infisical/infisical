@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **backend** package of the Infisical monorepo — a Fastify 4 API server with TypeScript, PostgreSQL via Knex, and BullMQ queues.
 
+The backend code quality guide is imported below, so it is always in context for work in this package. **Check every change against it, whatever the change is, before calling the task done.** This file covers *where* code goes and *which* pattern to follow; the quality guide covers the minimum any implementation has to handle. It is a deliberately non-exhaustive floor, so the topics it happens to cover are not a filter for whether it applies.
+
+@CODE_QUALITY.md
+
 ## Essential Commands
 
 All commands run from the `backend/` directory:
@@ -16,13 +20,124 @@ All commands run from the `backend/` directory:
 
 ### Testing
 
-- `npm run test:unit` — unit tests matching `./src/**/*.test.ts`
-- `npm run test:e2e` — e2e tests matching `./e2e-test/**/*.spec.ts` (single-threaded, requires running DB/Redis)
-- `npm run test:e2e-watch` — e2e tests in watch mode
+Run both suites from the repo root, which is the same entry point CI uses:
+
+- `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
+- `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
+- `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make up-rotation-databases` — start the databases the secret rotation specs need, required
+  only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
+- `make down-test-suite-containers` — stop everything when finished
+
+The secret rotation specs reach their databases by compose service name, so
+`docker-compose.e2e-dbs.yml` pins the same compose project as the test stack and shares its
+network. Without `make up-rotation-databases`, those specs fail on connection; the rest pass.
+
+Both run inside the FIPS image (`Dockerfile.dev.fips`), which carries the native dependencies
+the suites need (SoftHSM2, the Oracle client, the FIPS OpenSSL build) and pins the Node
+version, so the host's does not matter. `docker-compose.test.yml` declares the image,
+environment, mounts and services; `src`, `e2e-test` and both vitest configs are mounted, so
+editing a test needs no rebuild but changing `package.json` or `tsconfig.json` does.
+
+**`npm run test:e2e` directly is possible but destructive if misconfigured.** The Vitest
+environment runs `DROP SCHEMA public CASCADE` on whatever database `.env.test` points at,
+before every run. Copy `.env.test.example`, which targets the throwaway stack, and start it
+with `make up-test-suite-containers`. Never point it at the dev database.
 
 Unit tests go next to source as `*.test.ts` and test pure functions with Vitest globals (`describe`, `test`, `expect`).
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
+
+#### Faking a third-party provider
+
+**Never add test-only code to `src/`** — no test-mode enum members, no lookup map entries, no
+`isTestMode` branches. Replace the module instead, from `test.alias` in
+`vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
+a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
+are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+
+Four things decide whether this works:
+
+- **Alias the narrowest specifier.** Entries match the import string, so aliasing one a single
+  file imports (a barrel's `./x-fns` re-export) swaps that seam and leaves the constants,
+  schemas, types, router and lookup maps real.
+- **`test.alias` must stay an array.** Vite's `mergeAlias` concatenates arrays with
+  `test.alias` first, but merges two objects, where the generic `@app` prefix matches before a
+  specific `@app/...` entry and the fake silently stops applying with no error.
+- **Re-export whatever you do not replace.** The alias swaps the whole module, so an export you
+  omit stops existing for every importer of it.
+- **Assert the fake still matches.** Nothing otherwise checks it against the module it
+  replaces. Export an assignment typed as `Pick<typeof RealModule, …>` so a signature change
+  fails type-checking rather than leaving the fake quietly wrong.
+
+A fake must reproduce the contract under test, not merely record its input. The Parameter Store
+fake reimplements the real reconciliation rules (skip empty writes, delete absent keys unless
+deletion is disabled, respect the key schema), because those rules are the behavior the specs
+exist to pin.
+
+#### FIPS test image and the prebuilt toolchain
+
+CI (`.github/workflows/run-backend-tests.yml`) runs the e2e suite inside a FIPS image built
+from `Dockerfile.dev.fips`. The expensive, rarely-changing parts of that image (SoftHSM2,
+Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.6 build) live in
+**`Dockerfile.fips-toolchain`**, which is published to
+`ghcr.io/infisical/backend-fips-toolchain` for amd64 and arm64 by
+`.github/workflows/publish-fips-toolchain.yml` on pushes to `main`.
+
+`Dockerfile.dev.fips` consumes it via the `TOOLCHAIN_IMAGE` build arg, so CI and local dev
+pull the toolchain instead of spending ~15min compiling it. Consequences worth knowing:
+
+- **Editing `Dockerfile.fips-toolchain` is expensive.** CI pins the image by the content hash
+  of that file, so a PR touching it has no published tag and rebuilds from source (the old,
+  slow path). It publishes once the PR lands on `main`. Keep app-level changes in
+  `Dockerfile.dev.fips`.
+- **Don't add `cache-to: type=gha` back to the image build.** GHA cache is PR-scoped (so it
+  never hits on a PR's first run) and the repo's 10GB cache budget is already full; writing
+  image blobs there evicts the `node_modules` caches of every workflow.
+- **The published image is an internal CI build cache, not a supported artifact.** It is
+  public only so CI and local dev can pull it; it carries no support or compatibility
+  guarantee. It is *not* the FIPS product image; that one is `infisical/infisical-fips`,
+  built from `Dockerfile.fips.standalone-infisical`. OCI labels on the image say the same.
+- **Keep every third-party fetch pinned and checksummed.** SoftHSM2 is pinned to a commit
+  SHA (tags are mutable); both OpenSSL tarballs and the Oracle Instant Client zip are
+  SHA256-verified; the Infisical CLI apt package is version-pinned. Oracle Instant Client
+  is redistributed under the Oracle Free Distribution, Hosting, and Use Terms, which
+  require the license to travel with it, so `/opt/oracle/instantclient_23_26/BASIC_LICENSE`
+  must not be removed.
+
+##### Building the dev stack without GHCR
+
+`docker compose -f docker-compose.dev.yml build backend` pulls the toolchain from GHCR by
+default. If GHCR is down, the package is private, you're offline, or you're iterating on the
+toolchain itself, build it locally once and point the compose build at it:
+
+```bash
+# 1. Build the toolchain from source (~15min, or ~2min if your layer cache is warm)
+docker build -f backend/Dockerfile.fips-toolchain -t fips-toolchain:local backend
+
+# 2. Prefer .env, so it survives every compose invocation (see the warning below)
+echo 'TOOLCHAIN_IMAGE=fips-toolchain:local' >> .env
+
+# ...or pass it per-invocation. Both forms work but are easy to forget:
+TOOLCHAIN_IMAGE=fips-toolchain:local docker compose -f docker-compose.dev.yml build backend
+docker compose -f docker-compose.dev.yml build --build-arg TOOLCHAIN_IMAGE=fips-toolchain:local backend
+```
+
+**Use `.env` rather than a one-off env var.** The documented start command in
+`docs/contributing/platform/developing.mdx` is `up --build`, which rebuilds the backend and
+re-resolves the `TOOLCHAIN_IMAGE` default, so a per-invocation override silently stops
+applying and you're back to a failing GHCR pull. Compose interpolates the project `.env` for
+every invocation, so putting it there sticks.
+
+Notes:
+
+- Step 1 is only needed once per change to `Dockerfile.fips-toolchain`. The local tag name is
+  arbitrary; it just has to match what you point `TOOLCHAIN_IMAGE` at.
+- An already-built `backend` image keeps working if GHCR is unreachable, as long as you don't
+  pass `--build`. This only bites on a rebuild.
+- This is not an offline story. The toolchain build itself still fetches Debian packages, both
+  OpenSSL tarballs, SoftHSM sources, and the Oracle client. With no network at all, neither
+  path works and you need a previously built image.
 
 ### Database
 
@@ -31,6 +146,8 @@ E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/v
 - `npm run migration:rollback-dev` — rollback last migration batch (dev)
 - `npm run generate:schema` — regenerate Zod types from DB into `src/db/schemas/` (always run after migration changes)
 - `npm run seed-dev` — run database seeds
+
+- **Every foreign-key column must be covered by an index** (its own, or as the leftmost column of a composite index). Postgres does **not** auto-index FK columns. This holds regardless of cascade behavior: an unindexed FK forces a seq-scan of the child table on every parent `DELETE`/`UPDATE` (per-row RI trigger), and the FK column is almost always also a join/filter key. Watch helper-generated FKs — `createJunctionTable` (`src/db/utils.ts`) creates CASCADE FK columns with **no index** on either side.
 
 ### Scaffolding
 
@@ -73,6 +190,15 @@ DALs extend these with custom queries — typically complex joins using Knex que
 
 `updateById` and `update` support atomic `$incr` and `$decr` operators alongside regular field updates.
 
+**A dropped column does not fail type checking if the insert is built in a `.map()`.** TypeScript's
+excess-property check only fires on a fresh object literal at the assignment site, so a stale field
+survives when the literal is returned from a callback:
+
+```ts
+insertMany(names.map((name) => ({ name, role: "member", orgId })));  // compiles, then 500s at runtime
+insertMany([{ name, role: "member", orgId }]);                       // TS2353
+```
+
 See `src/services/secret/secret-dal.ts` for a DAL that overrides the base `update` to auto-increment version and adds complex join queries.
 
 ### Service Module Structure
@@ -103,7 +229,8 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
 - **SCIM_TOKEN** — SCIM provisioning tokens
-- **MCP_JWT** — MCP-specific JWTs (has `.mcp` field in payload)
+- **OAUTH** — delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
+  `JWT`, told apart by an `oauthClientId` claim. See [Delegated OAuth tokens](#delegated-oauth-tokens).
 
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.
@@ -112,6 +239,292 @@ Auth extraction happens in `src/server/plugins/auth/`:
 If you encounter `API_KEY` or `SERVICE_TOKEN` in existing code, do not replicate them in new routes or services. All new machine authentication should use `IDENTITY_ACCESS_TOKEN`.
 
 Token detection logic in `inject-identity.ts` checks `x-api-key` header first, then parses `Authorization: Bearer` and inspects JWT `authTokenType` field to determine mode.
+
+#### Delegated OAuth tokens
+
+Two grants issue them: the authorization code flow (consented `scopes`) and the RFC 8693 token exchange
+(`delegation: "full"`, no scopes).
+
+**Opting a route in.** `verify-auth.ts` rejects `AuthMode.OAUTH` on any route that doesn't list it; most
+product `AuthMode.JWT` routes do. Two things have to hold before adding it. The route must not be an
+administration route (below). And the handler must actually **check** a CASL ability, because that check
+is where the granted scopes get intersected in: building an ability and throwing it away
+(`getOrgPermission` used as a membership gate), or reading `hasRole(...)` off its return value, narrows
+nothing; `hasRole` is the easy one to miss because it reads like authorization. Rough proxy: nothing
+passing `requireOrg: false` accepts `AuthMode.OAUTH`.
+
+**Administration is read-only for a delegated token.** A delegated token can look at anything the
+authorizing user can, but it changes nothing under **Administration**: no create, update, or delete, at
+either level. The frontend nav is the boundary, and it is worth opening (`OrgNav.tsx`,
+`OrgSubmenuView.tsx`, `SecretManagerNav.tsx`, `submenus.tsx`) when a new route's side is unclear. The
+surfaces it covers:
+
+- **org access control** — members, groups, identities (including memberships, templates, and all
+  thirteen `identity-*-auth-router.ts`), org roles, invites, external group-to-role mapping
+- **usage & billing** — `ee/v1/license-router.ts`, `ee/v1/license-v2-router.ts`
+- **audit logs** — the org and project log reads plus audit log streams
+- **org settings** — org update and incident contacts, SSO and provisioning (SAML, OIDC, LDAP, SCIM,
+  GitHub org sync, email domains), networking (gateways, gateway pools, relays), encryption (external
+  KMS, KMIP, KMIP servers, HSM connectors), project templates, sub-orgs, workflow integrations
+  (Slack, Microsoft Teams), and the org-wide EnvKey/Vault migrations on the settings tab
+- **project access control** — memberships for users, groups and identities, project roles, additional
+  privileges, folder grants, project keys, service tokens, and the per-resource equivalents under PAM,
+  cert manager, code signing and PKI applications
+- **project settings** — project update and delete, environments, tags, approval policies, webhooks,
+  trusted IPs, secret validation rules, project KMS, blind index, audit log retention, E2EE upgrade,
+  and the secret scanning `configs` routes
+
+In practice that means `GET` keeps `AuthMode.OAUTH` and `POST` / `PATCH` / `PUT` / `DELETE` lose it. The
+method is the test because `CODE_QUALITY.md` already requires `GET` to be safe, so it needs no per-route
+judgment. Two adjustments to that rule, both small enough to enumerate:
+
+- **A `POST` that only reads keeps it.** Five endpoints are `POST` solely because a lookup needs a request
+  body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
+  and the two `memberships/details` routes. All five check a CASL read ability.
+- **A read that hands back credential material loses it**, because the point of closing administration is
+  that a third-party application should not end up holding the org's secrets. Five routes:
+  `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),
+  `GET /v1/workspace/:projectId/kms/backup` (the project's KMS backup blob), and Slack
+  `GET /install` / `GET /reinstall`, which gate on `OrgPermissionActions.Create` and exist only to start
+  an install. Everything else reads through a sanitized schema — `sanitizedClientSecretSchema` returns a
+  prefix, `sanitizedExternalSchemaForGetById` drops provider credentials, `ScimTokensSchema` carries no
+  token. Check the response schema, not the route name, before opening a new administration read.
+
+Three things are first-party outright, because they sit outside an org and the nav boundary doesn't
+reach them:
+- account self-management (user, password, MFA, sessions, login, signup, notifications, announcements)
+- super-admin routes (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`), where `verifySuperAdmin` reads
+  `user.superAdmin` rather than an ability
+- `POST /v2/organizations`, and the org reads that return more than the token's org: `GET /v1/organization`,
+  `GET /v1/organization/accessible-with-sub-orgs`, `GET /v1/organization/:organizationId`. All pass
+  `requireOrg: false`, so nothing narrows them
+
+Everything else that used to be listed here individually — OAuth client CRUD, assume-privilege, deleting
+an org or sub-org, minting SCIM tokens, KMIP client certificates or gateway / relay / KMIP-server
+enrollment tokens, registering identity auth methods — is an administration write, and closed by the rule
+above rather than by its own exception. Two of those reasons still generalize, so keep them in mind when a
+**product** route does the same thing:
+
+- **A route that leaves behind something able to authenticate later can't accept a delegated token.**
+  Revocation reaches only the sessions tagged with `getOauthClientSessionUserAgent`, so a credential or an
+  auth method bound to a key the caller holds survives deleting the application and rotating its secret,
+  and authenticates as a principal no OAuth scope intersects. Whether the route hands secret material back
+  is beside the point, so start any new route that writes a trust anchor (bound issuer, signing key, CA,
+  cloud principal) first-party.
+- **Nor can a route that reissues the caller's session.** `DELETE /v2/organizations/:organizationId`
+  returns a fresh pair from `loginService.generateUserTokens`, which takes no delegation parameter, so a
+  delegated caller would exit with a first-party session.
+
+**Delegation markers.** A token carries `scopes` or `delegation: "full"`, never both
+(`oauth-client-types.ts`). `permission-service` intersects the user's CASL rules with `scopes`
+(`applyOauthScopeToOrgRules` / `applyOauthScopeToProjectRules`). `inject-identity.ts` sets
+`RequestContextKey.OauthScopes` for every scope-narrowed token (even `[]`, which denies everything) and
+leaves it unset only for full delegation. Matching full delegation **positively** is what makes a dropped
+claim fail closed instead of promoting the token.
+
+**The token endpoint's error contract is RFC 6749 §5.2, not the house envelope**, because generic OAuth
+libraries branch on the `error` code. `OauthTokenError` (`oauth-token-error.ts`) carries the code and
+derives the status from it (400; 401 for `invalid_client`, 500 for `server_error`), and the shared error
+handler renders `{ error, error_description }`. When extending it:
+- The handler's `try`/`catch` is the endpoint's only exit, and every `return` inside it is **awaited**: a
+  bare `return promise` would resolve outside the `catch` and escape in the house envelope.
+- `toOauthTokenError` defaults by **error class**, never message text: `UnauthorizedError` and
+  `ForbiddenRequestError` take the rejected-grant code for that grant (`invalid_grant` on the redirect and
+  refresh grants, `invalid_request` on token exchange, per RFC 8693 §2.2.2), `BadRequestError` takes
+  `invalid_request`, and anything else becomes `server_error`, whose response carries no detail and whose
+  original is logged. Both refusal classes are listed because the exchange rejects an unusable subject in
+  two vocabularies: `exchangeSubjectToken`'s own membership checks raise `UnauthorizedError`, while
+  `getOrgPermission` raises `ForbiddenRequestError` for the same kind of refusal. A new way to refuse a
+  subject belongs in one of those two classes, or it lands in `server_error` as an unexplained 500.
+- Throw `OauthTokenError` directly where that default is wrong: client authentication
+  (`invalid_client`), a grant the client doesn't hold (`unauthorized_client`), a redirect-URI or PKCE
+  mismatch (`invalid_grant`), the unsupported `scope` (`invalid_scope`) and `audience`/`resource`
+  (`invalid_target`) parameters, and org misconfiguration or IdP outages (`server_error`).
+- The route sets `attachValidation` so a schema failure reaches the handler; an unrecognized `grant_type`
+  earns `unsupported_grant_type`.
+- `toErrorDescription` sanitizes and bounds `error_description` at the render boundary, so no throw site
+  has to remember RFC 6749's printable-ASCII restriction.
+- Messages shared with a management route (the OIDC-config checks) take an error factory rather than
+  throwing, since the two callers owe the same explanation in different envelopes.
+
+**Token exchange trusts the org's OIDC SSO config, not per-client configuration**
+(`oauth-token-exchange-fns.ts`), so the issuers that can vouch for a user are the ones that can already
+log them in. The one per-application field is `tokenExchangeAudience`, and it does the security work:
+without it, any token that issuer signed for anything in the estate is exchangeable. Enabling the grant,
+changing the audience, and rotating the secret each need `OrgPermissionSsoActions.Edit` on top of the usual
+`OauthClients` check (`checkSsoConfigPermission`), rotation included, since its response is a working
+credential for acting as any of the org's users.
+
+`getOrgPermission` is **not** a membership check: the org-scope query in `permission-dal.ts` never reads
+`Membership.isActive` or `Membership.status`. Every other user token came from a browser login, where
+`selectOrganization` rejects an inactive membership; the exchange has no login in front of it, so
+`exchangeSubjectToken` checks membership state itself. Any future non-interactive way of minting a user
+token needs the same check.
+
+**Withdrawing an exchange application's authority revokes the tokens it already issued.** Deleting the
+client, rotating its secret, and any update that narrows the exchange's trust (dropping the grant,
+changing `tokenExchangeAudience`, switching `tokenExchangeIdpSatisfiesMfa` off) all call
+`revokeSessionsByUserAgent`. `hasWithdrawnTokenExchangeTrust` and `hasClientAuthorityChanged` guard the
+same fields, so a new field belongs in both. The test is whether it carries federation trust, not merely
+whether it can be narrowed. `accessTokenTTL` is in neither: it only decides how long a new token lasts, so
+revoking on a routine edit would surprise, and guarding it would fail in-flight exchanges. Widening
+(turning the MFA declaration on) revokes nothing. Rotation revokes for exchange clients only, where the
+secret alone mints tokens; in the redirect flow it has to be paired with a code or refresh token, so
+blanket revocation would just sign everyone out. The session tag is per client, which is unambiguous
+because `assertValidOauthClientGrantConfig` rejects the exchange grant alongside `authorization_code`, so
+a service needing both registers twice.
+
+That sweep only reaps sessions that already exist, so **the exchange rechecks the client after creating
+its own session** (`findByIdForUpdate` + `hasClientAuthorityChanged`, re-running the sweep). The other
+grants read an existing session rather than creating one, so they don't need it. The recheck has to be a
+**locking** read on the primary, and both halves of that are load-bearing: each withdrawal path writes the
+client and sweeps sessions inside one transaction, so a plain read still sees the pre-withdrawal row until
+that transaction commits, and would clear a token whose session the sweep has already scanned past. A
+replica read has the same hole for the length of the replication lag. Keeping the write and the sweep
+atomic is what makes the lock the fix here; splitting them so the write commits first would reopen a
+window where the sweep can fail on its own and leave the tokens live.
+
+**Everything the exchange fetches from the IdP is cached for 10 minutes; nothing read from our own
+database is**, so an admin editing the SSO config takes effect on the next request while the provider
+never becomes a synchronous dependency of the middleware's own request path. The cache invariants
+(rejections evicted, in-flight promise shared, expiry rebuilding the SSRF-pinned agent) are documented in
+`oauth-token-exchange-fns.ts`.
+
+### Resolving Users From Provisioning Identifiers
+
+Every invite / removal path resolves a person by `users.username` (which always equals their email),
+never by `users.email` and never by a join. An external provisioning system, though, often knows
+people only by the identifier its IdP asserts, a UPN like `m249913@one.example.com` rather than the
+mailbox `robert@example.com`. SSO login already records that identifier as
+`user_aliases.externalId`, so the two are reconcilable without making `username` diverge from
+`email`.
+
+`resolveUsersBySsoExternalId` in `src/services/user-alias/user-alias-fns.ts` is the one place that
+does it, backed by `userAliasDAL.findBySsoExternalIds`. Callers run it **only after an exact
+`username` lookup has missed**, so an alias can never shadow a real account. It is wired into
+`$getUsers` (`membership-user-service.ts`, the single funnel for org, project, and cert-manager
+invites), `project-membership-service.ts` (removal and membership read-back), and PAM's
+`addProductUserMembers`.
+
+Four invariants, each load-bearing:
+
+- **Scope by `orgId` *and* `aliasType`.** `user_aliases.orgId` is NULL for the global
+  google/github/gitlab aliases, so `whereIn("orgId", ...)` excludes them outright and the
+  `ORG_SCOPED_USER_ALIAS_TYPES` filter is the second lock. Without both, an org admin could name a
+  user in another tenant.
+- **Match `externalId` exactly, never folded.** It is a case-sensitive identifier (OIDC Core defines
+  `sub` that way, as does SAML for nameID) and is stored verbatim, so folding case could collapse two
+  distinct IdP subjects onto one identifier. The known consequence: because both invite routes
+  lowercase their input (`sanitizeEmail`, and the `.refine` on `usernames`), an IdP that asserts
+  mixed-case identifiers cannot be provisioned against at all. Supporting those means relaxing that
+  input validation so the exact identifier survives to the query, not loosening the comparison.
+  `adoptProvisionedShadowUser` does not fold either. It derives its lookup key with `sanitizeEmail`
+  because it searches the `users.username` namespace, where lowercase is canonical, but it then
+  **refuses any identifier that is not already canonical** rather than adopting on the folded match.
+  It once did adopt, and that was a real hole: a subject differing only by case is a different
+  subject, so it could take over the placeholder provisioned for another one and inherit its grants.
+  Folding bought nothing anyway, since the alias written afterwards is verbatim and this exact-match
+  lookup could never find it again, stranding the grant where provisioning cannot manage it.
+- **Ambiguity is an error.** Nothing constrains `(externalId, aliasType)` to be unique for the
+  org-scoped types (only the social ones have a partial unique index), so an identifier can reach two
+  users. Picking one would be a guess about which human it names, and the cost of guessing wrong is
+  granting access to the wrong person. Several aliases on the *same* user are not a conflict.
+- **Dedupe resolved users by `id`.** An identifier now reaches a user by either their username or
+  their alias, so one request can name the same person twice. Undeduped, that violates
+  `membership_unique_user_org` and surfaces as a 500.
+
+A related case sits on the login side: provisioning can name someone before they have ever logged
+in, leaving a placeholder account keyed on the identifier instead of the mailbox.
+`adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
+and rewrites it to the asserted mailbox rather than creating a second account. It refuses anything a
+human has claimed (accepted, email-verified, holding a password), anything already bound to an IdP
+(any alias, any org), ghosts, anything whose identifier is not already canonical (see above), and
+anything without a membership in the org doing the login.
+
+One case is a refusal to *log in* rather than a refusal to adopt: a placeholder whose membership in
+the login org is **inactive**. Declining is not neutral there, because the caller reads a `null` as
+"no placeholder" and creates a second account with a fresh active membership, handing a deactivated
+person their org back (`selectOrganization` then accepts it). So the inactive check is resolved
+before every remaining decline — the alias check and the cross-tenant check both sit after it — and
+it throws the same `ForbiddenRequestError` an already-aliased deactivated member gets.
+
+It also refuses a placeholder that holds an org membership **outside** the login org's own sub-org
+family, and that one is the security-critical check rather than a tidiness one. The username lookup
+that finds the placeholder is global, so a second tenant that invited the same identifier shares the
+row; adopting it would hand the login org's IdP subject that tenant's memberships, and
+`selectOrganization` accepts a membership in any status (promoting `Invited` to `Accepted` on
+arrival), so nothing downstream stops the inherited access from being used. A project membership
+always implies an org membership in the same org, so the org-scope check covers project access too.
+
+Adoption also recovers from a unique violation on `users.username`, because the caller's preceding
+read is not a lock. That recovery has to run inside a savepoint (`tx.transaction()`, which knex
+compiles to `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` on the same connection): Postgres aborts the whole
+transaction on a constraint violation, so an unscoped retry would fail with `25P02`, taking the
+caller's remaining alias and membership writes with it. SAML and LDAP have structurally identical
+branches and are deliberately not wired up.
+
+Because adoption rewrites an existing account's `username` and `email`, it emits an
+`OIDC_PROVISIONED_PLACEHOLDER_ADOPTED` audit event carrying the before and after, not just an
+application log: if one of the refusal checks above ever regresses, the audit trail is what makes it
+findable. That event must never fire on the unique-violation recovery path, where the returned user
+is whoever won the race rather than a rewritten placeholder. `adoptProvisionedShadowUser` draws that
+line by returning `adoptedFromUsername: null` for the yield, and the caller keys the audit log on
+it.
+
+That trail is best-effort, not guaranteed. `audit-log-queue.ts` drops every entry at push time when
+`plan.auditLogsRetentionDays` is falsy, which is the default for a self-hosted instance with no
+audit-log entitlement, so on those deployments only the `logger.info` line survives an adoption.
+Do not special-case this event past the retention gate; treat the application log as the floor and
+the audit event as the addition for licensed instances.
+
+### Profile Sync From The IdP (SSO-enforced orgs)
+
+An IdP keyed on a stable identifier lets someone change mailbox and display name without changing
+who they are, so our copy of both goes stale: notification mail goes to an address that no longer
+exists, and every audit entry written from then on records it. `syncSsoUserProfile`
+(`src/services/user-alias/user-alias-fns.ts`) carries the asserted email and name onto the account,
+and is called from all three login services right after `ensureSsoAccountVerified`, outside the
+caller's transaction, with its result flowing into the session.
+
+The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+is the org saying the IdP is authoritative for identity, which is the same claim that already skips
+email verification at signup. The verified alias is the proof that the IdP controls *this* account:
+an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to
+catch, and reading that as a rename would let a stale alias rewrite somebody else's account. One
+consequence to know: a legacy unverified alias whose email changed before its next login is stale,
+so it gets the email-verification fallback (a code sent to the dead mailbox) rather than a sync.
+
+Three invariants:
+
+- **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
+  already had; a throw locks the person out of an org that has no other way in. Every failure path
+  returns the unchanged user.
+- **It only renames an address the org owns, onto another address the org owns.** Both halves are
+  checked in the helper against the org's verified domains. The user row is global rather than
+  org-scoped, so without the first half an org could rename an account that merely carries one of
+  its aliases and rewrite the identity every other org of that user sees. Every login path
+  establishes both already (`verifyEmailDomainOwnership` is a positive check: the domain must be
+  verified *for this org*, and the alias branch runs it against the existing account's username),
+  so the helper's copy is there to keep the rename from outliving those checks. It is unreachable
+  today, and audits the skip anyway (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "domain-not-owned"`) so a refactor that removes a caller's check leaves a trail rather
+  than a silently stale account.
+- **It never renames onto an occupied address.** `users.username` is globally unique and the row is
+  global rather than org-scoped, so the asserted address may already be a personal signup or an
+  unmerged duplicate. The conflict is recorded (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "address-taken"`) and the email is left alone; the name still syncs. The preceding read
+  is not a lock, so a unique violation lands on the same path.
+
+SCIM is the other half of the same story and moves with it. `updateScimUser` / `replaceScimUser`
+rejected every email change outright, which left the data stale *and* put the provisioning job in a
+permanent error state (Entra quarantines after repeated failures). Both now accept the change under
+the same `authEnforced` gate via `$resolveScimEmailChange`, and answer an occupied address with
+`409 uniqueness` rather than a constraint-shaped 500. Self-service email change
+(`user-service.ts`) is refused when the next login would overwrite it anyway, which
+`$getManagedEmailReason` narrows to the case that actually would: the account's own address sits on a
+domain one of its SSO-enforced orgs has verified. Membership in an enforced org is not the test, since
+the user row is global and an address outside that org's domains is one `syncSsoUserProfile` will not
+touch. SCIM stays a blanket refusal, because the directory provisions the address either way.
 
 ### Permission System (CASL)
 
@@ -122,16 +535,22 @@ Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in 
 
 **Project permission actions** include standard CRUD plus specialized ones like `DescribeSecret` (see metadata without value), `ReadValue`, `GrantPrivileges`, `AssumePrivileges`, `Lease` (for dynamic secrets). See `ProjectPermissionActions`, `ProjectPermissionSecretActions`, `ProjectPermissionDynamicSecretActions`, and `ProjectPermissionIdentityActions` enums in `project-permission.ts`.
 
-Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault `getPredefinedRoles` (`project-role-fns.ts`) returns only `Admin` and `Member`, because their permission dispatch resolves every other slug to the member set; the role factory delegates to that one function, so every role picker follows. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+
+**Privilege boundaries mean different things on the two privilege systems.** `organizations.shouldUseNewPrivilegeSystem` (default `true`, backfilled `false` for orgs predating March 2025) picks which. `validatePrivilegeChangeOperation` / `assertRoleSetBoundary` (`permission-fns.ts`) are the shim: on the new system they collapse to `actorPermission.can(action, subject)`, on the legacy one they run `validatePermissionBoundary`, requiring the actor to out-rank every role the target holds. So a boundary at a call site that already gated on the same action is a no-op for new-system orgs and the only protection for legacy ones. Two consequences: "the route checks the action" is not a substitute for a boundary, and adding one is not a behavior change for most tenants. Prefer `getOrgPermissionByRoles` / `getProjectPermissionByRoles` + `assertRoleSetBoundary` over fetching the target's merged ability. It bounds each role separately, and it avoids `getProjectPermission`, which stamps whichever actor it was called for onto the request context the audit log reads.
+
+**Identity auth-method access goes through `assertIdentityAuthAccessAllowed`** (`src/services/identity/identity-auth-permission-fns.ts`), because repointing an identity's auth trust lets the caller authenticate as that identity. All 13 auth services call it once per attach/update/revoke, after the `throwUnlessCan` gate and outside the `identity.projectId` branch so both scopes are covered. A new auth method calls it too. Credential issuance (`createTokenAuthToken`, `createUniversalAuthClientSecret`) goes through it under `create-token`, since minting a credential is the same escalation as repointing the trust, and so do the per-credential paths: `updateTokenAuthToken` under `create-token`, `getUniversalAuthClientSecrets` / `getUniversalAuthClientSecretById` under `get-token`, and `revokeUniversalAuthClientSecret` under `delete-token`. **`PROJECT_ACTION_BY_ORG_ACTION` must map the org action to the same project action the route's own `throwUnlessCan` already checks** — that identity is what keeps the helper a no-op for new-system orgs, so a new entry is only safe once you have confirmed the pair matches. `revokeTokenAuthToken` and `clearUniversalAuthLockouts` are still unbounded in both scopes (and the former gates on `edit` where its UA counterpart gates on `delete-token`); that predates the helper and is a deliberate gap, not an oversight to copy. The target's grants come from `permissionService.getActorGrantAbilities`, not from a membership lookup, and it returns one ability per grant rather than per role. Two things a role-slug resolver misses: a group-derived membership carries a NULL `actorIdentityId`, so `membershipIdentityDAL.getIdentityById` never sees it, and an additional privilege carries a raw permission blob with no slug at all, so no `*PermissionByRoles` path can express it. Either omission clears an actor that out-ranks the target's direct roles but not its effective access. `getActorGrantAbilities` reads the same `permissionDAL.getPermission` query the ability itself is built from, so the bounded set cannot drift from the effective one.
 
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
 - **Long-lived data payload** (10m TTL) in Redis — holds the full permission blob plus a fingerprint hash.
-- On marker expiry, a lightweight **fingerprint query** (`getPermissionFingerprint` in `permission-dal.ts`) runs (1 DB read). If the fingerprint matches the cached payload, the marker is reset; otherwise, a full data re-fetch occurs.
+- On marker expiry, a lightweight **fingerprint** is computed (`getProjectPermissionFingerprint` in `permission-fns.ts`: the `getPermissionFingerprint` query in `permission-dal.ts` plus the project's folder-permission version counter). If it matches the cached payload, the marker is reset; otherwise, a full data re-fetch occurs.
 - The fingerprint covers **both project-scoped and org-scoped** memberships for the actor, so org-level changes (e.g. SSO bypass grant/revoke, org role edits) also trigger cache invalidation.
 - `filterTemporary` in `flattenActiveRolesFromMemberships` runs on every request as a real-time safety net — it filters out expired temporary access regardless of cache state, so access revocation for timed roles/privileges is immediate.
-- **No explicit cache invalidation calls exist.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed.
+- **Membership and role changes need no explicit invalidation call.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed. Folder grants are the one exception: they are covered by a version counter that writers must bump (see Folder RBAC below).
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
+
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched by `$fetchProjectPermissionData` and ride in the **same** cached blob as the membership permissions, behind the same fingerprint — there is no separate folder cache. `getProjectPermissionFingerprint` (`permission-fns.ts`) is that fingerprint: `permissionDAL.getPermissionFingerprint` with the project's Postgres folder-permission version counter appended, and it is the only fingerprint source (the secret-read ETag path in `secret-v2-bridge-service.ts` uses it too). The counter is what covers folder grants, because `getPermissionFingerprint` excludes `folderId`-scoped rows and a grant's effective `secretPath` is derived from the folder tree rather than stored on the grant, so a rename changes what a grant allows without touching any row. **Only writes the membership fingerprint cannot see bump it**, via `permissionService.invalidateProjectFolderPermissionCache`: the folder-access grant create/update/delete endpoints and every folder rename/move/delete path. Membership teardowns (user, identity or group leaving a project or org, actor leaving a group) must **not** bump, even though they reap `additional_privileges` rows: they delete a `Membership` or group-membership row that the actor's `getPermissionFingerprint` already hashes, so the blob is invalidated on the same marker expiry and a bump would only be a second invalidation of the same entry. That argument holds only while a teardown reaps grants in exactly the projects the actor is losing (`filterProjectsByUserMembership` / `filterProjectsByIdentityMembership`); a reap that reached a project whose membership is untouched would need the counter again. The grants are stored raw in the blob and filtered through `isActiveRole` per request, so a temporary grant lapsing takes effect immediately; admins skip the fetch entirely, and the fingerprint's `rExp` column makes a temporary admin role lapsing re-evaluate that gate. When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles), followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. Only `getProjectPermission` evaluates folder grants; audits and `getProjectPermissions` do not yet. The folder access sheet endpoints (`folderPermissionService.listFolderAccessUsers` / `listFolderAccessIdentities`) answer "who has access on this folder" without building an ability per actor: `folder-access-roles-fns.ts` builds one ability per distinct project role, probes it with every `(action, subject)` pair from `FOLDER_SCOPED_DENY_RULES` plus `SecretFolders.Read`, and caches the evaluated roster per `(projectId, folderId, actorType)` with `withCacheFingerprint` (10m data / 20s marker, fingerprint = membership counts and max timestamps plus the folder's env and path). Folder grants are merged live so a grant or revoke shows on the next request.
 
 ### Request-Scoped Memoization
 
@@ -180,9 +599,19 @@ Queue jobs support: delays, attempts with exponential/fixed backoff, and complet
 
 Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the same DI pattern as services — they receive DALs and services as dependencies.
 
+`queueService.start(name, handler, opts)` accepts `concurrency` (per-worker parallelism ceiling) and BullMQ's `limiter: { max, duration }` (fleet-wide throughput cap, coordinated via Redis). Use both to **rate-shape DB-heavy background work** so a large backlog drains as an even plateau instead of a burst — see `src/services/project/project-cleanup-queue.ts`. The cron cadence must not be the pacer; load is bounded by `concurrency × per-job cost`, and the limiter caps steady throughput.
+
+**`INFISICAL_RUN_MODES` gates the consumer, never the producer.** `start()` creates the BullMQ `Queue` for every queue in every run mode, and only skips creating the `Worker` when the queue isn't consumed by this pod: `secret-scanning` covers `SECRET_SCANNING_QUEUES`, `general-workers` covers everything else. This invariant is what makes splitting the fleet safe — an API-only pod runs no workers at all but must still be able to enqueue, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another pod's worker. It also means `upsertJobScheduler` works from any pod, so boot-time scheduling needs no run-mode branch.
+
+`QUEUE_WORKERS_ENABLED` and `QUEUE_WORKER_PROFILE` were replaced by `INFISICAL_RUN_MODES` and no longer exist.
+
+**Worker heartbeats detect a fleet nobody deployed**, since an ungated producer means an `api`-only deployment silently queues work nothing consumes. In `src/lib/worker-heartbeat/worker-heartbeat.ts`: a `general-workers` pod `startReporting`s itself into a per-worker-type sorted set scored by its heartbeat deadline (60s beat, 5-minute TTL), and an `api` pod that doesn't run the fleet `startMonitoring`s it, logging an error while no instance reports. Observation only — never wire it into `/api/status`; a deployment missing its workers must still serve API traffic.
+
 ### Scheduled Jobs (Cron Manager)
 
 Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
+
+**Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, rate limits, env overrides), not fleet work.
 
 **Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
 
@@ -209,6 +638,8 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
    };
    ```
 
+3. Add a corresponding alarm in the infrastructure repo so the new job is monitored. Follow the existing pattern in `infisical-shared-cloud/modules/redis_alarms/main.tf` — every cron job must have an alarm defined there. Don't ship a new cron job without wiring up its alarm.
+
 **Handler contract**:
 - Each scheduled fire runs exactly once across the fleet: pods race for a per-run redlock, the winner executes the handler, and the others no-op. You don't need in-handler locking to guard against concurrent pods.
 - Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
@@ -221,6 +652,49 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 - A cron handler that fans out per-tenant work typically *enqueues BullMQ jobs* for each unit of work rather than doing the work inline — keep the cron tick fast and let the queue worker handle parallelism and retries for the actual payload.
 
 See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `src/services/resource-cleanup/resource-cleanup-queue.ts` for a service with multiple registrations, and `src/ee/services/secret-rotation-v2/secret-rotation-v2-queue.ts` for a cron-tick that fans out into a BullMQ queue.
+
+### Alerting (shared module — reuse it, don't fork it)
+
+`src/services/alert/` is **the** alerting module: one `alerts` table, one channel stack (email, Slack, webhook, PagerDuty), one recipient resolver, one encryption story for channel configs, one dedup + history + retention path, one cron tick that fans out into the `AlertDispatch` queue, and one set of routes (`src/server/routes/v1/alert-router.ts`, including `POST /channels/test`).
+
+**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is the thing we are converging away from, not a template to copy.
+
+Adding a new alertable resource type:
+
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), `eventTypes`, a `conditionSchema` for the "when", `findDueTargets`, `buildViewUrl` / `buildPayload` / `targetId` / `buildTestTargets`, and the two authorization hooks `assertPermission` + `assertResourceInScope`.
+2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
+
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
+
+Invariants worth knowing before extending it:
+
+- **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
+- **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
+- **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
+- **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
+- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findDueTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
+  - **`deleteAlertsForDeletedResource({ resourceType, resourceId })`** when the resource **row is gone**. It has **no scope filter** and reaps across every org and project. This is required, not just tidier: the same resource can be watched from another org (a root-org identity invited into a child org), so an `orgId`-filtered reap leaves those rows orphaned.
+  - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
+
+  Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
+
+### Soft-Delete + Async Cleanup
+
+Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.
+
+Pattern:
+- **Soft-delete columns** on the table: `deleteAfter`, `softDeletedAt`, `deletedByActorType`, `deletedByActorId`, plus a **partial index** `WHERE deleteAfter IS NOT NULL` (tiny, ~zero write cost on the live path). The DELETE handler sets `deleteAfter` (one UPDATE) and returns immediately. Set `deleteAfter = now()` for "real delete" UX (reaped on the next worker tick) or `now + grace` for a restore window. The actor pair follows the same `(actorType, actorId)` pattern used by audit logs — extensible to any `ActorType` without schema changes.
+- **Hide soft-deleted rows from every read.** Override the `ormify` base `findById`/`findOne`/`find` to append `.whereNull("deleteAfter")`, and add explicit `*IncludingExpired` escape hatches used only by the cleanup worker/restore. Patch all custom read queries too — **especially any count feeding a plan/quota limit** (e.g. `countOfOrgProjects`), or soft-deleted rows wrongly count against limits. Free unique columns (e.g. the project slug) on soft-delete so the resource can be recreated immediately.
+- **`Environment.deleteAfter` ≠ `Project.deleteAfter` — filter both.** The two soft-deletes are independent: soft-deleting a project does NOT soft-delete its environments. Many DALs already filter `Environment.deleteAfter` (from the env soft-delete) — that does **not** exclude a soft-deleted *project*'s data. So any **cron / cross-project enumeration** must also filter `Project.deleteAfter`: the rotation/sync/reminder queue queries, and cross-project listings (project/identity memberships, group projects, org product stats). External side effects are the dangerous case — without it, a soft-deleted project's secrets get rotated, synced, or reminded on during the cleanup window. Per-project reads resolved through `projectDAL.findById` are protected upstream (it returns nothing for a soft-deleted project).
+- **Cron discovery + paced worker** (cron fans out to BullMQ): the cron selects the oldest `LIMIT N` expired rows (`ORDER BY deleteAfter ASC`) and enqueues one job each with a deterministic `jobId` (dedupe → queue stays bounded at ~N; never enqueue the whole backlog). The worker (`concurrency` + `limiter`) does the actual delete, re-reading via the **primary** under a per-resource lock to defeat replica-lag/restore races.
+- **Chunk-deleting child rows: check inbound FKs first.** Reference implementation: `services/secret-v2-bridge/secret-tree-hard-delete-fns.ts` (project/env hard-delete workers).
+  - `CASCADE` / `SET NULL` inbound FKs → safe to chunk.
+  - `DEFERRABLE NO ACTION` → only if you delete the referencing rows in the **same transaction**; hard-delete paths only (never live deletes).
+  - Non-deferrable `NO ACTION` / `RESTRICT` → neither path is safe: it breaks the final cascade too (next bullet). Migrate the FK to `DEFERRABLE INITIALLY DEFERRED` first.
+  - Each batch: own transaction + `SET LOCAL statement_timeout`.
+- **A non-deferrable `NO ACTION`/`RESTRICT` inbound FK is unsafe under cascading deletes; make it `DEFERRABLE INITIALLY DEFERRED`.** It is checked at end of *statement*, so within one cascading `DELETE` a parent branch can be processed before a sibling branch deletes the referencer, raising "update or delete on X violates FK on Y". When a CASCADE child of the deleted root is itself referenced by `NO ACTION`/`RESTRICT` FKs, declare those FKs `.deferrable("deferred")` so the check runs at COMMIT after the cascade completes (a *direct* parent delete is still blocked while a referencer remains). Audit **all** inbound `NO ACTION`/`RESTRICT` FKs of such a parent, not just one.
+- **Index every FK referencing column that participates in a cascade.** Postgres does **not** auto-index FK columns. A cascade fires a **per-row** RI trigger on each child, so an unindexed child means one seq-scan *per deleted parent row*, which blows past `statement_timeout` on a chunked delete. Before chunk-deleting a large table, enumerate **every** inbound FK, including helper-generated ones: `createJunctionTable` (`src/db/utils.ts`) creates CASCADE FK columns with **no index** on either side, so every junction table needs explicit FK indexes. For a mostly-NULL nullable FK, a partial index `WHERE col IS NOT NULL` serves the cascade lookup at a fraction of the size/write cost.
+- **Observe the backlog, not just the queue.** Queue depth caps at the discovery batch size, so it can't reveal the true backlog. Record the discovery result from the cron tick itself (e.g. `infisical.project_cleanup.discovered` / `infisical.project_env_cleanup.discovered` on the `InfisicalCore` meter: last batch size, capped at the discovery LIMIT). **Alert when the gauge stays at the cap** — it means the drain rate can't keep up (raise concurrency/limiter) or a mass-delete is in progress.
 
 ### Error Handling
 
@@ -253,6 +727,10 @@ logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]
 logger.error({ sessionId, err }, "Failed to get connection details");
 ```
 
+**Never log an outbound URL verbatim — a URL is often itself a credential.** Incoming-webhook providers put the bearer secret in the path (`https://hooks.slack.com/services/T…/B…/<secret>`, Discord, Teams, Telegram) and many APIs accept a token as a query param, so a raw URL in a log line ships a working credential to the log sink. Pass it through `sanitizeUrlForLog` from `@app/lib/logger` first (`src/lib/logger/sanitize-url.ts`): it keeps only the origin, strips userinfo and the fragment, redacts the entire path, and redacts every query value. Token formats can't be recognised reliably, so the path is redacted by default for every host rather than sniffed with heuristics. The global axios response interceptor (`src/lib/config/request.ts`) and `safeRequest`'s dispatch log already do this.
+
+Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -260,6 +738,26 @@ Enterprise code lives in `src/ee/`:
 - `src/ee/routes/v1/` — 63 EE route files; `src/ee/routes/v2/` — 10 v2 route files
 
 EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
+
+**PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
+
+**Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
+
+**Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
+transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the
+whole story, and `lib/gateway-v2/types.ts` owns `GatewayProxyProtocol` / `GatewayHttpProxyActions`. What
+survives is DB-only, and deliberately: the `gateways`, `org_gateway_config` and `project_gateways` tables
+and the `gatewayId` columns on `dynamic_secrets`, `identity_kubernetes_auths` and
+`identity_auth_templates` are still populated but never read or written, so the removal stays revertible.
+Those three tables' `TableName` members exist for that reason alone.
+
+Two consequences when touching a gateway dial path. Resolve the gateway with
+`gatewayV2Service.getPlatformConnectionDetailsByGatewayId`, and when it returns nothing **throw**
+(`getMissingGatewayMessage` in `lib/gateway-v2/gateway-errors.ts`) rather than continuing: every one of
+these call sites sits in front of an `if (gatewayId)` guard whose else-branch dials the target host
+directly, so falling through turns a dangling gateway reference into a silent bypass of the network
+boundary the gateway exists to enforce. And `app_connections.gatewayId` is **not** a v1 column — unlike the
+three above it never grew a `gatewayV2Id`, so that one column carries v2 ids and must stay.
 
 ### Server Plugins
 
@@ -275,6 +773,112 @@ Key plugins in `src/server/plugins/`:
 - `maintenanceMode.ts` — maintenance mode middleware
 - `ip.ts` — IP extraction and validation
 
+### Telemetry / Metrics
+
+OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are defined in `metrics.ts` (resolved lazily so they bind to the real MeterProvider installed by `instrumentation.ts` after boot).
+
+**Meter split by cardinality:**
+- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the choke point for our own call sites: any attribute passed at a call site that isn't in the allowlist is silently dropped.
+- **Legacy `Infisical` / `API` / `SecretSyncs` / `PkiSyncs` / `Integrations`** — carry unbounded per-actor labels (`HIGH_CARDINALITY_METER_NAMES`). Disabled wholesale via `OTEL_DROP_HIGH_CARDINALITY_METERS=true` in multi-tenant/cloud.
+- **`@opentelemetry/instrumentation-http`** — the second allowlist (`HTTP_INSTRUMENTATION_METER_ATTRIBUTES`). `instrumentation.ts` defaults `OTEL_SEMCONV_STABILITY_OPT_IN` to the stable HTTP semconv, because the old conventions label the server metric with the raw `Host` header. An operator's explicit `http/dup` is honoured instead (it is the OTel migration path, emitting both name sets while dashboards move over), which is why the allowlist also carries the old `http.method` / `http.status_code` / `http.flavor` / `http.scheme` names — without them the dup'd metric arrives with an empty attribute set. The `net.*` host and peer names stay off the list in both conventions.
+
+**Recording is fire-and-forget.** Every `.add()` / `.record()` and every `record*Metric` helper is wrapped in `safely()` in `metrics.ts`, so a broken exporter, a bad instrument name, or a config read before `initEnvConfig()` can never throw into the code being measured. A measurement is an observation of the work, never a step in it — so call sites do not need their own try/catch, and must not treat a metric as something that can fail. The swallow is silent because the logger is itself initialised from config.
+
+**A new instrument goes on `InfisicalCore` and carries only bounded attributes.** The per-actor labels on the legacy meters are a deliberate exception, not a precedent: they are allowed only through `highCardinalityMeter`, so that `OTEL_DROP_HIGH_CARDINALITY_METERS` can switch them off. Do not put unbounded attributes on any other meter, and do not acquire a meter outside `src/lib/telemetry/` — ESLint blocks both `@opentelemetry/*` imports and `getMeter` access there, so use `highCardinalityMeter` for per-actor instruments and `resolveCoreMeter` for `InfisicalCore` observable gauges.
+
+The gate has to sit at the call site because **a `DROP` aggregation does not bound memory; only an attributes processor does.** The SDK filters attributes *before* hashing them (so the allowlist View is bounded) but consults the aggregator *after* (so a dropped data point has already been keyed by its full attribute set). Under cumulative temporality — which `OTEL_EXPORT_TYPE=prometheus` mandates — `TemporalMetricProcessor` then retains one entry per distinct attribute set, with no cardinality cap, for the lifetime of the process. A meter whose data points are dropped therefore still leaks heap if anything records to it, which is why the flag stops the recording (`shouldRecordHighCardinalityMetrics` in `metrics.ts`) *and* the View strips attributes. With the flag off — the self-hosted default — that retention is the operator's informed choice; the tradeoff is documented in the monitoring guide.
+
+**Rules for InfisicalCore metrics:**
+- **No per-tenant / per-actor identifiers** as labels — no org id, user id/email, identity id, ip, user agent, request id, or free-form values (e.g. environment slug). These scale series count with customer count, which breaks CloudWatch's 1000-datapoint-per-OTLP-request limit and drives per-GB ingestion cost. Use the **audit log table** for per-org / per-actor breakdowns.
+- Adding a new label means adding it to the allowlist in `telemetry-attributes.ts`. Only add **bounded** keys (fixed enums / static route templates), and document why.
+- `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path. `api-metrics.ts` skips routes generated by `@fastify/static` for the same reason: in `STANDALONE_MODE` `serve-ui.ts` registers it with `wildcard: false`, so every built asset gets its own route and `http.route` would be a content-hashed filename.
+
+### PostHog Product Analytics
+
+Separate from the OpenTelemetry metrics above. `src/services/telemetry/telemetry-service.ts` captures product events; the events listed in `POSTHOG_AGGREGATED_EVENTS` are too high-volume to send one-per-occurrence, so they are buffered in Redis and rolled up by the `TelemetryAggregatedEvents` cron every 10 minutes.
+
+**Buffered events live in one Redis stream per (event type, bucket)** — `telemetry-agg-stream:<event>:<bucket>`, 30 buckets, bucket chosen by hashing the `distinctId`. Two invariants hold that shape together:
+
+- **Never discover buffered events by pattern.** The previous layout wrote one Redis key per event and the cron found them with `getKeysByPattern` per (event type, bucket), so each run cost `events × buckets` full keyspace walks — 240 walks over a ~440k-key keyspace, ~73s of Redis engine CPU every 10 minutes, and it grew every time an event was added to the aggregation list. The stream layout is read by key, so the cost tracks the number of pending events instead of the size of the keyspace. Adding an event type to `POSTHOG_AGGREGATED_EVENTS` must stay free of keyspace scans.
+- **A `distinctId` must always hash to the same bucket.** Each shard is aggregated independently, so a `distinctId` split across shards produces one aggregated PostHog event per shard instead of one overall.
+
+Draining is at-least-once: a shard is trimmed (`XTRIM MINID`) only after the PostHog client has *delivered* its batch, so a run that throws before that point retries the whole batch on the next tick. Handing the batch to `capture` is not delivery — that only enqueues it in the SDK's in-memory buffer, and the stream holds the only durable copy, so the drain awaits `flush()` before trimming. **Two posthog-node behaviours make that flush work, and removing either silently breaks the guarantee without failing a test:**
+
+- **`capture()` does not enqueue inline.** It resolves a promise chain first (`prepareEventMessage(...).then(...)`), so in the tick the capture loop ends the SDK's queue is still empty, `_flush()` returns at `if (!queue.length)`, and `flush()` resolves *successfully having sent nothing* — after which the drain trims. Delivery would then happen, if at all, on the SDK's own 10s interval, so a restart or a failing PostHog inside that window loses the batch instead of retrying it next tick. The drain therefore yields a macrotask (`settleCapturedEvents`) between the last `capture` and the `flush`. Awaiting the publish is not enough: the chain is several hops deep, and only a full macrotask yield drains it regardless of depth.
+Both are guarded by `telemetry-posthog-delivery.test.ts`, which drives the real client against a local HTTP server and asserts the batch is on the wire before the trim. A mocked client cannot see either behaviour, so an SDK upgrade that changed them would otherwise break delivery with every unit test still green.
+
+- **The queue defaults to 1000 entries and evicts the *oldest* on overflow**, logged at `info`. A drain enqueues one event per aggregation group with nothing draining in between, so the default drops the front of any shard that aggregates past it. The client is constructed with `maxQueueSize` sized to the collect ceiling × `BUCKET_CONCURRENCY`. Do not switch to `captureImmediate` to sidestep this: it POSTs one event per call (~200k requests where batching sends ~2k) and swallows delivery errors, so the drain would lose its only failure signal. A rejected flush therefore costs a duplicated batch at worst, where trimming first would have lost it outright. One run drains at most 50k entries per shard, so a backlog is worked off over several ticks instead of being pulled into the cron's memory at once. That ceiling bounds the footprint of one shard; `BUCKET_CONCURRENCY` bounds how many of them are in flight, so the two multiply and both have to stay low. Raising either buys wall-clock the run does not need, since it is Redis-RTT-bound over 240 mostly-small shards and finishes well inside the cron's 8-minute handler timeout.
+
+**Two independent bounds keep a shard from growing without limit, and both are load-bearing:**
+
+- **Count**, on the write path — `MAXLEN ~` 100k entries per shard.
+- **Age**, at the top of every cron run — each shard is trimmed to a 30-minute retention window before it is read. This trim sits *outside* the drain's error scope deliberately: a publish path that throws on every tick still has to age entries out, or the shard parks at its `MAXLEN` cap with nothing bounding how long buffered analytics sits in Redis. It is why a broken drain costs 30 minutes of product analytics instead of unbounded Redis memory.
+
+Shards are reached only by iterating `POSTHOG_AGGREGATED_EVENTS` × the 30 buckets, so a shard stops being trimmed the moment it leaves that product: removing an event type from the list, lowering the bucket count, or rolling back past this layout all orphan live shards. **Every shard therefore carries a 1-hour `EXPIRE`**, which is what reaps those orphans. It is set two ways, and both are needed:
+
+- **On the write path**, in the same `MULTI` as the `XADD`, so a shard has an age bound from the moment it is created. Relying on the cron alone leaves a window where a freshly created shard has no TTL at all — and an instance whose cron never runs (a rollback, an event type dropped from the list, telemetry disabled on the reader side) would keep that shard forever.
+- **On every cron run**, refreshed on each shard it visits, so a shard the drain is still working keeps its deadline pushed out.
+
+Two properties make the TTL safe to rely on:
+
+- **It must stay above the retention window.** On a shard that is still being written the expiry is a second, coarser deadline racing the age trim. At 1 hour against 30 minutes the age trim always wins, and the TTL only ever fires on a shard that has gone quiet and that the cron no longer visits. Shortening it toward the retention window, or lengthening the cron's 10-minute interval past it, would start deleting shards out from under live writers.
+- **It reaps, it does not migrate.** An orphaned shard's buffered entries are dropped, not drained. To hand an event type off cleanly, leave it in `POSTHOG_AGGREGATED_EVENTS` for one release so the cron empties it first.
+
+**Every bound above is silent when it bites, so all four limits are instrumented** (`recordProductAnalytics*Metric` in `lib/telemetry/metrics.ts`, labelled by event type only — the bucket id would multiply the series by 30). The retention trim reports how many entries it aged out, the parse step reports what it could not read back, and each drained shard reports the backlog it left behind, measured with `XLEN` after the drain trim (skipped entirely when OTel collection is off, since that round trip buys nothing else). Backlog is the leading signal: it rises before retention drops start, and a shard sitting near the `MAXLEN` cap is also shedding entries on write, which nothing can count. **Do not change one of these limits without reading those metrics first** — that is what they exist for, and the operator-facing version is in `docs/self-hosting/guides/monitoring-telemetry.mdx`.
+
+Nothing reads the pre-stream `telemetry-event-*` keys, so a deploy that changes this layout drops whatever is still buffered. That is acceptable for product analytics, and it is the reason there is no migration path to maintain.
+
+### Instance Root Encryption Key (rotation)
+
+`ENCRYPTION_KEY` wraps the in-DB root key in `kms_root_config`, which wraps everything else. It is
+rotatable, and three invariants hold that up.
+
+**The sentinel row always holds the active key.** `kms_root_config` can hold up to three rows, but
+`KMS_ROOT_CONFIG_UUID` is always the current one. That id is no longer "the config row", it is a
+compatibility handle: an app version predating rotation looks the row up by id and knows nothing about
+staged keys or retained copies, so keeping the active key there is what lets such a version boot. New
+code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, staged, retained), so
+`kekLabel` is never a lookup key. It exists on both tables purely as a human label, derived from the key so
+an operator can recompute it and match an archived key to a backup; nothing resolves a row by it.
+
+**A rotation is inert until a pod boots with the new key.** `POST /admin/encryption/root-key/rotations` writes
+a *staged* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row
+delete. `$resolveRootKey` promotes it on the first boot that decrypts it: the sentinel takes the new
+ciphertext, the old one moves to a retained copy, and **every** staged row is dropped (an abandoned staged
+row is a live working key, so a replaced staged key left in someone's clipboard must not be able to promote
+itself later). There is no rollback after promotion, only the retention window during which the old key still
+boots.
+
+**The legacy tier is pinned, not rotated.** `project_bots`, `user_encryption_keys.serverEncryptedPrivateKey`,
+`secret_blind_indexes` and `org_bots` encrypt straight from the env var. `kms_legacy_encryption_keys` snapshots
+those env values under the root key at boot, and `crypto.ts` / `encryption.ts` read the snapshot instead of
+`process.env`, which is what decouples that tier from the environment. The snapshot holds **both** the
+post-FIPS-relabel values (used for writes, so ciphertext is unchanged) and the pre-relabel ones (tried on
+decrypt, because the relabel at `env.ts:746-748` overwrites its target unconditionally). That tier
+is never rotated; `infisical.legacy_root_key.usage` is the evidence for when it can be deleted.
+
+Consequences worth knowing:
+
+- **A migration must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`.** Migrations run
+  before `kmsService.startService`, so they cannot reach the snapshot and fall back to `process.env`, which on
+  a rotated instance is the wrong key: decrypts fail the auth tag, encrypts silently write unreadable rows.
+  ESLint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
+  explaining why they are safe.
+- **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
+  rotation before the first was completed would otherwise leave an older wrapper of the root key that
+  `getRootKey` never reports (it returns only the newest), so an operator removing "the previous key" is
+  told the rotation is finished while a leaked older `ENCRYPTION_KEY` still opens the database. The cost is that an
+  instance two rotations behind cannot restart; staging a key warns about that and deliberately does not
+  block, since an operator responding to a leak has to be able to rotate again immediately.
+- **`updateEncryptionStrategy` refuses while a rotation is in flight.** A switch to HSM would not otherwise be
+  enforced, since a pod with the old env key would still trial-decrypt a retained software copy and boot
+  without touching the device.
+- **`lastResolvedAt` can prove presence, never absence.** An instance stamps it at boot only when it resolves a
+  *superseded* row, which is positive evidence a straggler still holds that key and makes both the
+  expiring-key delete and the GC decline. An instance that never restarts never stamps, so the retention window is what covers it.
+  That is the deliberate limit: getting it wrong costs an instance that fails its next restart with an error
+  naming the key it needs, not lost data.
+
 ### Database Configuration
 
 Knex config in `src/db/knexfile.ts`. Loads `.env.migration` then `.env`. Supports `DB_CONNECTION_URI` or individual host/port/user/name/password fields. Optional SSL via `DB_ROOT_CERT` (base64-encoded CA cert). Connection pool: min 2, max 10. Migrations table: `infisical_migrations`. Separate audit log DB supported via `auditlog-migration:*` scripts. ClickHouse for analytics (optional).
@@ -287,4 +891,5 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 2. If adding DB tables: create migration via `npm run migration:new`, run it, then `npm run generate:schema`
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it
-5. Run `make reviewable-api` to verify lint + types
+5. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
+6. Run `make reviewable-api` to verify lint + types

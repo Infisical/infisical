@@ -1,12 +1,20 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
-  TAzureScimServicePrincipal,
-  useAzureEntraIdConnectionListScimServicePrincipals
-} from "@app/hooks/api/appConnections/azure";
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useAzureEntraIdConnectionListScimServicePrincipals } from "@app/hooks/api/appConnections/azure";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { useDebounce } from "@app/hooks/useDebounce";
 
@@ -18,31 +26,25 @@ export const AzureEntraIdScimSyncFields = () => {
   >();
 
   const connectionId = useWatch({ control, name: "connection.id" });
+  const servicePrincipalDisplayName = useWatch({
+    control,
+    name: "destinationConfig.servicePrincipalDisplayName"
+  });
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebounce(searchInput, 300);
-  const [selectedSp, setSelectedSp] = useState<TAzureScimServicePrincipal | null>(null);
 
   const { data: servicePrincipals, isLoading: isLoadingServicePrincipals } =
     useAzureEntraIdConnectionListScimServicePrincipals(connectionId, debouncedSearch || undefined, {
       enabled: Boolean(connectionId)
     });
 
-  // Ensure the selected SP is always present in the options list
-  const options = useMemo(() => {
-    const results = servicePrincipals ?? [];
-    if (selectedSp && !results.some((sp) => sp.id === selectedSp.id)) {
-      return [selectedSp, ...results];
-    }
-    return results;
-  }, [servicePrincipals, selectedSp]);
-
   return (
-    <>
+    <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.servicePrincipalId", "");
-          setSelectedSp(null);
+          setValue("destinationConfig.servicePrincipalDisplayName", undefined);
         }}
       />
 
@@ -50,37 +52,68 @@ export const AzureEntraIdScimSyncFields = () => {
         name="destinationConfig.servicePrincipalId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="SCIM Service Principal"
-            tooltipText="Select the Enterprise Application with SCIM provisioning configured. Type to search by name."
-          >
-            <FilterableSelect
-              value={options.find((sp) => sp.id === value) ?? null}
-              onChange={(option) => {
-                const selected = option as TAzureScimServicePrincipal | null;
-                setSelectedSp(selected);
-                onChange(selected?.id ?? "");
-              }}
-              onInputChange={(newValue) => setSearchInput(newValue)}
-              filterOption={null}
-              isLoading={isLoadingServicePrincipals}
-              options={options}
-              placeholder="Search for a SCIM service principal..."
-              getOptionLabel={(option) => option.displayName}
-              getOptionValue={(option) => option.id}
-              isClearable
-              isDisabled={!connectionId}
-              noOptionsMessage={() =>
-                debouncedSearch
-                  ? "No matching service principals found"
-                  : "Type to search for service principals"
-              }
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel
+              id="secret-sync-azure-entra-id-scim-service-principal-id-label"
+              htmlFor="secret-sync-azure-entra-id-scim-service-principal-id"
+            >
+              SCIM Service Principal
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Select the Enterprise Application with SCIM provisioning configured. Type to
+                  search by name.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Combobox
+                aria-labelledby="secret-sync-azure-entra-id-scim-service-principal-id-label"
+                aria-describedby={
+                  error ? "secret-sync-azure-entra-id-scim-service-principal-id-error" : undefined
+                }
+                id="secret-sync-azure-entra-id-scim-service-principal-id"
+                isError={Boolean(error)}
+                value={value || null}
+                onValueChange={(option) => {
+                  const selected = servicePrincipals?.find((sp) => sp.id === option);
+                  if (!selected || option === value) return;
+                  onChange(option);
+                  setValue("destinationConfig.servicePrincipalDisplayName", selected.displayName);
+                }}
+                onClear={() => {
+                  onChange("");
+                  setValue("destinationConfig.servicePrincipalDisplayName", undefined);
+                }}
+                onInputValueChange={(newValue) => setSearchInput(newValue)}
+                shouldFilter={false}
+                includeMissingSelectedOptions={!searchInput}
+                isLoading={isLoadingServicePrincipals}
+                options={(servicePrincipals ?? []).map((sp) => sp.id)}
+                placeholder="Search for a SCIM service principal..."
+                getOptionLabel={(option) =>
+                  servicePrincipals?.find((sp) => sp.id === option)?.displayName ??
+                  (servicePrincipalDisplayName || option)
+                }
+                getOptionValue={(option) => option}
+                isDisabled={!connectionId}
+                emptyMessage={() =>
+                  debouncedSearch
+                    ? "No matching service principals found"
+                    : "Type to search for service principals"
+                }
+                modal
+              />
+              <FieldError
+                id="secret-sync-azure-entra-id-scim-service-principal-id-error"
+                errors={[error]}
+              />
+            </FieldContent>
+          </Field>
         )}
       />
-    </>
+    </FieldGroup>
   );
 };

@@ -20,7 +20,6 @@ export const SecretVersionsV2Schema = z.object({
   reminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
   metadata: z.unknown().nullable().optional(),
-  envId: z.string().uuid().nullable().optional(),
   secretId: z.string().uuid(),
   folderId: z.string().uuid(),
   userId: z.string().uuid().nullable().optional(),
@@ -32,7 +31,8 @@ export const SecretVersionsV2Schema = z.object({
   parentVersionId: z.string().uuid().nullable().optional(),
   isRedacted: z.boolean().default(false),
   redactedAt: z.date().nullable().optional(),
-  redactedByUserId: z.string().uuid().nullable().optional()
+  redactedByUserId: z.string().uuid().nullable().optional(),
+  secretValueBlindIndex: z.string().nullable().optional()
 });
 
 export type TSecretVersionsV2 = z.infer<typeof SecretVersionsV2Schema>;

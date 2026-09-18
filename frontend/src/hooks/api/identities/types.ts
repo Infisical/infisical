@@ -2,7 +2,7 @@ import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 
 import { OrderByDirection } from "../generic/types";
 import { OrgIdentityOrderBy } from "../organization/types";
-import { Project } from "../projects/types";
+import { Project, ProjectType } from "../projects/types";
 import { TOrgRole } from "../roles/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
@@ -258,6 +258,7 @@ export type DeleteIdentityGcpAuthDTO = {
 
 export type IdentityOidcAuth = {
   identityId: string;
+  templateId?: string | null;
   oidcDiscoveryUrl: string;
   caCert: string;
   boundIssuer: string;
@@ -275,10 +276,11 @@ export type AddIdentityOidcAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
-  oidcDiscoveryUrl: string;
-  caCert: string;
-  boundIssuer: string;
-  boundAudiences: string;
+  templateId?: string;
+  oidcDiscoveryUrl?: string;
+  caCert?: string;
+  boundIssuer?: string;
+  boundAudiences?: string;
   boundClaims: Record<string, string>;
   claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
@@ -294,6 +296,7 @@ export type UpdateIdentityOidcAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
+  templateId?: string | null;
   oidcDiscoveryUrl?: string;
   caCert?: string;
   boundIssuer?: string;
@@ -504,8 +507,11 @@ export enum IdentityKubernetesAuthTokenReviewMode {
 
 export type IdentityKubernetesAuth = {
   identityId: string;
+  templateId?: string | null;
   kubernetesHost: string;
   tokenReviewerJwt: string;
+  // template-sourced JWTs read back as ""; this flag marks that a hidden JWT is stored
+  isTokenReviewerJwtTemplateSourced?: boolean;
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
@@ -524,15 +530,16 @@ export type AddIdentityKubernetesAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
-  kubernetesHost: string | null;
+  templateId?: string;
+  kubernetesHost?: string | null;
   tokenReviewerJwt?: string;
-  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
-  allowedAudience: string;
+  allowedAudience?: string;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
-  caCert: string;
+  caCert?: string;
   verifyTlsCertificate?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -546,6 +553,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   organizationId?: string;
   projectId?: string;
   identityId: string;
+  templateId?: string | null;
   kubernetesHost?: string | null;
   tokenReviewerJwt?: string | null;
   tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
@@ -574,6 +582,8 @@ export type IdentityTlsCertAuth = {
   identityId: string;
   caCertificate: string;
   allowedCommonNames: string;
+  allowedSubjectAltNames: string[] | null;
+  verifyClientCertificateChain: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -586,6 +596,8 @@ export type AddIdentityTlsCertAuthDTO = {
   identityId: string;
   caCertificate: string;
   allowedCommonNames?: string;
+  allowedSubjectAltNames?: string[];
+  verifyClientCertificateChain?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -600,6 +612,8 @@ export type UpdateIdentityTlsCertAuthDTO = {
   identityId: string;
   caCertificate: string;
   allowedCommonNames?: string | null;
+  allowedSubjectAltNames?: string[] | null;
+  verifyClientCertificateChain?: boolean;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
@@ -722,7 +736,6 @@ export type IdentityLdapAuth = {
   url?: string;
   bindDN?: string;
   templateId?: string;
-  bindPass?: string;
   searchBase?: string;
   searchFilter: string;
   ldapCaCertificate?: string;
@@ -949,13 +962,74 @@ export type TProjectIdentityMembershipsListV2 = {
   totalCount: number;
 };
 
+export enum SearchIdentitiesScope {
+  OrganizationScope = "organization",
+  ProjectScope = "project"
+}
+
+type IdentitySearchFilter = {
+  name?: { $contains: string };
+  role?: { $contains: string };
+  $or?: Array<{
+    name?: { $contains: string };
+    role?: { $contains: string };
+  }>;
+};
+
 export type TSearchIdentitiesDTO = {
+  orgId: string;
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
-  search: {
-    name?: { $contains: string };
-    role?: { $in: string[] };
+  scope?: SearchIdentitiesScope[];
+  search: IdentitySearchFilter;
+};
+
+export type TCountIdentitiesDTO = {
+  orgId: string;
+  scope: SearchIdentitiesScope[];
+  search: IdentitySearchFilter;
+};
+
+export type TIdentityMembershipCounts = {
+  organization?: number;
+  project?: number;
+};
+
+export type IdentityMembershipSearchRole = {
+  id: string;
+  role: "admin" | "member" | "viewer" | "no-access" | "custom" | string;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
+  customRoleSlug?: string | null;
+  customRoleDescription?: string | null;
+  isTemporary: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: string | null;
+  temporaryAccessEndTime?: string | null;
+};
+
+export type IdentityMembershipSearchResult = {
+  id: string;
+  identityId: string;
+  scope: SearchIdentitiesScope;
+  orgId: string;
+  projectId?: string | null;
+  project?: {
+    id: string;
+    name: string;
+    slug: string;
+    type: ProjectType;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAuthMethod?: IdentityAuthMethod | null;
+  lastLoginTime?: string | null;
+  roles: IdentityMembershipSearchRole[];
+  identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
+    authMethods: IdentityAuthMethod[];
+    activeLockoutAuthMethods: IdentityAuthMethod[];
   };
 };

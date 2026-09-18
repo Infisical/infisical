@@ -1,5 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge } from "@app/components/v3";
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
 
@@ -16,13 +15,19 @@ export const AwsParameterStoreSyncDestinationSection = ({ secretSync }: Props) =
 
   return (
     <>
-      <GenericFieldLabel label="Region">
-        {awsRegion?.name}
-        <Badge className="ml-1" variant="neutral">
-          {awsRegion?.slug}
-        </Badge>
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Path">{path}</GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Region</DetailLabel>
+        <DetailValue>
+          {awsRegion?.name}
+          <Badge className="ml-1" variant="neutral">
+            {awsRegion?.slug}
+          </Badge>
+        </DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Path</DetailLabel>
+        <DetailValue>{path}</DetailValue>
+      </Detail>
     </>
   );
 };

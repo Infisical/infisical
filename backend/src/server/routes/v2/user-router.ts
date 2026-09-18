@@ -1,11 +1,14 @@
+import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { z } from "zod";
 
 import { AuthTokenSessionsSchema } from "@app/db/schemas";
+import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
+import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
@@ -32,6 +35,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Set the preferred challenge method among already-configured factors. This
+  // never enables/disables MFA and never issues recovery codes.
   server.route({
     method: "PATCH",
     url: "/me/mfa",
@@ -39,10 +44,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "updateUserMfa",
+      operationId: "updateUserMfaMethod",
       body: z.object({
-        isMfaEnabled: z.boolean().optional(),
-        selectedMfaMethod: z.nativeEnum(MfaMethod).optional()
+        selectedMfaMethod: z.nativeEnum(MfaMethod),
+        mfaSessionId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -50,12 +55,196 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.updateUserMfa({
+      await ensureStepUpMfa(server, {
         userId: req.permission.id,
-        isMfaEnabled: req.body.isMfaEnabled,
+        orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
+        resourceId: MfaStepUpResource.MfaManagement,
+        mfaSessionId: req.body.mfaSessionId,
+        message: "MFA verification is required to change your preferred two-factor method"
+      });
+
+      const user = await server.services.user.setSelectedMfaMethod({
+        userId: req.permission.id,
         selectedMfaMethod: req.body.selectedMfaMethod
+      });
+
+      return { user };
+    }
+  });
+
+  // Enroll a factor: proves possession of the factor in-request and persists it.
+  // Reachable pre-MFA (requireOrg:false) so the enforced-MFA onboarding flow can set
+  // up a factor at login. It NEVER mints recovery codes: those are issued only after
+  // the org-required MFA is actually completed (on the first successful verifyMfaToken,
+  // or via POST /me/mfa/activate from a full authenticated session). This keeps a
+  // password-only, pre-MFA session from bootstrapping recovery codes.
+  //
+  // Email is not an enrollable factor here: it is always available (it uses the
+  // account email) and needs no per-user setup, so only TOTP and WebAuthn are enrolled.
+  server.route({
+    method: "POST",
+    url: "/me/mfa/enroll",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "enrollUserMfa",
+      body: z.discriminatedUnion("method", [
+        z.object({
+          method: z.literal(MfaMethod.TOTP),
+          totp: z.string().trim()
+        }),
+        z.object({
+          method: z.literal(MfaMethod.WEBAUTHN),
+          registrationResponse: z
+            .object({
+              id: z.string(),
+              rawId: z.string(),
+              response: z
+                .object({
+                  clientDataJSON: z.string(),
+                  attestationObject: z.string()
+                })
+                .passthrough(),
+              clientExtensionResults: z.record(z.unknown()).default({}),
+              type: z.literal("public-key")
+            })
+            .passthrough(),
+          name: z.string().optional()
+        })
+      ]),
+      response: {
+        200: z.object({})
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      if (req.body.method === MfaMethod.TOTP) {
+        await server.services.totp.verifyUserTotpConfig({
+          userId: req.permission.id,
+          totp: req.body.totp
+        });
+      } else {
+        await server.services.webAuthn.verifyRegistrationResponse({
+          userId: req.permission.id,
+          registrationResponse: req.body.registrationResponse as RegistrationResponseJSON,
+          name: req.body.name
+        });
+      }
+
+      return {};
+    }
+  });
+
+  // Enable MFA from a fully authenticated session (personal settings). Issues a
+  // fresh recovery-code pool (invalidating any prior codes), returned once so the
+  // client can surface them.
+  //
+  // Recovery codes bypass any org-required MFA method at login, so they must never
+  // be mintable by a session that has not itself proven a second factor. An org-scoped
+  // token alone is NOT sufficient: it may belong to an org that does not enforce MFA
+  // (isMfaVerified=false), which would let a password-only attacker mint account-wide
+  // recovery codes through the weaker org and replay them against a stronger org's
+  // enforced challenge. So:
+  //   - isMfaVerified token (login MFA already completed): enable directly.
+  //   - otherwise: require a fresh step-up challenge against the method being enabled
+  //     (proving possession of that factor) before issuing codes.
+  //
+  // The service rejects already-enabled accounts; rotating codes on an enabled account
+  // goes through the step-up-gated POST /me/mfa/recovery-codes route.
+  server.route({
+    method: "POST",
+    url: "/me/mfa/activate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "activateUserMfa",
+      body: z.object({
+        selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        mfaSessionId: z.string().trim().optional()
+      }),
+      response: {
+        200: z.object({
+          user: SanitizedUserSchema,
+          recoveryCodes: z.string().array()
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "Invalid auth mode" });
+      }
+
+      const me = await server.services.user.getMe(req.permission.id);
+      const selectedMfaMethod =
+        req.body.selectedMfaMethod ?? (me.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+
+      if (!req.auth.isMfaVerified) {
+        await ensureStepUpMfa(server, {
+          userId: req.permission.id,
+          orgId: req.permission.orgId,
+          tokenVersionId: getStepUpSessionId(req),
+          resourceId: MfaStepUpResource.MfaActivation,
+          mfaMethod: selectedMfaMethod,
+          mfaSessionId: req.body.mfaSessionId,
+          message: "MFA verification is required to enable two-factor authentication"
+        });
+      }
+
+      const { user, recoveryCodes } = await server.services.user.activateMfa({
+        userId: req.permission.id,
+        selectedMfaMethod
+      });
+
+      return { user, recoveryCodes };
+    }
+  });
+
+  // Disable MFA. Disabling weakens account security, so it is gated behind a fresh
+  // step-up MFA challenge (same primitive as viewing recovery codes). Enrolled
+  // factors are preserved; the recovery-code pool is wiped by the service.
+  server.route({
+    method: "POST",
+    url: "/me/mfa/deactivate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "deactivateUserMfa",
+      body: z
+        .object({
+          mfaSessionId: z.string().trim().optional()
+        })
+        .optional(),
+      response: {
+        200: z.object({
+          user: SanitizedUserSchema
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      // Enforce the org-enforcement rule before the step-up challenge so a user in an
+      // MFA-enforcing org gets a clean rejection instead of being made to complete an
+      // MFA challenge only to be denied. deactivateMfa re-checks it authoritatively.
+      await server.services.user.assertMfaDisableAllowed(req.permission.id);
+
+      await ensureStepUpMfa(server, {
+        userId: req.permission.id,
+        orgId: req.permission.orgId,
+        tokenVersionId: getStepUpSessionId(req),
+        resourceId: MfaStepUpResource.MfaManagement,
+        mfaSessionId: req.body?.mfaSessionId,
+        message: "MFA verification is required to disable two-factor authentication"
+      });
+
+      const user = await server.services.user.deactivateMfa({
+        userId: req.permission.id
       });
 
       return { user };
@@ -310,7 +499,18 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
             lastName: z.string().nullable().optional(),
             isAccepted: z.boolean().default(false).nullable().optional(),
             isMfaEnabled: z.boolean().default(false).nullable().optional(),
-            mfaMethods: z.string().array().nullable().optional(),
+            mfaMethods: z
+              .string()
+              .array()
+              .nullable()
+              .optional()
+              .default(null)
+              .describe(
+                JSON.stringify({
+                  deprecated: true,
+                  description: "Deprecated: no longer used and always null. Use selectedMfaMethod instead."
+                })
+              ),
             devices: z.unknown().nullable().optional(),
             createdAt: z.date(),
             updatedAt: z.date(),

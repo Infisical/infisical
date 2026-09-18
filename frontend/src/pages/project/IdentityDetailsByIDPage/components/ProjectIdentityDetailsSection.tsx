@@ -1,9 +1,8 @@
 import { subject } from "@casl/ability";
 import { format } from "date-fns";
-import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
+import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon, VaultIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
   Badge,
   ButtonGroup,
@@ -17,10 +16,18 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   OrgIcon,
   ProjectIcon,
-  SubOrgIcon
+  SubOrgIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
 import { usePopUp, useTimedReset } from "@app/hooks";
@@ -44,6 +51,26 @@ export const ProjectIdentityDetailsSection = ({
 }: Props) => {
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isPam = currentProject?.type === ProjectType.PAM;
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
+
+  let productLabel = "Project";
+  if (isCertManager) {
+    productLabel = "Certificate Manager";
+  } else if (isPam) {
+    productLabel = "PAM";
+  } else if (isAgentVault) {
+    productLabel = "Agent Vault";
+  }
+
+  let joinedLabel = "Joined project";
+  if (isCertManager) {
+    joinedLabel = "Joined certificate manager";
+  } else if (isPam) {
+    joinedLabel = "Joined PAM";
+  } else if (isAgentVault) {
+    joinedLabel = "Joined Agent Vault";
+  }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -68,6 +95,7 @@ export const ProjectIdentityDetailsSection = ({
               >
                 {(isAllowed) => (
                   <IconButton
+                    aria-label="Edit machine identity"
                     isDisabled={!isAllowed}
                     onClick={() => {
                       handlePopUpOpen("editIdentity");
@@ -92,18 +120,23 @@ export const ProjectIdentityDetailsSection = ({
               <DetailLabel>ID</DetailLabel>
               <DetailValue className="flex items-center gap-x-1">
                 {identity.id}
-                <Tooltip content="Copy machine identity ID to clipboard">
-                  <IconButton
-                    onClick={() => {
-                      navigator.clipboard.writeText(identity.id);
-                      setCopyTextId("Copied");
-                    }}
-                    variant="ghost"
-                    size="xs"
-                  >
-                    {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
-                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                  </IconButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="Copy machine identity ID"
+                      onClick={() => {
+                        navigator.clipboard.writeText(identity.id);
+                        setCopyTextId("Copied");
+                      }}
+                      variant={isCopyingId ? "ghost" : "ghost-muted"}
+                      size="xs"
+                    >
+                      {isCopyingId ? <CheckIcon /> : <ClipboardListIcon />}
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isCopyingId ? "Machine identity ID copied" : "Copy machine identity ID"}
+                  </TooltipContent>
                 </Tooltip>
               </DetailValue>
             </Detail>
@@ -116,9 +149,9 @@ export const ProjectIdentityDetailsSection = ({
                     {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
-                  <Badge variant="project">
-                    <ProjectIcon />
-                    {isCertManager ? "Certificate Manager" : "Project"}
+                  <Badge variant={isAgentVault ? "av" : "project"}>
+                    {isAgentVault ? <VaultIcon /> : <ProjectIcon />}
+                    {productLabel}
                   </Badge>
                 )}
               </DetailValue>
@@ -143,14 +176,7 @@ export const ProjectIdentityDetailsSection = ({
               </DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>
-                {/* eslint-disable-next-line no-nested-ternary */}
-                {isOrgIdentity
-                  ? isCertManager
-                    ? "Joined certificate manager"
-                    : "Joined project"
-                  : "Created"}
-              </DetailLabel>
+              <DetailLabel>{isOrgIdentity ? joinedLabel : "Created"}</DetailLabel>
               <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
             </Detail>
             {!isOrgIdentity && (
@@ -196,17 +222,23 @@ export const ProjectIdentityDetailsSection = ({
           </DetailGroup>
         </CardContent>
       </Card>
-      <Modal
-        isOpen={popUp.editIdentity.isOpen}
+      <Dialog
+        open={popUp.editIdentity.isOpen}
         onOpenChange={(open) => handlePopUpToggle("editIdentity", open)}
       >
-        <ModalContent bodyClassName="overflow-visible" title="Edit Project Identity">
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit {isAgentVault ? "Machine" : "Project"} Identity</DialogTitle>
+            <DialogDescription>
+              Update the identity&apos;s name, delete protection, and metadata.
+            </DialogDescription>
+          </DialogHeader>
           <ProjectIdentityModal
             identity={identity}
             onClose={() => handlePopUpToggle("editIdentity", false)}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

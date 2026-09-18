@@ -8,16 +8,11 @@ import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
-import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
 import { TPkiCollection } from "../pkiCollections/types";
 import { TPkiSubscriber } from "../pkiSubscriber/types";
-import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
-import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
-import { TSshHost } from "../sshHost/types";
-import { TSshHostGroup } from "../sshHostGroup/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
 import {
@@ -33,10 +28,12 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  RestoreEnvironmentDTO,
   TGetIdentityPermissionAuditResponse,
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
-  TProjectSshConfig,
+  TMyPendingProjectAccessRequestsResponse,
+  TProjectNavigation,
   TSearchProjectsDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
@@ -96,7 +93,7 @@ export const useGetUpgradeProjectStatus = ({
   });
 };
 
-const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
+export const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
   const { data } = await apiRequest.get<{ projects: Project[] }>("/api/v1/projects", {
     params: {
       includeRoles,
@@ -139,16 +136,48 @@ export const useGetUserProjects = ({
     ...options
   });
 
+export const useGetUserProjectsByType = (type: ProjectType) =>
+  useQuery({
+    queryKey: [...projectKeys.getAllUserProjects(), type],
+    queryFn: () => fetchUserWorkspaces(false, type),
+    select: (projects) => projects.slice(0, 100)
+  });
+
+export const useGetAccessibleProjectsWithSubOrgs = (orgId: string) =>
+  useQuery({
+    queryKey: projectKeys.getAccessibleProjectsWithSubOrgs(orgId),
+    queryFn: async ({ signal }) => {
+      const { data } = await apiRequest.get<{ projects: TProjectNavigation[] }>(
+        "/api/v1/projects/accessible-with-sub-orgs",
+        { signal }
+      );
+      return data.projects;
+    },
+    enabled: Boolean(orgId)
+  });
+
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
   useQuery({
     queryKey: projectKeys.searchProject(dto),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
-        projects: (Project & { isMember: boolean })[];
+        projects: (Project & { isMember: boolean; isDirectMember: boolean })[];
         totalCount: number;
       }>("/api/v1/projects/search", dto);
 
       return data;
+    },
+    ...options
+  });
+
+export const useGetMyPendingProjectAccessRequests = (options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: projectKeys.getMyPendingProjectAccessRequests(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TMyPendingProjectAccessRequestsResponse>(
+        "/api/v1/projects/me/project-access-requests"
+      );
+      return new Map(data.requests.map((r) => [r.projectId, new Date(r.createdAt)]));
     },
     ...options
   });
@@ -167,25 +196,6 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
     queryKey: projectKeys.getProjectMemberships(orgId),
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
-  });
-
-const fetchWorkspaceAuthorization = async (projectId: string) => {
-  const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
-    `/api/v1/projects/${projectId}/authorizations`
-  );
-
-  return data.authorizations;
-};
-
-export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
-  projectId: string,
-  select?: (data: IntegrationAuth[]) => TData
-) =>
-  useQuery({
-    queryKey: projectKeys.getProjectAuthorization(projectId),
-    queryFn: () => fetchWorkspaceAuthorization(projectId),
-    enabled: Boolean(projectId),
-    select
   });
 
 export const fetchWorkspaceIntegrations = async (projectId: string) => {
@@ -350,8 +360,25 @@ export const useDeleteWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, DeleteEnvironmentDTO>({
+    mutationFn: ({ id, projectId, hardDelete }) => {
+      return apiRequest.delete(`/api/v1/projects/${projectId}/environments/${id}`, {
+        params: hardDelete ? { hardDelete: true } : undefined
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getAllUserProjects()
+      });
+    }
+  });
+};
+
+export const useRestoreEnvironment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<object, object, RestoreEnvironmentDTO>({
     mutationFn: ({ id, projectId }) => {
-      return apiRequest.delete(`/api/v1/projects/${projectId}/environments/${id}`);
+      return apiRequest.post(`/api/v1/projects/${projectId}/environments/${id}/restore`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -364,7 +391,8 @@ export const useDeleteWsEnvironment = () => {
 export const useGetWorkspaceUsers = (
   projectId: string,
   includeGroupMembers?: boolean,
-  roles?: string[]
+  roles?: string[],
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: projectKeys.getProjectUsers(projectId, includeGroupMembers, roles),
@@ -382,7 +410,7 @@ export const useGetWorkspaceUsers = (
       });
       return users;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -405,28 +433,48 @@ export const useGetWorkspaceUserDetails = (
   });
 };
 
-export const useGetMembershipPermissionAudit = (projectId: string, membershipId: string) =>
+export const useGetMembershipPermissionAudit = (
+  projectId: string,
+  membershipId: string,
+  options?: { enabled?: boolean; retry?: number | boolean; includeFolderPermissions?: boolean }
+) =>
   useQuery({
-    queryKey: projectKeys.getMembershipPermissionAudit(projectId, membershipId),
+    queryKey: projectKeys.getMembershipPermissionAudit(
+      projectId,
+      membershipId,
+      options?.includeFolderPermissions
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetMembershipPermissionAuditResponse>(
-        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`
+        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`,
+        { params: { includeFolderPermissions: options?.includeFolderPermissions } }
       );
       return data;
     },
-    enabled: Boolean(projectId && membershipId)
+    enabled: Boolean(projectId && membershipId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
-export const useGetIdentityPermissionAudit = (projectId: string, identityId: string) =>
+export const useGetIdentityPermissionAudit = (
+  projectId: string,
+  identityId: string,
+  options?: { enabled?: boolean; retry?: number | boolean; includeFolderPermissions?: boolean }
+) =>
   useQuery({
-    queryKey: projectKeys.getIdentityPermissionAudit(projectId, identityId),
+    queryKey: projectKeys.getIdentityPermissionAudit(
+      projectId,
+      identityId,
+      options?.includeFolderPermissions
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetIdentityPermissionAuditResponse>(
-        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/permissions/audit`
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/permissions/audit`,
+        { params: { includeFolderPermissions: options?.includeFolderPermissions } }
       );
       return data;
     },
-    enabled: Boolean(projectId && identityId)
+    enabled: Boolean(projectId && identityId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
 export const useDeleteUserFromWorkspace = () => {
@@ -510,7 +558,11 @@ export const useGetWorkspaceGroupMembershipDetails = (
   });
 };
 
-export const useListWorkspaceGroups = (projectId: string, projectType?: string) => {
+export const useListWorkspaceGroups = (
+  projectId: string,
+  projectType?: string,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: projectKeys.getProjectGroupMemberships(projectId),
     queryFn: async () => {
@@ -521,7 +573,7 @@ export const useListWorkspaceGroups = (projectId: string, projectType?: string) 
       );
       return groupMemberships;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -731,67 +783,6 @@ export const useListWorkspaceCertificateTemplates = ({ projectId }: { projectId:
   });
 };
 
-export const useListWorkspaceSshCertificates = ({
-  offset,
-  limit,
-  projectId
-}: {
-  offset: number;
-  limit: number;
-  projectId: string;
-}) => {
-  return useQuery({
-    queryKey: projectKeys.specificProjectSshCertificates({
-      offset,
-      limit,
-      projectId
-    }),
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit)
-      });
-
-      const { data } = await apiRequest.get<{
-        certificates: TSshCertificate[];
-        totalCount: number;
-      }>(`/api/v1/projects/${projectId}/ssh-certificates`, {
-        params
-      });
-      return data;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshCas = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshCas(projectId),
-    queryFn: async () => {
-      const {
-        data: { cas }
-      } = await apiRequest.get<{ cas: Omit<TSshCertificateAuthority, "publicKey">[] }>(
-        `/api/v1/projects/${projectId}/ssh-cas`
-      );
-      return cas;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshHosts = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshHosts(projectId),
-    queryFn: async () => {
-      const {
-        data: { hosts }
-      } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v1/projects/${projectId}/ssh-hosts`);
-      return hosts;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
 export const useListWorkspacePkiSubscribers = (projectId: string) => {
   return useQuery({
     queryKey: projectKeys.getProjectPkiSubscribers(projectId),
@@ -802,34 +793,6 @@ export const useListWorkspacePkiSubscribers = (projectId: string) => {
         `/api/v1/projects/${projectId}/pki-subscribers`
       );
       return subscribers;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshHostGroups = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshHostGroups(projectId),
-    queryFn: async () => {
-      const {
-        data: { groups }
-      } = await apiRequest.get<{ groups: (TSshHostGroup & { hostCount: number })[] }>(
-        `/api/v1/projects/${projectId}/ssh-host-groups`
-      );
-      return groups;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshCertificateTemplates(projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ certificateTemplates: TSshCertificateTemplate[] }>(
-        `/api/v1/projects/${projectId}/ssh-certificate-templates`
-      );
-      return data;
     },
     enabled: Boolean(projectId)
   });
@@ -856,20 +819,6 @@ export const useGetWorkspaceWorkflowIntegrationConfig = ({
 
           throw err;
         });
-
-      return data;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useGetProjectSshConfig = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshConfig(projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TProjectSshConfig>(
-        `/api/v1/projects/${projectId}/ssh-config`
-      );
 
       return data;
     },

@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/secret-syncs";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import {
   useRenderConnectionListEnvironmentGroups,
   useRenderConnectionListServices
@@ -27,22 +27,42 @@ export const RenderSyncDestinationSection = ({ secretSync }: Props) => {
       const id = secretSync.destinationConfig.serviceId;
 
       if (isPending) {
-        return <GenericFieldLabel label="Service">Loading...</GenericFieldLabel>;
+        return (
+          <Detail>
+            <DetailLabel>Service</DetailLabel>
+            <DetailValue>Loading...</DetailValue>
+          </Detail>
+        );
       }
 
       const serviceName = services.find((service) => service.id === id)?.name;
-      return <GenericFieldLabel label="Service">{serviceName ?? id}</GenericFieldLabel>;
+      return (
+        <Detail>
+          <DetailLabel>Service</DetailLabel>
+          <DetailValue>{serviceName ?? id}</DetailValue>
+        </Detail>
+      );
     }
 
     case RenderSyncScope.EnvironmentGroup: {
       const id = secretSync.destinationConfig.environmentGroupId;
 
       if (isGroupsPending) {
-        return <GenericFieldLabel label="Environment Group">Loading...</GenericFieldLabel>;
+        return (
+          <Detail>
+            <DetailLabel>Environment Group</DetailLabel>
+            <DetailValue>Loading...</DetailValue>
+          </Detail>
+        );
       }
 
       const envName = groups.find((g) => g.id === id)?.name;
-      return <GenericFieldLabel label="Environment Group">{envName ?? id}</GenericFieldLabel>;
+      return (
+        <Detail>
+          <DetailLabel>Environment Group</DetailLabel>
+          <DetailValue>{envName ?? id}</DetailValue>
+        </Detail>
+      );
     }
     default:
       throw new Error("Unknown render sync destination scope");

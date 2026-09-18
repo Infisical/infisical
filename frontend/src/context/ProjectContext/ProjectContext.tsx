@@ -3,18 +3,24 @@ import { useParams } from "@tanstack/react-router";
 
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
+import { useImplicitProjectId } from "@app/hooks/useImplicitProjectId";
 
 export const useProject = () => {
   const params = useParams({
     strict: false
   });
-  if (!params.projectId) {
+
+  const implicitProjectId = useImplicitProjectId();
+
+  const projectId = params.projectId ?? implicitProjectId;
+
+  if (!projectId) {
     throw new Error("Missing project id");
   }
 
   const { data: currentProject } = useSuspenseQuery({
-    queryKey: projectKeys.getProjectById(params.projectId),
-    queryFn: () => fetchProjectById(params.projectId as string),
+    queryKey: projectKeys.getProjectById(projectId),
+    queryFn: () => fetchProjectById(projectId),
     staleTime: Infinity
   });
 

@@ -1,15 +1,19 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
@@ -17,17 +21,24 @@ import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-gro
 import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
+import { TOrgDALFactory } from "../org/org-dal";
+import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   TAddUsersToWorkspaceDTO,
@@ -42,8 +53,10 @@ type TProjectMembershipServiceFactoryDep = {
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
   userDAL: Pick<TUserDALFactory, "find">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
@@ -56,6 +69,12 @@ type TProjectMembershipServiceFactoryDep = {
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  applicationMembershipCleanupService: Pick<
+    TApplicationMembershipCleanupServiceFactory,
+    "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
+  >;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -77,7 +96,12 @@ export const projectMembershipServiceFactory = ({
   secretApprovalPolicyDAL,
   membershipUserDAL,
   userDAL,
-  membershipRoleDAL
+  userAliasDAL,
+  orgDAL,
+  membershipRoleDAL,
+  applicationMembershipCleanupService,
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -165,6 +189,44 @@ export const projectMembershipServiceFactory = ({
     return projectMembers.map((m) => ({ ...m, isGroupMember: false }));
   };
 
+  /**
+   * A provisioning system may name a member by its IdP identifier (a UPN, say) instead of their
+   * username. Map those to usernames up front so everything downstream keys on the same value,
+   * including the group-membership lookup that decides whose project key survives. Usernames win,
+   * so an alias can never shadow a real account.
+   */
+  const $toCanonicalUsernames = async (identifiers: string[], projectId: string) => {
+    const deduped = unique(identifiers);
+    const existingUsers = await userDAL.find({ $in: { username: deduped } });
+    const unmatched = deduped.filter((identifier) => !existingUsers.some((el) => el.username === identifier));
+    if (!unmatched.length) return deduped;
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const org = await requestMemoize(requestMemoKeys.orgFindById(project.orgId), () => orgDAL.findById(project.orgId));
+
+    const { resolved, ambiguousIdentifiers } = await resolveUsersBySsoExternalId({
+      identifiers: unmatched,
+      orgId: project.orgId,
+      rootOrgId: org?.rootOrgId,
+      userAliasDAL,
+      userDAL
+    });
+
+    if (ambiguousIdentifiers.length) {
+      throw new BadRequestError({
+        message: `Identifier(s) ${ambiguousIdentifiers
+          .map((el) => `'${el}'`)
+          .join(
+            ", "
+          )} match more than one SSO account in this organization. Use the user's email address instead, or contact support to resolve the duplicate.`
+      });
+    }
+
+    return unique(deduped.map((identifier) => resolved.get(identifier)?.username ?? identifier));
+  };
+
   const getProjectMembershipByUsername = async ({
     actorId,
     actor,
@@ -183,7 +245,10 @@ export const projectMembershipServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
-    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { username });
+    const [canonicalUsername] = await $toCanonicalUsernames([username], projectId);
+    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, {
+      username: canonicalUsername
+    });
     if (!membership) throw new NotFoundError({ message: `Project membership not found for user '${username}'` });
     return membership;
   };
@@ -206,6 +271,7 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
@@ -231,6 +297,26 @@ export const projectMembershipServiceFactory = ({
         id: orgMembers.filter((el) => Boolean(el.actorUserId)).map((el) => el.actorUserId as string)
       }
     });
+
+    const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
+      [ProjectMembershipRole.Member],
+      projectId
+    );
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+    for (const addedUser of orgMembershipUsernames) {
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions: memberRolePermissions,
+        baseMessage: "Failed to add a member with a role exceeding your own privileges",
+        subjectFields: { userEmail: addedUser.email || undefined }
+      });
+    }
+
     const userIdsToExcludeForProjectKeyAddition = new Set(
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(
         orgMembershipUsernames.map(({ username }) => username),
@@ -289,18 +375,16 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
+    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return orgMembers;
   };
 
-  const deleteProjectMemberships = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    emails,
-    usernames
-  }: TDeleteProjectMembershipsDTO) => {
+  const deleteProjectMemberships = async (
+    { actorId, actor, actorOrgId, actorAuthMethod, projectId, emails, usernames }: TDeleteProjectMembershipsDTO,
+    externalTx?: Knex
+  ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -311,11 +395,9 @@ export const projectMembershipServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
 
-    const usernamesAndEmails = [...emails, ...usernames];
+    const usernamesAndEmails = await $toCanonicalUsernames([...emails, ...usernames], projectId);
 
-    const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, [
-      ...new Set(usernamesAndEmails.map((element) => element))
-    ]);
+    const projectMembers = await projectMembershipDAL.findMembershipsByUsername(projectId, usernamesAndEmails);
 
     if (projectMembers.length !== usernamesAndEmails.length) {
       throw new BadRequestError({
@@ -331,6 +413,41 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
+    const targetRoleRows = await membershipRoleDAL.findRolesByMembershipIds(projectMembers.map(({ id }) => id));
+    const targetRoles = resolveMembershipRoleSlugs(targetRoleRows);
+    const resolvedRoles = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+
+    const resolvedRoleBySlug: Record<string, (typeof resolvedRoles)[number]> = {};
+    const unattributableRoles: typeof resolvedRoles = [];
+    for (const resolved of resolvedRoles) {
+      if (resolved.role) resolvedRoleBySlug[resolved.role.slug] = resolved;
+      else unattributableRoles.push(resolved);
+    }
+    const roleRowsByMembershipId = groupBy(targetRoleRows, (el) => el.membershipId);
+
+    for (const projectMember of projectMembers) {
+      const targetPermissions = [
+        ...resolveMembershipRoleSlugs(roleRowsByMembershipId[projectMember.id] || [])
+          .map((slug) => resolvedRoleBySlug[slug])
+          .filter(Boolean),
+        ...unattributableRoles
+      ];
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: ProjectPermissionMemberActions.Delete,
+        opSubject: ProjectPermissionSub.Member,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to remove a more privileged member from the project",
+        subjectFields: { userEmail: projectMember.user.email || undefined }
+      });
+    }
+
     await checkUserApproverPolicies(
       projectMembers.map((m) => m.user.id),
       projectId
@@ -340,7 +457,13 @@ export const projectMembershipServiceFactory = ({
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
     );
 
-    const memberships = await membershipUserDAL.transaction(async (tx) => {
+    const performDelete = async (tx: Knex) => {
+      await assertProductWillRetainAdmin({
+        project: await projectDAL.findById(projectId, tx),
+        excludeMembershipIds: projectMembers.map(({ id }) => id),
+        tx
+      });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -358,6 +481,14 @@ export const projectMembershipServiceFactory = ({
           $in: {
             id: projectMembers.map(({ id }) => id)
           }
+        },
+        tx
+      );
+
+      await applicationMembershipCleanupService.cleanupUsersApplicationMemberships(
+        {
+          projectId,
+          userIds: projectMembers.map(({ user }) => user.id)
         },
         tx
       );
@@ -386,9 +517,21 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      return deletedMemberships;
-    });
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients(
+        { userIds: projectMembers.map(({ user }) => user.id) },
+        tx
+      );
 
+      return deletedMemberships;
+    };
+
+    const memberships = externalTx
+      ? await performDelete(externalTx)
+      : await membershipUserDAL.transaction(performDelete);
+
+    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return memberships;
   };
 
@@ -414,17 +557,18 @@ export const projectMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Project members not found for project with ID '${projectId}'` });
     }
 
-    if (projectMembers.length < 2) {
-      throw new BadRequestError({ message: "You cannot leave the project as you are the only member" });
-    }
-
-    const adminMembers = projectMembers.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.userId !== actorId
-    );
-    if (!adminMembers.length) {
-      throw new BadRequestError({
-        message: "You cannot leave the project as you are the only admin. Promote another user to admin before leaving."
-      });
+    const actorMembership = projectMembers.find((member) => member.userId === actorId);
+    if (!actorMembership) {
+      const [groupMembership] = await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(
+        [actorId],
+        project.id
+      );
+      if (groupMembership) {
+        throw new BadRequestError({
+          message: "You have access to this project through a group rather than a direct membership."
+        });
+      }
+      throw new BadRequestError({ message: "You are not a member of this project" });
     }
 
     await checkUserApproverPolicies(
@@ -434,6 +578,8 @@ export const projectMembershipServiceFactory = ({
     );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
+      await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
@@ -460,6 +606,18 @@ export const projectMembershipServiceFactory = ({
           tx
         )
       )?.[0];
+
+      await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+        {
+          projectId: project.id,
+          actorKind: ApplicationMemberKind.User,
+          actorId
+        },
+        tx
+      );
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [actorId] }, tx);
+
       return membership;
     });
 
@@ -467,6 +625,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
+    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 

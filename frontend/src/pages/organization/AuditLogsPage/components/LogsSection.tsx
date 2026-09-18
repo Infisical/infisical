@@ -5,12 +5,19 @@ import {
   Alert,
   AlertDescription,
   ButtonGroup,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DateRangeFilter,
   type DateRangeFilterResult,
   DateRangeFilterType,
   DateRangeQuickPresets,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DateRangeFilterAccent } from "@app/components/v3/platform/DateRangeFilter/DateRangeFilter";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -20,9 +27,10 @@ import {
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { isOrgScopedProduct } from "@app/helpers/project";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import {
@@ -93,7 +101,9 @@ const LogsSectionComponent = ({
   });
 
   const timezone = dateRange.isUtc ? Timezone.UTC : Timezone.Local;
-  const dateRangeAccent = project ? "primary" : "secondary";
+  // An org-scoped product has its own colour, and "primary" would paint its chrome the secrets yellow.
+  let dateRangeAccent: DateRangeFilterAccent = project ? "primary" : "secondary";
+  if (project?.type === ProjectType.AgentVault) dateRangeAccent = "av";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
@@ -103,9 +113,9 @@ const LogsSectionComponent = ({
 
   if (pageView)
     return (
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <Card>
         {showClickHouseWarning && (
-          <Alert variant="warning" className="mb-4">
+          <Alert variant="warning">
             <AlertDescription>
               <p>
                 Your audit log volume is growing. To keep searches fast and reduce database load, we
@@ -132,15 +142,18 @@ const LogsSectionComponent = ({
             </AlertDescription>
           </Alert>
         )}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
-          <div>
-            <div className="flex items-center gap-x-2 whitespace-nowrap">
-              <p className="text-xl font-medium text-mineshaft-100">Audit History</p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            {showFilters && (
+        <CardHeader>
+          <CardTitle>
+            Audit History
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
+          </CardTitle>
+          <CardDescription>
+            Search and review a detailed history of events
+            {!project && " across your organization"}
+            {project && !isOrgScopedProduct(project.type) && " in this project"}.
+          </CardDescription>
+          {showFilters && (
+            <CardAction>
               <ButtonGroup>
                 <DateRangeQuickPresets
                   value={activePreset}
@@ -160,25 +173,26 @@ const LogsSectionComponent = ({
                   accent={dateRangeAccent}
                 />
               </ButtonGroup>
-            )}
-          </div>
-        </div>
-        {showFilters && (
-          <div className="mb-4">
-            <AuditSearchFilter
-              filters={searchFilters}
-              onFiltersChange={setSearchFilters}
-              hasProjectContext={Boolean(project)}
-              projectId={project?.id}
-            />
-            {searchFilters.length > 0 && (
-              <p className="mt-2 text-xs text-mineshaft-400">
-                {searchFilters.length} active filter{searchFilters.length !== 1 ? "s" : ""}
-              </p>
-            )}
-          </div>
-        )}
-        <div className="space-y-2">
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {showFilters && (
+            <div>
+              <AuditSearchFilter
+                filters={searchFilters}
+                onFiltersChange={setSearchFilters}
+                hasProjectContext={Boolean(project)}
+                projectId={project?.id}
+                projectType={project?.type}
+              />
+              {searchFilters.length > 0 && (
+                <p className="mt-2 text-xs text-muted">
+                  {searchFilters.length} active filter{searchFilters.length !== 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+          )}
           <LogsTable
             refetchInterval={refetchInterval}
             filter={{
@@ -198,15 +212,16 @@ const LogsSectionComponent = ({
             }}
             timezone={timezone}
           />
-          <UpgradePlanModal
-            isOpen={popUp.upgradePlan.isOpen}
-            onOpenChange={(isOpen) => {
-              handlePopUpToggle("upgradePlan", isOpen);
-            }}
-            text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
-          />
-        </div>
-      </div>
+        </CardContent>
+        <UpgradePlanModal
+          paywallKey="organization.logs"
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("upgradePlan", isOpen);
+          }}
+          text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
+        />
+      </Card>
     );
 
   return (
@@ -284,6 +299,7 @@ const LogsSectionComponent = ({
         timezone={timezone}
       />
       <UpgradePlanModal
+        paywallKey="organization.logs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
@@ -294,20 +310,50 @@ const LogsSectionComponent = ({
   );
 };
 
+// Built once at module scope: creating them inside the render makes a new component type on every
+// render, which remounts the whole log table (and replays the permission gate) each time.
+const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs
+});
+
+const ProjectAuditLogsPageWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
+const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs
+});
+
+const OrgAuditLogsPageWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
 export const LogsSection = (props: Props) => {
-  const { project } = props;
+  const { pageView, project } = props;
 
   if (project) {
-    const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
-      action: ProjectPermissionAuditLogsActions.Read,
-      subject: ProjectPermissionSub.AuditLogs
-    });
-    return <ProjectLogsSectionWithPermission {...props} />;
+    // PAM uses its own product/resource permission model and scopes audit logs server-side, so the
+    // generic project audit-log permission gate doesn't apply here
+    if (project.type === ProjectType.PAM) {
+      return <LogsSectionComponent {...props} />;
+    }
+
+    return pageView ? (
+      <ProjectAuditLogsPageWithPermission {...props} />
+    ) : (
+      <ProjectLogsSectionWithPermission {...props} />
+    );
   }
 
-  const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
-    action: OrgPermissionAuditLogsActions.Read,
-    subject: OrgPermissionSubjects.AuditLogs
-  });
-  return <OrgLogsSectionWithPermission {...props} />;
+  return pageView ? (
+    <OrgAuditLogsPageWithPermission {...props} />
+  ) : (
+    <OrgLogsSectionWithPermission {...props} />
+  );
 };

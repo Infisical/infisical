@@ -1,10 +1,27 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Clock } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
 
@@ -79,83 +96,87 @@ export const OrgUserAccessTokenLimitSection = () => {
   ];
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-medium">Session Length</p>
-      </div>
-      <p className="mt-2 mb-4 text-sm text-gray-400">
-        Specify the duration of each login session for users in this organization.
-      </p>
-      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-        {(isAllowed) => (
-          <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
-            <div className="flex max-w-sm gap-4">
-              <Controller
-                control={control}
-                name="expirationValue"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="Expiration value"
-                    className="w-full"
-                  >
-                    <Input
-                      {...field}
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={field.value}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
-                      disabled={!isAllowed}
-                    />
-                  </FormControl>
-                )}
-              />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Clock className="size-4 text-accent" />
+          Session Length
+        </CardTitle>
+        <CardDescription>
+          Specify the duration of each login session for users in this organization.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+          {(isAllowed) => (
+            <form onSubmit={handleSubmit(handleUserTokenExpirationSubmit)} autoComplete="off">
+              <div className="flex max-w-sm gap-4">
+                <Controller
+                  control={control}
+                  name="expirationValue"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="flex-1">
+                      <FieldLabel htmlFor="expiration-value">Expiration Value</FieldLabel>
+                      <Input
+                        {...field}
+                        id="expiration-value"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={field.value}
+                        onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                        isError={Boolean(error)}
+                        disabled={!isAllowed}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
 
-              <Controller
-                control={control}
-                name="expirationUnit"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    label="Time unit"
-                  >
-                    <Select
-                      value={field.value}
-                      className="pr-2"
-                      onValueChange={field.onChange}
-                      placeholder="Select time unit"
-                      isDisabled={!isAllowed}
-                    >
-                      {timeUnits.map(({ value, label }) => (
-                        <SelectItem
-                          key={value}
-                          value={value}
-                          className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
+                <Controller
+                  control={control}
+                  name="expirationUnit"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="flex-1">
+                      <FieldLabel htmlFor="expiration-unit">Time Unit</FieldLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!isAllowed}
+                      >
+                        <SelectTrigger
+                          id="expiration-unit"
+                          className="w-full"
+                          isError={Boolean(error)}
                         >
-                          <div className="ml-3 font-medium">{label}</div>
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </div>
-            <Button
-              colorSchema="secondary"
-              type="submit"
-              isLoading={isSubmitting}
-              disabled={!isDirty}
-              className="mt-4"
-              isDisabled={!isAllowed}
-            >
-              Save
-            </Button>
-          </form>
-        )}
-      </OrgPermissionCan>
-    </div>
+                          <SelectValue placeholder="Select time unit" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {timeUnits.map(({ value, label }) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </div>
+              <Button
+                variant="org"
+                type="submit"
+                isPending={isSubmitting}
+                isDisabled={!isAllowed || !isDirty}
+                className="mt-4"
+              >
+                Save
+              </Button>
+            </form>
+          )}
+        </OrgPermissionCan>
+      </CardContent>
+    </Card>
   );
 };
