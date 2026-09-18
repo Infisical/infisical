@@ -1,7 +1,5 @@
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -14,12 +12,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
-});
+import { actorContext } from "./agent-vault-router-fns";
 
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),

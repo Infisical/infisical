@@ -2,7 +2,6 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
-import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -18,6 +17,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { actorContext, auditActorFields } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   AgentVaultAllowedMethodsSchema,
@@ -50,19 +50,6 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   description: true,
   createdAt: true,
   updatedAt: true
-});
-
-const auditActorFields = (actor: { type: AgentVaultMemberType; id: string }) => ({
-  ...(actor.type === AgentVaultMemberType.User && { userId: actor.id }),
-  ...(actor.type === AgentVaultMemberType.Identity && { identityId: actor.id }),
-  ...(actor.type === AgentVaultMemberType.Group && { groupId: actor.id })
-});
-
-const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
 });
 
 // A passthrough switch is a replacement: mergeCredential returns a null secret and updateService nulls

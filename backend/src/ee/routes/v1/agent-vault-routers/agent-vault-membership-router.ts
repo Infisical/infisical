@@ -1,8 +1,6 @@
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -13,12 +11,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
-});
+import { actorContext } from "./agent-vault-router-fns";
 
 const ProductRoleSchema = z
   .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
