@@ -43,8 +43,10 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     select: (el) => (el as { requesterEmail?: string })?.requesterEmail
   });
 
+  // The search is a substring match over names too, so another member can outrank the requester in the
+  // results; a page of them keeps the exact-username check below honest.
   const { data: requesterMatch } = useListAgentVaultMembers(
-    { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 1 },
+    { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
     Boolean(requesterEmail)
   );
 

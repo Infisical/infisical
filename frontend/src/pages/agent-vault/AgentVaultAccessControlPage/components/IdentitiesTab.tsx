@@ -200,7 +200,7 @@ export const IdentitiesTab = () => {
                   : "No machine identities yet"}
               </EmptyTitle>
               <EmptyDescription>
-                {search
+                {isFiltered
                   ? "Try a different search term."
                   : "Add a machine identity to give it access."}
               </EmptyDescription>

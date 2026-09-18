@@ -123,10 +123,10 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           // A subselect rather than a join: membership_roles allows several rows per membership and this
           // product writes one, so joining would multiply the row and split a member across a page.
-          db.raw(`(SELECT mr."role" FROM ?? mr WHERE mr."membershipId" = ??."id" LIMIT 1) as "role"`, [
-            TableName.MembershipRole,
-            TableName.Membership
-          ]),
+          db.raw(
+            `(SELECT mr."role" FROM ?? mr WHERE mr."membershipId" = ??."id" ORDER BY mr."createdAt" ASC LIMIT 1) as "role"`,
+            [TableName.MembershipRole, TableName.Membership]
+          ),
           // Pinned to this org: membership is unique per (org, actor) rather than per actor, and a user
           // can hold memberships in several orgs of a sub-org family.
           db.raw(

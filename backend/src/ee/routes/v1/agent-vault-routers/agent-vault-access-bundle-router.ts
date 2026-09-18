@@ -29,6 +29,7 @@ import {
   AgentVaultHostPatternSchema,
   agentVaultListQuery,
   AgentVaultMemberIdsSchema,
+  AgentVaultMemberRevokeIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
   AgentVaultRemovedMemberSchema,
@@ -581,7 +582,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      body: AgentVaultMemberIdsSchema,
+      body: AgentVaultMemberRevokeIdsSchema,
       response: {
         200: z.object({
           members: AgentVaultRemovedMemberSchema.array(),

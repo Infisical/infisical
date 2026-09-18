@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ProjectMembershipRole } from "@app/db/schemas";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -255,6 +256,41 @@ export const AgentVaultProductMemberIdsSchema = z
   )
   .refine((body) => namedCount(body) > 0, atLeastOne)
   .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+
+// One object rather than the id schema intersected with the extras: zod parses each side of an
+// intersection on its own, so the id side's object would strip emails before the refines ran -- an
+// emails-only body then failed "name at least one" and the cap never counted emails at all.
+export const AgentVaultProductMemberAddSchema = z
+  .object({
+    ...memberIdsShape({
+      userIds: AGENT_VAULT.MEMBERSHIP.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
+    }),
+    // Usernames are stored lowercase and the lookup is an exact match, so a mixed-case address would
+    // come back as "not a member" rather than resolving.
+    emails: z
+      .string()
+      .email()
+      .array()
+      .default([])
+      .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase")
+      .describe(AGENT_VAULT.MEMBERSHIP.emails),
+    role: z.enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]).describe(AGENT_VAULT.MEMBERSHIP.role)
+  })
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+
+export const AgentVaultMemberRevokeIdsSchema = z
+  .object(
+    memberIdsShape({
+      userIds: AGENT_VAULT.MEMBER.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBER.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBER.groupIds
+    })
+  )
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Revoke an access bundle from"));
 
 const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
   z.literal(type).describe(AGENT_VAULT.MEMBER.actorType);

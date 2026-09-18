@@ -14,6 +14,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { actorContext, auditActorFields } from "./agent-vault-router-fns";
 import {
   agentVaultListQuery,
+  AgentVaultProductMemberAddSchema,
   AgentVaultProductMemberIdsSchema,
   AgentVaultProductMemberRefSchema,
   AgentVaultProductMemberSchema,
@@ -74,20 +75,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       operationId: "addAgentVaultMembers",
       description: "Give users, groups and machine identities access to Agent Vault, by id or by email",
       tags: [ApiDocsTags.AgentVaultMembers],
-      body: AgentVaultProductMemberIdsSchema.and(
-        z.object({
-          // Usernames are stored lowercase and the lookup is an exact match, so a mixed-case address
-          // would come back as "not a member" rather than resolving.
-          emails: z
-            .string()
-            .email()
-            .array()
-            .default([])
-            .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase")
-            .describe(AGENT_VAULT.MEMBERSHIP.emails),
-          role: ProductRoleSchema
-        })
-      ),
+      body: AgentVaultProductMemberAddSchema,
       response: {
         200: z.object({
           members: AgentVaultProductMemberRefSchema.array(),

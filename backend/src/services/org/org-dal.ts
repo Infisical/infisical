@@ -864,9 +864,11 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * The batched form of findEffectiveOrgMemberships: given many actors of one kind, returns the ids of
-   * those holding an active org membership, directly or through a group. One query, so a bulk caller
-   * does not fan out one lookup per actor against a pool of ten connections.
+   * The batched form of findEffectiveOrgMembership: given many actors of one kind, returns the ids of
+   * those holding an active org membership. A direct row is authoritative the way the singular helper
+   * treats it -- deactivating someone's own membership suspends them even while a group they belong to
+   * stays active -- and group-derived membership counts only for actors with no direct row at all.
+   * Two queries rather than one per actor, so a bulk caller does not fan out against a pool of ten.
    */
   const findActiveEffectiveOrgMemberActorIds = async (
     dto: { actorType: ActorType; actorIds: string[]; orgId: string },
@@ -881,26 +883,30 @@ export const orgDALFactory = (db: TDbClient) => {
       const groupActorColumn = `${groupTable}.${isUser ? "userId" : "identityId"}`;
       const directColumn = `${TableName.Membership}.${isUser ? "actorUserId" : "actorIdentityId"}`;
 
-      const rows = (await conn(TableName.Membership)
+      const directRows = (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .whereIn(directColumn, dto.actorIds)
+        .select(conn.raw(`?? as "actorId"`, [directColumn]), `${TableName.Membership}.isActive`)) as {
+        actorId: string;
+        isActive: boolean;
+      }[];
+
+      const active = new Set(directRows.filter((row) => row.isActive).map((row) => row.actorId));
+      const hasDirectRow = new Set(directRows.map((row) => row.actorId));
+      const withoutDirect = dto.actorIds.filter((id) => !hasDirectRow.has(id));
+      if (!withoutDirect.length) return active;
+
+      const groupRows = (await conn(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
         .where(`${TableName.Membership}.isActive`, true)
-        // Restricted to the requested actors on the join itself, so a row reached through a group can
-        // still be attributed back to the actor that asked for it.
-        .leftJoin(groupTable, function joinGroupMembership() {
-          void this.on(`${groupTable}.groupId`, "=", `${TableName.Membership}.actorGroupId`).onIn(
-            groupActorColumn,
-            dto.actorIds
-          );
-        })
-        .where((qb) => {
-          void qb.whereIn(directColumn, dto.actorIds).orWhereNotNull(groupActorColumn);
-        })
-        .distinct(conn.raw(`COALESCE(??, ??) as "actorId"`, [directColumn, groupActorColumn]))) as {
-        actorId: string | null;
-      }[];
+        .join(groupTable, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
+        .whereIn(groupActorColumn, withoutDirect)
+        .distinct(conn.raw(`?? as "actorId"`, [groupActorColumn]))) as { actorId: string }[];
 
-      return new Set(rows.map((row) => row.actorId).filter((id): id is string => Boolean(id)));
+      groupRows.forEach((row) => active.add(row.actorId));
+      return active;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find active effective org member actor ids" });
     }

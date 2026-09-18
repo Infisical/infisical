@@ -907,6 +907,65 @@ describe("Agent Vault V1 Router", async () => {
 
     // Each refusal below asserts the rows as well as the status: a 400 that applied half the batch would
     // pass a status-only check.
+    test("a member can be added by email alone, and the cap counts emails", async () => {
+      // The add body is one object, not an intersection: zod parses each side of an intersection on its
+      // own, so an id-side object would strip emails before the refines ran, 422ing this exact call.
+      const byEmail = await inject("POST", membersUrl, { emails: [seedData1.email], role: "member" });
+      expect(byEmail.statusCode).toBe(200);
+      // The seed admin is already a member, and skipped echoes the identifier the caller sent -- the
+      // email, not the uuid it resolved to.
+      expect(JSON.parse(byEmail.payload)).toMatchObject({
+        members: [],
+        skipped: [{ type: "user", id: seedData1.id, identifier: seedData1.email }]
+      });
+
+      const tooMany = await inject("POST", membersUrl, {
+        userIds: ["00000000-0000-0000-0000-000000000001"],
+        emails: Array.from({ length: 100 }, (_, i) => `av-cap-${i}@example.com`),
+        role: "member"
+      });
+      expect(tooMany.statusCode).toBe(422);
+    });
+
+    test("a deactivated member is refused even while one of their groups is still active", async () => {
+      const suffix = Date.now();
+      const [user] = (await testDb("users")
+        .insert({ username: `av-suspended-${suffix}@example.com`, isAccepted: true, isGhost: false })
+        .returning("*")) as { id: string }[];
+      const [group] = (await testDb("groups")
+        .insert({ orgId: seedData1.organization.id, name: `av-active-${suffix}`, slug: `av-active-${suffix}` })
+        .returning("*")) as { id: string }[];
+
+      try {
+        await testDb("memberships").insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: seedData1.organization.id,
+          actorUserId: user.id,
+          status: "accepted",
+          isActive: false
+        });
+        await testDb("memberships").insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: seedData1.organization.id,
+          actorGroupId: group.id,
+          isActive: true
+        });
+        await testDb("user_group_membership").insert({ groupId: group.id, userId: user.id });
+
+        // Their own membership is the authoritative one: deactivation suspends the person even while a
+        // group they belong to stays active, so the group row must not vouch for them.
+        const refused = await inject("POST", membersUrl, { userIds: [user.id], role: "member" });
+        expect(refused.statusCode).toBe(400);
+        expect(JSON.parse(refused.payload).message).toContain("not an active member");
+      } finally {
+        await testDb("user_group_membership").where({ userId: user.id }).delete();
+        await testDb("memberships").where({ actorUserId: user.id }).delete();
+        await testDb("memberships").where({ actorGroupId: group.id }).delete();
+        await testDb("groups").where({ id: group.id }).delete();
+        await testDb("users").where({ id: user.id }).delete();
+      }
+    });
+
     test("a batch that would leave no admin is refused whole, and nobody is removed", async () => {
       const projectId = await getProjectId();
       const one = await createOrgIdentity(`av-batch-admin-a-${Date.now()}`);
