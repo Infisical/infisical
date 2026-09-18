@@ -319,7 +319,8 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
           client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
           client_assertion: clientAssertion,
           scope: "https://graph.microsoft.com/.default",
-          grant_type: "client_credentials"
+          grant_type: "client_credentials",
+          prompt: "consent"
         });
 
         const response = await request.post<ExchangeCodeAzureResponse>(tokenEndpoint, params.toString(), {
