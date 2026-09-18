@@ -6,6 +6,7 @@ import {
   BanIcon,
   ChevronRightIcon,
   FolderIcon,
+  GripVerticalIcon,
   ImportIcon,
   InfoIcon,
   LayersIcon,
@@ -289,8 +290,9 @@ export const SecretImportTableRow = ({
             ref={handleRef}
             aria-label={`${isExpanded ? "Collapse" : "Expand"} secret import ${importPath}`}
             aria-expanded={isExpanded}
+            title="Drag to reorder; click to expand or collapse"
             className={twMerge(
-              "absolute inset-0 flex cursor-grab items-center justify-center text-muted transition-opacity duration-75 motion-reduce:transition-none",
+              "absolute inset-0 flex cursor-grab items-center justify-center text-muted transition-opacity duration-75 active:cursor-grabbing motion-reduce:transition-none",
               isExpanded
                 ? "opacity-100"
                 : "opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"
@@ -302,11 +304,12 @@ export const SecretImportTableRow = ({
           >
             <ChevronRightIcon
               className={twMerge(
-                "size-4",
+                "size-4 [@media(hover:hover)]:group-hover/import-handle:hidden",
                 TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
                 isExpanded && TABLE_ROW_EXPANDED_ICON_CLASS_NAME
               )}
             />
+            <GripVerticalIcon className="hidden size-4 [@media(hover:hover)]:group-hover/import-handle:block" />
           </button>
           {!isExpanded && (
             <ImportIcon className={twMerge("text-import", TABLE_ROW_RESOURCE_ICON_CLASS_NAME)} />
@@ -751,7 +754,7 @@ export const SecretImportTableRow = ({
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover",
-            isSingleEnvView && "relative"
+            isSingleEnvView && "group/import-handle relative"
           )}
         >
           <div className="flex h-full items-center justify-center [&>svg]:size-4">
@@ -873,7 +876,7 @@ export const SecretImportTableRow = ({
             <TableCell colSpan={totalCols} className="border-0 p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 border-y border-border bg-container"
+                className="sticky left-0 border-b border-border bg-container"
               >
                 {renderExpandedSecrets(singleEnvSlug)}
               </div>
