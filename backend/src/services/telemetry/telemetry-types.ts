@@ -104,6 +104,9 @@ export enum PostHogEventTypes {
   GatewayCertExchanged = "Gateway Cert Exchanged",
   GatewayUpdated = "Gateway Updated",
   GatewayDeleted = "Gateway Deleted",
+  ProxiedServiceCreated = "Proxied Service Created",
+  ProxiedServiceUpdated = "Proxied Service Updated",
+  ProxiedServiceDeleted = "Proxied Service Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
   PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
@@ -1018,6 +1021,43 @@ export type TDynamicSecretLeaseRenewedEvent = {
     secretPath: string;
     dynamicSecretId: string;
     ttl: string;
+  };
+};
+
+export type TProxiedServiceCreatedEvent = {
+  event: PostHogEventTypes.ProxiedServiceCreated;
+  properties: {
+    proxiedServiceId: string;
+    name: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    credentialCount: number;
+    credentialRoles: string[];
+  };
+};
+
+export type TProxiedServiceUpdatedEvent = {
+  event: PostHogEventTypes.ProxiedServiceUpdated;
+  properties: {
+    proxiedServiceId: string;
+    name: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    credentialCount: number;
+    credentialRoles: string[];
+  };
+};
+
+export type TProxiedServiceDeletedEvent = {
+  event: PostHogEventTypes.ProxiedServiceDeleted;
+  properties: {
+    proxiedServiceId: string;
+    name: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
   };
 };
 
@@ -2669,6 +2709,9 @@ export type TPostHogEvent = {
   | TGatewayCertExchangedEvent
   | TGatewayUpdatedEvent
   | TGatewayDeletedEvent
+  | TProxiedServiceCreatedEvent
+  | TProxiedServiceUpdatedEvent
+  | TProxiedServiceDeletedEvent
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent
