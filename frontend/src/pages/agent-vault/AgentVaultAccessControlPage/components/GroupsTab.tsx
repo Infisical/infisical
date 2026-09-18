@@ -52,7 +52,7 @@ export const GroupsTab = () => {
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference("agentVaultGroupsTable", PreferenceKey.PerPage, 20)
+    getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
   );
 
   const { data, isPending } = useListAgentVaultMembers({
@@ -199,7 +199,11 @@ export const GroupsTab = () => {
             onChangePerPage={(newPerPage) => {
               setPerPage(newPerPage);
               setPage(1);
-              setUserTablePreference("agentVaultGroupsTable", PreferenceKey.PerPage, newPerPage);
+              setUserTablePreference(
+                "agentVaultAccessControlTable",
+                PreferenceKey.PerPage,
+                newPerPage
+              );
             }}
           />
         </CardContent>

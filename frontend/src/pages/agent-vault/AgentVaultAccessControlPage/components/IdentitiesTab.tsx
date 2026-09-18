@@ -78,7 +78,7 @@ export const IdentitiesTab = () => {
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
-    getUserTablePreference("agentVaultMachineIdentitiesTable", PreferenceKey.PerPage, 20)
+    getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
   );
 
   const { data, isPending } = useListAgentVaultMembers({
@@ -288,7 +288,7 @@ export const IdentitiesTab = () => {
               setPerPage(newPerPage);
               setPage(1);
               setUserTablePreference(
-                "agentVaultMachineIdentitiesTable",
+                "agentVaultAccessControlTable",
                 PreferenceKey.PerPage,
                 newPerPage
               );
