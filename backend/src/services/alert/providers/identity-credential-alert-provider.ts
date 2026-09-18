@@ -395,6 +395,12 @@ export const identityCredentialAlertProviderFactory = ({
       throw new NotFoundError({ message: `Identity '${input.resourceId}' was not found in this organization` });
     }
 
+    if (identity.orgId !== input.orgId) {
+      throw new ForbiddenRequestError({
+        message: `Identity '${input.resourceId}' belongs to the parent organization. Create this alert in that organization, where the identity's authentication is managed.`
+      });
+    }
+
     if (identity.projectId && identity.projectId !== input.projectId) {
       throw new ForbiddenRequestError({
         message: `Identity '${input.resourceId}' belongs to a project. Create this alert within that project so its identity permissions are enforced.`

@@ -64,6 +64,9 @@ const buildProvider = (opts?: {
   abilityRules?: { action: string; subject: string; conditions?: Record<string, unknown> }[];
   inOrg?: boolean;
   inProject?: boolean;
+  // Organization that owns the bound identity. Differs from the alert's org when a root-org
+  // identity has been added to a sub-organization.
+  ownerOrgId?: string;
   // Owning project of the bound identity: null for an org-level identity, a project id when the
   // identity was created in project scope.
   ownerProjectId?: string | null;
@@ -86,7 +89,10 @@ const buildProvider = (opts?: {
       opts?.onFind?.(args);
       return opts?.secrets ?? [];
     },
-    findIdentityInOrg: async () => ((opts?.inOrg ?? true) ? { projectId: opts?.ownerProjectId ?? null } : undefined),
+    findIdentityInOrg: async () =>
+      (opts?.inOrg ?? true)
+        ? { orgId: opts?.ownerOrgId ?? "org-1", projectId: opts?.ownerProjectId ?? null }
+        : undefined,
     isIdentityInProject: async () => opts?.inProject ?? true,
     getProjectType: async () => opts?.projectType ?? null
   };
@@ -648,6 +654,23 @@ describe("identity credential alert provider", () => {
   test("assertResourceInScope rejects an identity not in the org", async () => {
     const provider = buildProvider({ inOrg: false });
     await expect(provider.assertResourceInScope({ orgId: "org-1", resourceId: "foreign" })).rejects.toThrow();
+  });
+
+  // A root-org identity added to a sub-organization is a member there, but the sub-organization
+  // cannot see or change its auth methods, and auth-method events carry the owning org. An alert
+  // created in the sub-organization would never match and would leak credential metadata.
+  test("assertResourceInScope rejects a parent-org identity on a sub-organization's alert", async () => {
+    const provider = buildProvider({ inOrg: true, ownerOrgId: "root-org" });
+    await expect(provider.assertResourceInScope({ orgId: "sub-org", resourceId: "ident-1" })).rejects.toThrow(
+      /belongs to the parent organization/
+    );
+  });
+
+  test("assertResourceInScope rejects a parent-org identity on a sub-organization project's alert", async () => {
+    const provider = buildProvider({ inOrg: true, inProject: true, ownerOrgId: "root-org" });
+    await expect(
+      provider.assertResourceInScope({ orgId: "sub-org", projectId: "proj-1", resourceId: "ident-1" })
+    ).rejects.toThrow(/belongs to the parent organization/);
   });
 
   test("assertResourceInScope rejects an identity not in the project when project-scoped", async () => {
