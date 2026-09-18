@@ -229,7 +229,7 @@ export function AddResourceButtons({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="px-2 py-1.5">
             <ListPlusIcon />
-            Add more
+            Add More
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-64 p-1" sideOffset={0}>
             <MenuItemTooltip
