@@ -89,7 +89,8 @@ export type TExpectSessionConfig = {
 };
 
 // An SSH channel over a PTY re-segments output wherever the network splits the bytes, and a
-// gateway-backed connection copies between TCP and QUIC with no framing at all. The same
+// gateway-backed connection copies between TCP and the gateway's TLS tunnel with no framing at
+// all. The same
 // `passwd` exchange can arrive as one chunk or twenty, so matching against only the latest
 // chunk is unreliable: 11 of the 49 split points inside AIX's "root's New password:\r\n"
 // break a per-chunk match. This engine accumulates everything into a pending buffer and

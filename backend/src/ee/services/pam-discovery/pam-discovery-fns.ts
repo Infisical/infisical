@@ -1,10 +1,10 @@
 import ldapjs from "@infisical/ldapjs";
 
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";

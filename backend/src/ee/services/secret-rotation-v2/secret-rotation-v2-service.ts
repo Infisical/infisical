@@ -4,7 +4,6 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -171,7 +170,6 @@ export type TSecretRotationV2ServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -240,7 +238,6 @@ export const secretRotationV2ServiceFactory = ({
   queueService,
   folderCommitService,
   appConnectionDAL,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
@@ -620,7 +617,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       passwordValidationContext
@@ -996,7 +992,6 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
         passwordValidationContext
@@ -1340,7 +1335,6 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
         passwordValidationContext
@@ -1666,7 +1660,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService
     );
@@ -2066,7 +2059,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       passwordValidationContext
