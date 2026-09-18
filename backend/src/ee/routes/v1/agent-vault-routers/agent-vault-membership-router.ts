@@ -36,7 +36,7 @@ const ACTOR_TYPE_OF: Record<(typeof ACTOR_TYPE_SEGMENTS)[number], AgentVaultMemb
 
 const auditActorNameFields = (actor: { type: AgentVaultMemberType }, actorName?: string) => ({
   ...(actor.type === AgentVaultMemberType.User && { userName: actorName }),
-  ...(actor.type === AgentVaultMemberType.MachineIdentity && { identityName: actorName }),
+  ...(actor.type === AgentVaultMemberType.MachineIdentity && { machineIdentityName: actorName }),
   ...(actor.type === AgentVaultMemberType.Group && { groupName: actorName })
 });
 

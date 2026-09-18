@@ -6368,8 +6368,8 @@ interface AgentVaultProductMemberAddEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
     role: string;
   };
 }
@@ -6381,8 +6381,8 @@ interface AgentVaultProductMemberUpdateEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
     role: string;
   };
 }
@@ -6394,8 +6394,8 @@ interface AgentVaultProductMemberRemoveEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6406,7 +6406,7 @@ interface AgentVaultAccessBundleMemberAddEvent {
     accessBundleName: string;
     memberId: string;
     userId?: string;
-    identityId?: string;
+    machineIdentityId?: string;
     groupId?: string;
   };
 }
@@ -6418,7 +6418,7 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
     accessBundleName: string;
     memberId: string;
     userId?: string;
-    identityId?: string;
+    machineIdentityId?: string;
     groupId?: string;
   };
 }

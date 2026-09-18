@@ -12,6 +12,6 @@ export const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
 
 export const auditActorFields = (actor: { type: AgentVaultMemberType; id: string }) => ({
   ...(actor.type === AgentVaultMemberType.User && { userId: actor.id }),
-  ...(actor.type === AgentVaultMemberType.MachineIdentity && { identityId: actor.id }),
+  ...(actor.type === AgentVaultMemberType.MachineIdentity && { machineIdentityId: actor.id }),
   ...(actor.type === AgentVaultMemberType.Group && { groupId: actor.id })
 });
