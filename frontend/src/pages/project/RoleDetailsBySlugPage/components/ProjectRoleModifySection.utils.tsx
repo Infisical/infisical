@@ -26,6 +26,7 @@ import {
 import {
   PermissionConditionOperators,
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
@@ -765,6 +766,14 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.CertificateInventoryViews]: GeneralPolicyActionSchema.array().default(
         []
       ),
+      [ProjectPermissionSub.Application]: z
+        .object({
+          read: z.boolean().optional(),
+          list: z.boolean().optional(),
+          create: z.boolean().optional()
+        })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PkiDiscovery]: z
         .object({
           read: z.boolean().optional(),
@@ -1580,6 +1589,19 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDelete) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Delete] = true;
       if (canTest) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Test] = true;
       if (canAttach) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Attach] = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.Application) {
+      const canRead = action.includes(ProjectPermissionApplicationActions.Read);
+      const canList = action.includes(ProjectPermissionApplicationActions.List);
+      const canCreate = action.includes(ProjectPermissionApplicationActions.Create);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionApplicationActions.Read] = true;
+      if (canList) formVal[subject]![0][ProjectPermissionApplicationActions.List] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionApplicationActions.Create] = true;
       return;
     }
 
@@ -2852,6 +2874,28 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.Application]: {
+    title: "Applications",
+    description: "Manage services and workloads that issue their own certificates",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionApplicationActions.Read,
+        description:
+          "See all applications in the project. An application's details stay hidden unless you are a member of it"
+      },
+      {
+        label: "List",
+        value: ProjectPermissionApplicationActions.List,
+        description: "List the applications in the project"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionApplicationActions.Create,
+        description: "Create new applications"
+      }
+    ]
+  },
   [ProjectPermissionSub.PkiSubscribers]: {
     title: "PKI Subscribers",
     description: "Manage entities that receive certificates",
@@ -3442,6 +3486,7 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.CertificateTemplates]: false, // Hidden from UI, accessible via API only
   [ProjectPermissionSub.CertificateProfiles]: enabled,
   [ProjectPermissionSub.CertificatePolicies]: enabled,
+  [ProjectPermissionSub.Application]: enabled,
   [ProjectPermissionSub.Certificates]: enabled,
   [ProjectPermissionSub.PkiDiscovery]: enabled,
   [ProjectPermissionSub.PkiCertificateInstallations]: enabled,

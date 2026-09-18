@@ -2,6 +2,7 @@ import { ComponentPropsWithoutRef, forwardRef, ReactNode, useMemo, useState } fr
 import { GlobeIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 
@@ -52,8 +53,8 @@ const ServiceChip = forwardRef<HTMLDivElement, TServiceChipProps>(
     return (
       <div ref={ref} className={cn(chipClassName, className)} {...props}>
         {icon.image && !hasImageError ? (
-          <img
-            src={`/images/integrations/${icon.image}`}
+          <ProviderIcon
+            icon={icon.image}
             alt=""
             className="size-full object-contain p-1"
             onError={() => setHasImageError(true)}

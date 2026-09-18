@@ -22,7 +22,6 @@ import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secr
 import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
@@ -419,7 +418,6 @@ declare module "fastify" {
       kmip: TKmipServiceFactory;
       kmipOperation: TKmipOperationServiceFactory;
       kmipServer: TKmipServerServiceFactory;
-      gateway: TGatewayServiceFactory;
       secretRotationV2: TSecretRotationV2ServiceFactory;
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;

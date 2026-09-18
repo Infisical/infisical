@@ -4,6 +4,8 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 export const HOST_COMMAND_MAX_LENGTH = 8192;
 
+export const MAX_FILTER_CERTIFICATE_ORDERS = 10_000;
+
 export const HostCommandSchema = z
   .string()
   .trim()
@@ -101,7 +103,32 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
     description: z.string().optional(),
     isAutoSyncEnabled: z.boolean().default(true),
     subscriberId: z.string().nullable().optional(),
-    certificateIds: z.array(z.string()).optional(),
+    filters: z
+      .object({
+        profileIds: z
+          .array(z.string().uuid())
+          .max(20, "A filter can use at most 20 profiles")
+          .optional(),
+        certificateOrderIds: z
+          .string()
+          .uuid()
+          .array()
+          .max(
+            MAX_FILTER_CERTIFICATE_ORDERS,
+            `A filter can name at most ${MAX_FILTER_CERTIFICATE_ORDERS} certificate orders`
+          )
+          .optional(),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1, "Enter a metadata key or remove the pair").max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .max(20, "A filter can use at most 20 metadata pairs")
+          .optional()
+      })
+      .nullish(),
     connection: PkiSyncConnectionSchema,
     syncOptions: syncOptionsSchema
   });

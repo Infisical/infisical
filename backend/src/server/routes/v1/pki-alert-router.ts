@@ -83,7 +83,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: alert.name,
             eventType: alert.eventType,
             alertBefore: alert.alertBefore,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(alert.applicationName && { applicationName: alert.applicationName })
           }
         }
       });
@@ -225,7 +226,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           type: EventType.GET_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(alert.applicationName && { applicationName: alert.applicationName })
           }
         }
       });
@@ -299,7 +301,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: alert.name,
             eventType: alert.eventType,
             alertBefore: alert.alertBefore,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(alert.applicationName && { applicationName: alert.applicationName })
           }
         }
       });
@@ -368,7 +371,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           type: EventType.DELETE_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(alert.applicationName && { applicationName: alert.applicationName })
           }
         }
       });

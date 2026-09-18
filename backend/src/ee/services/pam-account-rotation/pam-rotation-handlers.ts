@@ -1,3 +1,4 @@
+import { rotateSqlCredentialWithGateway, testConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import {
@@ -7,6 +8,7 @@ import {
 } from "@app/services/app-connection/shared/sql";
 
 import { PamAccountType, PamPostgresAuthMethod } from "../pam/pam-enums";
+import { ORACLE_MAX_PASSWORD_LENGTH, ORACLE_MIN_GATEWAY_VERSION } from "../pam-account/pam-account-connection-test";
 import { TWindowsAdConnectionDetails, TWindowsConnectionDetails } from "../pam-account/pam-account-schemas";
 import { DEFAULT_WINRM_PORT, ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import {
@@ -49,13 +51,124 @@ type TTestCredentialInput = {
 
 export type TPamRotationHandler = {
   validateTarget: (input: { accountType: TRotatableType; authMethod?: string }) => void;
+  validateRotatorCredential?: (input: { accountType: TRotatableType; password?: string }) => void;
   applyPasswordChange: (input: TApplyPasswordChangeInput, deps: TPamRotationGatewayDeps) => Promise<void>;
   // Returns whether the credential authenticates. THROWS only when verification can't complete (transient
   // transport error); callers treat a throw as inconclusive and defer, never as a wrong password.
   testCredential: (input: TTestCredentialInput, deps: TPamRotationGatewayDeps) => Promise<boolean>;
 };
 
+const ORACLE_ROTATE_TIMEOUT_MS = 30_000;
+
+const resolveRotationGatewayId = async (
+  deps: TPamRotationGatewayDeps,
+  gatewayId?: string | null,
+  gatewayPoolId?: string | null
+): Promise<string> => {
+  const resolved = gatewayPoolId
+    ? await deps.gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId })
+    : gatewayId;
+  if (!resolved) throw new BadRequestError({ message: "No healthy gateway is available to rotate this account" });
+  return resolved;
+};
+
+const isGatewayProtocolUnsupported = (err: unknown) =>
+  err instanceof Error && /no application protocol|alert number 120/i.test(err.message);
+
+const assertOracleCredentialIsUsable = (password: string) => {
+  if (password.length > ORACLE_MAX_PASSWORD_LENGTH) {
+    throw new BadRequestError({
+      message: `Oracle credentials longer than ${ORACLE_MAX_PASSWORD_LENGTH} characters cannot be used to rotate. Shorten the rotation account's password and try again.`
+    });
+  }
+};
+
+const ORACLE_GATEWAY_TOO_OLD = `This account's gateway does not support Oracle credential rotation. Update the gateway to ${ORACLE_MIN_GATEWAY_VERSION} or later.`;
+
+const oracleGatewayRequest = (
+  connectionDetails: TPamSqlConnectionDetails,
+  auth: { username: string; password: string }
+) => ({
+  dialect: "oracle",
+  username: auth.username,
+  password: auth.password,
+  database: connectionDetails.database,
+  sslEnabled: connectionDetails.sslEnabled,
+  sslRejectUnauthorized: connectionDetails.sslRejectUnauthorized,
+  sslCertificate: connectionDetails.sslCertificate
+});
+
+const verifyOracleViaGateway = async (
+  input: {
+    connectionDetails: TPamSqlConnectionDetails;
+    auth: { username: string; password: string };
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  },
+  deps: TPamRotationGatewayDeps
+): Promise<boolean> => {
+  const { connectionDetails, auth } = input;
+  const gatewayId = await resolveRotationGatewayId(deps, input.gatewayId, input.gatewayPoolId);
+  const result = await testConnectionWithGateway(
+    connectionDetails.host,
+    connectionDetails.port,
+    gatewayId,
+    deps.gatewayV2Service,
+    { mode: "sql", ...oracleGatewayRequest(connectionDetails, auth) },
+    ORACLE_ROTATE_TIMEOUT_MS
+  );
+
+  if (!result) {
+    throw new Error("Could not reach the target through the gateway to verify its credentials");
+  }
+  if (result.ok) return true;
+  if (result.kind === "transport") {
+    throw new Error(`Could not reach the target through the gateway to verify its credentials: ${result.errorMessage}`);
+  }
+  return false;
+};
+
+const rotateOracleViaGateway = async (
+  input: {
+    connectionDetails: TPamSqlConnectionDetails;
+    auth: { username: string; password: string };
+    targetUsername: string;
+    newPassword: string;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  },
+  deps: TPamRotationGatewayDeps
+) => {
+  const { connectionDetails, auth, targetUsername, newPassword } = input;
+  const gatewayId = await resolveRotationGatewayId(deps, input.gatewayId, input.gatewayPoolId);
+
+  let result;
+  try {
+    result = await rotateSqlCredentialWithGateway(
+      connectionDetails.host,
+      connectionDetails.port,
+      gatewayId,
+      deps.gatewayV2Service,
+      { ...oracleGatewayRequest(connectionDetails, auth), targetUsername, newPassword },
+      ORACLE_ROTATE_TIMEOUT_MS
+    );
+  } catch (err) {
+    if (isGatewayProtocolUnsupported(err)) {
+      throw new BadRequestError({ message: ORACLE_GATEWAY_TOO_OLD });
+    }
+    throw new Error(redactRotationError(err, [newPassword, auth.password]));
+  }
+
+  if (!result.ok) {
+    throw new Error(redactRotationError(new Error(result.errorMessage), [newPassword, auth.password]));
+  }
+};
+
 const sqlRotationHandler: TPamRotationHandler = {
+  validateRotatorCredential: ({ accountType, password }) => {
+    if (accountType === PamAccountType.OracleDB && password) assertOracleCredentialIsUsable(password);
+  },
+
   validateTarget: ({ accountType, authMethod }) => {
     // MSSQL Windows-auth (ntlm/kerberos) logins have no SQL-managed password to change, so only sql-login rotates.
     if (accountType === PamAccountType.MsSQL && authMethod !== "sql-login") {
@@ -72,6 +185,15 @@ const sqlRotationHandler: TPamRotationHandler = {
   applyPasswordChange: async (input, deps) => {
     const { accountType, auth, targetUsername, newPassword, gatewayId, gatewayPoolId } = input;
     const connectionDetails = input.connectionDetails as TPamSqlConnectionDetails;
+
+    if (accountType === PamAccountType.OracleDB) {
+      await rotateOracleViaGateway(
+        { connectionDetails, auth, targetUsername, newPassword, gatewayId, gatewayPoolId },
+        deps
+      );
+      return;
+    }
+
     // Strip the PlanetScale `<user>.<branch>` suffix so the ALTER targets the real role.
     const roleUsername = getRoleUsernameForHost(targetUsername, connectionDetails.host);
     const [statement, bindings] = SQL_CONNECTION_ALTER_LOGIN_STATEMENT[
@@ -100,6 +222,14 @@ const sqlRotationHandler: TPamRotationHandler = {
   testCredential: async (input, deps) => {
     const { accountType, auth, gatewayId, gatewayPoolId } = input;
     const connectionDetails = input.connectionDetails as TPamSqlConnectionDetails;
+
+    if (accountType === PamAccountType.OracleDB) {
+      return withGatewayRetry(
+        () => verifyOracleViaGateway({ connectionDetails, auth, gatewayId, gatewayPoolId }, deps),
+        "verify"
+      );
+    }
+
     try {
       await withPamSqlClient(
         { accountType: accountType as TSqlRotatableType, connectionDetails, auth, gatewayId, gatewayPoolId },
@@ -144,18 +274,6 @@ const winrmRotationTargetHost = (accountType: TRotatableType, connectionDetails:
   const conn = connectionDetails as TWindowsConnectionDetails;
   if (!conn.host) throw new BadRequestError({ message: "Windows account is missing a host" });
   return conn.host;
-};
-
-const resolveRotationGatewayId = async (
-  deps: TPamRotationGatewayDeps,
-  gatewayId?: string | null,
-  gatewayPoolId?: string | null
-): Promise<string> => {
-  const resolved = gatewayPoolId
-    ? await deps.gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId })
-    : gatewayId;
-  if (!resolved) throw new BadRequestError({ message: "No healthy gateway available for Windows rotation" });
-  return resolved;
 };
 
 // Set-ADAccountPassword -Identity and Set-LocalUser -Name want a bare sAMAccountName, not DOMAIN\user or a
@@ -280,6 +398,7 @@ export const PAM_ROTATION_FACTORY_MAP: Record<TRotatableType, TPamRotationHandle
   [PamAccountType.Postgres]: sqlRotationHandler,
   [PamAccountType.MySQL]: sqlRotationHandler,
   [PamAccountType.MsSQL]: sqlRotationHandler,
+  [PamAccountType.OracleDB]: sqlRotationHandler,
   [PamAccountType.Windows]: windowsRotationHandler,
   [PamAccountType.WindowsAd]: windowsRotationHandler
 };
