@@ -93,7 +93,7 @@ via the UI or API for the third-party service you intend to sync secrets to.
 
 ## Include all subfolders
 
-A Secret Sync covers only the secrets in its source folder by default. Turn on **Include secrets from all subfolders** on the source step and the sync covers every folder beneath that path as well, however deep. Adding or changing a secret in any of those folders syncs it to the destination, the same as a change in the source folder itself. These syncs carry an **Includes All Subfolders** badge next to their source path in the Secret Syncs list.
+A Secret Sync covers only the secrets in its source folder by default. Turn on **Include secrets from all subfolders** on the source step and the sync covers every folder beneath that path as well, however deep. Adding or changing a secret in any of those folders syncs it to the destination, the same as a change in the source folder itself.
 
 Destinations store secrets in one flat list, so the folder structure isn't carried over. A secret named `DB_URL` in `/backend` and a secret named `DB_URL` in `/backend/api` both map to the same destination key, and the sync fails with an error naming both folders rather than picking one. Infisical checks for these collisions while you configure the sync, so you can rename or move one of the two before you save.
 
