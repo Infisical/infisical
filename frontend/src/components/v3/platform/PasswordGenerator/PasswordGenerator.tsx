@@ -113,7 +113,10 @@ const describeConstraints = (constraints: TValueConstraints) => {
   add("maxLength", "Max length", constraints.maxLength);
 
   if (constraints.uniqueAcrossLastVersions !== undefined) {
-    chips.push({ key: "uniqueAcrossLastVersions", label: "Prevent reuse of previous secret values" });
+    chips.push({
+      key: "uniqueAcrossLastVersions",
+      label: "Prevent reuse of previous secret values"
+    });
   }
 
   return chips;
