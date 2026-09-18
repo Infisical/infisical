@@ -47,8 +47,9 @@ Before setting up the sync, gather the following from your Nutanix environment:
     ### Sample request
 
     <Note>
-      You can optionally specify `certificateIds` during sync creation to immediately add a certificate to the sync.
-      If not provided, you can add one later using the certificate management endpoints.
+      Pass `filters` to describe the certificate this sync holds. This destination holds one certificate, so the
+      filters have to match exactly one. Omit it and the sync starts empty, and you can set filters later.
+      See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
     </Note>
 
     ```bash Request
@@ -63,9 +64,9 @@ Before setting up the sync, gather the following from your Nutanix environment:
         "connectionId": "550e8400-e29b-41d4-a716-446655440000",
         "destination": "nutanix-prism-central",
         "isAutoSyncEnabled": true,
-        "certificateIds": [
-            "550e8400-e29b-41d4-a716-446655440000"
-        ],
+        "filters": {
+            "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+        },
         "destinationConfig": {
             "clusterId": "a29facad-8d6e-4f64-b745-bceca6f990d6",
             "clusterName": "prod-cluster-01"
@@ -126,6 +127,8 @@ The Nutanix Prism Central Certificate Sync provides:
 
 <Note>
   Certificate removal isn't supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
+
+  For the same reason, this destination doesn't support [certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters). Select the certificate you want instead.
 </Note>
 
 ## Manual certificate sync
@@ -165,16 +168,16 @@ When a certificate is renewed in Infisical, the renewed certificate is automatic
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="NetScaler" icon="network-wired" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
+  <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
     Deploy certificates to Citrix NetScaler ADC appliances.
   </Card>
-  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified about certificate lifecycle events.
   </Card>
-  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Other Sync Destinations" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     View all supported sync destinations.
   </Card>
 </CardGroup>

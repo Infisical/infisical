@@ -163,7 +163,9 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
         {requesterEmail && requesterStatus.isProjectUser && (
           <Alert variant="danger">
-            <AlertDescription>Requested user already has access to Agent Vault.</AlertDescription>
+            <AlertDescription>
+              The requested user already has access to Agent Vault.
+            </AlertDescription>
           </Alert>
         )}
         {requesterEmail && !requesterStatus.isProjectUser && requesterUserId && (
@@ -171,8 +173,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
             {/* AlertDescription is a grid, so a bare text node would land on its own row */}
             <AlertDescription>
               <span>
-                Assign a role to provide access to requesting user{" "}
-                <b>{requesterStatus.userLabel}</b>.
+                Assign a role to give access to requesting user <b>{requesterStatus.userLabel}</b>.
               </span>
             </AlertDescription>
           </Alert>

@@ -92,9 +92,7 @@ export const ErrorPageFrame = ({
     <div
       ref={containerRef}
       className={`relative flex items-center justify-center p-4 ${
-        isFullScreen
-          ? "min-h-screen bg-linear-to-tr from-card via-bunker-900 to-card"
-          : "min-h-full"
+        isFullScreen ? "min-h-screen bg-linear-to-tr from-card via-page-deep to-card" : "min-h-full"
       }`}
     >
       {helmetTitle && (
@@ -135,7 +133,7 @@ export const ErrorPageFrame = ({
             </p>
           </div>
         </div>
-        <div className="flex flex-col border-t border-border bg-bunker-800/50 lg:border-t-0 lg:border-l">
+        <div className="flex flex-col border-t border-border bg-page/50 lg:border-t-0 lg:border-l">
           <div className="flex items-center justify-between gap-2 border-b border-border py-4 pr-5 pl-6">
             <div className="flex items-center gap-2.5 text-muted">
               <ActivityIcon className="size-4" />

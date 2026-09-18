@@ -13,7 +13,7 @@ export const SessionExpiry = ({ expiresAt }: Props) => {
         <TooltipTrigger asChild>
           <span className="text-sm">Never</span>
         </TooltipTrigger>
-        <TooltipContent>This session works until it is revoked.</TooltipContent>
+        <TooltipContent>This session runs until someone revokes it.</TooltipContent>
       </Tooltip>
     );
   }

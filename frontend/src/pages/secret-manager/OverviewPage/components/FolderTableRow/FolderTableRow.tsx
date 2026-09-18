@@ -125,23 +125,25 @@ export const FolderTableRow = ({
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover"
         }
       >
-        <span
-          title={folderName}
-          className={twMerge(
-            "block min-w-0 truncate",
-            pendingAction === PendingAction.Delete && "text-danger/75 line-through"
+        <div className="flex min-w-0 items-center">
+          <span
+            title={folderName}
+            className={twMerge(
+              "min-w-0 truncate",
+              pendingAction === PendingAction.Delete && "text-danger/75 line-through"
+            )}
+          >
+            {folderName}
+          </span>
+          {description && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="ml-1.5 !size-3 shrink-0 text-accent" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">{description}</TooltipContent>
+            </Tooltip>
           )}
-        >
-          {folderName}
-        </span>
-        {description && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <InfoIcon className="mb-0.5 ml-1.5 inline-block !size-3 text-accent" />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm">{description}</TooltipContent>
-          </Tooltip>
-        )}
+        </div>
         <div
           className={twMerge(
             "absolute z-20",

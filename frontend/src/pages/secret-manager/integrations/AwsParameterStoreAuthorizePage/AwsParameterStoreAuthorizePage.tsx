@@ -16,6 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -88,19 +89,14 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
       <Helmet>
         <title>Authorize AWS Parameter Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
             <div className="flex items-center">
-              <img
-                src="/images/integrations/Amazon Web Services.png"
-                height={35}
-                width={35}
-                alt="AWS logo"
-              />
+              <ProviderIcon icon="Amazon Web Services.png" height={35} width={35} alt="AWS logo" />
             </div>
             <span className="ml-1.5">AWS Parameter Store Integration </span>
             <a
@@ -108,7 +104,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon

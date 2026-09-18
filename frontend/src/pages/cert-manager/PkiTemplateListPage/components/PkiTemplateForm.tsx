@@ -181,7 +181,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     <form onSubmit={handleSubmit(onFormSubmit)}>
       {certTemplate && (
         <FormControl label="Certificate Template ID">
-          <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+          <Input value={certTemplate.id} isDisabled className="bg-foreground-inverse/[0.07]" />
         </FormControl>
       )}
       <Controller

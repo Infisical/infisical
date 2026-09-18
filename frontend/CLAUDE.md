@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 6, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
@@ -62,6 +62,12 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
 
+### Product Analytics
+
+Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
+
+Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It defines naming, ownership between frontend and backend producers, property cardinality and privacy rules, and lifecycle semantics. Frontend events describe UI exposure and intent; decisive product outcomes belong to backend telemetry so web activity is not double-counted against CLI, machine identity, or other clients.
+
 ### State Management
 
 - **Server state**: TanStack React Query (query key factories in each API domain)
@@ -74,7 +80,7 @@ CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermi
 
 ### Styling
 
-Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Color palette: primary (blue), mineshaft (dark gray), bunker (darker bg), success/warning/danger/info.
+Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Colors use semantic roles from `src/index.css`, including surfaces, content, structure, status, scope, and product/resource accents.
 
 ### Layouts
 

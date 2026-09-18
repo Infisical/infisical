@@ -25,14 +25,17 @@ import { CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION } from "./cloudflare
 import { cloudflareCustomCertificatePkiSyncFactory } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-fns";
 import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-constants";
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
-import { GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-constants";
+import {
+  GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
+  GCP_MAX_CERTIFICATES_PER_MAP_ENTRY
+} from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-constants";
 import { gcpCertificateManagerPkiSyncFactory } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-fns";
 import {
   TGcpCertificateManagerPkiSyncConfig,
   TGcpCertificateManagerPkiSyncConfigUpdate
 } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-types";
 import {
-  assertGcpCertificateManagerCertificateCount,
+  buildGcpTooManyCertificatesMessage,
   resolveGcpCertificateManagerConfigUpdate
 } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-update-fns";
 import { KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-constants";
@@ -45,14 +48,29 @@ import { NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION } from "./nutanix-prism-cent
 import { nutanixPrismCentralPkiSyncFactory } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-fns";
 import {
   buildManagedCertificateNameRegexSource,
+  certificateNameSchemaAllowsMultipleCertificates,
   SHORT_UUID_NAME_REGEX_FRAGMENT,
   UUID_NAME_REGEX_FRAGMENT
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
-import { THostCommandResult } from "./pki-sync-host-command-fns";
-import { getPkiSyncConnectionApps } from "./pki-sync-maps";
-import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
+import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, TPkiSyncFilterKind } from "./pki-sync-filter-fns";
+import { getHealthCheckCommand } from "./pki-sync-health-check-command-fns";
+import {
+  findSingleCertificateHostCommandVariables,
+  formatHostCommandVariables,
+  HostCommandKind,
+  THostCommandResult
+} from "./pki-sync-host-command-fns";
+import { getPkiSyncConnectionApps, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
+import { getPostSyncCommand } from "./pki-sync-post-sync-command-fns";
+import {
+  TCertificateMap,
+  THealthCheckTarget,
+  TPkiSyncFilters,
+  TPkiSyncSyncResult,
+  TPkiSyncWithCredentials
+} from "./pki-sync-types";
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
 
@@ -112,7 +130,7 @@ export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
   };
 };
 
-export const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefined => {
+const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefined => {
   const providerOption = PKI_SYNC_LIST_OPTIONS[destination];
   if (providerOption && "maxCertificates" in providerOption) {
     return providerOption.maxCertificates;
@@ -133,19 +151,6 @@ export const resolvePkiSyncDestinationConfigUpdate = (
   }
 
   return nextConfig;
-};
-
-export const assertPkiSyncDestinationConfigAllowsCertificateCount = (
-  destination: PkiSync,
-  destinationConfig: Record<string, unknown> | undefined,
-  resultingCertificateCount: number
-) => {
-  if (destination === PkiSync.GcpCertificateManager) {
-    assertGcpCertificateManagerCertificateCount(
-      destinationConfig as TGcpCertificateManagerPkiSyncConfig | undefined,
-      resultingCertificateCount
-    );
-  }
 };
 
 export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): data is z.infer<T> => {
@@ -365,6 +370,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.LinuxServer as PkiSync);
         const linuxServerPkiSync = linuxServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateDAL: dependencies.certificateDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService,
           keyStore: dependencies.keyStore
@@ -378,6 +384,7 @@ export const PkiSyncFns = {
         }
         const windowsServerPkiSync = windowsServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateDAL: dependencies.certificateDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService,
           keyStore: dependencies.keyStore
@@ -412,6 +419,7 @@ export const PkiSyncFns = {
     certificateMap: TCertificateMap,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
+      certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -421,6 +429,7 @@ export const PkiSyncFns = {
       case PkiSync.LinuxServer: {
         const linuxServerPkiSync = linuxServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateDAL: dependencies.certificateDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService,
           keyStore: dependencies.keyStore
@@ -436,6 +445,7 @@ export const PkiSyncFns = {
         }
         const windowsServerPkiSync = windowsServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateDAL: dependencies.certificateDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService,
           keyStore: dependencies.keyStore
@@ -451,6 +461,7 @@ export const PkiSyncFns = {
     pkiSync: THealthCheckTarget,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
+      certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -459,6 +470,7 @@ export const PkiSyncFns = {
     if (pkiSync.destination === PkiSync.LinuxServer) {
       const linuxServerPkiSync = linuxServerPkiSyncFactory({
         certificateSyncDAL: dependencies.certificateSyncDAL,
+        certificateDAL: dependencies.certificateDAL,
         gatewayV2Service: dependencies.gatewayV2Service,
         gatewayPoolService: dependencies.gatewayPoolService,
         keyStore: dependencies.keyStore
@@ -476,6 +488,7 @@ export const PkiSyncFns = {
       }
       const windowsServerPkiSync = windowsServerPkiSyncFactory({
         certificateSyncDAL: dependencies.certificateSyncDAL,
+        certificateDAL: dependencies.certificateDAL,
         gatewayV2Service: dependencies.gatewayV2Service,
         gatewayPoolService: dependencies.gatewayPoolService,
         keyStore: dependencies.keyStore
@@ -622,6 +635,7 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.LinuxServer as PkiSync);
         const linuxServerPkiSync = linuxServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateDAL: dependencies.certificateDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService,
           keyStore: dependencies.keyStore
@@ -639,6 +653,7 @@ export const PkiSyncFns = {
         }
         const windowsServerPkiSync = windowsServerPkiSyncFactory({
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateDAL: dependencies.certificateDAL,
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService,
           keyStore: dependencies.keyStore
@@ -669,5 +684,133 @@ export const PkiSyncFns = {
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
+  }
+};
+
+type TPkiSyncCertificateCap = { cap: number; reason: (resultingCertificateCount: number) => string };
+
+const getPkiSyncCertificateCaps = (
+  destination: PkiSync,
+  syncOptions: Record<string, unknown> | undefined,
+  destinationConfig: Record<string, unknown> | undefined
+): TPkiSyncCertificateCap[] => {
+  const caps: TPkiSyncCertificateCap[] = [];
+
+  const destinationMax = getPkiSyncMaxCertificates(destination);
+  if (destinationMax !== undefined) {
+    caps.push({
+      cap: destinationMax,
+      reason: () =>
+        `${PKI_SYNC_NAME_MAP[destination]} PKI sync supports at most ${destinationMax} certificate${
+          destinationMax === 1 ? "" : "s"
+        }`
+    });
+  }
+
+  if (!certificateNameSchemaAllowsMultipleCertificates(syncOptions?.certificateNameSchema as string | undefined)) {
+    caps.push({
+      cap: 1,
+      reason: () =>
+        "This PKI sync's certificate name schema has no placeholder, so it holds only one certificate. Add {{certificateId}} or {{commonName}} to hold more."
+    });
+  }
+
+  [
+    { kind: HostCommandKind.HealthCheck, command: getHealthCheckCommand(syncOptions) },
+    { kind: HostCommandKind.PostSync, command: getPostSyncCommand(syncOptions) }
+  ].forEach(({ kind, command }) => {
+    const singleCertificateVariables = findSingleCertificateHostCommandVariables(command);
+
+    if (singleCertificateVariables.length > 0) {
+      caps.push({
+        cap: 1,
+        reason: () =>
+          `This sync's ${kind} uses ${formatHostCommandVariables(
+            singleCertificateVariables
+          )}. A variable that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
+      });
+    }
+  });
+
+  if (destination === PkiSync.GcpCertificateManager) {
+    const gcpConfig = destinationConfig as TGcpCertificateManagerPkiSyncConfig | undefined;
+    if (gcpConfig?.certificateMapBinding?.certificateMap) {
+      caps.push({
+        cap: GCP_MAX_CERTIFICATES_PER_MAP_ENTRY,
+        reason: (resultingCertificateCount) =>
+          buildGcpTooManyCertificatesMessage(gcpConfig.certificateMapBinding!.certificateMap, resultingCertificateCount)
+      });
+    }
+  }
+
+  return caps;
+};
+
+export const getPkiSyncCertificateCap = (
+  destination: PkiSync,
+  syncOptions: Record<string, unknown> | undefined,
+  destinationConfig: Record<string, unknown> | undefined
+): number | undefined => {
+  const caps = getPkiSyncCertificateCaps(destination, syncOptions, destinationConfig);
+  return caps.length ? Math.min(...caps.map(({ cap }) => cap)) : undefined;
+};
+
+export const assertPkiSyncCertificateCapsAllowCount = (
+  destination: PkiSync,
+  syncOptions: Record<string, unknown> | undefined,
+  destinationConfig: Record<string, unknown> | undefined,
+  resultingCertificateCount: number
+) => {
+  const exceeded = getPkiSyncCertificateCaps(destination, syncOptions, destinationConfig).find(
+    ({ cap }) => resultingCertificateCount > cap
+  );
+
+  if (exceeded) throw new BadRequestError({ message: exceeded.reason(resultingCertificateCount) });
+};
+
+export const assertPkiSyncCanHoldCertificateCount = (
+  destination: PkiSync,
+  syncOptions: Record<string, unknown> | undefined,
+  destinationConfig: Record<string, unknown> | undefined,
+  resultingCertificateCount: number
+) => assertPkiSyncCertificateCapsAllowCount(destination, syncOptions, destinationConfig, resultingCertificateCount);
+
+const PKI_SYNC_FILTER_LABELS: Record<TPkiSyncFilterKind, string> = {
+  profileIds: "certificate profile",
+  certificateOrderIds: "certificate order",
+  metadata: "metadata"
+};
+
+export const assertFiltersCannotExceedCertificateCap = (
+  destination: PkiSync,
+  syncOptions: Record<string, unknown> | undefined,
+  destinationConfig: Record<string, unknown> | undefined,
+  filters: TPkiSyncFilters | null | undefined
+) => {
+  const cap = getPkiSyncCertificateCap(destination, syncOptions, destinationConfig);
+  if (cap === undefined) return;
+  if (!hasAnyPkiSyncFilter(filters)) return;
+
+  const noun = `${cap} certificate${cap === 1 ? "" : "s"}`;
+
+  const growableKinds = PKI_SYNC_FILTER_KINDS.filter(
+    (kind) => kind !== "certificateOrderIds" && filters?.[kind] !== undefined
+  );
+
+  if (growableKinds.length > 0) {
+    throw new BadRequestError({
+      message: `This PKI sync holds at most ${noun}, so it only accepts a certificate order filter. Remove the ${growableKinds
+        .map((kind) => PKI_SYNC_FILTER_LABELS[kind])
+        .join(" and ")} filter.`
+    });
+  }
+
+  const orders = filters?.certificateOrderIds ?? [];
+  if (orders.length > cap) {
+    throw new BadRequestError({
+      message: `This PKI sync holds at most ${noun}, so its filter can name at most ${cap} certificate order${
+        cap === 1 ? "" : "s"
+      }. It names ${orders.length}.`
+    });
   }
 };
