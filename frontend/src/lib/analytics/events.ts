@@ -3,7 +3,7 @@ export const AnalyticsEvent = {
   PaywallUpgradeClicked: "Paywall Upgrade Clicked",
   FolderAccessSheetOpened: "Folder Access Sheet Opened",
   FolderAccessAddSheetOpened: "Folder Access Add Sheet Opened",
-  FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened"
+  FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened",
   ThemePreferenceChanged: "Theme Preference Changed"
 } as const;
 
