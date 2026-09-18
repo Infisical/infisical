@@ -263,7 +263,7 @@ export function AddResourceButtons({
                 isDisabled={isCopySecretsDisabled || !canCopySecrets}
               >
                 <ClipboardPasteIcon className="text-accent" />
-                Copy from Other Environment
+                Copy Secrets
               </DropdownMenuItem>
             </MenuItemTooltip>
             <ProjectPermissionCan
