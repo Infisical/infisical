@@ -22,13 +22,14 @@ import {
   SheetTitle,
   Skeleton
 } from "@app/components/v3";
-import { ProjectPermissionSub, useOrganization, useProject, useSubscription } from "@app/context";
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
+
+import { sanitizeDuplicateRolePermissions } from "./DuplicateProjectRoleModal.utils";
 
 type Props = {
   isOpen: boolean;
@@ -84,21 +85,7 @@ const Content = ({ role, onClose }: ContentProps) => {
       return;
     }
 
-    const sanitizedPermission = role.permissions.map((permission) => {
-      if (
-        permission.subject === ProjectPermissionSub.Secrets &&
-        (permission.action.includes(ProjectPermissionSecretActions.DescribeSecret) ||
-          permission.action.includes(ProjectPermissionSecretActions.ReadValue))
-      ) {
-        return {
-          ...permission,
-          action: (permission.action as string[])?.filter(
-            (action) => action !== ProjectPermissionSecretActions.DescribeAndReadValue
-          )
-        };
-      }
-      return permission;
-    });
+    const sanitizedPermission = sanitizeDuplicateRolePermissions(role.permissions);
 
     const newRole = await createRole.mutateAsync({
       projectId: currentProject.id,
@@ -213,6 +200,7 @@ const Content = ({ role, onClose }: ContentProps) => {
         </SheetFooter>
       </form>
       <UpgradePlanModal
+        paywallKey="project.duplicate-project-role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}
         text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."

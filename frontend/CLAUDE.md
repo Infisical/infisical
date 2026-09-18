@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 6, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
@@ -61,6 +61,12 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 - For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
+
+### Product Analytics
+
+Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
+
+Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It defines naming, ownership between frontend and backend producers, property cardinality and privacy rules, and lifecycle semantics. Frontend events describe UI exposure and intent; decisive product outcomes belong to backend telemetry so web activity is not double-counted against CLI, machine identity, or other clients.
 
 ### State Management
 

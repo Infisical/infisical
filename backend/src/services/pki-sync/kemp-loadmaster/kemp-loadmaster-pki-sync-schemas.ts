@@ -8,7 +8,9 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
   BasePkiSyncOptionsSchema,
   buildDestinationCertificateNameSchema,
-  PkiSyncSchema
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { KEMP_LOADMASTER_DEFAULT_CA_NAME_SCHEMA, KEMP_LOADMASTER_NAMING } from "./kemp-loadmaster-pki-sync-constants";
@@ -70,7 +72,8 @@ export const CreateKempLoadMasterPkiSyncSchema = z.object({
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateKempLoadMasterPkiSyncSchema = z.object({
@@ -80,7 +83,8 @@ export const UpdateKempLoadMasterPkiSyncSchema = z.object({
   destinationConfig: KempLoadMasterPkiSyncConfigSchema.optional(),
   syncOptions: KempLoadMasterPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const KempLoadMasterPkiSyncListItemSchema = z.object({

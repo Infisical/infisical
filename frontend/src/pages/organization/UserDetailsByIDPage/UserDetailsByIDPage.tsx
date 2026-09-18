@@ -254,6 +254,7 @@ const Page = withPermission(
         />
 
         <UpgradePlanModal
+          paywallKey="organization.user-details-by-id"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan?.data?.text}

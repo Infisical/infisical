@@ -184,3 +184,11 @@ export type TApprovalResourceFactory<
   postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine<C>;
   postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine<C>;
 };
+
+export type TApprovalRequestSubjectMetadata = {
+  certificateRequestId?: string;
+  commonName?: string;
+  profileName?: string;
+  signerId?: string;
+  signerName?: string;
+};

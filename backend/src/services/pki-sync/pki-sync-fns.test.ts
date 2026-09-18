@@ -1,5 +1,13 @@
 import { PkiSync } from "./pki-sync-enums";
-import { getPkiSyncProviderCapabilities, matchesCertificateNameSchema, parsePkiSyncErrorMessage } from "./pki-sync-fns";
+import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
+import {
+  assertFiltersCannotExceedCertificateCap,
+  assertPkiSyncCanHoldCertificateCount,
+  getPkiSyncCertificateCap,
+  getPkiSyncProviderCapabilities,
+  matchesCertificateNameSchema,
+  parsePkiSyncErrorMessage
+} from "./pki-sync-fns";
 
 // A dash-stripped UUID (what {{certificateId}}, {{profileId}}, {{applicationId}} resolve to).
 const HEX = "550e8400e29b41d4a716446655440000";
@@ -144,5 +152,238 @@ describe("parsePkiSyncErrorMessage", () => {
 
   test("falls back to a readable message for a non-error throw", () => {
     expect(parsePkiSyncErrorMessage({ weird: true })).toBe("An unknown error occurred during PKI sync operation");
+  });
+});
+
+describe("assertPkiSyncCanHoldCertificateCount", () => {
+  const multiCertSchema = { certificateNameSchema: "Infisical-{{certificateId}}" };
+
+  test("a destination with no cap accepts any number of certificates", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.AwsCertificateManager, multiCertSchema, undefined, 499)
+    ).not.toThrow();
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.AwsCertificateManager, multiCertSchema, undefined, 25_000)
+    ).not.toThrow();
+  });
+
+  test("rejects more than one certificate on a single-certificate destination", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.NutanixPrismCentral, multiCertSchema, undefined, 1)
+    ).not.toThrow();
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.NutanixPrismCentral, multiCertSchema, undefined, 2)
+    ).toThrow("at most 1 certificate");
+  });
+
+  test("does not constrain a sync that holds one certificate", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.LinuxServer, { certificateNameSchema: "static" }, undefined, 1)
+    ).not.toThrow();
+  });
+
+  test("rejects a name schema with no placeholder once more than one certificate is held", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.LinuxServer, { certificateNameSchema: "static" }, undefined, 2)
+    ).toThrow("no placeholder");
+  });
+
+  test("rejects a sync with no name schema at all once more than one certificate is held", () => {
+    expect(() => assertPkiSyncCanHoldCertificateCount(PkiSync.LinuxServer, undefined, undefined, 2)).toThrow(
+      "no placeholder"
+    );
+  });
+
+  test("accepts a name schema with a placeholder", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.LinuxServer, multiCertSchema, undefined, 2)
+    ).not.toThrow();
+  });
+
+  test("rejects a post-sync command that names a single certificate", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(
+        PkiSync.LinuxServer,
+        { ...multiCertSchema, postSyncCommand: "cat {{certificatePath}}" },
+        undefined,
+        2
+      )
+    ).toThrow("certificatePath");
+  });
+
+  test("rejects a health-check command that names a single certificate", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(
+        PkiSync.LinuxServer,
+        { ...multiCertSchema, healthCheckCommand: "openssl x509 -in {{certificatePath}}" },
+        undefined,
+        2
+      )
+    ).toThrow("certificatePath");
+  });
+
+  test("accepts a command that covers every certificate in the run", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(
+        PkiSync.LinuxServer,
+        { ...multiCertSchema, postSyncCommand: "ls {{certificateDirectory}}" },
+        undefined,
+        2
+      )
+    ).not.toThrow();
+  });
+
+  test("ignores destinations without a config-derived cap", () => {
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.AwsCertificateManager, multiCertSchema, { region: "us-east-2" }, 500)
+    ).not.toThrow();
+  });
+
+  test("applies the GCP certificate map entry cap", () => {
+    const gcp = { certificateMapBinding: { certificateMap: "my-map" } };
+    expect(() =>
+      assertPkiSyncCanHoldCertificateCount(PkiSync.GcpCertificateManager, multiCertSchema, gcp, 4)
+    ).not.toThrow();
+    expect(() => assertPkiSyncCanHoldCertificateCount(PkiSync.GcpCertificateManager, multiCertSchema, gcp, 5)).toThrow(
+      "at most 4 certificates"
+    );
+  });
+});
+
+describe("hasAnyPkiSyncFilter", () => {
+  test("is false when no filters are stored, which means the sync holds nothing", () => {
+    expect(hasAnyPkiSyncFilter(null)).toBe(false);
+    expect(hasAnyPkiSyncFilter(undefined)).toBe(false);
+    expect(hasAnyPkiSyncFilter({})).toBe(false);
+  });
+
+  test("is true for a present filter, empty or not", () => {
+    expect(hasAnyPkiSyncFilter({ profileIds: [] })).toBe(true);
+    expect(hasAnyPkiSyncFilter({ certificateOrderIds: [] })).toBe(true);
+    expect(hasAnyPkiSyncFilter({ metadata: [] })).toBe(true);
+    expect(hasAnyPkiSyncFilter({ profileIds: ["p1"] })).toBe(true);
+  });
+});
+
+describe("getPkiSyncCertificateCap", () => {
+  const multiCertSchema = { certificateNameSchema: "{{certificateId}}" };
+
+  test("no cap when the destination and options both allow many", () => {
+    expect(getPkiSyncCertificateCap(PkiSync.AwsCertificateManager, multiCertSchema, {})).toBeUndefined();
+  });
+
+  test("caps at 1 for a destination that holds one certificate", () => {
+    expect(getPkiSyncCertificateCap(PkiSync.NutanixPrismCentral, multiCertSchema, {})).toBe(1);
+  });
+
+  test("caps at 1 when the name schema has no placeholder", () => {
+    expect(getPkiSyncCertificateCap(PkiSync.LinuxServer, { certificateNameSchema: "static" }, {})).toBe(1);
+  });
+
+  test("caps at 1 when a host command names a single certificate", () => {
+    expect(
+      getPkiSyncCertificateCap(
+        PkiSync.LinuxServer,
+        { ...multiCertSchema, postSyncCommand: "cat {{certificatePath}}" },
+        {}
+      )
+    ).toBe(1);
+  });
+
+  test("caps at the GCP map-entry limit when a certificate map is bound", () => {
+    expect(
+      getPkiSyncCertificateCap(PkiSync.GcpCertificateManager, multiCertSchema, {
+        certificateMapBinding: { certificateMap: "my-map" }
+      })
+    ).toBe(4);
+  });
+
+  test("takes the smallest applicable cap", () => {
+    expect(
+      getPkiSyncCertificateCap(
+        PkiSync.GcpCertificateManager,
+        { certificateNameSchema: "static" },
+        {
+          certificateMapBinding: { certificateMap: "my-map" }
+        }
+      )
+    ).toBe(1);
+  });
+});
+
+describe("assertFiltersCannotExceedCertificateCap", () => {
+  const single = { certificateNameSchema: "static" };
+  const many = { certificateNameSchema: "{{certificateId}}" };
+  const assertSingle = (filters: Parameters<typeof assertFiltersCannotExceedCertificateCap>[3]) => () =>
+    assertFiltersCannotExceedCertificateCap(PkiSync.LinuxServer, single, {}, filters);
+
+  test("an uncapped sync accepts any filter", () => {
+    expect(() =>
+      assertFiltersCannotExceedCertificateCap(PkiSync.LinuxServer, many, {}, { profileIds: ["p"] })
+    ).not.toThrow();
+    expect(() => assertFiltersCannotExceedCertificateCap(PkiSync.LinuxServer, many, {}, null)).not.toThrow();
+  });
+
+  test("a single certificate order is accepted", () => {
+    expect(assertSingle({ certificateOrderIds: ["o"] })).not.toThrow();
+  });
+
+  test("an empty list is accepted, since it matches nothing", () => {
+    expect(assertSingle({ certificateOrderIds: [] })).not.toThrow();
+  });
+
+  test("a certificate order combined with a growable filter is rejected", () => {
+    expect(assertSingle({ certificateOrderIds: ["o"], profileIds: ["p"] })).toThrow(
+      "only accepts a certificate order filter. Remove the certificate profile filter."
+    );
+    expect(assertSingle({ certificateOrderIds: ["o"], metadata: [{ key: "tier" }] })).toThrow(
+      "only accepts a certificate order filter. Remove the metadata filter."
+    );
+    expect(assertSingle({ certificateOrderIds: ["o"], profileIds: ["p"], metadata: [{ key: "tier" }] })).toThrow(
+      "Remove the certificate profile and metadata filter."
+    );
+  });
+
+  test("two certificate orders are rejected", () => {
+    expect(assertSingle({ certificateOrderIds: ["o1", "o2"] })).toThrow("can name at most 1 certificate order");
+  });
+
+  test("a profile filter on its own is rejected, because it grows as certificates are issued", () => {
+    expect(assertSingle({ profileIds: ["p"] })).toThrow("only accepts a certificate order filter");
+  });
+
+  test("a metadata filter on its own is rejected", () => {
+    expect(assertSingle({ metadata: [{ key: "tier", value: "prod" }] })).toThrow(
+      "only accepts a certificate order filter"
+    );
+  });
+
+  test("a capped sync rejects a growable filter whatever its own cap is", () => {
+    const gcp = { certificateMapBinding: { certificateMap: "my-map" } };
+    expect(() =>
+      assertFiltersCannotExceedCertificateCap(PkiSync.GcpCertificateManager, many, gcp, {
+        certificateOrderIds: ["o1"],
+        profileIds: ["p"]
+      })
+    ).toThrow("holds at most 4 certificates, so it only accepts a certificate order filter");
+  });
+
+  test("no filters at all is accepted, since a sync with no filters holds nothing", () => {
+    expect(assertSingle(null)).not.toThrow();
+    expect(assertSingle(undefined)).not.toThrow();
+    expect(assertSingle({})).not.toThrow();
+  });
+
+  test("four certificate orders are accepted under the GCP map-entry cap but five are not", () => {
+    const gcp = { certificateMapBinding: { certificateMap: "my-map" } };
+    const four = ["o1", "o2", "o3", "o4"];
+    expect(() =>
+      assertFiltersCannotExceedCertificateCap(PkiSync.GcpCertificateManager, many, gcp, { certificateOrderIds: four })
+    ).not.toThrow();
+    expect(() =>
+      assertFiltersCannotExceedCertificateCap(PkiSync.GcpCertificateManager, many, gcp, {
+        certificateOrderIds: [...four, "e"]
+      })
+    ).toThrow("can name at most 4 certificate orders");
   });
 });
