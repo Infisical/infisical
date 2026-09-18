@@ -57,6 +57,7 @@ import { CertificateManageRenewalModal } from "../CertificatesPage/components/Ce
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
 import {
+  getCertificateDeletionBlockReason,
   isExpiringWithinOneDay,
   isManagedCertificate,
   RENEWAL_UNAVAILABLE_NO_PROFILE
@@ -468,15 +469,36 @@ const Page = () => {
                     Revoke Certificate
                   </DropdownMenuItem>
                 )}
-              {!(isInventoryView && certificate.applicationId) && (
-                <DropdownMenuItem
-                  variant="danger"
-                  isDisabled={!canDeleteCertificate}
-                  onClick={() => handlePopUpOpen("deleteCertificate")}
-                >
-                  Delete Certificate
-                </DropdownMenuItem>
-              )}
+              {!(isInventoryView && certificate.applicationId) &&
+                (() => {
+                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                    certificate,
+                    supportsRevocation
+                  );
+
+                  const item = (
+                    <DropdownMenuItem
+                      variant="danger"
+                      isDisabled={!canDeleteCertificate || Boolean(deletionBlockReason)}
+                      onClick={() => handlePopUpOpen("deleteCertificate")}
+                    >
+                      Delete Certificate
+                    </DropdownMenuItem>
+                  );
+
+                  if (!deletionBlockReason) return item;
+
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>{item}</div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={20} className="max-w-72">
+                        {deletionBlockReason}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })()}
             </DropdownMenuContent>
           </DropdownMenu>
         </PageHeader>
