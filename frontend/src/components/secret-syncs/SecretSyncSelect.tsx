@@ -196,6 +196,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
       )}
 
       <UpgradePlanModal
+        paywallKey="secret-manager.secret-sync-provider"
         isOpen={popUp.upgradePlan.isOpen}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

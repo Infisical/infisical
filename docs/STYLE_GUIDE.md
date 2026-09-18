@@ -64,7 +64,7 @@ For pages that describe one approach among several (e.g., ACME vs. EST vs. SCEP)
   <Card title="Web Servers" icon="server">
     Nginx, Apache, Tomcat with Certbot.
   </Card>
-  <Card title="Kubernetes" icon="dharmachakra">
+  <Card title="Kubernetes" icon="settings">
     Use cert-manager to issue certificates.
   </Card>
 </CardGroup>

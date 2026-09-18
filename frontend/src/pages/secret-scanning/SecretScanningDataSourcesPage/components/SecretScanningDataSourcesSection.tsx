@@ -82,6 +82,7 @@ export const SecretScanningDataSourcesSection = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("addDataSource", isOpen)}
       />
       <UpgradePlanModal
+        paywallKey="secret-scanning.secret-scanning-data-sources"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Creating data sources can be unlocked if you upgrade to Infisical Enterprise plan."

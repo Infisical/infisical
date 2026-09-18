@@ -62,7 +62,7 @@ const CustomCard = ({ onSelect }: { onSelect: () => void }) => (
     </div>
     <div className="flex flex-col gap-1">
       <p className="text-sm font-semibold text-foreground">Custom</p>
-      <p className="text-xs leading-relaxed text-muted">Name the hosts yourself.</p>
+      <p className="text-xs leading-relaxed text-muted">Configure the hosts yourself.</p>
     </div>
   </button>
 );
@@ -106,7 +106,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
         <InputGroupInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search templates — OpenAI, Anthropic, Slack, GitHub..."
+          placeholder="Search templates (e.g., OpenAI, Anthropic, Slack, GitHub...)"
         />
       </InputGroup>
 

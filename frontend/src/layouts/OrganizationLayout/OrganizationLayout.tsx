@@ -48,7 +48,7 @@ export const OrganizationLayout = () => {
             {!isLoading && !isInsideProject && <NetworkHealthBanner />}
             <div
               className={twMerge(
-                "flex-1 overflow-x-hidden dark:scheme-dark",
+                "flex-1 overflow-x-hidden",
                 isInsideProject ? "overflow-y-hidden" : "overflow-y-auto px-6 py-10 md:px-12"
               )}
             >

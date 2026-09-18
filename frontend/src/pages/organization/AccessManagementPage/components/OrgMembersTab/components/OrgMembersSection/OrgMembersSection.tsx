@@ -283,6 +283,7 @@ export const OrgMembersSection = () => {
         </div>
       </DeleteActionModal>
       <UpgradePlanModal
+        paywallKey="organization.org-members"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

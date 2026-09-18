@@ -71,7 +71,8 @@ export const digicertRevocationSyncQueueFactory = ({
         metadata: {
           certId: cert.id,
           cn: cert.commonName,
-          serialNumber: cert.serialNumber
+          serialNumber: cert.serialNumber,
+          revocationReason: CrlReason.UNSPECIFIED
         }
       }
     });

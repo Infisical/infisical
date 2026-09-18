@@ -155,6 +155,7 @@ export const ExternalCaSection = () => {
       />
 
       <UpgradePlanModal
+        paywallKey="cert-manager.external-ca"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { text: string })?.text}

@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +38,7 @@ import {
   Empty,
   EmptyHeader,
   EmptyTitle,
+  PageHeader,
   PageLoader,
   Tabs,
   TabsContent,
@@ -143,19 +143,17 @@ export const SignerDetailPage = () => {
       </Helmet>
       <div className="h-full bg-bunker-800">
         <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
-            <div className="mb-4">
-              <Link
-                to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
-                params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-                className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-              >
-                <ChevronLeftIcon size={16} />
-                Back to Signers
-              </Link>
-            </div>
-
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
+              backLink={
+                <Link
+                  to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
+                  params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+                >
+                  <ChevronLeftIcon size={16} />
+                  Back to Signers
+                </Link>
+              }
               scope={ProjectType.CertificateManager}
               icon={PenTool}
               title={

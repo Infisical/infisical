@@ -14,9 +14,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageHeader,
   Tooltip
 } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -74,19 +74,20 @@ export const PkiCollectionPage = () => {
   return (
     <div className="mx-auto flex flex-col justify-between text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
-            params={{
-              orgId: currentOrg.id,
-              projectId: params.projectId
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            Certificates
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
+            backLink={
+              <Link
+                to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
+                params={{
+                  orgId: currentOrg.id,
+                  projectId: params.projectId
+                }}
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+                Certificates
+              </Link>
+            }
             scope={ProjectType.CertificateManager}
             title={data.name}
             description="Manage certificate collection"

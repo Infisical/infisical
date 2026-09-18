@@ -210,6 +210,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
       </p>
 
       <UpgradePlanModal
+        paywallKey="organization.app-connection-list"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="All App Connections can be unlocked if you switch to Infisical Enterprise plan."

@@ -4,6 +4,10 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  hasAnyFilter,
+  isCertificateOrderTheOnlyFilter
+} from "@app/components/pki-syncs/forms/pki-sync-filter-fns";
+import {
   Button,
   Checkbox,
   EmptyState,
@@ -27,6 +31,7 @@ import {
   useListPkiSyncsWithCertificate,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -40,6 +45,14 @@ type Props = {
   };
   handlePopUpToggle: (popUpName: "managePkiSyncs", state?: boolean) => void;
   applicationName?: string;
+};
+
+const getSyncUnavailableReason = (sync: TPkiSync): string | null => {
+  if (!sync.applicationId) return "Not attached to an Application";
+  if (!hasAnyFilter(sync.filters)) return "No filters set";
+  if (!isCertificateOrderTheOnlyFilter(sync.filters))
+    return "Selects certificates by profile or metadata";
+  return null;
 };
 
 const PER_PAGE = 10;
@@ -240,34 +253,49 @@ export const CertificateManagePkiSyncsModal = ({
                   </Tr>
                 </THead>
                 <TBody>
-                  {paginatedSyncs.map((sync) => (
-                    <Tr
-                      key={sync.id}
-                      className="cursor-pointer hover:bg-mineshaft-700"
-                      onClick={() => handleSyncToggle(sync.id)}
-                    >
-                      <Td>
-                        <Checkbox
-                          isChecked={selectedSyncIds.has(sync.id)}
-                          onCheckedChange={() => handleSyncToggle(sync.id)}
-                          id={`sync-${sync.id}`}
-                        />
-                      </Td>
-                      <Td className="w-1/2 max-w-0">
-                        <div className="truncate" title={sync.name}>
-                          {sync.name}
-                        </div>
-                      </Td>
-                      <Td className="w-1/2 max-w-0">
-                        <div
-                          className="truncate capitalize"
-                          title={PKI_SYNC_MAP[sync.destination].name}
-                        >
-                          {PKI_SYNC_MAP[sync.destination].name}
-                        </div>
-                      </Td>
-                    </Tr>
-                  ))}
+                  {paginatedSyncs.map((sync) => {
+                    const unavailableReason = getSyncUnavailableReason(sync);
+                    const managesItsOwnCertificates = Boolean(unavailableReason);
+
+                    return (
+                      <Tr
+                        key={sync.id}
+                        className={
+                          managesItsOwnCertificates
+                            ? "opacity-60"
+                            : "cursor-pointer hover:bg-mineshaft-700"
+                        }
+                        onClick={() => !managesItsOwnCertificates && handleSyncToggle(sync.id)}
+                      >
+                        <Td>
+                          <Checkbox
+                            isChecked={selectedSyncIds.has(sync.id)}
+                            isDisabled={managesItsOwnCertificates}
+                            onCheckedChange={() => handleSyncToggle(sync.id)}
+                            id={`sync-${sync.id}`}
+                          />
+                        </Td>
+                        <Td className="w-1/2 max-w-0">
+                          <div className="truncate" title={sync.name}>
+                            {sync.name}
+                          </div>
+                          {unavailableReason && (
+                            <div className="truncate text-xs text-mineshaft-400">
+                              {unavailableReason}
+                            </div>
+                          )}
+                        </Td>
+                        <Td className="w-1/2 max-w-0">
+                          <div
+                            className="truncate capitalize"
+                            title={PKI_SYNC_MAP[sync.destination].name}
+                          >
+                            {PKI_SYNC_MAP[sync.destination].name}
+                          </div>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
                 </TBody>
               </Table>
             </TableContainer>
