@@ -19,7 +19,7 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 ## Prerequisites
 
 - Create a [Stripe Connection](/integrations/app-connections/stripe). That connection is used to create and expire restricted API keys on your behalf during rotation.
-- Your Stripe account must have access to the [Managed API Keys API](/integrations/app-connections/stripe), which Stripe currently offers as a private preview.
+- Your Stripe account must have access to the [Managed API Keys API](https://docs.stripe.com/api-keys), which Stripe currently offers as a private preview.
 
 ## Create a Stripe API key rotation in Infisical
 
@@ -40,8 +40,11 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 
         4. Set the Stripe API key parameters, then select **Next**.
 
-        - **Permissions** - The permissions granted to the generated key. Stripe's Managed API Keys API has no wildcard for "all access", so a key with full access is one where every permission in the list is selected individually. If you already have a Stripe API key with the permissions you want, you can copy its permissions instead of selecting them by hand.
-        - **Connect permissions** (optional) - Permissions the generated key holds when acting on behalf of a connected account. This only matters if your Stripe account is a [Connect](https://docs.stripe.com/connect) platform; leave it empty otherwise.
+        - **Permissions** - The permissions granted to the generated key. Stripe's Managed API Keys API has no wildcard for "all access", so a key with full access is one where every permission in the list is selected individually. If you already have an active Stripe API key with the permissions you want, you can select it from **Copy permissions from an existing key** instead of selecting them by hand.
+
+        <Note>
+          Connect permissions, which apply when the generated key acts on behalf of a connected account under [Stripe Connect](https://docs.stripe.com/connect), have no field in the Infisical UI yet. Set them through the [API](/api-reference/endpoints/secret-rotations/stripe-api-key/create) instead.
+        </Note>
 
         5. Specify the secret name that the rotated API key will be mapped to. Then select **Next**.
 
@@ -54,7 +57,7 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 
         7. Review your configuration, then select **Create Secret Rotation**.
 
-        8. Your **Stripe API Key** rotation is created. The current restricted key is available as a secret at the mapped path. Rotations will create a new key, switch the active secret to it, then expire the previous key for zero-downtime rotation.
+        8. Your **Stripe API Key** rotation is created. The current restricted key is available as a secret at the mapped path. Each rotation creates a new key, expires the key from two rotations ago, then switches the active secret to the new key, so two keys are always valid at once for zero-downtime rotation.
 
         <Note>
           Infisical only ever expires the keys it created. Your account's existing keys, including any key you were using before you set up this rotation, are left alone.
