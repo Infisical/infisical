@@ -16,8 +16,8 @@ export const QuickSearchEnvTable = ({ envName, trailingHead, children }: Props) 
       <TableHeader>
         <TableRow>
           <TableHead className="w-8" />
-          <TableHead>Name</TableHead>
-          <TableHead>Location</TableHead>
+          <TableHead className="w-2/5 min-w-60">Name</TableHead>
+          <TableHead className="w-1/4 min-w-36">Location</TableHead>
           {trailingHead ?? <TableHead className="w-24" />}
         </TableRow>
       </TableHeader>
