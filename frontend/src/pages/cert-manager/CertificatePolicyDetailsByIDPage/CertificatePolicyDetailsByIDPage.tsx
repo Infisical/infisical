@@ -7,7 +7,8 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -24,6 +25,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CreatePolicyModal } from "../PoliciesPage/components/CertificatePoliciesTab/CreatePolicyModal";
 import {
   PolicyAlgorithmsSection,
+  PolicyCustomExtensionsSection,
   PolicyDetailsSection,
   PolicyKeyUsagesSection,
   PolicyNoRulesSection,
@@ -71,7 +73,8 @@ const Page = () => {
       policy?.algorithms?.signature?.length ||
       policy?.algorithms?.keyAlgorithm?.length ||
       policy?.validity?.max ||
-      policy?.basicConstraints?.isCA
+      policy?.basicConstraints?.isCA ||
+      policy?.customExtensions
   );
 
   const handleDeleteConfirm = async () => {
@@ -111,38 +114,38 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                {cameFromProfile && search.profileId ? (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      profileId: search.profileId
-                    }}
-                    search={{
-                      from: search.profileFrom,
-                      applicationName: search.profileApplicationName
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    {sourceProfile?.slug || "Certificate Profile"}
-                  </Link>
-                ) : (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    Certificate Policies
-                  </Link>
-                )}
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
                 <PageHeader
+                  backLink={
+                    cameFromProfile && search.profileId ? (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId,
+                          profileId: search.profileId
+                        }}
+                        search={{
+                          from: search.profileFrom,
+                          applicationName: search.profileApplicationName
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        {sourceProfile?.slug || "Certificate Profile"}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        Certificate Policies
+                      </Link>
+                    )
+                  }
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate policy"
                   title={policy.name}
@@ -163,6 +166,7 @@ const Page = () => {
                         <PolicySansRulesSection policy={policy} />
                         <PolicyKeyUsagesSection policy={policy} />
                         <PolicyAlgorithmsSection policy={policy} />
+                        <PolicyCustomExtensionsSection policy={policy} />
                       </>
                     ) : (
                       <PolicyNoRulesSection />

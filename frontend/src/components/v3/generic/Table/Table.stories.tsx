@@ -98,17 +98,21 @@ const identities: Identity[] = [
  * For datasets that don't fit on a single screen, pair the `Table` with the
  * `Pagination` component as a sibling below it — see *Example: With
  * Pagination*.
+ *
+ * Anchor the table on the start edge. Extra column width grows toward the end
+ * and scrolls inside the bordered container; do not center the table so it
+ * grows both ways. Stories use `layout: "padded"` for that reason.
  */
 const meta = {
   title: "Generic/Table",
   component: Table,
   parameters: {
-    layout: "centered"
+    layout: "padded"
   },
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <div className="w-[760px]">
+      <div className="ms-0 w-full max-w-3xl min-w-0">
         <Story />
       </div>
     )

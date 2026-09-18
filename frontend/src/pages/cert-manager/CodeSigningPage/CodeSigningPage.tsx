@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { PenTool } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -20,7 +20,7 @@ export const CodeSigningPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Code Signing" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={ProjectType.CertificateManager}
           icon={PenTool}

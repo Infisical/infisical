@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tooltip,
   TooltipContent,
@@ -46,9 +45,9 @@ export const HCVaultSyncFields = () => {
       <Controller
         name="destinationConfig.mount"
         control={control}
-        render={({ field: { onChange }, fieldState: { error } }) => (
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel id="secret-sync-hcvault-mount-label" htmlFor="secret-sync-hcvault-mount">
               Secrets Engine Mount
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -63,16 +62,22 @@ export const HCVaultSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-hcvault-mount-label"
+                aria-describedby={error ? "secret-sync-hcvault-mount-error" : undefined}
+                id="secret-sync-hcvault-mount"
+                isError={Boolean(error)}
                 isLoading={isMountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                onChange={(option) =>
-                  onChange((option as SingleValue<{ value: string }>)?.value ?? null)
-                }
-                options={mounts?.map((v) => ({ label: v, value: v }))}
+                value={value ? { label: value, value } : null}
+                onValueChange={(option) => onChange(option.value)}
+                options={mounts?.map((mount) => ({ label: mount, value: mount })) ?? []}
                 placeholder="Select a Secrets Engine Mount..."
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.value}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-hcvault-mount-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

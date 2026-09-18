@@ -134,7 +134,12 @@ const GeneralTab = ({
                   Name<span className="text-product-pam">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
+                  <Input
+                    {...field}
+                    isError={!!fieldState.error}
+                    autoComplete="off"
+                    name="pam-folder-name"
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>

@@ -3,8 +3,14 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  DocumentationLinkBadge,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -41,9 +47,8 @@ export const DiscoveryPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
-          className="mb-6"
           scope={ProjectType.CertificateManager}
           title={
             <span className="inline-flex items-center gap-x-2">
@@ -57,15 +62,11 @@ export const DiscoveryPage = () => {
         />
         <CertManagerAdminOnly>
           <Tabs value={activeTab} onValueChange={onTabChange}>
-            <TabList>
-              <Tab variant="project" value="jobs">
-                Jobs
-              </Tab>
-              <Tab variant="project" value="installations">
-                Installations
-              </Tab>
-            </TabList>
-            <TabPanel value="jobs">
+            <TabsList variant="project" aria-label="Certificate discovery sections">
+              <TabsTrigger value="jobs">Jobs</TabsTrigger>
+              <TabsTrigger value="installations">Installations</TabsTrigger>
+            </TabsList>
+            <TabsContent value="jobs">
               <ProjectPermissionCan
                 renderGuardBanner
                 I={ProjectPermissionPkiDiscoveryActions.Read}
@@ -73,8 +74,8 @@ export const DiscoveryPage = () => {
               >
                 <DiscoveryJobsTab projectId={currentProject?.id || ""} />
               </ProjectPermissionCan>
-            </TabPanel>
-            <TabPanel value="installations">
+            </TabsContent>
+            <TabsContent value="installations">
               <ProjectPermissionCan
                 renderGuardBanner
                 I={ProjectPermissionPkiCertificateInstallationActions.Read}
@@ -82,7 +83,7 @@ export const DiscoveryPage = () => {
               >
                 <InstallationsTab projectId={currentProject?.id || ""} />
               </ProjectPermissionCan>
-            </TabPanel>
+            </TabsContent>
           </Tabs>
         </CertManagerAdminOnly>
       </div>

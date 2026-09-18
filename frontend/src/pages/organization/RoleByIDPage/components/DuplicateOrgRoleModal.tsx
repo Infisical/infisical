@@ -109,7 +109,14 @@ const Content = ({ role, onClose }: ContentProps) => {
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="name">Name</FieldLabel>
-                <Input id="name" placeholder="Billing Team" isError={Boolean(error)} {...field} />
+                <Input
+                  id="name"
+                  placeholder="Billing Team"
+                  isError={Boolean(error)}
+                  {...field}
+                  autoComplete="off"
+                  name="org-role-name"
+                />
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}
@@ -156,6 +163,7 @@ const Content = ({ role, onClose }: ContentProps) => {
         </DialogFooter>
       </form>
       <UpgradePlanModal
+        paywallKey="organization.duplicate-org-role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."

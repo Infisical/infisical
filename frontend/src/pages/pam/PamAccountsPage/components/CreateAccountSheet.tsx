@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowUpRight, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -486,7 +486,13 @@ export const CreateAccountSheet = ({
                         Name<span className="text-product-pam">*</span>
                       </FieldLabel>
                       <FieldContent>
-                        <Input {...field} placeholder="My account" isError={!!fieldState.error} />
+                        <Input
+                          {...field}
+                          placeholder="My account"
+                          isError={!!fieldState.error}
+                          autoComplete="off"
+                          name="pam-account-name"
+                        />
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
                     </Field>

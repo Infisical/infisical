@@ -234,6 +234,7 @@ SendGrid
 SocketLabs
 Mailgun
 Mailhog
+Twilio
 Zoho
 Tailscale
 1Password
@@ -341,9 +342,52 @@ OpenAI
 OpenRouter
 Anthropic
 Claude
+Claude Code
 Codex
 LiteLLM
 Fireworks
+Cohere
+Cursor
+DeepSeek
+Gemini
+Grok
+Groq
+Hermes Agent
+Mistral
+OpenClaw
+OpenCode
+Perplexity
+xAI
+
+# --- Communication and messaging ---
+Discord
+Postmark
+Resend
+SendGrid
+Twilio
+
+# --- Payments and commerce ---
+Stripe
+Shopify
+
+# --- Dev tools and platforms ---
+Cloudflare
+GitLab
+Supabase
+Vercel
+npm
+
+# --- Monitoring and observability ---
+Datadog
+PagerDuty
+Sentry
+
+# --- Productivity ---
+Atlassian
+Google Workspace
+Jira
+Linear
+Notion
 
 # --- Acronyms and initialisms ---
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.
@@ -438,6 +482,7 @@ NTLM
 OAuth
 OCI
 OCID
+OIDs
 OIDC
 OKMS
 OTLP
@@ -623,3 +668,7 @@ iss
 # --- Surfaced by the code-signing pages ---
 # Vale strips a trailing `'s`, so the possessive needs no separate entry.
 MSBuild
+
+# --- Surfaced by the PAM Snowflake page ---
+DBeaver
+snowsql

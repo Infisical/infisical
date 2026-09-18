@@ -1216,7 +1216,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const validateAppConnectionUsageById = async (
-    app: AppConnection,
+    app: AppConnection | AppConnection[],
     { connectionId, projectId }: TValidateAppConnectionUsageByIdDTO,
     actor: OrgServiceActor
   ) => {

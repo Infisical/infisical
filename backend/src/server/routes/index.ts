@@ -25,6 +25,17 @@ import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
+import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
+import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
+import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
+import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
+import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
+import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
+import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
+import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -549,6 +560,7 @@ import { injectPermission } from "../plugins/auth/inject-permission";
 import { goSidecarPlugin } from "../plugins/go-sidecar";
 // import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
+import { injectAgentVaultProjectId } from "../plugins/inject-agent-vault-project-id";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
@@ -1350,14 +1362,16 @@ export const registerRoutes = async (
     totpConfigDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    userService
   });
 
   const webAuthnService = webAuthnServiceFactory({
     webAuthnCredentialDAL,
     userDAL,
     tokenService,
-    keyStore
+    keyStore,
+    userService
   });
 
   const mfaLockoutService = mfaLockoutServiceFactory({
@@ -1586,7 +1600,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    usageMeteringService
   });
 
   const rateLimitService = rateLimitServiceFactory({
@@ -1765,6 +1780,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     approvalPolicyDAL,
     approvalRequestDAL,
+    pkiSyncDAL,
     permissionService
   });
 
@@ -1797,6 +1813,53 @@ export const registerRoutes = async (
   const certManagerProjectResolver = certManagerProjectResolverFactory({
     orgDAL,
     projectDAL
+  });
+
+  const agentVaultAccessBundleDAL = agentVaultAccessBundleDALFactory(db);
+  const agentVaultServiceDAL = agentVaultServiceDALFactory(db);
+  const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
+  const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
+  const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
+  const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
+
+  const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
+    agentVaultAccessBundleDAL,
+    agentVaultServiceDAL,
+    permissionService,
+    kmsService,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
+  });
+
+  const agentVaultSessionService = agentVaultSessionServiceFactory({
+    agentVaultSessionDAL,
+    agentVaultSessionAccessBundleDAL,
+    agentVaultAccessBundleDAL,
+    membershipDAL,
+    permissionService
+  });
+
+  const agentVaultProjectResolver = agentVaultProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    keyStore
+  });
+
+  const agentVaultMembershipService = agentVaultMembershipServiceFactory({
+    membershipDAL,
+    identityDAL,
+    membershipRoleDAL,
+    groupDAL,
+    projectAccessRequestDAL,
+    userDAL,
+    userAliasDAL,
+    orgDAL,
+    permissionService,
+    usageMeteringService
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
@@ -1878,10 +1941,22 @@ export const registerRoutes = async (
     gatewayPoolMembershipDAL,
     relayDAL,
     kmipServerDAL,
+    agentVaultProxyDAL,
     identityDAL,
     permissionService,
     licenseService,
     gatewayProxyRegistry
+  });
+
+  const agentVaultProxyService = agentVaultProxyServiceFactory({
+    agentVaultProxyDAL,
+    agentVaultResolveDAL,
+    agentVaultSessionDAL,
+    membershipDAL,
+    orgDAL,
+    permissionService,
+    kmsService,
+    resourceAuthMethodService
   });
 
   const relayService = relayServiceFactory({
@@ -2799,6 +2874,7 @@ export const registerRoutes = async (
 
   const certificateInventoryViewService = certificateInventoryViewServiceFactory({
     certificateInventoryViewDAL,
+    pkiApplicationDAL,
     permissionService
   });
 
@@ -2889,7 +2965,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL
+    scepTransactionDAL,
+    agentVaultSessionService
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2992,7 +3069,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     folderVersionDAL,
-    notificationService
+    notificationService,
+    secretApprovalRequestService,
+    auditLogService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
@@ -3449,6 +3528,7 @@ export const registerRoutes = async (
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
+    pkiApplicationDAL,
     certificateAuthorityDAL,
     permissionService,
     appConnectionDAL,
@@ -3512,6 +3592,18 @@ export const registerRoutes = async (
     telemetryService
   });
 
+  const digicertCaFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
   const certificateService = certificateServiceFactory({
     usageCounterDAL,
     keyStore,
@@ -3528,27 +3620,21 @@ export const registerRoutes = async (
     pkiCollectionDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
+    auditLogService,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateAuthorityService,
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationDAL,
+    certificateProfileDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
+    digicertFns: digicertCaFns,
+    certificatePolicyService,
     licenseService,
     usageMeteringService,
     hsmConnectorService
-  });
-
-  const digicertCaFns = DigiCertCertificateAuthorityFns({
-    appConnectionDAL,
-    appConnectionService,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    projectDAL
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({
@@ -3566,6 +3652,7 @@ export const registerRoutes = async (
   const certificateRequestService = certificateRequestServiceFactory({
     certificateRequestDAL,
     certificateDAL,
+    pkiApplicationDAL,
     certificateService,
     permissionService,
     resourceMetadataDAL,
@@ -3620,7 +3707,8 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL
+    apiEnrollmentConfigDAL,
+    pkiSyncQueue
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
@@ -3649,6 +3737,7 @@ export const registerRoutes = async (
 
   const certificateV3Service = certificateV3ServiceFactory({
     usageCounterDAL,
+    pkiApplicationDAL,
     keyStore,
     certificateDAL,
     certificateSecretDAL,
@@ -3738,6 +3827,7 @@ export const registerRoutes = async (
 
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
+    pkiApplicationDAL,
     usageCounterDAL,
     certificateV3Service,
     certificateProfileDAL,
@@ -3827,10 +3917,13 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     licenseService,
+    keyStore,
     pkiSyncQueue,
     pkiSyncHealthCheckQueue,
     auditLogService,
-    kmsService
+    kmsService,
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL
   });
 
   const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({
@@ -4022,7 +4115,10 @@ export const registerRoutes = async (
     secretService,
     auditLogService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    folderService,
+    folderDAL,
+    projectEnvDAL
   });
 
   // setup the communication with license key server
@@ -4182,6 +4278,11 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     pamProjectResolver,
+    agentVaultProjectResolver,
+    agentVaultAccessBundle: agentVaultAccessBundleService,
+    agentVaultProxy: agentVaultProxyService,
+    agentVaultSession: agentVaultSessionService,
+    agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
@@ -4367,6 +4468,7 @@ export const registerRoutes = async (
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectPamProjectId);
+  await server.register(injectAgentVaultProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
 

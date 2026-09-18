@@ -80,16 +80,18 @@ export const BillingV2Page = () => {
 
   const close = () => setFlow(null);
 
-  const redirectToPortal = async () => {
-    try {
-      const url = await createPortalSession.mutateAsync({
+  const redirectToPortal = () => {
+    createPortalSession.mutate(
+      {
         orgId,
         returnPath: window.location.pathname
-      });
-      window.location.href = url;
-    } catch {
-      createNotification({ type: "error", text: "Failed to open the billing portal." });
-    }
+      },
+      {
+        onSuccess: (url) => {
+          window.location.href = url;
+        }
+      }
+    );
   };
 
   const onManageSubscription = () => {
@@ -109,16 +111,18 @@ export const BillingV2Page = () => {
 
   const hasActiveSubscription = overview?.subState === "active";
 
-  const onUpdatePayment = async () => {
-    try {
-      const url = await addPaymentMethod.mutateAsync({
+  const onUpdatePayment = () => {
+    addPaymentMethod.mutate(
+      {
         orgId,
         returnPath: window.location.pathname
-      });
-      window.location.href = url;
-    } catch {
-      createNotification({ type: "error", text: "Failed to open the payment portal." });
-    }
+      },
+      {
+        onSuccess: (url) => {
+          window.location.href = url;
+        }
+      }
+    );
   };
 
   // Billing name/email and address are edited in the Stripe billing portal.
@@ -181,7 +185,6 @@ export const BillingV2Page = () => {
           initialView={flow.view}
           returnPath={window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
-          trialUsed={overview?.trialedProductKeys.includes(flow.prodId) ?? false}
           selfServe={overview?.selfServe ?? true}
           onClose={close}
           onRemove={setRemoveProdId}

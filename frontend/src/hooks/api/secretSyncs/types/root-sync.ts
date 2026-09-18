@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { SecretSyncInitialSyncBehavior, SecretSyncStatus } from "@app/hooks/api/secretSyncs";
+import { SecretSyncInitialSyncBehavior, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
 
 export type RootSyncOptions = {
   initialSyncBehavior: SecretSyncInitialSyncBehavior;

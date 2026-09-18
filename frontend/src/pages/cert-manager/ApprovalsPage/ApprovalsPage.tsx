@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { useProject } from "@app/context";
 
 import { PolicyTab } from "./components/PolicyTab";
@@ -20,7 +20,7 @@ export const ApprovalsPage = () => {
       <Helmet>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={currentProject.type}
           title="Certificate Approvals"

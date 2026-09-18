@@ -107,3 +107,12 @@ export const SecretSyncFormSchema = SecretSyncUnionSchema;
 export const UpdateSecretSyncFormSchema = SecretSyncUnionSchema;
 
 export type TSecretSyncForm = z.infer<typeof SecretSyncFormSchema>;
+
+export const getSecretSyncDestinationConfig = (
+  destination: TSecretSyncForm["destination"],
+  config: unknown
+) => {
+  const schema = SecretSyncFormSchema.optionsMap.get(destination)?.shape.destinationConfig;
+  const result = schema?.safeParse(config);
+  return result?.success ? result.data : undefined;
+};

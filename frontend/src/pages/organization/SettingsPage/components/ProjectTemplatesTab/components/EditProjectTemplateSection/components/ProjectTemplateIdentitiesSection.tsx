@@ -563,7 +563,13 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     isError={Boolean(error)}
                     className="mb-4"
                   >
-                    <Input {...field} autoFocus placeholder="Machine Identity 1" />
+                    <Input
+                      {...field}
+                      autoFocus
+                      placeholder="Machine Identity 1"
+                      autoComplete="off"
+                      name="project-template-identity-name"
+                    />
                   </FormControl>
                 )}
               />

@@ -550,6 +550,7 @@ export const OrgRoleTable = () => {
         onDeleteApproved={handleRoleDelete}
       />
       <UpgradePlanModal
+        paywallKey="organization.org-role"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

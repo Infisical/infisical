@@ -20,13 +20,60 @@ All commands run from the `backend/` directory:
 
 ### Testing
 
-- `npm run test:unit` — unit tests matching `./src/**/*.test.ts`
-- `npm run test:e2e` — e2e tests matching `./e2e-test/**/*.spec.ts` (single-threaded, requires running DB/Redis)
-- `npm run test:e2e-watch` — e2e tests in watch mode
+Run both suites from the repo root, which is the same entry point CI uses:
+
+- `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
+- `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
+- `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make up-rotation-databases` — start the databases the secret rotation specs need, required
+  only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
+- `make down-test-suite-containers` — stop everything when finished
+
+The secret rotation specs reach their databases by compose service name, so
+`docker-compose.e2e-dbs.yml` pins the same compose project as the test stack and shares its
+network. Without `make up-rotation-databases`, those specs fail on connection; the rest pass.
+
+Both run inside the FIPS image (`Dockerfile.dev.fips`), which carries the native dependencies
+the suites need (SoftHSM2, the Oracle client, the FIPS OpenSSL build) and pins the Node
+version, so the host's does not matter. `docker-compose.test.yml` declares the image,
+environment, mounts and services; `src`, `e2e-test` and both vitest configs are mounted, so
+editing a test needs no rebuild but changing `package.json` or `tsconfig.json` does.
+
+**`npm run test:e2e` directly is possible but destructive if misconfigured.** The Vitest
+environment runs `DROP SCHEMA public CASCADE` on whatever database `.env.test` points at,
+before every run. Copy `.env.test.example`, which targets the throwaway stack, and start it
+with `make up-test-suite-containers`. Never point it at the dev database.
 
 Unit tests go next to source as `*.test.ts` and test pure functions with Vitest globals (`describe`, `test`, `expect`).
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
+
+#### Faking a third-party provider
+
+**Never add test-only code to `src/`** — no test-mode enum members, no lookup map entries, no
+`isTestMode` branches. Replace the module instead, from `test.alias` in
+`vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
+a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
+are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+
+Four things decide whether this works:
+
+- **Alias the narrowest specifier.** Entries match the import string, so aliasing one a single
+  file imports (a barrel's `./x-fns` re-export) swaps that seam and leaves the constants,
+  schemas, types, router and lookup maps real.
+- **`test.alias` must stay an array.** Vite's `mergeAlias` concatenates arrays with
+  `test.alias` first, but merges two objects, where the generic `@app` prefix matches before a
+  specific `@app/...` entry and the fake silently stops applying with no error.
+- **Re-export whatever you do not replace.** The alias swaps the whole module, so an export you
+  omit stops existing for every importer of it.
+- **Assert the fake still matches.** Nothing otherwise checks it against the module it
+  replaces. Export an assignment typed as `Pick<typeof RealModule, …>` so a signature change
+  fails type-checking rather than leaving the fake quietly wrong.
+
+A fake must reproduce the contract under test, not merely record its input. The Parameter Store
+fake reimplements the real reconciliation rules (skip empty writes, delete absent keys unless
+deletion is disabled, respect the key schema), because those rules are the behavior the specs
+exist to pin.
 
 #### FIPS test image and the prebuilt toolchain
 
@@ -488,7 +535,11 @@ Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in 
 
 **Project permission actions** include standard CRUD plus specialized ones like `DescribeSecret` (see metadata without value), `ReadValue`, `GrantPrivileges`, `AssumePrivileges`, `Lease` (for dynamic secrets). See `ProjectPermissionActions`, `ProjectPermissionSecretActions`, `ProjectPermissionDynamicSecretActions`, and `ProjectPermissionIdentityActions` enums in `project-permission.ts`.
 
-Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault `getPredefinedRoles` (`project-role-fns.ts`) returns only `Admin` and `Member`, because their permission dispatch resolves every other slug to the member set; the role factory delegates to that one function, so every role picker follows. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
+
+**Privilege boundaries mean different things on the two privilege systems.** `organizations.shouldUseNewPrivilegeSystem` (default `true`, backfilled `false` for orgs predating March 2025) picks which. `validatePrivilegeChangeOperation` / `assertRoleSetBoundary` (`permission-fns.ts`) are the shim: on the new system they collapse to `actorPermission.can(action, subject)`, on the legacy one they run `validatePermissionBoundary`, requiring the actor to out-rank every role the target holds. So a boundary at a call site that already gated on the same action is a no-op for new-system orgs and the only protection for legacy ones. Two consequences: "the route checks the action" is not a substitute for a boundary, and adding one is not a behavior change for most tenants. Prefer `getOrgPermissionByRoles` / `getProjectPermissionByRoles` + `assertRoleSetBoundary` over fetching the target's merged ability. It bounds each role separately, and it avoids `getProjectPermission`, which stamps whichever actor it was called for onto the request context the audit log reads.
+
+**Identity auth-method access goes through `assertIdentityAuthAccessAllowed`** (`src/services/identity/identity-auth-permission-fns.ts`), because repointing an identity's auth trust lets the caller authenticate as that identity. All 13 auth services call it once per attach/update/revoke, after the `throwUnlessCan` gate and outside the `identity.projectId` branch so both scopes are covered. A new auth method calls it too. Credential issuance (`createTokenAuthToken`, `createUniversalAuthClientSecret`) goes through it under `create-token`, since minting a credential is the same escalation as repointing the trust, and so do the per-credential paths: `updateTokenAuthToken` under `create-token`, `getUniversalAuthClientSecrets` / `getUniversalAuthClientSecretById` under `get-token`, and `revokeUniversalAuthClientSecret` under `delete-token`. **`PROJECT_ACTION_BY_ORG_ACTION` must map the org action to the same project action the route's own `throwUnlessCan` already checks** — that identity is what keeps the helper a no-op for new-system orgs, so a new entry is only safe once you have confirmed the pair matches. `revokeTokenAuthToken` and `clearUniversalAuthLockouts` are still unbounded in both scopes (and the former gates on `edit` where its UA counterpart gates on `delete-token`); that predates the helper and is a deliberate gap, not an oversight to copy. The target's grants come from `permissionService.getActorGrantAbilities`, not from a membership lookup, and it returns one ability per grant rather than per role. Two things a role-slug resolver misses: a group-derived membership carries a NULL `actorIdentityId`, so `membershipIdentityDAL.getIdentityById` never sees it, and an additional privilege carries a raw permission blob with no slug at all, so no `*PermissionByRoles` path can express it. Either omission clears an actor that out-ranks the target's direct roles but not its effective access. `getActorGrantAbilities` reads the same `permissionDAL.getPermission` query the ability itself is built from, so the bounded set cannot drift from the effective one.
 
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
@@ -689,6 +740,8 @@ Enterprise code lives in `src/ee/`:
 EE routes register before community routes so they can override/extend endpoints. Feature gating via license service (`src/ee/services/license/license-service.ts`) which validates online/offline licenses, caches feature sets in keystore with 5-minute TTL, and exposes `getPlan()` to check feature availability.
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
+
+**Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
 ### Server Plugins
 

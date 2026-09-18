@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 6, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
@@ -62,6 +62,12 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
 
+### Product Analytics
+
+Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
+
+Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It defines naming, ownership between frontend and backend producers, property cardinality and privacy rules, and lifecycle semantics. Frontend events describe UI exposure and intent; decisive product outcomes belong to backend telemetry so web activity is not double-counted against CLI, machine identity, or other clients.
+
 ### State Management
 
 - **Server state**: TanStack React Query (query key factories in each API domain)
@@ -79,6 +85,12 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 ### Layouts
 
 9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+
+### Org-scoped products
+
+PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implicit project, so their URLs carry no `$projectId`. Their layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves — which throws into `ErrorPage`. Reading the matches keeps these products in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`, which had exactly this bug when it arrived from main with a pathname check; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).
+
+A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id, patches it into the cached org, and returns both `implicitProjectId` and `implicitProductType` (see `pages/agent-vault/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
 
 ## Conventions
 
