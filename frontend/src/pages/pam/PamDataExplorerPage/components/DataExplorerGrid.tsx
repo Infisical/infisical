@@ -49,10 +49,10 @@ type DataExplorerGridProps = {
 const ROW_KEY_PREFIX = "__new_";
 
 function readOnlyReason(dialect: SqlDialect, tableType?: string): string {
-  if (!supportsRowEditing(dialect)) {
-    return "ClickHouse applies row changes as asynchronous mutations, so the grid is read-only. Edit from the SQL editor with ALTER TABLE ... UPDATE or DELETE FROM.";
-  }
   if (tableType === "view" || tableType === "materialized_view") return "This view is read-only.";
+  if (!supportsRowEditing(dialect)) {
+    return "This table is read-only. Edit it from the SQL editor.";
+  }
   return "This table has no primary key. Browsing is read-only — editing requires a primary key.";
 }
 

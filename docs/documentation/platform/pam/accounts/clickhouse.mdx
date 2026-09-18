@@ -56,6 +56,8 @@ GRANT SELECT ON analytics.* TO pam_service;
 
 Every session opens on the account's **Database**, whatever a client asks for. That is a starting point, not a limit: a session can still read any database the user has a grant on, and Web Access lists them all. Scope the grants, not the **Database** field.
 
+Sessions connect with the user's default roles. The gateway drops the `role` URL parameter, which would otherwise activate a role with no statement to record, so use `SET ROLE` instead and it's recorded like any other statement.
+
 Command blocking matches the text of each statement, so a statement that builds SQL at runtime can run something a pattern would otherwise reject. Use ClickHouse grants for restrictions that have to hold.
 
 ## Connecting

@@ -5,6 +5,7 @@ import {
   MAX_ROWS,
   parseStatementBody,
   splitClickhouseStatements,
+  toCellValue,
   toRowObjects,
   uniqueFieldNames
 } from "./pam-clickhouse-data-explorer-fns";
@@ -99,6 +100,21 @@ describe("uniqueFieldNames", () => {
   });
 });
 
+describe("toCellValue", () => {
+  test("a Map, Array or Tuple becomes the text a client would print, not an object the grid cannot render", () => {
+    expect(toCellValue({ a: "b" })).toBe('{"a":"b"}');
+    expect(toCellValue([1, 2, 3])).toBe("[1,2,3]");
+    expect(toCellValue([1, "x"])).toBe('[1,"x"]');
+  });
+
+  test("scalars and nulls pass through untouched", () => {
+    expect(toCellValue("acme")).toBe("acme");
+    expect(toCellValue(7)).toBe(7);
+    expect(toCellValue(null)).toBeNull();
+    expect(toCellValue(undefined)).toBeNull();
+  });
+});
+
 describe("toRowObjects", () => {
   test("zips column names onto positional rows", () => {
     expect(
@@ -180,6 +196,15 @@ describe("parseStatementBody", () => {
       rowCount: null,
       isTruncated: false
     });
+  });
+
+  test("a composite column arrives as text rather than an object", () => {
+    const body = JSON.stringify({
+      meta: [{ name: "m", type: "Map(String, String)" }],
+      data: [[{ a: "b" }]],
+      rows: 1
+    });
+    expect(parseStatementBody(body).rows).toEqual([{ m: '{"a":"b"}' }]);
   });
 
   test("a repeated column name still reaches the grid", () => {

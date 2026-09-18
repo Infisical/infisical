@@ -130,8 +130,15 @@ export const uniqueFieldNames = (names: string[]): string[] => {
   });
 };
 
+// Map, Array and Tuple arrive as objects, which the grid cannot render, so they go over as text
+export const toCellValue = (value: unknown): unknown => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "object") return JSON.stringify(value);
+  return value;
+};
+
 export const toRowObjects = (fieldNames: string[], data: unknown[][]): Record<string, unknown>[] =>
-  data.map((values) => Object.fromEntries(fieldNames.map((name, index) => [name, values[index] ?? null])));
+  data.map((values) => Object.fromEntries(fieldNames.map((name, index) => [name, toCellValue(values[index])])));
 
 // The explorer renders at most this many rows
 export const MAX_ROWS = 1000;
@@ -175,7 +182,9 @@ export const parseStatementBody = (body: string, summary?: { written_rows: strin
 
   const rows =
     data.length > 0 && !Array.isArray(data[0])
-      ? (data as Record<string, unknown>[])
+      ? (data as Record<string, unknown>[]).map((row) =>
+          Object.fromEntries(Object.entries(row).map(([key, value]) => [key, toCellValue(value)]))
+        )
       : toRowObjects(fieldNames, data as unknown[][]);
 
   return {
