@@ -8,6 +8,22 @@ import {
 } from "@app/services/app-connection/azure-dns/azure-dns-connection-fns";
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 
+export const getAzureDnsRelativeRecordName = (hostedZoneId: string, recordName: string): string => {
+  const zoneName = decodeURIComponent(hostedZoneId.split("/").filter(Boolean).at(-1) ?? "").replace(/\.$/, "");
+
+  if (!zoneName) {
+    throw new Error("Azure DNS hosted zone ID must include a zone name");
+  }
+  const normalizedRecordName = recordName.replace(/\.$/, "");
+  const zoneSuffix = `.${zoneName}`;
+
+  if (normalizedRecordName.toLowerCase().endsWith(zoneSuffix.toLowerCase())) {
+    return normalizedRecordName.slice(0, -zoneSuffix.length);
+  }
+
+  return normalizedRecordName;
+};
+
 export const azureDnsInsertTxtRecord = async (
   connection: TAzureDnsConnection,
   hostedZoneId: string,
@@ -25,7 +41,9 @@ export const azureDnsInsertTxtRecord = async (
 
     // e.g., /subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.Network/dnsZones/{zoneName}
     await request.put(
-      `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(recordName)}?api-version=2018-05-01`,
+      `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(
+        getAzureDnsRelativeRecordName(hostedZoneId, recordName)
+      )}?api-version=2018-05-01`,
       {
         properties: {
           TTL: 60,
@@ -66,7 +84,9 @@ export const azureDnsDeleteTxtRecord = async (
     const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
 
     await request.delete(
-      `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(recordName)}?api-version=2018-05-01`,
+      `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(
+        getAzureDnsRelativeRecordName(hostedZoneId, recordName)
+      )}?api-version=2018-05-01`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
