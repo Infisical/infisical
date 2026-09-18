@@ -614,13 +614,17 @@ describe("resolveCustomExtensions", () => {
     expect(extensions[0].value).toBe(octetString);
   });
 
-  it("finds a denied value nested inside a DER structure", () => {
-    const inner = Buffer.concat([Buffer.from([0x0c, 0x0b]), Buffer.from("secret-prod", "utf8")]);
-    const wrapped = Buffer.concat([Buffer.from([0x30, inner.length]), inner]).toString("base64");
+  it.each([1, 2, 5, 12])("finds a denied value nested %i levels deep in a DER structure", (depth) => {
+    let node = Buffer.concat([Buffer.from([0x0c, 0x0b]), Buffer.from("secret-prod", "utf8")]);
+    for (let level = 0; level < depth; level += 1) {
+      node = Buffer.concat([Buffer.from([0x30, node.length]), node]);
+    }
 
     const { errors, extensions } = resolveCustomExtensions({
       rules: [{ oid: CUSTOM_OID, allowed: ["*"], denied: ["secret-*"] }],
-      requestExtensions: [{ oid: CUSTOM_OID, value: wrapped, valueEncoding: CertExtensionValueEncoding.DER }]
+      requestExtensions: [
+        { oid: CUSTOM_OID, value: node.toString("base64"), valueEncoding: CertExtensionValueEncoding.DER }
+      ]
     });
 
     expect(extensions).toEqual([]);

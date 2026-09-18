@@ -263,8 +263,6 @@ const ASN1_STRING_TAG_NUMBERS = new Set([12, 18, 19, 20, 21, 22, 25, 26, 27, 28,
 const ASN1_OCTET_STRING_TAG_NUMBER = 4;
 const PRINTABLE_TEXT_PATTERN = new RE2("^[\\x20-\\x7e]+$");
 
-const MAX_DER_TEXT_DEPTH = 4;
-
 const textFromDerNode = (node: unknown): string | null => {
   const { idBlock, valueBlock } = node as {
     idBlock: { tagClass: number; tagNumber: number };
@@ -284,9 +282,7 @@ const textFromDerNode = (node: unknown): string | null => {
   return null;
 };
 
-const collectDerTextValues = (node: unknown, depth = 0, found: string[] = []): string[] => {
-  if (depth > MAX_DER_TEXT_DEPTH) return found;
-
+const collectDerTextValues = (node: unknown, found: string[] = []): string[] => {
   const text = textFromDerNode(node);
   if (text !== null) {
     found.push(text);
@@ -295,7 +291,7 @@ const collectDerTextValues = (node: unknown, depth = 0, found: string[] = []): s
 
   const { valueBlock } = node as { valueBlock: { value?: unknown } };
   if (Array.isArray(valueBlock.value)) {
-    valueBlock.value.forEach((child) => collectDerTextValues(child, depth + 1, found));
+    valueBlock.value.forEach((child) => collectDerTextValues(child, found));
   }
 
   return found;

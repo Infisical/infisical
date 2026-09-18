@@ -452,6 +452,82 @@ const ASN1_STRING_TAGS = new Set([
   0x0c, 0x12, 0x13, 0x14, 0x15, 0x16, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e
 ]);
 
+const toDerBytes = (base64Value: string): Uint8Array | null => {
+  try {
+    const binary = atob(base64Value);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+};
+
+const decodeDerString = (tag: number, body: Uint8Array): string | null => {
+  if (tag === 0x1e) {
+    let decoded = "";
+    for (let index = 0; index + 1 < body.length; index += 2) {
+      // eslint-disable-next-line no-bitwise
+      decoded += String.fromCharCode((body[index] << 8) | body[index + 1]);
+    }
+    return decoded;
+  }
+
+  if (ASN1_STRING_TAGS.has(tag)) return new TextDecoder().decode(body);
+
+  if (tag === 0x04) {
+    const octets = new TextDecoder().decode(body);
+    // eslint-disable-next-line no-control-regex
+    return /^[\x20-\x7e]+$/.test(octets) ? octets : null;
+  }
+
+  return null;
+};
+
+export const collectDerTextValues = (base64Value: string): string[] => {
+  const bytes = toDerBytes(base64Value);
+  if (!bytes) return [];
+
+  const found: string[] = [];
+  const walk = (slice: Uint8Array) => {
+    let offset = 0;
+    while (offset + 2 <= slice.length) {
+      const tag = slice[offset];
+      let length = slice[offset + 1];
+      let headerLength = 2;
+
+      // eslint-disable-next-line no-bitwise
+      if (length & 0x80) {
+        // eslint-disable-next-line no-bitwise
+        const count = length & 0x7f;
+        if (count === 0 || count > 4 || offset + 2 + count > slice.length) return;
+        length = 0;
+        for (let index = 0; index < count; index += 1) {
+          // eslint-disable-next-line no-bitwise
+          length = (length << 8) | slice[offset + 2 + index];
+        }
+        headerLength = 2 + count;
+      }
+
+      const start = offset + headerLength;
+      const end = start + length;
+      if (end > slice.length) return;
+
+      const body = slice.slice(start, end);
+      // eslint-disable-next-line no-bitwise
+      if (tag & 0x20) {
+        walk(body);
+      } else {
+        const text = decodeDerString(tag, body);
+        if (text !== null) found.push(text);
+      }
+
+      offset = end;
+    }
+  };
+
+  walk(bytes);
+  return found;
+};
+
 export const decodeDerTextValue = (base64Value: string): string | null => {
   let bytes: Uint8Array;
   try {
