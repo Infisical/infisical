@@ -276,6 +276,64 @@ export const AgentVaultActorSchema = z.discriminatedUnion("type", [
     .describe(JSON.stringify({ title: "Group" }))
 ]);
 
+// The shape the session list already publishes, lifted so the paginated lists cannot drift apart. Note
+// the absence of .default().optional(): the optional wraps the default and the default never applies.
+export const agentVaultListQuery = (docs: { search: string; limit: string; offset: string }) => ({
+  search: z
+    .string()
+    .trim()
+    .max(255)
+    .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+    .optional()
+    .describe(docs.search),
+  limit: z.coerce.number().int().min(1).max(100).default(20).describe(docs.limit),
+  offset: z.coerce.number().int().min(0).max(10000).default(0).describe(docs.offset)
+});
+
+// A product membership carries two things a bundle grant has no use for: whether the person has accepted
+// their organization invite, and whether Agent Vault owns the machine identity, which decides whether it
+// can be detached at all or only deleted.
+export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.User),
+      id: actorIdSchema,
+      username: z.string().describe(AGENT_VAULT.MEMBER.username),
+      email: z.string().nullable().describe(AGENT_VAULT.MEMBER.email),
+      firstName: z.string().nullable().describe(AGENT_VAULT.MEMBER.firstName),
+      lastName: z.string().nullable().describe(AGENT_VAULT.MEMBER.lastName),
+      isOrgMembershipPending: z.boolean().describe(AGENT_VAULT.MEMBER.isOrgMembershipPending)
+    })
+    .describe(JSON.stringify({ title: "User" })),
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.MachineIdentity),
+      id: actorIdSchema,
+      name: z.string().describe(AGENT_VAULT.MEMBER.identityName),
+      isManagedByAgentVault: z.boolean().describe(AGENT_VAULT.MEMBER.isManagedByAgentVault),
+      orgId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.machineIdentityOrgId)
+    })
+    .describe(JSON.stringify({ title: "Machine identity" })),
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.Group),
+      id: actorIdSchema,
+      name: z.string().describe(AGENT_VAULT.MEMBER.groupName)
+    })
+    .describe(JSON.stringify({ title: "Group" }))
+]);
+
+export const AgentVaultProductMemberSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  // Deliberately not the two-value input enum: the generic project membership routes reach these same
+  // rows, so one can carry any role slug, and narrowing the response would fail the list rather than
+  // render it.
+  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
+  isActive: z.boolean().describe(AGENT_VAULT.MEMBERSHIP.isActive),
+  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
+  actor: AgentVaultProductActorSchema
+});
+
 export const AgentVaultRemovedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),

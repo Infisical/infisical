@@ -4278,18 +4278,27 @@ export const AGENT_VAULT = {
     userIds: "The IDs of the users to grant the access bundle to.",
     identityIds: "The IDs of the machine identities to grant the access bundle to.",
     groupIds: "The IDs of the groups to grant the access bundle to.",
-    actorType: "Whether the access bundle is granted to a user, a machine identity or a group.",
-    actorId: "The ID of the user, machine identity or group the access bundle is granted to.",
-    username: "The username of the user the access bundle is granted to.",
-    email: "The email address of the user the access bundle is granted to.",
-    firstName: "The first name of the user the access bundle is granted to.",
-    lastName: "The last name of the user the access bundle is granted to.",
-    identityName: "The name of the machine identity the access bundle is granted to.",
-    groupName: "The name of the group the access bundle is granted to.",
+    actorType: "Whether this member is a user, a machine identity or a group.",
+    actorId: "The ID of the user, machine identity or group.",
+    username: "The username of the user.",
+    email: "The email address of the user.",
+    firstName: "The first name of the user.",
+    lastName: "The last name of the user.",
+    identityName: "The name of the machine identity.",
+    groupName: "The name of the group.",
+    isOrgMembershipPending: "Whether the user still has an unaccepted invitation to the organization.",
+    isManagedByAgentVault:
+      "Whether Agent Vault created the machine identity. One it owns is deleted rather than removed.",
+    machineIdentityOrgId: "The ID of the organization the machine identity belongs to.",
     skipped: "The requested grantees who already had the access bundle and were left as they were."
   },
   MEMBERSHIP: {
-    role: "The Agent Vault role: admin or member."
+    role: "The Agent Vault role: admin or member.",
+    isActive: "Whether the member can currently reach Agent Vault.",
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match members by name, username or email address.",
+    limit: "The maximum number of members to return.",
+    offset: "How many members to skip."
   },
   PROXY: {
     proxyId: "The ID of the proxy.",

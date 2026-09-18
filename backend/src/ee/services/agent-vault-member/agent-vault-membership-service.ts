@@ -30,8 +30,11 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
 type TAgentVaultMembershipServiceFactoryDep = {
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "find" | "transaction" | "delete" | "deleteById">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -48,6 +51,15 @@ export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMe
 
 export type TListAgentVaultProductMembersDTO = {
   projectId: string;
+  ctx: TAgentVaultActorContext;
+};
+
+export type TListAgentVaultMembersDTO = {
+  projectId: string;
+  actorType?: AgentVaultMemberType;
+  search?: string;
+  limit: number;
+  offset: number;
   ctx: TAgentVaultActorContext;
 };
 
@@ -80,7 +92,10 @@ export type TAddAgentVaultProductUserMembersDTO = {
 
 const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
 
+const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
+
 export const agentVaultMembershipServiceFactory = ({
+  agentVaultMemberDAL,
   membershipDAL,
   identityDAL,
   membershipRoleDAL,
@@ -256,6 +271,61 @@ export const agentVaultMembershipServiceFactory = ({
         isActive: m.isActive,
         createdAt: m.createdAt
       };
+    });
+  };
+
+  // The three reads are granted and withheld as a set today -- an Agent Vault admin holds all three and
+  // every other role holds none -- so these can never disagree. They stay separate because the merged
+  // list answers with the kinds the caller may read rather than refusing outright, which is the
+  // behaviour that still holds if Agent Vault ever honours custom roles.
+  type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
+
+  const canReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
+    if (type === AgentVaultMemberType.User) {
+      return permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+    }
+    if (type === AgentVaultMemberType.Group) {
+      return permission.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+    }
+    return permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+  };
+
+  const assertCanReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
+    const forbidden = ForbiddenError.from(permission);
+    if (type === AgentVaultMemberType.User) {
+      forbidden.throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+      return;
+    }
+    if (type === AgentVaultMemberType.Group) {
+      forbidden.throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+      return;
+    }
+    forbidden.throwUnlessCan(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+  };
+
+  const listProductMembers = async ({
+    projectId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ctx
+  }: TListAgentVaultMembersDTO) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+
+    const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
+    const readable = asked.filter((type) => canReadActorType(permission, type));
+    // Thrown on the kind the caller asked for, so the message names the subject they lack rather than
+    // whichever one happens to come first.
+    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+
+    return agentVaultMemberDAL.findProductMembers({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actorTypes: readable,
+      search,
+      limit,
+      offset
     });
   };
 
@@ -519,6 +589,7 @@ export const agentVaultMembershipServiceFactory = ({
 
   return {
     addProductUserMembers,
+    listProductMembers,
     listProductUserMembers,
     listProductGroupMembers,
     listProductIdentityMembers,

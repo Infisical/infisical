@@ -30,6 +30,7 @@ import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vau
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
@@ -1811,6 +1812,7 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const agentVaultMemberDAL = agentVaultMemberDALFactory(db);
   const agentVaultAccessBundleDAL = agentVaultAccessBundleDALFactory(db);
   const agentVaultServiceDAL = agentVaultServiceDALFactory(db);
   const agentVaultServiceCustomHeaderDAL = agentVaultServiceCustomHeaderDALFactory(db);
@@ -1850,6 +1852,7 @@ export const registerRoutes = async (
   });
 
   const agentVaultMembershipService = agentVaultMembershipServiceFactory({
+    agentVaultMemberDAL,
     membershipDAL,
     identityDAL,
     membershipRoleDAL,

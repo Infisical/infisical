@@ -645,6 +645,115 @@ describe("Agent Vault V1 Router", async () => {
   describe("product membership", async () => {
     const memberships = "/api/v1/agent-vault/memberships";
 
+    type TListedMember = {
+      id: string;
+      role: string;
+      isActive: boolean;
+      createdAt: string;
+      actor: Record<string, unknown> & { type: string; id: string };
+    };
+
+    const listMembers = async (query = "") => {
+      const res = await inject("GET", `${memberships}${query ? `?${query}` : ""}`);
+      expect(res.statusCode).toBe(200);
+      return JSON.parse(res.payload) as { members: TListedMember[]; totalCount: number };
+    };
+
+    test("one list answers for all three actor kinds, and each arm carries what its table renders", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const identity = await createOrgIdentity(`av-merged-list-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-merged-list-group", ProjectMembershipRole.Member);
+
+      try {
+        expect((await inject("POST", `${memberships}/identities/${identity.id}`, { role: "member" })).statusCode).toBe(
+          200
+        );
+
+        const { members, totalCount } = await listMembers();
+        expect(totalCount).toBe(members.length);
+
+        const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
+        expect(Object.keys(byType).sort()).toEqual(["group", "machineIdentity", "user"]);
+
+        expect(byType.user.actor).toMatchObject({ id: seedData1.id, username: expect.any(String) });
+        expect(byType.user.actor.isOrgMembershipPending).toBe(false);
+        expect(byType.user.role).toBe("admin");
+        expect(byType.user.isActive).toBe(true);
+
+        expect(byType.group.actor).toMatchObject({ id: group.id, name: "av-merged-list-group" });
+
+        // An organization-owned identity can be detached; one Agent Vault created can only be deleted,
+        // and the table needs to know which before it offers a button.
+        expect(byType.machineIdentity.actor).toMatchObject({ id: identity.id, isManagedByAgentVault: false });
+        expect(byType.machineIdentity.actor.orgId).toBe(seedData1.organization.id);
+
+        members.forEach((member) => {
+          expect(member).not.toHaveProperty("membershipId");
+          expect(member).not.toHaveProperty("userId");
+          expect(member).not.toHaveProperty("identityId");
+          expect(member).not.toHaveProperty("groupId");
+        });
+      } finally {
+        await group.cleanup();
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("the list filters, searches and pages on the server, and the count follows the filter", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const identity = await createOrgIdentity(`av-paging-zzz-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-paging-group", ProjectMembershipRole.Member);
+
+      try {
+        expect((await inject("POST", `${memberships}/identities/${identity.id}`, { role: "member" })).statusCode).toBe(
+          200
+        );
+
+        const all = await listMembers();
+        expect(all.totalCount).toBeGreaterThanOrEqual(3);
+
+        const identities = await listMembers("actorType=machineIdentity");
+        expect(identities.members.every((member) => member.actor.type === "machineIdentity")).toBe(true);
+        expect(identities.totalCount).toBe(identities.members.length);
+        expect(identities.totalCount).toBeLessThan(all.totalCount);
+
+        // The count describes the filtered set, not the whole one, or the pager promises pages it will
+        // not serve.
+        const searched = await listMembers("search=av-paging-group");
+        expect(searched.totalCount).toBe(1);
+        expect(searched.members[0].actor.id).toBe(group.id);
+
+        // A user matches on their full name even though no column holds it.
+        const byFullName = await listMembers(`search=${encodeURIComponent(seedData1.email)}`);
+        expect(byFullName.members.some((member) => member.actor.id === seedData1.id)).toBe(true);
+
+        // Walking the pages one row at a time reaches every member exactly once, which is what the
+        // membership-id tiebreak buys on rows that share a name or a createdAt.
+        const walked: string[] = [];
+        for (let offset = 0; offset < all.totalCount; offset += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          const page = await listMembers(`limit=1&offset=${offset}`);
+          expect(page.members).toHaveLength(1);
+          expect(page.totalCount).toBe(all.totalCount);
+          walked.push(page.members[0].id);
+        }
+        expect(new Set(walked).size).toBe(all.totalCount);
+        expect(walked.sort()).toEqual(all.members.map((member) => member.id).sort());
+
+        expect((await inject("GET", `${memberships}?limit=0`)).statusCode).toBe(422);
+        expect((await inject("GET", `${memberships}?limit=101`)).statusCode).toBe(422);
+        expect((await inject("GET", `${memberships}?offset=10001`)).statusCode).toBe(422);
+        expect((await inject("GET", `${memberships}?actorType=nonsense`)).statusCode).toBe(422);
+      } finally {
+        await group.cleanup();
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
     test("a machine identity can be given Agent Vault, have its role changed, and lose it again", async () => {
       const identity = await createOrgIdentity(`av-membership-${Date.now()}`);
 

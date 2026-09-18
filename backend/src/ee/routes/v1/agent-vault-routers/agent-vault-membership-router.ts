@@ -12,6 +12,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext } from "./agent-vault-router-fns";
+import { agentVaultListQuery, AgentVaultProductMemberSchema } from "./agent-vault-schemas";
 
 const ProductRoleSchema = z
   .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
@@ -38,6 +39,31 @@ const MemberResultSchema = z.object({
 });
 
 export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listAgentVaultMembers",
+      description: "List the users, groups and machine identities that are members of Agent Vault",
+      tags: [ApiDocsTags.AgentVaultMemberships],
+      querystring: z.object({
+        actorType: z.nativeEnum(AgentVaultMemberType).optional().describe(AGENT_VAULT.MEMBERSHIP.actorTypeFilter),
+        ...agentVaultListQuery(AGENT_VAULT.MEMBERSHIP)
+      }),
+      response: {
+        200: z.object({ members: AgentVaultProductMemberSchema.array(), totalCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultMembership.listProductMembers({
+        projectId: req.internalAgentVaultProjectId,
+        ...req.query,
+        ctx: actorContext(req)
+      })
+  });
+
   server.route({
     method: "GET",
     url: "/users",
