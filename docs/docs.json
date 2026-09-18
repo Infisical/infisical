@@ -4427,26 +4427,16 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-access-bundle-members/list",
                       "api-reference/endpoints/agent-vault-access-bundle-members/add",
-                      "api-reference/endpoints/agent-vault-access-bundle-members/remove-user",
-                      "api-reference/endpoints/agent-vault-access-bundle-members/remove-group",
-                      "api-reference/endpoints/agent-vault-access-bundle-members/remove-identity"
+                      "api-reference/endpoints/agent-vault-access-bundle-members/revoke"
                     ]
                   },
                   {
                     "group": "Members",
                     "pages": [
-                      "api-reference/endpoints/agent-vault-memberships/list-users",
-                      "api-reference/endpoints/agent-vault-memberships/add-users",
-                      "api-reference/endpoints/agent-vault-memberships/update-user-role",
-                      "api-reference/endpoints/agent-vault-memberships/remove-user",
-                      "api-reference/endpoints/agent-vault-memberships/list-groups",
-                      "api-reference/endpoints/agent-vault-memberships/add-group",
-                      "api-reference/endpoints/agent-vault-memberships/update-group-role",
-                      "api-reference/endpoints/agent-vault-memberships/remove-group",
-                      "api-reference/endpoints/agent-vault-memberships/list-identities",
-                      "api-reference/endpoints/agent-vault-memberships/add-identity",
-                      "api-reference/endpoints/agent-vault-memberships/update-identity-role",
-                      "api-reference/endpoints/agent-vault-memberships/remove-identity"
+                      "api-reference/endpoints/agent-vault-members/list",
+                      "api-reference/endpoints/agent-vault-members/add",
+                      "api-reference/endpoints/agent-vault-members/update-role",
+                      "api-reference/endpoints/agent-vault-members/revoke"
                     ]
                   },
                   {
@@ -4770,6 +4760,66 @@
     }
   },
   "redirects": [
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-users",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-groups",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-identities",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-users",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-group",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-identity",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-user-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-group-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-identity-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-user",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-group",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-identity",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-user",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-group",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-identity",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
     {
       "source": "/ai/model-context-protocol",
       "destination": "/documentation/getting-started/set-up-with-ai"
