@@ -20,7 +20,7 @@ import {
 } from "@app/services/secret-sync/hc-vault/hc-vault-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 const getKvMountVersion = async ({
   instanceUrl,
@@ -161,11 +161,12 @@ const updateHCVaultVariables = async (
 export const HCVaultSyncFns = {
   syncSecrets: async (
     secretSync: THCVaultSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
     gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
   ) => {
+    const secretMap = payload.flatten();
     const {
       connection: rawConnection,
       environment,
@@ -264,11 +265,12 @@ export const HCVaultSyncFns = {
   },
   removeSecrets: async (
     secretSync: THCVaultSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
     gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
   ) => {
+    const secretMap = payload.flatten();
     const {
       connection: rawConnection,
       destinationConfig: { mount, path }
