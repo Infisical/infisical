@@ -37,7 +37,7 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]:
     "Notify a set number of days before a Universal Auth client secret expires.",
   [AlertEventType.IdentityAuthMethodChanged]:
-    "Notify whenever an auth method is added, updated, or removed."
+    "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked."
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
