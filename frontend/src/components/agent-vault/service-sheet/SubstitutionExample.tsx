@@ -23,7 +23,7 @@ const Wire = ({
   token: string;
 }) => (
   <div className="overflow-hidden rounded-md border border-border">
-    <div className="flex items-center gap-1.5 border-b border-border bg-container px-2.5 py-1.5 font-mono text-[10px] tracking-wider text-muted uppercase">
+    <div className="flex items-center gap-1.5 border-b border-border bg-container px-2.5 py-1.5 font-mono text-[10px] text-muted">
       {title}
     </div>
     <div className="flex flex-col gap-1 px-2.5 py-2 font-mono text-[11px] break-all text-foreground">
