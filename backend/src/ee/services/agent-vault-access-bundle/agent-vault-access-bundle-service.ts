@@ -1019,8 +1019,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
     const actors = [...requested.values()];
 
-    // The same bundle row lock the grant path takes, so a revoke cannot race a concurrent grant or a
-    // bundle delete and leave a row behind.
+    // The same row lock the grant path takes, so a revoke cannot race a grant or a bundle delete.
     const outcome = await membershipDAL.transaction(async (tx) => {
       const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
         { id: bundle.id, projectId: rest.projectId },
@@ -1028,8 +1027,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       );
       if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-      // Bounded by the actors named rather than every grant on the bundle: this runs inside the row
-      // lock, and a bundle granted to thousands would otherwise read all of them to revoke one.
       const heldByKey = new Map<string, TMemberships>();
       await Promise.all(
         byColumn.map(async ([actorColumn, ids]) => {
@@ -1045,8 +1042,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         })
       );
 
-      // An actor who holds no grant is reported rather than refused: the end state the caller asked for
-      // is already true, which is what makes a bulk revoke safe to retry.
       const skipped = actors.filter((actor) => !heldByKey.has(actorKey(actor))).map(toActorRefFromGrant);
       const held = actors.filter((actor) => heldByKey.has(actorKey(actor)));
       if (!held.length) return { removed: [] as TMemberships[], skipped };

@@ -75,7 +75,6 @@ type Props = {
 export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const [bundleSearch, setBundleSearch] = useState("");
   const [debouncedBundleSearch] = useDebounce(bundleSearch);
-  // A combobox is for finding a bundle by name, so it searches the server rather than paging.
   const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles({
     search: debouncedBundleSearch.trim() || undefined,
     orderBy: "name",

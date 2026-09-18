@@ -12,7 +12,6 @@ const OTHER_PROJECT_ID = "project-2";
 const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
 
-// Every guard case below acts on the one machine identity the fixture knows about.
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
 const ctx = {

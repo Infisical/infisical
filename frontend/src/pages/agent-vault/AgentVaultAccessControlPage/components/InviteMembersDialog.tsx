@@ -43,10 +43,8 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     select: (el) => (el as { requesterEmail?: string })?.requesterEmail
   });
 
-  // A page rather than one row: the members list only searches by substring, and another member whose
-  // name contains this address can outrank the requester, so the exact-username match below needs
-  // more than the top hit to look at. A requester buried under twenty matches still falls through,
-  // and the cost of that is one add the server reports as already a member.
+  // A page, not one row: the search is a substring match, so another member can outrank the requester.
+  // One buried under twenty still falls through, costing an add the server reports as already a member.
   const { data: requesterMatch } = useListAgentVaultMembers(
     { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
     Boolean(requesterEmail)
@@ -55,8 +53,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const [selected, setSelected] = useState<TCandidate[]>([]);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
 
-  // Users already in Agent Vault are not filtered out. The member list is paged, so a client-side
-  // exclusion could only see one page of it; the server reports an existing member in skipped instead.
   const candidates = useMemo(() => {
     return orgUsers.map((orgUser) => {
       const name = `${orgUser.user.firstName ?? ""} ${orgUser.user.lastName ?? ""}`.trim();

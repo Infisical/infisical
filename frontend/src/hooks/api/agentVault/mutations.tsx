@@ -151,8 +151,6 @@ export const useDeleteAgentVaultService = () => {
   });
 };
 
-// Only the role change addresses one actor by path; every other write takes the id arrays. The dialog
-// hands it a member or renders closed, so there is no empty-actor case to guard here.
 const ACTOR_PATH: Record<AgentVaultMemberType, string> = {
   [AgentVaultMemberType.User]: "users",
   [AgentVaultMemberType.Group]: "groups",
@@ -313,7 +311,7 @@ export const useRevokeAgentVaultProxyAccess = () => {
 
 // The member is named in the URL, so a call with no actor has nowhere to go. The role dialogs pass an
 // empty actor while closed, which cannot reach a mutation, so this only fires on a genuine mistake.
-// Removing a product member also strips their bundle grants, so the bundle queries go with it.
+// Removing a product member strips their bundle grants, so the bundle queries go too.
 const invalidateMembers = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId) });
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) });

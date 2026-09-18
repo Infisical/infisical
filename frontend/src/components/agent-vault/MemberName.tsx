@@ -3,8 +3,6 @@ import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultActor, TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 
-// Exported so the grant picker renders an actor the same way the member table does. Exhaustive over the
-// enum, so a fourth actor kind fails to compile here rather than rendering blank somewhere.
 export const MEMBER_KIND: Record<AgentVaultMemberType, { label: string; icon: typeof UserIcon }> = {
   [AgentVaultMemberType.User]: { label: "User", icon: UserIcon },
   [AgentVaultMemberType.MachineIdentity]: { label: "Machine Identity", icon: BotIcon },

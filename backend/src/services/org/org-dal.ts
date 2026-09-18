@@ -864,17 +864,9 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * The batched form of findEffectiveOrgMembership: given many actors of one kind, returns the ids of
-   * those holding an active org membership. A direct row is authoritative, as in the singular helper:
-   * deactivating someone's own membership suspends them even while a group they belong to stays
-   * active, and group-derived membership counts only for actors with no direct row at all.
-   *
-   * Unlike the singular helper it applies no status filter, so an invited-but-unaccepted member counts
-   * as active. That is what the Agent Vault caller wants -- an org invite that has not been accepted
-   * still gets project access everywhere else on the platform -- so a caller needing accepted-only
-   * membership wants findEffectiveOrgMembership instead.
-   *
-   * Two queries rather than one per actor, so a bulk caller does not fan out against a pool of ten.
+   * The batched form of findEffectiveOrgMembership. A direct row is authoritative, as there: deactivating
+   * someone's own membership suspends them even while a group they belong to stays active. Unlike the
+   * singular helper it applies no status filter, so an invited member counts as active.
    */
   const findActiveEffectiveOrgMemberActorIds = async (
     dto: { actorType: ActorType; actorIds: string[]; orgId: string },

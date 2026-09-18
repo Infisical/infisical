@@ -352,7 +352,6 @@ export const AgentVaultSessionsPage = () => {
         )}
 
         {totalCount > 0 && (
-          // The card lays its children out with gap-5, which reads as a gap under the table.
           <CardContent className="-mt-5 pt-0">
             <Pagination
               count={totalCount}

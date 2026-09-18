@@ -39,7 +39,6 @@ export const agentVaultKeys = {
   proxies: (orgId: string) => [...agentVaultKeys.all(orgId), "proxies"] as const,
   proxyList: (orgId: string, params?: TListAgentVaultProxiesDTO) =>
     [...agentVaultKeys.proxies(orgId), params] as const,
-  // Nested under the bundle, so invalidating the bundle reaches its member pages by prefix.
   accessBundleMembers: (orgId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundle(orgId, accessBundleId), "members"] as const,
   accessBundleMemberList: (
@@ -52,8 +51,6 @@ export const agentVaultKeys = {
     [...agentVaultKeys.members(orgId), params] as const
 };
 
-// Returns the envelope rather than unwrapping it, because the caller needs totalCount, and keeps the
-// previous page in place while the next one loads so paging does not blank the table.
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
   params: TListAgentVaultMembersDTO & { actorType?: T } = {},
   enabled = true

@@ -574,9 +574,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "revokeAgentVaultAccessBundleMembers",
-      // A deliberate break from REST, which CODE_QUALITY.md sanctions for a bulk operation that cannot be
-      // expressed per resource: DELETE carrying a request body is mangled by enough proxies and clients to
-      // be unusable, so removal is a named action that mirrors the grant it undoes.
       description: "Revoke an Agent Vault access bundle from users, machine identities or groups",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({

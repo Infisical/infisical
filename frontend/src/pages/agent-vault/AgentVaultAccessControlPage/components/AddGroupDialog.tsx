@@ -36,8 +36,6 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const [group, setGroup] = useState<TOption | null>(null);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
 
-  // Groups already in Agent Vault are not filtered out. The member list is paged, so a client-side
-  // exclusion could only see one page of it; the server reports an existing member in skipped instead.
   const options = useMemo(
     () => orgGroups.map((orgGroup) => ({ value: orgGroup.id, label: orgGroup.name })),
     [orgGroups]

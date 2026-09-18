@@ -92,9 +92,6 @@ export type TAgentVaultMember = {
   actor: TAgentVaultActor;
 };
 
-// A product membership carries two things a bundle grant has no use for: whether the person's
-// organization invite is still open, and whether Agent Vault owns the machine identity, which decides
-// whether the row offers Remove or Delete.
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
       isOrgMembershipPending: boolean;
@@ -113,7 +110,6 @@ export type TAgentVaultProductMember = {
   actor: TAgentVaultProductActor;
 };
 
-// Narrows the actor to one variant, so a tab that asked for users does not re-narrow in every cell.
 export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
   TAgentVaultProductMember,
   "actor"
@@ -151,8 +147,6 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
-// What a write answers with: the actor named but not hydrated, because these endpoints do not join the
-// actor's row. Distinct from TAgentVaultProductMember, which only a read returns.
 export type TAgentVaultWrittenMember = {
   id: string;
   role: string;

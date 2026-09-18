@@ -67,8 +67,6 @@ export type TListAgentVaultMembersDTO = {
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-// The identifier the caller sent, which for a user added by email is that email rather than the uuid it
-// resolved to. A skipped entry echoes it back so the caller can match the reply to the request.
 type TAgentVaultNamedActor = TAgentVaultActorRef & { identifier: string };
 
 export type TAgentVaultMemberIds = {
@@ -96,7 +94,7 @@ export type TRevokeAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
   ctx: TAgentVaultActorContext;
 };
 
-// actorName is carried for the audit body only; the response schemas do not select it.
+// actorName is for the audit body; the response schemas do not select it.
 type TAgentVaultWrittenMember = {
   id: string;
   role: string;
@@ -132,8 +130,6 @@ const actorToIds = (actor: TAgentVaultActorRef): TAgentVaultMemberIds => ({
   machineIdentityIds: actor.type === AgentVaultMemberType.MachineIdentity ? [actor.id] : []
 });
 
-// The kind is part of the comparison: an id colliding across tables is not reachable, but naming the kind
-// is what makes the check say what it means.
 const isSelf = (actor: TAgentVaultActorRef, ctx: TAgentVaultActorContext) =>
   (actor.type === AgentVaultMemberType.User && ctx.actor === ActorType.USER && actor.id === ctx.actorId) ||
   (actor.type === AgentVaultMemberType.MachineIdentity && ctx.actor === ActorType.IDENTITY && actor.id === ctx.actorId);
@@ -168,10 +164,6 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
-  // The three reads are granted and withheld as a set today -- an Agent Vault admin holds all three and
-  // every other role holds none -- so these can never disagree. They stay separate because the merged
-  // list answers with the kinds the caller may read rather than refusing outright, which is the
-  // behaviour that still holds if Agent Vault ever honours custom roles.
   type TProjectPermission = Awaited<ReturnType<typeof getActorPermission>>["permission"];
 
   const canReadActorType = (permission: TProjectPermission, type: AgentVaultMemberType) => {
@@ -209,8 +201,6 @@ export const agentVaultMembershipServiceFactory = ({
 
     const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
     const readable = asked.filter((type) => canReadActorType(permission, type));
-    // Thrown on the kind the caller asked for, so the message names the subject they lack rather than
-    // whichever one happens to come first.
     if (!readable.length) assertCanReadActorType(permission, asked[0]);
 
     return agentVaultMemberDAL.findProductMembers({
@@ -236,8 +226,6 @@ export const agentVaultMembershipServiceFactory = ({
   const named = (actors: { type: AgentVaultMemberType; id: string }[], type: AgentVaultMemberType) =>
     actors.filter((actor) => actor.type === type).map((actor) => actor.id);
 
-  // An email the caller sent is the only handle they have on that person, so the resolved user id has to
-  // travel with it or a skipped entry comes back as a uuid they never saw.
   const resolveNamedActors = async (
     { userIds, groupIds, machineIdentityIds, emails }: TAgentVaultMemberIds & { emails?: string[] },
     orgId: string
@@ -296,8 +284,6 @@ export const agentVaultMembershipServiceFactory = ({
     return [...byKey.values()];
   };
 
-  // Names for the audit body, gathered in one query per actor kind rather than one per actor. An admin
-  // reading "removed a member" wants to know who, and the id alone does not say.
   const resolveActorNames = async (actors: TAgentVaultNamedActor[]) => {
     const [users, groups, identities] = await Promise.all([
       named(actors, AgentVaultMemberType.User).length
@@ -320,9 +306,7 @@ export const agentVaultMembershipServiceFactory = ({
     return nameByKey;
   };
 
-  // resolveSession refuses an actor without an active org membership, so a member added without one could
-  // never mint. Every offender is collected rather than thrown on the first, because a caller naming a
-  // hundred actors should not have to bisect the batch to find the one we rejected.
+  // resolveSession refuses an actor with no active org membership, so one added without it could never mint.
   const assertActorsAreAddable = async (actors: TAgentVaultNamedActor[], orgId: string, projectId: string) => {
     const groupIds = named(actors, AgentVaultMemberType.Group);
     const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);
@@ -531,8 +515,7 @@ export const agentVaultMembershipServiceFactory = ({
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
 
-    // Naming yourself in a batch is a mistake, not a no-op, and skipping it would let an admin believe
-    // they had left when they had not.
+    // Naming yourself is a mistake, not a no-op: skipping it would let an admin believe they had left.
     if (actors.some((actor) => isSelf(actor, ctx))) {
       throw new ForbiddenRequestError({ message: "You cannot remove your own access" });
     }
@@ -561,8 +544,7 @@ export const agentVaultMembershipServiceFactory = ({
 
       const membershipIds = held.map((actor) => existing.get(actorKey(actor))!.id);
 
-      // One check for the whole batch, holding the project advisory lock, so two admins cannot each be
-      // removed by a call that saw the other still standing. Checking per actor would pass for both.
+      // One check for the whole batch: per actor, two admins each pass on the other still standing.
       await assertWillRetainProjectAdmin({
         scopeProjectId: projectId,
         excludeMembershipIds: membershipIds,
@@ -570,8 +552,6 @@ export const agentVaultMembershipServiceFactory = ({
         tx
       });
 
-      // Their access bundle grants go with them. Scoped by resource type, unlike the single-actor reap this
-      // replaces, which would also take a second resource type the moment one exists.
       await Promise.all(
         ALL_ACTOR_TYPES.map(async (type) => {
           const typeIds = named(held, type);

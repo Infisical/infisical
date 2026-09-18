@@ -67,8 +67,6 @@ export const GroupsTab = () => {
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
-  // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the
-  // copy off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim());
 
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -189,7 +187,6 @@ export const GroupsTab = () => {
       )}
 
       {totalCount > 0 && (
-        // The card lays its children out with gap-5, which reads as a gap under the table.
         <CardContent className="-mt-5 pt-0">
           <Pagination
             count={totalCount}

@@ -128,7 +128,6 @@ const HeadWithHint = ({ hint, children }: { hint: string; children: ReactNode })
   </Tooltip>
 );
 
-// The values are the API's orderBy vocabulary, so the table header and the query cannot drift.
 enum SortColumn {
   Name = "name",
   Created = "createdAt"
@@ -406,7 +405,6 @@ export const AgentVaultProxiesPage = () => {
         )}
 
         {totalCount > 0 && (
-          // The card lays its children out with gap-5, which reads as a gap under the table.
           <CardContent className="-mt-5 pt-0">
             <Pagination
               count={totalCount}

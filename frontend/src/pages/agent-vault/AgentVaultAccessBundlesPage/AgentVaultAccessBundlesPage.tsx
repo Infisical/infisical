@@ -67,7 +67,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog";
 
-// The values are the API's orderBy vocabulary, so the table header and the query cannot drift.
 enum SortColumn {
   Name = "name",
   Services = "serviceCount",
@@ -356,7 +355,6 @@ export const AgentVaultAccessBundlesPage = () => {
         )}
 
         {totalCount > 0 && (
-          // The card lays its children out with gap-5, which reads as a gap under the table.
           <CardContent className="-mt-5 pt-0">
             <Pagination
               count={totalCount}

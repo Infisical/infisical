@@ -67,13 +67,11 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
-  // Ten rather than twenty: the sheet is 640px wide and sits inside a scroll container.
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultAccessBundleMembersTable", PreferenceKey.PerPage, 10)
   );
 
-  // The sheet stays mounted between opens, so without this a second bundle inherits the first one's
-  // search term and page and looks as though members are missing.
+  // The sheet stays mounted between opens, so a second bundle would inherit the first one's filter.
   useEffect(() => {
     setSearch("");
     setPage(1);
@@ -90,8 +88,6 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
-  // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the
-  // copy off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim());
   const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove.actor) : "";
 

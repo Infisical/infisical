@@ -60,7 +60,6 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      // Shared with the page query, so the pager describes the filtered set rather than the whole one.
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where({ projectId });
         if (search) void query.whereILike("name", `%${sanitizeSqlLikeString(search)}%`);
@@ -71,7 +70,6 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
         | { count: string }
         | undefined;
 
-      // name is unique per project, so it breaks any tie createdAt leaves.
       const proxies = (await applyFilters(conn(TableName.AgentVaultProxy))
         .orderBy(orderBy, orderDirection)
         .orderBy("name", "asc")

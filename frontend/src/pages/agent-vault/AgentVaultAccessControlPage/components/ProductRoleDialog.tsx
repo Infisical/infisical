@@ -20,9 +20,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProductRoleField } from "./ProductRoleField";
 
 type Props = {
-  // The member being edited, or null while the dialog is closed. One prop rather than three, so the
-  // empty actor the callers used to pass -- which no request could have been built from -- cannot be
-  // expressed.
   member: Pick<TAgentVaultProductMember, "role" | "actor"> | null;
   onOpenChange: (isOpen: boolean) => void;
   subject: string;
@@ -39,7 +36,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
 
   const handleSave = async () => {
     try {
-      // Guarded here rather than by returning null, so the dialog's exit animation still runs.
+      // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
       await updateRole.mutateAsync({ actor: member.actor, role });
       createNotification({

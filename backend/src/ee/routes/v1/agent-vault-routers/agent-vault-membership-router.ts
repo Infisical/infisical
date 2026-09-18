@@ -21,8 +21,6 @@ import {
   AgentVaultSkippedActorSchema
 } from "./agent-vault-schemas";
 
-// Plural kebab segments, matching the group routes that publish /machine-identities, so the path stays
-// resource-shaped while the JSON says machineIdentity.
 const ACTOR_TYPE_SEGMENTS = ["users", "groups", "machine-identities"] as const;
 
 const ACTOR_TYPE_OF: Record<(typeof ACTOR_TYPE_SEGMENTS)[number], AgentVaultMemberType> = {
@@ -170,9 +168,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "revokeAgentVaultMembers",
-      // A deliberate break from REST, which CODE_QUALITY.md sanctions for a bulk operation that cannot be
-      // expressed per resource: DELETE carrying a request body is mangled by enough proxies and clients to
-      // be unusable, so removal is a named action on the collection.
+      // A deliberate REST deviation: DELETE cannot carry a body reliably, so bulk removal is a named action.
       description: "Remove members from Agent Vault, and with them every bundle they hold",
       tags: [ApiDocsTags.AgentVaultMembers],
       body: AgentVaultProductMemberIdsSchema,

@@ -22,8 +22,7 @@ export type TAgentVaultProductActor =
       type: AgentVaultMemberType.MachineIdentity;
       id: string;
       name: string;
-      // Agent Vault owns identities it created, and those cannot be detached, only deleted. The caller
-      // has to know which it is holding before it offers a button.
+      // An identity Agent Vault created cannot be detached, only deleted.
       isManagedByAgentVault: boolean;
       orgId: string | null;
     }
@@ -66,15 +65,12 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         void query
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
-          // Joined on the primary keys, and only_one_actor_type keeps at most one of the three non-null,
-          // so none of these can multiply a row. That is what lets the count query carry them, which the
-          // search needs. Nothing else may be joined here: membership_roles is one-to-many and would.
+          // only_one_actor_type keeps at most one non-null, so these cannot multiply a row and the count can
+          // carry them. Nothing else may be joined: membership_roles is one-to-many and would.
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
 
-        // The caller sees only the actor kinds their role lets them read, and the count is filtered the
-        // same way, so the pager never promises a page it will not serve.
         void query.where((qb) => {
           actorTypes.forEach((type) => {
             void qb.orWhereNotNull(`${TableName.Membership}.${ACTOR_COLUMN[type]}`);
@@ -87,7 +83,6 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
             void qb
               .orWhereILike(`${TableName.Users}.username`, term)
               .orWhereILike(`${TableName.Users}.email`, term)
-              // Covers a first name, a last name and the two together, so no separate checks are needed.
               .orWhereRaw(`CONCAT_WS(' ', ??, ??) ILIKE ?`, [
                 `${TableName.Users}.firstName`,
                 `${TableName.Users}.lastName`,
@@ -121,24 +116,17 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.Identity).as("machineIdentityProjectId"),
           db.ref("orgId").withSchema(TableName.Identity).as("machineIdentityOrgId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
-          // A subselect rather than a join: membership_roles allows several rows per membership and this
-          // product writes one, so joining would multiply the row and split a member across a page.
           db.raw(
             `(SELECT mr."role" FROM ?? mr WHERE mr."membershipId" = ??."id" ORDER BY mr."createdAt" ASC LIMIT 1) as "role"`,
             [TableName.MembershipRole, TableName.Membership]
           ),
-          // Pinned to this org: membership is unique per (org, actor) rather than per actor, and a user
-          // can hold memberships in several orgs of a sub-org family.
+          // Pinned to this org: membership is unique per (org, actor), and a user can hold several in a sub-org family.
           db.raw(
             `EXISTS (SELECT 1 FROM ?? om WHERE om."scope" = ? AND om."scopeOrgId" = ?
                AND om."actorUserId" = ??."actorUserId" AND om."status" = ?) as "isOrgMembershipPending"`,
             [TableName.Membership, AccessScope.Organization, orgId, TableName.Membership, OrgMembershipStatus.Invited]
           )
         )
-        // Ordered by the name the table renders, so a page is the page the reader expects. The membership
-        // id breaks ties: createdAt defaults to the transaction's start time, so a bulk add writes up to a
-        // hundred rows sharing one timestamp, and two members sharing a name would otherwise straddle a
-        // page boundary and appear twice or not at all.
         .orderByRaw(`COALESCE(??, ??, ??, '') ASC`, [
           `${TableName.Users}.username`,
           `${TableName.Identity}.name`,

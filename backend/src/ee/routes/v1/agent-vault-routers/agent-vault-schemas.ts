@@ -216,8 +216,6 @@ export const AgentVaultServiceSchema = z.object({
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 });
 
-// One list per actor type rather than a list of one-of-three objects: the field name carries the type,
-// so nothing has to be validated after parsing, and the write stays a single atomic request.
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
   userIds: z.string().uuid().array().default([]).describe(docs.userIds),
   machineIdentityIds: z.string().uuid().array().default([]).describe(docs.machineIdentityIds),
@@ -236,9 +234,8 @@ const atLeastOne = "Name at least one user, machine identity, or group";
 const atMost = (action: string) =>
   `${action} at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities, and groups at a time`;
 
-// The bounds go on last, and each schema repeats them, because .refine returns a ZodEffects that nothing
-// can be extended after -- so a shared helper would have to give up the body's type to the spread the
-// handlers do.
+// .refine returns a ZodEffects nothing can be extended after, so the bounds go on last and each schema
+// repeats them rather than sharing a helper.
 export const AgentVaultMemberIdsSchema = z
   .object(
     memberIdsShape({
@@ -261,9 +258,8 @@ export const AgentVaultProductMemberIdsSchema = z
   .refine((body) => namedCount(body) > 0, atLeastOne)
   .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
 
-// One object rather than the id schema intersected with the extras: zod parses each side of an
-// intersection on its own, so the id side's object would strip emails before the refines ran -- an
-// emails-only body then failed "name at least one" and the cap never counted emails at all.
+// One object, not an intersection: zod parses each side on its own, so the id side would strip emails
+// before the refines ran, failing an emails-only body and leaving the cap blind to them.
 export const AgentVaultProductMemberAddSchema = z
   .object({
     ...memberIdsShape({
@@ -271,8 +267,6 @@ export const AgentVaultProductMemberAddSchema = z
       machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
       groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
     }),
-    // Usernames are stored lowercase and the lookup is an exact match, so a mixed-case address would
-    // come back as "not a member" rather than resolving.
     emails: z
       .string()
       .email()
@@ -340,8 +334,7 @@ export const AgentVaultActorSchema = z.discriminatedUnion("type", [
     .describe(JSON.stringify({ title: "Group" }))
 ]);
 
-// The shape the session list already publishes, lifted so the paginated lists cannot drift apart. Note
-// the absence of .default().optional(): the optional wraps the default and the default never applies.
+// No .default().optional(): the optional wraps the default and the default never applies.
 export const agentVaultListQuery = (docs: { search: string; limit: string; offset: string }) => ({
   search: z
     .string()
@@ -354,9 +347,6 @@ export const agentVaultListQuery = (docs: { search: string; limit: string; offse
   offset: z.coerce.number().int().min(0).max(10000).default(0).describe(docs.offset)
 });
 
-// A product membership carries two things a bundle grant has no use for: whether the person has accepted
-// their organization invite, and whether Agent Vault owns the machine identity, which decides whether it
-// can be detached at all or only deleted.
 export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
   z
     .object({
@@ -389,17 +379,14 @@ export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
 
 export const AgentVaultProductMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  // Deliberately not the two-value input enum: the generic project membership routes reach these same
-  // rows, so one can carry any role slug, and narrowing the response would fail the list rather than
-  // render it.
+  // Not the two-value input enum: the generic project membership routes reach these same rows, so one can
+  // carry any role slug, and narrowing this would fail the whole list rather than render it.
   role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
   isActive: z.boolean().describe(AGENT_VAULT.MEMBERSHIP.isActive),
   createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultProductActorSchema
 });
 
-// The write shape: a member the call touched, with the actor named but not hydrated, because these
-// endpoints do not join the actor's row and doing so per write would buy an echo of what was sent.
 export const AgentVaultProductMemberRefSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
@@ -407,8 +394,6 @@ export const AgentVaultProductMemberRefSchema = z.object({
   actor: AgentVaultActorRefSchema
 });
 
-// Carries the identifier the caller sent rather than only the id it resolved to, so someone who added
-// ten people by email gets ten email addresses back instead of ten uuids they never saw.
 export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
   z
     .object({

@@ -75,8 +75,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      // The page is chosen before the services are joined on. That join fans a bundle out into one row
-      // per service, so a LIMIT over it would cut a bundle's services rather than the bundle list.
+      // The page is chosen before the service join, which fans a bundle out per service: a LIMIT over that
+      // would cut a bundle's services rather than the bundle list.
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId);
         if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
@@ -115,7 +115,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       } else {
         void pageQuery.orderBy(`${TableName.AgentVaultAccessBundle}.${orderBy}`, orderDirection);
       }
-      // name is unique per project, so it is a total order and breaks any tie the other two can leave.
       void pageQuery.orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc");
 
       const pageIds = ((await pageQuery) as { id: string }[]).map((row) => row.id);
@@ -231,8 +230,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
           .where({ ...grantScope(projectId, accessBundleId), isActive: true })
-          // Joined on the primary keys, and only_one_actor_type keeps at most one of the three non-null,
-          // so none of these multiply a row. That is what lets the count query carry them.
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
@@ -243,7 +240,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             void qb
               .orWhereILike(`${TableName.Users}.username`, term)
               .orWhereILike(`${TableName.Users}.email`, term)
-              // Covers a first name, a last name and the two together, so no separate checks are needed.
               .orWhereRaw(`CONCAT_WS(' ', ??, ??) ILIKE ?`, [
                 `${TableName.Users}.firstName`,
                 `${TableName.Users}.lastName`,
@@ -256,7 +252,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         return query;
       };
 
-      // Shared with the page query, so the pager describes the filtered set rather than the whole one.
       const countResult = (await applyFilters(conn(TableName.Membership))
         .count(`${TableName.Membership}.id as count`)
         .first()) as { count: string } | undefined;
@@ -277,9 +272,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("name").withSchema(TableName.Groups).as("groupName")
         )
-        // The membership id breaks ties: createdAt defaults to the transaction's start time, so one bulk
-        // grant writes up to a hundred rows sharing a timestamp, and offset paging would otherwise show
-        // some of them twice and others never.
+        // The id breaks ties: createdAt is the transaction's start time, so a bulk grant leaves a hundred rows
+        // sharing one, and offset paging would show some twice and others never.
         .orderBy(`${TableName.Membership}.createdAt`, "asc")
         .orderBy(`${TableName.Membership}.id`, "asc")
         .limit(limit)

@@ -26,7 +26,6 @@ import { TAgentVaultProductActor } from "@app/hooks/api/agentVault/types";
 import { MEMBER_KIND, memberDisplayName, memberSubtitle } from "./MemberName";
 import { PendingInvitationBadge } from "./PendingInvitationBadge";
 
-// A combobox is for finding a name you already know, so it searches the server rather than paging.
 const PICKER_LIMIT = 50;
 
 type Option = {
@@ -60,9 +59,6 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
     isOpen
   );
 
-  // Nobody is filtered out of the picker. With a paged list the client can only see one page, so an
-  // exclusion built from it would be wrong from the second page on; the server reports whoever already
-  // had the bundle in skipped instead.
   const options = useMemo<Option[]>(
     () =>
       (data?.members ?? []).map((member) => ({
@@ -127,8 +123,7 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
               value={selected}
               shouldFilter={false}
               isLoading={isFetching}
-              // Without this a chip already picked vanishes as soon as the next search returns a page
-              // it is not on, which breaks multi-select.
+              // Without this a chip already picked vanishes when the next search returns a page it is not on.
               includeMissingSelectedOptions
               onInputValueChange={setSearch}
               getOptionValue={(option) => `${option.actor.type}:${option.actor.id}`}
