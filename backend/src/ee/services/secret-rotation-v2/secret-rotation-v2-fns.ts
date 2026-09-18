@@ -45,6 +45,7 @@ import {
   TUpdateSecretRotationV2DTO
 } from "./secret-rotation-v2-types";
 import { SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION, TSnowflakeUserKeyPairRotation } from "./snowflake-user-key-pair";
+import { STRIPE_API_KEY_ROTATION_LIST_OPTION } from "./stripe-api-key";
 import { SUPABASE_API_KEY_ROTATION_LIST_OPTION, TSupabaseApiKeyRotation } from "./supabase-api-key";
 import {
   TUnixLinuxLocalAccountRotation,
@@ -83,7 +84,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.FireworksApiKey]: FIREWORKS_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.SnowflakeUserKeyPair]: SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION,
   [SecretRotation.CloudflareApiToken]: CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION,
-  [SecretRotation.CloudflareR2AccessKey]: CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.CloudflareR2AccessKey]: CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.StripeApiKey]: STRIPE_API_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
