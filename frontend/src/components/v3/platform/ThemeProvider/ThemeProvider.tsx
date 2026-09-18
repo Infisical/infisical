@@ -99,16 +99,31 @@ export const ThemeProvider = ({
         setThemeState(nextTheme);
       };
 
-      if (
-        nextResolvedTheme === resolvedTheme ||
-        !("startViewTransition" in document) ||
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ) {
+      if (nextResolvedTheme === resolvedTheme) {
         updateTheme();
         return;
       }
 
-      document.startViewTransition(updateTheme);
+      const root = document.documentElement;
+      const updateThemeWithoutTransitions = () => {
+        root.dataset.themeSwitching = "";
+        updateTheme();
+      };
+      const restoreTransitions = () => {
+        delete root.dataset.themeSwitching;
+      };
+
+      if (
+        !("startViewTransition" in document) ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        updateThemeWithoutTransitions();
+        window.requestAnimationFrame(() => window.requestAnimationFrame(restoreTransitions));
+        return;
+      }
+
+      const transition = document.startViewTransition(updateThemeWithoutTransitions);
+      void transition.ready.then(restoreTransitions, restoreTransitions);
     },
     [pathname, resolvedTheme]
   );
