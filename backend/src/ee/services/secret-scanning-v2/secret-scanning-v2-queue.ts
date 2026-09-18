@@ -10,13 +10,15 @@ import {
 import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
+  planCommitBatches,
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD } from "@app/lib/config/env";
+import { getConfig, getSecretScanningScanBudgetMs } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -57,7 +59,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -67,13 +69,17 @@ const STUCK_SCAN_REAP_BATCH_SIZE = 100;
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
 
-// The lock has to outlive the worst case a scan can take: clone timeout plus scan timeout plus the
-// same measurement/bookkeeping overhead the stuck-scan boot validation budgets for. Anything
-// shorter can expire mid-scan and let a second scan of the same resource start alongside the first.
-const getFullScanLockTtlMs = () => {
-  const appCfg = getConfig();
-  return appCfg.SECRET_SCANNING_CLONE_TIMEOUT + appCfg.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
-};
+// A full scan usually dies because the worker was OOM-killed on a large repository, which retrying
+// does resolve — the pod that picks it up next is not the one that ran out of memory. The two
+// budgets are separate in BullMQ and both are needed: `attempts` covers a run that throws, while a
+// killed process never throws at all and is recovered by the stalled checker under
+// `maxStalledCount`. The delay only has to outlast a restarting pod; nothing is held across it.
+const FULL_SCAN_ATTEMPTS = 3;
+const FULL_SCAN_MAX_STALLED_COUNT = 2;
+const FULL_SCAN_RETRY_DELAY = ms("1m");
+
+const DUPLICATE_FULL_SCAN_STATUS_MESSAGE =
+  "Another scan of this resource was already in progress, so this scan was not started.";
 
 export const secretScanningV2QueueServiceFactory = ({
   queueService,
@@ -88,6 +94,36 @@ export const secretScanningV2QueueServiceFactory = ({
   appConnectionDAL,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
+  /**
+   * Full scans of one resource are serialized across pods by a lease in Redis holding the ID of the
+   * scan that owns it. A retry or a stalled-job recovery carries the same scan ID, so it reclaims
+   * its own lease and resumes where it left off; a second, distinct scan of the same resource finds
+   * the lease held and gives up rather than cloning the repository alongside the first. Renewing is
+   * the same operation as acquiring, and returns false once the lease has been lost.
+   */
+  const acquireFullScanLease = async (resourceId: string, scanId: string) => {
+    const key = KeyStorePrefixes.SecretScanningFullScanLease(resourceId);
+    const scanBudget = getSecretScanningScanBudgetMs(getConfig());
+    const ttlSeconds = Math.ceil(scanBudget / 1000);
+
+    const acquired = await keyStore.setItemWithExpiryNX(key, ttlSeconds, scanId);
+
+    if (acquired) return true;
+
+    // if same scanId, this can be a retry, so allow it
+    if ((await keyStore.getItemPrimary(key)) !== scanId) return false;
+
+    await keyStore.setItemWithExpiry(key, ttlSeconds, scanId);
+
+    return true;
+  };
+
+  const releaseFullScanLease = async (resourceId: string, scanId: string) => {
+    const key = KeyStorePrefixes.SecretScanningFullScanLease(resourceId);
+
+    if ((await keyStore.getItemPrimary(key)) === scanId) await keyStore.deleteItem(key);
+  };
+
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     resourceExternalId?: string
@@ -115,13 +151,6 @@ export const secretScanningV2QueueServiceFactory = ({
         });
       }
 
-      for (const resource of filteredRawResources) {
-        // eslint-disable-next-line no-await-in-loop
-        if (await keyStore.getItem(KeyStorePrefixes.SecretScanningLock(dataSource.id, resource.externalId))) {
-          throw new BadRequestError({ message: `A scan is already in progress for resource "${resource.name}"` });
-        }
-      }
-
       await secretScanningV2DAL.resources.transaction(async (tx) => {
         const resources = await secretScanningV2DAL.resources.upsert(
           filteredRawResources.map((rawResource) => ({
@@ -132,8 +161,24 @@ export const secretScanningV2QueueServiceFactory = ({
           tx
         );
 
+        const inFlightScans = await secretScanningV2DAL.scans.find(
+          {
+            type: SecretScanningScanType.FullScan,
+            $in: {
+              resourceId: resources.map((resource) => resource.id),
+              status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning]
+            }
+          },
+          { tx }
+        );
+
+        const scannedResourceIds = new Set(inFlightScans.map((scan) => scan.resourceId));
+        const resourcesToScan = resources.filter((resource) => !scannedResourceIds.has(resource.id));
+
+        if (!resourcesToScan.length) return;
+
         const scans = await secretScanningV2DAL.scans.insertMany(
-          resources.map((resource) => ({
+          resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.FullScan
           })),
@@ -150,7 +195,12 @@ export const secretScanningV2QueueServiceFactory = ({
               resourceId: scan.resourceId,
               dataSourceId: dataSource.id
             },
-            { jobId: scan.id, removeOnFail: true }
+            {
+              jobId: scan.id,
+              removeOnFail: true,
+              attempts: FULL_SCAN_ATTEMPTS,
+              backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
+            }
           );
         }
       });
@@ -191,25 +241,54 @@ export const secretScanningV2QueueServiceFactory = ({
 
     if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    const scan = await secretScanningV2DAL.scans.findById(scanId);
+
+    if (!scan) throw new Error(`Scan with ID "${scanId}" not found`);
+
+    let holdsLease = false;
 
     try {
-      try {
-        lock = await keyStore.acquireLock(
-          [KeyStorePrefixes.SecretScanningLock(dataSource.id, resource.externalId)],
-          getFullScanLockTtlMs()
+      holdsLease = await acquireFullScanLease(resourceId, scanId);
+
+      if (!holdsLease) {
+        await secretScanningV2DAL.scans.update(
+          {
+            id: scanId,
+            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+          },
+          {
+            status: SecretScanningScanStatus.Failed,
+            statusMessage: DUPLICATE_FULL_SCAN_STATUS_MESSAGE
+          }
         );
-      } catch (e) {
-        throw new Error("Failed to acquire scanning lock.");
+
+        logger.warn(`secretScanningV2Queue: Full Scan Skipped, resource is already being scanned ${logDetails}`);
+
+        return;
       }
 
-      await secretScanningV2DAL.scans.update(
-        { id: scanId },
+      // Guarded so a retry cannot reopen a scan that already reached a terminal status. The work
+      // itself succeeded and only a side effect after it (a notification enqueue, an audit log)
+      // threw, so BullMQ hands the whole handler back; without this an already-Completed scan would
+      // be reset to `scanning` and, on the last attempt, closed out as Failed.
+      const startedScans = await secretScanningV2DAL.scans.update(
+        {
+          id: scanId,
+          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+        },
         {
           status: SecretScanningScanStatus.Scanning,
-          scanningStartedAt: new Date()
+          scanningStartedAt: new Date(),
+          progressUpdatedAt: new Date()
         }
       );
+
+      if (!startedScans.length) {
+        logger.warn(
+          `secretScanningV2Queue: Full Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.FullScan}]`
+        );
+        return;
+      }
 
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
@@ -241,7 +320,63 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
-      let findingsPayload: TFindingsPayload;
+      // Counts what this attempt scanned, for the progress logs only. The scan's finding total is
+      // read from the database at the end, because an attempt that resumes a partly-scanned scan
+      // never sees the batches an earlier one already persisted.
+      let scannedFindingsCount = 0;
+
+      /**
+       * Each batch is made durable on its own: its findings and the commit it reached are committed
+       * before the next `infisical scan` starts, so a worker killed mid-scan resumes from there
+       * rather than re-walking history it has already paid for. Returns whether this run still owns
+       * the scan and its lease.
+       */
+      const persistBatch = async (
+        batchFindings: TFindingsPayload,
+        resumePoint?: { lastScannedCommit: string; lastScannedCommitDigest: string }
+      ) => {
+        const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
+          if (batchFindings.length) {
+            await secretScanningV2DAL.findings.upsert(
+              batchFindings.map((finding) => ({
+                ...finding,
+                projectId: dataSource.projectId,
+                dataSourceName: dataSource.name,
+                dataSourceType: dataSource.type,
+                resourceName: resource.name,
+                resourceType: resource.type,
+                scanId
+              })),
+              ["projectId", "fingerprint"],
+              tx,
+              ["resourceName", "dataSourceName"]
+            );
+          }
+
+          const progressed = await secretScanningV2DAL.scans.update(
+            { id: scanId, status: SecretScanningScanStatus.Scanning },
+            { ...resumePoint, progressUpdatedAt: new Date() },
+            tx
+          );
+
+          return Boolean(progressed.length);
+        });
+
+        if (!owned) return false;
+
+        // Renewed on the same beat progress is recorded, so the lease outlives a scan of any length
+        // without a timer of its own. Losing it means another scan of this resource has taken over.
+        holdsLease = await acquireFullScanLease(resourceId, scanId);
+
+        if (!holdsLease) {
+          logger.warn(`secretScanningV2Queue: Full Scan lost its lease on the resource ${logDetails}`);
+        }
+
+        return holdsLease;
+      };
+
+      let stillOwned = true;
+
       switch (resource.type) {
         case SecretScanningResource.Repository:
         case SecretScanningResource.Project: {
@@ -249,58 +384,91 @@ export const secretScanningV2QueueServiceFactory = ({
 
           logger.info(`secretScanningV2Queue: Full Scan Cloned ${logDetails} repoSizeMb=[${repoSizeMb ?? "unknown"}]`);
 
-          findingsPayload = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
+          const { SECRET_SCANNING_COMMIT_BATCH_SIZE: batchSize } = getConfig();
+
+          if (!batchSize) {
+            const batchFindings = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
+            scannedFindingsCount += batchFindings.length;
+            stillOwned = await persistBatch(batchFindings);
+            break;
+          }
+
+          const plan = await planCommitBatches({
+            repoPath: scanPath,
+            batchSize,
+            resumeAfterCommit: scan.lastScannedCommit,
+            resumeAfterCommitDigest: scan.lastScannedCommitDigest
+          });
+
+          // Two ways a resume point stops meaning anything: a rewritten history (force push, or a
+          // rebase landing between runs) takes the commit out of the repository entirely, or a newly
+          // reachable ref puts commits ahead of it that this scan has never looked at. Either way the
+          // repository is re-walked from the start rather than resumed past commits nobody scanned.
+          if (scan.lastScannedCommit && !plan.resumed) {
+            logger.warn(
+              `secretScanningV2Queue: Full Scan cannot resume, restarting ${logDetails} [lastScannedCommit=${scan.lastScannedCommit}] [reason=${plan.prefixChanged ? "history before the resume point changed" : "resume point is no longer in the repository"}]`
+            );
+          }
+
+          logger.info(
+            `secretScanningV2Queue: Full Scan Planned ${logDetails} totalCommits=[${plan.totalCommits}] batches=[${plan.batches.length}] batchSize=[${batchSize}] resumed=[${plan.resumed}]`
+          );
+
+          for (const [index, batch] of plan.batches.entries()) {
+            // eslint-disable-next-line no-await-in-loop
+            const batchFindings = await scanGitRepositoryAndGetFindings(
+              scanPath,
+              join(tempFolder, `findings-${index}.json`),
+              configPath,
+              batch
+            );
+
+            scannedFindingsCount += batchFindings.length;
+
+            // eslint-disable-next-line no-await-in-loop
+            stillOwned = await persistBatch(batchFindings, {
+              lastScannedCommit: batch.lastCommit,
+              lastScannedCommitDigest: batch.prefixDigest
+            });
+
+            if (!stillOwned) break;
+
+            logger.info(
+              `secretScanningV2Queue: Full Scan Batch Complete ${logDetails} batch=[${index + 1}/${plan.batches.length}] findings=[${batchFindings.length}] durationMs=[${Date.now() - startedAt}]`
+            );
+          }
+
           break;
         }
         default:
           throw new Error("Unhandled resource type");
       }
 
-      const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
-        let findings: TSecretScanningFindings[] = [];
-        if (findingsPayload.length) {
-          findings = await secretScanningV2DAL.findings.upsert(
-            findingsPayload.map((finding) => ({
-              ...finding,
-              projectId: dataSource.projectId,
-              dataSourceName: dataSource.name,
-              dataSourceType: dataSource.type,
-              resourceName: resource.name,
-              resourceType: resource.type,
-              scanId
-            })),
-            ["projectId", "fingerprint"],
-            tx,
-            ["resourceName", "dataSourceName"]
-          );
-        }
+      // Guarded on the state this run is finishing: if the reaper already gave up on this scan, the
+      // row keeps its failure and this update matches nothing. Findings are still written — they
+      // are real — but the outcome the customer was told about is not rewritten underneath them.
+      const completedScans = stillOwned
+        ? await secretScanningV2DAL.scans.update(
+            { id: scanId, status: SecretScanningScanStatus.Scanning },
+            {
+              status: SecretScanningScanStatus.Completed,
+              statusMessage: null
+            }
+          )
+        : [];
 
-        // Guarded on the state this run is finishing: if the reaper already gave up on this scan,
-        // the row keeps its failure and this update matches nothing. Findings are still written —
-        // they are real — but the outcome the customer was told about is not rewritten underneath
-        // them.
-        const completedScans = await secretScanningV2DAL.scans.update(
-          { id: scanId, status: SecretScanningScanStatus.Scanning },
-          {
-            status: SecretScanningScanStatus.Completed,
-            statusMessage: null
-          },
-          tx
-        );
-
-        return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
-      });
-
-      if (!closedOutByThisRun) {
+      if (!completedScans.length) {
         logger.warn(
-          `secretScanningV2Queue: Full Scan finished after the scan was already closed out ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
+          `secretScanningV2Queue: Full Scan finished after the scan was already closed out ${logDetails} scannedFindings=[${scannedFindingsCount}] durationMs=[${Date.now() - startedAt}]`
         );
         return;
       }
 
-      const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+      // Read back rather than counted in the handler: the findings an earlier attempt persisted are
+      // part of this scan's total, and a resumed attempt never scanned the batches they came from.
+      const findingsCount = await secretScanningV2DAL.findings.countByScanId(scanId);
 
-      if (newFindings.length) {
+      if (findingsCount) {
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -309,7 +477,7 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: false,
             dataSource,
-            numberOfSecrets: newFindings.length,
+            numberOfSecrets: findingsCount,
             scanId
           },
           { removeOnFail: true, jobId: `secret-scanning-notification-${scanId}` }
@@ -332,13 +500,13 @@ export const secretScanningV2QueueServiceFactory = ({
             scanId,
             scanStatus: SecretScanningScanStatus.Completed,
             scanType: SecretScanningScanType.FullScan,
-            numberOfSecretsDetected: findingsPayload.length
+            numberOfSecretsDetected: findingsCount
           }
         }
       });
 
       logger.info(
-        `secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
+        `secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsCount}] scannedFindings=[${scannedFindingsCount}] durationMs=[${Date.now() - startedAt}]`
       );
     } catch (error) {
       if (retryCount === retryLimit) {
@@ -399,8 +567,8 @@ export const secretScanningV2QueueServiceFactory = ({
       );
       throw error;
     } finally {
+      if (holdsLease) await releaseFullScanLease(resourceId, scanId);
       await deleteTempFolder(tempFolder);
-      await lock?.release();
     }
   };
 
@@ -499,13 +667,25 @@ export const secretScanningV2QueueServiceFactory = ({
     );
 
     try {
-      await secretScanningV2DAL.scans.update(
-        { id: scanId },
+      // Same guard as the full scan: a retry after a post-completion side effect failed must not
+      // reopen a scan that already reached a terminal status.
+      const startedScans = await secretScanningV2DAL.scans.update(
+        {
+          id: scanId,
+          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+        },
         {
           status: SecretScanningScanStatus.Scanning,
           scanningStartedAt: new Date()
         }
       );
+
+      if (!startedScans.length) {
+        logger.warn(
+          `secretScanningV2Queue: Diff Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.DiffScan}]`
+        );
+        return;
+      }
 
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
@@ -858,7 +1038,7 @@ export const secretScanningV2QueueServiceFactory = ({
     async (job) => {
       await handleFullScan(job as Parameters<typeof handleFullScan>[0]);
     },
-    { concurrency: 1 }
+    { concurrency: 1, maxStalledCount: FULL_SCAN_MAX_STALLED_COUNT }
   );
 
   queueService.start(

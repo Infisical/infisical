@@ -22,7 +22,7 @@ import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-qu
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
 import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
@@ -155,10 +155,134 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
   });
 };
 
-export async function scanDirectory(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
+/**
+ * Commits are enumerated oldest-first and scanned in slices of that order, this list
+ * of commits will be used to create the batches of commits for historical scans.
+ */
+const COMMIT_LIST_ARGS = ["rev-list", "--full-history", "HEAD"];
+
+export type TCommitBatch = {
+  /** Commits to skip in `git log`'s newest-first order before this batch begins. */
+  skip: number;
+  maxCount: number;
+  /** The batch's newest commit, recorded as the scan's resume point once the batch completes. */
+  lastCommit: string;
+  /**
+   * Digest of every commit up to and including `lastCommit`, recorded beside it so the next run can
+   * tell if a new commit has crept into this batch and it needs to be rescanned. This prevents a history
+   * change (rebase) to cause some commits to not be scanned.
+   */
+  prefixDigest: string;
+};
+
+const COMMIT_LOG_OPTS = COMMIT_LIST_ARGS.slice(1).join(" ");
+
+const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>
+  `${COMMIT_LOG_OPTS} --skip=${skip} --max-count=${maxCount}`;
+
+/**
+ * Batches are aligned on absolute position in the oldest-first ordering rather than on wherever the
+ * previous run stopped, so a resumed scan lands on the same boundaries as an uninterrupted one even
+ * if the batch size changed between runs. Overlap that alignment causes is harmless: findings are
+ * upserted on their fingerprint, so rescanning a commit rewrites the same row.
+ */
+export const planCommitBatches = async ({
+  repoPath,
+  batchSize,
+  resumeAfterCommit,
+  resumeAfterCommitDigest
+}: {
+  repoPath: string;
+  batchSize: number;
+  resumeAfterCommit?: string | null;
+  resumeAfterCommitDigest?: string | null;
+}): Promise<{
+  totalCommits: number;
+  batches: TCommitBatch[];
+  resumed: boolean;
+  /** Set when the resume point is still present but the history before it is not the history that was scanned. */
+  prefixChanged: boolean;
+}> => {
+  const boundaries: { index: number; commit: string; prefixDigest: string }[] = [];
+  let totalCommits = 0;
+  let resumeIndex = -1;
+  let resumePrefixDigest = "";
+  let newestCommit = "";
+
+  // prefixDigest is the hash that is regenerated on every commit and can be
+  // recreated from history.
+  // A -> B -> C will generate a hash based on the commit sha and we can verify it
+  // if for some reason the history becomes: A -> B -> D -> C, when processing C
+  // the digest doesn't match anymore and it means that we have some unscanned commit
+  // in the history.
+  const prefix = crypto.nativeCrypto.createHash("sha256");
+  const prefixDigest = () => prefix.copy().digest("hex");
+
+  await execFileBounded("git", [...COMMIT_LIST_ARGS, "--reverse"], {
+    phase: SecretScanningExecPhase.Enumerate,
+    cwd: repoPath,
+    timeoutMs: SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT,
+    env: GIT_PROCESS_ENV,
+    onStdoutLine: (line) => {
+      const commit = line.trim();
+      if (!commit) return;
+
+      const index = totalCommits;
+      totalCommits += 1;
+      newestCommit = commit;
+      prefix.update(commit);
+
+      if (commit === resumeAfterCommit) {
+        resumeIndex = index;
+        resumePrefixDigest = prefixDigest();
+      }
+      if ((index + 1) % batchSize === 0) boundaries.push({ index, commit, prefixDigest: prefixDigest() });
+    }
+  });
+
+  const lastIndex = totalCommits - 1;
+  if (totalCommits && boundaries[boundaries.length - 1]?.index !== lastIndex) {
+    boundaries.push({ index: lastIndex, commit: newestCommit, prefixDigest: prefixDigest() });
+  }
+
+  // If true, means that the history of commits have changed and there are unscanned commits
+  // This should only happen if a worker dies and clone the repo again after a rebase.
+  // If this happens, it means we can't continue and actually need to start over to ensure
+  // all commits are scanned.
+  const prefixChanged = resumeIndex >= 0 && resumePrefixDigest !== resumeAfterCommitDigest;
+  const resumableIndex = prefixChanged ? -1 : resumeIndex;
+
+  const batches = boundaries
+    .map(({ index, commit, prefixDigest: boundaryPrefixDigest }, position) => ({
+      index,
+      skip: totalCommits - 1 - index,
+      maxCount: index - position * batchSize + 1,
+      lastCommit: commit,
+      prefixDigest: boundaryPrefixDigest
+    }))
+    .filter(({ index }) => index > resumableIndex)
+    .map(({ skip, maxCount, lastCommit, prefixDigest: boundaryPrefixDigest }) => ({
+      skip,
+      maxCount,
+      lastCommit,
+      prefixDigest: boundaryPrefixDigest
+    }));
+
+  return { totalCommits, batches, resumed: resumableIndex >= 0, prefixChanged };
+};
+
+export async function scanDirectory(
+  inputPath: string,
+  outputPath: string,
+  configPath?: string,
+  logOpts?: string
+): Promise<void> {
   const args = ["scan", "--exit-code=77", "-r", outputPath];
   if (configPath) {
     args.push("-c", configPath);
+  }
+  if (logOpts) {
+    args.push(`--log-opts=${logOpts}`);
   }
 
   await execFileBounded("infisical", args, {
@@ -195,9 +319,11 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
 export const scanGitRepositoryAndGetFindings = async (
   scanPath: string,
   findingsPath: string,
-  configPath?: string
+  configPath?: string,
+  batch?: TCommitBatch
 ): TGetFindingsPayload => {
-  await scanDirectory(scanPath, findingsPath, configPath);
+  const logOpts = batch ? buildCommitBatchLogOpts(batch) : COMMIT_LOG_OPTS;
+  await scanDirectory(scanPath, findingsPath, configPath, logOpts);
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 

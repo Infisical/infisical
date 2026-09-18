@@ -1065,8 +1065,8 @@ You can configure third-party app connections for re-use across Infisical Projec
   <ParamField query="SECRET_SCANNING_STUCK_SCAN_TIMEOUT" type="string" default="1h" optional>
     How long a scan may stay in progress before it is assumed dead, meaning its worker was killed,
     and marked failed. Takes a duration string such as `90s`, `10m`, or `2h`. Defaults to `1h`. Must
-    exceed the clone and scan timeouts plus the time a scan spends measuring the repository and
-    writing its results; the server refuses to start otherwise.
+    exceed the clone and scan timeouts plus the time a scan spends measuring the repository,
+    enumerating its commits and writing its results; the server refuses to start otherwise.
   </ParamField>
 </Accordion>
 

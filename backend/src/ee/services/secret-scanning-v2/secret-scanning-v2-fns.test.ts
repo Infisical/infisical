@@ -1,6 +1,8 @@
-import { mkdtemp, rm } from "fs/promises";
+import { execFile } from "child_process";
+import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { promisify } from "util";
 import { describe, expect, test, vi } from "vitest";
 
 import {
@@ -12,6 +14,7 @@ import {
 import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
+  planCommitBatches,
   SecretScanningSizeLimitError
 } from "./secret-scanning-v2-fns";
 
@@ -148,5 +151,138 @@ describe("assertClonedRepositoryWithinSizeLimit", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("planCommitBatches", () => {
+  const exec = promisify(execFile);
+
+  const git = (repoPath: string, args: string[], date?: string) =>
+    exec("git", args, {
+      cwd: repoPath,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "test",
+        GIT_AUTHOR_EMAIL: "test@example.com",
+        GIT_COMMITTER_NAME: "test",
+        GIT_COMMITTER_EMAIL: "test@example.com",
+        ...(date ? { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } : {})
+      }
+    });
+
+  const commit = async (repoPath: string, name: string, date: string) => {
+    await writeFile(join(repoPath, `${name}.txt`), name);
+    await git(repoPath, ["add", "."], date);
+    await git(repoPath, ["commit", "-m", name], date);
+    const { stdout } = await git(repoPath, ["rev-parse", "HEAD"]);
+    return stdout.trim();
+  };
+
+  const withRepo = async (run: (repoPath: string) => Promise<void>) => {
+    const repoPath = await mkdtemp(join(tmpdir(), "plan-commit-batches-"));
+
+    try {
+      await git(repoPath, ["init", "--initial-branch=main"]);
+      await run(repoPath);
+    } finally {
+      await rm(repoPath, { recursive: true, force: true });
+    }
+  };
+
+  test("resumes past the commits it already scanned", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+      await commit(repoPath, "b", "2020-01-02T00:00:00Z");
+      await commit(repoPath, "c", "2020-01-03T00:00:00Z");
+      await commit(repoPath, "d", "2020-01-04T00:00:00Z");
+
+      const first = await planCommitBatches({ repoPath, batchSize: 2 });
+
+      expect(first.totalCommits).toBe(4);
+      expect(first.batches).toHaveLength(2);
+
+      const [firstBatch] = first.batches;
+
+      const resumed = await planCommitBatches({
+        repoPath,
+        batchSize: 2,
+        resumeAfterCommit: firstBatch.lastCommit,
+        resumeAfterCommitDigest: firstBatch.prefixDigest
+      });
+
+      expect(resumed.resumed).toBe(true);
+      expect(resumed.prefixChanged).toBe(false);
+      expect(resumed.batches).toEqual(first.batches.slice(1));
+    });
+  });
+
+  test("enumerates the default branch only", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+      await commit(repoPath, "b", "2020-01-02T00:00:00Z");
+
+      // Never merged, so it is not part of the default branch's history. Commits that only ever
+      // existed on another branch are covered by realtime scanning of the push that created them.
+      await git(repoPath, ["checkout", "-b", "feature"]);
+      await commit(repoPath, "unmerged", "2020-01-03T00:00:00Z");
+      await git(repoPath, ["checkout", "main"]);
+
+      const plan = await planCommitBatches({ repoPath, batchSize: 10 });
+
+      expect(plan.totalCommits).toBe(2);
+    });
+  });
+
+  test("restarts when a merge lands commits ahead of the resume point", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+      await commit(repoPath, "b", "2020-01-02T00:00:00Z");
+      await commit(repoPath, "c", "2020-01-03T00:00:00Z");
+      await commit(repoPath, "d", "2020-01-04T00:00:00Z");
+
+      const [firstBatch] = (await planCommitBatches({ repoPath, batchSize: 2 })).batches;
+
+      // A long-lived branch rooted before the resume point, merged in afterwards. Its commit keeps
+      // its own older date, so the date ordering sorts it into the prefix and shifts every index
+      // after it — on the default branch alone, with no second ref involved.
+      await git(repoPath, ["checkout", "-b", "feature", "HEAD~3"]);
+      const merged = await commit(repoPath, "feat-old", "2020-01-01T12:00:00Z");
+      await git(repoPath, ["checkout", "main"]);
+      await git(repoPath, ["merge", "--no-ff", "feature", "-m", "merge feature"]);
+
+      const resumed = await planCommitBatches({
+        repoPath,
+        batchSize: 2,
+        resumeAfterCommit: firstBatch.lastCommit,
+        resumeAfterCommitDigest: firstBatch.prefixDigest
+      });
+
+      expect(resumed.prefixChanged).toBe(true);
+      expect(resumed.resumed).toBe(false);
+
+      // Every commit is back in the plan, the never-scanned one included.
+      const planned = resumed.batches.reduce((total, batch) => total + batch.maxCount, 0);
+      expect(resumed.totalCommits).toBe(6);
+      expect(planned).toBe(6);
+      expect(merged).toBeTruthy();
+    });
+  });
+
+  test("restarts when the resume point has left the repository", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+      await commit(repoPath, "b", "2020-01-02T00:00:00Z");
+
+      const plan = await planCommitBatches({
+        repoPath,
+        batchSize: 1,
+        resumeAfterCommit: "0000000000000000000000000000000000000000",
+        resumeAfterCommitDigest: "stale"
+      });
+
+      expect(plan.resumed).toBe(false);
+      expect(plan.prefixChanged).toBe(false);
+      expect(plan.batches).toHaveLength(2);
+    });
   });
 });
