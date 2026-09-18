@@ -268,6 +268,13 @@ export const AppConnectionsBrowser = () => {
       category: "Networking & DNS",
     },
     {
+      name: "PowerDNS",
+      slug: "powerdns",
+      path: "/integrations/app-connections/powerdns",
+      description: "Learn how to connect Infisical to PowerDNS for ACME DNS validation.",
+      category: "Networking & DNS",
+    },
+    {
       name: "Windmill",
       slug: "windmill",
       path: "/integrations/app-connections/windmill",
