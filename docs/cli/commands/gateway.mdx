@@ -130,7 +130,7 @@ In direct listen mode it also:
         infisical gateway start my-gateway --enroll-method=gcp --gateway-id=<gateway-id> --domain=https://app.infisical.com
         ```
 
-        The `iam` type needs the IAM Service Account Credentials API enabled and `roles/iam.serviceAccountTokenCreator` on the service account being signed as.
+        The `iam` type needs the IAM Service Account Credentials API enabled and `roles/iam.serviceAccountTokenCreator` on the service account being signed as. On a Compute Engine instance it also needs the `cloud-platform` scope, because the default scopes omit `iamcredentials`. Instance scopes can only be changed while the instance is stopped.
 
         See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for the allowlist configuration this method needs.
       </Tab>

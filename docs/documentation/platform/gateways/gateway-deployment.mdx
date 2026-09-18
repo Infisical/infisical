@@ -292,7 +292,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
               --domain=<your-infisical-domain>
             ```
 
-            Add `--gcp-auth-type=iam` to sign the token through the IAM Credentials API instead of reading it from the metadata server. That path needs the IAM Service Account Credentials API enabled and `roles/iam.serviceAccountTokenCreator` on the service account being signed as. Point `--service-account-key-file-path` at a key file when the host has no credentials of its own.
+            Add `--gcp-auth-type=iam` to sign the token through the IAM Credentials API instead of reading it from the metadata server. That path needs the IAM Service Account Credentials API enabled and `roles/iam.serviceAccountTokenCreator` on the service account being signed as. On a Compute Engine instance it also needs the `cloud-platform` scope, because the default scopes omit `iamcredentials`. Point `--service-account-key-file-path` at a key file when the host has no credentials of its own.
           </Tab>
         </Tabs>
       </Accordion>
