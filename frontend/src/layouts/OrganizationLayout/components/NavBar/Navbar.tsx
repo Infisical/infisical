@@ -14,9 +14,12 @@ import {
   Info,
   LogOut,
   Mail,
+  Monitor,
+  Moon,
   Plus,
   Settings,
   Slack,
+  Sun,
   TriangleAlertIcon,
   User,
   UserPlus,
@@ -51,6 +54,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
@@ -62,6 +68,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
+import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
   OrgPermissionMemberActions,
@@ -148,6 +155,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 
 export const Navbar = () => {
   const { user } = useUser();
+  const { theme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { config: serverConfig } = useServerConfig();
@@ -382,7 +390,7 @@ export const Navbar = () => {
             </Tooltip>
             <Link
               to="/admin"
-              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-foreground transition-all duration-100"
+              className="group flex cursor-pointer items-center gap-2 pl-4 text-sm text-foreground-inverse transition-all duration-100"
             >
               <InstanceIcon className="size-3.5 text-admin" />
               <div className="whitespace-nowrap">Server Console</div>
@@ -709,7 +717,11 @@ export const Navbar = () => {
               <User />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="end">
+          <DropdownMenuContent
+            side="bottom"
+            align="end"
+            className="[&_[data-slot=dropdown-menu-item]]:h-9 [&_[data-slot=dropdown-menu-radio-item]]:h-9"
+          >
             <div className="cursor-default px-3 py-2">
               <div className="text-sm font-medium capitalize">
                 {user?.firstName} {user?.lastName}
@@ -745,6 +757,25 @@ export const Navbar = () => {
                 ) : null
               }
             </OrgPermissionCan>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Theme</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={theme}
+              onValueChange={(value) => setTheme(value as Theme)}
+            >
+              <DropdownMenuRadioItem value="system" className="gap-2">
+                <Monitor className="size-4" />
+                System
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark" className="gap-2">
+                <Moon className="size-4" />
+                Dark
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="light" className="gap-2">
+                <Sun className="size-4" />
+                Light
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <a
