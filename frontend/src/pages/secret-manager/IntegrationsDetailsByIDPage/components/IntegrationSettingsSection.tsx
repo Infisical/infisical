@@ -52,7 +52,7 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
     if (typeof value === "object") {
       if (key === "secretAWSTag") {
         return (value as MetadataValue<"secretAWSTag">)!.map(({ key: tagKey, value: tagValue }) => (
-          <p key={tagKey} className="text-sm text-gray-200">
+          <p key={tagKey} className="text-sm text-foreground-cool">
             {tagKey}={tagValue}
           </p>
         ));
@@ -80,18 +80,20 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
 
   // eslint-disable-next-line no-nested-ternary
   return (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <p className="text-lg font-medium text-gray-200">Integration Settings</p>
+    <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
+      <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
+        <p className="text-lg font-medium text-foreground-cool">Integration Settings</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         {integration.metadata &&
           Object.entries(integration.metadata).map(([key, value]) => (
             <div key={key} className="flex flex-col">
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-muted-cool">
                 {!!value && metadataMappings[key as keyof typeof metadataMappings]}
               </p>
-              <p className="text-sm text-gray-200">{renderValue(key as MetadataKey, value)}</p>
+              <p className="text-sm text-foreground-cool">
+                {renderValue(key as MetadataKey, value)}
+              </p>
             </div>
           ))}
       </div>

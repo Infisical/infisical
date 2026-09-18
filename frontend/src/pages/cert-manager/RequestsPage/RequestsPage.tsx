@@ -245,8 +245,8 @@ export const RequestsPage = () => {
       <Helmet>
         <title>Requests</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
               scope={ProjectType.CertificateManager}
