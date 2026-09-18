@@ -348,6 +348,7 @@ export type TSecretModifiedEvent = {
     channel?: string;
     userAgent?: string;
     actorType?: string;
+    isBatchCommit?: boolean;
     actor?:
       | UserActor
       | IdentityActor
@@ -521,6 +522,7 @@ export type TMachineIdentityLoginEvent = {
     identityId: string;
     orgId: string;
     authMethod: IdentityAuthMethod;
+    channel?: string;
   };
 };
 
