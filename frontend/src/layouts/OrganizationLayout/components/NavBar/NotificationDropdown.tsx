@@ -75,7 +75,7 @@ export const NotificationDropdown = () => {
       <DropdownMenuContent
         align="end"
         side="bottom"
-        className="mt-3 flex h-[550px] w-[400px] overflow-hidden p-0"
+        className="flex h-[550px] w-[400px] overflow-hidden p-0"
       >
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">

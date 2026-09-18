@@ -96,6 +96,64 @@ export const Default: Story = {
   )
 };
 
+export const WithDescriptions: Story = {
+  name: "Example: Items with descriptions",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Dropdown items grow to fit supporting text while preserving the standard padding around each option."
+      }
+    }
+  },
+  render: () => (
+    <DropdownMenu defaultOpen>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Add enrollment method</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-96">
+        <DropdownMenuItem>
+          <div className="flex flex-col">
+            <span className="font-medium">API</span>
+            <span className="text-xs text-accent">
+              Issue certificates manually via the UI or programmatically through the API.
+            </span>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuCheckboxItem checked>
+          <div className="flex flex-col">
+            <span className="font-medium">Certificate renewal</span>
+            <span className="text-xs text-accent">
+              Renew certificates automatically before they expire.
+            </span>
+          </div>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuRadioGroup value="acme">
+          <DropdownMenuRadioItem value="acme">
+            <div className="flex flex-col">
+              <span className="font-medium">ACME</span>
+              <span className="text-xs text-accent">
+                Automate certificate lifecycle with ACME clients like Certbot or Caddy.
+              </span>
+            </div>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <div className="flex flex-col">
+              <span className="font-medium">Advanced methods</span>
+              <span className="text-xs text-accent">Configure an external enrollment method.</span>
+            </div>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem>SCEP</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+};
+
 const CheckboxItemsStory = () => {
   const [showGrid, setShowGrid] = useState(true);
   const [showList, setShowList] = useState(false);

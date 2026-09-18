@@ -527,8 +527,8 @@ export const CreateSecretForm = ({
                 control={control}
                 name={`secrets.${index}.value`}
                 render={({ field }) => (
-                  <Field>
-                    <div className="flex items-center justify-between gap-2">
+                  <Field className="grid grid-cols-[1fr_auto]">
+                    <div className="flex items-center">
                       <FieldLabel htmlFor={`create-secret-${index}-value`}>
                         Value
                         <Tooltip>
@@ -543,6 +543,17 @@ export const CreateSecretForm = ({
                           </TooltipContent>
                         </Tooltip>
                       </FieldLabel>
+                    </div>
+                    <FieldContent className="col-span-2 row-start-2">
+                      <InfisicalSecretInput
+                        id={`create-secret-${index}-value`}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="Enter secret value..."
+                      />
+                      <FieldError errors={[errors.secrets?.[index]?.value]} />
+                    </FieldContent>
+                    <div className="col-start-2 row-start-1 flex items-center">
                       <PasswordGenerator
                         trigger={
                           <Button variant="link" size="xs">
@@ -555,15 +566,6 @@ export const CreateSecretForm = ({
                         secretPath={secretPath}
                       />
                     </div>
-                    <FieldContent>
-                      <InfisicalSecretInput
-                        id={`create-secret-${index}-value`}
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        placeholder="Enter secret value..."
-                      />
-                      <FieldError errors={[errors.secrets?.[index]?.value]} />
-                    </FieldContent>
                   </Field>
                 )}
               />

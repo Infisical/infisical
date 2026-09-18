@@ -90,7 +90,7 @@ const Page = () => {
             search={{
               selectedTab: TabSections.Groups
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             {isSubOrganization ? "Sub-" : ""}Organization Groups
