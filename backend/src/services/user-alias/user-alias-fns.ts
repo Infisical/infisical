@@ -34,6 +34,15 @@ type TIsStaleSsoAliasDTO = {
   assertedEmail: string;
 };
 
+type TResolveAssertedProfileNameDTO = {
+  // OIDC `given_name` / LDAP `givenName`.
+  givenName?: string | null;
+  // OIDC `family_name` / LDAP `sn`.
+  familyName?: string | null;
+  // The composite display name: OIDC `name` / LDAP `cn`.
+  displayName?: string | null;
+};
+
 /**
  * The legacy SSO flow persisted aliases before email verification completed, so an as-yet-unverified
  * alias may point at a different user's account. Such an alias is "stale" when the email asserted by
@@ -54,6 +63,26 @@ export const isStaleSsoAlias = ({ user, userAlias, assertedEmail }: TIsStaleSsoA
   );
 
   return !normalizedAssertedEmail || !accountEmails.has(normalizedAssertedEmail);
+};
+
+export const resolveAssertedProfileName = ({
+  givenName,
+  familyName,
+  displayName
+}: TResolveAssertedProfileNameDTO): { firstName: string; lastName: string } | null => {
+  const given = givenName?.trim();
+  const family = familyName?.trim();
+  const display = displayName?.trim();
+
+  if (given) return { firstName: given, lastName: family || "" };
+  if (!display) return null;
+
+  if (family && display.endsWith(` ${family}`)) {
+    const remainder = display.slice(0, -(family.length + 1)).trim();
+    if (remainder) return { firstName: remainder, lastName: family };
+  }
+
+  return { firstName: display, lastName: "" };
 };
 
 /**
