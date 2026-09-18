@@ -106,6 +106,7 @@ export const createClickhouseConnectionController = async (
       abort_signal: abortController.signal,
       clickhouse_settings: {
         default_format: "JSONCompact",
+        max_execution_time: 30,
         max_result_rows: String(MAX_ROWS + 1),
         result_overflow_mode: "break",
         wait_end_of_query: 1

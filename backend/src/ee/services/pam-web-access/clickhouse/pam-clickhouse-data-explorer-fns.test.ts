@@ -189,13 +189,8 @@ describe("parseStatementBody", () => {
     expect(result.isTruncated).toBe(true);
   });
 
-  test("output in a format it cannot read is handed back verbatim", () => {
-    expect(parseStatementBody("1\tone\n2\ttwo\n")).toEqual({
-      rows: [{ result: "1\tone\n2\ttwo\n" }],
-      fields: [{ name: "result" }],
-      rowCount: null,
-      isTruncated: false
-    });
+  test("output the grid cannot lay out fails with a reason", () => {
+    expect(() => parseStatementBody("1\tone\n2\ttwo\n")).toThrow(/FORMAT clause/);
   });
 
   test("a composite column arrives as text rather than an object", () => {

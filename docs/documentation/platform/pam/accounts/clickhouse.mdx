@@ -98,7 +98,7 @@ Command blocking matches the text of each statement, so a statement that builds 
   </Tab>
 </Tabs>
 
-The Data Explorer shows the first 1,000 rows a statement produces and tells you when there are more. ClickHouse itself imposes no such limit; use the CLI with your own client to work with a full result set.
+The Data Explorer shows the first 1,000 rows a statement produces and tells you when there are more, and caps a statement at 30 seconds. Neither limit applies to the CLI, so use it with your own client for a long query or a full result set.
 
 <Note>
   ClickHouse applies row changes as asynchronous mutations rather than as statements that take effect when they return, so the Data Explorer grid is read-only for every table. Run `ALTER TABLE ... UPDATE` or `DELETE FROM` from the SQL Editor instead. The column marked as a key in the grid is the table's sorting key, which ClickHouse calls the primary key: it's an index, not a unique constraint.

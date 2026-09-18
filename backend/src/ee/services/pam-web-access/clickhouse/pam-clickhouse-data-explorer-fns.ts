@@ -167,13 +167,11 @@ export const parseStatementBody = (body: string, summary?: { written_rows: strin
     parsed = null;
   }
 
+  // A FORMAT clause overrides the default and produces output the grid cannot lay out
   if (!parsed || !Array.isArray(parsed.meta) || !Array.isArray(parsed.data)) {
-    return {
-      rows: [{ result: body }],
-      fields: [{ name: "result" }],
-      rowCount: null,
-      isTruncated: false
-    };
+    throw new Error(
+      "This statement returned a format the explorer can't display as a grid. Remove the FORMAT clause, or use the CLI to read the output as it is."
+    );
   }
 
   const fieldNames = uniqueFieldNames(parsed.meta.map((column) => column.name));
