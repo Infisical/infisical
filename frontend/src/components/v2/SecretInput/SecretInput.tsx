@@ -118,7 +118,8 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   onClickSegment?: (segment: string, allSegments: string[]) => void;
 };
 
-const commonClassName = "font-mono text-sm caret-white border-none outline-hidden w-full break-all";
+const commonClassName =
+  "font-mono text-sm caret-foreground border-none outline-hidden w-full break-all";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (

@@ -46,7 +46,7 @@ export const CliRedirectPage = () => {
         {cliToken ? (
           <>
             <div className="pb-4">
-              <p className="bg-linear-to-b from-white to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
+              <p className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
                 Unable to reach CLI
               </p>
               <p className="text-light mt-2 mb-1 text-center text-lg text-muted">
@@ -75,7 +75,7 @@ export const CliRedirectPage = () => {
           </>
         ) : (
           <>
-            <p className="bg-linear-to-b from-white to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
+            <p className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-center text-3xl font-medium text-transparent">
               Head back to your terminal
             </p>
             <p className="text-light mb-1 text-lg text-muted">
