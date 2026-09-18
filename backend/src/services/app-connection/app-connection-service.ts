@@ -181,7 +181,7 @@ import { snowflakeConnectionService } from "./snowflake/snowflake-connection-ser
 import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
-import { ValidateStripeConnectionCredentialsSchema } from "./stripe";
+import { stripeConnectionService, ValidateStripeConnectionCredentialsSchema } from "./stripe";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -1413,6 +1413,7 @@ export const appConnectionServiceFactory = ({
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
+    stripe: stripeConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),

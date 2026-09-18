@@ -1,9 +1,12 @@
+/* eslint-disable no-await-in-loop */
 import crypto from "node:crypto";
 
-import { AxiosError, AxiosRequestConfig } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 // The Managed API Keys API is in private preview and is only served under a preview API version.
@@ -66,4 +69,52 @@ export const throwStripeApiKeyManagementError = (accountId: string, error: unkno
       `Stripe returned ${getStripeErrorStatus(error) ?? "no status"}: ${getStripeErrorMessage(error)}. ` +
       `If the Infisical app was removed from this Stripe account, reinstall it and reconnect.`
   });
+};
+
+export type TStripeApiKeyListItem = {
+  id: string;
+  name?: string | null;
+  status?: string | null;
+  permissions?: string[] | null;
+  connect_permissions?: string[] | null;
+};
+
+type TStripeApiKeyListResponse = {
+  data?: TStripeApiKeyListItem[];
+  next_page_url?: string | null;
+};
+
+const STRIPE_LIST_PAGE_SIZE = 100;
+
+// Stripe rejects limit=200 with "The maximum page limit is 100", so this is the largest page it
+// serves. The page cap is a runaway guard, not an expected bound.
+const STRIPE_LIST_MAX_PAGES = 50;
+
+export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKeyListItem[]> => {
+  const config = getStripePlatformRequestConfig(accountId);
+  const keys: TStripeApiKeyListItem[] = [];
+
+  let url: string | undefined = `${STRIPE_API_KEYS_URL}?limit=${STRIPE_LIST_PAGE_SIZE}`;
+  let pages = 0;
+
+  while (url && pages < STRIPE_LIST_MAX_PAGES) {
+    // The explicit AxiosResponse annotation breaks a circular type-inference error TS raises when a
+    // loop variable (url) is both an argument to this generic call and reassigned from its result.
+    const response: AxiosResponse<TStripeApiKeyListResponse> = await request.get<TStripeApiKeyListResponse>(
+      url,
+      config
+    );
+
+    keys.push(...(response.data?.data ?? []));
+    url = response.data?.next_page_url ?? undefined;
+    pages += 1;
+  }
+
+  if (url) {
+    logger.warn(
+      `listStripeApiKeys: stopped after ${STRIPE_LIST_MAX_PAGES} pages for account ${accountId}, the list is truncated`
+    );
+  }
+
+  return keys;
 };
