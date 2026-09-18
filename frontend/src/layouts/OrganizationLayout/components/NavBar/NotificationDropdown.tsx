@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { faBell } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
@@ -6,6 +6,7 @@ import { Bell, BellIcon } from "lucide-react";
 
 import {
   Badge,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
@@ -22,8 +23,11 @@ import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifi
 
 import { Notification } from "./Notification";
 
+const NOTIFICATIONS_PER_PAGE = 20;
+
 export const NotificationDropdown = () => {
   const router = useRouter();
+  const [visibleNotificationCount, setVisibleNotificationCount] = useState(NOTIFICATIONS_PER_PAGE);
 
   const { data: notifications, isLoading } = useGetMyNotifications();
   const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
@@ -58,9 +62,16 @@ export const NotificationDropdown = () => {
   );
 
   const hasCritical = criticalCount > 0;
+  const visibleNotifications = notifications?.slice(0, visibleNotificationCount);
+  const hasMoreNotifications = notifications && visibleNotificationCount < notifications.length;
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu
+      modal={false}
+      onOpenChange={(isOpen) => {
+        if (isOpen) setVisibleNotificationCount(NOTIFICATIONS_PER_PAGE);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <IconButton variant="outline" size="sm" aria-label="Notifications" className="relative">
           {unreadCount > 0 ? <BellIcon className="text-warning" /> : <Bell />}
@@ -116,7 +127,7 @@ export const NotificationDropdown = () => {
             )}
             {!isLoading && notifications && notifications.length > 0 && (
               <div className="flex w-full flex-col">
-                {notifications.map((notification) => (
+                {visibleNotifications?.map((notification) => (
                   <div
                     role="button"
                     tabIndex={0}
@@ -130,6 +141,20 @@ export const NotificationDropdown = () => {
                     <Notification notification={notification} onDelete={deleteNotification} />
                   </div>
                 ))}
+                {hasMoreNotifications && (
+                  <div className="flex justify-center p-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setVisibleNotificationCount((count) => count + NOTIFICATIONS_PER_PAGE);
+                      }}
+                    >
+                      Show more
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
