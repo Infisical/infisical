@@ -46,9 +46,9 @@ export const MAX_PATH_PREFIXES = 20;
 const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;
 
 export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
-  [AgentVaultSubstitutionSurface.Path]: "Path",
-  [AgentVaultSubstitutionSurface.Query]: "Query",
-  [AgentVaultSubstitutionSurface.Header]: "Header",
+  [AgentVaultSubstitutionSurface.Path]: "URL Path",
+  [AgentVaultSubstitutionSurface.Query]: "Query String",
+  [AgentVaultSubstitutionSurface.Header]: "Headers",
   [AgentVaultSubstitutionSurface.Body]: "Body"
 };
 

@@ -56,7 +56,7 @@ export const ReviewFields = ({ isUpdate }: Props) => {
       `\u2192 ${MASK}`,
       substitution.surfaces.length
         ? `in ${substitution.surfaces
-            .map((surface) => SURFACE_LABELS[surface].toLowerCase())
+            .map((surface) => SURFACE_LABELS[surface])
             .join(", ")}`
         : ""
     ]);

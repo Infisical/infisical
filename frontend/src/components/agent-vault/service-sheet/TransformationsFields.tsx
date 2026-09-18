@@ -1,5 +1,5 @@
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import {
   Accordion,
@@ -17,7 +17,10 @@ import {
   Input,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput
+  InputGroupInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { AgentVaultSubstitutionSurface } from "@app/hooks/api/agentVault";
 
@@ -263,8 +266,19 @@ export const TransformationsFields = ({
                       render={({ field, fieldState }) => (
                         <Field>
                           <FieldContent>
-                            <FieldLabel className="text-xs">Look In</FieldLabel>
-                            <div className="flex flex-wrap gap-x-5 gap-y-2">
+                            <FieldLabel className="text-xs">
+                              Replace In
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <InfoIcon />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  Select the parts of the request where you want the placeholder
+                                  replaced: URL path, query string, headers, or body.
+                                </TooltipContent>
+                              </Tooltip>
+                            </FieldLabel>
+                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
                               {SURFACES.map((surface) => (
                                 <Field key={surface} orientation="horizontal" className="w-auto">
                                   <Checkbox

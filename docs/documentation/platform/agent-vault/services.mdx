@@ -178,7 +178,7 @@ A custom header can't reuse the credential's own header name, because the creden
 
 When an agent already sends a fake value, a substitution swaps it for the real one on the way out. It works with any credential type, including pass-through, which is what makes a host reachable without attaching a credential of its own.
 
-On the **Credential** step, under **Advanced Options**, give the placeholder your agent sends, the real value, and where in the request to look for it: the path, the query string, a header, or the body.
+On the **Credential** step, under **Advanced Options**, give the placeholder your agent sends and the real value, then use **Replace In** to select the parts of the request where you want it replaced: the URL path, the query string, the headers, or the body.
 
 For example, an agent configured with `__GITHUB_PAT__` as its GitHub token sends:
 
