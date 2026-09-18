@@ -37,7 +37,7 @@ export const evaluateStaticSecretConstraints = (
     })
   );
 
-  const versionCount = config.valueConstraints.reusePrevention?.previousVersions;
+  const versionCount = config.valueConstraints.uniqueAcrossLastVersions;
   if (versionCount !== undefined && secret.previousValues?.slice(0, versionCount).includes(secret.value)) {
     violations.push({
       kind: ConstraintKind.ReusePreviousVersions,
@@ -47,7 +47,7 @@ export const evaluateStaticSecretConstraints = (
   }
 
   const { duplicateOf } = secret;
-  if (config.valueConstraints.reusePrevention?.otherSecretsInScope && duplicateOf) {
+  if (config.valueConstraints.uniqueWithinScope && duplicateOf) {
     violations.push({
       kind: ConstraintKind.ReuseOtherSecretsInScope,
       label: CONSTRAINT_LABELS[ConstraintKind.ReuseOtherSecretsInScope],

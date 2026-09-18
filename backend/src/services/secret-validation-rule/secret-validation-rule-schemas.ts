@@ -42,21 +42,6 @@ const regexPatternSchema = z
 
 const affixSchema = z.string().min(1).max(MAX_CONSTRAINT_AFFIX_LENGTH);
 
-const ReusePreventionSchema = z
-  .object({
-    previousVersions: z
-      .number()
-      .int()
-      .min(1)
-      .max(MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS)
-      .optional()
-      .describe(SecretValidationRules.REUSE_PREVENTION.previousVersions),
-    otherSecretsInScope: z.boolean().optional().describe(SecretValidationRules.REUSE_PREVENTION.otherSecretsInScope)
-  })
-  .refine((reusePrevention) => Object.values(reusePrevention).some((value) => value !== undefined), {
-    message: "Set at least one reuse prevention option, or leave reusePrevention out entirely"
-  });
-
 // the constraints every target supports
 export const BaseConstraintsSchema = z.object({
   minLength: lengthSchema(MAX_SECRET_CONSTRAINT_LENGTH).optional(),
@@ -103,15 +88,20 @@ export const buildConstraintsSchema = (target: ConstraintTarget) =>
 export const buildValueConstraintsSchema = (target: ConstraintTarget) =>
   withLengthWindowCheck({
     ...describedConstraintFields(target).shape,
-    reusePrevention: ReusePreventionSchema.optional().describe(SecretValidationRules.REUSE_PREVENTION.reusePrevention)
+    uniqueAcrossLastVersions: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS)
+      .optional()
+      .describe(SecretValidationRules.REUSE_PREVENTION.uniqueAcrossLastVersions),
+    uniqueWithinScope: z.boolean().optional().describe(SecretValidationRules.REUSE_PREVENTION.uniqueWithinScope)
   });
 
 export type TConstraints = z.infer<typeof BaseConstraintsSchema>;
 
-export type TReusePrevention = { previousVersions?: number; otherSecretsInScope?: boolean };
-
 // a secret value additionally supports being checked against values it has already had
-export type TValueConstraints = TConstraints & { reusePrevention?: TReusePrevention };
+export type TValueConstraints = TConstraints & { uniqueAcrossLastVersions?: number; uniqueWithinScope?: boolean };
 
 // true when at least one constraint field is set across every target on the rule
 export const hasAnyConstraint = (targets: (Record<string, unknown> | null | undefined)[]) =>

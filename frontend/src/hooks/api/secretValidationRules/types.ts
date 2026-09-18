@@ -46,13 +46,9 @@ export type TConstraints = {
   requiredSuffix?: string;
 };
 
-export type TReusePrevention = {
-  previousVersions?: number;
-  otherSecretsInScope?: boolean;
-};
-
 export type TValueConstraints = TConstraints & {
-  reusePrevention?: TReusePrevention;
+  uniqueAcrossLastVersions?: number;
+  uniqueWithinScope?: boolean;
 };
 
 export type TStaticSecretsRuleConfig = {

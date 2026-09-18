@@ -52,7 +52,7 @@ import { TStaticSecretsRuleConfig } from "./static-secrets";
 
 /** Only static-secret rules can ask for a value no other secret already holds. */
 const $preventsReuseAcrossSecrets = (config: TSecretValidationRuleConfig) =>
-  Boolean((config as TStaticSecretsRuleConfig).valueConstraints?.reusePrevention?.otherSecretsInScope);
+  Boolean((config as TStaticSecretsRuleConfig).valueConstraints?.uniqueWithinScope);
 
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
@@ -503,7 +503,7 @@ export const secretValidationRuleServiceFactory = ({
     // reading version history is only worth it when a covering rule actually forbids reuse
     const versionsToCheck = Math.max(
       0,
-      ...coveringRules.map((rule) => rule.config.valueConstraints?.reusePrevention?.previousVersions ?? 0)
+      ...coveringRules.map((rule) => rule.config.valueConstraints?.uniqueAcrossLastVersions ?? 0)
     );
 
     const previousValuesBySecretId: Record<string, string[]> = {};

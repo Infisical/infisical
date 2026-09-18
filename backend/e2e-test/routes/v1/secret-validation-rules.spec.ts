@@ -22,7 +22,7 @@ describe("Secret validation rules", () => {
         name: "no-duplicate-values-in-prod",
         environment: PROD_ENV,
         secretPath: "/",
-        valueConstraints: { reusePrevention: { otherSecretsInScope: true } },
+        valueConstraints: { uniqueWithinScope: true },
         authToken
       });
     });

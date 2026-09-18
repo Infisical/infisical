@@ -300,8 +300,8 @@ export type TRule = TRuleForm & {
   isActive: boolean;
 };
 
-// Each constraint kind maps to one field on the API's constraint object. Reuse prevention is grouped
-// under its own key, so it is handled on its own rather than by a field name.
+// Each constraint kind maps to one field on the API's constraint object. Reuse prevention spans two
+// fields under a single form row, so it is handled on its own rather than by a field name.
 const CONSTRAINT_FIELDS: Record<string, keyof TConstraints> = {
   [ConstraintType.MinLength]: "minLength",
   [ConstraintType.MaxLength]: "maxLength",
@@ -326,10 +326,8 @@ export const groupConstraintsByTarget = (constraints: TConstraint[]) => {
       if (type === ConstraintType.PreventValueReuse) {
         grouped[appliesTo] = {
           ...current,
-          reusePrevention: {
-            ...(checkPreviousVersions && { previousVersions: Number(value) }),
-            ...(checkOtherSecretsInScope && { otherSecretsInScope: true })
-          }
+          ...(checkPreviousVersions && { uniqueAcrossLastVersions: Number(value) }),
+          ...(checkOtherSecretsInScope && { uniqueWithinScope: true })
         };
       } else {
         grouped[appliesTo] = {
@@ -347,20 +345,20 @@ export const flattenConstraints = (
   constraints: TValueConstraints | null | undefined,
   appliesTo: ConstraintTarget
 ): TConstraint[] => {
-  const { reusePrevention, ...fields } = constraints ?? {};
+  const { uniqueAcrossLastVersions, uniqueWithinScope, ...fields } = constraints ?? {};
 
   const flattened: TConstraint[] = Object.entries(fields)
     .filter(([, value]) => value !== undefined)
     .map(([field, value]) => ({ type: CONSTRAINT_TYPES[field], appliesTo, value: String(value) }));
 
-  // `otherSecretsInScope` is absent on rules saved before the two checks were merged.
-  if (reusePrevention?.previousVersions !== undefined || reusePrevention?.otherSecretsInScope) {
+  // `uniqueWithinScope` is absent on rules saved before the two checks were merged.
+  if (uniqueAcrossLastVersions !== undefined || uniqueWithinScope) {
     flattened.push({
       type: ConstraintType.PreventValueReuse,
       appliesTo,
-      value: String(reusePrevention.previousVersions ?? DEFAULT_PREVENT_VALUE_REUSE_VERSIONS),
-      checkPreviousVersions: reusePrevention.previousVersions !== undefined,
-      checkOtherSecretsInScope: Boolean(reusePrevention.otherSecretsInScope)
+      value: String(uniqueAcrossLastVersions ?? DEFAULT_PREVENT_VALUE_REUSE_VERSIONS),
+      checkPreviousVersions: uniqueAcrossLastVersions !== undefined,
+      checkOtherSecretsInScope: Boolean(uniqueWithinScope)
     });
   }
 
