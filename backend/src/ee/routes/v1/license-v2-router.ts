@@ -197,6 +197,10 @@ const BillingV2BreakdownScopeSchema = z.object({
   orgId: z.string().describe("ID of the organization the units were created in."),
   name: z.string().describe("Display name of the organization."),
   isRoot: z.boolean().describe("Whether this is the root organization of the billing tree."),
+  parentOrgName: z
+    .string()
+    .nullable()
+    .describe("Display name of the root organization this sub-organization belongs to; null on a root org."),
   count: z.number().describe("Metered units attributed to this organization."),
   orgLevelCount: z.number().describe("Units created on the organization itself rather than in a project."),
   projects: z

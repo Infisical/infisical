@@ -371,6 +371,9 @@ export type BillingV2BreakdownScope = {
   orgId: string;
   name: string;
   isRoot: boolean;
+  // Name of the root org this sub-org belongs to; null on a root itself. The instance-wide breakdown
+  // lists several trees flat, so a sub-org row is unattributable without it.
+  parentOrgName: string | null;
   count: number;
   // Units created on the org itself rather than inside one of its projects. Always 0 for a dimension
   // with no project attribution (see hasProjectDetail).

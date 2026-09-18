@@ -90,9 +90,10 @@ type ScopeRowProps = {
   scopedCount: number;
   unit: string;
   hasProjectDetail: boolean;
+  showParentOrg: boolean;
 };
 
-const ScopeRow = ({ scope, scopedCount, unit, hasProjectDetail }: ScopeRowProps) => {
+const ScopeRow = ({ scope, scopedCount, unit, hasProjectDetail, showParentOrg }: ScopeRowProps) => {
   const scopeTint = scope.isRoot ? "bg-org/85" : "bg-sub-org/85";
   const orgLevelTint = "bg-neutral/85";
   const canExpand = hasProjectDetail && scope.count > 0;
@@ -105,7 +106,14 @@ const ScopeRow = ({ scope, scopedCount, unit, hasProjectDetail }: ScopeRowProps)
           <ScopeIcon
             className={cn("size-3.5 shrink-0", scope.isRoot ? "text-org" : "text-sub-org")}
           />
-          <span className="truncate">{scope.name}</span>
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate">{scope.name}</span>
+            {showParentOrg && scope.parentOrgName && (
+              <span className="min-w-0 truncate text-xs font-normal text-muted">
+                {scope.parentOrgName}
+              </span>
+            )}
+          </span>
         </span>
         <CountShare count={scope.count} total={scopedCount} unitLabel={pluralizeUnit(unit)} />
       </div>
@@ -399,6 +407,7 @@ const BreakdownBody = ({
               scopedCount={scopedCount}
               unit={unit}
               hasProjectDetail={hasProjectDetail}
+              showParentOrg={isInstanceScope}
             />
           )}
 
@@ -453,6 +462,7 @@ const BreakdownBody = ({
                           scopedCount={scopedCount}
                           unit={unit}
                           hasProjectDetail={hasProjectDetail}
+                          showParentOrg={isInstanceScope}
                         />
                       ))}
                     </div>

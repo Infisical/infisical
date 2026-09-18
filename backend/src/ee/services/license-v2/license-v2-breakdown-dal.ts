@@ -6,7 +6,7 @@ import { orgTreeIds } from "@app/lib/knex";
 
 export type TLicenseV2BreakdownDALFactory = ReturnType<typeof licenseV2BreakdownDALFactory>;
 
-export type TScopeOrgRow = { id: string; name: string; isRoot: boolean };
+export type TScopeOrgRow = { id: string; name: string; isRoot: boolean; rootOrgId: string | null };
 export type TRootOrgRow = { id: string; name: string; slug: string };
 
 export type TScopeProjectRow = { id: string; name: string; orgId: string };
@@ -20,7 +20,7 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
         .select("id", "name", "rootOrgId")) as { id: string; name: string; rootOrgId: string | null }[];
 
       // A root org is the one carrying no rootOrgId; every sub-org points back at it.
-      return rows.map((row) => ({ id: row.id, name: row.name, isRoot: !row.rootOrgId }));
+      return rows.map((row) => ({ id: row.id, name: row.name, isRoot: !row.rootOrgId, rootOrgId: row.rootOrgId }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org tree names for usage breakdown" });
     }
@@ -37,7 +37,7 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
         rootOrgId: string | null;
       }[];
 
-      return rows.map((row) => ({ id: row.id, name: row.name, isRoot: !row.rootOrgId }));
+      return rows.map((row) => ({ id: row.id, name: row.name, isRoot: !row.rootOrgId, rootOrgId: row.rootOrgId }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org names for usage breakdown" });
     }

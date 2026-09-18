@@ -875,11 +875,21 @@ export const licenseV2ServiceFactory = ({
     type TScopeAccumulator = {
       name: string;
       isRoot: boolean;
+      rootOrgId: string | null;
       orgLevelCount: number;
       projects: BillingV2BreakdownProject[];
     };
+    const orgNameById = new Map(orgs.map((org) => [org.id, org.name]));
     const byOrg = new Map<string, TScopeAccumulator>();
-    orgs.forEach((org) => byOrg.set(org.id, { name: org.name, isRoot: org.isRoot, orgLevelCount: 0, projects: [] }));
+    orgs.forEach((org) =>
+      byOrg.set(org.id, {
+        name: org.name,
+        isRoot: org.isRoot,
+        rootOrgId: org.rootOrgId,
+        orgLevelCount: 0,
+        projects: []
+      })
+    );
 
     rows.forEach((row) => {
       let target = byOrg.get(row.orgId);
@@ -887,7 +897,7 @@ export const licenseV2ServiceFactory = ({
         // An organization that left the tree between the count and this read still holds metered
         // units. Folding them into the root would inflate the figure the root org's own usage view
         // shows, so the scope keeps its own row
-        target = { name: "Deleted organization", isRoot: false, orgLevelCount: 0, projects: [] };
+        target = { name: "Deleted organization", isRoot: false, rootOrgId: null, orgLevelCount: 0, projects: [] };
         byOrg.set(row.orgId, target);
       }
       if (!row.projectId) {
@@ -912,6 +922,7 @@ export const licenseV2ServiceFactory = ({
           orgId,
           name: scope.name,
           isRoot: scope.isRoot,
+          parentOrgName: scope.rootOrgId ? (orgNameById.get(scope.rootOrgId) ?? null) : null,
           count,
           orgLevelCount: scope.orgLevelCount,
           projects

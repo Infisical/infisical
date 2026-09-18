@@ -379,6 +379,7 @@ export type BillingV2BreakdownScope = {
   orgId: string;
   name: string;
   isRoot: boolean;
+  parentOrgName: string | null;
   count: number;
   orgLevelCount: number;
   projects: BillingV2BreakdownProject[];
