@@ -49,6 +49,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Alert,
@@ -1101,6 +1102,7 @@ const OverviewPageContent = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
+    "addSecretSync",
     "deleteEnv",
     "requestAccess",
     "importFromVault",
@@ -2615,21 +2617,11 @@ const OverviewPageContent = () => {
         text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
       });
     },
-    onCopySecrets: () =>
-      handleOpenCopySecrets({
-        origin: "toolbar",
-        sourcePath: secretPath,
-        sourceEnvironmentSlug: singleVisibleEnv?.slug ?? ""
-      }),
-    canCopySecrets: canReadSecrets || canReadFolders,
-    isCopySecretsDisabled: hasPendingBatchChanges,
-    copySecretsDisabledReason: hasPendingBatchChanges
-      ? "Commit or discard pending changes first"
-      : undefined,
     isDyanmicSecretAvailable: visibleDynamicSecretEnvs.length > 0,
     isSecretRotationAvailable: visibleSecretRotationEnvs.length > 0,
     isHoneyTokenAvailable: true,
     onAddSecretImport: handleAddSecretImport,
+    onAddSecretSync: () => handlePopUpOpen("addSecretSync"),
     isSecretImportAvailable: visibleSecretImportEnvs.length > 0,
     isSingleEnvSelected: isSingleEnvView,
     hasVaultConnection,
@@ -3693,6 +3685,10 @@ const OverviewPageContent = () => {
             text: "Secret import replication requires an upgraded plan."
           })
         }
+      />
+      <CreateSecretSyncModal
+        isOpen={popUp.addSecretSync.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
       />
       {subscription && (
         <UpgradePlanModal
