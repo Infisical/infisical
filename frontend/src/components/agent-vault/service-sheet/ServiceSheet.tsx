@@ -281,6 +281,17 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         return;
       }
 
+      // Thrown after the stored halves are merged in, so the form cannot have known: it is told which
+      // halves exist only as "unchanged", never whether one of them is empty.
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message.includes("needs a username")
+      ) {
+        setError("username", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
+        return;
+      }
+
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
         const STEP_OF_FIELD: Record<string, ServiceStep> = {
           name: ServiceStep.Details,

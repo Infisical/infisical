@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, XIcon } from "lucide-react";
 
 import {
   Alert,
@@ -54,7 +54,8 @@ export const SecretInput = <TName extends SecretName>({
   placeholder,
   isError,
   isUntouched,
-  isRequired
+  hasStoredSecret,
+  canBeCleared
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -63,10 +64,22 @@ export const SecretInput = <TName extends SecretName>({
   placeholder: string;
   isError: boolean;
   isUntouched: boolean;
-  /** Whether an empty value is a real one. Only a field that refuses empty can restore the sentinel. */
-  isRequired: boolean;
+  /** Whether a stored secret stands behind the sentinel. False on create, and once the credential
+   *  type moves away from the stored one, where there is nothing to restore or clear. */
+  hasStoredSecret: boolean;
+  /** Whether empty is a value this field can hold. Only such a field offers the clear button. */
+  canBeCleared: boolean;
 }) => {
+  const { setFocus } = useFormContext<TServiceForm>();
   const [isVisible, setIsVisible] = useState(false);
+  const [isCleared, setIsCleared] = useState(false);
+
+  // The sheet is not unmounted between opens, so the flag has to follow the value back to the sentinel.
+  useEffect(() => {
+    if (isUntouched) setIsCleared(false);
+  }, [isUntouched]);
+
+  const lowerLabel = label.toLowerCase();
 
   return (
     <InputGroup>
@@ -74,23 +87,40 @@ export const SecretInput = <TName extends SecretName>({
         {...field}
         aria-label={ariaLabel}
         type={isVisible ? "text" : "password"}
+        onChange={(event) => {
+          setIsCleared(false);
+          field.onChange(event);
+        }}
         onFocus={() => {
           if (isUntouched) field.onChange("");
         }}
-        // A required field cannot mean anything by empty, so leaving it that way restores the stored
-        // secret rather than wiping it. Where empty is a real value, it is left alone.
+        // Empty reads the same whether the secret was meant to go or the field was only clicked into,
+        // so the clear button is made the one way to say it and passing through loses nothing.
         onBlur={() => {
-          if (isRequired && !field.value) field.onChange(UNCHANGED_SECRET);
+          if (hasStoredSecret && !field.value && !isCleared) field.onChange(UNCHANGED_SECRET);
           field.onBlur();
         }}
         placeholder={placeholder}
         isError={isError}
       />
       <InputGroupAddon align="inline-end">
+        {canBeCleared && hasStoredSecret && (
+          <InputGroupButton
+            isDisabled={isCleared}
+            aria-label={`Clear ${lowerLabel}`}
+            onClick={() => {
+              setIsCleared(true);
+              field.onChange("");
+              setFocus(field.name);
+            }}
+          >
+            <XIcon />
+          </InputGroupButton>
+        )}
         <InputGroupButton
           // A stored credential is never returned, so until it is replaced there is nothing to reveal.
-          isDisabled={isUntouched}
-          aria-label={`${isVisible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+          isDisabled={isUntouched || !field.value}
+          aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
           onClick={() => setIsVisible((prev) => !prev)}
         >
           {isVisible ? <EyeOffIcon /> : <EyeIcon />}
@@ -115,6 +145,8 @@ export const CredentialFields = ({ storedType }: Props) => {
   const isBasic = credentialType === AgentVaultCredentialType.Basic;
   const isUntouched = secret === UNCHANGED_SECRET;
   const isUsernameUntouched = username === UNCHANGED_SECRET;
+  // A stored secret belongs to the type it was saved under, so switching type leaves nothing behind it.
+  const hasStoredSecret = Boolean(storedType) && credentialType === storedType;
 
   useEffect(() => {
     if (!storedType || credentialType === storedType) return;
@@ -136,7 +168,8 @@ export const CredentialFields = ({ storedType }: Props) => {
               placeholder={isBasic ? "Enter the password" : "Enter the token"}
               isError={Boolean(fieldState.error)}
               isUntouched={isUntouched}
-              isRequired={!isBasic}
+              hasStoredSecret={hasStoredSecret}
+              canBeCleared={isBasic}
             />
             <FieldError>{fieldState.error?.message}</FieldError>
           </FieldContent>
@@ -222,7 +255,8 @@ export const CredentialFields = ({ storedType }: Props) => {
                     placeholder="Enter the username"
                     isError={Boolean(fieldState.error)}
                     isUntouched={isUsernameUntouched}
-                    isRequired={false}
+                    hasStoredSecret={hasStoredSecret}
+                    canBeCleared
                   />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>

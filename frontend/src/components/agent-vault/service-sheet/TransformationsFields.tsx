@@ -65,7 +65,7 @@ const RemoveRowButton = ({
 );
 
 export const TransformationsFields = () => {
-  const { control } = useFormContext<TServiceForm>();
+  const { control, getValues } = useFormContext<TServiceForm>();
   const customHeaders = useFieldArray({ control, name: "customHeaders" });
   const substitutions = useFieldArray({ control, name: "substitutions" });
   const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
@@ -149,7 +149,8 @@ export const TransformationsFields = () => {
                                 placeholder="Enter the value"
                                 isError={Boolean(fieldState.error)}
                                 isUntouched={field.value === UNCHANGED_SECRET}
-                                isRequired
+                                hasStoredSecret={Boolean(getValues(`customHeaders.${index}.id`))}
+                                canBeCleared={false}
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>
@@ -243,7 +244,8 @@ export const TransformationsFields = () => {
                                 placeholder="Enter the real value"
                                 isError={Boolean(fieldState.error)}
                                 isUntouched={field.value === UNCHANGED_SECRET}
-                                isRequired
+                                hasStoredSecret={Boolean(getValues(`substitutions.${index}.id`))}
+                                canBeCleared={false}
                               />
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>
