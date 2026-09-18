@@ -95,6 +95,7 @@ type FeatureSet struct {
 	EnforceMfa                   bool       `json:"enforceMfa"`
 	ProjectTemplates             bool       `json:"projectTemplates"`
 	KMIP                         bool       `json:"kmip"`
+	KmsPQC                       bool       `json:"kmsPqc"`
 	Gateway                      bool       `json:"gateway"`
 	SecretScanning               bool       `json:"secretScanning"`
 	EnterpriseSecretSyncs        bool       `json:"enterpriseSecretSyncs"`

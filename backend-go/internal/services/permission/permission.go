@@ -89,6 +89,11 @@ type Service struct {
 	db     pg.DB
 }
 
+// PermissionService provides project permission checks.
+type PermissionService interface {
+	GetProjectPermission(ctx context.Context, args *GetProjectPermissionArgs) (*GetProjectPermissionResult, error)
+}
+
 // NewService creates a new permission service instance.
 func NewService(_ context.Context, logger *slog.Logger, deps *Deps) *Service {
 	return &Service{

@@ -131,6 +131,34 @@ func TestSign_ECDSA(t *testing.T) {
 	}
 }
 
+func TestSign_MLDSA(t *testing.T) {
+	tests := []struct {
+		keyAlgorithm  sign.AsymmetricKeyAlgorithm
+		signAlgorithm sign.SigningAlgorithm
+	}{
+		{sign.MLDSA44, sign.MLDSASign44},
+		{sign.MLDSA65, sign.MLDSASign65},
+		{sign.MLDSA87, sign.MLDSASign87},
+	}
+
+	for _, test := range tests {
+		t.Run(string(test.keyAlgorithm), func(t *testing.T) {
+			privPEM, err := sign.GeneratePrivateKey(test.keyAlgorithm)
+			if err != nil {
+				t.Fatalf("GeneratePrivateKey(%s): %v", test.keyAlgorithm, err)
+			}
+
+			sig, err := sign.Sign([]byte("ML-DSA test"), privPEM, test.signAlgorithm, false)
+			if err != nil {
+				t.Fatalf("Sign(%s): %v", test.signAlgorithm, err)
+			}
+			if len(sig) == 0 {
+				t.Fatalf("Sign(%s) returned an empty signature", test.signAlgorithm)
+			}
+		})
+	}
+}
+
 func TestSign_AlgorithmKeyMismatch(t *testing.T) {
 	rsaKey, _ := sign.GeneratePrivateKey(sign.RSA4096)
 	ecKey, _ := sign.GeneratePrivateKey(sign.ECCP256)

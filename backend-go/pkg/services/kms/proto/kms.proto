@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package kms;
+
+option go_package = "github.com/infisical/api/pkg/services/kms/gen/proto;kmsproto";
+
+service KMSService {
+  rpc CreateKmsKey(CreateKmsKeyRequest) returns (CreateKmsKeyResponse);
+  rpc UpdateKmsKey(UpdateKmsKeyRequest) returns (KmsKeyResponse);
+  rpc RotateKmsKey(RotateKmsKeyRequest) returns (KmsKeyResponse);
+  rpc DeleteKmsKey(DeleteKmsKeyRequest) returns (KmsKeyResponse);
+  rpc ListKmsKeys(ListKmsKeysRequest) returns (ListKmsKeysResponse);
+  rpc GetKmsKeyById(GetKmsKeyByIdRequest) returns (KmsKeyResponse);
+  rpc GetKmsKeyByName(GetKmsKeyByNameRequest) returns (KmsKeyResponse);
+  rpc EncryptWithKmsKey(EncryptWithKmsKeyRequest) returns (EncryptWithKmsKeyResponse);
+  rpc DecryptWithKmsKey(DecryptWithKmsKeyRequest) returns (DecryptWithKmsKeyResponse);
+  rpc GetKmsKeyPublicKey(GetKmsKeyPublicKeyRequest) returns (GetKmsKeyPublicKeyResponse);
+  rpc GetKmsKeyPrivateKey(GetKmsKeyPrivateKeyRequest) returns (GetKmsKeyPrivateKeyResponse);
+  rpc BulkImportKmsKeys(BulkImportKmsKeysRequest) returns (BulkImportKmsKeysResponse);
+  rpc BulkExportKmsKeyPrivateKeys(BulkExportKmsKeyPrivateKeysRequest) returns (BulkExportKmsKeyPrivateKeysResponse);
+  rpc ListKmsKeySigningAlgorithms(ListKmsKeySigningAlgorithmsRequest) returns (ListKmsKeySigningAlgorithmsResponse);
+  rpc SignWithKmsKey(SignWithKmsKeyRequest) returns (SignWithKmsKeyResponse);
+  rpc VerifyWithKmsKey(VerifyWithKmsKeyRequest) returns (VerifyWithKmsKeyResponse);
+  rpc GenerateMacWithKmsKey(GenerateMacWithKmsKeyRequest) returns (GenerateMacWithKmsKeyResponse);
+  rpc VerifyMacWithKmsKey(VerifyMacWithKmsKeyRequest) returns (VerifyMacWithKmsKeyResponse);
+}
+
+message KmsKey {
+  string id = 1;
+  optional string description = 2;
+  bool is_disabled = 3;
+  bool is_reserved = 4;
+  string org_id = 5;
+  string name = 6;
+  string created_at = 7;
+  string updated_at = 8;
+  optional string project_id = 9;
+  string key_usage = 10;
+  string algorithm = 11;
+  string encryption_algorithm = 12;
+  uint32 version = 13;
+  bool is_exportable = 14;
+  bool has_delete_protection = 15;
+  optional string kmip_metadata = 16;
+}
+message KmsKeyResponse { KmsKey key = 1; }
+message CreateKmsKeyResponse {
+  string key_id = 1;
+  string created_at = 2;
+  string updated_at = 3;
+}
+message CreateKmsKeyRequest {
+  string project_id = 1;
+  string name = 2;
+  optional string description = 3;
+  optional string key_usage = 4;
+  optional string algorithm = 5;
+  optional string encryption_algorithm = 6;
+  optional bool is_exportable = 7;
+  optional bool has_delete_protection = 8;
+  string org_id = 9;
+}
+message UpdateKmsKeyRequest {
+  string key_id = 1;
+  optional string name = 2;
+  optional bool is_disabled = 3;
+  optional string description = 4;
+  optional bool has_delete_protection = 5;
+}
+message RotateKmsKeyRequest { string key_id = 1; }
+message DeleteKmsKeyRequest { string key_id = 1; }
+message GetKmsKeyByIdRequest { string key_id = 1; }
+message GetKmsKeyByNameRequest { string key_name = 1; string project_id = 2; }
+message ListKmsKeysRequest {
+  string project_id = 1;
+  uint32 offset = 2;
+  uint32 limit = 3;
+  optional string order_by = 4;
+  optional string order_direction = 5;
+  optional string search = 6;
+}
+message ListKmsKeysResponse { repeated KmsKey keys = 1; uint32 total_count = 2; }
+message EncryptWithKmsKeyRequest { string key_id = 1; string plaintext = 2; }
+message EncryptWithKmsKeyResponse { string ciphertext = 1; }
+message DecryptWithKmsKeyRequest { string key_id = 1; string ciphertext = 2; }
+message DecryptWithKmsKeyResponse { string plaintext = 1; }
+message GetKmsKeyPublicKeyRequest { string key_id = 1; }
+message GetKmsKeyPublicKeyResponse { string public_key = 1; }
+message GetKmsKeyPrivateKeyRequest { string key_id = 1; }
+message GetKmsKeyPrivateKeyResponse { string private_key = 1; }
+message BulkImportKmsKeysRequest { string project_id = 1; repeated KmsKeyImportEntry keys = 2; }
+message KmsKeyImportEntry {
+  string name = 1;
+  string key_usage = 2;
+  optional string algorithm = 3;
+  optional string encryption_algorithm = 4;
+  string key_material = 5;
+  optional bool is_exportable = 6;
+  optional bool has_delete_protection = 7;
+}
+message BulkImportKmsKeysResponse { repeated ImportedKmsKey keys = 1; repeated KmsKeyImportError errors = 2; }
+message ImportedKmsKey { string id = 1; string name = 2; }
+message KmsKeyImportError { string name = 1; string message = 2; }
+message BulkExportKmsKeyPrivateKeysRequest { repeated string key_ids = 1; }
+message BulkExportKmsKeyPrivateKeysResponse { repeated ExportedKmsKeyPrivateKey keys = 1; }
+message ExportedKmsKeyPrivateKey {
+  string key_id = 1;
+  string name = 2;
+  string key_usage = 3;
+  string algorithm = 4;
+  string private_key = 5;
+  optional string public_key = 6;
+}
+message ListKmsKeySigningAlgorithmsRequest { string key_id = 1; }
+message ListKmsKeySigningAlgorithmsResponse { repeated string signing_algorithms = 1; }
+message SignWithKmsKeyRequest { string key_id = 1; string signing_algorithm = 2; optional bool is_digest = 3; string data = 4; }
+message SignWithKmsKeyResponse { string signature = 1; string key_id = 2; string signing_algorithm = 3; }
+message VerifyWithKmsKeyRequest { string key_id = 1; optional bool is_digest = 2; string data = 3; string signature = 4; string signing_algorithm = 5; }
+message VerifyWithKmsKeyResponse { bool signature_valid = 1; string key_id = 2; string signing_algorithm = 3; }
+message GenerateMacWithKmsKeyRequest { string key_id = 1; string data = 2; }
+message GenerateMacWithKmsKeyResponse { string mac = 1; string key_id = 2; string mac_algorithm = 3; }
+message VerifyMacWithKmsKeyRequest { string key_id = 1; string data = 2; string mac = 3; }
+message VerifyMacWithKmsKeyResponse { bool mac_valid = 1; string key_id = 2; string mac_algorithm = 3; }

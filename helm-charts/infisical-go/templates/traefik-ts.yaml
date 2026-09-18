@@ -1,0 +1,15 @@
+{{- if .Values.benchmarkTraefik.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "infisical.fullname" . }}-benchmark
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`{{ .Values.benchmarkTraefik.host }}`) && PathRegexp(`^/api(?:/|$)`)
+      kind: Rule
+      services:
+        - name: {{ include "infisical.fullname" . }}
+          port: 8080
+{{- end }}

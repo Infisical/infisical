@@ -1,0 +1,31 @@
+{{- if and .Values.backendGo.enabled (eq .Values.backendGo.loadBalancer.provider "traefik") }}
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: {{ include "infisical-go.backendGoFullname" . }}-weighted
+spec:
+  weighted:
+    services:
+      - name: {{ include "infisical-go.backendGoFullname" . }}-0
+        port: {{ .Values.backendGo.service.port }}
+        weight: {{ index .Values.backendGo.loadBalancer.weights 0 }}
+      - name: {{ include "infisical-go.backendGoFullname" . }}-1
+        port: {{ .Values.backendGo.service.port }}
+        weight: {{ index .Values.backendGo.loadBalancer.weights 1 }}
+{{- if .Values.backendGo.ingress.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "infisical-go.backendGoFullname" . }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.backendGo.ingress.entryPoints | nindent 4 }}
+  routes:
+    - match: Host(`{{ required "backendGo.ingress.host is required when ingress is enabled" .Values.backendGo.ingress.host }}`) && PathPrefix(`/api-go`)
+      kind: Rule
+      services:
+        - name: {{ include "infisical-go.backendGoFullname" . }}-weighted
+          kind: TraefikService
+{{- end }}
+{{- end }}

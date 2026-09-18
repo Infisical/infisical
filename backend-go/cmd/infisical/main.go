@@ -79,7 +79,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	defer errutil.DeferErr(ctx, queueSvc.Close, "closing queue")
 
 	// Initialize License service early (needed for HSM license check).
-	licenseSvc := license.NewService(ctx, logger, &license.Deps{
+	licenseSvc := license.NewServiceFromConfig(ctx, logger, &license.Deps{
 		Config:   cfg,
 		DB:       db,
 		KeyStore: ks,

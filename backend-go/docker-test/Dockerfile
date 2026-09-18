@@ -1,7 +1,7 @@
 # Base image for running Go integration tests that require SoftHSM2.
 # Used by testcontainers to run HSM tests inside a container.
 
-FROM golang:1.26-alpine
+FROM golang:1.27-alpine
 
 RUN apk add --no-cache \
     softhsm \

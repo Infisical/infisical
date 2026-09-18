@@ -1,0 +1,14 @@
+{
+  "measurement": "KMS Raft proposal queued to cache-apply completion",
+  "mode_precision_ms": 0.1,
+  "kms_replicas": [
+    "infisical-go-kms-0",
+    "infisical-go-kms-1",
+    "infisical-go-kms-2"
+  ],
+  "sampled_requests": 0,
+  "fully_converged_requests": 0,
+  "per_replica_apply": null,
+  "three_replica_convergence": null,
+  "requests": []
+}

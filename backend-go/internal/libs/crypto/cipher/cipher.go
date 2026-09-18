@@ -13,6 +13,14 @@ const (
 	tagLength = 16
 )
 
+type SymmetricKeyAlgorithm string
+
+const (
+	AESGCM256 SymmetricKeyAlgorithm = "aes-256-gcm"
+	AESGCM128 SymmetricKeyAlgorithm = "aes-128-gcm"
+)
+
+// todo: use pool for ivlength
 // SymmetricEncrypt encrypts plaintext with a 128-bit or 256-bit AES key using AES-GCM.
 // Returns a single blob: IV (12) || ciphertext || GCM auth tag (16).
 func SymmetricEncrypt(plaintext, key []byte) ([]byte, error) {
@@ -61,4 +69,31 @@ func SymmetricDecrypt(blob, key []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
+}
+
+func getKeyLengthForAlgorithm(algorithm SymmetricKeyAlgorithm) (uint, error) {
+	switch algorithm {
+	case AESGCM128:
+		return 16, nil // 128 bits
+	case AESGCM256:
+		return 32, nil // 256 bits
+	default:
+		return 0, fmt.Errorf("unsupported symmetric key algorithm: %s", algorithm)
+	}
+}
+
+// todo: allow pool reference to pick from sizes byte[16,32]
+func GenerateKeyMaterial(algorithm SymmetricKeyAlgorithm) ([]byte, error) {
+	keyLength, err := getKeyLengthForAlgorithm(algorithm)
+	if err != nil {
+		return nil, err
+	}
+
+	key := make([]byte, keyLength)
+
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		return nil, fmt.Errorf("generating symmetric key: %w", err)
+	}
+
+	return key, nil
 }

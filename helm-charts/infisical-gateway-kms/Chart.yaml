@@ -1,0 +1,11 @@
+apiVersion: v2
+name: infisical-gateway-kms
+description: Deploy an Infisical Gateway pair and a three-member KMS Raft cluster.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - infisical
+  - gateway
+  - kms
+  - raft

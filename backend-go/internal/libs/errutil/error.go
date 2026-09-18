@@ -1,6 +1,10 @@
 package errutil
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 // Error is the application-level error returned by services.
 // It carries an HTTP-visible name, message, status code, and optional
@@ -40,6 +44,131 @@ func (e *Error) Error() string {
 	}
 
 	return e.Message
+}
+
+// EncodedErrorCode acts as identifier for errors originating at services , preserved in encoding in grpc transit
+type EncodedErrorCode uint
+
+const (
+	// 4xx
+	BadRequestErrorCode   EncodedErrorCode = 400
+	UnauthorizedErrorCode EncodedErrorCode = 401
+	ForbiddenErrorCode    EncodedErrorCode = 403
+	NotFoundErrorCode     EncodedErrorCode = 404
+	RateLimitErrorCode    EncodedErrorCode = 429
+
+	// 5xx
+	InternalServerErrorCode EncodedErrorCode = 500
+	GatewayTimeoutErrorCode EncodedErrorCode = 504
+
+	// Application-specific 5xx classes.
+	// These cannot reuse 500 if we want to preserve error type.
+	DatabaseErrorCode      EncodedErrorCode = 550
+	UnidentifiedErrorCode  EncodedErrorCode = 551
+	CryptographicErrorCode EncodedErrorCode = 552
+)
+
+// encodes with internal codes into generic type error
+// use NewFromEnc to rebuild the original type Error
+func (e *Error) EncError() error {
+	if e == nil {
+		return nil
+	}
+
+	var code EncodedErrorCode
+
+	switch e.Name {
+	case "BadRequest":
+		code = BadRequestErrorCode
+
+	case "UnauthorizedError":
+		code = UnauthorizedErrorCode
+
+	case "ForbiddenError":
+		code = ForbiddenErrorCode
+
+	case "NotFound":
+		code = NotFoundErrorCode
+
+	case "RateLimitExceeded":
+		code = RateLimitErrorCode
+
+	case "InternalServerError":
+		code = InternalServerErrorCode
+
+	case "DatabaseError":
+		code = DatabaseErrorCode
+
+	case "UnidentifiedError":
+		code = UnidentifiedErrorCode
+
+	case "CryptographicError":
+		code = CryptographicErrorCode
+
+	case "GatewayTimeoutError":
+		code = GatewayTimeoutErrorCode
+
+	default:
+		// Unknown application errors are treated as internal errors.
+		code = InternalServerErrorCode
+	}
+
+	return fmt.Errorf("%d:%s", code, e.Message)
+}
+
+// NewFromEnc
+// unidenfied errors are parsed as InternalServerError
+func NewFromEnc(err error) *Error {
+	if err == nil {
+		return nil
+	}
+
+	codeStr, message, found := strings.Cut(err.Error(), ":")
+	if !found {
+		return Unidentified(err)
+	}
+
+	n, parseErr := strconv.ParseUint(codeStr, 10, 32)
+	if parseErr != nil {
+		return Unidentified(err)
+	}
+
+	code := EncodedErrorCode(n)
+
+	switch code {
+	case BadRequestErrorCode:
+		return BadRequest("%s", message)
+
+	case UnauthorizedErrorCode:
+		return Unauthorized("%s", message)
+
+	case ForbiddenErrorCode:
+		return Forbidden("%s", message)
+
+	case NotFoundErrorCode:
+		return NotFound("%s", message)
+
+	case RateLimitErrorCode:
+		return RateLimit("%s", message)
+
+	case InternalServerErrorCode:
+		return InternalServer("%s", message)
+
+	case DatabaseErrorCode:
+		return DatabaseErr("%s", message)
+
+	case UnidentifiedErrorCode:
+		return Unidentified(err)
+
+	case CryptographicErrorCode:
+		return CryptographicErr("%s", message)
+
+	case GatewayTimeoutErrorCode:
+		return GatewayTimeout("%s", message)
+
+	default:
+		return InternalServer("%s", message)
+	}
 }
 
 func (e *Error) Unwrap() error {
@@ -103,7 +232,21 @@ func DatabaseErr(format string, args ...any) *Error {
 	return &Error{Name: "DatabaseError", Status: 500, Message: fmt.Sprintf(format, args...)}
 }
 
+// CryptographicErr creates a 500 error for failures during cryptographic operations.
+func CryptographicErr(format string, args ...any) *Error {
+	return &Error{Name: "CryptographicError", Status: 500, Message: fmt.Sprintf(format, args...)}
+}
+
 // GatewayTimeout creates a 504 error.
 func GatewayTimeout(format string, args ...any) *Error {
 	return &Error{Name: "GatewayTimeoutError", Status: 504, Message: fmt.Sprintf(format, args...)}
+}
+
+func Unidentified(err error) *Error {
+	return &Error{
+		Name:    "UnidentifiedError",
+		Status:  500,
+		Message: "unidentified error",
+		Err:     err,
+	}
 }

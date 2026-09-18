@@ -32,6 +32,7 @@ func NewServer(services *api.Services, cfg *config.Config, logger *slog.Logger) 
 	// Register domain routes
 	api.RegisterPlatformRoutes(router, logger, services.Platform)
 	api.RegisterSecretManagerRoutes(router, logger, services.Platform, services.SecretManager)
+	api.RegisterCmekServiceRoutes(router, logger, services.Platform, services.Kms)
 
 	return &Server{
 		services: services,

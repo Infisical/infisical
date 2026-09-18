@@ -1,0 +1,64 @@
+# The gateway is the backend-go API service. Build and push both images to the
+# MicroK8s registry before installation.
+gateway:
+  enabled: true
+  image:
+    repository: localhost:32000/infisical-backend-go
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  # Shared runtime credentials/configuration for both backend-go pods. This
+  # may be the same Secret supplied to kms.existingSecret.
+  existingSecret: ""
+  resources:
+    requests:
+      cpu: 500m
+      memory: 200Mi
+    limits:
+      cpu: 500m
+      memory: 200Mi
+  service:
+    port: 4040
+  # Traefik weighted round-robin is implemented with one Service per StatefulSet pod.
+  loadBalancer:
+    provider: traefik
+    weights: [1, 1]
+  ingress:
+    enabled: false
+    host: ""
+    entryPoints: [websecure]
+    tls: true
+
+kms:
+  image:
+    # Build from backend-go/pkg/services/kms/Dockerfile and publish this image before install.
+    repository: localhost:32000/infisical-kms
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 3
+  grpcPort: 4040
+  raftPort: 2380
+  existingSecret: ""
+  secretKeys:
+    dbConnectionURI: DB_CONNECTION_URI
+    redisURL: REDIS_URL
+    encryptionKey: ENCRYPTION_KEY
+    authSecret: KMS_AUTH_SECRET
+  authHeader: x-infisical-kms-auth
+  logLevel: info
+  resources:
+    requests:
+      cpu: 500m
+      memory: 400Mi
+    limits:
+      cpu: 500m
+      memory: 400Mi
+  persistence:
+    storageClass: ""
+    size: 5Gi
+
+imagePullSecrets: []
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

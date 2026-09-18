@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -39,6 +41,17 @@ type Config struct {
 	InfisicalCloud                         bool
 	MaintenanceMode                        bool
 	DisableSecretScanning                  bool
+
+	// KMS gRPC sidecar client
+	KMSGRPCAddr          string
+	KMSGRPCPort          string
+	KMSGRPCTLSEnabled    bool
+	KMSGRPCTLSCACert     string
+	KMSGRPCTLSClientCert string
+	KMSGRPCTLSClientKey  string
+	KMSGRPCTLSServerName string
+	KMSAuthHeader        string
+	KMSAuthSecret        string
 
 	// Logging
 	LogLevel string
@@ -255,6 +268,14 @@ type Config struct {
 	GatewayRelayRealm               string
 	GatewayRelayAuthSecret          string
 	RelayAuthSecret                 string
+	GatewayDisableCache             bool
+	GatewayDisableRaft              bool
+	GatewayRaftNodeID               uint64
+	GatewayRaftPeersRaw             string
+	GatewayRaftWALDir               string
+	GatewayRaftSnapshotDir          string
+	GatewayRaftClusterBootstrapDone bool
+	GatewayRaftPeers                []string
 
 	// Dynamic Secrets
 	DynamicSecretAllowInternalIP    bool
@@ -405,6 +426,15 @@ func LoadConfig() (*Config, error) {
 		OptionalBool(&cfg.InfisicalCloud, "INFISICAL_CLOUD", false).
 		OptionalBool(&cfg.MaintenanceMode, "MAINTENANCE_MODE", false).
 		OptionalBool(&cfg.DisableSecretScanning, "DISABLE_SECRET_SCANNING", false).
+		Optional(&cfg.KMSGRPCAddr, "KMS_GRPC_ADDR", "127.0.0.1").
+		Optional(&cfg.KMSGRPCPort, "KMS_GRPC_PORT", "4040").
+		OptionalBool(&cfg.KMSGRPCTLSEnabled, "KMS_GRPC_TLS_ENABLED", false).
+		Optional(&cfg.KMSGRPCTLSCACert, "KMS_GRPC_TLS_CA_CERT", "").
+		Optional(&cfg.KMSGRPCTLSClientCert, "KMS_GRPC_TLS_CLIENT_CERT", "").
+		Optional(&cfg.KMSGRPCTLSClientKey, "KMS_GRPC_TLS_CLIENT_KEY", "").
+		Optional(&cfg.KMSGRPCTLSServerName, "KMS_GRPC_TLS_SERVER_NAME", "").
+		Optional(&cfg.KMSAuthHeader, "KMS_AUTH_HEADER", "").
+		Optional(&cfg.KMSAuthSecret, "KMS_AUTH_SECRET", "").
 
 		// Logging
 		Optional(&cfg.LogLevel, "LOG_LEVEL", "info").
@@ -621,6 +651,13 @@ func LoadConfig() (*Config, error) {
 		Optional(&cfg.GatewayRelayRealm, "GATEWAY_RELAY_REALM", "").
 		Optional(&cfg.GatewayRelayAuthSecret, "GATEWAY_RELAY_AUTH_SECRET", "").
 		Optional(&cfg.RelayAuthSecret, "RELAY_AUTH_SECRET", "").
+		OptionalBool(&cfg.GatewayDisableCache, "GATEWAY_DISABLE_CACHE", false).
+		OptionalBool(&cfg.GatewayDisableRaft, "GATEWAY_DISABLE_RAFT", true).
+		OptionalUint64(&cfg.GatewayRaftNodeID, "GATEWAY_RAFT_NODE_ID", 0).
+		Optional(&cfg.GatewayRaftPeersRaw, "GATEWAY_RAFT_PEERS", "").
+		Optional(&cfg.GatewayRaftWALDir, "GATEWAY_RAFT_WAL_DIR", "").
+		Optional(&cfg.GatewayRaftSnapshotDir, "GATEWAY_RAFT_SNAPSHOT_DIR", "").
+		OptionalBool(&cfg.GatewayRaftClusterBootstrapDone, "GATEWAY_RAFT_CLUSTER_BOOTSTRAP_DONE", false).
 
 		// Dynamic Secrets
 		OptionalBool(&cfg.DynamicSecretAllowInternalIP, "DYNAMIC_SECRET_ALLOW_INTERNAL_IP", false).
@@ -723,6 +760,13 @@ func LoadConfig() (*Config, error) {
 	if err := l.Err(); err != nil {
 		return nil, err
 	}
+	if cfg.GatewayRaftPeersRaw != "" {
+		for peer := range strings.SplitSeq(cfg.GatewayRaftPeersRaw, ",") {
+			if peer = strings.TrimSpace(peer); peer != "" {
+				cfg.GatewayRaftPeers = append(cfg.GatewayRaftPeers, peer)
+			}
+		}
+	}
 
 	// Parse NODE_ENV
 	nodeEnvStr := os.Getenv("NODE_ENV")
@@ -802,17 +846,17 @@ func LoadConfig() (*Config, error) {
 	var parseIssues []string
 	if cfg.RedisSentinelHosts != "" {
 		var issues []string
-		cfg.ParsedRedisSentinelHosts, issues = parseHostPortList(cfg.RedisSentinelHosts, "REDIS_SENTINEL_HOSTS")
+		cfg.ParsedRedisSentinelHosts, issues = ParseHostPortList(cfg.RedisSentinelHosts, "REDIS_SENTINEL_HOSTS")
 		parseIssues = append(parseIssues, issues...)
 	}
 	if cfg.RedisClusterHosts != "" {
 		var issues []string
-		cfg.ParsedRedisClusterHosts, issues = parseHostPortList(cfg.RedisClusterHosts, "REDIS_CLUSTER_HOSTS")
+		cfg.ParsedRedisClusterHosts, issues = ParseHostPortList(cfg.RedisClusterHosts, "REDIS_CLUSTER_HOSTS")
 		parseIssues = append(parseIssues, issues...)
 	}
 	if cfg.RedisReadReplicas != "" {
 		var issues []string
-		cfg.ParsedRedisReadReplicas, issues = parseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
+		cfg.ParsedRedisReadReplicas, issues = ParseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
 		parseIssues = append(parseIssues, issues...)
 	}
 	if len(parseIssues) > 0 {
@@ -831,8 +875,8 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("invalid environment variables:\n  - %s", strings.Join(e.Issues, "\n  - "))
 }
 
-// parseHostPortList parses a comma-separated "host:port" string into []RedisHostPort.
-func parseHostPortList(raw, envVar string) (result []RedisHostPort, issues []string) {
+// ParseHostPortList parses a comma-separated "host:port" string into []RedisHostPort.
+func ParseHostPortList(raw, envVar string) (result []RedisHostPort, issues []string) {
 	for entry := range strings.SplitSeq(raw, ",") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
@@ -840,12 +884,17 @@ func parseHostPortList(raw, envVar string) (result []RedisHostPort, issues []str
 		}
 		host, portStr, found := strings.Cut(entry, ":")
 		hp := RedisHostPort{Host: strings.TrimSpace(host)}
+		if hp.Host == "" {
+			issues = append(issues, fmt.Sprintf("%s: empty host in %q", envVar, entry))
+			continue
+		}
 		if found {
 			portStr = strings.TrimSpace(portStr)
-			if portStr == "" {
-				issues = append(issues, fmt.Sprintf("%s: empty port in %q", envVar, entry))
-			} else if _, err := fmt.Sscanf(portStr, "%d", &hp.Port); err != nil {
+			port, err := strconv.Atoi(portStr)
+			if portStr == "" || err != nil || port < 1 || port > 65535 {
 				issues = append(issues, fmt.Sprintf("%s: invalid port %q in %q", envVar, portStr, entry))
+			} else {
+				hp.Port = port
 			}
 		}
 		result = append(result, hp)
@@ -882,6 +931,30 @@ func (c *Config) validate() []string {
 
 	if c.AuthSecret == "" {
 		issues = append(issues, "AUTH_SECRET is required")
+	}
+
+	if !c.GatewayDisableCache && !c.GatewayDisableRaft {
+		if c.GatewayRaftNodeID == 0 {
+			issues = append(issues, "GATEWAY_RAFT_NODE_ID must be greater than zero when Gateway Raft is enabled")
+		}
+		if len(c.GatewayRaftPeers) == 0 {
+			issues = append(issues, "GATEWAY_RAFT_PEERS must contain at least one peer URL when Gateway Raft is enabled")
+		}
+		for _, peer := range c.GatewayRaftPeers {
+			peerURL, err := url.Parse(peer)
+			if err != nil || peerURL.Scheme == "" || peerURL.Host == "" {
+				issues = append(issues, fmt.Sprintf("GATEWAY_RAFT_PEERS contains an invalid peer URL %q", peer))
+			}
+		}
+		if c.GatewayRaftNodeID > uint64(len(c.GatewayRaftPeers)) {
+			issues = append(issues, fmt.Sprintf("GATEWAY_RAFT_NODE_ID %d exceeds the %d configured GATEWAY_RAFT_PEERS", c.GatewayRaftNodeID, len(c.GatewayRaftPeers)))
+		}
+		if strings.TrimSpace(c.GatewayRaftWALDir) == "" {
+			issues = append(issues, "GATEWAY_RAFT_WAL_DIR is required when Gateway Raft is enabled")
+		}
+		if strings.TrimSpace(c.GatewayRaftSnapshotDir) == "" {
+			issues = append(issues, "GATEWAY_RAFT_SNAPSHOT_DIR is required when Gateway Raft is enabled")
+		}
 	}
 
 	return issues

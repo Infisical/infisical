@@ -1,0 +1,94 @@
+{{- if .Values.gateway.enabled }}
+{{- if ne (int .Values.gateway.replicaCount) 2 }}
+{{- fail "gateway.replicaCount must remain 2 because the weighted round-robin services target gateway-0 and gateway-1" }}
+{{- end }}
+{{- if not .Values.gateway.existingSecret }}
+{{- fail "gateway.existingSecret is required and is shared by both backend-go pods" }}
+{{- end }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "infisical-gateway-kms.fullname" . }}-gateway
+  labels:
+    {{- include "infisical-gateway-kms.gatewayLabels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "infisical-gateway-kms.fullname" . }}-gateway-headless
+  replicas: 2
+  selector:
+    matchLabels:
+      {{- include "infisical-gateway-kms.gatewayLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infisical-gateway-kms.gatewayLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.gateway.existingSecret }}
+          env:
+            - name: GOMAXPROCS
+              value: "1"
+            - name: KMS_GRPC_ADDR
+              value: {{ include "infisical-gateway-kms.fullname" . }}-kms
+            - name: KMS_GRPC_PORT
+              value: {{ .Values.kms.grpcPort | quote }}
+            - name: KMS_AUTH_HEADER
+              value: {{ .Values.kms.authHeader | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.service.port }}
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infisical-gateway-kms.fullname" . }}-gateway-headless
+spec:
+  clusterIP: None
+  selector:
+    {{- include "infisical-gateway-kms.gatewayLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.gateway.service.port }}
+      targetPort: http
+{{- range $index := until 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infisical-gateway-kms.fullname" $ }}-gateway-{{ $index }}
+  labels:
+    {{- include "infisical-gateway-kms.gatewayLabels" $ | nindent 4 }}
+spec:
+  selector:
+    {{- include "infisical-gateway-kms.gatewayLabels" $ | nindent 4 }}
+    statefulset.kubernetes.io/pod-name: {{ include "infisical-gateway-kms.fullname" $ }}-gateway-{{ $index }}
+  ports:
+    - name: http
+      port: {{ $.Values.gateway.service.port }}
+      targetPort: http
+{{- end }}
+{{- end }}

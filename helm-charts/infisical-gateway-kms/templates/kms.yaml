@@ -1,0 +1,141 @@
+{{- if ne (int .Values.kms.replicaCount) 3 }}
+{{- fail "kms.replicaCount must remain 3 because this chart configures a three-member Raft cluster" }}
+{{- end }}
+{{- if not .Values.kms.existingSecret }}
+{{- fail "kms.existingSecret is required and must contain database, Redis, encryption, and KMS authentication values" }}
+{{- end }}
+{{- $fullname := include "infisical-gateway-kms.fullname" . }}
+{{- $peers := list }}
+{{- range $index := until 3 }}
+{{- $peers = append $peers (printf "http://%s-kms-%d.%s-kms-headless.%s.svc.cluster.local:%v" $fullname $index $fullname $.Release.Namespace $.Values.kms.raftPort) }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-kms-headless
+  labels:
+    {{- include "infisical-gateway-kms.kmsLabels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "infisical-gateway-kms.kmsLabels" . | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ .Values.kms.grpcPort }}
+    - name: raft
+      port: {{ .Values.kms.raftPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-kms
+  labels:
+    {{- include "infisical-gateway-kms.kmsLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "infisical-gateway-kms.kmsLabels" . | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ .Values.kms.grpcPort }}
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullname }}-kms
+  labels:
+    {{- include "infisical-gateway-kms.kmsLabels" . | nindent 4 }}
+spec:
+  serviceName: {{ $fullname }}-kms-headless
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "infisical-gateway-kms.kmsLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infisical-gateway-kms.kmsLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kms
+          image: "{{ .Values.kms.image.repository }}:{{ .Values.kms.image.tag }}"
+          imagePullPolicy: {{ .Values.kms.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.kms.grpcPort }}
+            - name: raft
+              containerPort: {{ .Values.kms.raftPort }}
+          env:
+            - name: GOMAXPROCS
+              value: "1"
+            - name: KMS_GRPC_ADDR
+              value: 0.0.0.0
+            - name: KMS_GRPC_PORT
+              value: {{ .Values.kms.grpcPort | quote }}
+            - name: KMS_AUTH_HEADER
+              value: {{ .Values.kms.authHeader | quote }}
+            - name: KMS_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kms.existingSecret }}
+                  key: {{ .Values.kms.secretKeys.authSecret }}
+            - name: DB_CONNECTION_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kms.existingSecret }}
+                  key: {{ .Values.kms.secretKeys.dbConnectionURI }}
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kms.existingSecret }}
+                  key: {{ .Values.kms.secretKeys.redisURL }}
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kms.existingSecret }}
+                  key: {{ .Values.kms.secretKeys.encryptionKey }}
+            - name: DISABLE_CACHE
+              value: "false"
+            - name: LOG_LEVEL
+              value: {{ .Values.kms.logLevel | quote }}
+            - name: DISABLE_RAFT
+              value: "false"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: RAFT_PEERS
+              value: {{ join "," $peers | quote }}
+            - name: RAFT_WAL_DIR
+              value: /var/lib/infisical-kms/raft/wal
+            - name: RAFT_SNAPSHOT_DIR
+              value: /var/lib/infisical-kms/raft/snapshots
+            - name: RAFT_CLUSTER_BOOTSTRAP_DONE
+              value: "false"
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              export RAFT_NODE_ID="$(( ${POD_NAME##*-} + 1 ))"
+              exec /usr/local/bin/infisical-kms
+          resources:
+            {{- toYaml .Values.kms.resources | nindent 12 }}
+          volumeMounts:
+            - name: raft-data
+              mountPath: /var/lib/infisical-kms/raft
+  volumeClaimTemplates:
+    - metadata:
+        name: raft-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.kms.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.kms.persistence.size | quote }}

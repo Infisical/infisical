@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package kms;
+
+option go_package = "github.com/infisical/api/pkg/services/kms/gen/proto;kmsproto";
+
+enum RaftSyncAction {
+  RAFT_SYNC_ACTION_UNSPECIFIED = 0;
+  RAFT_SYNC_ACTION_KEY_DELETED = 11;
+  RAFT_SYNC_ACTION_KEY_UPDATED = 12;
+}
+
+message RaftSyncPayload {
+  RaftSyncAction action = 1;
+  string trace_id = 4;
+
+  oneof payload {
+    string deleted_key_id = 2;
+    KeyUpdatedPayload key_updated = 3;
+  }
+}
+
+message KeyUpdatedPayload {
+  string key_id = 1;
+  string name = 2;
+  bool is_disabled = 3;
+  string description = 4;
+  bool has_delete_protection = 5;
+  int64 updated_at_unix_nano = 6;
+}
+
+message KmsKeyMetadataSnapshot {
+  repeated KmsKeyMetadata entries = 1;
+}
+
+message KmsKeyMetadata {
+  string id = 1;
+  string name = 2;
+  optional string description = 3;
+  optional bool is_disabled = 4;
+  optional bool is_reserved = 5;
+  string org_id = 6;
+  optional string project_id = 7;
+  string key_usage = 8;
+  bool is_exportable = 9;
+  bool has_delete_protection = 10;
+  int64 updated_at_unix_nano = 11;
+}

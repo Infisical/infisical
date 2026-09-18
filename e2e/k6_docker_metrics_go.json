@@ -1,0 +1,23 @@
+{
+  "infisical-dev-api-go": {
+    "samples": 2,
+    "cpu_avg_pct": 0.10500000000000001,
+    "cpu_peak_pct": 0.2,
+    "memory_avg_mib": 61.0,
+    "memory_peak_mib": 61.46
+  },
+  "infisical-dev-kms": {
+    "samples": 2,
+    "cpu_avg_pct": 0.0,
+    "cpu_peak_pct": 0.0,
+    "memory_avg_mib": 13.305,
+    "memory_peak_mib": 13.79
+  },
+  "kms-go-db-1": {
+    "samples": 2,
+    "cpu_avg_pct": 0.025,
+    "cpu_peak_pct": 0.05,
+    "memory_avg_mib": 159.2,
+    "memory_peak_mib": 159.4
+  }
+}

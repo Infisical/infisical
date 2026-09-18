@@ -1,4 +1,4 @@
-FROM golang:1.26-trixie
+FROM golang:1.27-trixie
 
 RUN apt-get update && apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/* && \
