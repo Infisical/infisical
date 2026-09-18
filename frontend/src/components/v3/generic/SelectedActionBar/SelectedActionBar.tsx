@@ -120,7 +120,7 @@ function SelectedActionBar({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="mr-auto"
+                  className="mr-auto text-muted"
                   aria-label={clearLabel}
                   onClick={onClearSelection}
                 >
