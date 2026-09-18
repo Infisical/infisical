@@ -1,7 +1,6 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -185,7 +184,6 @@ type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -278,14 +276,7 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
-    {
-      kmsService,
-      appConnectionDAL,
-      gitHubAppDAL,
-      gatewayService,
-      gatewayV2Service,
-      gatewayPoolService
-    }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gitHubAppDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
   ): Promise<TSyncSecretsResult | void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -293,7 +284,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService, {
+        return GithubSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService, {
           gitHubAppDAL,
           kmsService
         });
@@ -303,7 +294,6 @@ export const SecretSyncFns = {
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
           kmsService,
-          gatewayService,
           gatewayV2Service,
           gatewayPoolService
         }).syncSecrets(secretSync, payload);
@@ -338,7 +328,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService);
+        return HCVaultSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OCIVault:
@@ -415,7 +405,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayService, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -438,7 +428,6 @@ export const SecretSyncFns = {
         secretMap = await azureKeyVaultSyncFactory({
           appConnectionDAL,
           kmsService,
-          gatewayService,
           gatewayV2Service,
           gatewayPoolService
         }).getSecrets(secretSync);
@@ -479,7 +468,7 @@ export const SecretSyncFns = {
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.HCVault:
-        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService, gatewayV2Service, gatewayPoolService);
+        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
         break;
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
@@ -599,14 +588,7 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
-    {
-      kmsService,
-      appConnectionDAL,
-      gitHubAppDAL,
-      gatewayService,
-      gatewayV2Service,
-      gatewayPoolService
-    }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gitHubAppDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
   ): Promise<void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -614,7 +596,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService, {
+        return GithubSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService, {
           gitHubAppDAL,
           kmsService
         });
@@ -624,7 +606,6 @@ export const SecretSyncFns = {
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
           kmsService,
-          gatewayService,
           gatewayV2Service,
           gatewayPoolService
         }).removeSecrets(secretSync, payload);
@@ -657,7 +638,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService);
+        return HCVaultSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.OCIVault:
