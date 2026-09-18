@@ -996,17 +996,21 @@ describe("SCIM v1 Router", () => {
         externalId: `saml-subject-${label}`
       });
 
+      // Pinned to the membership so an empty page proves exclusion rather than paging.
       const res = await testServer.inject({
         method: "GET",
-        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`userName ne "${externalId}"`)}`,
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `id eq "${membershipId}" and userName ne "${externalId}"`
+        )}`,
         headers: { authorization: `Bearer ${scimToken}` }
       });
 
       expect(res.statusCode).toBe(200);
-      const payload = JSON.parse(res.payload) as { Resources: { id: string }[] };
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: { id: string }[] };
 
       // The other alias must not smuggle the user back in.
-      expect(payload.Resources.map((r) => r.id)).not.toContain(membershipId);
+      expect(payload.totalResults).toBe(0);
+      expect(payload.Resources).toHaveLength(0);
     });
 
     test("should exclude a user from `not (userName eq)` through their newest alias", async () => {
@@ -1024,14 +1028,17 @@ describe("SCIM v1 Router", () => {
 
       const res = await testServer.inject({
         method: "GET",
-        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`not (userName eq "${samlSubject}")`)}`,
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `id eq "${membershipId}" and not (userName eq "${samlSubject}")`
+        )}`,
         headers: { authorization: `Bearer ${scimToken}` }
       });
 
       expect(res.statusCode).toBe(200);
-      const payload = JSON.parse(res.payload) as { Resources: { id: string }[] };
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: { id: string }[] };
 
-      expect(payload.Resources.map((r) => r.id)).not.toContain(membershipId);
+      expect(payload.totalResults).toBe(0);
+      expect(payload.Resources).toHaveLength(0);
     });
 
     test("should keep a member with no alias in a `userName ne` result", async () => {
@@ -1041,17 +1048,21 @@ describe("SCIM v1 Router", () => {
         .select("id");
       await db(TableName.UserAliases).where({ userId: seedData1.id, orgId: ORG_ID, aliasType: "saml" }).del();
 
+      // Pinned to one membership so the assertion does not depend on which page the member sorts into.
       const res = await testServer.inject({
         method: "GET",
-        url: `/api/v1/scim/Users?filter=${encodeURIComponent(`userName ne "nobody-${crypto.randomUUID()}"`)}`,
+        url: `/api/v1/scim/Users?filter=${encodeURIComponent(
+          `id eq "${seedMembership.id}" and userName ne "nobody-${crypto.randomUUID()}"`
+        )}`,
         headers: { authorization: `Bearer ${scimToken}` }
       });
 
       expect(res.statusCode).toBe(200);
-      const payload = JSON.parse(res.payload) as { Resources: { id: string }[] };
+      const payload = JSON.parse(res.payload) as { totalResults: number; Resources: { id: string }[] };
 
       // Before this was a set comparison, a NULL alias made `ne` silently drop the member.
-      expect(payload.Resources.map((r) => r.id)).toContain(seedMembership.id);
+      expect(payload.totalResults).toBe(1);
+      expect(payload.Resources.map((r) => r.id)).toEqual([seedMembership.id]);
     });
 
     test("should match a user through either alias with `or` and still echo the alias asked for", async () => {
