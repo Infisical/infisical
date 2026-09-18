@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   ChevronDown,
   ChevronsLeftRightEllipsisIcon,
+  ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
   HexagonIcon,
@@ -19,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -44,7 +46,11 @@ type MenuItemTooltipProps = {
 function MenuItemTooltip({ children, content, isDisabled }: MenuItemTooltipProps) {
   return (
     <Tooltip open={isDisabled ? undefined : false}>
-      <TooltipTrigger className="block w-full">{children}</TooltipTrigger>
+      {isDisabled ? (
+        <TooltipTrigger className="block w-full">{children}</TooltipTrigger>
+      ) : (
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+      )}
       <TooltipContent side="left">{content}</TooltipContent>
     </Tooltip>
   );
@@ -60,6 +66,10 @@ export type AddResourceButtonsProps = {
   onAddSecretImport: () => void;
   onAddSecretSync: () => void;
   onImportSecrets: () => void;
+  onCopySecrets: () => void;
+  canCopySecrets: boolean;
+  isCopySecretsDisabled: boolean;
+  copySecretsDisabledReason?: string;
   onImportFromVault: () => void;
   onImportFromDoppler: () => void;
   isDyanmicSecretAvailable: boolean;
@@ -86,6 +96,10 @@ export function AddResourceButtons({
   onAddSecretImport,
   onAddSecretSync,
   onImportSecrets,
+  onCopySecrets,
+  canCopySecrets,
+  isCopySecretsDisabled,
+  copySecretsDisabledReason,
   onImportFromVault,
   onImportFromDoppler,
   isDyanmicSecretAvailable,
@@ -122,6 +136,7 @@ export function AddResourceButtons({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align={variant === "object-type" ? "start" : "end"} className="w-56 p-1">
+        <DropdownMenuLabel>Basic</DropdownMenuLabel>
         <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
           <DropdownMenuItem
             className="px-2 py-1.5"
@@ -130,6 +145,16 @@ export function AddResourceButtons({
           >
             <KeyIcon className="text-secret" />
             Add Secret
+          </DropdownMenuItem>
+        </MenuItemTooltip>
+        <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
+          <DropdownMenuItem
+            className="px-2 py-1.5"
+            onClick={onImportSecrets}
+            isDisabled={!canCreateSecrets}
+          >
+            <UploadIcon className="text-accent" />
+            Upload Secrets
           </DropdownMenuItem>
         </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
@@ -142,6 +167,8 @@ export function AddResourceButtons({
             Add Folder
           </DropdownMenuItem>
         </MenuItemTooltip>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Advanced</DropdownMenuLabel>
         <MenuItemTooltip isDisabled={!isDyanmicSecretAvailable} content="Access Restricted">
           <DropdownMenuItem
             className="px-2 py-1.5"
@@ -204,7 +231,7 @@ export function AddResourceButtons({
             <ListPlusIcon />
             Add more
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-56 p-1" sideOffset={0}>
+          <DropdownMenuSubContent className="w-64 p-1" sideOffset={0}>
             <MenuItemTooltip
               isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               content={
@@ -215,21 +242,28 @@ export function AddResourceButtons({
             >
               <DropdownMenuItem
                 className="px-2 py-1.5"
-                onClick={onAddSecretImport}
+                onSelect={onAddSecretImport}
                 isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               >
                 <ImportIcon className="text-import" />
                 Add Secret Import
               </DropdownMenuItem>
             </MenuItemTooltip>
-            <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
+            <MenuItemTooltip
+              isDisabled={isCopySecretsDisabled || !canCopySecrets}
+              content={
+                !canCopySecrets
+                  ? "Access Restricted"
+                  : (copySecretsDisabledReason ?? "Copy secrets is unavailable")
+              }
+            >
               <DropdownMenuItem
                 className="px-2 py-1.5"
-                onClick={onImportSecrets}
-                isDisabled={!canCreateSecrets}
+                onSelect={onCopySecrets}
+                isDisabled={isCopySecretsDisabled || !canCopySecrets}
               >
-                <UploadIcon className="text-accent" />
-                Upload Secrets
+                <ClipboardPasteIcon className="text-accent" />
+                Copy from Other Environment
               </DropdownMenuItem>
             </MenuItemTooltip>
             <ProjectPermissionCan
@@ -240,7 +274,7 @@ export function AddResourceButtons({
                 <MenuItemTooltip isDisabled={!isAllowed} content="Access Restricted">
                   <DropdownMenuItem
                     className="px-2 py-1.5"
-                    onClick={onAddSecretSync}
+                    onSelect={onAddSecretSync}
                     isDisabled={!isAllowed}
                   >
                     <RefreshCwIcon className="text-accent" />
@@ -261,7 +295,7 @@ export function AddResourceButtons({
               >
                 <DropdownMenuItem
                   className="px-2 py-1.5"
-                  onClick={onImportFromVault}
+                  onSelect={onImportFromVault}
                   isDisabled={!canCreateSecrets || !isSingleEnvSelected}
                 >
                   <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
@@ -286,7 +320,7 @@ export function AddResourceButtons({
               >
                 <DropdownMenuItem
                   className="px-2 py-1.5"
-                  onClick={onImportFromDoppler}
+                  onSelect={onImportFromDoppler}
                   isDisabled={!canCreateSecrets || !isSingleEnvSelected}
                 >
                   <div className="flex w-4.5 justify-center rounded-full bg-foreground/75">
