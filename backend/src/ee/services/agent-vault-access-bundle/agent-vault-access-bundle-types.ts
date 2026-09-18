@@ -4,6 +4,7 @@ import {
   AgentVaultHttpMethod,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string; value: string }
@@ -22,7 +23,13 @@ export type TAgentVaultCredentialSummary =
 
 export type TAgentVaultProjectScoped = { projectId: string; ctx: TAgentVaultActorContext };
 
-export type TListAccessBundlesDTO = TAgentVaultProjectScoped;
+export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
+  search?: string;
+  orderBy: TAgentVaultAccessBundleOrderBy;
+  orderDirection: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
 
 export type TGetAccessBundleDTO = TAgentVaultProjectScoped & { accessBundleId: string };
 

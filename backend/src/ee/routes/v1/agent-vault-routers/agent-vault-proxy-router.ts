@@ -13,6 +13,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext } from "./agent-vault-router-fns";
+import { agentVaultListQuery } from "./agent-vault-schemas";
 
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
@@ -50,22 +51,27 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       operationId: "listAgentVaultProxies",
       description: "List the organization's Agent Vault proxies",
       tags: [ApiDocsTags.AgentVaultProxies],
+      querystring: z.object({
+        orderBy: z.enum(["name", "createdAt"]).default("createdAt").describe(AGENT_VAULT.PROXY.orderBy),
+        orderDirection: z.enum(["asc", "desc"]).default("desc").describe(AGENT_VAULT.PROXY.orderDirection),
+        ...agentVaultListQuery(AGENT_VAULT.PROXY)
+      }),
       response: {
         200: z.object({
           proxies: z
             .union([ProxyAdminViewSchema, ProxyMemberViewSchema.describe(JSON.stringify({ title: "Member view" }))])
-            .array()
+            .array(),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const proxies = await server.services.agentVaultProxy.listProxies({
+    handler: async (req) =>
+      server.services.agentVaultProxy.listProxies({
         projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      });
-      return { proxies };
-    }
+        ctx: actorContext(req),
+        ...req.query
+      })
   });
 
   server.route({

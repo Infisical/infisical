@@ -4224,6 +4224,11 @@ export const AGENT_VAULT = {
     description: "A description of what this access bundle is for.",
     serviceCount: "How many services the access bundle holds.",
     memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    orderBy: "What to sort access bundles by: name, serviceCount or createdAt.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match access bundles by name or description.",
+    limit: "The maximum number of access bundles to return.",
+    offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover."
   },
   SERVICE: {
@@ -4314,6 +4319,11 @@ export const AGENT_VAULT = {
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
+    orderBy: "What to sort proxies by: name or createdAt.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match proxies by name.",
+    limit: "The maximum number of proxies to return.",
+    offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
     enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",

@@ -73,24 +73,32 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       operationId: "listAgentVaultAccessBundles",
       description: "List the Agent Vault access bundles you can reach",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
+      querystring: z.object({
+        orderBy: z
+          .enum(["name", "serviceCount", "createdAt"])
+          .default("createdAt")
+          .describe(AGENT_VAULT.ACCESS_BUNDLE.orderBy),
+        orderDirection: z.enum(["asc", "desc"]).default("desc").describe(AGENT_VAULT.ACCESS_BUNDLE.orderDirection),
+        ...agentVaultListQuery(AGENT_VAULT.ACCESS_BUNDLE)
+      }),
       response: {
         200: z.object({
           accessBundles: AccessBundleSchema.extend({
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns)
-          }).array()
+          }).array(),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const accessBundles = await server.services.agentVaultAccessBundle.listAccessBundles({
+    handler: async (req) =>
+      server.services.agentVaultAccessBundle.listAccessBundles({
         projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      });
-      return { accessBundles };
-    }
+        ctx: actorContext(req),
+        ...req.query
+      })
   });
 
   server.route({

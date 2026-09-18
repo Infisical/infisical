@@ -44,6 +44,18 @@ export type TAgentVaultAccessBundleMemberDetail = {
   actor: TAgentVaultAccessBundleActor;
 };
 
+export type TAgentVaultAccessBundleOrderBy = "name" | "serviceCount" | "createdAt";
+
+type TFindAccessBundlesDTO = {
+  projectId: string;
+  accessBundleIds: string[] | null;
+  search?: string;
+  orderBy: TAgentVaultAccessBundleOrderBy;
+  orderDirection: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
+
 const grantScope = (projectId: string, accessBundleId?: string) => ({
   scope: RESOURCE_SCOPE,
   scopeProjectId: projectId,
@@ -54,14 +66,60 @@ const grantScope = (projectId: string, accessBundleId?: string) => ({
 export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
 
-  const findWithCounts = async (
-    { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] | null },
+  const findForList = async (
+    { projectId, accessBundleIds, search, orderBy, orderDirection, limit, offset }: TFindAccessBundlesDTO,
     tx?: Knex
-  ): Promise<TAgentVaultAccessBundleListRow[]> => {
-    if (accessBundleIds?.length === 0) return [];
+  ): Promise<{ accessBundles: TAgentVaultAccessBundleListRow[]; totalCount: number }> => {
+    if (accessBundleIds?.length === 0) return { accessBundles: [], totalCount: 0 };
 
     try {
       const conn = tx || db.replicaNode();
+
+      // The page is chosen before the services are joined on. That join fans a bundle out into one row
+      // per service, so a LIMIT over it would cut a bundle's services rather than the bundle list.
+      const applyFilters = (query: Knex.QueryBuilder) => {
+        void query.where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId);
+        if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
+        if (search) {
+          const term = `%${sanitizeSqlLikeString(search)}%`;
+          void query.where((qb) => {
+            void qb
+              .orWhereILike(`${TableName.AgentVaultAccessBundle}.name`, term)
+              .orWhereILike(`${TableName.AgentVaultAccessBundle}.description`, term);
+          });
+        }
+        return query;
+      };
+
+      const countResult = (await applyFilters(conn(TableName.AgentVaultAccessBundle))
+        .count(`${TableName.AgentVaultAccessBundle}.id as count`)
+        .first()) as { count: string } | undefined;
+      const totalCount = parseInt(countResult?.count || "0", 10);
+
+      const serviceCounts = conn(TableName.AgentVaultService)
+        .select("accessBundleId")
+        .count("* as count")
+        .groupBy("accessBundleId")
+        .as("sc");
+
+      const pageQuery = applyFilters(conn(TableName.AgentVaultAccessBundle))
+        .leftJoin(serviceCounts, function joinServiceCount() {
+          this.on(db.raw(`sc."accessBundleId" = ??.id`, [TableName.AgentVaultAccessBundle]));
+        })
+        .limit(limit)
+        .offset(offset)
+        .select(db.ref("id").withSchema(TableName.AgentVaultAccessBundle));
+
+      if (orderBy === "serviceCount") {
+        void pageQuery.orderByRaw(`COALESCE(sc.count, 0) ${orderDirection === "desc" ? "DESC" : "ASC"}`);
+      } else {
+        void pageQuery.orderBy(`${TableName.AgentVaultAccessBundle}.${orderBy}`, orderDirection);
+      }
+      // name is unique per project, so it is a total order and breaks any tie the other two can leave.
+      void pageQuery.orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc");
+
+      const pageIds = ((await pageQuery) as { id: string }[]).map((row) => row.id);
+      if (!pageIds.length) return { accessBundles: [], totalCount };
 
       const memberCounts = conn(TableName.Membership)
         .select("scopeResourceId")
@@ -71,10 +129,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .as("mc");
 
       const rows = (await conn(TableName.AgentVaultAccessBundle)
-        .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
-        .where((qb) => {
-          if (accessBundleIds) void qb.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
-        })
+        .whereIn(`${TableName.AgentVaultAccessBundle}.id`, pageIds)
         .leftJoin(
           TableName.AgentVaultService,
           `${TableName.AgentVaultService}.accessBundleId`,
@@ -125,7 +180,12 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         if (row.hostPattern) bundle.hostPatterns.push(...row.hostPattern.split(","));
       });
 
-      return [...byBundle.values()];
+      // The fan-out query returns page rows in its own order, so the page order is reapplied here.
+      const orderOfId = new Map(pageIds.map((id, index) => [id, index]));
+      const accessBundles = [...byBundle.values()].sort(
+        (a, b) => (orderOfId.get(a.id) ?? 0) - (orderOfId.get(b.id) ?? 0)
+      );
+      return { accessBundles, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault access bundles" });
     }
@@ -269,5 +329,5 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findWithCounts, findByIdInProject, lockByIdInProject, findMembers };
+  return { ...orm, findForList, findByIdInProject, lockByIdInProject, findMembers };
 };

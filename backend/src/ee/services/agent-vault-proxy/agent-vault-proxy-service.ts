@@ -34,6 +34,7 @@ import { parseRootCaCertificate } from "./agent-vault-ca-fns";
 import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
+  TAgentVaultProxyScoped,
   TCreateProxyDTO,
   TEnrollProxyDTO,
   THeartbeatDTO,
@@ -108,7 +109,10 @@ export const agentVaultProxyServiceFactory = ({
     createdAt: proxy.createdAt
   });
 
-  const $authorize = async ({ projectId, ctx }: TListProxiesDTO, action: ProjectPermissionAgentVaultProxyActions) => {
+  const $authorize = async (
+    { projectId, ctx }: TAgentVaultProxyScoped,
+    action: ProjectPermissionAgentVaultProxyActions
+  ) => {
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
@@ -129,10 +133,17 @@ export const agentVaultProxyServiceFactory = ({
 
   const getProxyForAuth = (proxyId: string) => agentVaultProxyDAL.findByIdWithOrg(proxyId);
 
-  const listProxies = async (dto: TListProxiesDTO) => {
+  const listProxies = async ({ search, orderBy, orderDirection, limit, offset, ...dto }: TListProxiesDTO) => {
     const { isAdmin } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
-    const proxies = await agentVaultProxyDAL.findForProject(dto.projectId);
-    return proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy)));
+    const { proxies, totalCount } = await agentVaultProxyDAL.findForList({
+      projectId: dto.projectId,
+      search,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    });
+    return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
   };
 
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({

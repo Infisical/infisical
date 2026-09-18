@@ -9,7 +9,13 @@ export type TAgentVaultProxyConfig = {
   pollInterval: number;
 };
 
-export type TListProxiesDTO = TAgentVaultProxyScoped;
+export type TListProxiesDTO = TAgentVaultProxyScoped & {
+  search?: string;
+  orderBy: "name" | "createdAt";
+  orderDirection: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;

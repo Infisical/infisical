@@ -238,6 +238,35 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(detail.payload).accessBundle).not.toHaveProperty("members");
     });
 
+    test("the bundle list sorts and pages on the server, and the count follows the search", async () => {
+      const names = ["zz-page-c", "zz-page-a", "zz-page-b"];
+      for await (const name of names) await createAccessBundle(name);
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `/api/v1/agent-vault/access-bundles?${query}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as { accessBundles: { id: string; name: string }[]; totalCount: number };
+      };
+
+      const searched = await list("search=zz-page&orderBy=name&orderDirection=asc&limit=100");
+      expect(searched.totalCount).toBe(3);
+      expect(searched.accessBundles.map((bundle) => bundle.name)).toEqual(["zz-page-a", "zz-page-b", "zz-page-c"]);
+
+      const descending = await list("search=zz-page&orderBy=name&orderDirection=desc&limit=100");
+      expect(descending.accessBundles.map((bundle) => bundle.name)).toEqual(["zz-page-c", "zz-page-b", "zz-page-a"]);
+
+      // The sort has to happen before the page is cut, or a page is sorted rather than the set.
+      const firstPage = await list("search=zz-page&orderBy=name&orderDirection=asc&limit=1&offset=0");
+      expect(firstPage.totalCount).toBe(3);
+      expect(firstPage.accessBundles.map((bundle) => bundle.name)).toEqual(["zz-page-a"]);
+
+      const lastPage = await list("search=zz-page&orderBy=name&orderDirection=asc&limit=1&offset=2");
+      expect(lastPage.accessBundles.map((bundle) => bundle.name)).toEqual(["zz-page-c"]);
+
+      expect((await inject("GET", "/api/v1/agent-vault/access-bundles?orderBy=nonsense")).statusCode).toBe(422);
+      expect((await inject("GET", "/api/v1/agent-vault/access-bundles?limit=101")).statusCode).toBe(422);
+    });
+
     test("updatedAt moves when a bundle changes, and matches createdAt until it does", async () => {
       const bundle = await createAccessBundle("stamped");
 

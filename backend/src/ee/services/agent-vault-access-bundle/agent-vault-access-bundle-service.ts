@@ -420,7 +420,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { bundle, ...reachability };
   };
 
-  const listAccessBundles = async ({ projectId, ctx }: TListAccessBundlesDTO) => {
+  const listAccessBundles = async ({ projectId, ctx, ...page }: TListAccessBundlesDTO) => {
     const { permission, accessBundleIds } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
       { projectId, ctx }
@@ -430,7 +430,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    return agentVaultAccessBundleDAL.findWithCounts({ projectId, accessBundleIds });
+    return agentVaultAccessBundleDAL.findForList({ projectId, accessBundleIds, ...page });
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {

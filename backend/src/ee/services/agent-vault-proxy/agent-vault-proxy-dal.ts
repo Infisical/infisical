@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAgentVaultProxies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
 export type TAgentVaultProxyDALFactory = ReturnType<typeof agentVaultProxyDALFactory>;
@@ -38,11 +39,46 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findForProject = async (projectId: string, tx?: Knex): Promise<TAgentVaultProxies[]> => {
+  const findForList = async (
+    {
+      projectId,
+      search,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    }: {
+      projectId: string;
+      search?: string;
+      orderBy: "name" | "createdAt";
+      orderDirection: "asc" | "desc";
+      limit: number;
+      offset: number;
+    },
+    tx?: Knex
+  ): Promise<{ proxies: TAgentVaultProxies[]; totalCount: number }> => {
     try {
-      return (await (tx || db.replicaNode())(TableName.AgentVaultProxy)
-        .where({ projectId })
-        .orderBy("name", "asc")) as TAgentVaultProxies[];
+      const conn = tx || db.replicaNode();
+
+      // Shared with the page query, so the pager describes the filtered set rather than the whole one.
+      const applyFilters = (query: Knex.QueryBuilder) => {
+        void query.where({ projectId });
+        if (search) void query.whereILike("name", `%${sanitizeSqlLikeString(search)}%`);
+        return query;
+      };
+
+      const countResult = (await applyFilters(conn(TableName.AgentVaultProxy)).count("id as count").first()) as
+        | { count: string }
+        | undefined;
+
+      // name is unique per project, so it breaks any tie createdAt leaves.
+      const proxies = (await applyFilters(conn(TableName.AgentVaultProxy))
+        .orderBy(orderBy, orderDirection)
+        .orderBy("name", "asc")
+        .limit(limit)
+        .offset(offset)) as TAgentVaultProxies[];
+
+      return { proxies, totalCount: parseInt(countResult?.count || "0", 10) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault proxies" });
     }
@@ -64,5 +100,5 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForProject, recordHeartbeat };
+  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat };
 };
