@@ -15,8 +15,7 @@ export const analytics = {
     const telemetry = new Telemetry().getInstance();
     telemetry.capture(event, {
       ...properties,
-      orgId,
-      $groups: { organization: orgId }
+      orgId
     });
   }
 };
