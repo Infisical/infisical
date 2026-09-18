@@ -351,6 +351,8 @@ export enum CertExtensionCriticality {
 }
 
 const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
+const BASE64_PADDING_PATTERN = /=+$/;
+const stripBase64Padding = (value: string) => value.replace(BASE64_PADDING_PATTERN, "");
 const OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
 const SID_PATTERN = /^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$/;
 const TEMPLATE_INFORMATION_PATTERN = new RegExp(
@@ -526,6 +528,66 @@ export const collectDerTextValues = (base64Value: string): string[] => {
 
   walk(bytes);
   return found;
+};
+
+const readDerValueLength = (bytes: Uint8Array, offset: number): { end: number } | null => {
+  if (offset + 2 > bytes.length) return null;
+
+  let length = bytes[offset + 1];
+  let headerLength = 2;
+
+  // eslint-disable-next-line no-bitwise
+  if (length & 0x80) {
+    // eslint-disable-next-line no-bitwise
+    const count = length & 0x7f;
+    if (count === 0 || count > 4 || offset + 2 + count > bytes.length) return null;
+    length = 0;
+    for (let index = 0; index < count; index += 1) {
+      // eslint-disable-next-line no-bitwise
+      length = (length << 8) | bytes[offset + 2 + index];
+    }
+    headerLength = 2 + count;
+  }
+
+  const end = offset + headerLength + length;
+  if (end > bytes.length) return null;
+
+  // eslint-disable-next-line no-bitwise
+  if (bytes[offset] & 0x20) {
+    let inner = offset + headerLength;
+    while (inner < end) {
+      const child = readDerValueLength(bytes, inner);
+      if (!child || child.end > end) return null;
+      inner = child.end;
+    }
+    if (inner !== end) return null;
+  }
+
+  return { end };
+};
+
+export const validateCustomExtensionDerValue = (value: string): string | null => {
+  const bytes = toDerBytes(value.trim());
+  if (!bytes?.length) return "Value must be base64-encoded DER";
+
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  if (stripBase64Padding(btoa(binary)) !== stripBase64Padding(value.trim())) {
+    return "Value must be base64-encoded DER";
+  }
+
+  if (bytes.length > MAX_CUSTOM_EXTENSION_VALUE_BYTES) {
+    return `Value cannot exceed ${MAX_CUSTOM_EXTENSION_VALUE_BYTES} bytes`;
+  }
+
+  const parsed = readDerValueLength(bytes, 0);
+  if (!parsed || parsed.end !== bytes.length) {
+    return "Value must be a single DER-encoded ASN.1 value";
+  }
+
+  return null;
 };
 
 export const decodeDerTextValue = (base64Value: string): string | null => {

@@ -24,6 +24,7 @@ import {
   customExtensionLabelFor,
   getCustomExtensionValuePlaceholderFor,
   isPresetExtensionOid,
+  validateCustomExtensionDerValue,
   validateCustomExtensionValue
 } from "../../CertificatePoliciesTab/shared/certificate-constants";
 import { SectionHeading } from "./SectionHeading";
@@ -36,6 +37,11 @@ type Props = {
   }> | null;
   extensions: TProfileCustomExtension[];
   onChange: (next: TProfileCustomExtension[]) => void;
+};
+
+const customExtensionValueError = (oid: string, value: string | undefined, isDer: boolean) => {
+  if (!oid || !value) return null;
+  return isDer ? validateCustomExtensionDerValue(value) : validateCustomExtensionValue(oid, value);
 };
 
 export const CustomExtensionDefaults = ({
@@ -110,10 +116,7 @@ export const CustomExtensionDefaults = ({
                 ? criticalityPinned === CertExtensionCriticality.CRITICAL
                 : Boolean(extension.critical);
               const isDer = extension.valueEncoding === CertExtensionValueEncoding.DER;
-              const valueError =
-                extension.oid && extension.value && !isDer
-                  ? validateCustomExtensionValue(extension.oid, extension.value)
-                  : null;
+              const valueError = customExtensionValueError(extension.oid, extension.value, isDer);
 
               const criticalityCheckbox = (
                 <Checkbox

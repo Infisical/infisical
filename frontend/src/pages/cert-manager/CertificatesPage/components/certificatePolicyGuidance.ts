@@ -10,6 +10,7 @@ import {
   collectDerTextValues,
   decodeDerTextValue,
   formatSANType,
+  validateCustomExtensionDerValue,
   validateCustomExtensionValue
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -691,10 +692,10 @@ export const evaluateCustomExtensions = ({
         : row.value
     ])
   );
-  const derOids = new Set(
+  const derValueByOid = new Map(
     suppliedRows
       .filter((row) => row.valueEncoding === CertExtensionValueEncoding.DER)
-      .map((row) => row.oid)
+      .map((row) => [row.oid, row.value])
   );
   const nestedTextsByOid = new Map(
     suppliedRows
@@ -726,7 +727,11 @@ export const evaluateCustomExtensions = ({
       return;
     }
 
-    const malformed = derOids.has(oid) ? null : validateCustomExtensionValue(oid, value);
+    const derValue = derValueByOid.get(oid);
+    const malformed =
+      derValue === undefined
+        ? validateCustomExtensionValue(oid, value)
+        : validateCustomExtensionDerValue(derValue);
     if (malformed) {
       errorsByOid[oid] = malformed;
       return;
