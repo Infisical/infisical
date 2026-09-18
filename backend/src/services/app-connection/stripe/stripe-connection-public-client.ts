@@ -61,8 +61,14 @@ export const getStripeErrorStatus = (error: unknown): number | undefined =>
 /**
  * Nothing proactively notices that a customer uninstalled the app, because the connection stores no
  * tokens, so it arrives here as a 403. The remedy is offered conditionally rather than asserted.
+ *
+ * Only an Axios error is actually a response from Stripe. Anything else, eg a local
+ * misconfiguration like a missing platform key, gets rethrown as itself rather than reworded into
+ * a message that blames Stripe or the installed app for something neither caused.
  */
 export const throwStripeApiKeyManagementError = (accountId: string, error: unknown): never => {
+  if (!(error instanceof AxiosError)) throw error;
+
   throw new BadRequestError({
     message:
       `Infisical cannot manage API keys on Stripe account '${accountId}'. ` +
@@ -90,6 +96,18 @@ const STRIPE_LIST_PAGE_SIZE = 100;
 // serves. The page cap is a runaway guard, not an expected bound.
 const STRIPE_LIST_MAX_PAGES = 50;
 
+// Stripe's list response carries secret_key.token, in full plaintext, for every key in the account.
+// TStripeApiKeyListItem omits it only at the type level, so rebuilding each item as a fresh object
+// literal is what actually keeps the raw response object, and the secret it carries, from leaving
+// this function. Downstream callers strip it again on their own responses; this is defense in depth.
+const sanitizeApiKeyListItem = (item: TStripeApiKeyListItem): TStripeApiKeyListItem => ({
+  id: item.id,
+  name: item.name,
+  status: item.status,
+  permissions: item.permissions,
+  connect_permissions: item.connect_permissions
+});
+
 export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKeyListItem[]> => {
   const config = getStripePlatformRequestConfig(accountId);
   const keys: TStripeApiKeyListItem[] = [];
@@ -105,7 +123,7 @@ export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKe
       config
     );
 
-    keys.push(...(response.data?.data ?? []));
+    keys.push(...(response.data?.data ?? []).map(sanitizeApiKeyListItem));
 
     const nextPageUrl = response.data?.next_page_url ?? undefined;
 

@@ -6,12 +6,16 @@ vi.mock("@app/lib/config/env", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { InternalServerError } from "@app/lib/errors";
+
+// eslint-disable-next-line import/first
 import {
   getStripeErrorMessage,
   getStripeErrorStatus,
   getStripeMerchantRequestConfig,
   getStripePlatformRequestConfig,
   STRIPE_PREVIEW_API_VERSION,
+  throwStripeApiKeyManagementError,
   withIdempotencyKey
 } from "./stripe-connection-public-client";
 
@@ -63,5 +67,17 @@ describe("stripe public client", () => {
     expect(getStripeErrorMessage(axiosErrorWith(500, undefined))).toBe("Request failed");
     expect(getStripeErrorMessage(new Error("socket hang up"))).toBe("socket hang up");
     expect(getStripeErrorStatus(new Error("socket hang up"))).toBeUndefined();
+  });
+
+  it("wraps an axios error as a Stripe management failure", () => {
+    expect(() =>
+      throwStripeApiKeyManagementError("acct_123", axiosErrorWith(403, { error: { message: "app removed" } }))
+    ).toThrow(/Infisical cannot manage API keys on Stripe account 'acct_123'/);
+  });
+
+  it("rethrows a non-axios error as itself instead of blaming Stripe or the installed app", () => {
+    const localError = new InternalServerError({ message: "Stripe is not configured on this instance." });
+
+    expect(() => throwStripeApiKeyManagementError("acct_123", localError)).toThrow(localError);
   });
 });

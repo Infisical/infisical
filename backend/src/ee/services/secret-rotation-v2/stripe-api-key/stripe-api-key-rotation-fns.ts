@@ -28,8 +28,6 @@ import {
 
 const STRIPE_KEY_NAME_MAX_LENGTH = 100;
 
-const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : "Unknown error");
-
 export const stripeApiKeyRotationFactory: TRotationFactory<
   TStripeApiKeyRotationWithConnection,
   TStripeApiKeyRotationGeneratedCredentials
@@ -46,8 +44,28 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   // It is what makes a key stranded by a timed-out create identifiable in the Stripe dashboard.
   const $keyName = () => `infisical-${secretsMapping.apiKey}-${Date.now()}`.slice(0, STRIPE_KEY_NAME_MAX_LENGTH);
 
-  /** A 404 means the key is already gone; anything else is handed back for the caller to report. */
+  /** No 404 on a double expire has ever been observed, so retiring a key twice can't be trusted to look
+   *  like the first expire. Checking existence first sidesteps the question: a key that is already
+   *  gone is retired either way, and a key that still exists gets the expire call as before.
+   */
+  const $keyExists = async (keyId: string): Promise<boolean> => {
+    try {
+      await request.get(`${STRIPE_API_KEYS_URL}/${keyId}`, getStripePlatformRequestConfig(accountId));
+      return true;
+    } catch (error) {
+      if (getStripeErrorStatus(error) === 404) return false;
+
+      throw error;
+    }
+  };
+
   const $tryRetireKey = async (keyId: string): Promise<{ retired: true } | { retired: false; error: unknown }> => {
+    try {
+      if (!(await $keyExists(keyId))) return { retired: true };
+    } catch (error) {
+      return { retired: false, error };
+    }
+
     try {
       await request.post(
         `${STRIPE_API_KEYS_URL}/${keyId}/expire`,
@@ -85,7 +103,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
         await $retireKey(keyId);
       } catch (cleanupError) {
         throw new BadRequestError({
-          message: `${getErrorMessage(actionError)} The newly created Stripe API key ${keyId} could not be expired and may need to be removed manually: ${getErrorMessage(cleanupError)}`
+          message: `${getStripeErrorMessage(actionError)} The newly created Stripe API key ${keyId} could not be expired and may need to be removed manually: ${getStripeErrorMessage(cleanupError)}`
         });
       }
 

@@ -183,6 +183,31 @@ describe("stripeApiKeyRotationFactory", () => {
     ).resolves.toBeDefined();
   });
 
+  it("completes a rotation when the old key is already gone from Stripe, without ever calling expire on it", async () => {
+    // A double expire's response has never been observed, so this drives the fix through the
+    // existence check (a 404 on retrieve) rather than assuming a 404 on a second expire call.
+    getMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/mk_old")) throw httpError(404, "No such key");
+      throw new Error(`unexpected GET ${url}`);
+    });
+    mockStripe({
+      expire: async (keyId) => {
+        if (keyId === "mk_old") {
+          throw new Error("expire must not be called for a key the existence check already found gone");
+        }
+        return { data: {} };
+      }
+    });
+    const callback = vi.fn(async (credentials: unknown) => credentials);
+
+    await expect(
+      makeFactory().rotateCredentials({ keyId: "mk_old" } as any, callback as any, {} as any)
+    ).resolves.toBeDefined();
+
+    expect(expireCalls("mk_old")).toHaveLength(0);
+    expect(callback).toHaveBeenCalled();
+  });
+
   it("revokeCredentials returns early without contacting Stripe when there are no credentials", async () => {
     const callback = vi.fn(async () => "done");
 
