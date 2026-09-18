@@ -761,7 +761,7 @@ export const Navbar = () => {
             <DropdownMenuLabel>Theme</DropdownMenuLabel>
             <DropdownMenuRadioGroup
               value={theme}
-              onValueChange={(value) => setTheme(value as Theme)}
+              onValueChange={(value) => setTheme(value as Theme, "profile-menu")}
             >
               <DropdownMenuRadioItem value="system" className="gap-2">
                 <Monitor className="size-4" />

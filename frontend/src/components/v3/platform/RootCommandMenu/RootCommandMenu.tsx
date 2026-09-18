@@ -32,7 +32,11 @@ import {
   type GlobalCommandMenuSearchStatus
 } from "@app/components/v3/generic/Command";
 import { OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3/platform/ScopeIcons";
-import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
+import {
+  type Theme,
+  type ThemeChangeSource,
+  useTheme
+} from "@app/components/v3/platform/ThemeProvider";
 import {
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
@@ -318,7 +322,7 @@ const getNestedCommandGroup = ({
   organizationItems: GlobalCommandMenuItem[];
   teamItems: GlobalCommandMenuItem[];
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: Theme, source: ThemeChangeSource) => void;
 }): GlobalCommandMenuGroup => ({
   heading: "Explore",
   items: [
@@ -370,7 +374,7 @@ const getNestedCommandGroup = ({
               icon: theme === "dark" ? CheckIcon : MoonIcon,
               keywords: ["theme"],
               isDisabled: theme === "dark",
-              onSelect: () => setTheme("dark")
+              onSelect: () => setTheme("dark", "command-menu")
             },
             {
               id: "theme-light",
@@ -379,7 +383,7 @@ const getNestedCommandGroup = ({
               icon: theme === "light" ? CheckIcon : SunIcon,
               keywords: ["theme"],
               isDisabled: theme === "light",
-              onSelect: () => setTheme("light")
+              onSelect: () => setTheme("light", "command-menu")
             }
           ]
         }

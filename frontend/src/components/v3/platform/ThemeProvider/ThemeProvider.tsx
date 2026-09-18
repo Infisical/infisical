@@ -1,14 +1,17 @@
 import * as React from "react";
 
+import { analytics } from "@app/lib/analytics";
+
 import { isDarkAuthPath } from "./auth-theme";
 
 export type Theme = "dark" | "light" | "system";
 export type ResolvedTheme = Exclude<Theme, "system">;
+export type ThemeChangeSource = "command-menu" | "profile-menu";
 
 type ThemeContextValue = {
   theme: Theme;
   resolvedTheme: ResolvedTheme;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: Theme, source: ThemeChangeSource) => void;
 };
 
 const THEME_STORAGE_KEY = "infisical-theme";
@@ -91,12 +94,17 @@ export const ThemeProvider = ({
   }, []);
 
   const setTheme = React.useCallback(
-    (nextTheme: Theme) => {
+    (nextTheme: Theme, source: ThemeChangeSource) => {
       const nextResolvedTheme = resolveTheme(nextTheme, pathname);
       const updateTheme = () => {
         applyTheme(nextResolvedTheme);
         persistTheme(nextTheme);
         setThemeState(nextTheme);
+        analytics.captureThemePreferenceChanged({
+          source,
+          theme: nextTheme,
+          resolvedTheme: nextResolvedTheme
+        });
       };
 
       if (nextResolvedTheme === resolvedTheme) {
