@@ -135,14 +135,14 @@ const SecretPathInputBase = ({
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={twMerge(
-            "relative top-2 z-100 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+            "relative top-2 z-100 overflow-hidden rounded-md border border-border-control bg-surface-base font-inter text-foreground-default shadow-md"
           )}
           style={{
             width: "var(--radix-popover-trigger-width)",
             maxHeight: "var(--radix-select-content-available-height)"
           }}
         >
-          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-white">
+          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-foreground-inverse">
             {suggestions.map((suggestion, i) => (
               <div
                 tabIndex={0}
@@ -153,16 +153,16 @@ const SecretPathInputBase = ({
                   handleSuggestionSelect(i);
                 }}
                 style={{ pointerEvents: "auto" }}
-                className="flex items-center justify-between border-mineshaft-600 text-left"
+                className="flex items-center justify-between border-border-control text-left"
                 key={`secret-reference-secret-${i + 1}`}
               >
                 <div
                   className={`${
-                    highlightedIndex === i ? "bg-gray-600" : ""
-                  } text-md relative mb-0.5 flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-500`}
+                    highlightedIndex === i ? "bg-surface-cool-active" : ""
+                  } text-md relative mb-0.5 flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 outline-hidden transition-all select-none hover:bg-surface-selected data-highlighted:bg-surface-selected`}
                 >
                   <div className="flex gap-2">
-                    <div className="flex items-center text-yellow-700">
+                    <div className="flex items-center text-warning">
                       <FontAwesomeIcon icon={faFolder} />
                     </div>
                     <div className="text-md text-left">{suggestion}</div>

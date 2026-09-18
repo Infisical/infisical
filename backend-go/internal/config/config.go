@@ -250,11 +250,7 @@ type Config struct {
 	HSMSlot     int
 
 	// Gateway
-	GatewayInfisicalStaticIPAddress string
-	GatewayRelayAddress             string
-	GatewayRelayRealm               string
-	GatewayRelayAuthSecret          string
-	RelayAuthSecret                 string
+	RelayAuthSecret string
 
 	// Dynamic Secrets
 	DynamicSecretAllowInternalIP    bool
@@ -616,10 +612,6 @@ func LoadConfig() (*Config, error) {
 		OptionalInt(&cfg.HSMSlot, "HSM_SLOT", 0).
 
 		// Gateway
-		Optional(&cfg.GatewayInfisicalStaticIPAddress, "GATEWAY_INFISICAL_STATIC_IP_ADDRESS", "").
-		Optional(&cfg.GatewayRelayAddress, "GATEWAY_RELAY_ADDRESS", "").
-		Optional(&cfg.GatewayRelayRealm, "GATEWAY_RELAY_REALM", "").
-		Optional(&cfg.GatewayRelayAuthSecret, "GATEWAY_RELAY_AUTH_SECRET", "").
 		Optional(&cfg.RelayAuthSecret, "RELAY_AUTH_SECRET", "").
 
 		// Dynamic Secrets

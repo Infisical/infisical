@@ -1,6 +1,5 @@
 import { ExternalLink, XIcon } from "lucide-react";
 
-import introDiagram from "@app/assets/images/agent-vault-intro.png";
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import {
   Dialog,
@@ -43,7 +42,7 @@ export const AgentVaultIntroModal = ({ isOpen, onOpenChange }: Props) => (
       }}
     >
       <img
-        src={introDiagram}
+        src="/images/agent-vault-intro.png"
         alt="An agent picks up a request from Slack and calls out through the Agent Proxy, which checks policy, brokers the credential from Agent Vault, and forwards the call to Anthropic, Sentry and GitHub."
         className="aspect-video w-full border-b border-border bg-black object-contain"
       />
