@@ -231,9 +231,9 @@ describe("validateIamIdentity", () => {
   });
 
   test("rejects an expired token", async () => {
-    await expect(
-      validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt({ expiresIn: "-1h" }) })
-    ).rejects.toThrow("Invalid GCP IAM token signature");
+    await expect(validateIamIdentity({ audience: IDENTITY_ID, jwt: signIamJwt({ expiresIn: "-1h" }) })).rejects.toThrow(
+      "Invalid GCP IAM token signature"
+    );
   });
 
   // An unsigned token must never verify, otherwise anyone able to name a service account
