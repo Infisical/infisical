@@ -156,21 +156,10 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
 };
 
 /**
- * Commits are enumerated oldest-first and scanned in slices of that order, because a newest-first
- * index shifts under every push while an oldest-first one usually survives: an ordinary push lands
- * its commits at the end, leaving everything before them where it was.
- *
- * "Usually" is not "always", which is what `lastScannedCommitDigest` is for. A ref that
- * becomes reachable between two runs — a new branch, a fetched tag — brings its commits in at their
- * own dates, which can be older than the resume point, so they sort into the middle of the ordering
- * and push every later index up. An index alone cannot tell that apart from the commits it used to
- * name, so the prefix is digested as it is walked and the resumed run checks the digest it stored
- * against the prefix it now sees.
- *
- * `git log` itself only walks newest-first, so a slice is expressed as a skip/count against that
- * order. Both halves must enumerate with identical flags for the two orderings to correspond.
+ * Commits are enumerated oldest-first and scanned in slices of that order, this list
+ * of commits will be used to create the batches of commits for historical scans.
  */
-const COMMIT_LIST_ARGS = ["rev-list", "--full-history", "--all"];
+const COMMIT_LIST_ARGS = ["rev-list", "--full-history", "HEAD"];
 
 export type TCommitBatch = {
   /** Commits to skip in `git log`'s newest-first order before this batch begins. */
@@ -180,15 +169,16 @@ export type TCommitBatch = {
   lastCommit: string;
   /**
    * Digest of every commit up to and including `lastCommit`, recorded beside it so the next run can
-   * tell if a new commit has creeped into this batch and it needs to be rescanned.
-   *
-   * This scenario can happen if a rebase happens in the repository.
+   * tell if a new commit has crept into this batch and it needs to be rescanned. This prevents a history
+   * change (rebase) to cause some commits to not be scanned.
    */
   prefixDigest: string;
 };
 
+const COMMIT_LOG_OPTS = COMMIT_LIST_ARGS.slice(1).join(" ");
+
 const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>
-  `${COMMIT_LIST_ARGS.slice(1).join(" ")} --skip=${skip} --max-count=${maxCount}`;
+  `${COMMIT_LOG_OPTS} --skip=${skip} --max-count=${maxCount}`;
 
 /**
  * Batches are aligned on absolute position in the oldest-first ordering rather than on wherever the
@@ -218,10 +208,16 @@ export const planCommitBatches = async ({
   let resumeIndex = -1;
   let resumePrefixDigest = "";
   let newestCommit = "";
-  let prefixDigest = "";
 
-  // A repository with hundreds of thousands of commits emits more than the exec layer will buffer,
-  // and nothing here needs the full list: only the batch edges and the resume point are retained.
+  // prefixDigest is the hash that is regenerated on every commit and can be
+  // recreated from history.
+  // A -> B -> C will generate a hash based on the commit sha and we can verify it
+  // if for some reason the history becomes: A -> B -> D -> C, when processing C
+  // the digest doesn't match anymore and it means that we have some unscanned commit
+  // in the history.
+  const prefix = crypto.nativeCrypto.createHash("sha256");
+  const prefixDigest = () => prefix.copy().digest("hex");
+
   await execFileBounded("git", [...COMMIT_LIST_ARGS, "--reverse"], {
     phase: SecretScanningExecPhase.Enumerate,
     cwd: repoPath,
@@ -234,24 +230,25 @@ export const planCommitBatches = async ({
       const index = totalCommits;
       totalCommits += 1;
       newestCommit = commit;
-      prefixDigest = crypto.nativeCrypto.createHash("sha256").update(`${prefixDigest}${commit}`).digest("hex");
+      prefix.update(commit);
 
       if (commit === resumeAfterCommit) {
         resumeIndex = index;
-        resumePrefixDigest = prefixDigest;
+        resumePrefixDigest = prefixDigest();
       }
-      if ((index + 1) % batchSize === 0) boundaries.push({ index, commit, prefixDigest });
+      if ((index + 1) % batchSize === 0) boundaries.push({ index, commit, prefixDigest: prefixDigest() });
     }
   });
 
   const lastIndex = totalCommits - 1;
   if (totalCommits && boundaries[boundaries.length - 1]?.index !== lastIndex) {
-    boundaries.push({ index: lastIndex, commit: newestCommit, prefixDigest });
+    boundaries.push({ index: lastIndex, commit: newestCommit, prefixDigest: prefixDigest() });
   }
 
-  // Commits that became reachable since the last run can sort in ahead of the resume point, so the
-  // indexes after it no longer name the commits they named then. Skipping to that index would step
-  // over commits this scan has never looked at, so the only safe reading of the plan is a fresh one.
+  // If true, means that the history of commits have changed and there are unscanned commits
+  // This should only happen if a worker dies and clone the repo again after a rebase.
+  // If this happens, it means we can't continue and actually need to start over to ensure
+  // all commits are scanned.
   const prefixChanged = resumeIndex >= 0 && resumePrefixDigest !== resumeAfterCommitDigest;
   const resumableIndex = prefixChanged ? -1 : resumeIndex;
 
@@ -325,7 +322,7 @@ export const scanGitRepositoryAndGetFindings = async (
   configPath?: string,
   batch?: TCommitBatch
 ): TGetFindingsPayload => {
-  const logOpts = batch ? buildCommitBatchLogOpts(batch) : undefined;
+  const logOpts = batch ? buildCommitBatchLogOpts(batch) : COMMIT_LOG_OPTS;
   await scanDirectory(scanPath, findingsPath, configPath, logOpts);
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];

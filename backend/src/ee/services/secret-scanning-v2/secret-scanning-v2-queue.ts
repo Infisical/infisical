@@ -320,15 +320,16 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
-      const allFindings: TSecretScanningFindings[] = [];
-      let findingsCount = 0;
+      // Counts what this attempt scanned, for the progress logs only. The scan's finding total is
+      // read from the database at the end, because an attempt that resumes a partly-scanned scan
+      // never sees the batches an earlier one already persisted.
+      let scannedFindingsCount = 0;
 
       /**
        * Each batch is made durable on its own: its findings and the commit it reached are committed
        * before the next `infisical scan` starts, so a worker killed mid-scan resumes from there
        * rather than re-walking history it has already paid for. Returns whether this run still owns
-       * the scan and its lease — once the reaper has given up on it, or another scan of the resource
-       * has taken over, there is nothing left to make progress on.
+       * the scan and its lease.
        */
       const persistBatch = async (
         batchFindings: TFindingsPayload,
@@ -336,7 +337,7 @@ export const secretScanningV2QueueServiceFactory = ({
       ) => {
         const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
           if (batchFindings.length) {
-            const findings = await secretScanningV2DAL.findings.upsert(
+            await secretScanningV2DAL.findings.upsert(
               batchFindings.map((finding) => ({
                 ...finding,
                 projectId: dataSource.projectId,
@@ -350,8 +351,6 @@ export const secretScanningV2QueueServiceFactory = ({
               tx,
               ["resourceName", "dataSourceName"]
             );
-
-            allFindings.push(...findings);
           }
 
           const progressed = await secretScanningV2DAL.scans.update(
@@ -389,7 +388,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
           if (!batchSize) {
             const batchFindings = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
-            findingsCount += batchFindings.length;
+            scannedFindingsCount += batchFindings.length;
             stillOwned = await persistBatch(batchFindings);
             break;
           }
@@ -424,7 +423,7 @@ export const secretScanningV2QueueServiceFactory = ({
               batch
             );
 
-            findingsCount += batchFindings.length;
+            scannedFindingsCount += batchFindings.length;
 
             // eslint-disable-next-line no-await-in-loop
             stillOwned = await persistBatch(batchFindings, {
@@ -460,14 +459,16 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!completedScans.length) {
         logger.warn(
-          `secretScanningV2Queue: Full Scan finished after the scan was already closed out ${logDetails} findings=[${findingsCount}] durationMs=[${Date.now() - startedAt}]`
+          `secretScanningV2Queue: Full Scan finished after the scan was already closed out ${logDetails} scannedFindings=[${scannedFindingsCount}] durationMs=[${Date.now() - startedAt}]`
         );
         return;
       }
 
-      const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+      // Read back rather than counted in the handler: the findings an earlier attempt persisted are
+      // part of this scan's total, and a resumed attempt never scanned the batches they came from.
+      const findingsCount = await secretScanningV2DAL.findings.countByScanId(scanId);
 
-      if (newFindings.length) {
+      if (findingsCount) {
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -476,7 +477,7 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: false,
             dataSource,
-            numberOfSecrets: newFindings.length,
+            numberOfSecrets: findingsCount,
             scanId
           },
           { removeOnFail: true, jobId: `secret-scanning-notification-${scanId}` }
@@ -505,7 +506,7 @@ export const secretScanningV2QueueServiceFactory = ({
       });
 
       logger.info(
-        `secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsCount}] durationMs=[${Date.now() - startedAt}]`
+        `secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsCount}] scannedFindings=[${scannedFindingsCount}] durationMs=[${Date.now() - startedAt}]`
       );
     } catch (error) {
       if (retryCount === retryLimit) {

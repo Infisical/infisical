@@ -216,7 +216,24 @@ describe("planCommitBatches", () => {
     });
   });
 
-  test("restarts when a newly reachable ref lands commits ahead of the resume point", async () => {
+  test("enumerates the default branch only", async () => {
+    await withRepo(async (repoPath) => {
+      await commit(repoPath, "a", "2020-01-01T00:00:00Z");
+      await commit(repoPath, "b", "2020-01-02T00:00:00Z");
+
+      // Never merged, so it is not part of the default branch's history. Commits that only ever
+      // existed on another branch are covered by realtime scanning of the push that created them.
+      await git(repoPath, ["checkout", "-b", "feature"]);
+      await commit(repoPath, "unmerged", "2020-01-03T00:00:00Z");
+      await git(repoPath, ["checkout", "main"]);
+
+      const plan = await planCommitBatches({ repoPath, batchSize: 10 });
+
+      expect(plan.totalCommits).toBe(2);
+    });
+  });
+
+  test("restarts when a merge lands commits ahead of the resume point", async () => {
     await withRepo(async (repoPath) => {
       await commit(repoPath, "a", "2020-01-01T00:00:00Z");
       await commit(repoPath, "b", "2020-01-02T00:00:00Z");
@@ -225,11 +242,13 @@ describe("planCommitBatches", () => {
 
       const [firstBatch] = (await planCommitBatches({ repoPath, batchSize: 2 })).batches;
 
-      // A branch rooted before the resume point, carrying a commit older than it. `--all` picks it
-      // up and the date ordering sorts it into the prefix, shifting every index after it.
-      await git(repoPath, ["checkout", "-b", "old", "HEAD~3"]);
-      const smuggled = await commit(repoPath, "smuggled", "2020-01-01T12:00:00Z");
+      // A long-lived branch rooted before the resume point, merged in afterwards. Its commit keeps
+      // its own older date, so the date ordering sorts it into the prefix and shifts every index
+      // after it — on the default branch alone, with no second ref involved.
+      await git(repoPath, ["checkout", "-b", "feature", "HEAD~3"]);
+      const merged = await commit(repoPath, "feat-old", "2020-01-01T12:00:00Z");
       await git(repoPath, ["checkout", "main"]);
+      await git(repoPath, ["merge", "--no-ff", "feature", "-m", "merge feature"]);
 
       const resumed = await planCommitBatches({
         repoPath,
@@ -243,9 +262,9 @@ describe("planCommitBatches", () => {
 
       // Every commit is back in the plan, the never-scanned one included.
       const planned = resumed.batches.reduce((total, batch) => total + batch.maxCount, 0);
-      expect(resumed.totalCommits).toBe(5);
-      expect(planned).toBe(5);
-      expect(smuggled).toBeTruthy();
+      expect(resumed.totalCommits).toBe(6);
+      expect(planned).toBe(6);
+      expect(merged).toBeTruthy();
     });
   });
 
