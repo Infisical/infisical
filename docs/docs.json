@@ -784,6 +784,14 @@
                 ]
               },
               {
+                "group": "Agent guides",
+                "pages": [
+                  "documentation/platform/agent-vault/guides/claude-code",
+                  "documentation/platform/agent-vault/guides/codex",
+                  "documentation/platform/agent-vault/guides/opencode"
+                ]
+              },
+              {
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
