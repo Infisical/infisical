@@ -5,8 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
-  ArrowDownIcon,
-  ArrowRightIcon,
   CheckCircleIcon,
   CheckIcon,
   CircleAlertIcon,
@@ -176,31 +174,30 @@ const MoveLocationLayout = ({
   destinationEnvironment: ReactNode;
   destinationPath: ReactNode;
 }) => (
-  <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] md:items-end md:gap-2">
-    <section className="flex min-w-0 flex-col gap-2" aria-labelledby="move-source-heading">
-      <h3 id="move-source-heading" className="text-sm font-medium text-foreground">
-        Source
-      </h3>
-      <div className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2">
-        {sourceEnvironment}
-        <StaticLocationValue accessibleLabel="Source folder">
-          <PathValue secretPath={sourceSecretPath} />
-        </StaticLocationValue>
-      </div>
-    </section>
-    <div className="flex items-center justify-center self-end text-muted" aria-hidden="true">
-      <ArrowDownIcon className="size-4 md:hidden" />
-      <ArrowRightIcon className="hidden size-4 md:block" />
+  <div className="flex min-w-0 flex-col gap-3">
+    <div
+      className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2"
+      role="group"
+      aria-label="Source location"
+    >
+      {sourceEnvironment}
+      <StaticLocationValue accessibleLabel="Source folder">
+        <PathValue secretPath={sourceSecretPath} />
+      </StaticLocationValue>
     </div>
-    <section className="flex min-w-0 flex-col gap-2" aria-labelledby="move-destination-heading">
-      <h3 id="move-destination-heading" className="text-sm font-medium text-foreground">
-        Destination
-      </h3>
-      <div className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2">
-        {destinationEnvironment}
-        {destinationPath}
-      </div>
-    </section>
+    <div className="flex items-center gap-3" aria-hidden="true">
+      <span className="h-px flex-1 bg-border" />
+      <span className="text-xs font-medium text-muted">Move to</span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+    <div
+      className="grid min-w-0 grid-cols-[minmax(7.5rem,0.8fr)_minmax(0,1.2fr)] gap-2"
+      role="group"
+      aria-label="Destination location"
+    >
+      {destinationEnvironment}
+      {destinationPath}
+    </div>
   </div>
 );
 
@@ -1831,7 +1828,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-3xl [&>*]:min-w-0">
+      <DialogContent className="max-w-xl [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>{moveCopy.title}</DialogTitle>
           <DialogDescription>
