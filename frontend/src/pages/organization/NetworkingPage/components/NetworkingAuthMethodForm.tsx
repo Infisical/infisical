@@ -85,15 +85,24 @@ const schema = z
     }
 
     if (data.method === "gcp") {
+      // Projects are not offered on the iam type, so only the service account can satisfy it there.
       const isIam = data.gcpAuthType === "iam";
       if (!data.allowedServiceAccounts.trim() && (isIam || !data.allowedProjects.trim())) {
+        const message = isIam
+          ? "Allowed service account emails must be set"
+          : "At least one of allowed service account emails or allowed projects must be set";
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["allowedServiceAccounts"],
-          message: isIam
-            ? "Allowed service account emails is required."
-            : "Set allowed service account emails or allowed projects. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone."
+          message
         });
+        if (!isIam) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["allowedProjects"],
+            message
+          });
+        }
       }
     }
 
@@ -550,8 +559,8 @@ export const NetworkingAuthMethodForm = ({
           )}
           <p className="text-xs text-muted">
             {gcpAuthType === "gce"
-              ? "Allowed service account emails or allowed projects is required."
-              : "Allowed service account emails is required."}
+              ? "At least one of allowed service account emails or allowed projects must be set."
+              : "Allowed service account emails must be set."}
           </p>
         </>
       )}
