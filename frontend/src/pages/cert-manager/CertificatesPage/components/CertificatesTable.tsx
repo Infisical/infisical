@@ -95,6 +95,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
+  getCertificateDeletionBlockReason,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -1325,22 +1326,47 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 );
                               })()}
-                              {!(isInventoryView && certificate.applicationId) && (
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  isDisabled={!canDeleteCertificate}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteCertificate", {
-                                      certificateId: certificate.id,
-                                      commonName: certificate.commonName
-                                    });
-                                  }}
-                                >
-                                  <Trash2Icon />
-                                  Delete Certificate
-                                </DropdownMenuItem>
-                              )}
+                              {!(isInventoryView && certificate.applicationId) &&
+                                (() => {
+                                  const deletionBlockReason =
+                                    getCertificateDeletionBlockReason(certificate);
+
+                                  const item = (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      isDisabled={
+                                        !canDeleteCertificate || Boolean(deletionBlockReason)
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteCertificate", {
+                                          certificateId: certificate.id,
+                                          commonName: certificate.commonName
+                                        });
+                                      }}
+                                    >
+                                      <Trash2Icon />
+                                      Delete Certificate
+                                    </DropdownMenuItem>
+                                  );
+
+                                  if (!deletionBlockReason) return item;
+
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div>{item}</div>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="left"
+                                        sideOffset={20}
+                                        className="max-w-72"
+                                      >
+                                        {deletionBlockReason}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })()}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

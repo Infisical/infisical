@@ -1,6 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
@@ -36,6 +37,7 @@ import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/a
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsage,
+  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CrlReason
@@ -3182,7 +3184,11 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: CertificateSource;
+    deletionAllowedReason: CertificateDeletionEligibility;
     applicationId?: string | null;
     applicationName?: string | null;
   };

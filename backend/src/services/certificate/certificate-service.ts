@@ -90,6 +90,7 @@ import {
   getCertificateCredentials,
   normalizeThumbprint,
   parseCertificateBody,
+  resolveCertificateDeletionEligibility,
   revocationReasonToCrlCode,
   splitPemChain
 } from "./certificate-fns";
@@ -498,6 +499,21 @@ export const certificateServiceFactory = ({
       );
     }
 
+    const deletionEligibility = resolveCertificateDeletionEligibility(cert);
+    if (!deletionEligibility) {
+      const certName = cert.friendlyName || cert.commonName || cert.serialNumber;
+      const expiresAt = cert.notAfter.toISOString();
+
+      let message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Delete it once it has expired.`;
+      if (cert.status === CertStatus.REVOKED) {
+        message = `Certificate '${certName}' was revoked but does not expire until ${expiresAt}. Delete it once it has expired.`;
+      } else if (cert.caId) {
+        message = `Certificate '${certName}' is still valid until ${expiresAt} and cannot be deleted. Revoke it to retire it early, then delete it once it has expired.`;
+      }
+
+      throw new BadRequestError({ message });
+    }
+
     const pkiSyncIdsHoldingCertificate = await findPkiSyncIdsHoldingCertificate(cert.id, { certificateSyncDAL });
 
     let deletedCert;
@@ -549,6 +565,7 @@ export const certificateServiceFactory = ({
 
     return {
       deletedCert,
+      deletionEligibility,
       applicationName: await $resolveApplicationName(deletedCert.applicationId)
     };
   };

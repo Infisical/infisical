@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -16,6 +17,7 @@ import type { TCertificateDALFactory } from "./certificate-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
+  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
@@ -426,4 +428,15 @@ export const linkRenewedCertificate = async (
   }
 
   await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
+};
+
+export const resolveCertificateDeletionEligibility = (certificate: {
+  notAfter: Date;
+  source?: string | null;
+}): CertificateDeletionEligibility | null => {
+  if (certificate.source === CertificateSource.Discovered) return CertificateDeletionEligibility.Discovered;
+  if (certificate.source === CertificateSource.Imported) return CertificateDeletionEligibility.Imported;
+  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertificateDeletionEligibility.Expired;
+
+  return null;
 };
