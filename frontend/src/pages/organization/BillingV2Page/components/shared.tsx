@@ -26,7 +26,7 @@ import {
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
-  pluralizeUnit
+  unitForCount
 } from "../billing-v2-format";
 
 type ProductIconProps = {
@@ -200,7 +200,9 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
     right = (
       <>
         <span className="font-medium text-foreground">{dim.used.toLocaleString()}</span>
-        {dim.limit !== null ? ` / ${dim.limit.toLocaleString()}` : ` ${pluralizeUnit(dim.noun)}`}
+        {dim.limit !== null
+          ? ` / ${dim.limit.toLocaleString()}`
+          : ` ${unitForCount(dim.noun, dim.used)}`}
         {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
       </>
     );

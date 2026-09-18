@@ -861,13 +861,16 @@ export const licenseV2ServiceFactory = ({
     return { overview };
   };
 
-  // Assembles the org/project rows a breakdown query returned into the scope tree. The
-  // root org is always present, even at zero, so the user can see it holds nothing; a sub-org is
-  // listed only once it contributes, since an org tree can carry far more sub-orgs than a product uses.
+  // Assembles the org/project rows a breakdown query returned into the scope tree. An org is listed
+  // only once it contributes, since an org tree can carry far more sub-orgs than a product uses, and
+  // the instance-wide roster is every org on the instance. keepEmptyOrgId is the one exception: a
+  // tree's root is listed even at zero, so the user can see it holds nothing. It is null for the
+  // instance-wide breakdown, which has no single root and where empty orgs are noise, not an answer.
   const $buildScopes = (
     orgs: TScopeOrgRow[],
     projectsById: Map<string, TScopeProjectRow>,
-    rows: { orgId: string; projectId: string | null; count: number }[]
+    rows: { orgId: string; projectId: string | null; count: number }[],
+    keepEmptyOrgId: string | null
   ): BillingV2BreakdownScope[] => {
     type TScopeAccumulator = {
       name: string;
@@ -914,7 +917,7 @@ export const licenseV2ServiceFactory = ({
           projects
         };
       })
-      .filter((scope) => scope.isRoot || scope.count > 0)
+      .filter((scope) => scope.count > 0 || scope.orgId === keepEmptyOrgId)
       .sort((a, b) => Number(b.isRoot) - Number(a.isRoot) || b.count - a.count || a.name.localeCompare(b.name));
   };
 
@@ -967,7 +970,7 @@ export const licenseV2ServiceFactory = ({
         scopedCount: counts.identities,
         hasProjectDetail: withProjectDetail,
         unit,
-        scopes: $buildScopes(orgs, projectsById, attributed)
+        scopes: $buildScopes(orgs, projectsById, attributed, rootOrgId)
       };
     };
 
@@ -975,7 +978,8 @@ export const licenseV2ServiceFactory = ({
       const scopes = $buildScopes(
         orgs,
         new Map(),
-        rows.map((row) => ({ orgId: row.orgId, projectId: null, count: row.count }))
+        rows.map((row) => ({ orgId: row.orgId, projectId: null, count: row.count })),
+        rootOrgId
       );
       const total = scopes.reduce((sum, scope) => sum + scope.count, 0);
       return { dimensionKey, total, userCount: 0, scopedCount: total, hasProjectDetail: false, unit, scopes };

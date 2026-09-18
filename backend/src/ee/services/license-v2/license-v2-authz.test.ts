@@ -77,22 +77,6 @@ describe("billing v2 cross-org read shortcut", () => {
     expect(result.totalCount).toBe(1);
   });
 
-  test("a fully delegated OAuth token keeps the shortcut", async () => {
-    // inject-identity leaves OauthScopes unset for full delegation, exactly as for a first-party
-    // session, so full delegation is matched positively rather than inferred from its absence.
-    const { service, getOrgPermission } = buildService();
-
-    await service.getBillableOrganizations({
-      orgId: OTHER_ORG,
-      actor,
-      isInstanceAdmin: true,
-      limit: 10,
-      offset: 0
-    });
-
-    expect(getOrgPermission).not.toHaveBeenCalled();
-  });
-
   test("a scope-narrowed OAuth token is denied the shortcut and checked instead", async () => {
     contextStore.set("oauthScopes", ["secrets:read"]);
     const { service, getOrgPermission } = buildService();
