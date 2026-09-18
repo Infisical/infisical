@@ -2,9 +2,8 @@ import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
-import { BadRequestError } from "@app/lib/errors";
-
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { BadRequestError } from "@app/lib/errors";
 
 import {
   buildCertificateBundle,

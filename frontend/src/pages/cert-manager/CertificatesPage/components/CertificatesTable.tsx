@@ -1328,8 +1328,10 @@ export const CertificatesTable = ({
                               })()}
                               {!(isInventoryView && certificate.applicationId) &&
                                 (() => {
-                                  const deletionBlockReason =
-                                    getCertificateDeletionBlockReason(certificate, canRevokeCertificate);
+                                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                                    certificate,
+                                    canRevokeCertificate
+                                  );
 
                                   const item = (
                                     <DropdownMenuItem

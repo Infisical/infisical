@@ -540,8 +540,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      description:
-        "Delete certificate. Only expired, discovered and imported certificates can be deleted.",
+      description: "Delete certificate. Only expired, discovered and imported certificates can be deleted.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
