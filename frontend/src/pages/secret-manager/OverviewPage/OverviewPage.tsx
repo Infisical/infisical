@@ -3958,11 +3958,7 @@ const OverviewPageContent = () => {
         />
       )}
       {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal
-          popUp={invitePopUp}
-          handlePopUpToggle={handleInvitePopUpToggle}
-          experimentVariant={null}
-        />
+        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
       )}
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm

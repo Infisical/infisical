@@ -52,12 +52,11 @@ const inviteMembersFormSchema = z.object({
 type TInviteMembersForm = z.infer<typeof inviteMembersFormSchema>;
 
 type Props = {
-  experimentVariant: "control" | null;
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
 };
 
-export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant }: Props) => {
+export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
@@ -102,9 +101,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
     orgId,
     projectId,
     projectType: currentProject?.type,
-    presentation: "modal",
-    experiment_variant: experimentVariant,
-    "$feature/secrets-activation-presentation": experimentVariant
+    presentation: "modal"
   };
   const hasViewedRef = useRef(false);
 

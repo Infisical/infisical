@@ -1,36 +1,10 @@
 /* eslint-disable */
-import { PostHog } from "posthog-js";
-import { initPostHog } from "@app/components/analytics/posthog";
-import { envConfig } from "@app/config/env";
-
+// No-op seam left behind after PostHog was removed. Call sites stay in place so wiring up a new
+// analytics provider only means filling in these two methods.
 class Capturer {
-  api: PostHog;
+  capture(_item: string, _properties?: Record<string, unknown>) {}
 
-  constructor() {
-    this.api = initPostHog()!;
-  }
-
-  capture(item: string, properties?: Record<string, unknown>) {
-    if (envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) {
-      try {
-        this.api.capture(item, properties);
-      } catch (error) {
-        console.error("PostHog", error);
-      }
-    }
-  }
-
-  identify(id: string, email?: string) {
-    if (envConfig.ENV === "production" && envConfig.TELEMETRY_CAPTURING_ENABLED === true) {
-      try {
-        this.api.identify(id, {
-          email: email
-        });
-      } catch (error) {
-        console.error("PostHog", error);
-      }
-    }
-  }
+  identify(_id: string, _email?: string) {}
 }
 
 export default class Telemetry {

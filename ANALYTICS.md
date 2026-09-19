@@ -1,7 +1,8 @@
 # Product analytics
 
-Use this guide for product analytics emitted to PostHog from the frontend,
-backend, workers, and lifecycle/webhook processors. An event is a durable data
+Use this guide for product analytics emitted from the frontend, backend,
+workers, and lifecycle/webhook processors. The backend emits to PostHog; the
+frontend currently has no provider (see below). An event is a durable data
 contract: define what it means and who owns it before adding a capture call or
 dashboard.
 
@@ -51,10 +52,16 @@ is a billing-lifecycle fact.
 
 ## Frontend events
 
+The frontend has no analytics provider wired up: PostHog was removed, and
+`Telemetry` is a no-op seam that discards every capture. Call sites and the
+event catalog are still maintained so a replacement provider only has to be
+implemented in `frontend/src/components/utilities/telemetry/Telemetry.ts`.
+Until one is, no frontend event reaches a dashboard.
+
 Use `@app/lib/analytics` for new frontend product analytics. The event catalog
 in `frontend/src/lib/analytics/events.ts` is the contract between application
-code and PostHog dashboards: every event has one canonical name and a typed
-property shape.
+code and the analytics provider: every event has one canonical name and a
+typed property shape.
 
 ```ts
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
@@ -67,9 +74,9 @@ analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, orgId, {
 });
 ```
 
-`captureForOrganization` adds `orgId` and the PostHog organization group. Do
-not add those fields at call sites. Analytics initialization remains lazy; do
-not instantiate the client at module scope.
+`captureForOrganization` adds `orgId`. Do not add that field at call sites.
+Analytics initialization remains lazy; do not instantiate the client at module
+scope.
 
 To add a frontend event:
 
@@ -77,11 +84,11 @@ To add a frontend event:
 2. Add its property contract to `OrganizationAnalyticsEventMap` or the
    appropriate scope map when one exists.
 3. Capture it through the scope-specific analytics method.
-4. Update the PostHog insight or dashboard that consumes it.
+4. Update the insight or dashboard that consumes it.
 
 Legacy frontend telemetry still uses `Telemetry` directly. Migrate it through
 the shared API rather than copying that pattern into new code. Preserve
-existing identity and feature-flag behavior during migration.
+existing identity behavior during migration.
 
 ## Backend events
 
