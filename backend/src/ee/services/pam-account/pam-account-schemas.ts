@@ -976,7 +976,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
   >
 >;
 
-type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
+export type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
 
 export type TWindowsConnectionDetails = z.infer<
   (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.Windows]["connectionDetails"]
@@ -1134,6 +1134,11 @@ export const resolveSelectedHost = (
 // The account type the gateway sees. Windows AD is brokered through the Windows RDP protocol
 export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
   accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
+
+export const gatewaySupportsAccountType = (
+  accountType: PamAccountType,
+  supportedTypes: string[] | undefined
+): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
 
 export const buildSessionGatewayConnectionDetails = (
   accountType: PamAccountType,
