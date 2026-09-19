@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "lucide-react";
 
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
+import { Button, IconButton, Popover, PopoverContent, PopoverTrigger } from "@app/components/v3";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
 
 type FolderNodeProps = {
@@ -33,23 +32,19 @@ const FolderNode = ({ projectId, environment, path, name, value, onSelect }: Fol
   return (
     <li>
       <div className="flex min-w-0 items-center gap-1">
-        <Button
+        <IconButton
           variant="ghost"
           size="xs"
-          className="size-7 shrink-0 p-0"
           aria-label={`${isExpanded ? "Collapse" : "Expand"} ${path}`}
           aria-expanded={isExpanded}
           onClick={() => setIsExpanded((previous) => !previous)}
         >
           {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
-        </Button>
+        </IconButton>
         <Button
-          variant="ghost"
+          variant={value === path ? "project" : "ghost"}
           size="sm"
-          className={cn(
-            "min-w-0 flex-1 justify-start px-2",
-            value === path && "bg-project/10 text-project"
-          )}
+          className="min-w-0 flex-1 justify-start"
           title={path}
           aria-label={`Search in ${path}`}
           aria-pressed={value === path}
@@ -126,7 +121,6 @@ export const QuickSearchFolderPicker = ({ projectId, environment, value, onChang
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="p-2"
         style={{ width: "var(--radix-popover-trigger-width)" }}
         onEscapeKeyDown={(event) => event.stopPropagation()}
       >
