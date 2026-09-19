@@ -60,7 +60,7 @@ import {
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
-import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
@@ -91,7 +91,7 @@ const Page = () => {
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
-  const { mutateAsync: removeAgentVaultIdentityMutateAsync } = useRemoveAgentVaultProductMember();
+  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
@@ -154,7 +154,7 @@ const Page = () => {
     } else if (isAgentVault) {
       // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
       // and reaps the identity's bundle grants, none of which the generic route does.
-      await removeAgentVaultIdentityMutateAsync({ identityId });
+      await revokeAgentVaultMembers({ machineIdentityIds: [identityId] });
     } else {
       await removeIdentityMutateAsync({
         identityId,
