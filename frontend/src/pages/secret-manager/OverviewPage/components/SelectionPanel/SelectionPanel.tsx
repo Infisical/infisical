@@ -1,10 +1,21 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ClipboardIcon,
+  CopyPlus,
+  FolderInputIcon,
+  TagsIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   SelectedActionBar,
   Tooltip,
   TooltipContent,
@@ -20,6 +31,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
+import { fetchDashboardProjectSecretsByKeys } from "@app/hooks/api/dashboard/queries";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -31,6 +43,7 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import type {
   CopySecretsFolder,
   CopySecretsInvocation,
@@ -76,6 +89,7 @@ export const SelectionPanel = ({
   onCopySecrets
 }: Props) => {
   const { permission } = useProjectPermission();
+  const [isCopying, setIsCopying] = useState(false);
   const { subscription } = useSubscription();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -136,12 +150,22 @@ export const SelectionPanel = ({
 
   const getDeleteModalTitle = () => {
     if (selectedFolderCount > 0 && selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets and folders across the following environments?";
+      return "Bulk Delete Secrets and Folders";
     }
     if (selectedKeysCount > 0) {
-      return "Do you want to delete the selected secrets across the following environments?";
+      return "Bulk Delete Secrets";
     }
-    return "Do you want to delete the selected folders across the following environments?";
+    return "Bulk Delete Folders";
+  };
+
+  const getDeleteModalDescription = () => {
+    if (selectedFolderCount > 0 && selectedKeysCount > 0) {
+      return `Delete ${selectedKeysCount} selected secret${selectedKeysCount === 1 ? "" : "s"} and ${selectedFolderCount} selected folder${selectedFolderCount === 1 ? "" : "s"} across all environments.`;
+    }
+    if (selectedKeysCount > 0) {
+      return `Delete ${selectedKeysCount} selected secret${selectedKeysCount === 1 ? "" : "s"} across all environments.`;
+    }
+    return `Delete ${selectedFolderCount} selected folder${selectedFolderCount === 1 ? "" : "s"} across all environments.`;
   };
 
   const getDeleteModalSubTitle = () => {
@@ -383,10 +407,98 @@ export const SelectionPanel = ({
       return { ...byEnvironment, [environment]: [...(byEnvironment[environment] ?? []), { path }] };
     }, {});
   const shouldShowBulkCopy = selectedKeysCount > 0 || selectedFolderCount > 0;
+  const isClipboardDisabled =
+    selectedSecretEntries.length === 0 ||
+    hasUnmaterializedSecretSelection ||
+    areFoldersSelected ||
+    areRotationsSelected ||
+    selectedSecretEntries.some(
+      ([environment, secret]) =>
+        !secret.idOverride &&
+        (secret.secretValueHidden ||
+          !hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment,
+              secretPath: secret.path ?? secretPath,
+              secretName: secret.key,
+              secretTags: (secret.tags ?? []).map((tag) => tag.slug)
+            }
+          ))
+    );
+
+  const handleCopyToClipboard = async () => {
+    if (isClipboardDisabled || isCopying) return;
+    if (
+      selectedSecretEntries.some(
+        ([, secret]) => !/^[A-Za-z_]/.test(secret.key) || /[^A-Za-z0-9_]/.test(secret.key)
+      )
+    ) {
+      createNotification({
+        type: "error",
+        title: "Cannot copy secrets as .env",
+        text: "Some selected secret names aren’t compatible with .env format. Names must contain only letters, numbers, and underscores, and cannot start with a number. Nothing was copied."
+      });
+      return;
+    }
+    setIsCopying(true);
+    try {
+      const groups = selectedSecretEntries.reduce<
+        Record<string, { environment: string; path: string; secrets: SecretV3RawSanitized[] }>
+      >((acc, [environment, secret]) => {
+        const path = secret.path ?? secretPath;
+        const groupKey = JSON.stringify([environment, path]);
+        acc[groupKey] ??= { environment, path, secrets: [] };
+        acc[groupKey].secrets.push(secret);
+        return acc;
+      }, {});
+      const lines = await Promise.all(
+        Object.values(groups).map(async ({ environment, path, secrets }) => {
+          const { secrets: fetchedSecrets } = await fetchDashboardProjectSecretsByKeys({
+            projectId,
+            environment,
+            secretPath: path,
+            keys: secrets.map((secret) => secret.key),
+            viewSecretValue: true
+          });
+          const valuesById = new Map(fetchedSecrets.map((secret) => [secret.id, secret]));
+          const copiedLines = secrets.map((secret) => {
+            const fetchedSecret = valuesById.get(secret.idOverride ?? secret.id);
+            if (
+              !fetchedSecret ||
+              fetchedSecret.secretValueHidden ||
+              fetchedSecret.secretValue === undefined
+            ) {
+              throw new Error("Secret value unavailable");
+            }
+            const escapedValue = fetchedSecret.secretValue
+              .replace(/\\/g, "\\\\")
+              .replace(/"/g, '\\"')
+              .replace(/\r/g, "\\r")
+              .replace(/\n/g, "\\n");
+            return `${secret.key}="${escapedValue}"`;
+          });
+          if (visibleEnvs.length > 1) copiedLines.unshift(`# ${environment}`);
+          return copiedLines.join("\n");
+        })
+      );
+      await navigator.clipboard.writeText(lines.join("\n"));
+      createNotification({ type: "success", text: "Selected secrets copied to clipboard" });
+    } catch {
+      createNotification({ type: "error", text: "Failed to copy selected secrets to clipboard" });
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   return (
     <>
-      <SelectedActionBar selectedCount={selectedCount} onClearSelection={resetSelectedEntries}>
+      <SelectedActionBar
+        selectedCount={selectedCount}
+        onClearSelection={resetSelectedEntries}
+        iconOnlyClear
+      >
         {selectedKeysCount > 0 && (
           <Tooltip open={isTagActionDisabled ? undefined : false}>
             <TooltipTrigger>
@@ -420,32 +532,47 @@ export const SelectionPanel = ({
           </Tooltip>
         )}
         {shouldShowBulkCopy && (
-          <Tooltip open={isCopyDisabled ? undefined : false}>
-            <TooltipTrigger>
-              <Button
-                isDisabled={isCopyDisabled}
-                variant="project"
-                onClick={() => {
-                  if (isCopyDisabled) return;
-                  onCopySecrets({
-                    origin: "bulk",
-                    sourcePath: secretPath,
-                    selectedSecretCount: selectedKeysCount,
-                    secretsByEnvironment: copySecretsByEnvironment,
-                    sourceEnvironmentSlug:
-                      visibleEnvs.length === 1 ? visibleEnvs[0].slug : undefined,
-                    folderNames: Object.keys(selectedEntries[EntryType.FOLDER]),
-                    foldersByEnvironment: copyFoldersByEnvironment
-                  });
-                }}
-                size="xs"
-              >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="project" size="xs" isPending={isCopying} isDisabled={isCopying}>
                 <CopyPlus />
                 Copy
+                <ChevronDownIcon />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>{copyDisabledReason}</TooltipContent>
-          </Tooltip>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top">
+              <Tooltip open={isCopyDisabled ? undefined : false}>
+                <TooltipTrigger asChild>
+                  <span>
+                    <DropdownMenuItem
+                      isDisabled={isCopyDisabled}
+                      onSelect={() => {
+                        if (isCopyDisabled) return;
+                        onCopySecrets({
+                          origin: "bulk",
+                          sourcePath: secretPath,
+                          selectedSecretCount: selectedKeysCount,
+                          secretsByEnvironment: copySecretsByEnvironment,
+                          sourceEnvironmentSlug:
+                            visibleEnvs.length === 1 ? visibleEnvs[0].slug : undefined,
+                          folderNames: Object.keys(selectedEntries[EntryType.FOLDER]),
+                          foldersByEnvironment: copyFoldersByEnvironment
+                        });
+                      }}
+                    >
+                      <CopyPlus />
+                      Copy to New Source
+                    </DropdownMenuItem>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{copyDisabledReason}</TooltipContent>
+              </Tooltip>
+              <DropdownMenuItem isDisabled={isClipboardDisabled} onSelect={handleCopyToClipboard}>
+                <ClipboardIcon />
+                Copy to Clipboard
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {shouldShowDelete && (
           <Tooltip open={isDeleteDisabled ? undefined : false}>
@@ -491,6 +618,7 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkDeleteEntries.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         title={getDeleteModalTitle()}
+        description={getDeleteModalDescription()}
         subTitle={getDeleteModalSubTitle()}
         onDeleteApproved={handleBulkDelete}
         selectedEntries={selectedEntries}

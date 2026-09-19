@@ -1,6 +1,8 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
+
+import { useDebounce } from "@app/hooks";
 
 import { Button } from "../Button";
 import {
@@ -159,6 +161,92 @@ const DefaultRender = () => {
  */
 export const Default: Story = {
   render: () => <DefaultRender />
+};
+
+const ALL_ORGANIZATIONS = Array.from({ length: 2_000 }, (_, index) => ({
+  id: `org-${index + 1}`,
+  name: `Organization ${index + 1}`
+}));
+
+const PAGE_SIZE = 25;
+
+// Stands in for a paginated list endpoint: matches server-side and returns only the first page.
+const fetchOrganizations = (search: string) =>
+  new Promise<{ organizations: typeof ALL_ORGANIZATIONS; totalCount: number }>((resolve) => {
+    setTimeout(() => {
+      const query = search.trim().toLocaleLowerCase();
+      const matches = ALL_ORGANIZATIONS.filter((org) =>
+        org.name.toLocaleLowerCase().includes(query)
+      );
+      resolve({ organizations: matches.slice(0, PAGE_SIZE), totalCount: matches.length });
+    }, 400);
+  });
+
+const ServerSearchRender = () => {
+  const [value, setValue] = useState<(typeof ALL_ORGANIZATIONS)[number] | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const [organizations, setOrganizations] = useState<typeof ALL_ORGANIZATIONS>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCurrent = true;
+    setIsLoading(true);
+    fetchOrganizations(debouncedSearch).then((page) => {
+      if (!isCurrent) return;
+      setOrganizations(page.organizations);
+      setTotalCount(page.totalCount);
+      setIsLoading(false);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [debouncedSearch]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-server-search">Organization</FieldLabel>
+      <StoryCombobox
+        id="combobox-server-search"
+        options={organizations}
+        value={value}
+        onValueChange={setValue}
+        onClear={() => setValue(null)}
+        onSearchChange={setSearch}
+        isLoading={isLoading || search !== debouncedSearch}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select organization..."
+        searchPlaceholder="Search organizations..."
+        searchAriaLabel="Search organizations"
+        emptyMessage="No organizations match that search."
+        listFooter={
+          totalCount > organizations.length
+            ? `Showing ${organizations.length} of ${totalCount.toLocaleString()} — type to search the rest`
+            : null
+        }
+      />
+    </Field>
+  );
+};
+
+/**
+ * Passing `onSearchChange` hands filtering to the caller: the internal matcher is switched off
+ * and `options` renders exactly as given. Use it when the option set is too large to send in
+ * full, so the popup shows one page of server results and typing fetches the next one. Debounce
+ * the query on your side, and pair it with `isLoading` so the popup says it is still working —
+ * cover the debounce window as well as the request, or the stale page reads as the answer.
+ *
+ * It also turns off the auto-highlight that local filtering uses: the list arrives after a debounce
+ * and a round trip, so highlighting the top match would put it on a row the user has not seen yet and
+ * Enter would commit it. Pair the prop with `listFooter` to say that the list is only one page.
+ *
+ * This story searches 2,000 organizations through a fake endpoint that returns 25 at a time.
+ * Without `onSearchChange` the component would only ever match within those 25.
+ */
+export const ServerSearch: Story = {
+  render: () => <ServerSearchRender />
 };
 
 const RichOptionsRender = () => {
@@ -657,6 +745,80 @@ export const CreatableSingle: Story = {
   }
 };
 
+const SingleDismissedFailureRender = () => {
+  const [attempt, setAttempt] = useState(0);
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
+  const [value, setValue] = useState<{ id: string; name: string } | null>(null);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Field>
+        <FieldLabel htmlFor="combobox-single-dismissed-failure">Environment</FieldLabel>
+        <StoryCombobox
+          id="combobox-single-dismissed-failure"
+          options={options}
+          value={value}
+          onValueChange={setValue}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select or create an environment..."
+          creation={{
+            onCreate: async (inputValue) => {
+              await sleep(500);
+              if (attempt === 0) {
+                setAttempt(1);
+                throw false;
+              }
+              const option = { id: inputValue, name: inputValue };
+              setOptions([option]);
+              setValue(option);
+            }
+          }}
+        />
+      </Field>
+      <Button variant="outline">Continue</Button>
+      <p role="status">{value ? `Selected ${value.name}` : "No selection"}</p>
+    </div>
+  );
+};
+
+export const SingleDismissedFailure: Story = {
+  name: "Creation: Single Dismissed Failure and Retry",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A rejected single-value creation retains its failed query and inline error after pending work was dismissed. Reopening allows the same query to be retried without restoring focus or opening automatically."
+      }
+    }
+  },
+  render: () => <SingleDismissedFailureRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Environment" });
+    const continueButton = canvas.getByRole("button", { name: "Continue" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "retryable");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "retryable"' }));
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(continueButton);
+    await sleep(600);
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(continueButton).toHaveFocus();
+
+    await userEvent.click(input);
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      'Could not create "retryable"'
+    );
+    await expect(input).toHaveValue("retryable");
+    await userEvent.click(canvas.getByRole("option", { name: /Create "retryable"/ }));
+    await expect(await canvas.findByText("Selected retryable")).toBeInTheDocument();
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(input).toHaveValue("retryable");
+  }
+};
+
 const AsyncCreationRender = () => {
   const [options, setOptions] = useState(TAGS);
   const [value, setValue] = useState<TagOption[]>([]);
@@ -703,7 +865,7 @@ export const AsyncCreation: Story = {
     docs: {
       description: {
         story:
-          "Return the persistence promise from `onCreate`. While it is pending, the Create row is disabled so Enter or repeated clicks cannot start another request. Success clears the query after the caller updates its controlled options and value; rejection keeps the query and popup open and surfaces an inline retryable error."
+          "Return the persistence promise from `onCreate`. While it is pending, the Create row is disabled so Enter or repeated clicks cannot start another request. Success clears the query after the caller updates its controlled options and value; rejection keeps the query so reopening surfaces an inline retryable error."
       }
     }
   },
@@ -723,7 +885,10 @@ export const AsyncCreation: Story = {
     ).toBeInTheDocument();
 
     await userEvent.type(input, "reserved");
-    await userEvent.keyboard("{Enter}{Enter}");
+    await userEvent.keyboard("{Enter}{Enter}{Escape}");
+    await sleep(450);
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(input);
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "The tag could not be created"
     );
@@ -962,8 +1127,7 @@ const GroupedRemoteCreationRender = () => {
         options={results}
         value={value}
         onValueChange={(nextValue) => setValue(nextValue)}
-        onInputValueChange={setQuery}
-        shouldFilter={false}
+        onSearchChange={setQuery}
         includeMissingSelectedOptions={false}
         getOptionValue={(option) => option.id}
         getOptionLabel={(option) => option.name}
@@ -986,7 +1150,7 @@ export const GroupedRemoteCreation: Story = {
     docs: {
       description: {
         story:
-          "Creation composes with grouped, server-filtered multi-select results. The internal Create item stays outside domain groups and Select All counts and selects only real options."
+          "Creation composes with grouped, caller-filtered multi-select results. The internal Create item stays outside domain groups and Select All counts only real options, and successful creation resets the caller-owned query so refreshed results remain visible."
       }
     }
   },
@@ -1002,5 +1166,16 @@ export const GroupedRemoteCreation: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Select All (1)" }));
     await expect(canvas.getByRole("button", { name: "Remove production" })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Remove prod" })).not.toBeInTheDocument();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "remote-created");
+    const createOption = canvas.getByRole("option", { name: 'Create "remote-created"' });
+    await userEvent.keyboard("{ArrowDown}");
+    await expect(createOption).toHaveAttribute("data-highlighted");
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByRole("button", { name: "Remove remote-created" })).toBeInTheDocument();
+    await expect(input).toHaveValue("");
+    await expect(canvas.getByRole("option", { name: /production/ })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Select All (5)" })).toBeInTheDocument();
   }
 };

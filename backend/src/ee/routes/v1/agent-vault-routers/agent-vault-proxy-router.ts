@@ -1,7 +1,5 @@
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -14,12 +12,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
-});
+import { actorContext } from "./agent-vault-router-fns";
+import { agentVaultListQuery } from "./agent-vault-schemas";
 
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
@@ -34,8 +28,8 @@ const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
   trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
-  createdAt: z.date()
-});
+  createdAt: z.date().describe(AGENT_VAULT.PROXY.createdAt)
+}).describe(JSON.stringify({ title: "Admin view" }));
 
 const EnrollmentSchema = z.object({
   token: z.string().describe(AGENT_VAULT.PROXY.enrollmentToken),
@@ -57,16 +51,27 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       operationId: "listAgentVaultProxies",
       description: "List the organization's Agent Vault proxies",
       tags: [ApiDocsTags.AgentVaultProxies],
-      response: { 200: z.object({ proxies: z.union([ProxyAdminViewSchema, ProxyMemberViewSchema]).array() }) }
+      querystring: z.object({
+        orderBy: z.enum(["name", "createdAt"]).default("createdAt").describe(AGENT_VAULT.PROXY.orderBy),
+        orderDirection: z.enum(["asc", "desc"]).default("desc").describe(AGENT_VAULT.PROXY.orderDirection),
+        ...agentVaultListQuery(AGENT_VAULT.PROXY)
+      }),
+      response: {
+        200: z.object({
+          proxies: z
+            .union([ProxyAdminViewSchema, ProxyMemberViewSchema.describe(JSON.stringify({ title: "Member view" }))])
+            .array(),
+          totalCount: z.number()
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const proxies = await server.services.agentVaultProxy.listProxies({
+    handler: async (req) =>
+      server.services.agentVaultProxy.listProxies({
         projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      });
-      return { proxies };
-    }
+        ctx: actorContext(req),
+        ...req.query
+      })
   });
 
   server.route({
@@ -215,7 +220,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "POST",
-    url: "/:proxyId/token-auth/generate-enrollment-token",
+    url: "/:proxyId/token-auth/enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "reissueAgentVaultProxyEnrollmentToken",
