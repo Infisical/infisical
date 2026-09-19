@@ -36,8 +36,10 @@ jobs:
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
+            - name: 🔧 Setup Node toolchain
+              uses: ./.github/actions/setup-node-toolchain
             - name: 📦 Install dependencies to test all dependencies
-              run: npm ci --only-production
+              run: npm ci --omit=dev
               working-directory: backend
             - name: version output
               run: |
@@ -78,6 +80,8 @@ jobs:
                   file: Dockerfile.standalone-infisical
                   build-args: |
                       INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
+                      NODE_VERSION=${{ env.NODE_VERSION }}
+                      NPM_VERSION=${{ env.NPM_VERSION }}
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                       DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
@@ -157,8 +161,10 @@ jobs:
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
+            - name: 🔧 Setup Node toolchain
+              uses: ./.github/actions/setup-node-toolchain
             - name: 📦 Install dependencies to test all dependencies
-              run: npm ci --only-production
+              run: npm ci --omit=dev
               working-directory: backend
             - name: version output
               run: |
@@ -199,6 +205,8 @@ jobs:
                   file: Dockerfile.fips.standalone-infisical
                   build-args: |
                       INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
+                      NODE_VERSION=${{ env.NODE_VERSION }}
+                      NPM_VERSION=${{ env.NPM_VERSION }}
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                   secrets: |
