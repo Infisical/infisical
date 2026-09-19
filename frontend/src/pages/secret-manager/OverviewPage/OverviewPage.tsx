@@ -49,6 +49,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Alert,
@@ -117,7 +118,8 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSecretRotationActions
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
@@ -660,6 +662,13 @@ const OverviewPageContent = () => {
       subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
     )
   );
+  const secretSyncSourceEnv = visibleEnvs.find((env) =>
+    permission.can(
+      ProjectPermissionSecretSyncActions.Create,
+      subject(ProjectPermissionSub.SecretSyncs, { environment: env.slug, secretPath })
+    )
+  );
+  const canCreateSecretSyncs = Boolean(secretSyncSourceEnv);
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
@@ -1101,6 +1110,7 @@ const OverviewPageContent = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
+    "addSecretSync",
     "deleteEnv",
     "requestAccess",
     "importFromVault",
@@ -2630,6 +2640,7 @@ const OverviewPageContent = () => {
     isSecretRotationAvailable: visibleSecretRotationEnvs.length > 0,
     isHoneyTokenAvailable: true,
     onAddSecretImport: handleAddSecretImport,
+    onAddSecretSync: () => handlePopUpOpen("addSecretSync"),
     isSecretImportAvailable: visibleSecretImportEnvs.length > 0,
     isSingleEnvSelected: isSingleEnvView,
     hasVaultConnection,
@@ -2637,6 +2648,7 @@ const OverviewPageContent = () => {
     canCreateSecrets,
     canCreateFolders,
     canCreateHoneyTokens,
+    canCreateSecretSyncs,
     onImportFromVault: () => handlePopUpOpen("importFromVault"),
     onImportFromDoppler: () => handlePopUpOpen("importFromDoppler")
   };
@@ -3693,6 +3705,15 @@ const OverviewPageContent = () => {
             text: "Secret import replication requires an upgraded plan."
           })
         }
+      />
+      <CreateSecretSyncModal
+        isOpen={popUp.addSecretSync.isOpen}
+        initialFormData={
+          secretSyncSourceEnv ? { environment: secretSyncSourceEnv, secretPath } : undefined
+        }
+        initialFormDataIsDirty={false}
+        startOnDestination={false}
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
       />
       {subscription && (
         <UpgradePlanModal
