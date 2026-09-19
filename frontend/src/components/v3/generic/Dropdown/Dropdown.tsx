@@ -58,25 +58,60 @@ type DropdownMenuProps = Omit<
   inset?: boolean;
   variant?: "default" | "danger";
   isDisabled?: boolean;
+  isDisabledFocusable?: boolean;
 };
 
 const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
-  ({ className, inset, variant = "default", isDisabled, ...props }, ref): JSX.Element => {
+  (
+    {
+      className,
+      inset,
+      variant = "default",
+      isDisabled,
+      isDisabledFocusable,
+      onClick,
+      onSelect,
+      ...props
+    },
+    ref
+  ): JSX.Element => {
+    const isFocusableDisabled = Boolean(isDisabled && isDisabledFocusable);
+
     return (
       <DropdownMenuPrimitive.Item
         ref={ref}
         data-slot="dropdown-menu-item"
         data-inset={inset}
         data-variant={variant}
+        data-disabled={isDisabled ? "" : undefined}
+        aria-disabled={isDisabled || undefined}
         className={cn(
           "text-sm",
           "data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10 data-[variant=danger]:*:[svg]:!text-danger",
           "relative flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 outline-0 select-none focus:bg-foreground/5",
-          "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8",
+          "data-[disabled]:opacity-50 data-[inset]:pl-8",
+          isFocusableDisabled
+            ? "data-[disabled]:cursor-not-allowed"
+            : "data-[disabled]:pointer-events-none",
           "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
           className
         )}
-        disabled={isDisabled}
+        disabled={isDisabled && !isDisabledFocusable}
+        onClick={(event) => {
+          if (isFocusableDisabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onClick?.(event);
+        }}
+        onSelect={(event) => {
+          if (isFocusableDisabled) {
+            event.preventDefault();
+            return;
+          }
+          onSelect?.(event);
+        }}
         {...props}
       />
     );

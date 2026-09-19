@@ -1,10 +1,4 @@
-import {
-  cloneElement,
-  type ComponentProps,
-  type MouseEvent as ReactMouseEvent,
-  type ReactElement,
-  type ReactNode
-} from "react";
+import { cloneElement, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronsLeftRightEllipsisIcon,
@@ -49,14 +43,8 @@ type MenuItemTooltipProps = {
 function MenuItemTooltip({ children, content, isDisabled }: MenuItemTooltipProps) {
   const trigger = isDisabled
     ? cloneElement(children, {
-        "aria-disabled": true,
-        className: `${children.props.className ?? ""} cursor-not-allowed opacity-50`,
-        isDisabled: false,
-        onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
-          event.preventDefault();
-          event.stopPropagation();
-        },
-        onSelect: (event: Event) => event.preventDefault()
+        isDisabled: true,
+        isDisabledFocusable: true
       })
     : children;
 
