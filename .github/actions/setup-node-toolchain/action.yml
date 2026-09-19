@@ -1,0 +1,49 @@
+name: "Set up Node toolchain"
+description: "Install and verify the repository's pinned Node.js and npm versions."
+
+inputs:
+  cache:
+    description: "Package manager cache passed to setup-node."
+    required: false
+    default: ""
+  cache-dependency-path:
+    description: "Lockfile path passed to setup-node for dependency caching."
+    required: false
+    default: ""
+
+outputs:
+  node-version:
+    description: "The installed Node.js version."
+    value: ${{ steps.node.outputs.node-version }}
+  npm-version:
+    description: "The installed npm version."
+    value: ${{ steps.npm.outputs.npm-version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      id: node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version-file: .nvmrc
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: Install pinned npm
+      id: npm
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        NPM_VERSION="$(sed -n 's/^NPM_VERSION=//p' build-versions.env)"
+        if [[ ! "$NPM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::build-versions.env must declare an exact NPM_VERSION."
+          exit 1
+        fi
+        npm install --global "npm@$NPM_VERSION"
+        echo "npm-version=$(npm --version)" >> "$GITHUB_OUTPUT"
+
+    - name: Verify Node toolchain
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: node scripts/check-node-toolchain.mjs

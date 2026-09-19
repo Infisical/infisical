@@ -54,13 +54,27 @@ Infisical supports self-hosted deployment via Docker. Key considerations:
 
 ### Dependency Policy
 
-`build-versions.env` holds versions that several Dockerfiles install, currently the bundled
-Infisical CLI. Each Dockerfile keeps a matching `ARG` default so external builders (Northflank,
+`build-versions.env` holds the Node, npm, and bundled Infisical CLI versions.
+Each Dockerfile keeps matching `ARG` defaults so external builders (Northflank,
 Render, a plain `docker build`) work without passing anything, and CI and compose override it from
 that file. `check-dockerfile-pins.yml` fails a PR when the defaults drift from it, so change the
 file and the `ARG` defaults together.
 
-Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm packages (configured via `.npmrc` in each directory). This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
+Use `nvm install && nvm use`, then `npm install -g npm@$(sed -n 's/^NPM_VERSION=//p' build-versions.env)`.
+Run `node scripts/check-node-toolchain.mjs` before installing dependencies. CI uses
+`.github/actions/setup-node-toolchain` to perform the same setup and check. All six npm package roots
+declare matching `engines` and `devEngines`; npm rejects incompatible toolchains before
+installing, including with `--ignore-scripts`. Update these declarations, `.nvmrc`, the
+Dockerfile defaults, and lockfile root metadata together when changing the toolchain.
+
+Each package root configures `min-release-age=7` and `engine-strict=true` in `.npmrc`.
+Docker install stages copy that file before installing; global installs also receive the
+release-age setting. The age limit applies to dependency resolution, not replaying an
+existing lockfile: `npm ci` trusts locked versions and does not fetch publication dates.
+Review lockfile changes; do not generate them with a release-age override.
+Use `npm ci` for clean, locked installs and retain backend lifecycle
+scripts: native dependencies such as `argon2`, `bcrypt`, `odbc`, and `pkcs11js` need them.
+Run `node --test scripts/node-toolchain.test.mjs` to verify npm's safeguard behavior.
 
 ## Cross-Cutting Patterns
 
