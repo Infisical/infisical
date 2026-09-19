@@ -7214,6 +7214,7 @@ interface ScepRenewalEvent {
     transactionId: string;
     csrSubject: string;
     existingCertificateSerial?: string;
+    existingCertificateSubject?: string;
     status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
