@@ -543,6 +543,8 @@ export const useGetProjectSecretsQuickSearch = (
 
 export const fetchSearchSecretsByMetadata = async ({
   projectId,
+  environments,
+  secretPath,
   operator,
   filters,
   tags
@@ -551,6 +553,8 @@ export const fetchSearchSecretsByMetadata = async ({
   // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
   const params = new URLSearchParams();
   params.append("projectId", projectId);
+  if (environments?.length) params.append("environments", environments.join(","));
+  if (secretPath) params.append("secretPath", secretPath);
   params.append("operator", operator);
   filters.forEach((filter, index) => {
     params.append(`filters[${index}][key]`, filter.key);
@@ -572,7 +576,7 @@ export const fetchSearchSecretsByMetadata = async ({
 };
 
 export const useSearchSecretsByMetadata = (
-  { projectId, operator, filters, tags }: TSearchSecretsByMetadataDTO,
+  { projectId, operator, filters, tags, environments, secretPath }: TSearchSecretsByMetadataDTO,
   options?: Omit<
     UseQueryOptions<
       TSearchSecretsByMetadataResponse,
@@ -586,8 +590,23 @@ export const useSearchSecretsByMetadata = (
   return useQuery({
     ...options,
     enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
-    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters, tags }),
-    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters, tags }),
+    queryKey: dashboardKeys.searchSecretsByMetadata({
+      projectId,
+      operator,
+      filters,
+      tags,
+      environments,
+      secretPath
+    }),
+    queryFn: () =>
+      fetchSearchSecretsByMetadata({
+        projectId,
+        operator,
+        filters,
+        tags,
+        environments,
+        secretPath
+      }),
     placeholderData: (previousData) => previousData
   });
 };
