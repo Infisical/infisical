@@ -70,7 +70,7 @@ import { gatewayPoolDalFactory } from "@app/ee/services/gateway-pool/gateway-poo
 import { gatewayPoolMembershipDalFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { gatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { gatewayV2ServiceFactory, TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
 import { githubOrgSyncDALFactory } from "@app/ee/services/github-org-sync/github-org-sync-dal";
 import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
@@ -707,6 +707,12 @@ export const registerRoutes = async (
   const hsmConnectorDAL = hsmConnectorDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
+  const pamSessionDAL = pamSessionDALFactory(db);
+
+  const deferredGatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails"> = {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    getPAMConnectionDetails: (dto) => gatewayV2Service.getPAMConnectionDetails(dto)
+  };
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -931,7 +937,9 @@ export const registerRoutes = async (
     emailDomainDAL,
     oidcConfigDAL,
     samlConfigDAL,
-    usageMeteringService
+    usageMeteringService,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({
@@ -1304,7 +1312,9 @@ export const registerRoutes = async (
     alertChannelRecipientDAL,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1352,7 +1362,9 @@ export const registerRoutes = async (
     mfaRecoveryCodeService,
     usageMeteringService,
     alertChannelRecipientDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const totpService = totpServiceFactory({
@@ -1519,7 +1531,9 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     certificatePolicyDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1578,7 +1592,9 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -2023,7 +2039,6 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const pamSessionDAL = pamSessionDALFactory(db);
   const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
 
   // Wired after pamSessionDAL/gatewayV2Service: narrowing a member's access has to close the PAM
@@ -2203,6 +2218,7 @@ export const registerRoutes = async (
     userDAL,
     mfaSessionService,
     orgDAL,
+    membershipDAL,
     telemetryService
   });
 
