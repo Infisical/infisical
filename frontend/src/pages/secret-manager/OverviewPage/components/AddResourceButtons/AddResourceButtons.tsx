@@ -149,7 +149,7 @@ export function AddResourceButtons({
           </Button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={variant === "object-type" ? "start" : "end"} className="w-56">
+      <DropdownMenuContent align={variant === "object-type" ? "start" : "end"}>
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
         {variant === "toolbar" && (
           <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
@@ -225,7 +225,7 @@ export function AddResourceButtons({
             <ListPlusIcon />
             Add More
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-64" sideOffset={0}>
+          <DropdownMenuSubContent>
             <MenuItemTooltip
               isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               content={
