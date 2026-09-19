@@ -64,9 +64,11 @@ export const initializeTheme = () => {
 
 export const ThemeProvider = ({
   children,
-  pathname
-}: React.PropsWithChildren<{ pathname: string }>) => {
-  const [theme, setThemeState] = React.useState<Theme>(readStoredTheme);
+  pathname,
+  forcedTheme
+}: React.PropsWithChildren<{ pathname: string; forcedTheme?: Theme }>) => {
+  const [storedTheme, setThemeState] = React.useState<Theme>(readStoredTheme);
+  const theme = forcedTheme ?? storedTheme;
   const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>(getSystemTheme);
   const resolvedTheme = resolveTheme(theme, pathname, systemTheme);
 
