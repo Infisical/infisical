@@ -149,36 +149,24 @@ export function AddResourceButtons({
           </Button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={variant === "object-type" ? "start" : "end"} className="w-56 p-1">
+      <DropdownMenuContent align={variant === "object-type" ? "start" : "end"} className="w-56">
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
         {variant === "toolbar" && (
           <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
-            <DropdownMenuItem
-              className="px-2 py-1.5"
-              onClick={onAddSecret}
-              isDisabled={!canCreateSecrets}
-            >
+            <DropdownMenuItem onClick={onAddSecret} isDisabled={!canCreateSecrets}>
               <KeyIcon className="text-secret" />
               Add Secret
             </DropdownMenuItem>
           </MenuItemTooltip>
         )}
         <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
-          <DropdownMenuItem
-            className="px-2 py-1.5"
-            onClick={onImportSecrets}
-            isDisabled={!canCreateSecrets}
-          >
+          <DropdownMenuItem onClick={onImportSecrets} isDisabled={!canCreateSecrets}>
             <UploadIcon className="text-accent" />
             Upload Secrets
           </DropdownMenuItem>
         </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
-          <DropdownMenuItem
-            className="px-2 py-1.5"
-            onClick={onAddFolder}
-            isDisabled={!canCreateFolders}
-          >
+          <DropdownMenuItem onClick={onAddFolder} isDisabled={!canCreateFolders}>
             <FolderIcon className="text-folder" />
             Add Folder
           </DropdownMenuItem>
@@ -186,21 +174,13 @@ export function AddResourceButtons({
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Advanced</DropdownMenuLabel>
         <MenuItemTooltip isDisabled={!isDyanmicSecretAvailable} content="Access Restricted">
-          <DropdownMenuItem
-            className="px-2 py-1.5"
-            onClick={onAddDyanamicSecret}
-            isDisabled={!isDyanmicSecretAvailable}
-          >
+          <DropdownMenuItem onClick={onAddDyanamicSecret} isDisabled={!isDyanmicSecretAvailable}>
             <FingerprintIcon className="text-dynamic-secret" />
             Add Dynamic Secret
           </DropdownMenuItem>
         </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!isSecretRotationAvailable} content="Access Restricted">
-          <DropdownMenuItem
-            className="px-2 py-1.5"
-            onClick={onAddSecretRotation}
-            isDisabled={!isSecretRotationAvailable}
-          >
+          <DropdownMenuItem onClick={onAddSecretRotation} isDisabled={!isSecretRotationAvailable}>
             <RefreshCwIcon className="text-secret-rotation" />
             Add Secret Rotation
           </DropdownMenuItem>
@@ -210,7 +190,6 @@ export function AddResourceButtons({
           content="Access Restricted"
         >
           <DropdownMenuItem
-            className="px-2 py-1.5"
             onClick={onAddHoneyToken}
             isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
           >
@@ -232,7 +211,6 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                className="px-2 py-1.5"
                 onClick={onAddProxiedService}
                 isDisabled={!isSingleEnvSelected || !isAllowed}
               >
@@ -243,11 +221,11 @@ export function AddResourceButtons({
           )}
         </ProjectPermissionCan>
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="px-2 py-1.5">
+          <DropdownMenuSubTrigger>
             <ListPlusIcon />
             Add More
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-64 p-1" sideOffset={0}>
+          <DropdownMenuSubContent className="w-64" sideOffset={0}>
             <MenuItemTooltip
               isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               content={
@@ -257,7 +235,6 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                className="px-2 py-1.5"
                 onSelect={onAddSecretImport}
                 isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
               >
@@ -274,7 +251,6 @@ export function AddResourceButtons({
               }
             >
               <DropdownMenuItem
-                className="px-2 py-1.5"
                 onSelect={onCopySecrets}
                 isDisabled={isCopySecretsDisabled || !canCopySecrets}
               >
@@ -283,11 +259,7 @@ export function AddResourceButtons({
               </DropdownMenuItem>
             </MenuItemTooltip>
             <MenuItemTooltip isDisabled={!canCreateSecretSyncs} content="Access Restricted">
-              <DropdownMenuItem
-                className="px-2 py-1.5"
-                onSelect={onAddSecretSync}
-                isDisabled={!canCreateSecretSyncs}
-              >
+              <DropdownMenuItem onSelect={onAddSecretSync} isDisabled={!canCreateSecretSyncs}>
                 <RefreshCwIcon className="text-accent" />
                 Add Secret Sync
               </DropdownMenuItem>
@@ -303,7 +275,6 @@ export function AddResourceButtons({
                 }
               >
                 <DropdownMenuItem
-                  className="px-2 py-1.5"
                   onSelect={onImportFromVault}
                   isDisabled={!canCreateSecrets || !isSingleEnvSelected}
                 >
@@ -328,7 +299,6 @@ export function AddResourceButtons({
                 }
               >
                 <DropdownMenuItem
-                  className="px-2 py-1.5"
                   onSelect={onImportFromDoppler}
                   isDisabled={!canCreateSecrets || !isSingleEnvSelected}
                 >
