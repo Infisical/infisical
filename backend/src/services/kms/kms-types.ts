@@ -4,6 +4,8 @@ import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 
+export type EncryptUsageKeyAlgorithm = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm.RSA_4096
+
 export enum KmsDataKey {
   Organization,
   SecretManager
