@@ -27,12 +27,14 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
 
   const createWithTargets = async (
     alertId: string,
-    options: { status: string },
+    options: { status: string; eventId?: string },
     deliveries: TAlertTargetDelivery[]
   ): Promise<TAlertHistory> => {
     try {
       return await db.transaction(async (tx) => {
-        const [history] = await tx(TableName.AlertHistory).insert({ alertId, status: options.status }).returning("*");
+        const [history] = await tx(TableName.AlertHistory)
+          .insert({ alertId, status: options.status, eventId: options.eventId ?? null })
+          .returning("*");
 
         if (deliveries.length > 0) {
           await tx(TableName.AlertHistoryTarget).insert(
@@ -83,6 +85,23 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findDeliveredChannelIdsForEvent = async (alertId: string, eventId: string): Promise<string[]> => {
+    try {
+      const rows = (await db(`${TableName.AlertHistory} as hist`)
+        .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
+        .where("hist.alertId", alertId)
+        .where("hist.eventId", eventId)
+        .where("tgt.status", AlertRunStatus.SUCCESS)
+        .whereNotNull("tgt.channelId")
+        .distinct("tgt.channelId")
+        .select("tgt.channelId")) as { channelId: string }[];
+
+      return rows.map((row) => row.channelId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindDeliveredChannelIdsForEvent" });
+    }
+  };
+
   const deleteExpiredHistory = async ({
     before,
     batchSize = ALERT_HISTORY_PRUNE_BATCH_SIZE,
@@ -126,6 +145,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     ...alertHistoryOrm,
     createWithTargets,
     findRecentlyAlertedTargets,
+    findDeliveredChannelIdsForEvent,
     deleteExpiredHistory
   };
 };

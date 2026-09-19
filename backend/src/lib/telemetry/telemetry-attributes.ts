@@ -23,6 +23,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "product_analytics.drop_reason",
   "audit_log_stream.provider",
   "audit_log_stream.id",
+  "event_outbox.consumer",
+  "event_outbox.status",
   "scim.operation",
   "sso.provider",
   "sso.action",
