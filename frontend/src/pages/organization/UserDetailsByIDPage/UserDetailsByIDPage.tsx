@@ -96,7 +96,7 @@ const Page = withPermission(
     };
 
     return (
-      <div className="mx-auto flex max-w-8xl flex-col">
+      <div className="@container mx-auto flex max-w-8xl flex-col">
         {membership && (
           <>
             <Link
@@ -215,7 +215,7 @@ const Page = withPermission(
                 </DropdownMenu>
               )}
             </PageHeader>
-            <div className="flex flex-col gap-5 lg:flex-row">
+            <div className="flex flex-col gap-5 @4xl:flex-row">
               <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
               <div className="flex min-w-0 flex-1 flex-col gap-y-5">
                 <UserProjectsSection membershipId={membershipId} />

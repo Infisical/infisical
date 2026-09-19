@@ -47,7 +47,7 @@ export const IdentityDetailsSection = ({
   const { data } = useGetOrgIdentityMembershipById(identityId);
 
   return data ? (
-    <Card className="w-full lg:max-w-[24rem] lg:shrink-0">
+    <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>Machine identity details</CardDescription>
