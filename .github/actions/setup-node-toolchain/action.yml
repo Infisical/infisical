@@ -3,11 +3,11 @@ description: "Install and verify the repository's pinned Node.js and npm version
 
 inputs:
   cache:
-    description: "Package manager cache passed to setup-node."
+    description: "Set to npm to cache package downloads after installing the pinned npm."
     required: false
     default: ""
   cache-dependency-path:
-    description: "Lockfile path passed to setup-node for dependency caching."
+    description: "Lockfile path used for the npm download cache key."
     required: false
     default: ""
 
@@ -27,8 +27,6 @@ runs:
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version-file: .nvmrc
-        cache: ${{ inputs.cache }}
-        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     - name: Install pinned npm
       id: npm
@@ -42,8 +40,16 @@ runs:
         fi
         npm install --global "npm@$NPM_VERSION"
         echo "npm-version=$(npm --version)" >> "$GITHUB_OUTPUT"
+        echo "cache-path=$(npm config get cache)" >> "$GITHUB_OUTPUT"
 
     - name: Verify Node toolchain
       shell: bash
       working-directory: ${{ github.workspace }}
       run: node scripts/check-node-toolchain.mjs
+
+    - name: Cache npm downloads
+      if: inputs.cache == 'npm'
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ steps.npm.outputs.cache-path }}
+        key: npm-downloads-${{ runner.os }}-${{ runner.arch }}-node${{ steps.node.outputs.node-version }}-npm${{ steps.npm.outputs.npm-version }}-${{ hashFiles(inputs.cache-dependency-path) }}
