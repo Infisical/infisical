@@ -327,7 +327,7 @@ export const auditLogPersistDurationHistogram = infisicalCoreMeter.createHistogr
 
 export const auditLogDroppedCounter = infisicalCoreMeter.createCounter("infisical.audit_log.dropped.count", {
   description:
-    "Audit log events dropped on the request path because the ingest-stream push failed (at-most-once). Operators should alert on this.",
+    "Audit log events dropped on the request path, by audit_log.drop_reason: ingest-stream push failed (at-most-once), or the org's plan has no audit log retention. Operators should alert on this.",
   unit: "{event}"
 });
 
