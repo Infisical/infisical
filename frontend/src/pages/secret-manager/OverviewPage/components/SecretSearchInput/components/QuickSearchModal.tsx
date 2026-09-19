@@ -481,7 +481,7 @@ const Content = ({
   };
 
   const noResultsEmpty = (
-    <Empty className="border bg-transparent shadow-none">
+    <Empty className="border">
       <EmptyHeader>
         <EmptyTitle>No Matching Resources</EmptyTitle>
         <EmptyDescription>Try a different search or remove a filter.</EmptyDescription>
@@ -495,7 +495,7 @@ const Content = ({
       resultsContent = <QuickSearchResultsSkeleton />;
     } else if (metadataResultsByEnv.length === 0) {
       resultsContent = (
-        <Empty className="border bg-transparent shadow-none">
+        <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No secrets match these conditions.</EmptyTitle>
             <EmptyDescription>Try removing a condition or switching ALL to ANY.</EmptyDescription>
@@ -586,7 +586,7 @@ const Content = ({
     }
   } else {
     resultsContent = (
-      <Empty className="border bg-transparent shadow-none">
+      <Empty className="border">
         <EmptyHeader>
           <EmptyTitle>Search Across Folders</EmptyTitle>
           <EmptyDescription>
