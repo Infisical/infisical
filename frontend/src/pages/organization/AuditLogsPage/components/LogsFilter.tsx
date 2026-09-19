@@ -122,7 +122,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="relative">
+        <Button variant="outline" className="relative" aria-label="Filter audit logs">
           <ListFilter />
           {activeFilterCount > 0 && (
             <Badge className="absolute -top-2 -right-2" variant="info">
