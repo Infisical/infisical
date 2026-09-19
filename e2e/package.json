@@ -16,5 +16,22 @@
     "@types/node": "20.17.10",
     "dotenv": "16.4.7",
     "typescript": "5.6.3"
-  }
+  },
+  "engines": {
+    "node": "^22.23.2",
+    "npm": "11.19.1"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^22.23.2",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "11.19.1",
+      "onFail": "error"
+    }
+  },
+  "packageManager": "npm@11.19.1"
 }

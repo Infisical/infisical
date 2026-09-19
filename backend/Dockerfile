@@ -1,10 +1,13 @@
+ARG NODE_VERSION=22.23.2
+
 # Build stage
 ARG INFISICAL_CLI_VERSION=0.43.129
 
-FROM node:22.23.2-trixie-slim AS build
+FROM node:${NODE_VERSION}-trixie-slim AS build
 
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+ARG NPM_VERSION=11.19.1
+RUN npm install -g npm@${NPM_VERSION} && test "$(npm --version)" = "${NPM_VERSION}"
+ENV npm_config_min_release_age=7
 
 WORKDIR /app
 
@@ -22,7 +25,7 @@ RUN apt-get update && apt-get install -y \
     libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+COPY package*.json .npmrc ./
 RUN npm ci
 
 COPY . .
@@ -49,10 +52,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm "$ORACLE_ZIP"
 
 # Production dependencies (runs in parallel with build)
-FROM node:22.23.2-trixie-slim AS prod-deps
+FROM node:${NODE_VERSION}-trixie-slim AS prod-deps
 
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+ARG NPM_VERSION=11.19.1
+RUN npm install -g npm@${NPM_VERSION} && test "$(npm --version)" = "${NPM_VERSION}"
+ENV npm_config_min_release_age=7
 
 WORKDIR /app
 
@@ -68,14 +72,15 @@ RUN apt-get update && apt-get install -y \
     libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+COPY package*.json .npmrc ./
 RUN npm ci --omit=dev
 
 # Production stage
-FROM node:22.23.2-trixie-slim
+FROM node:${NODE_VERSION}-trixie-slim
 
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
+ARG NPM_VERSION=11.19.1
+RUN npm install -g npm@${NPM_VERSION} && test "$(npm --version)" = "${NPM_VERSION}"
+ENV npm_config_min_release_age=7
 
 WORKDIR /app
 

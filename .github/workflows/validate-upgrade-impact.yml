@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - "upgrade-impact/**"
+      - ".npmrc"
+      - ".nvmrc"
+      - "build-versions.env"
+      - "scripts/check-node-toolchain.mjs"
+      - ".github/actions/setup-node-toolchain/**"
       - ".github/workflows/validate-upgrade-impact.yml"
       - ".github/workflows/generate-upgrade-impact.yml"
 
@@ -18,9 +23,8 @@ jobs:
           fetch-tags: true
 
       - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: ./.github/actions/setup-node-toolchain
         with:
-          node-version: 22
           cache: npm
           cache-dependency-path: upgrade-impact/package-lock.json
 
