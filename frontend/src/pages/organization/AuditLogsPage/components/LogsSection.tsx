@@ -225,7 +225,7 @@ const LogsSectionComponent = ({
     );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {showClickHouseWarning && (
         <Alert variant="warning">
           <AlertDescription>
@@ -254,8 +254,8 @@ const LogsSectionComponent = ({
           </AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        {showFilters && (
+      {showFilters && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <ButtonGroup>
             <DateRangeQuickPresets
               value={activePreset}
@@ -275,11 +275,9 @@ const LogsSectionComponent = ({
               accent={dateRangeAccent}
             />
           </ButtonGroup>
-        )}
-        {showFilters && (
           <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
-        )}
-      </div>
+        </div>
+      )}
       <LogsTable
         refetchInterval={refetchInterval}
         filter={{
