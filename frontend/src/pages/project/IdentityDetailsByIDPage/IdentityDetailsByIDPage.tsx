@@ -212,7 +212,7 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {identityMembershipDetails ? (
         <>
           <PageHeader
@@ -330,7 +330,7 @@ const Page = () => {
               </DropdownMenu>
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={isOrgIdentity}
@@ -338,7 +338,7 @@ const Page = () => {
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}
