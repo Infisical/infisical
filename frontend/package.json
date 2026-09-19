@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "eslint ./src --max-warnings 0",
     "lint:fix": "eslint --fix ./src --max-warnings 0",
-    "test": "tsx --tsconfig tsconfig.app.json --test src/components/v3/generic/Combobox/combobox-accessibility.test.ts src/components/v3/generic/Combobox/combobox-items.test.ts src/components/secret-syncs/forms/schemas/secret-sync-schema.test.ts",
+    "test": "tsx --tsconfig tsconfig.app.json --test src/components/v3/generic/Combobox/combobox-accessibility.test.ts src/components/v3/generic/Combobox/combobox-creation.test.ts src/components/v3/generic/Combobox/combobox-items.test.ts src/components/secret-syncs/forms/schemas/secret-sync-schema.test.ts",
     "type:check": "tsc --noEmit --project ./tsconfig.app.json",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
