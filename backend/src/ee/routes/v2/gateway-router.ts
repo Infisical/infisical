@@ -136,7 +136,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         .object({
           capabilities: z
             .object({
-              pkcs11: z.boolean().optional()
+              pkcs11: z.boolean().optional(),
+              supported_account_types: z.array(z.string().trim().max(64)).max(64).optional()
             })
             .optional()
         })
