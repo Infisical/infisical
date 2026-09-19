@@ -415,6 +415,7 @@ export const evaluateScepRenewalAuthorization = ({
   profileId,
   applicationId,
   csrForwardedToCa,
+  priorCsrSubjectAltNames,
   csrSubjectName,
   signerCertSubjectName,
   csrSubjectAltNames,
@@ -425,6 +426,7 @@ export const evaluateScepRenewalAuthorization = ({
   profileId: string;
   applicationId?: string | null;
   csrForwardedToCa: boolean;
+  priorCsrSubjectAltNames?: x509.Extension | null;
   csrSubjectName: x509.Name;
   signerCertSubjectName: x509.Name;
   csrSubjectAltNames?: x509.Extension | null;
@@ -453,9 +455,12 @@ export const evaluateScepRenewalAuthorization = ({
   }
 
   if (csrForwardedToCa) {
-    const signerStrippedNames = collectStrippedSubjectAltNames(signerCertSubjectAltNames);
+    const baselineNames = [
+      ...collectStrippedSubjectAltNames(priorCsrSubjectAltNames),
+      ...collectStrippedSubjectAltNames(signerCertSubjectAltNames)
+    ];
     const csrIntroducesStrippedName = collectStrippedSubjectAltNames(csrSubjectAltNames).some(
-      (name) => !signerStrippedNames.includes(name)
+      (name) => !baselineNames.includes(name)
     );
     if (csrIntroducesStrippedName) {
       return { authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch };

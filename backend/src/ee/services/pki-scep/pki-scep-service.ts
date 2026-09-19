@@ -89,7 +89,7 @@ type TPkiScepServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "findOne">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
@@ -669,10 +669,27 @@ export const pkiScepServiceFactory = ({
         ? await certificateDAL.findOne({ serialNumber: signerCertObj.serialNumber, caId: profile.caId! })
         : null;
 
-    let signerCertApplicationId = storedSignerCert?.applicationId ?? null;
-    if (storedSignerCert && !signerCertApplicationId) {
-      const originatingRequest = await certificateRequestDAL.findOne({ certificateId: storedSignerCert.id });
-      signerCertApplicationId = originatingRequest?.applicationId ?? null;
+    const certRequests =
+      storedSignerCert && (!storedSignerCert.applicationId || caType !== CaType.INTERNAL)
+        ? await certificateRequestDAL.find({ certificateId: storedSignerCert.id })
+        : [];
+    const signerCertApplicationId = storedSignerCert?.applicationId ?? certRequests[0]?.applicationId ?? null;
+
+    let priorCsrSanExt: x509.Extension | null = null;
+    if (signerCertObj) {
+      const signerPublicKey = Buffer.from(signerCertObj.publicKey.rawData);
+      for (const certRequest of certRequests) {
+        if (!certRequest.csr) continue;
+        try {
+          const priorCsr = new x509.Pkcs10CertificateRequest(certRequest.csr);
+          if (Buffer.from(priorCsr.publicKey.rawData).equals(signerPublicKey)) {
+            priorCsrSanExt = priorCsr.getExtension("2.5.29.17");
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
     }
 
     const csrSanExt = csrObj.getExtension("2.5.29.17");
@@ -685,6 +702,7 @@ export const pkiScepServiceFactory = ({
           profileId: profile.id,
           applicationId,
           csrForwardedToCa: caType !== CaType.INTERNAL,
+          priorCsrSubjectAltNames: priorCsrSanExt,
           csrSubjectName: csrObj.subjectName,
           signerCertSubjectName: signerCertObj.subjectName,
           csrSubjectAltNames: csrSanExt,

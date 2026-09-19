@@ -103,7 +103,8 @@ describe("evaluateScepRenewalAuthorization", () => {
     signerSans,
     csrSanExt,
     signerSanExt,
-    csrForwardedToCa
+    csrForwardedToCa,
+    priorCsrSanExt
   }: {
     csrSubject: string;
     signerSubject: string;
@@ -112,12 +113,14 @@ describe("evaluateScepRenewalAuthorization", () => {
     csrSanExt?: x509.Extension | null;
     signerSanExt?: x509.Extension | null;
     csrForwardedToCa?: boolean;
+    priorCsrSanExt?: x509.Extension | null;
   }) =>
     evaluateScepRenewalAuthorization({
       isValidSigner: true,
       storedSignerCert: { profileId: PROFILE_ID },
       profileId: PROFILE_ID,
       csrForwardedToCa: csrForwardedToCa ?? false,
+      priorCsrSubjectAltNames: priorCsrSanExt,
       csrSubjectName: new x509.Name(csrSubject),
       signerCertSubjectName: new x509.Name(signerSubject),
       csrSubjectAltNames: csrSanExt ?? (csrSans ? new x509.SubjectAlternativeNameExtension(csrSans) : null),
@@ -362,6 +365,57 @@ describe("evaluateScepRenewalAuthorization", () => {
         csrForwardedToCa: true
       })
     ).toEqual({ authorized: true });
+  });
+
+  test("authorizes an unchanged forwarded renewal when the CA dropped the entry from the certificate", () => {
+    const deviceCsrSan = sanExtensionFromGeneralNames([
+      dnsGeneralName("w.example.com"),
+      kerberosPrincipalGeneralName("admin@EXAMPLE.COM")
+    ]);
+
+    expect(
+      authorize({
+        csrSubject: "CN=device-01",
+        signerSubject: "CN=device-01",
+        csrSanExt: deviceCsrSan,
+        signerSanExt: sanExtensionFromGeneralNames([dnsGeneralName("w.example.com")]),
+        priorCsrSanExt: deviceCsrSan,
+        csrForwardedToCa: true
+      })
+    ).toEqual({ authorized: true });
+  });
+
+  test("authorizes a forwarded renewal that repeats an entry the CA itself added to the certificate", () => {
+    const caAdded = [dnsGeneralName("w.example.com"), kerberosPrincipalGeneralName("host@EXAMPLE.COM")];
+    expect(
+      authorize({
+        csrSubject: "CN=device-01",
+        signerSubject: "CN=device-01",
+        csrSanExt: sanExtensionFromGeneralNames(caAdded),
+        signerSanExt: sanExtensionFromGeneralNames(caAdded),
+        priorCsrSanExt: sanExtensionFromGeneralNames([dnsGeneralName("w.example.com")]),
+        csrForwardedToCa: true
+      })
+    ).toEqual({ authorized: true });
+  });
+
+  test("denies a forwarded renewal adding an entry that is in neither the original CSR nor the certificate", () => {
+    expect(
+      authorize({
+        csrSubject: "CN=device-01",
+        signerSubject: "CN=device-01",
+        csrSanExt: sanExtensionFromGeneralNames([
+          dnsGeneralName("w.example.com"),
+          kerberosPrincipalGeneralName("attacker@EXAMPLE.COM")
+        ]),
+        signerSanExt: sanExtensionFromGeneralNames([
+          dnsGeneralName("w.example.com"),
+          kerberosPrincipalGeneralName("host@EXAMPLE.COM")
+        ]),
+        priorCsrSanExt: sanExtensionFromGeneralNames([dnsGeneralName("w.example.com")]),
+        csrForwardedToCa: true
+      })
+    ).toEqual({ authorized: false, reason: ScepRenewalDenyReason.SubjectAltNameMismatch });
   });
 
   test("denies a certificate issued under a different application", () => {
