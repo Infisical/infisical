@@ -58,6 +58,20 @@ const VAULTS = [
   { id: "security", name: "Security", items: 7 }
 ] as const;
 
+type TagOption = { id: string; name: string; group: string };
+
+const TAGS: TagOption[] = [
+  { id: "production", name: "production", group: "Environment" },
+  { id: "staging", name: "staging", group: "Environment" },
+  { id: "compliance", name: "compliance", group: "Policy" },
+  { id: "rotation-required", name: "rotation-required", group: "Policy" }
+];
+
+const sleep = (duration: number) =>
+  new Promise<void>((resolve) => {
+    window.setTimeout(resolve, duration);
+  });
+
 const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
 
 const StoryCombobox = <TOption,>(props: ComboboxProps<TOption>) => {
@@ -677,5 +691,491 @@ export const ServerFilteredSelection: Story = {
         onInputValueChange={setQuery}
       />
     );
+  }
+};
+
+const CreatableSingleRender = () => {
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([...ENVIRONMENTS]);
+  const [value, setValue] = useState<{ id: string; name: string } | null>(null);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-creatable-environment">Environment</FieldLabel>
+      <StoryCombobox
+        id="combobox-creatable-environment"
+        options={options}
+        value={value}
+        onValueChange={setValue}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select or create an environment..."
+        creation={{
+          onCreate: (inputValue) => {
+            const option = { id: inputValue, name: inputValue };
+            setOptions((current) => [...current, option]);
+            setValue(option);
+          }
+        }}
+      />
+    </Field>
+  );
+};
+
+export const CreatableSingle: Story = {
+  name: "Creation: Single",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Add `creation` to the existing controlled Combobox. `onCreate` owns domain-option construction and the controlled value update; the internal Create item never reaches `onValueChange`. The Create row remains available alongside partial matches."
+      }
+    }
+  },
+  render: () => <CreatableSingleRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Environment" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "prod");
+    await expect(canvas.getByRole("option", { name: "Production" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "prod"' }));
+    await expect(input).toHaveValue("prod");
+    await expect(canvas.queryByRole("option", { name: 'Create "prod"' })).not.toBeInTheDocument();
+  }
+};
+
+const SingleDismissedFailureRender = () => {
+  const [attempt, setAttempt] = useState(0);
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
+  const [value, setValue] = useState<{ id: string; name: string } | null>(null);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Field>
+        <FieldLabel htmlFor="combobox-single-dismissed-failure">Environment</FieldLabel>
+        <StoryCombobox
+          id="combobox-single-dismissed-failure"
+          options={options}
+          value={value}
+          onValueChange={setValue}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select or create an environment..."
+          creation={{
+            onCreate: async (inputValue) => {
+              await sleep(500);
+              if (attempt === 0) {
+                setAttempt(1);
+                throw false;
+              }
+              const option = { id: inputValue, name: inputValue };
+              setOptions([option]);
+              setValue(option);
+            }
+          }}
+        />
+      </Field>
+      <Button variant="outline">Continue</Button>
+      <p role="status">{value ? `Selected ${value.name}` : "No selection"}</p>
+    </div>
+  );
+};
+
+export const SingleDismissedFailure: Story = {
+  name: "Creation: Single Dismissed Failure and Retry",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A rejected single-value creation retains its failed query and inline error after pending work was dismissed. Reopening allows the same query to be retried without restoring focus or opening automatically."
+      }
+    }
+  },
+  render: () => <SingleDismissedFailureRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Environment" });
+    const continueButton = canvas.getByRole("button", { name: "Continue" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "retryable");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "retryable"' }));
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(continueButton);
+    await sleep(600);
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(continueButton).toHaveFocus();
+
+    await userEvent.click(input);
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      'Could not create "retryable"'
+    );
+    await expect(input).toHaveValue("retryable");
+    await userEvent.click(canvas.getByRole("option", { name: /Create "retryable"/ }));
+    await expect(await canvas.findByText("Selected retryable")).toBeInTheDocument();
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(input).toHaveValue("retryable");
+  }
+};
+
+const AsyncCreationRender = () => {
+  const [options, setOptions] = useState(TAGS);
+  const [value, setValue] = useState<TagOption[]>([]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-async-tags">Tags</FieldLabel>
+      <StoryCombobox
+        id="combobox-async-tags"
+        multiple
+        options={options}
+        value={value}
+        onValueChange={(nextValue) => setValue(nextValue)}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select or create tags..."
+        creation={{
+          isValid: (inputValue) => /^[a-z][a-z0-9-]*$/.test(inputValue),
+          formatLabel: (inputValue) => `Create tag "${inputValue}"`,
+          formatPendingLabel: (inputValue) => `Creating tag "${inputValue}"...`,
+          formatError: () => "The tag could not be created. Check the slug and try again.",
+          onCreate: async (inputValue) => {
+            await sleep(350);
+            if (inputValue === "reserved") {
+              const failure: unknown = false;
+              throw failure;
+            }
+
+            const option = { id: inputValue, name: inputValue, group: "Custom" };
+            setOptions((current) => [...current, option]);
+            setValue((current) =>
+              current.some((tag) => tag.id === option.id) ? current : [...current, option]
+            );
+          }
+        }}
+      />
+    </Field>
+  );
+};
+
+export const AsyncCreation: Story = {
+  name: "Creation: Async Pending and Failure",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Return the persistence promise from `onCreate`. While it is pending, the Create row is disabled so Enter or repeated clicks cannot start another request. Success clears the query after the caller updates its controlled options and value; rejection keeps the query so reopening surfaces an inline retryable error."
+      }
+    }
+  },
+  render: () => <AsyncCreationRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Tags" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "release-ready");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create tag "release-ready"' }));
+    await expect(
+      canvas.getByRole("option", { name: 'Creating tag "release-ready"...' })
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      await canvas.findByRole("button", { name: "Remove release-ready" })
+    ).toBeInTheDocument();
+
+    await userEvent.type(input, "reserved");
+    await userEvent.keyboard("{Enter}{Enter}{Escape}");
+    await sleep(450);
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(input);
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "The tag could not be created"
+    );
+    await expect(input).toHaveValue("reserved");
+  }
+};
+
+const AsyncLifecycleRender = () => {
+  const [options, setOptions] = useState<TagOption[]>([]);
+  const [value, setValue] = useState<TagOption[]>([]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Field>
+        <FieldLabel htmlFor="combobox-async-lifecycle">Tags</FieldLabel>
+        <StoryCombobox
+          id="combobox-async-lifecycle"
+          multiple
+          options={options}
+          value={value}
+          onValueChange={(nextValue) => setValue(nextValue)}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select or create tags..."
+          creation={{
+            onCreate: async (inputValue) => {
+              await sleep(500);
+              const option = { id: inputValue, name: inputValue, group: "Custom" };
+              setOptions((current) => [...current, option]);
+              setValue((current) => [...current, option]);
+            }
+          }}
+        />
+      </Field>
+      <Button variant="outline">Continue</Button>
+    </div>
+  );
+};
+
+export const DismissedPendingCreation: Story = {
+  name: "Creation: Dismissed Pending Success",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Dismissing a multi-select while creation is pending keeps focus where the user moved it. Completion updates the caller-owned selection without reopening the popup or stealing focus."
+      }
+    }
+  },
+  render: () => <AsyncLifecycleRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Tags" });
+    const continueButton = canvas.getByRole("button", { name: "Continue" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "deferred");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "deferred"' }));
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(continueButton);
+    await expect(
+      await canvas.findByRole("button", { name: "Remove deferred" })
+    ).toBeInTheDocument();
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(continueButton).toHaveFocus();
+  }
+};
+
+export const PreserveNewQueryDuringCreation: Story = {
+  name: "Creation: Preserve New Query During Success",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "If the user starts another query while creation is pending, completion selects the caller-created option but does not clear or replace the newer query."
+      }
+    }
+  },
+  render: () => <AsyncLifecycleRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Tags" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "first-tag");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "first-tag"' }));
+    await userEvent.clear(input);
+    await userEvent.type(input, "next-query");
+    await expect(
+      await canvas.findByRole("button", { name: "Remove first-tag" })
+    ).toBeInTheDocument();
+    await expect(input).toHaveValue("next-query");
+    await expect(canvas.getByRole("option", { name: 'Create "next-query"' })).toBeInTheDocument();
+  }
+};
+
+const UnmountPendingCreationRender = () => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [value, setValue] = useState<TagOption[]>([]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {isVisible && (
+        <Field>
+          <FieldLabel htmlFor="combobox-unmount-pending">Tags</FieldLabel>
+          <StoryCombobox
+            id="combobox-unmount-pending"
+            multiple
+            options={value}
+            value={value}
+            onValueChange={(nextValue) => setValue(nextValue)}
+            getOptionValue={(option) => option.id}
+            getOptionLabel={(option) => option.name}
+            placeholder="Select or create tags..."
+            creation={{
+              onCreate: async (inputValue) => {
+                await sleep(500);
+                setValue((current) => [
+                  ...current,
+                  { id: inputValue, name: inputValue, group: "Custom" }
+                ]);
+              }
+            }}
+          />
+        </Field>
+      )}
+      <Button variant="outline" onClick={() => setIsVisible(false)}>
+        Hide combobox
+      </Button>
+      <p role="status">{value.length === 1 ? "Created 1 tag" : "Waiting for creation"}</p>
+    </div>
+  );
+};
+
+export const UnmountedPendingCreation: Story = {
+  name: "Creation: Unmounted Pending Success",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Unmounting while creation is pending invalidates the Combobox request lifecycle. The caller-owned request can still complete without causing the removed Combobox to update state or steal focus."
+      }
+    }
+  },
+  render: () => <UnmountPendingCreationRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Tags" });
+    const hideButton = canvas.getByRole("button", { name: "Hide combobox" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "unmounted");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "unmounted"' }));
+    await userEvent.click(hideButton);
+    await expect(canvas.queryByRole("combobox", { name: "Tags" })).not.toBeInTheDocument();
+    await expect(await canvas.findByText("Created 1 tag")).toBeInTheDocument();
+    await expect(hideButton).toHaveFocus();
+  }
+};
+
+const ValidatedCreationRender = () => {
+  const [value, setValue] = useState<TagOption[]>([]);
+  const knownOrganizationEmails = ["member@example.com", "admin@example.com"];
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-validated-email">Approvers</FieldLabel>
+      <StoryCombobox
+        id="combobox-validated-email"
+        multiple
+        options={TAGS}
+        value={value}
+        onValueChange={(nextValue) => setValue(nextValue)}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select approvers or enter a member email..."
+        creation={{
+          isValid: (inputValue) =>
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue) &&
+            !knownOrganizationEmails.includes(inputValue.toLocaleLowerCase()),
+          isDuplicate: (inputValue, option) =>
+            option.id.toLocaleLowerCase() === inputValue.toLocaleLowerCase(),
+          formatLabel: (inputValue) => `Use member email "${inputValue}"`,
+          onCreate: (inputValue) =>
+            setValue((current) => [
+              ...current,
+              { id: inputValue, name: inputValue, group: "Member email" }
+            ])
+        }}
+      />
+    </Field>
+  );
+};
+
+export const ValidatedCreation: Story = {
+  name: "Creation: Validation and Domain Duplicates",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "`isValid` can close over domain data that is not in the current result page, as invitation and manual-approval forms require. `isDuplicate` overrides the default exact, case-sensitive label comparison when a domain uses another identity rule."
+      }
+    }
+  },
+  render: () => <ValidatedCreationRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Approvers" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "member@example.com");
+    await expect(
+      canvas.queryByRole("option", { name: 'Use member email "member@example.com"' })
+    ).not.toBeInTheDocument();
+    await userEvent.clear(input);
+    await userEvent.type(input, "new.member@example.com");
+    await expect(
+      canvas.getByRole("option", { name: 'Use member email "new.member@example.com"' })
+    ).toBeInTheDocument();
+  }
+};
+
+const GroupedRemoteCreationRender = () => {
+  const [query, setQuery] = useState("");
+  const [options, setOptions] = useState(TAGS);
+  const [value, setValue] = useState<TagOption[]>([]);
+  const results = options.filter((option) => option.name.includes(query));
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-remote-tags">Remote tags</FieldLabel>
+      <StoryCombobox
+        id="combobox-remote-tags"
+        multiple
+        isSelectAll
+        options={results}
+        value={value}
+        onValueChange={(nextValue) => setValue(nextValue)}
+        onSearchChange={setQuery}
+        includeMissingSelectedOptions={false}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        getOptionGroup={(option) => option.group}
+        creation={{
+          onCreate: (inputValue) => {
+            const option = { id: inputValue, name: inputValue, group: "Custom" };
+            setOptions((current) => [...current, option]);
+            setValue((current) => [...current, option]);
+          }
+        }}
+      />
+    </Field>
+  );
+};
+
+export const GroupedRemoteCreation: Story = {
+  name: "Creation: Grouped Remote Results and Select All",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Creation composes with grouped, caller-filtered multi-select results. The internal Create item stays outside domain groups and Select All counts only real options, and successful creation resets the caller-owned query so refreshed results remain visible."
+      }
+    }
+  },
+  render: () => <GroupedRemoteCreationRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Remote tags" });
+
+    await userEvent.click(input);
+    await userEvent.type(input, "prod");
+    await expect(canvas.getByRole("button", { name: "Select All (1)" })).toBeInTheDocument();
+    await expect(canvas.getByRole("option", { name: 'Create "prod"' })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Select All (1)" }));
+    await expect(canvas.getByRole("button", { name: "Remove production" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Remove prod" })).not.toBeInTheDocument();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "remote-created");
+    const createOption = canvas.getByRole("option", { name: 'Create "remote-created"' });
+    await userEvent.keyboard("{ArrowDown}");
+    await expect(createOption).toHaveAttribute("data-highlighted");
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByRole("button", { name: "Remove remote-created" })).toBeInTheDocument();
+    await expect(input).toHaveValue("");
+    await expect(canvas.getByRole("option", { name: /production/ })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Select All (5)" })).toBeInTheDocument();
   }
 };
