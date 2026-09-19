@@ -18,6 +18,7 @@ type Props = {
   onAddEnvironment?: () => void;
   hasSearch?: boolean;
   onSearchAllFolders?: () => void;
+  isTableRow?: boolean;
 };
 
 export function EmptyResourceDisplay({
@@ -25,7 +26,8 @@ export function EmptyResourceDisplay({
   variant = "secrets",
   onAddEnvironment,
   hasSearch,
-  onSearchAllFolders
+  onSearchAllFolders,
+  isTableRow
 }: Props) {
   if (variant === "no-environments") {
     return (
@@ -69,7 +71,10 @@ export function EmptyResourceDisplay({
   }
 
   return (
-    <Empty className="border">
+    <Empty
+      variant={isTableRow ? "unstyled" : "default"}
+      className={isTableRow ? "h-full" : "border"}
+    >
       <EmptyHeader>
         <EmptyMedia variant="icon">{isFiltered ? <SearchIcon /> : <FolderPlusIcon />}</EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
