@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import {
+  cloneElement,
+  type ComponentProps,
+  type MouseEvent as ReactMouseEvent,
+  type ReactElement,
+  type ReactNode
+} from "react";
 import {
   ChevronDown,
   ChevronsLeftRightEllipsisIcon,
@@ -32,25 +38,31 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
-import {
-  ProjectPermissionProxiedServiceActions,
-  ProjectPermissionSecretSyncActions
-} from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
 type MenuItemTooltipProps = {
-  children: ReactNode;
+  children: ReactElement<ComponentProps<typeof DropdownMenuItem>>;
   content: ReactNode;
   isDisabled: boolean;
 };
 
 function MenuItemTooltip({ children, content, isDisabled }: MenuItemTooltipProps) {
+  const trigger = isDisabled
+    ? cloneElement(children, {
+        "aria-disabled": true,
+        className: `${children.props.className ?? ""} cursor-not-allowed opacity-50`,
+        isDisabled: false,
+        onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
+          event.preventDefault();
+          event.stopPropagation();
+        },
+        onSelect: (event: Event) => event.preventDefault()
+      })
+    : children;
+
   return (
     <Tooltip open={isDisabled ? undefined : false}>
-      {isDisabled ? (
-        <TooltipTrigger className="block w-full">{children}</TooltipTrigger>
-      ) : (
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-      )}
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
       <TooltipContent side="left">{content}</TooltipContent>
     </Tooltip>
   );
@@ -84,6 +96,7 @@ export type AddResourceButtonsProps = {
   canCreateSecrets: boolean;
   canCreateFolders: boolean;
   canCreateHoneyTokens: boolean;
+  canCreateSecretSyncs: boolean;
 };
 
 export function AddResourceButtons({
@@ -113,7 +126,8 @@ export function AddResourceButtons({
   variant = "toolbar",
   canCreateSecrets,
   canCreateFolders,
-  canCreateHoneyTokens
+  canCreateHoneyTokens,
+  canCreateSecretSyncs
 }: AddResourceButtonsProps) {
   return (
     <DropdownMenu>
@@ -137,16 +151,18 @@ export function AddResourceButtons({
       </DropdownMenuTrigger>
       <DropdownMenuContent align={variant === "object-type" ? "start" : "end"} className="w-56 p-1">
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
-        <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
-          <DropdownMenuItem
-            className="px-2 py-1.5"
-            onClick={onAddSecret}
-            isDisabled={!canCreateSecrets}
-          >
-            <KeyIcon className="text-secret" />
-            Add Secret
-          </DropdownMenuItem>
-        </MenuItemTooltip>
+        {variant === "toolbar" && (
+          <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
+            <DropdownMenuItem
+              className="px-2 py-1.5"
+              onClick={onAddSecret}
+              isDisabled={!canCreateSecrets}
+            >
+              <KeyIcon className="text-secret" />
+              Add Secret
+            </DropdownMenuItem>
+          </MenuItemTooltip>
+        )}
         <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
           <DropdownMenuItem
             className="px-2 py-1.5"
@@ -266,23 +282,16 @@ export function AddResourceButtons({
                 Copy Secrets
               </DropdownMenuItem>
             </MenuItemTooltip>
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretSyncActions.Create}
-              a={ProjectPermissionSub.SecretSyncs}
-            >
-              {(isAllowed) => (
-                <MenuItemTooltip isDisabled={!isAllowed} content="Access Restricted">
-                  <DropdownMenuItem
-                    className="px-2 py-1.5"
-                    onSelect={onAddSecretSync}
-                    isDisabled={!isAllowed}
-                  >
-                    <RefreshCwIcon className="text-accent" />
-                    Add Secret Sync
-                  </DropdownMenuItem>
-                </MenuItemTooltip>
-              )}
-            </ProjectPermissionCan>
+            <MenuItemTooltip isDisabled={!canCreateSecretSyncs} content="Access Restricted">
+              <DropdownMenuItem
+                className="px-2 py-1.5"
+                onSelect={onAddSecretSync}
+                isDisabled={!canCreateSecretSyncs}
+              >
+                <RefreshCwIcon className="text-accent" />
+                Add Secret Sync
+              </DropdownMenuItem>
+            </MenuItemTooltip>
             {(hasVaultConnection || hasDopplerConnection) && <DropdownMenuSeparator />}
             {hasVaultConnection && (
               <MenuItemTooltip
