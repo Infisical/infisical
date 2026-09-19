@@ -18,6 +18,7 @@ import {
 
 import {
   Button,
+  Checkbox,
   Combobox,
   Empty,
   EmptyDescription,
@@ -26,7 +27,8 @@ import {
   Field,
   FieldDescription,
   FieldLabel,
-  Input,
+  FieldLegend,
+  FieldSet,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -65,6 +67,7 @@ import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMai
 import { QuickSearchDynamicSecretItem } from "./QuickSearchDynamicSecretItem";
 import { QuickSearchEnvTable } from "./QuickSearchEnvTable";
 import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
+import { QuickSearchFolderPicker } from "./QuickSearchFolderPicker";
 import { QuickSearchMetadata } from "./QuickSearchMetadataList";
 import { QuickSearchMetadataSecretItem } from "./QuickSearchMetadataSecretItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
@@ -183,18 +186,17 @@ const Content = ({
   const [perPage, setPerPage] = useState(QUICK_SEARCH_PER_PAGE_OPTIONS[0]);
   const [filterTags, setFilterTags] = useState<Record<string, boolean>>({});
   const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>([]);
-  const [folderPath, setFolderPath] = useState("");
-  const [debouncedFolderPath] = useDebounce(folderPath);
-  const isFolderPathPending = folderPath !== debouncedFolderPath;
-  const secretPath = `/${debouncedFolderPath.trim().replace(/^\/+|\/+$/g, "")}`;
+  const [folderPath, setFolderPath] = useState("/");
   const environmentSlugs = selectedEnvironments.length
     ? selectedEnvironments
     : environments.map((env) => env.slug);
+  const folderEnvironment = environmentSlugs.length === 1 ? environmentSlugs[0] : undefined;
+  const secretPath = folderEnvironment ? folderPath : "/";
   const [showFilter, setShowFilter] = useState<Record<ResourceType, boolean>>({
-    [RowType.Secret]: false,
-    [RowType.Folder]: false,
-    [RowType.DynamicSecret]: false,
-    [RowType.SecretRotation]: false
+    [RowType.Secret]: true,
+    [RowType.Folder]: true,
+    [RowType.DynamicSecret]: true,
+    [RowType.SecretRotation]: true
   });
 
   // Metadata search: a structured key/value condition builder backed by /secrets-by-metadata.
@@ -271,8 +273,8 @@ const Content = ({
     { enabled: isDeepSearchEnabled }
   );
 
-  const isDeepSearchLoading = isDeepSearchPending || isDeepSearchFetching || isFolderPathPending;
-  const isMetadataLoading = isMetadataPending || isMetadataFetching || isFolderPathPending;
+  const isDeepSearchLoading = isDeepSearchPending || isDeepSearchFetching;
+  const isMetadataLoading = isMetadataPending || isMetadataFetching;
 
   const {
     folders = {},
@@ -292,11 +294,7 @@ const Content = ({
     [environments]
   );
 
-  // When no resource types are checked, show all (empty filter = no filter)
-  const showType = useCallback(
-    (type: ResourceType) => !Object.values(showFilter).some(Boolean) || Boolean(showFilter[type]),
-    [showFilter]
-  );
+  const showType = useCallback((type: ResourceType) => Boolean(showFilter[type]), [showFilter]);
 
   const resultsByEnv = useMemo(() => {
     const allFolders = Object.values(folders).flat();
@@ -469,14 +467,14 @@ const Content = ({
     Number(selectedEnvironments.length > 0) +
     Number(Boolean(folderPath.trim().replace(/\//g, ""))) +
     Number(Object.keys(filterTags).length > 0) +
-    Number(Object.values(showFilter).some(Boolean)) +
+    Number(!Object.values(showFilter).every(Boolean)) +
     activeConditions.length;
 
   const handleResetFilters = () => {
     setSelectedEnvironments([]);
-    setFolderPath("");
+    setFolderPath("/");
     setFilterTags({});
-    handleChangeResourceTypes([]);
+    handleChangeResourceTypes(QUICK_SEARCH_RESOURCE_TYPES);
     setPage(1);
   };
 
@@ -603,7 +601,7 @@ const Content = ({
         id="quick-search-filters"
         role="complementary"
         aria-label="Search filters"
-        className="col-span-2 col-start-1 row-start-1 flex max-h-[45dvh] min-h-0 flex-col rounded-lg bg-card ring-1 ring-border ring-inset md:col-span-1 md:row-span-2 md:max-h-none md:w-72"
+        className="col-span-2 col-start-1 row-start-1 flex max-h-[45dvh] min-h-0 flex-col rounded-lg bg-card ring-1 ring-border ring-inset md:col-span-1 md:row-span-2 md:max-h-none md:w-94"
       >
         <div className="shrink-0 p-4 text-sm font-medium">Filters</div>
         <ScrollableContent
@@ -621,7 +619,10 @@ const Content = ({
                 multiple
                 options={environments}
                 value={environments.filter((env) => selectedEnvironments.includes(env.slug))}
-                onValueChange={(options) => setSelectedEnvironments(options.map((env) => env.slug))}
+                onValueChange={(options) => {
+                  setSelectedEnvironments(options.map((env) => env.slug));
+                  setFolderPath("/");
+                }}
                 getOptionValue={(env) => env.slug}
                 getOptionLabel={(env) => env.name}
                 placeholder="All environments"
@@ -633,42 +634,43 @@ const Content = ({
           )}
           <Field>
             <FieldLabel htmlFor="quick-search-folder-path">Folder Path</FieldLabel>
-            <Input
-              id="quick-search-folder-path"
-              className="font-mono"
-              placeholder="/"
+            <QuickSearchFolderPicker
+              key={folderEnvironment ?? "all"}
+              projectId={projectId}
+              environment={folderEnvironment}
               value={folderPath}
-              onChange={(event) => setFolderPath(event.target.value)}
-              aria-describedby="quick-search-folder-help"
+              onChange={setFolderPath}
             />
             <FieldDescription id="quick-search-folder-help">
-              Includes subfolders. Empty searches all folders.
+              {folderEnvironment
+                ? "Includes subfolders. Choose / to search all folders."
+                : "Select one environment to choose a folder."}
             </FieldDescription>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="quick-search-resource-types">Resource Types</FieldLabel>
-            <Combobox<ResourceTypeOption>
-              id="quick-search-resource-types"
-              multiple
-              options={QUICK_SEARCH_RESOURCE_TYPES}
-              value={QUICK_SEARCH_RESOURCE_TYPES.filter(
-                ({ type }) => showFilter[type as ResourceType]
-              )}
-              onValueChange={handleChangeResourceTypes}
-              getOptionValue={(option) => option.type}
-              getOptionLabel={(option) => option.label}
-              renderOption={(option) => (
-                <span className="flex items-center gap-2 [&_svg]:size-4">
-                  {option.icon}
-                  {option.label}
-                </span>
-              )}
-              placeholder="All resource types"
-              searchPlaceholder="Find resource types..."
-              searchAriaLabel="Find resource types"
-              clearAriaLabel="Clear resource type filters"
-            />
-          </Field>
+          <FieldSet className="gap-3">
+            <FieldLegend variant="label">Resource Types</FieldLegend>
+            {QUICK_SEARCH_RESOURCE_TYPES.map((option) => (
+              <Field key={option.type} orientation="horizontal">
+                <Checkbox
+                  id={`quick-search-type-${option.type}`}
+                  isChecked={showFilter[option.type as ResourceType]}
+                  onCheckedChange={(checked) =>
+                    handleChangeResourceTypes(
+                      QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
+                        type === option.type ? checked === true : showFilter[type as ResourceType]
+                      )
+                    )
+                  }
+                />
+                <FieldLabel htmlFor={`quick-search-type-${option.type}`}>
+                  <span className="flex items-center gap-2 [&_svg]:size-4">
+                    {option.icon}
+                    {option.label}
+                  </span>
+                </FieldLabel>
+              </Field>
+            ))}
+          </FieldSet>
           <Field>
             <FieldLabel htmlFor="quick-search-tags">Tags</FieldLabel>
             <Combobox

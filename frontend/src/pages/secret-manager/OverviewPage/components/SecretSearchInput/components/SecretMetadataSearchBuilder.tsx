@@ -1,16 +1,6 @@
 import { BracesIcon, PlusIcon, XIcon } from "lucide-react";
 
-import {
-  Button,
-  Field,
-  FieldLabel,
-  IconButton,
-  Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText
-} from "@app/components/v3";
+import { Button, Field, FieldLabel, IconButton, Input } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { SecretMetadataSearchOperator } from "@app/hooks/api/dashboard/types";
 
@@ -115,15 +105,15 @@ export const SecretMetadataSearchBuilder = ({
                 <XIcon />
               </IconButton>
             </div>
-            <Field>
-              <FieldLabel className="sr-only" htmlFor={`metadata-value-${condition.id}`}>
-                Value
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupAddon>
-                  <InputGroupText>is</InputGroupText>
-                </InputGroupAddon>
-                <InputGroupInput
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 shrink-0 items-center rounded-md border border-border bg-foreground/5 px-3 text-sm text-foreground">
+                is
+              </span>
+              <Field className="min-w-0 flex-1">
+                <FieldLabel className="sr-only" htmlFor={`metadata-value-${condition.id}`}>
+                  Value
+                </FieldLabel>
+                <Input
                   id={`metadata-value-${condition.id}`}
                   aria-label={`Metadata value ${index + 1}`}
                   className="font-mono"
@@ -131,8 +121,8 @@ export const SecretMetadataSearchBuilder = ({
                   value={condition.value}
                   onChange={(e) => onUpdateCondition(condition.id, { value: e.target.value })}
                 />
-              </InputGroup>
-            </Field>
+              </Field>
+            </div>
             {index < conditions.length - 1 && (
               <span className="text-xs text-accent">{match === "all" ? "AND" : "OR"}</span>
             )}
