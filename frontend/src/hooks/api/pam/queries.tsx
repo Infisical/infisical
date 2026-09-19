@@ -14,6 +14,7 @@ import {
   PamAccessStatus,
   PamAccessType,
   PamAccountType,
+  PamAccountWarning,
   PamApproverType,
   PamHeartbeatStatus,
   PamResourcePermissionActions,
@@ -213,6 +214,7 @@ export type TPamAccountListItem = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  warnings: PamAccountWarning[];
   heartbeatStatus?: PamHeartbeatStatus | null;
   heartbeatEnabled?: boolean;
   requiresApproval: boolean;

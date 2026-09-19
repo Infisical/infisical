@@ -1055,7 +1055,7 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: { pkcs11?: boolean };
+    capabilities?: { pkcs11?: boolean; sessionLogMaskingBuiltInDetection?: boolean };
   }) => {
     const nextCapabilities = capabilities ?? {};
 
