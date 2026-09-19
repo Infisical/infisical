@@ -71,6 +71,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultAccessBundles",
       description: "List the Agent Vault access bundles you can reach",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -107,6 +108,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createAgentVaultAccessBundle",
       description: "Create an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -152,6 +154,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getAgentVaultAccessBundle",
       description: "Get an Agent Vault access bundle with its services",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -180,6 +183,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultAccessBundle",
       description: "Update an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -234,6 +238,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "deleteAgentVaultAccessBundle",
       description: "Delete an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -274,6 +279,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/services",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createAgentVaultService",
       description: "Create a service in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -349,6 +355,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/services/:serviceId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultService",
       description: "Update a service in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -445,6 +452,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/services/:serviceId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "deleteAgentVaultService",
       description: "Delete a service from an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -491,6 +499,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultAccessBundleMembers",
       description: "List who can reach an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -515,6 +524,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "addAgentVaultAccessBundleMembers",
       description: "Grant an Agent Vault access bundle to users, machine identities or groups",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
@@ -573,6 +583,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "revokeAgentVaultAccessBundleMembers",
       description: "Revoke an Agent Vault access bundle from users, machine identities or groups",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
