@@ -220,9 +220,8 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
               <DocumentationLinkBadge href={AgentVaultDocsUrls.activityLogs} />
             </SheetTitle>
             <SheetDescription>
-              Record every request an agent makes through a proxy: the method, host, path and
-              result. Records are encrypted and stored in a bucket you own. Infisical keeps only an
-              index.
+              Records are sealed by the proxy and written straight to a bucket you own. Set the
+              destination below.
             </SheetDescription>
           </SheetHeader>
 
@@ -285,7 +284,8 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                           modal
                         />
                         <FieldDescription>
-                          Its credentials write the records and read them back for playback.
+                          Its credentials write the records, and read them back when you open a
+                          session&apos;s activity.
                         </FieldDescription>
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
@@ -386,14 +386,13 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                         value={iamPolicyFor(bucket, keyPrefix)}
                       />
                       <CodeBlock
-                        label="Bucket CORS rule, so the browser can read recordings"
+                        label="Bucket CORS rule, so your browser can read the records back"
                         value={corsPolicyFor(window.location.origin)}
                       />
                     </div>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-
             </FieldGroup>
           </div>
 
