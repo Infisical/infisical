@@ -37,6 +37,7 @@ import { NotificationType } from "../../../services/notification/notification-ty
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -52,6 +53,7 @@ import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-a
 type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
@@ -93,6 +95,7 @@ export const accessApprovalRequestServiceFactory = ({
   projectDAL,
   projectEnvDAL,
   permissionService,
+  licenseService,
   accessApprovalRequestDAL,
   accessApprovalRequestReviewerDAL,
   accessApprovalPolicyDAL,
@@ -243,6 +246,14 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval request due to plan restriction. Upgrade plan to create access approval request."
+      });
+    }
 
     const requestedByUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () =>
       userDAL.findById(actorId)
