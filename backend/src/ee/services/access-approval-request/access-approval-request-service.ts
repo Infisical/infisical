@@ -505,6 +505,14 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to modify this request" });
     }
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update access approval request due to plan restriction. Upgrade plan to update access approval request."
+      });
+    }
+
     const project = await requestMemoize(requestMemoKeys.projectFindById(accessApprovalRequest.projectId), () =>
       projectDAL.findById(accessApprovalRequest.projectId)
     );
