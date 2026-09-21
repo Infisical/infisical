@@ -147,11 +147,13 @@ export const SecretTableRow = ({
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
+  const [isSingleEnvRowExpanded, setIsSingleEnvRowExpanded] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
+  const isRowExpanded = isSingleEnvView ? isSingleEnvRowExpanded : isFormExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
@@ -273,6 +275,7 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
+        data-secret-row-expanded={isRowExpanded || undefined}
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
         className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
       >
@@ -402,6 +405,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onExpandedChange={setIsSingleEnvRowExpanded}
           />
         ) : (
           <TableCell
@@ -479,7 +483,13 @@ export const SecretTableRow = ({
         )}
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
-            if (isFormExpanded) return <TableCell className="border-b-0 bg-container-hover" />;
+            if (isFormExpanded)
+              return (
+                <TableCell
+                  key={`sec-overview-${slug}-${i + 1}-expanded`}
+                  className="border-b-0 bg-container-hover"
+                />
+              );
 
             const secret = getSecretByKey(slug, secretKey);
 
@@ -510,7 +520,10 @@ export const SecretTableRow = ({
           })}
       </TableRow>
       {isSingleEnvView && singleEnvShowOverride && (
-        <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+        <TableRow
+          data-secret-row-expanded={isRowExpanded || undefined}
+          className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
+        >
           <TableCell>
             <GitBranchIcon className="text-override" />
           </TableCell>
@@ -567,7 +580,7 @@ export const SecretTableRow = ({
         </Dialog>
       )}
       {!isSingleEnvView && isFormExpanded && (
-        <TableRow className="border-0 hover:bg-transparent">
+        <TableRow data-secret-row-expanded className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}

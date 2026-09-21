@@ -3100,7 +3100,7 @@ const OverviewPageContent = () => {
                       )}
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="transition-all duration-500">
+                  <TableBody className="transition-all duration-500 [&:has(>tr[data-secret-row-expanded])>tr:not([data-secret-row-expanded])]:opacity-40 [&>tr]:transition-opacity [&>tr]:duration-200 motion-reduce:[&>tr]:transition-none">
                     {showOverviewSkeleton ? (
                       Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                         <TableRow className="group" key={`loading-row-${index + 1}`}>

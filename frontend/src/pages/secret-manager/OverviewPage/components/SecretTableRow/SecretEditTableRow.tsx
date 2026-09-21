@@ -181,6 +181,7 @@ type Props = {
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
   onCopySecret?: () => void;
+  onExpandedChange?: (isExpanded: boolean) => void;
 };
 
 export const SecretEditTableRow = ({
@@ -219,7 +220,8 @@ export const SecretEditTableRow = ({
   hasPendingValueChange,
   pendingKeyName,
   revokedProjectFolderGrant,
-  onCopySecret
+  onCopySecret,
+  onExpandedChange
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -240,6 +242,10 @@ export const SecretEditTableRow = ({
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
   const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
+
+  useEffect(() => {
+    onExpandedChange?.(isFieldActive);
+  }, [isFieldActive, onExpandedChange]);
 
   const fetchSharedValueParams =
     importedSecret && !isSecretPresent
