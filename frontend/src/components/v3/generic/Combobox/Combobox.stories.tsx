@@ -1,6 +1,13 @@
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  type FormEvent,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState
+} from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { useDebounce } from "@app/hooks";
 
@@ -9,12 +16,15 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger
 } from "../Dialog";
 import { Field, FieldError, FieldLabel } from "../Field";
-import { Combobox, type ComboboxProps } from "./Combobox";
+import { Input } from "../Input";
+import { TextArea } from "../TextArea";
+import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from "./Combobox";
 
 const ENVIRONMENTS = [
   { id: "development", name: "Development" },
@@ -26,21 +36,25 @@ const ORGANIZATION_ROLES = [
   {
     slug: "admin",
     name: "Admin",
+    items: 4,
     description: "Can manage organization settings, billing, members, and projects."
   },
   {
     slug: "member",
     name: "Member",
+    items: 38,
     description: "Can access assigned projects but cannot manage the organization."
   },
   {
     slug: "no-access",
     name: "No Access",
+    items: 2,
     description: "Cannot access the organization until a more permissive role is assigned."
   },
   ...Array.from({ length: 24 }, (_, index) => ({
     slug: `custom-role-${index + 1}`,
     name: `Custom role ${index + 1}`,
+    items: index + 1,
     description:
       "A custom organization role with a longer description that can wrap onto two lines."
   }))
@@ -80,7 +94,7 @@ const StoryCombobox = <TOption,>(props: ComboboxProps<TOption>) => {
   return <Combobox {...props} portalContainer={modal ? undefined : portalContainer} />;
 };
 
-const ComboboxStoryFrame = ({
+export const ComboboxStoryFrame = ({
   children,
   fullscreen = false
 }: {
@@ -106,6 +120,18 @@ const ComboboxStoryFrame = ({
 const meta = {
   title: "Generic/Combobox",
   component: Combobox,
+  includeStories: [
+    "Default",
+    "RichOptions",
+    "Multiple",
+    "ChipLayouts",
+    "ServerSearch",
+    "InDialog",
+    "States",
+    "InlineCreation",
+    "DialogCreation",
+    "GroupedRemoteCreation"
+  ],
   parameters: {
     layout: "centered"
   },
@@ -183,7 +209,9 @@ const fetchOrganizations = (search: string) =>
   });
 
 const ServerSearchRender = () => {
-  const [value, setValue] = useState<(typeof ALL_ORGANIZATIONS)[number] | null>(null);
+  const [value, setValue] = useState<(typeof ALL_ORGANIZATIONS)[number] | null>(
+    ALL_ORGANIZATIONS[1998]
+  );
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [organizations, setOrganizations] = useState<typeof ALL_ORGANIZATIONS>([]);
@@ -246,7 +274,21 @@ const ServerSearchRender = () => {
  * Without `onSearchChange` the component would only ever match within those 25.
  */
 export const ServerSearch: Story = {
-  render: () => <ServerSearchRender />
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Caller-owned search renders one fetched page at a time while preserving the controlled selection object even when that saved option is absent from the current page. Debounce the query and keep `isLoading` true across both the debounce and request windows."
+      }
+    }
+  },
+  render: () => <ServerSearchRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("combobox", { name: "Organization" })).toHaveValue(
+      "Organization 1999"
+    );
+  }
 };
 
 const RichOptionsRender = () => {
@@ -274,6 +316,7 @@ const RichOptionsRender = () => {
             <p className="text-xs leading-4 break-words whitespace-normal text-muted">
               {option.description}
             </p>
+            <p className="text-xs text-muted">{option.items} assigned members</p>
           </div>
         )}
       />
@@ -347,6 +390,7 @@ const MultipleRender = () => {
         id="combobox-projects"
         aria-labelledby="combobox-projects-label"
         multiple
+        isSelectAll
         options={PROJECTS}
         value={value}
         onValueChange={(options) => setValue(options)}
@@ -367,7 +411,7 @@ const MultipleRender = () => {
  * search input cleared and focused.
  */
 export const Multiple: Story = {
-  name: "Multiple: Chips",
+  name: "Example: Multiple Selection",
   render: () => <MultipleRender />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -378,39 +422,6 @@ export const Multiple: Story = {
     await expect(combobox).toHaveFocus();
     await expect(combobox).toHaveAccessibleName("Projects");
   }
-};
-
-const SelectAllRender = () => {
-  const [value, setValue] = useState<(typeof PROJECTS)[number][]>([]);
-
-  return (
-    <Field>
-      <FieldLabel htmlFor="combobox-select-all-projects">Projects</FieldLabel>
-      <StoryCombobox
-        id="combobox-select-all-projects"
-        multiple
-        isSelectAll
-        options={PROJECTS}
-        value={value}
-        onValueChange={(options) => setValue(options)}
-        getOptionValue={(option) => option.id}
-        getOptionLabel={(option) => option.name}
-        placeholder="Select projects..."
-        searchPlaceholder="Search projects..."
-        searchAriaLabel="Search projects"
-        clearAriaLabel="Clear all projects"
-      />
-    </Field>
-  );
-};
-
-/**
- * `isSelectAll` adds a toggle above the option list that selects every option
- * matching the current search, then clears that same set once all are selected.
- */
-export const SelectAll: Story = {
-  name: "Multiple: Select All",
-  render: () => <SelectAllRender />
 };
 
 const SingleLineRender = () => {
@@ -437,24 +448,6 @@ const SingleLineRender = () => {
   );
 };
 
-/**
- * Single-line mode keeps the chips and search input on one row. Overflow scrolls
- * horizontally with a thin scrollbar while the clear button remains visible at
- * the trailing edge.
- */
-export const SingleLine: Story = {
-  name: "Multiple: Single Line",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Use `singleLine` when the control should behave like a text input instead of expanding vertically. Selected chips scroll horizontally with a thin scrollbar, and the clear button stays visible."
-      }
-    }
-  },
-  render: () => <SingleLineRender />
-};
-
 const OverflowedSelectionsRender = () => {
   const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 12));
 
@@ -477,23 +470,78 @@ const OverflowedSelectionsRender = () => {
   );
 };
 
-export const OverflowedSelections: Story = {
-  name: "Multiple: Overflowed Selections",
+export const ChipLayouts: Story = {
+  name: "Example: Chip Layouts",
   parameters: {
     docs: {
       description: {
         story:
-          "A large selection wraps into a bounded, internally scrollable chip area so the form cannot grow without limit. Every chip remains keyboard reachable and removable."
+          "Use the default wrapped layout when every selection should stay visible within a bounded scroll area. Use `singleLine` when the field must keep text-input height and horizontal overflow is preferable."
       }
     }
   },
-  render: () => <OverflowedSelectionsRender />
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <OverflowedSelectionsRender />
+      <SingleLineRender />
+    </div>
+  )
+};
+
+const NestedDialogCreationField = () => {
+  const [options, setOptions] = useState<string[]>([]);
+  const [value, setValue] = useState<string | null>(null);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-nested-dialog-tag">Primary tag</FieldLabel>
+      <StoryCombobox
+        id="combobox-nested-dialog-tag"
+        modal
+        options={options}
+        value={value}
+        onValueChange={setValue}
+        getOptionValue={(option) => option}
+        getOptionLabel={(option) => option}
+        placeholder="Select or create a tag..."
+        creation={{
+          mode: "dialog",
+          title: "Create Nested Tag",
+          description: "Confirm the tag before adding it to this invitation.",
+          renderForm: ({ initialInput, complete, cancel }) => (
+            <form
+              className="flex flex-col gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setOptions((current) => [...current, initialInput]);
+                setValue(initialInput);
+                complete();
+              }}
+            >
+              <Field>
+                <FieldLabel htmlFor="nested-dialog-tag-name">Tag name</FieldLabel>
+                <Input id="nested-dialog-tag-name" defaultValue={initialInput} autoFocus />
+              </Field>
+              <DialogFooter>
+                <Button variant="ghost" onClick={cancel}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create Tag</Button>
+              </DialogFooter>
+            </form>
+          )
+        }}
+      />
+      <p className="text-sm text-muted">Created tag: {value ?? "none"}</p>
+    </Field>
+  );
 };
 
 const InDialogRender = () => {
   const [value, setValue] = useState<(typeof ORGANIZATION_ROLES)[number] | null>(
     ORGANIZATION_ROLES[1]
   );
+  const [parentSubmitCount, setParentSubmitCount] = useState(0);
 
   return (
     <Dialog>
@@ -501,34 +549,44 @@ const InDialogRender = () => {
         <Button variant="outline">Open Role Picker</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Invite Organization Member</DialogTitle>
-          <DialogDescription>Choose the organization role for this member.</DialogDescription>
-        </DialogHeader>
-        <Field>
-          <FieldLabel htmlFor="combobox-dialog-role">Organization role</FieldLabel>
-          <StoryCombobox
-            id="combobox-dialog-role"
-            options={ORGANIZATION_ROLES}
-            value={value}
-            onValueChange={setValue}
-            getOptionValue={(option) => option.slug}
-            getOptionLabel={(option) => option.name}
-            getOptionKeywords={(option) => [option.description]}
-            placeholder="Select role..."
-            searchPlaceholder="Search roles..."
-            searchAriaLabel="Search organization roles"
-            modal
-            renderOption={(option) => (
-              <div className="min-w-0">
-                <p className="truncate">{option.name}</p>
-                <p className="text-xs leading-4 break-words whitespace-normal text-muted">
-                  {option.description}
-                </p>
-              </div>
-            )}
-          />
-        </Field>
+        <form
+          className="flex flex-col gap-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setParentSubmitCount((current) => current + 1);
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Invite Organization Member</DialogTitle>
+            <DialogDescription>Choose the organization role for this member.</DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel htmlFor="combobox-dialog-role">Organization role</FieldLabel>
+            <StoryCombobox
+              id="combobox-dialog-role"
+              options={ORGANIZATION_ROLES}
+              value={value}
+              onValueChange={setValue}
+              getOptionValue={(option) => option.slug}
+              getOptionLabel={(option) => option.name}
+              getOptionKeywords={(option) => [option.description]}
+              placeholder="Select role..."
+              searchPlaceholder="Search roles..."
+              searchAriaLabel="Search organization roles"
+              modal
+              renderOption={(option) => (
+                <div className="min-w-0">
+                  <p className="truncate">{option.name}</p>
+                  <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+                    {option.description}
+                  </p>
+                </div>
+              )}
+            />
+          </Field>
+          <NestedDialogCreationField />
+          <p role="status">Parent form submits: {parentSubmitCount}</p>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -540,11 +598,48 @@ export const InDialog: Story = {
     docs: {
       description: {
         story:
-          "Set `modal` when the combobox is rendered inside a modal Dialog. Base UI then preserves focus containment and scroll access for its body-portalled option list."
+          "Set `modal` when the combobox is rendered inside a modal Dialog. Base UI then preserves focus containment and scroll access for its body-portalled option list. A dialog creation form stops its submit event at the shared creation-dialog boundary, so React portal propagation cannot submit an ancestor form."
       }
     }
   },
-  render: () => <InDialogRender />
+  render: () => <InDialogRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Open Role Picker" }));
+    const parentDialog = await body.findByRole("dialog", { name: "Invite Organization Member" });
+    const input = within(parentDialog).getByRole("combobox", { name: "Primary tag" });
+    await userEvent.click(input);
+    await userEvent.type(input, "Enter tag");
+    await userEvent.click(body.getByRole("option", { name: 'Create "Enter tag"' }));
+    const creationDialog = await body.findByRole("dialog", { name: "Create Nested Tag" });
+    await expect(within(creationDialog).getByLabelText("Tag name")).toHaveValue("Enter tag");
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(body.queryByRole("dialog", { name: "Create Nested Tag" })).not.toBeInTheDocument()
+    );
+    await expect(
+      body.getByRole("dialog", { name: "Invite Organization Member" })
+    ).toBeInTheDocument();
+    await waitFor(() => expect(input).toHaveFocus());
+    await expect(input).toHaveValue("Enter tag");
+    await expect(within(parentDialog).getByText("Parent form submits: 0")).toBeInTheDocument();
+
+    await userEvent.click(input);
+    await userEvent.clear(input);
+    await userEvent.type(input, "Button tag");
+    await userEvent.click(body.getByRole("option", { name: 'Create "Button tag"' }));
+    const buttonCreationDialog = await body.findByRole("dialog", { name: "Create Nested Tag" });
+    await userEvent.click(within(buttonCreationDialog).getByRole("button", { name: "Create Tag" }));
+    await waitFor(() =>
+      expect(body.queryByRole("dialog", { name: "Create Nested Tag" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(input).toHaveFocus());
+    await expect(input).toHaveValue("Button tag");
+    await expect(within(parentDialog).getByText("Created tag: Button tag")).toBeInTheDocument();
+    await expect(within(parentDialog).getByText("Parent form submits: 0")).toBeInTheDocument();
+  }
 };
 
 export const States: Story = {
@@ -721,30 +816,6 @@ const CreatableSingleRender = () => {
   );
 };
 
-export const CreatableSingle: Story = {
-  name: "Creation: Single",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Add `creation` to the existing controlled Combobox. `onCreate` owns domain-option construction and the controlled value update; the internal Create item never reaches `onValueChange`. The Create row remains available alongside partial matches."
-      }
-    }
-  },
-  render: () => <CreatableSingleRender />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const input = canvas.getByRole("combobox", { name: "Environment" });
-
-    await userEvent.click(input);
-    await userEvent.type(input, "prod");
-    await expect(canvas.getByRole("option", { name: "Production" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "prod"' }));
-    await expect(input).toHaveValue("prod");
-    await expect(canvas.queryByRole("option", { name: 'Create "prod"' })).not.toBeInTheDocument();
-  }
-};
-
 const SingleDismissedFailureRender = () => {
   const [attempt, setAttempt] = useState(0);
   const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
@@ -859,23 +930,35 @@ const AsyncCreationRender = () => {
   );
 };
 
-export const AsyncCreation: Story = {
-  name: "Creation: Async Pending and Failure",
+export const InlineCreation: Story = {
+  name: "Example: Inline Creation",
   parameters: {
     docs: {
       description: {
         story:
-          "Return the persistence promise from `onCreate`. While it is pending, the Create row is disabled so Enter or repeated clicks cannot start another request. Success clears the query after the caller updates its controlled options and value; rejection keeps the query so reopening surfaces an inline retryable error."
+          "Inline creation is the compact path for values that need no extra metadata. The single-select example persists immediately; the multi-select example validates a slug, exposes caller-owned pending and failure copy, and updates controlled options and selections only after persistence succeeds."
       }
     }
   },
-  render: () => <AsyncCreationRender />,
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <CreatableSingleRender />
+      <AsyncCreationRender />
+    </div>
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = canvas.getByRole("combobox", { name: "Tags" });
+    const environmentInput = canvas.getByRole("combobox", { name: "Environment" });
+    const tagsInput = canvas.getByRole("combobox", { name: "Tags" });
 
-    await userEvent.click(input);
-    await userEvent.type(input, "release-ready");
+    await userEvent.click(environmentInput);
+    await userEvent.type(environmentInput, "prod");
+    await expect(canvas.getByRole("option", { name: "Production" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "prod"' }));
+    await expect(environmentInput).toHaveValue("prod");
+
+    await userEvent.click(tagsInput);
+    await userEvent.type(tagsInput, "release-ready");
     await userEvent.click(canvas.getByRole("option", { name: 'Create tag "release-ready"' }));
     await expect(
       canvas.getByRole("option", { name: 'Creating tag "release-ready"...' })
@@ -884,15 +967,13 @@ export const AsyncCreation: Story = {
       await canvas.findByRole("button", { name: "Remove release-ready" })
     ).toBeInTheDocument();
 
-    await userEvent.type(input, "reserved");
-    await userEvent.keyboard("{Enter}{Enter}{Escape}");
+    await userEvent.type(tagsInput, "reserved");
+    await userEvent.keyboard("{Enter}{Escape}");
     await sleep(450);
-    await expect(input).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(input);
+    await userEvent.click(tagsInput);
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "The tag could not be created"
     );
-    await expect(input).toHaveValue("reserved");
   }
 };
 
@@ -1108,6 +1189,308 @@ export const ValidatedCreation: Story = {
     await expect(
       canvas.getByRole("option", { name: 'Use member email "new.member@example.com"' })
     ).toBeInTheDocument();
+  }
+};
+
+type MetadataTagOption = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+};
+
+type MetadataTagFormProps = ComboboxDialogCreationRenderProps & {
+  onCreate: (option: Omit<MetadataTagOption, "id">) => Promise<void>;
+  onPendingChange: (isPending: boolean) => void;
+};
+
+const toSlug = (value: string) =>
+  value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const MetadataTagForm = ({
+  initialInput,
+  complete,
+  cancel,
+  onCreate,
+  onPendingChange
+}: MetadataTagFormProps) => {
+  const [name, setName] = useState(initialInput);
+  const [slug, setSlug] = useState(() => toSlug(initialInput));
+  const [description, setDescription] = useState("");
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isValid = Boolean(name.trim() && /^[a-z][a-z0-9-]*$/.test(slug));
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isValid || isPending) return;
+
+    setError(null);
+    setIsPending(true);
+    onPendingChange(true);
+    try {
+      await onCreate({ name: name.trim(), slug, description: description.trim() });
+      complete();
+    } catch {
+      setError("That slug is reserved. Choose another slug and try again.");
+    } finally {
+      setIsPending(false);
+      onPendingChange(false);
+    }
+  };
+
+  return (
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <Field>
+        <FieldLabel htmlFor="dialog-tag-name">Name</FieldLabel>
+        <Input
+          id="dialog-tag-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          autoFocus
+        />
+      </Field>
+      <Field data-invalid={Boolean(slug) && !isValid ? "true" : undefined}>
+        <FieldLabel htmlFor="dialog-tag-slug">Slug</FieldLabel>
+        <Input
+          id="dialog-tag-slug"
+          value={slug}
+          onChange={(event) => setSlug(event.target.value)}
+          aria-invalid={Boolean(slug) && !isValid ? true : undefined}
+        />
+        {slug && !isValid && <FieldError>Use lowercase letters, numbers, and hyphens.</FieldError>}
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="dialog-tag-description">Description</FieldLabel>
+        <TextArea
+          id="dialog-tag-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Explain when this tag should be used."
+        />
+      </Field>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <DialogFooter>
+        <Button variant="ghost" onClick={cancel} isDisabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" isDisabled={!isValid} isPending={isPending}>
+          Create Tag
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+};
+
+const MetadataOptionDetails = ({ option }: { option: MetadataTagOption }) => (
+  <dl
+    aria-label={`${option.name} metadata`}
+    className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs"
+  >
+    <dt className="text-muted">ID</dt>
+    <dd>{option.id}</dd>
+    <dt className="text-muted">Name</dt>
+    <dd>{option.name}</dd>
+    <dt className="text-muted">Slug</dt>
+    <dd>{option.slug}</dd>
+    <dt className="text-muted">Description</dt>
+    <dd>{option.description || "No description"}</dd>
+  </dl>
+);
+
+const renderMetadataOption = (option: MetadataTagOption) => (
+  <div className="min-w-0">
+    <p className="truncate">{option.name}</p>
+    <p className="truncate text-xs text-muted">{option.slug}</p>
+    <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+      {option.description || "No description"}
+    </p>
+  </div>
+);
+
+function SingleDialogCreationRender({ modal = false }: { modal?: boolean }) {
+  const [options, setOptions] = useState<MetadataTagOption[]>([]);
+  const [value, setValue] = useState<MetadataTagOption | null>(null);
+  const [isPending, setIsPending] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Field>
+        <FieldLabel htmlFor="combobox-dialog-primary-tag">Primary tag</FieldLabel>
+        <StoryCombobox
+          id="combobox-dialog-primary-tag"
+          modal={modal}
+          options={options}
+          value={value}
+          onValueChange={setValue}
+          onClear={() => setValue(null)}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          getOptionKeywords={(option) => [option.slug, option.description]}
+          renderOption={renderMetadataOption}
+          placeholder="Select or create a primary tag..."
+          creation={{
+            mode: "dialog",
+            title: "Create Tag",
+            description: "Add a reusable tag with the metadata your team needs.",
+            isPending,
+            renderForm: (props) => (
+              <MetadataTagForm
+                {...props}
+                onPendingChange={setIsPending}
+                onCreate={async (fields) => {
+                  await sleep(450);
+                  if (fields.slug === "reserved") throw new Error("Reserved slug");
+                  const option = { id: `tag-${fields.slug}`, ...fields };
+                  setOptions((current) => [...current, option]);
+                  setValue(option);
+                }}
+              />
+            )
+          }}
+        />
+      </Field>
+      {value && <MetadataOptionDetails option={value} />}
+    </div>
+  );
+}
+
+const MultipleDialogCreationRender = () => {
+  const [options, setOptions] = useState<MetadataTagOption[]>([]);
+  const [value, setValue] = useState<MetadataTagOption[]>([]);
+  const [isPending, setIsPending] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Field>
+        <FieldLabel htmlFor="combobox-dialog-additional-tags">Additional tags</FieldLabel>
+        <StoryCombobox
+          id="combobox-dialog-additional-tags"
+          multiple
+          options={options}
+          value={value}
+          onValueChange={setValue}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          getOptionKeywords={(option) => [option.slug, option.description]}
+          renderOption={renderMetadataOption}
+          placeholder="Select or create additional tags..."
+          creation={{
+            mode: "dialog",
+            title: "Create Tag",
+            description: "Add a reusable tag with the metadata your team needs.",
+            isPending,
+            renderForm: (props) => (
+              <MetadataTagForm
+                {...props}
+                onPendingChange={setIsPending}
+                onCreate={async (fields) => {
+                  await sleep(450);
+                  if (fields.slug === "reserved") throw new Error("Reserved slug");
+                  const option = { id: `tag-${fields.slug}`, ...fields };
+                  setOptions((current) => [...current, option]);
+                  setValue((current) => [...current, option]);
+                }}
+              />
+            )
+          }}
+        />
+      </Field>
+      {value.map((option) => (
+        <MetadataOptionDetails key={option.id} option={option} />
+      ))}
+    </div>
+  );
+};
+
+export const DialogCreation: Story = {
+  name: "Example: Dialog Creation",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Use `creation.mode = "dialog"` when a new option needs metadata beyond the search query. The caller renders and validates the form, persists a complete domain object, updates controlled options and selection, then calls `complete`. Cancel preserves the query for retry; `isPending` blocks Escape, outside click, and close controls until persistence settles.'
+      }
+    }
+  },
+  render: () => (
+    <div className="flex w-80 flex-col gap-8">
+      <SingleDialogCreationRender />
+      <MultipleDialogCreationRender />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const primaryInput = canvas.getByRole("combobox", { name: "Primary tag" });
+    const additionalInput = canvas.getByRole("combobox", { name: "Additional tags" });
+
+    await userEvent.click(primaryInput);
+    await userEvent.type(primaryInput, "Release workflow");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "Release workflow"' }));
+    let dialog = await body.findByRole("dialog", { name: "Create Tag" });
+    await expect(within(dialog).getByLabelText("Name")).toHaveValue("Release workflow");
+    const slugInput = within(dialog).getByLabelText("Slug");
+    const createButton = within(dialog).getByRole("button", { name: "Create Tag" });
+    await userEvent.clear(slugInput);
+    await expect(createButton).toBeDisabled();
+    await userEvent.type(slugInput, "release-workflow");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(body.queryByRole("dialog", { name: "Create Tag" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(primaryInput).toHaveFocus());
+    await expect(primaryInput).toHaveValue("Release workflow");
+    await expect(primaryInput).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "Release workflow"' }));
+    dialog = await body.findByRole("dialog", { name: "Create Tag" });
+    await userEvent.type(
+      within(dialog).getByLabelText("Description"),
+      "Coordinates checks before production deployment."
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create Tag" }));
+    await expect(within(dialog).getByRole("button", { name: "Create Tag" })).toHaveAttribute(
+      "aria-busy",
+      "true"
+    );
+    await userEvent.keyboard("{Escape}");
+    await expect(body.getByRole("dialog", { name: "Create Tag" })).toBeInTheDocument();
+    const primaryMetadata = await canvas.findByLabelText("Release workflow metadata");
+    await expect(within(primaryMetadata).getByText("tag-release-workflow")).toBeInTheDocument();
+    await expect(
+      within(primaryMetadata).getByText("Coordinates checks before production deployment.")
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(body.queryByRole("dialog", { name: "Create Tag" })).not.toBeInTheDocument()
+    );
+    await waitFor(() => expect(primaryInput).toHaveFocus());
+    await expect(primaryInput).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(additionalInput);
+    await userEvent.type(additionalInput, "Security review");
+    await userEvent.click(canvas.getByRole("option", { name: 'Create "Security review"' }));
+    dialog = await body.findByRole("dialog", { name: "Create Tag" });
+    await userEvent.clear(within(dialog).getByLabelText("Slug"));
+    await userEvent.type(within(dialog).getByLabelText("Slug"), "reserved");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create Tag" }));
+    await expect(await within(dialog).findByRole("alert")).toHaveTextContent("slug is reserved");
+    await userEvent.clear(within(dialog).getByLabelText("Slug"));
+    await userEvent.type(within(dialog).getByLabelText("Slug"), "security-review");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create Tag" }));
+    await expect(
+      await canvas.findByRole("button", { name: "Remove Security review" })
+    ).toBeInTheDocument();
+    const additionalMetadata = await canvas.findByLabelText("Security review metadata");
+    await expect(within(additionalMetadata).getByText("tag-security-review")).toBeInTheDocument();
   }
 };
 
