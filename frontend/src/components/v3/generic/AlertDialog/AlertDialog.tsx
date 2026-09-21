@@ -90,6 +90,7 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
@@ -105,6 +106,19 @@ function AlertDialogContent({
           DIALOG_CONTENT_WIDTH_CLASSNAME,
           className
         )}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+
+          const input = (
+            event.currentTarget as HTMLElement | null
+          )?.querySelector<HTMLInputElement>("input:not([type='hidden']):not([disabled])");
+
+          if (input) {
+            event.preventDefault();
+            input.focus({ preventScroll: true });
+          }
+        }}
         {...props}
       />
     </AlertDialogPortal>
