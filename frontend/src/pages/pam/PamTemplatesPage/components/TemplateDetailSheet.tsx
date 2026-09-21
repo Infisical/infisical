@@ -981,8 +981,8 @@ const SettingsTab = ({
                           <Badge variant="success">Recommended</Badge>
                         </FieldTitle>
                         <FieldDescription>
-                          API keys, tokens, private keys, and high-entropy values are detected and
-                          masked automatically.
+                          API keys and tokens from known providers, and the account&apos;s own
+                          credentials, are masked automatically.
                         </FieldDescription>
                       </FieldContent>
                       <Toggle

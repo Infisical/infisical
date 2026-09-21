@@ -290,11 +290,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       })
     );
 
-    const directIds = new Set(candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!));
+    const directIds = [...new Set(candidates.filter((c) => c.enabled && c.gatewayId).map((c) => c.gatewayId!))];
     const unsupported = new Set(
-      directIds.size
-        ? (await gatewayV2DAL.find({ orgId }))
-            .filter((g) => directIds.has(g.id) && !supportsMasking(g))
+      directIds.length
+        ? (await gatewayV2DAL.find({ orgId, $in: { id: directIds } }))
+            .filter((g) => !supportsMasking(g))
             .map((g) => g.id)
         : []
     );
