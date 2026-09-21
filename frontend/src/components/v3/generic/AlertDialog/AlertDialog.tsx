@@ -110,14 +110,16 @@ function AlertDialogContent({
           onOpenAutoFocus?.(event);
           if (event.defaultPrevented) return;
 
-          const input = (
+          const inputs = (
             event.currentTarget as HTMLElement | null
-          )?.querySelector<HTMLInputElement>("input:not([type='hidden']):not([disabled])");
+          )?.querySelectorAll<HTMLInputElement>("input:not([type='hidden']):not([disabled])");
 
-          if (input) {
-            event.preventDefault();
+          const focusedInput = Array.from(inputs ?? []).find((input) => {
             input.focus({ preventScroll: true });
-          }
+            return input.ownerDocument.activeElement === input;
+          });
+
+          if (focusedInput) event.preventDefault();
         }}
         {...props}
       />
