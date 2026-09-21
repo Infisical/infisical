@@ -302,6 +302,10 @@ For production deployments with many users or secrets, increase these values acc
       ```bash
       gcloud secrets list --filter="name:infisical"
       ```
+
+      <Note>
+        The Helm chart reads its configuration from a Kubernetes Secret (`infisical-secrets` in this guide), not from Secret Manager directly. Sync the Secret Manager entries into that Kubernetes Secret with the [Secret Manager add-on for GKE](https://cloud.google.com/secret-manager/docs/secret-manager-managed-csi-component) or [External Secrets Operator](https://external-secrets.io/latest/provider/google-secrets-manager/), mapping them to the keys `ENCRYPTION_KEY`, `AUTH_SECRET`, `DB_CONNECTION_URI`, and `REDIS_URL`, and add a `SITE_URL` key set to your public URL (for example `https://infisical.example.com`). The Workload Identity binding in the next section grants the Infisical service account read access to the entries.
+      </Note>
     </Tab>
 
     <Tab title="Kubernetes Secrets">
@@ -414,6 +418,8 @@ For production deployments with many users or secrets, increase these values acc
     nginx:
       enabled: false  # Use the GKE ingress controller instead of the bundled ingress-nginx
     annotations:
+      # GKE Ingress ignores spec.ingressClassName and only claims Ingresses carrying this annotation
+      kubernetes.io/ingress.class: "gce"
       kubernetes.io/ingress.global-static-ip-name: "infisical-ip"
       networking.gke.io/managed-certificates: "infisical-cert"
 
