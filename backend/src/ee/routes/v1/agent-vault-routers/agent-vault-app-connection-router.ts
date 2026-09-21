@@ -253,7 +253,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     schema: {
       operationId: "deleteAgentVaultAwsAppConnection",
       description:
-        "Delete an AWS Connection scoped to this organization's Agent Vault. Fails while anything still uses it.",
+        "Delete an AWS Connection scoped to this organization's Agent Vault. Deleting one that activity logging uses is allowed and stops recording; the bucket and prefix are kept, so selecting another connection resumes it.",
       tags: [ApiDocsTags.AgentVaultAppConnections],
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.DELETE(AppConnection.AWS).connectionId)

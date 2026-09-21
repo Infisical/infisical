@@ -429,8 +429,14 @@ export const agentVaultActivityServiceFactory = ({
     // Only the bucket and the prefix decide where an object lives. Swapping the connection or correcting
     // the region leaves every existing object exactly where it is, and bumping on those would mark
     // readable history as unreachable.
+    // Both prefixes go through normalizeKeyPrefix before they are compared. next.keyPrefix is already
+    // normalized, so a stored null (a config created through the API without a prefix) would otherwise
+    // read as a move the first time the settings sheet saves "", bumping configVersion and marking
+    // every existing chunk unreachable when nothing had moved.
     const relocated =
-      Boolean(existing) && (next.bucket !== (current.bucket ?? null) || next.keyPrefix !== (current.keyPrefix ?? null));
+      Boolean(existing) &&
+      (next.bucket !== (current.bucket ?? null) ||
+        normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix));
 
     const storage = resolveStorageConfig(next);
     // Deliberately not cached: a save is the one path that has to see the connection as it is right now,
