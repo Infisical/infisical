@@ -6,7 +6,7 @@ import { loginUser, selectOrg } from "../../testUtils/auth";
 
 const orgDAL = orgDALFactory(testDb);
 
-const countCreatedOrgs = () => orgDAL.countJoinedRootOrgsCreatedByUserId(seedData1.id, testDb);
+const countCreatedOrgs = () => orgDAL.countRootOrgsCreatedByUserId(seedData1.id, testDb);
 
 // Anything left behind would carry into the next test's count and blame the wrong one.
 const createdOrgIds: string[] = [];
@@ -68,15 +68,13 @@ describe("Organizations counted against a user's create limit", () => {
     await expect(countCreatedOrgs()).resolves.toBe(0);
   });
 
-  test("an org the user created but does not belong to does not count", async () => {
+  test("an org the user created but does not belong to still counts", async () => {
     await insertOrg({ name: "org-limit-orphan", slug: "org-limit-orphan", createdByUserId: seedData1.id });
 
-    await expect(countCreatedOrgs()).resolves.toBe(0);
+    await expect(countCreatedOrgs()).resolves.toBe(1);
   });
 
-  // SCIM sets isActive from the IdP's active flag without touching status, so a deactivated creator
-  // would otherwise hold a slot in an org they cannot use.
-  test("an org the user is deactivated in does not count", async () => {
+  test("an org the user is deactivated in still counts", async () => {
     const orgId = await insertOrg({
       name: "org-limit-deactivated",
       slug: "org-limit-deactivated",
@@ -90,7 +88,7 @@ describe("Organizations counted against a user's create limit", () => {
       status: OrgMembershipStatus.Accepted
     });
 
-    await expect(countCreatedOrgs()).resolves.toBe(0);
+    await expect(countCreatedOrgs()).resolves.toBe(1);
   });
 
   test("a sub-org does not count", async () => {

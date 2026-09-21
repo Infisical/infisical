@@ -693,19 +693,17 @@ export const orgServiceFactory = ({
     }: {
       userId?: string;
       orgName: string;
-      // Set by the user-facing create-org endpoint, and only on cloud. Signup and instance-admin
-      // creation call this without it and keep their existing behavior.
+      // Set by the user-facing create-org endpoint, and only on cloud.
       blockIfUserHasCreatedOrg?: boolean;
     },
     trx?: Knex
   ) => {
     const createOrg = async (tx: Knex) => {
-      // The advisory lock serializes concurrent creates for the same user so two requests cannot both
-      // read a count of zero and each land an org.
+      // Serializes concurrent creates so two requests cannot both read a count of zero.
       if (blockIfUserHasCreatedOrg && userId) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateOrganization(userId)]);
 
-        const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
+        const createdOrgs = await orgDAL.countRootOrgsCreatedByUserId(userId, tx);
         if (createdOrgs > 0) {
           throw new ConflictError({
             message:
