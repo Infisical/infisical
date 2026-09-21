@@ -46,6 +46,7 @@ import {
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 
@@ -194,7 +195,10 @@ export const HoneyTokenTableRow = ({
     );
   };
 
-  const renderHoneyTokenInlineDetails = (honeyToken: TDashboardHoneyToken) => {
+  const renderHoneyTokenInlineDetails = (
+    honeyToken: TDashboardHoneyToken,
+    isExpandedRow = false
+  ) => {
     const tokenInfo = HONEY_TOKEN_MAP[honeyToken.type as HoneyTokenType];
     const mappedKeys = Object.values(honeyToken.secretsMapping || {});
 
@@ -203,7 +207,10 @@ export const HoneyTokenTableRow = ({
         {tokenInfo && (
           <Badge
             variant="neutral"
-            className="mx-2.5 bg-[color-mix(in_srgb,var(--color-neutral)_15%,var(--color-container))]"
+            className={twMerge(
+              "mr-2.5 bg-[color-mix(in_srgb,var(--color-neutral)_15%,var(--color-container))]",
+              !isExpandedRow && "ml-2.5"
+            )}
           >
             <ProviderIcon
               icon={tokenInfo.image}
@@ -366,8 +373,8 @@ export const HoneyTokenTableRow = ({
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className="w-full">Environment</TableHead>
-                    <TableHead variant="action" className="w-px" />
+                    <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Environment</TableHead>
+                    <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -389,16 +396,18 @@ export const HoneyTokenTableRow = ({
                           )}
                         >
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell colSpan={2}>
+                          <TableCell className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>
+                            <span
+                              className={twMerge(
+                                honeyToken.status === HoneyTokenStatus.Revoked && "text-muted"
+                              )}
+                            >
+                              {envName}
+                            </span>
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full items-center">
-                              <span
-                                className={twMerge(
-                                  honeyToken.status === HoneyTokenStatus.Revoked && "text-muted"
-                                )}
-                              >
-                                {envName}
-                              </span>
-                              {renderHoneyTokenInlineDetails(honeyToken)}
+                              {renderHoneyTokenInlineDetails(honeyToken, true)}
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",

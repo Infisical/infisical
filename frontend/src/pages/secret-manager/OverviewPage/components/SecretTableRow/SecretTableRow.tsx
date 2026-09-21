@@ -54,7 +54,8 @@ import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActio
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
@@ -577,7 +578,7 @@ export const SecretTableRow = ({
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className="w-60 max-w-60 min-w-60 p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
+                      className={twMerge(TABLE_ROW_NAME_COLUMN_CLASS_NAME, "p-0")}
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
@@ -632,7 +633,7 @@ export const SecretTableRow = ({
                           <TableCell
                             isTruncatable
                             className={twMerge(
-                              "w-60 max-w-60 min-w-60 lg:w-96 lg:max-w-96 lg:min-w-96",
+                              TABLE_ROW_NAME_COLUMN_CLASS_NAME,
                               hasOverride && "border-l border-b-border/50 border-l-override"
                             )}
                           >

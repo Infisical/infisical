@@ -58,6 +58,7 @@ import {
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 import { SecretImportSecretRow } from "./SecretImportSecretRow";
@@ -591,8 +592,8 @@ export const SecretImportTableRow = ({
             <TableHeader className="bg-container-hover">
               <TableRow>
                 <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                <TableHead className="w-1/2">Name</TableHead>
-                <TableHead className="w-1/2">Value</TableHead>
+                <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Name</TableHead>
+                <TableHead className="w-full">Value</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -644,8 +645,8 @@ export const SecretImportTableRow = ({
           <TableHeader className="bg-container-hover">
             <TableRow>
               <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-              <TableHead className="w-1/2">Name</TableHead>
-              <TableHead className="w-1/2">Value</TableHead>
+              <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Name</TableHead>
+              <TableHead className="w-full">Value</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -716,8 +717,8 @@ export const SecretImportTableRow = ({
         <TableHeader className="bg-container-hover">
           <TableRow>
             <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-            <TableHead className="w-1/2">Name</TableHead>
-            <TableHead className="w-1/2">Value</TableHead>
+            <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Name</TableHead>
+            <TableHead className="w-full">Value</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -889,7 +890,7 @@ export const SecretImportTableRow = ({
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                 className="sticky left-0 border-y border-border bg-container"
               >
-                <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-13">
+                <div className="flex h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-13">
                   <span className="text-sm text-muted">Imported in:</span>
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))
