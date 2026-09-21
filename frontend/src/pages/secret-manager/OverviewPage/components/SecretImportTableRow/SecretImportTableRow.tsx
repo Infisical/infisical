@@ -890,7 +890,7 @@ export const SecretImportTableRow = ({
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                 className="sticky left-0 border-y border-border bg-container"
               >
-                <div className="flex h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-13">
+                <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-13">
                   <span className="text-sm text-muted">Imported in:</span>
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))

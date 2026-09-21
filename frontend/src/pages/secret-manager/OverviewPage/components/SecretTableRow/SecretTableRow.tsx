@@ -578,7 +578,7 @@ export const SecretTableRow = ({
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className={twMerge(TABLE_ROW_NAME_COLUMN_CLASS_NAME, "p-0")}
+                      className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
