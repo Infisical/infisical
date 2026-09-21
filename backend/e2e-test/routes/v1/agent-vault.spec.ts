@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
+
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
@@ -155,6 +157,55 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
 
 const getProjectId = async () =>
   (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+
+/**
+ * A fresh machine identity rather than demoting the seeded admin: the project permission cache serves
+ * a 10 second marker, so a role change made mid-test is not visible to the next request.
+ */
+const createMemberIdentity = async (name: string) => {
+  const created = await inject("POST", "/api/v1/identities", {
+    name,
+    role: OrgMembershipRole.Member,
+    organizationId: seedData1.organization.id
+  });
+  expect(created.statusCode).toBe(200);
+  const identity = created.json().identity as { id: string };
+
+  const attached = await inject("POST", `/api/v1/auth/universal-auth/identities/${identity.id}`, {
+    accessTokenTTL: 3600,
+    accessTokenMaxTTL: 3600,
+    accessTokenNumUsesLimit: 0
+  });
+  expect(attached.statusCode).toBe(200);
+  const { clientId } = attached.json().identityUniversalAuth;
+
+  const secret = await inject("POST", `/api/v1/auth/universal-auth/identities/${identity.id}/client-secrets`, {});
+  expect(secret.statusCode).toBe(200);
+
+  const login = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/auth/universal-auth/login",
+    body: { clientId, clientSecret: secret.json().clientSecret }
+  });
+  expect(login.statusCode).toBe(200);
+  const token = login.json().accessToken as string;
+
+  expect(
+    (
+      await inject("POST", "/api/v1/agent-vault/members", {
+        machineIdentityIds: [identity.id],
+        role: ProjectMembershipRole.Member
+      })
+    ).statusCode
+  ).toBe(200);
+
+  return {
+    id: identity.id,
+    as: (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
+      testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) }),
+    cleanup: () => inject("DELETE", `/api/v1/identities/${identity.id}`)
+  };
+};
 
 const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
@@ -1223,7 +1274,117 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("app connections", async () => {
+    /**
+     * The routes address a connection by id, and findAppConnectionById authorizes the actor without
+     * saying anything about scope, so an org admin passes it for a connection that is not Agent
+     * Vault's. Both directions are asserted in one test: the refusal is worth nothing if the same
+     * calls would fail on an Agent Vault connection too.
+     */
+    test("an organization connection is out of reach here, and an Agent Vault one is not", async () => {
+      const projectId = await getProjectId();
+
+      const orgConnectionId = await createAwsAppConnection({
+        name: `av-scope-org-${Date.now()}`,
+        authToken: jwtAuthToken
+      });
+
+      const created = await inject("POST", "/api/v1/agent-vault/app-connections/aws", {
+        name: `av-scope-own-${Date.now()}`,
+        method: "access-key",
+        credentials: { accessKeyId: "AKIAFAKEACCESSKEYID", secretAccessKey: "fake-secret-access-key" },
+        // Never part of the contract, so a caller naming another project must not move the connection.
+        projectId: seedData1.project.id
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      const ownConnection = created.json().appConnection as { id: string; projectId: string };
+      expect(ownConnection.projectId).toBe(projectId);
+
+      const listed = await inject("GET", "/api/v1/agent-vault/app-connections/aws");
+      expect(listed.statusCode).toBe(200);
+      const listedIds = (listed.json().appConnections as { id: string }[]).map((row) => row.id);
+      expect(listedIds).toContain(ownConnection.id);
+      expect(listedIds).not.toContain(orgConnectionId);
+
+      const byId = (connectionId: string) => `/api/v1/agent-vault/app-connections/aws/${connectionId}`;
+      const reaching: ["GET" | "PATCH" | "POST" | "DELETE", string, Record<string, unknown>?][] = [
+        ["GET", byId(orgConnectionId)],
+        ["PATCH", byId(orgConnectionId), { description: "reached from the wrong scope" }],
+        ["POST", `${byId(orgConnectionId)}/rotate-credentials`],
+        ["DELETE", byId(orgConnectionId)]
+      ];
+      for await (const [method, url, body] of reaching) {
+        const res = await inject(method, url, body);
+        expect([method, res.statusCode]).toEqual([method, 404]);
+      }
+
+      // The refusals above have to have protected it, not merely answered 404.
+      const survived = await inject("GET", `/api/v1/app-connections/aws/${orgConnectionId}`);
+      expect(survived.statusCode).toBe(200);
+
+      expect((await inject("GET", byId(ownConnection.id))).statusCode).toBe(200);
+      expect(
+        (await inject("PATCH", byId(ownConnection.id), { description: "reached from its own scope" })).statusCode
+      ).toBe(200);
+      expect((await inject("DELETE", byId(ownConnection.id))).statusCode).toBe(200);
+
+      await deleteAppConnection({ connectionId: orgConnectionId, authToken: jwtAuthToken });
+    });
+
+    test("only AWS is offered under Agent Vault", async () => {
+      const res = await inject("GET", `/api/v1/app-connections/options?projectType=${ProjectType.AgentVault}`);
+      expect(res.statusCode).toBe(200);
+      const apps = (res.json().appConnectionOptions as { app: string }[]).map((option) => option.app);
+      expect(apps).toEqual(["aws"]);
+    });
+  });
+
   describe("sessions", async () => {
+    /**
+     * The sheet's session id lives in the URL so a timeline can be sent to someone, which only works
+     * if a session reads by id rather than out of whatever page the viewer happens to be on.
+     */
+    test("a session reads by id, and one you may not see is indistinguishable from one that is not there", async () => {
+      const bundle = await createAccessBundle(`session-by-id-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h"
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = JSON.parse(mint.payload) as { session: { id: string } };
+
+      // The shape the detail sheet renders, which the list endpoint builds with joins rather than
+      // reading off the session row.
+      const mine = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}`);
+      expect(mine.statusCode).toBe(200);
+      expect(mine.json().session).toMatchObject({
+        id: session.id,
+        status: "active",
+        actorName: expect.any(String),
+        accessBundles: [expect.objectContaining({ name: bundle.name })]
+      });
+
+      const member = await createMemberIdentity(`session-by-id-member-${Date.now()}`);
+      try {
+        // Sessions are readable to them in general, so the refusal below is about this one session.
+        expect((await member.as("GET", "/api/v1/agent-vault/sessions")).statusCode).toBe(200);
+
+        const missingId = crypto.randomUUID();
+        const somebodyElses = await member.as("GET", `/api/v1/agent-vault/sessions/${session.id}`);
+        const neverExisted = await member.as("GET", `/api/v1/agent-vault/sessions/${missingId}`);
+
+        // The property worth pinning: the answer is a function of the id asked for and nothing else,
+        // so a shared link cannot be used to confirm that somebody else's session id is real. The
+        // messages differ only by that id, which the caller supplied and already knows.
+        expect([somebodyElses.statusCode, neverExisted.statusCode]).toEqual([404, 404]);
+        expect(somebodyElses.json().message).toBe(`Session with ID '${session.id}' not found`);
+        expect(neverExisted.json().message).toBe(`Session with ID '${missingId}' not found`);
+        expect(somebodyElses.json().error).toBe(neverExisted.json().error);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("the bundle comes only from the session row", async () => {
       const granted = await createAccessBundle("session-granted");
       const notNamed = await createAccessBundle("session-not-named");

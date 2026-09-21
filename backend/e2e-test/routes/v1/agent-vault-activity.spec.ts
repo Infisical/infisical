@@ -69,7 +69,8 @@ const createMemberIdentity = async (name: string) => {
 
   expect(
     (
-      await inject("POST", `/api/v1/agent-vault/memberships/identities/${identity.id}`, {
+      await inject("POST", "/api/v1/agent-vault/members", {
+        machineIdentityIds: [identity.id],
         role: ProjectMembershipRole.Member
       })
     ).statusCode
