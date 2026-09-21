@@ -1,4 +1,4 @@
-import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
+import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
@@ -27,7 +27,7 @@ import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotat
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
@@ -218,6 +218,9 @@ export enum PostHogEventTypes {
   ProjectMembershipCreated = "Project Membership Created",
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
   ProjectMembershipDeleted = "Project Membership Deleted",
+  FolderAccessGrantCreated = "Folder Access Grant Created",
+  FolderAccessGrantUpdated = "Folder Access Grant Updated",
+  FolderAccessGrantDeleted = "Folder Access Grant Deleted",
   OrganizationCreated = "Organization Created",
   SubOrganizationCreated = "Sub Organization Created",
 
@@ -1890,6 +1893,19 @@ export type TProjectMembershipDeletedEvent = {
   };
 };
 
+export type TFolderAccessGrantEvent = {
+  event:
+    | PostHogEventTypes.FolderAccessGrantCreated
+    | PostHogEventTypes.FolderAccessGrantUpdated
+    | PostHogEventTypes.FolderAccessGrantDeleted;
+  properties: {
+    projectId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    permission: SecretFolderRole;
+    isTemporary: boolean;
+  };
+};
+
 // CMEK events
 export type TCmekCreatedEvent = {
   event: PostHogEventTypes.CmekCreated;
@@ -2745,6 +2761,7 @@ export type TPostHogEvent = {
   | TProjectMembershipCreatedEvent
   | TProjectMembershipRoleUpdatedEvent
   | TProjectMembershipDeletedEvent
+  | TFolderAccessGrantEvent
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
   | TCmekCreatedEvent
