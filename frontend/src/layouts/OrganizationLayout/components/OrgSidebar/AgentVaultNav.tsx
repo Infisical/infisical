@@ -1,4 +1,4 @@
-import { Blocks, FileText, IdCard, Info, Package, Route, Settings, Shield } from "lucide-react";
+import { Blocks, FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -20,12 +20,14 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
-    ...(isAdmin ? [{ label: "Integrations", icon: Blocks, pathSuffix: "integrations" }] : [])
+    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" }
   ];
 
-  const infrastructureItems: NavItem[] = [{ label: "Proxies", icon: Route, pathSuffix: "proxies" }];
+  const infrastructureItems: NavItem[] = [
+    { label: "Proxies", icon: Server, pathSuffix: "proxies" }
+  ];
 
+  // The group is already behind isAdmin, so Integrations needs no guard of its own.
   const administrationItems: NavItem[] = isAdmin
     ? [
         {
@@ -34,6 +36,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           pathSuffix: "access-management",
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
         },
+        { label: "Integrations", icon: Blocks, pathSuffix: "integrations" },
         { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
         { label: "Settings", icon: Settings, pathSuffix: "settings" }
       ]
