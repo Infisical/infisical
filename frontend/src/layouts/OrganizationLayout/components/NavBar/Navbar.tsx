@@ -716,6 +716,7 @@ export const Navbar = () => {
             <IconButton
               variant="outline"
               size="sm"
+              className="hidden sm:inline-flex"
               aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
               onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark", "navbar-toggle")}
             >
