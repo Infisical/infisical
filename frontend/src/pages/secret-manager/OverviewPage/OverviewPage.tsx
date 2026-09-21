@@ -2225,6 +2225,10 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
+
   const allRowsSelectedOnPage = useMemo(() => {
     if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
 
@@ -3117,7 +3121,8 @@ const OverviewPageContent = () => {
                   <TableBody
                     className={twMerge(
                       "transition-all duration-500 [&>tr>td>*]:transition-[filter] [&>tr>td>*]:duration-200 motion-reduce:[&>tr>td>*]:transition-none",
-                      expandedSecretRows.size > 0 && "[&>tr>td>*]:filter-[opacity(40%)]"
+                      (expandedSecretRows.size > 0 || hasSelectedEntries) &&
+                        "[&>tr>td>*]:filter-[opacity(40%)]"
                     )}
                   >
                     {showOverviewSkeleton ? (
