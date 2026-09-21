@@ -48,7 +48,6 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
 
   const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
     const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => !g.isV1)
       .filter((g) => g.capabilities?.pkcs11 === true)
       .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
     const poolOptions: ReachedFromOption[] = pools.map((p) => ({

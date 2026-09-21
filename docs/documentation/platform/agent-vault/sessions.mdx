@@ -68,7 +68,7 @@ The **Sessions** page shows each session as **Active**, **Revoked**, or **Expire
 
 The access bundle is chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials on every poll (60 seconds by default). Here are a few situations where a session's access might be revoked:
 
-- If a user, group, or machine identity is removed from an access bundle, every session that user or identity created with that bundle stops getting credentials
+- If an access bundle is revoked from a user, group, or machine identity, every session they created with that bundle stops getting credentials
 - If an access bundle is deleted, every session scoped to it stops getting credentials. The session still lists the bundle's name so you can see what it was
 - If a user is removed from Agent Vault, the proxy refuses every request on their sessions
 

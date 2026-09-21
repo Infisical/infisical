@@ -24,8 +24,7 @@ vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 vi.mock("@app/lib/crypto", () => ({ crypto: {} }));
-vi.mock("@app/lib/gateway", () => ({
-  withGatewayProxy: vi.fn(),
+vi.mock("@app/lib/gateway-v2/types", () => ({
   GatewayProxyProtocol: { Tcp: "tcp", Http: "http" }
 }));
 vi.mock("@app/lib/gateway-v2/gateway-v2", () => ({ withGatewayV2Proxy: vi.fn() }));
@@ -46,7 +45,7 @@ describe("requestWithGitHubGateway — non-gateway request handling", () => {
   });
 
   it("routes the non-gateway request through safeRequest (host-validated + IP-pinned + no redirects)", async () => {
-    await requestWithGitHubGateway({ gatewayId: null }, {} as any, {} as any, {
+    await requestWithGitHubGateway({ gatewayId: null }, {} as any, {
       url: "https://api.github.com/user/repos",
       method: "GET"
     });
@@ -58,9 +57,9 @@ describe("requestWithGitHubGateway — non-gateway request handling", () => {
   });
 
   it("rejects a request with no URL instead of throwing a raw TypeError", async () => {
-    await expect(
-      requestWithGitHubGateway({ gatewayId: null }, {} as any, {} as any, { method: "GET" })
-    ).rejects.toThrow(/missing a target URL/);
+    await expect(requestWithGitHubGateway({ gatewayId: null }, {} as any, { method: "GET" })).rejects.toThrow(
+      /missing a target URL/
+    );
 
     expect(safeRequestMock).not.toHaveBeenCalled();
   });

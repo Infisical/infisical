@@ -74,7 +74,8 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}) => {
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
     licenseService: {} as never,
-    identityAccessTokenService: { issueIdentityAccessToken } as never
+    identityAccessTokenService: { issueIdentityAccessToken } as never,
+    eventEmitter: { emit: vi.fn() } as never
   });
 
   return { service, issueIdentityAccessToken };
