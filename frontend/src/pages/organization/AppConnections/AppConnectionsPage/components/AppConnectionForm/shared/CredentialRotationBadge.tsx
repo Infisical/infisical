@@ -46,16 +46,16 @@ export const CredentialRotationStatusBadge = ({ appConnection }: Props) => {
         <TooltipContent side="left" className="max-w-sm select-text">
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
-              <div className="mb-2 flex self-start text-red">
+              <div className="mb-2 flex self-start text-danger">
                 <XIcon className="mr-1.5 ml-1 size-3 shrink-0" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
                 {errorMessage}
               </div>
             </div>
             {rotation.nextRotationAt && (
-              <span className="text-xs text-mineshaft-300">
+              <span className="text-xs text-label">
                 Next rotation attempt on {format(rotation.nextRotationAt, "MM/dd/yyyy")} at{" "}
                 {format(rotation.nextRotationAt, "h:mm aa")}.
               </span>
@@ -84,7 +84,7 @@ export const CredentialRotationStatusBadge = ({ appConnection }: Props) => {
           Rotates on {format(rotation.nextRotationAt, "MM/dd/yyyy")} at{" "}
           {format(rotation.nextRotationAt, "h:mm aa")}
         </span>{" "}
-        <span className="text-mineshaft-300">(Local Time)</span>
+        <span className="text-label">(Local Time)</span>
       </TooltipContent>
     </Tooltip>
   );

@@ -21,7 +21,7 @@ import {
   TListAlertsDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
-import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider, toAlertActor } from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertEventDefinition, toAlertActor } from "./alert-types";
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
@@ -67,24 +67,22 @@ export const alertServiceFactory = ({
       actor: toAlertActor(dto)
     });
 
-  const $validate = (
-    provider: IResourceAlertProvider,
-    input: { eventType?: string; condition?: unknown },
-    opts: { alwaysValidateCondition?: boolean } = {}
-  ) => {
-    if (input.eventType && !provider.eventTypes.includes(input.eventType)) {
+  const $getEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
+    const event = provider.events.find((candidate) => candidate.key === eventType);
+    if (!event) {
       throw new BadRequestError({
-        message: `Event type '${input.eventType}' is not supported by resource type '${provider.resourceType}'`
+        message: `Event type '${eventType}' is not supported by resource type '${provider.resourceType}'`
       });
     }
+    return event;
+  };
 
-    if (opts.alwaysValidateCondition || input.condition !== undefined) {
-      try {
-        provider.conditionSchema.parse(input.condition);
-      } catch (err) {
-        const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
-        throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
-      }
+  const $validateCondition = (event: TAlertEventDefinition, condition: unknown) => {
+    try {
+      event.conditionSchema.parse(condition);
+    } catch (err) {
+      const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
+      throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
     }
   };
 
@@ -95,6 +93,7 @@ export const alertServiceFactory = ({
     resourceType: alert.resourceType,
     resourceId: alert.resourceId ?? null,
     eventType: alert.eventType,
+    triggerType: alert.triggerType,
     condition: alert.condition ?? null,
     enabled: alert.enabled,
     orgId: alert.orgId,
@@ -113,7 +112,8 @@ export const alertServiceFactory = ({
     }
 
     const provider = $getProvider(dto.resourceType);
-    $validate(provider, dto, { alwaysValidateCondition: true });
+    const event = $getEvent(provider, dto.eventType);
+    $validateCondition(event, dto.condition);
 
     await $assertAlertPermission(
       provider,
@@ -158,7 +158,7 @@ export const alertServiceFactory = ({
           resourceType: dto.resourceType,
           resourceId: dto.resourceId,
           eventType: dto.eventType,
-          triggerType: AlertTriggerType.Scheduled,
+          triggerType: event.triggerType,
           condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
@@ -330,7 +330,7 @@ export const alertServiceFactory = ({
       dto
     );
 
-    if (dto.condition !== undefined) $validate(provider, { condition: dto.condition });
+    if (dto.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), dto.condition);
     if (dto.channels !== undefined && dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
     }

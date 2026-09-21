@@ -6,6 +6,7 @@ import {
   BanIcon,
   ChevronRightIcon,
   FolderIcon,
+  GripVerticalIcon,
   ImportIcon,
   InfoIcon,
   LayersIcon,
@@ -289,8 +290,9 @@ export const SecretImportTableRow = ({
             ref={handleRef}
             aria-label={`${isExpanded ? "Collapse" : "Expand"} secret import ${importPath}`}
             aria-expanded={isExpanded}
+            title="Drag to reorder; click to expand or collapse"
             className={twMerge(
-              "absolute inset-0 flex cursor-grab items-center justify-center text-muted transition-opacity duration-75 motion-reduce:transition-none",
+              "absolute inset-0 flex cursor-grab items-center justify-center text-muted transition-opacity duration-75 active:cursor-grabbing motion-reduce:transition-none",
               isExpanded
                 ? "opacity-100"
                 : "opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"
@@ -302,11 +304,12 @@ export const SecretImportTableRow = ({
           >
             <ChevronRightIcon
               className={twMerge(
-                "size-4",
+                "size-4 [@media(hover:hover)]:group-hover/import-handle:hidden",
                 TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
                 isExpanded && TABLE_ROW_EXPANDED_ICON_CLASS_NAME
               )}
             />
+            <GripVerticalIcon className="hidden size-4 [@media(hover:hover)]:group-hover/import-handle:block" />
           </button>
           {!isExpanded && (
             <ImportIcon className={twMerge("text-import", TABLE_ROW_RESOURCE_ICON_CLASS_NAME)} />
@@ -508,7 +511,7 @@ export const SecretImportTableRow = ({
     if (envsWithImport.length <= 1) return null;
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-13">
         <span className="text-xs text-muted">Viewing secrets for:</span>
         <Select value={effectiveSelectedEnv} onValueChange={setSelectedReplicationEnv}>
           <SelectTrigger size="sm" onClick={(e) => e.stopPropagation()}>
@@ -539,7 +542,7 @@ export const SecretImportTableRow = ({
   };
 
   const renderRevokedContent = () => (
-    <Empty>
+    <Empty className="rounded-none bg-transparent shadow-none">
       <EmptyHeader className="gap-1.5">
         <div className="flex items-center gap-2">
           <TriangleAlertIcon className="size-4 shrink-0 text-danger" />
@@ -567,7 +570,7 @@ export const SecretImportTableRow = ({
         return (
           <>
             {renderReplicationEnvSelector()}
-            <Empty className="bg-transparent">
+            <Empty className="rounded-none bg-transparent shadow-none">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   {searchFilter ? <SearchIcon /> : <ImportIcon />}
@@ -584,9 +587,10 @@ export const SecretImportTableRow = ({
       return (
         <>
           {renderReplicationEnvSelector()}
-          <Table containerClassName="border-none rounded-none bg-transparent">
-            <TableHeader>
+          <Table containerClassName="rounded-none border-0">
+            <TableHeader className="bg-container-hover">
               <TableRow>
+                <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                 <TableHead className="w-1/2">Name</TableHead>
                 <TableHead className="w-1/2">Value</TableHead>
               </TableRow>
@@ -615,7 +619,7 @@ export const SecretImportTableRow = ({
 
     if (filteredImportedSecrets.length === 0) {
       return (
-        <Empty className="bg-transparent">
+        <Empty className="rounded-none bg-transparent shadow-none">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               {matchingImportedSecrets.length ? <SearchIcon /> : <ImportIcon />}
@@ -636,9 +640,10 @@ export const SecretImportTableRow = ({
 
     return (
       <>
-        <Table containerClassName="border-none rounded-none bg-transparent">
-          <TableHeader>
+        <Table containerClassName="rounded-none border-0">
+          <TableHeader className="bg-container-hover">
             <TableRow>
+              <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
               <TableHead className="w-1/2">Name</TableHead>
               <TableHead className="w-1/2">Value</TableHead>
             </TableRow>
@@ -675,7 +680,7 @@ export const SecretImportTableRow = ({
           </TableBody>
         </Table>
         {hasAnyDiscrepancy && (
-          <p className="max-w-full text-xs text-wrap text-warning">
+          <p className="max-w-full px-3 py-3 pl-13 text-xs text-wrap text-warning">
             <TriangleAlertIcon className="mr-1.5 mb-0.5 inline-block size-3 shrink-0" />
             One or more replicated imports may be out of sync. Secrets marked with a warning
             indicator are not present across all importing environments. Select a single environment
@@ -691,7 +696,7 @@ export const SecretImportTableRow = ({
 
     if (filteredImportedSecrets.length === 0) {
       return (
-        <Empty className="bg-transparent shadow-none">
+        <Empty className="rounded-none bg-transparent shadow-none">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               {matchingImportedSecrets.length ? <SearchIcon /> : <ImportIcon />}
@@ -707,9 +712,10 @@ export const SecretImportTableRow = ({
     }
 
     return (
-      <Table containerClassName="border-none rounded-none bg-transparent">
-        <TableHeader>
+      <Table containerClassName="rounded-none border-0">
+        <TableHeader className="bg-container-hover">
           <TableRow>
+            <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
             <TableHead className="w-1/2">Name</TableHead>
             <TableHead className="w-1/2">Value</TableHead>
           </TableRow>
@@ -748,7 +754,7 @@ export const SecretImportTableRow = ({
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover",
-            isSingleEnvView && "relative"
+            isSingleEnvView && "group/import-handle relative"
           )}
         >
           <div className="flex h-full items-center justify-center [&>svg]:size-4">
@@ -866,27 +872,24 @@ export const SecretImportTableRow = ({
       {isExpanded &&
         !isAnyDragging &&
         (isSingleEnvView ? (
-          <TableRow key={`expanded-import-row-${index}`}>
-            <TableCell colSpan={totalCols} className="bg-card p-0">
+          <TableRow key={`expanded-import-row-${index}`} className="border-0 hover:bg-transparent">
+            <TableCell colSpan={totalCols} className="border-0 p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className={twMerge(
-                  "sticky left-0 flex flex-col gap-y-4 border-t border-b-1 border-l-1 border-border border-x-project/50 bg-card",
-                  filteredImportedSecrets.length !== 0 && "p-4"
-                )}
+                className="sticky left-0 border-b border-border bg-container"
               >
                 {renderExpandedSecrets(singleEnvSlug)}
               </div>
             </TableCell>
           </TableRow>
         ) : (
-          <TableRow>
-            <TableCell colSpan={totalCols} className="bg-card p-0">
+          <TableRow className="border-0 hover:bg-transparent">
+            <TableCell colSpan={totalCols} className="border-0 p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
+                className="sticky left-0 border-y border-border bg-container"
               >
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-13">
                   <span className="text-sm text-muted">Imported in:</span>
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))

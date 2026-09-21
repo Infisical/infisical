@@ -81,6 +81,18 @@ describe("identity credential alert dal", () => {
     expect(calls.where.some((args) => args[0] === "projectMembership.scope")).toBe(false);
   });
 
+  test("a scan only returns identities the alert's organization owns", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findExpiringUaClientSecrets(scanArgs);
+
+    // Org membership alone is not enough: a root-org identity added to a sub-organization is a
+    // member there, but the sub-organization cannot see its credentials, so an org-wide alert in
+    // the sub-organization must not surface them.
+    expect(calls.where).toContainEqual([`${TableName.Membership}.scopeOrgId`, "org-1"]);
+    expect(calls.where).toContainEqual([`${TableName.Identity}.orgId`, "org-1"]);
+  });
+
   test("every bound `asOf` timestamp is explicitly cast", async () => {
     const { dal, calls } = buildDAL();
 

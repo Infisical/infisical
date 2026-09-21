@@ -147,7 +147,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
                         return (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild className="rounded-lg">
-                              <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                              <div className="hover:text-project data-[state=open]:text-project">
                                 <Tooltip content="More options">
                                   <FontAwesomeIcon size="lg" icon={faEllipsis} />
                                 </Tooltip>
