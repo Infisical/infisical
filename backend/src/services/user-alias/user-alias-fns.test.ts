@@ -99,10 +99,40 @@ describe("resolveAssertedProfileName", () => {
     });
   });
 
+  // Every one of these attributes is multi-valued in the LDAP schema, so ldapjs returns a string[]
+  // for any entry that carries a second value, and an IdP can assert a JSON array just as well.
+  test("takes the first value when an assertion is multi-valued", () => {
+    expect(
+      resolveAssertedProfileName({
+        givenName: ["Jane", "Janet"],
+        familyName: ["Doe", "Smith"],
+        displayName: "Jane Doe"
+      })
+    ).toEqual({ firstName: "Jane", lastName: "Doe" });
+  });
+
+  test("removes the surname from a multi-valued composite name", () => {
+    expect(resolveAssertedProfileName({ familyName: "Doe", displayName: ["Jane Doe", "jdoe"] })).toEqual({
+      firstName: "Jane",
+      lastName: "Doe"
+    });
+  });
+
+  // ldapjs renders an attribute with no values as an empty array rather than omitting it.
+  test("ignores empty and whitespace-only values inside an assertion", () => {
+    expect(resolveAssertedProfileName({ givenName: [], familyName: ["  ", "Doe"], displayName: ["Jane Doe"] })).toEqual(
+      {
+        firstName: "Jane",
+        lastName: "Doe"
+      }
+    );
+  });
+
   test("returns null when nothing usable is asserted", () => {
     expect(resolveAssertedProfileName({})).toBeNull();
     expect(resolveAssertedProfileName({ familyName: "Doe" })).toBeNull();
     expect(resolveAssertedProfileName({ givenName: null, familyName: null, displayName: null })).toBeNull();
+    expect(resolveAssertedProfileName({ givenName: [], familyName: [], displayName: [] })).toBeNull();
   });
 });
 

@@ -34,13 +34,17 @@ type TIsStaleSsoAliasDTO = {
   assertedEmail: string;
 };
 
+// Every one of these is multi-valued in the LDAP schema, so ldapjs hands back a string[] whenever
+// the entry carries more than one value, and an IdP can assert a JSON array just as well.
+type TAssertedName = string | string[] | null;
+
 type TResolveAssertedProfileNameDTO = {
   // OIDC `given_name` / LDAP `givenName`.
-  givenName?: string | null;
+  givenName?: TAssertedName;
   // OIDC `family_name` / LDAP `sn`.
-  familyName?: string | null;
+  familyName?: TAssertedName;
   // The composite display name: OIDC `name` / LDAP `cn`.
-  displayName?: string | null;
+  displayName?: TAssertedName;
 };
 
 /**
@@ -70,9 +74,12 @@ export const resolveAssertedProfileName = ({
   familyName,
   displayName
 }: TResolveAssertedProfileNameDTO): { firstName: string; lastName: string } | null => {
-  const given = givenName?.trim();
-  const family = familyName?.trim();
-  const display = displayName?.trim();
+  const firstValue = (value?: TAssertedName) =>
+    (Array.isArray(value) ? value.find((entry) => entry?.trim()) : value)?.trim();
+
+  const given = firstValue(givenName);
+  const family = firstValue(familyName);
+  const display = firstValue(displayName);
 
   if (given) return { firstName: given, lastName: family || "" };
   if (!display) return null;
