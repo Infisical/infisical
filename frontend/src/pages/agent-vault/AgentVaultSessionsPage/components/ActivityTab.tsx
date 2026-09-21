@@ -58,6 +58,15 @@ const DECISION_PRESENTATION: Record<
   [AgentVaultActivityDecision.Error]: { label: "Error", variant: "danger" }
 };
 
+/**
+ * Records come out of the customer's encrypted blob, so the server never sees the decision and cannot
+ * validate it. A proxy from a newer CLI release can write one this build has no entry for, and the
+ * CLI ships separately from the platform. Rendering the raw value keeps that to one odd-looking row
+ * rather than throwing partway through the table and blanking the whole timeline.
+ */
+const decisionPresentation = (decision: AgentVaultActivityDecision) =>
+  DECISION_PRESENTATION[decision] ?? { label: decision || "Unknown", variant: "neutral" as const };
+
 const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
   repointed: "Stored in a bucket this project no longer uses",
   fetch: "Could not be read from the bucket",
@@ -310,7 +319,7 @@ export const ActivityTab = ({ session }: Props) => {
             </TableHeader>
             <TableBody>
               {visible.map((record: TAgentVaultActivityRecord) => {
-                const presentation = DECISION_PRESENTATION[record.decision];
+                const presentation = decisionPresentation(record.decision);
                 return (
                   <TableRow key={`${record.proxyId}-${record.seq}-${record.ts}`}>
                     <TableCell>
