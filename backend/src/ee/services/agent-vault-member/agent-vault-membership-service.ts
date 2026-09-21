@@ -36,7 +36,7 @@ import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
 type TAgentVaultMembershipServiceFactoryDep = {
-  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers" | "findAvailableActors">;
   membershipDAL: Pick<TMembershipDALFactory, "insertMany" | "find" | "transaction" | "delete">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "insertMany" | "delete">;
@@ -204,6 +204,33 @@ export const agentVaultMembershipServiceFactory = ({
     if (!readable.length) assertCanReadActorType(permission, asked[0]);
 
     return agentVaultMemberDAL.findProductMembers({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actorTypes: readable,
+      search,
+      limit,
+      offset
+    });
+  };
+
+  const listAvailableProductMembers = async ({
+    projectId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ctx
+  }: TListAgentVaultMembersDTO) => {
+    await checkProductAdmin(projectId, ctx);
+
+    // checkProductAdmin reads hasRole, which does not intersect a delegated token's scopes. The CASL
+    // check below is what narrows an OAuth token holding less than the admin it acts for.
+    const { permission } = await getActorPermission(projectId, ctx);
+    const asked = actorType ? [actorType] : ALL_ACTOR_TYPES;
+    const readable = asked.filter((type) => canReadActorType(permission, type));
+    if (!readable.length) assertCanReadActorType(permission, asked[0]);
+
+    return agentVaultMemberDAL.findAvailableActors({
       projectId,
       orgId: ctx.actorOrgId,
       actorTypes: readable,
@@ -591,6 +618,7 @@ export const agentVaultMembershipServiceFactory = ({
   };
   return {
     listProductMembers,
+    listAvailableProductMembers,
     addProductMembers,
     updateProductMemberRole,
     revokeProductMembers

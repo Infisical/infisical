@@ -8,6 +8,7 @@ import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultMember,
+  TAgentVaultProductActor,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
   TAgentVaultSession,
@@ -48,7 +49,11 @@ export const agentVaultKeys = {
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), params] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
-    [...agentVaultKeys.members(orgId), params] as const
+    [...agentVaultKeys.members(orgId), params] as const,
+  // Nested under members() so adding a member invalidates the candidate list too.
+  availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
+  availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
+    [...agentVaultKeys.availableMembers(orgId), params] as const
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -64,6 +69,28 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
         members: TAgentVaultProductMemberOf<T>[];
         totalCount: number;
       }>("/api/v1/agent-vault/members", { params });
+      return data;
+    },
+    enabled,
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListAvailableAgentVaultMembers = <
+  T extends AgentVaultMemberType = AgentVaultMemberType
+>(
+  params: TListAgentVaultMembersDTO & { actorType?: T } = {},
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.availableMemberList(currentOrg.id, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        actors: Extract<TAgentVaultProductActor, { type: T }>[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/members/available", { params });
       return data;
     },
     enabled,
