@@ -2225,9 +2225,10 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
-  const hasSelectedEntries = Object.values(selectedEntries).some(
-    (entries) => Object.keys(entries).length > 0
-  );
+  const hasSelectedEntriesOnPage =
+    mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
+    secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
+    mergedSecKeys.some((key) => selectedEntries.secret[key]);
 
   const allRowsSelectedOnPage = useMemo(() => {
     if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
@@ -3121,7 +3122,7 @@ const OverviewPageContent = () => {
                   <TableBody
                     className={twMerge(
                       "transition-all duration-500 [&>tr>td>*]:transition-[filter] [&>tr>td>*]:duration-200 motion-reduce:[&>tr>td>*]:transition-none",
-                      (expandedSecretRows.size > 0 || hasSelectedEntries) &&
+                      (expandedSecretRows.size > 0 || hasSelectedEntriesOnPage) &&
                         "[&>tr>td>*]:filter-[opacity(40%)]"
                     )}
                   >
