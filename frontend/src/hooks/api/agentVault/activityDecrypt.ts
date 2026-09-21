@@ -143,6 +143,9 @@ export const useDecryptedAgentVaultActivity = (
   const [opened, setOpened] = useState<Record<string, TDecryptedChunk>>({});
   const [isDecrypting, setIsDecrypting] = useState(false);
   const keyRef = useRef<{ raw: string; key: Promise<CryptoKey> } | null>(null);
+  // The url a download last failed on, per chunk. Retrying the same url would just fail the same way,
+  // so a retry waits for the poll to hand back a freshly presigned one.
+  const failedUrlRef = useRef<Record<string, string>>({});
 
   const sessionKey = pages?.find((page) => page.sessionKey)?.sessionKey ?? null;
   const projectId = pages?.[0]?.projectId;
@@ -158,12 +161,23 @@ export const useDecryptedAgentVaultActivity = (
     // A different session, or a key that changed, invalidates everything already opened.
     setOpened({});
     keyRef.current = null;
+    failedUrlRef.current = {};
   }, [sessionId, sessionKey]);
 
   useEffect(() => {
     if (!sessionKey || !projectId || !sessionId) return undefined;
 
-    const pending = chunks.filter((chunk) => !(chunk.chunkId in opened));
+    // A download that failed is worth another go, because a presigned url expires while a long
+    // timeline is open and the poll hands back a fresh one: the bytes were fine, the link was not.
+    // Only when the url has actually changed, so this waits for new data rather than hammering the
+    // same dead link, and only for a fetch failure. The other reasons are properties of the stored
+    // object or the key, and would fail identically however many times they were tried.
+    const isWorthRetrying = (chunk: TAgentVaultActivityChunk) =>
+      opened[chunk.chunkId]?.gap?.reason === "fetch" &&
+      Boolean(chunk.presignedGetUrl) &&
+      chunk.presignedGetUrl !== failedUrlRef.current[chunk.chunkId];
+
+    const pending = chunks.filter((chunk) => !(chunk.chunkId in opened) || isWorthRetrying(chunk));
     if (!pending.length) return undefined;
 
     let cancelled = false;
@@ -188,6 +202,12 @@ export const useDecryptedAgentVaultActivity = (
           )
         );
         if (cancelled) return;
+        pending.forEach((chunk) => {
+          const result = results.find(([chunkId]) => chunkId === chunk.chunkId)?.[1];
+          if (result?.gap?.reason === "fetch" && chunk.presignedGetUrl) {
+            failedUrlRef.current[chunk.chunkId] = chunk.presignedGetUrl;
+          }
+        });
         setOpened((prev) => ({ ...prev, ...Object.fromEntries(results) }));
       } catch {
         if (cancelled) return;
