@@ -910,6 +910,28 @@ export const appConnectionServiceFactory = ({
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
+
+      // A Stripe connection is bound to the account its API keys live in. Letting a reconnect point
+      // it at a different account would strand every key a rotation already generated: Stripe answers
+      // a delete for an unknown key with a 404, which rotation reads as already retired, so the keys
+      // in the original account stay live with no way to revoke them through Infisical.
+      if (app === AppConnection.Stripe) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        });
+
+        const existingAccountId = (existingCredentials as { accountId?: string }).accountId;
+        const updatedAccountId = (updatedCredentials as { accountId?: string }).accountId;
+
+        if (existingAccountId && updatedAccountId !== existingAccountId) {
+          throw new BadRequestError({
+            message: `This connection is bound to Stripe account ${existingAccountId}, but the app was authorized on account ${updatedAccountId}. Reconnect using the same account, or create a new connection for ${updatedAccountId}.`
+          });
+        }
+      }
     }
 
     try {
