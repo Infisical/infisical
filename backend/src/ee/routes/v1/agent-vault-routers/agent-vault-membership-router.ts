@@ -41,6 +41,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultMembers",
       description: "List the users, groups and machine identities that are members of Agent Vault",
       tags: [ApiDocsTags.AgentVaultMembers],
@@ -66,6 +67,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "addAgentVaultMembers",
       description: "Give users, groups and machine identities access to Agent Vault, by id or by email",
       tags: [ApiDocsTags.AgentVaultMembers],
@@ -119,6 +121,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/:actorType/:actorId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultMemberRole",
       description: "Change a member's Agent Vault role",
       tags: [ApiDocsTags.AgentVaultMembers],
@@ -167,6 +170,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "revokeAgentVaultMembers",
       // A deliberate REST deviation: DELETE cannot carry a body reliably, so bulk removal is a named action.
       description: "Remove members from Agent Vault, and with them every bundle they hold",
