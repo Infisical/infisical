@@ -577,7 +577,7 @@ export const SecretTableRow = ({
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className="w-px min-w-40 lg:min-w-64 xl:min-w-80"
+                      className="w-60 max-w-60 min-w-60 p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
@@ -631,11 +631,10 @@ export const SecretTableRow = ({
                           />
                           <TableCell
                             isTruncatable
-                            className={
-                              hasOverride
-                                ? "border-l border-b-border/50 border-l-override"
-                                : undefined
-                            }
+                            className={twMerge(
+                              "w-60 max-w-60 min-w-60 lg:w-96 lg:max-w-96 lg:min-w-96",
+                              hasOverride && "border-l border-b-border/50 border-l-override"
+                            )}
                           >
                             <div className="flex h-8 items-center space-x-2">
                               <Tooltip disableHoverableContent>
