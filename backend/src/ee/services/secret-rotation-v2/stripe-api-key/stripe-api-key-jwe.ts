@@ -17,6 +17,11 @@ const SUPPORTED_KEY_ALGORITHMS: Record<string, "sha1" | "sha256"> = {
 
 const SUPPORTED_CONTENT_ALGORITHM = "A256GCM";
 
+// A256GCM fixes the authentication tag at 16 bytes. Node accepts any tag length OpenSSL supports
+// unless it is told otherwise, so a truncated tag would authenticate against fewer bits than the
+// algorithm promises.
+const GCM_AUTH_TAG_LENGTH = 16;
+
 export const generateStripeEncryptionKeyPair = async () =>
   new Promise<{ publicKey: string; privateKey: string }>((resolve, reject) => {
     crypto.generateKeyPair(
@@ -65,15 +70,25 @@ export const decryptStripeJwe = (jwe: string, privateKeyPem: string): string => 
     });
   }
 
+  const decodedAuthTag = Buffer.from(authTag, "base64url");
+
+  if (decodedAuthTag.length !== GCM_AUTH_TAG_LENGTH) {
+    throw new BadRequestError({
+      message: `Stripe returned an encrypted secret whose authentication tag is ${decodedAuthTag.length} bytes. ${SUPPORTED_CONTENT_ALGORITHM} requires ${GCM_AUTH_TAG_LENGTH}.`
+    });
+  }
+
   try {
     const contentKey = crypto.privateDecrypt(
       { key: privateKeyPem, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash },
       Buffer.from(wrappedKey, "base64url")
     );
 
-    const decipher = crypto.createDecipheriv("aes-256-gcm", contentKey, Buffer.from(iv, "base64url"));
+    const decipher = crypto.createDecipheriv("aes-256-gcm", contentKey, Buffer.from(iv, "base64url"), {
+      authTagLength: GCM_AUTH_TAG_LENGTH
+    });
     decipher.setAAD(Buffer.from(protectedHeader, "ascii"));
-    decipher.setAuthTag(Buffer.from(authTag, "base64url"));
+    decipher.setAuthTag(decodedAuthTag);
 
     return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final()]).toString();
   } catch (error) {

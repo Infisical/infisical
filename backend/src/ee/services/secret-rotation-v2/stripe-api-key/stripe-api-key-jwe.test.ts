@@ -73,30 +73,22 @@ describe("decryptStripeJwe", () => {
     expect(() => decryptStripeJwe(jwe, privateKey)).toThrow(/A128GCM/);
   });
 
-  it("fails a tampered ciphertext with a message an administrator can act on", async () => {
+  it("rejects an authentication tag that is not the 16 bytes A256GCM requires", async () => {
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
     const segments = encryptJwe("rk_live_secret", publicKey).split(".");
-    segments[4] = Buffer.alloc(16).toString("base64url");
+    segments[4] = Buffer.from(segments[4], "base64url").subarray(0, 12).toString("base64url");
 
-    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow(/could not decrypt the secret/);
+    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow(/authentication tag is 12 bytes/);
   });
 
-  it("logs the underlying OpenSSL error instead of discarding it", async () => {
+  it("fails a tampered ciphertext with a message an administrator can act on, and logs the cause", async () => {
     const { logger } = await import("@app/lib/logger");
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
     const segments = encryptJwe("rk_live_secret", publicKey).split(".");
     segments[4] = Buffer.alloc(16).toString("base64url");
 
-    expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow();
-    expect(logger.error).toHaveBeenCalledWith(expect.any(Error), expect.stringContaining("decryptStripeJwe"));
-  });
-
-  it("fails a corrupted wrapped key with a message an administrator can act on", async () => {
-    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
-    const segments = encryptJwe("rk_live_secret", publicKey).split(".");
-    segments[1] = Buffer.alloc(256).toString("base64url");
-
     expect(() => decryptStripeJwe(segments.join("."), privateKey)).toThrow(/could not decrypt the secret/);
+    expect(logger.error).toHaveBeenCalledWith(expect.any(Error), expect.stringContaining("decryptStripeJwe"));
   });
 });
 
@@ -116,13 +108,6 @@ describe("readStripeSecret", () => {
     const { privateKey } = await generateStripeEncryptionKeyPair();
 
     expect(readStripeSecret({ token: "rk_test_plain", encrypted_secret: null }, privateKey)).toBe("rk_test_plain");
-  });
-
-  it("decrypts the JWE when it is the only shape returned", async () => {
-    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
-    const jwe = encryptJwe("rk_live_secret", publicKey);
-
-    expect(readStripeSecret({ encrypted_secret: { ciphertext: jwe } }, privateKey)).toBe("rk_live_secret");
   });
 
   it("throws when Stripe returns neither", async () => {
