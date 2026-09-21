@@ -87,7 +87,7 @@ const createMemberIdentity = async (name: string) => {
 /** A self-signed CA, which is all enrollment checks: it records the fingerprint and never stores the PEM. */
 const generateRootCaPem = async () => {
   const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" } as const;
-  const keys = (await x509.cryptoProvider.get().subtle.generateKey(alg, false, ["sign", "verify"])) as CryptoKeyPair;
+  const keys = await x509.cryptoProvider.get().subtle.generateKey(alg, false, ["sign", "verify"]);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     serialNumber: "01",
     name: "CN=agent-vault-test-ca",
@@ -115,7 +115,7 @@ const createProxy = async (name: string) => {
     body: { method: "token", token, rootCaCertificate: await generateRootCaPem() }
   });
   expect(enrolled.statusCode, enrolled.payload).toBe(200);
-  const accessToken = (JSON.parse(enrolled.payload) as { accessToken: string }).accessToken;
+  const { accessToken } = JSON.parse(enrolled.payload) as { accessToken: string };
 
   return {
     ...proxy,
@@ -135,26 +135,6 @@ const createProxy = async (name: string) => {
       })
   };
 };
-
-/** Posts a chunk and asserts it was accepted, returning the upload url the proxy would PUT to. */
-const recordChunk = async (
-  proxy: Awaited<ReturnType<typeof createProxy>>,
-  sessionId: string,
-  chunk: Record<string, unknown> = chunkBody()
-) => {
-  const res = await proxy.postChunk(sessionId, chunk);
-  expect(res.statusCode, res.payload).toBe(200);
-  return JSON.parse(res.payload) as { chunkId: string; uploadUrl: string; expiresInSeconds: number };
-};
-
-const buildSweepService = () =>
-  agentVaultActivitySweepServiceFactory({
-    agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-    agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
-    appConnectionDAL: { findById: () => Promise.resolve({ orgId: seedData1.organization.id, app: "aws" }) } as never,
-    kmsService: {} as never,
-    cronJob: { register: () => {} } as never
-  });
 
 // Monotonic per test run so chunks sort the way the proxy's would.
 let ulidCounter = 0;
@@ -180,9 +160,30 @@ const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
+/** Posts a chunk and asserts it was accepted, returning the upload url the proxy would PUT to. */
+const recordChunk = async (
+  proxy: Awaited<ReturnType<typeof createProxy>>,
+  sessionId: string,
+  chunk: Record<string, unknown> = chunkBody()
+) => {
+  const res = await proxy.postChunk(sessionId, chunk);
+  expect(res.statusCode, res.payload).toBe(200);
+  return JSON.parse(res.payload) as { chunkId: string; uploadUrl: string; expiresInSeconds: number };
+};
+
+const buildSweepService = () =>
+  agentVaultActivitySweepServiceFactory({
+    agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+    agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+    appConnectionDAL: { findById: () => Promise.resolve({ orgId: seedData1.organization.id, app: "aws" }) } as never,
+    kmsService: {} as never,
+    cronJob: { register: () => {} } as never
+  });
+
 const BUCKET = "activity-bucket";
 
-const saveConfig = async (patch: Record<string, unknown>) => inject("PATCH", "/api/v1/agent-vault/activity/config", patch);
+const saveConfig = async (patch: Record<string, unknown>) =>
+  inject("PATCH", "/api/v1/agent-vault/activity/config", patch);
 
 describe("Agent Vault activity", async () => {
   let connectionId: string;
@@ -190,9 +191,9 @@ describe("Agent Vault activity", async () => {
 
   beforeAll(async () => {
     projectId = await getProjectId();
-    expect((await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`)).statusCode).toBe(
-      200
-    );
+    expect(
+      (await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`)).statusCode
+    ).toBe(200);
     connectionId = await createAwsAppConnection({ name: `activity-aws-${Date.now()}`, authToken: jwtAuthToken });
   });
 
@@ -234,7 +235,13 @@ describe("Agent Vault activity", async () => {
     });
 
     test("saving a destination validates the bucket and hands back a CORS probe url", async () => {
-      const res = await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+      const res = await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
       expect(res.statusCode, res.payload).toBe(200);
 
       const body = JSON.parse(res.payload) as { config: Record<string, unknown>; corsProbeUrl: string };
@@ -243,9 +250,16 @@ describe("Agent Vault activity", async () => {
     });
 
     test("a bucket it cannot write to is refused with the actionable message, and nothing is saved", async () => {
-      fakeActivityStorage.failsValidationWith("Bucket 'nope' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix");
+      fakeActivityStorage.failsValidationWith(
+        "Bucket 'nope' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix"
+      );
 
-      const res = await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: "nope", region: "us-east-1" });
+      const res = await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: "nope",
+        region: "us-east-1"
+      });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toContain("s3:PutObject");
 
@@ -260,7 +274,13 @@ describe("Agent Vault activity", async () => {
     });
 
     test("moving the bucket bumps configVersion; changing the region or the connection does not", async () => {
-      await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+      await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
 
       const sameSpot = await saveConfig({ region: "us-west-2" });
       expect(JSON.parse(sameSpot.payload).config.configVersion).toBe(1);
@@ -273,14 +293,26 @@ describe("Agent Vault activity", async () => {
     });
 
     test("a patch leaves out what it does not name", async () => {
-      await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+      await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
 
       const off = await saveConfig({ enabled: false });
       expect(JSON.parse(off.payload).config).toMatchObject({ enabled: false, bucket: BUCKET, keyPrefix: "logs/" });
     });
 
     test("the key prefix is normalised, so two spellings of one prefix are one destination", async () => {
-      const res = await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "/logs/" });
+      const res = await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "/logs/"
+      });
       expect(JSON.parse(res.payload).config.keyPrefix).toBe("logs/");
     });
 
@@ -288,9 +320,9 @@ describe("Agent Vault activity", async () => {
       const member = await createMemberIdentity(`activity-member-${Date.now()}`);
       try {
         expect((await member.as("GET", "/api/v1/agent-vault/activity/config")).statusCode).toBe(403);
-        expect(
-          (await member.as("PATCH", "/api/v1/agent-vault/activity/config", { enabled: false })).statusCode
-        ).toBe(403);
+        expect((await member.as("PATCH", "/api/v1/agent-vault/activity/config", { enabled: false })).statusCode).toBe(
+          403
+        );
       } finally {
         await member.cleanup();
       }
@@ -299,7 +331,14 @@ describe("Agent Vault activity", async () => {
 
   describe("recording a chunk", () => {
     const configure = async (patch: Record<string, unknown> = {}) =>
-      saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs", ...patch });
+      saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs",
+        ...patch
+      });
 
     test("writes the row before the object exists, then presigns an upload for exactly that many bytes", async () => {
       await configure();
@@ -350,9 +389,9 @@ describe("Agent Vault activity", async () => {
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id }).count()).toEqual([
         { count: "1" }
       ]);
-      expect(Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedRecordCount)).toBe(
-        10
-      );
+      expect(
+        Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedRecordCount)
+      ).toBe(10);
     });
 
     test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
@@ -395,7 +434,14 @@ describe("Agent Vault activity", async () => {
 
   describe("what resolve tells the proxy", () => {
     const configure = async (patch: Record<string, unknown> = {}) =>
-      saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs", ...patch });
+      saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs",
+        ...patch
+      });
 
     const setup = async (label: string) => {
       const bundle = await createAccessBundle(`activity-resolve-${label}-${Date.now()}`);
@@ -460,7 +506,13 @@ describe("Agent Vault activity", async () => {
 
   describe("what the write endpoint refuses", () => {
     const configure = async () =>
-      saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+      saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
 
     const setup = async (label: string) => {
       const bundle = await createAccessBundle(`activity-refuse-${label}-${Date.now()}`);
@@ -534,11 +586,7 @@ describe("Agent Vault activity", async () => {
       await configure();
       const { session } = await setup("user");
 
-      const res = await inject(
-        "POST",
-        `/api/v1/agent-vault/proxy/sessions/${session.id}/activity/chunks`,
-        chunkBody()
-      );
+      const res = await inject("POST", `/api/v1/agent-vault/proxy/sessions/${session.id}/activity/chunks`, chunkBody());
       // verifyAuth answers a wrong auth mode with 403, as it does on every proxy-only route.
       expect(res.statusCode).toBe(403);
     });
@@ -546,7 +594,13 @@ describe("Agent Vault activity", async () => {
 
   describe("reading a session's activity", () => {
     const configure = async () =>
-      saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+      saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
 
     const seedChunks = async (count: number) => {
       const bundle = await createAccessBundle(`activity-read-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -554,7 +608,11 @@ describe("Agent Vault activity", async () => {
       const proxy = await createProxy(`activity-read-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
       for (let i = 0; i < count; i += 1) {
         // eslint-disable-next-line no-await-in-loop
-        const { uploadUrl } = await recordChunk(proxy, session.id, chunkBody({ firstSeq: i * 10, lastSeq: i * 10 + 9 }));
+        const { uploadUrl } = await recordChunk(
+          proxy,
+          session.id,
+          chunkBody({ firstSeq: i * 10, lastSeq: i * 10 + 9 })
+        );
         fakeActivityStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
       }
       return { session, proxy };
@@ -724,7 +782,13 @@ describe("Agent Vault activity", async () => {
 
   describe("the retention sweep", () => {
     const configure = async () =>
-      saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+      saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
 
     const retire = async (sessionId: string, daysAgo: number) =>
       testDb("agent_vault_sessions")
@@ -746,9 +810,9 @@ describe("Agent Vault activity", async () => {
       expect(fakeActivityStorage.objectKeys(BUCKET)).toEqual([]);
       expect(await testDb("agent_vault_sessions").where({ id: session.id }).first()).toBeUndefined();
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id })).toHaveLength(0);
-      expect(Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedRecordCount)).toBe(
-        0
-      );
+      expect(
+        Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedRecordCount)
+      ).toBe(0);
     });
 
     test("leaves a session that is still inside the retention window alone", async () => {

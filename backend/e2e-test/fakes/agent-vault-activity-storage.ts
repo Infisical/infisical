@@ -95,6 +95,9 @@ export const fakeActivityStorage = {
       .sort()
 };
 
+// orgId is kept so the fake's signature stays parallel to the real module's, which is what makes a
+// drift in the real one obvious here. The fake has no tenant to scope to, so it never reads it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _orgId: string) => {
   const { bucket, keyPrefix } = config;
 
