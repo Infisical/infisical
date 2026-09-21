@@ -89,8 +89,8 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
 
   /**
    * Expire is the whole retirement. Stripe decides when it takes effect, so nothing here claims the
-   * key is dead. Narrowing the key's permissions first would stop it sooner, and was measured
-   * working, but is deliberately not in v1. See the design doc.
+   * key is dead the moment this returns. In practice the key stops working within several minutes,
+   * which is well inside the weeks-to-months cadence rotations run on.
    */
   const $retireKey = async (keyId: string) => {
     const result = await $tryRetireKey(keyId);
@@ -165,7 +165,16 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
   ) => {
     if (!credentials?.length) return callback();
 
-    for (const { keyId } of credentials) {
+    // The published key is retired last. A failure part way through aborts the delete, so retiring
+    // it first would leave the rotation row and its mapped secret in place pointing at a key that
+    // is on its way out, which is an outage until the operator retries.
+    const { activeIndex } = secretRotation;
+    const retirementOrder = [
+      ...credentials.filter((_, index) => index !== activeIndex),
+      ...credentials.filter((_, index) => index === activeIndex)
+    ];
+
+    for (const { keyId } of retirementOrder) {
       // eslint-disable-next-line no-await-in-loop
       await $retireKey(keyId);
     }
