@@ -703,7 +703,7 @@ export const orgServiceFactory = ({
       if (blockIfUserHasCreatedOrg && userId) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateOrganization(userId)]);
 
-        const createdOrgs = await orgDAL.countRootOrgsCreatedByUserId(userId, tx);
+        const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
         if (createdOrgs > 0) {
           throw new ConflictError({
             message:

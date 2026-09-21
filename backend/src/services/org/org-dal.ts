@@ -465,20 +465,30 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Membership is deliberately not a condition: with it, a second account can remove the creator to
-  // free the slot and the pair farms orgs indefinitely. Takes the transaction rather than an optional
-  // one so the read cannot land on a replica, where lag would defeat the advisory lock.
-  const countRootOrgsCreatedByUserId = async (userId: string, tx: Knex) => {
+  // Membership is required so a removed or deactivated creator is not locked out everywhere. A second
+  // account with admin can therefore free the slot; accepted, since that costs an invite cycle per org.
+  // Takes the transaction, not an optional one, so the read cannot hit a replica and defeat the lock.
+  const countJoinedRootOrgsCreatedByUserId = async (userId: string, tx: Knex) => {
     try {
       const count = await tx(TableName.Organization)
         .where(`${TableName.Organization}.createdByUserId`, userId)
         .whereNull(`${TableName.Organization}.rootOrgId`)
+        .whereExists((qb) => {
+          void qb
+            .select(tx.raw("1"))
+            .from(TableName.Membership)
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
+            .where(`${TableName.Membership}.isActive`, true)
+            .whereRaw(`"${TableName.Membership}"."scopeOrgId" = "${TableName.Organization}"."id"`);
+        })
         .count("*", { as: "count" })
         .first();
 
       return Number((count as unknown as CountResult)?.count ?? 0);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count root orgs created by user id" });
+      throw new DatabaseError({ error, name: "Count joined root orgs created by user id" });
     }
   };
 
@@ -1158,7 +1168,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgById,
     findOrgBySlug,
     findAllOrgsByUserId,
-    countRootOrgsCreatedByUserId,
+    countJoinedRootOrgsCreatedByUserId,
     findOrganizationsByFilter,
     findOrgMembersByUsername,
     findOrgMembersByRole,
