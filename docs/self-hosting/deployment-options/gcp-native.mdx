@@ -340,16 +340,16 @@ For production deployments with many users or secrets, increase these values acc
       --role="roles/secretmanager.secretAccessor"
   done
 
-  # Bind to Kubernetes service account
+  # Bind to the Kubernetes service account created by the Helm chart (<release-name>-infisical)
   gcloud iam service-accounts add-iam-policy-binding \
     infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:<YOUR_PROJECT_ID>.svc.id.goog[infisical/infisical]"
+    --member "serviceAccount:<YOUR_PROJECT_ID>.svc.id.goog[infisical/infisical-infisical]"
   ```
 </Step>
 
 <Step title="Deploy Infisical using Helm">
-  Deploy Infisical to your GKE cluster using the official Helm chart:
+  Deploy Infisical to your GKE cluster using the official `infisical-standalone` Helm chart. For all available configuration options, see the [full values.yaml reference](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical-standalone-postgres/values.yaml).
 
   **Add the Infisical Helm Repository:**
 
@@ -365,98 +365,67 @@ For production deployments with many users or secrets, increase these values acc
   ```yaml
   # infisical-values.yaml
 
-  replicaCount: 2
+  infisical:
+    # Names the Deployment and Service "infisical" instead of "<release-name>-infisical-standalone-infisical"
+    fullnameOverride: infisical
+    replicaCount: 2
 
-  image:
-    repository: infisical/infisical
-    tag: "v0.46.2-postgres"  # Use a specific version
-    pullPolicy: IfNotPresent
+    image:
+      repository: infisical/infisical
+      tag: "v0.161.11"  # Use a specific version
+      pullPolicy: IfNotPresent
 
-  service:
-    type: ClusterIP
-    port: 8080
+    # Kubernetes Secret holding ENCRYPTION_KEY, AUTH_SECRET, DB_CONNECTION_URI, REDIS_URL, and SITE_URL
+    kubeSecretRef: infisical-secrets
+
+    serviceAccount:
+      create: true
+      annotations:
+        iam.gke.io/gcp-service-account: infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
+
+    service:
+      type: ClusterIP
+      annotations:
+        cloud.google.com/neg: '{"ingress": true}'
+
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: infisical-standalone
+                  release: infisical
+              topologyKey: topology.kubernetes.io/zone
 
   ingress:
     enabled: true
-    className: "gce"
+    hostName: infisical.example.com
+    ingressClassName: gce
+    nginx:
+      enabled: false  # Use the GKE ingress controller instead of the bundled ingress-nginx
     annotations:
-      kubernetes.io/ingress.class: "gce"
       kubernetes.io/ingress.global-static-ip-name: "infisical-ip"
       networking.gke.io/managed-certificates: "infisical-cert"
-    hosts:
-      - host: infisical.example.com
-        paths:
-          - path: /
-            pathType: Prefix
 
-  env:
-    - name: SITE_URL
-      value: "https://infisical.example.com"
-    - name: HOST
-      value: "0.0.0.0"
-    - name: PORT
-      value: "8080"
+  # Use Cloud SQL and Memorystore instead of the bundled databases
+  postgresql:
+    enabled: false
 
-  envFrom:
-    - secretRef:
-        name: infisical-secrets
-
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "500m"
-    limits:
-      memory: "1Gi"
-      cpu: "1000m"
-
-  livenessProbe:
-    httpGet:
-      path: /api/status
-      port: 8080
-    initialDelaySeconds: 30
-    periodSeconds: 10
-
-  readinessProbe:
-    httpGet:
-      path: /api/status
-      port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 5
-
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
-
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-
-  serviceAccount:
-    create: true
-    name: infisical
-    annotations:
-      iam.gke.io/gcp-service-account: infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
-
-  podSecurityContext:
-    fsGroup: 1000
-    runAsNonRoot: true
-    runAsUser: 1000
-
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                    - infisical
-            topologyKey: topology.kubernetes.io/zone
+  redis:
+    enabled: false
   ```
+
+  The chart reads `DB_CONNECTION_URI` and `REDIS_URL` from the `infisical-secrets` Secret created in the previous step, so the bundled PostgreSQL and Redis subcharts stay disabled.
 
   **Reserve a Static IP Address:**
 
@@ -468,7 +437,7 @@ For production deployments with many users or secrets, increase these values acc
   **Deploy Infisical:**
 
   ```bash
-  helm install infisical infisical-helm-charts/infisical \
+  helm install infisical infisical-helm-charts/infisical-standalone \
     --namespace infisical \
     --create-namespace \
     --values infisical-values.yaml
@@ -486,7 +455,7 @@ For production deployments with many users or secrets, increase these values acc
   kubectl get ingress -n infisical
 
   # Check pod logs
-  kubectl logs -l app.kubernetes.io/name=infisical -n infisical --tail=50
+  kubectl logs deployment/infisical -n infisical --tail=50
   ```
 
   Wait for all pods to be in `Running` state.
@@ -631,25 +600,54 @@ After completing the above steps, your Infisical instance should be up and runni
       -n infisical
     ```
 
-    Update your Helm values to include the SMTP secret:
+    Update your Helm values to reference the SMTP secret:
     ```yaml
-    envFrom:
-      - secretRef:
-          name: infisical-secrets
-      - secretRef:
-          name: infisical-smtp
+    infisical:
+      extraEnv:
+        - name: SMTP_HOST
+          valueFrom:
+            secretKeyRef:
+              name: infisical-smtp
+              key: SMTP_HOST
+        - name: SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: infisical-smtp
+              key: SMTP_PORT
+        - name: SMTP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: infisical-smtp
+              key: SMTP_USERNAME
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: infisical-smtp
+              key: SMTP_PASSWORD
+        - name: SMTP_FROM_ADDRESS
+          valueFrom:
+            secretKeyRef:
+              name: infisical-smtp
+              key: SMTP_FROM_ADDRESS
+        - name: SMTP_FROM_NAME
+          valueFrom:
+            secretKeyRef:
+              name: infisical-smtp
+              key: SMTP_FROM_NAME
     ```
+
+    Alternatively, add the `SMTP_*` keys directly to the `infisical-secrets` Secret, which the chart already mounts with `envFrom`.
 
     Upgrade the deployment:
     ```bash
-    helm upgrade infisical infisical-helm-charts/infisical \
+    helm upgrade infisical infisical-helm-charts/infisical-standalone \
       --namespace infisical \
       --values infisical-values.yaml
     ```
 
     **Verify:** Check logs for SMTP configuration:
     ```bash
-    kubectl logs -l app.kubernetes.io/name=infisical -n infisical | grep -i smtp
+    kubectl logs deployment/infisical -n infisical | grep -i smtp
     ```
   </Accordion>
 
@@ -691,7 +689,7 @@ After completing the above steps, your Infisical instance should be up and runni
 
     **Check migration status:**
     ```bash
-    kubectl logs -l app.kubernetes.io/name=infisical -n infisical | grep -i migration
+    kubectl logs deployment/infisical -n infisical | grep -i migration
     ```
 
     **Run migrations manually:**
@@ -751,10 +749,10 @@ After completing the above steps, your Infisical instance should be up and runni
     helm repo update
 
     # Update image tag in values file
-    # Edit infisical-values.yaml: image.tag: "v0.X.X"
+    # Edit infisical-values.yaml: infisical.image.tag: "v0.X.X"
 
     # Upgrade deployment
-    helm upgrade infisical infisical-helm-charts/infisical \
+    helm upgrade infisical infisical-helm-charts/infisical-standalone \
       --namespace infisical \
       --values infisical-values.yaml
 
@@ -794,18 +792,47 @@ After completing the above steps, your Infisical instance should be up and runni
 
     **Enable OpenTelemetry:**
     ```yaml
-    env:
-      - name: OTEL_TELEMETRY_COLLECTION_ENABLED
-        value: "true"
-      - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+    infisical:
+      extraEnv:
+        - name: OTEL_TELEMETRY_COLLECTION_ENABLED
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector.monitoring.svc.cluster.local:4317"
     ```
   </Accordion>
 
   <Accordion title="Auto-Scaling Configuration">
     **Horizontal Pod Autoscaler:**
 
-    The HPA is configured in the Helm values. To verify:
+    The `infisical-standalone` chart does not create an HPA, so apply one that targets the `infisical` Deployment. When an HPA manages the Deployment, it overrides `infisical.replicaCount` from the values file.
+    ```yaml
+    # infisical-hpa.yaml
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: infisical
+      namespace: infisical
+    spec:
+      scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: infisical
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+    ```
+
+    ```bash
+    kubectl apply -f infisical-hpa.yaml
+    ```
+
+    **Verify:** Check the HPA status:
     ```bash
     kubectl get hpa -n infisical
     kubectl describe hpa infisical -n infisical
@@ -821,13 +848,22 @@ After completing the above steps, your Infisical instance should be up and runni
     ```
 
     **Adjust scaling parameters:**
+
+    Edit `minReplicas`, `maxReplicas`, or the `metrics` list in `infisical-hpa.yaml` and apply it again. For example, to also scale on memory:
     ```yaml
-    autoscaling:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 20
-      targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 80
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 70
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 80
     ```
   </Accordion>
 
