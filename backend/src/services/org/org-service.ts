@@ -30,6 +30,7 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -681,16 +682,36 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      orgName
+      orgName,
+      blockIfUserHasCreatedOrg
     }: {
       userId?: string;
       orgName: string;
+      // Set by the user-facing create-org endpoint, and only on cloud. Signup and instance-admin
+      // creation call this without it and keep their existing behavior.
+      blockIfUserHasCreatedOrg?: boolean;
     },
     trx?: Knex
   ) => {
     const createOrg = async (tx: Knex) => {
+      // The advisory lock serializes concurrent creates for the same user so two requests cannot both
+      // read a count of zero and each land an org.
+      if (blockIfUserHasCreatedOrg && userId) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateOrganization(userId)]);
+
+        const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
+        if (createdOrgs > 0) {
+          throw new BadRequestError({
+            message: "You have already created an organization. Contact your administrator to be added to another one."
+          });
+        }
+      }
+
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
+      const org = await orgDAL.create(
+        { name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`), createdByUserId: userId },
+        tx
+      );
       if (userId) {
         const membership = await orgDAL.createMembership(
           {

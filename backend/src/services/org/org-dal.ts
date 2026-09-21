@@ -465,6 +465,36 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Root orgs this user created and still belongs to. Orgs they were only invited into never count,
+  // so joining any number of organizations stays unrestricted. An org they created but were since
+  // removed from, or deactivated in, does not count either: it is no longer theirs to use, and
+  // counting it would leave them unable to create one anywhere. Sub-orgs are excluded, they are the
+  // supported way to add more. Takes the transaction rather than an optional one so the read cannot land on a replica,
+  // where lag would let a second create pass the check the advisory lock exists to serialize.
+  const countJoinedRootOrgsCreatedByUserId = async (userId: string, tx: Knex) => {
+    try {
+      const count = await tx(TableName.Organization)
+        .where(`${TableName.Organization}.createdByUserId`, userId)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
+        .whereExists((qb) => {
+          void qb
+            .select(tx.raw("1"))
+            .from(TableName.Membership)
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
+            .where(`${TableName.Membership}.isActive`, true)
+            .whereRaw(`"${TableName.Membership}"."scopeOrgId" = "${TableName.Organization}"."id"`);
+        })
+        .count("*", { as: "count" })
+        .first();
+
+      return Number((count as unknown as CountResult)?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count joined root orgs created by user id" });
+    }
+  };
+
   const findOrgByProjectId = async (projectId: string): Promise<TOrganizations> => {
     try {
       const [org] = await db
@@ -1141,6 +1171,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgById,
     findOrgBySlug,
     findAllOrgsByUserId,
+    countJoinedRootOrgsCreatedByUserId,
     findOrganizationsByFilter,
     findOrgMembersByUsername,
     findOrgMembersByRole,
