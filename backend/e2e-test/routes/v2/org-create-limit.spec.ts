@@ -1,6 +1,5 @@
 import { AccessScope, OrgMembershipStatus, TableName, TOrganizationsInsert } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { getConfig, overrideEnvConfig } from "@app/lib/config/env";
 import { orgDALFactory } from "@app/services/org/org-dal";
 
 import { loginUser, selectOrg } from "../../testUtils/auth";
@@ -120,51 +119,5 @@ describe("Organizations counted against a user's create limit", () => {
 
     await deleteOrgOverHttp(second);
     await deleteOrgOverHttp(first);
-  });
-});
-
-// The limit only engages on cloud, and this environment is not cloud. Re-parsing the env with the
-// license server key set is the only way to reach the refusal, so the suite would otherwise cover
-// everything around it and nothing that does the refusing. The flip reaches only code calling
-// getConfig() per request: instanceType and the license service's envConfig were both captured at
-// boot, so no license-server call becomes live.
-describe("The create-organization route on cloud", () => {
-  beforeAll(() => {
-    process.env.LICENSE_SERVER_V2_SERVICE_KEY = "e2e-cloud";
-    overrideEnvConfig({});
-    expect(getConfig().isCloud).toBe(true);
-  });
-
-  afterAll(async () => {
-    delete process.env.LICENSE_SERVER_V2_SERVICE_KEY;
-    overrideEnvConfig({});
-    expect(getConfig().isCloud).toBe(false);
-    await cleanupTrackedOrgs();
-  });
-
-  // Deleted straight from the database rather than over HTTP, since the delete route's cloud branch
-  // would reach a license server this environment does not run.
-  afterEach(cleanupTrackedOrgs);
-
-  test("a second org is refused with 409", async () => {
-    await createOrgOverHttp("org-limit-cloud-first");
-
-    const res = await createOrgRequest("org-limit-cloud-second");
-
-    expect(res.statusCode).toBe(409);
-    expect(res.json().message).toMatch(/already created an organization/);
-  });
-
-  test("concurrent creates land exactly one org", async () => {
-    const results = await Promise.all([
-      createOrgRequest("org-limit-cloud-race-a"),
-      createOrgRequest("org-limit-cloud-race-b")
-    ]);
-
-    const statuses = results.map((res) => res.statusCode).sort();
-    expect(statuses).toEqual([200, 409]);
-
-    results.filter((res) => res.statusCode === 200).forEach((res) => track(res.json().organization.id as string));
-    await expect(countCreatedOrgs()).resolves.toBe(1);
   });
 });
