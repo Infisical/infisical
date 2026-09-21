@@ -2,6 +2,10 @@ import { format } from "date-fns";
 import { BotIcon, UserIcon } from "lucide-react";
 
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -20,14 +24,27 @@ import { SessionStatusBadge } from "./SessionStatusBadge";
 
 type Props = {
   session: TAgentVaultSession | undefined;
+  isPending?: boolean;
 };
 
-export const SessionDetailSheet = ({ session }: Props) => {
+export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
   const { isOpen, tab, setTab, closeSheet } = useAgentVaultSheetState();
 
   return (
-    <Sheet open={isOpen && Boolean(session)} onOpenChange={(open) => !open && closeSheet()}>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
       <SheetContent className="w-full !max-w-5xl overflow-y-auto">
+        {/* A link to a session nobody can resolve says the same thing whether it never existed or
+            belongs to someone else, which is what the endpoint does too. */}
+        {!session && !isPending && (
+          <Empty className="m-4 border">
+            <EmptyHeader>
+              <EmptyTitle>Session not found</EmptyTitle>
+              <EmptyDescription>
+                This session doesn&apos;t exist, or you don&apos;t have access to it.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
         {session && (
           <>
             <SheetHeader>

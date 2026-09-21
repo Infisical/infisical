@@ -89,6 +89,34 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    method: "GET",
+    url: "/:sessionId",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getAgentVaultSession",
+      description:
+        "Read one Agent Vault session. Answers 404 both when no such session exists and when the caller may not see it.",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      response: {
+        200: z.object({ session: SessionSchema.extend({ accessBundles: SessionAccessBundleSchema.array() }) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultSession.getSessionById({
+        projectId: req.internalAgentVaultProjectId,
+        sessionId: req.params.sessionId,
+        ctx: {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      })
+  });
+
+  server.route({
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },

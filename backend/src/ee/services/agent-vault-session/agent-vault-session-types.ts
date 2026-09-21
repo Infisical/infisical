@@ -25,3 +25,5 @@ export type TRevokeSessionDTO = {
   ctx: TAgentVaultActorContext;
   sessionId: string;
 };
+
+export type TGetSessionByIdDTO = TRevokeSessionDTO;

@@ -35,6 +35,8 @@ export const agentVaultKeys = {
   // sessions() is the invalidation prefix; folding the parameters in would put an `undefined` in it,
   // which prefix-matches nothing.
   sessions: (orgId: string) => [...agentVaultKeys.all(orgId), "sessions"] as const,
+  session: (orgId: string, sessionId: string) =>
+    [...agentVaultKeys.sessions(orgId), "detail", sessionId] as const,
   sessionList: (orgId: string, params?: TListAgentVaultSessionsDTO) =>
     [...agentVaultKeys.sessions(orgId), params] as const,
   accessBundleList: (orgId: string, params?: TListAgentVaultAccessBundlesDTO) =>
@@ -205,6 +207,28 @@ export const useGetAgentVaultActivityConfig = (enabled = true) => {
       return data;
     },
     enabled
+  });
+};
+
+/**
+ * One session by id, so a link to a timeline opens whatever page, scope or filter the viewer is on.
+ *
+ * Only runs when the session is not already in the loaded list. The endpoint answers the same 404 for
+ * a session that does not exist and one the viewer may not see, so there is nothing to tell apart here.
+ */
+export const useGetAgentVaultSession = (sessionId: string | undefined, enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.session(currentOrg.id, sessionId ?? ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ session: TAgentVaultSession }>(
+        `/api/v1/agent-vault/sessions/${sessionId}`
+      );
+      return data.session;
+    },
+    enabled: enabled && Boolean(sessionId),
+    retry: false
   });
 };
 

@@ -78,6 +78,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
   const findForList = async (
     {
       projectId,
+      sessionId,
       actor,
       status,
       search,
@@ -85,6 +86,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       offset
     }: {
       projectId: string;
+      /** Narrows to one session, so a link can be opened without it being on the caller's page. */
+      sessionId?: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       status?: AgentVaultSessionStatus;
       search?: string;
@@ -99,6 +102,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultSession}.projectId`, projectId);
+        if (sessionId) void query.where(`${TableName.AgentVaultSession}.id`, sessionId);
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
         if (status) statusFilter(query, status, now);

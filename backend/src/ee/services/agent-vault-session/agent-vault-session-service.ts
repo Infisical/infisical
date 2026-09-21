@@ -18,7 +18,7 @@ import { generateActivityKey, wrapActivityKey } from "../agent-vault-activity/ag
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken, isSessionOwnedBy } from "./agent-vault-session-fns";
-import { TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
+import { TGetSessionByIdDTO, TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
 
 // V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
 export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
@@ -167,6 +167,37 @@ export const agentVaultSessionServiceFactory = ({
     };
   };
 
+  /**
+   * Answers a single session so a link to one opens for anyone entitled to see it, whatever page,
+   * scope or filter they happen to be on.
+   *
+   * A session the caller may not see and a session that does not exist answer with the same
+   * NotFoundError, as revokeSession already does: distinguishing them would turn a shared link into
+   * a way of confirming that somebody else's session id is real.
+   */
+  const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
+    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionSub.AgentVaultSessions
+    );
+
+    // A member is scoped to their own sessions in SQL, so another actor's simply does not match and
+    // falls into the same not-found branch below.
+    const { sessions } = await agentVaultSessionDAL.findForList({
+      projectId,
+      sessionId,
+      actor: isAdmin ? undefined : requireSessionActor(ctx),
+      limit: 1,
+      offset: 0
+    });
+
+    const [session] = sessions;
+    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    return { session: { ...session, status: deriveSessionStatus(session) } };
+  };
+
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
     const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
@@ -209,6 +240,7 @@ export const agentVaultSessionServiceFactory = ({
   return {
     mintSession,
     listSessions,
+    getSessionById,
     revokeSession
   };
 };

@@ -64,6 +64,7 @@ import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
+  useGetAgentVaultSession,
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
@@ -114,6 +115,17 @@ export const AgentVaultSessionsPage = () => {
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
+
+  // A link to a session is worth nothing if it only opens for someone whose current page, scope and
+  // filter happen to contain it, so anything not already loaded is fetched by id.
+  const loadedOpenSession = sessions.find((session) => session.id === openSessionId);
+  const { data: fetchedOpenSession, isPending: isFetchingOpenSession } = useGetAgentVaultSession(
+    openSessionId,
+    Boolean(openSessionId) && !isPending && !loadedOpenSession
+  );
+  const openSession = loadedOpenSession ?? fetchedOpenSession;
+  const isOpenSessionPending =
+    Boolean(openSessionId) && !openSession && (isPending || isFetchingOpenSession);
 
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
@@ -400,7 +412,7 @@ export const AgentVaultSessionsPage = () => {
         }}
       />
 
-      <SessionDetailSheet session={sessions.find((session) => session.id === openSessionId)} />
+      <SessionDetailSheet session={openSession} isPending={isOpenSessionPending} />
     </div>
   );
 };
