@@ -14,6 +14,15 @@ export const AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS = 300;
  */
 export const AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD = 60;
 
+/**
+ * Ceiling on activity records indexed per organization. What it bounds is our row count and our
+ * presign calls, not the customer's bucket, so it is ours to pick and not a customer-facing setting:
+ * neither the API nor the UI reports it, and an organization that reaches it is told to contact us
+ * rather than given a number to argue with. Raising it is a code change, which is the point at which
+ * somebody should look at why it was reached.
+ */
+export const AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS = 10_000_000;
+
 /** A storage client is reused for this long rather than rebuilt per request. See the write path. */
 export const AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS = 5 * 60_000;
 

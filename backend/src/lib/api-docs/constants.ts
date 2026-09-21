@@ -4397,8 +4397,8 @@ export const AGENT_VAULT = {
     keyPrefix: "An optional prefix every object key is written under.",
     corsProbeUrl:
       "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
-    storedRecordCount: "How many activity records the organization currently has indexed.",
-    ceiling: "The maximum number of activity records the organization may store.",
+    isStorageFull:
+      "Whether the organization has reached the number of activity records Infisical will index for it, at which point recording pauses. The limit itself is internal.",
     hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again."
   },
   SESSION: {

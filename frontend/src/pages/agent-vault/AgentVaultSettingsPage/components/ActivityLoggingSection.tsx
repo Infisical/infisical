@@ -19,9 +19,6 @@ export const ActivityLoggingSection = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { data, isPending } = useGetAgentVaultActivityConfig();
 
-  const usage = data?.usage;
-  const usageRatio = usage && usage.ceiling > 0 ? usage.storedRecordCount / usage.ceiling : 0;
-
   return (
     <>
       <Card>
@@ -38,15 +35,14 @@ export const ActivityLoggingSection = () => {
           </CardAction>
         </CardHeader>
 
-        {/* The limit is the one thing that cannot wait behind a button: at the cap nothing is being
-            recorded, and an admin who never opens the sheet would not know. */}
-        {usageRatio >= 0.8 && (
+        {/* Recording having stopped cannot wait behind a button: an admin who never opens the sheet
+            would otherwise find out from the gap in a timeline. */}
+        {data?.isStorageFull && (
           <CardContent>
-            <Alert variant={usageRatio >= 1 ? "danger" : "warning"}>
+            <Alert variant="danger">
               <AlertDescription>
-                {usageRatio >= 1
-                  ? "This organization is at its activity storage limit. Nothing new is being recorded until older sessions are deleted or the limit is raised."
-                  : "This organization is close to its activity storage limit. Recording stops when it is reached."}
+                Activity storage for this organization is full, and nothing new is being recorded.
+                Contact Infisical support.
               </AlertDescription>
             </Alert>
           </CardContent>

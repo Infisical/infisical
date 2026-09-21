@@ -219,19 +219,20 @@ describe("Agent Vault activity", async () => {
   });
 
   describe("settings", () => {
-    test("reads as off, with no destination and the org ceiling, before anything is configured", async () => {
+    test("reads as off, with no destination, before anything is configured", async () => {
       const res = await inject("GET", "/api/v1/agent-vault/activity/config");
       expect(res.statusCode).toBe(200);
 
       const body = JSON.parse(res.payload) as {
         config: Record<string, unknown>;
-        usage: { storedRecordCount: number; ceiling: number };
         corsProbeUrl: string | null;
       };
       expect(body.config).toMatchObject({ enabled: false, bucket: null, appConnectionId: null, configVersion: 1 });
-      expect(body.usage.storedRecordCount).toBe(0);
-      expect(body.usage.ceiling).toBeGreaterThan(0);
       expect(body.corsProbeUrl).toBeNull();
+      // The record ceiling is ours, so the response carries whether it has been reached and never the
+      // count or the limit itself.
+      expect(body).toMatchObject({ isStorageFull: false });
+      expect(body).not.toHaveProperty("usage");
     });
 
     test("saving a destination validates the bucket and hands back a CORS probe url", async () => {

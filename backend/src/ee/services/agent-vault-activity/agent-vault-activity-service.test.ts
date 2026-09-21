@@ -3,14 +3,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError } from "@app/lib/errors";
 
-import { AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
+import { AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
 import { agentVaultActivityServiceFactory } from "./agent-vault-activity-service";
 
-const CEILING = 1_000;
-
-vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS: CEILING })
-}));
+const CEILING = AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS;
 
 const presignPut = vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-put");
 vi.mock("./agent-vault-activity-storage", async (importOriginal) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -120,7 +120,6 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { data } = useGetAgentVaultActivityConfig();
-  const formatCount = useMemo(() => new Intl.NumberFormat(), []);
   const { data: connections, isPending: isLoadingConnections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
@@ -343,7 +342,9 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                   name="keyPrefix"
                   render={({ field, fieldState }) => (
                     <Field>
-                      <FieldLabel>Key Prefix</FieldLabel>
+                      <FieldLabel>
+                        Key Prefix <span className="text-muted">(optional)</span>
+                      </FieldLabel>
                       <FieldContent>
                         <Input
                           {...field}
@@ -351,7 +352,7 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                           isError={Boolean(fieldState.error)}
                         />
                         <FieldDescription>
-                          Optional. Every object is written under this prefix.
+                          Every object is written under this prefix.
                         </FieldDescription>
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
@@ -393,12 +394,6 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                 </AccordionItem>
               </Accordion>
 
-              {data?.usage && (
-                <p className="text-sm text-muted">
-                  {formatCount.format(data.usage.storedRecordCount)} of{" "}
-                  {formatCount.format(data.usage.ceiling)} records stored
-                </p>
-              )}
             </FieldGroup>
           </div>
 

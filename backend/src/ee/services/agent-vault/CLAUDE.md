@@ -204,9 +204,13 @@ only, never bodies or headers, and never the query string (the proxy builds the 
 - **The write endpoint inserts the row, then returns a presigned PUT.** Row before object, so a failed
   upload is a visible gap rather than a silent one; re-POSTing the same chunk id replays idempotently.
   The presign runs after commit: no network under the config row's lock.
-- **The org ceiling is a config constant** (`AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS`). At the wall the
-  endpoint refuses rather than dropping the oldest, because drop-oldest is an evidence-eviction
-  primitive. The counter is moved with `UPDATE ... SET x = x + ?`, never read-modify-write.
+- **The org ceiling is a backend constant** (`AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS`, in the
+  activity constants) and is **not customer-facing**: it is not an env var, the config response
+  reports only `isStorageFull`, the UI shows no count, and the refusal the proxy logs names neither
+  the number nor a way to change it. Raising it is a code change, which is the point at which
+  somebody should ask why it was reached. At the wall the endpoint refuses rather than dropping the
+  oldest, because drop-oldest is an evidence-eviction primitive. The counter is moved with
+  `UPDATE ... SET x = x + ?`, never read-modify-write.
 - **Cleanup happens only when a session is hard-deleted**, 30 days after it retires. There is no
   retention concept of its own, so a live session (including `never`) keeps everything. The sweep has
   its own cron, not the shared daily cleanup, because its S3 pass is network-bound and would time the

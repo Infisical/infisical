@@ -6,7 +6,6 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -31,6 +30,7 @@ import {
   AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS,
   AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS,
+  AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS,
@@ -208,8 +208,6 @@ export const agentVaultActivityServiceFactory = ({
       chunkId: chunk.chunkId
     });
 
-    const ceiling = getConfig().AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS;
-
     let row;
     try {
       row = await agentVaultActivityChunkDAL.transaction(async (tx) => {
@@ -228,11 +226,13 @@ export const agentVaultActivityServiceFactory = ({
 
         // Takes the config row's lock, so concurrent inserts serialise and each reads its own true total.
         const stored = await agentVaultActivityConfigDAL.incrementStoredRecordCount(config.id, chunk.recordCount, tx);
-        if (stored > ceiling) {
+        if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS) {
           // Rolls the insert back with it, so refusing costs nothing and stays refusable next time.
+          // The ceiling is ours rather than the customer's, so neither the number nor a way to change
+          // it belongs in a message that lands in their proxy's logs.
           throw new BadRequestError({
             name: AgentVaultActivityErrorName.CeilingReached,
-            message: `This organization has reached its activity storage limit of ${ceiling} records. Ask an administrator to raise it or delete old activity`
+            message: "Activity storage for this organization is full and recording is paused. Contact Infisical support"
           });
         }
         return created;
@@ -349,7 +349,6 @@ export const agentVaultActivityServiceFactory = ({
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultActivityConfigDAL.findOne({ projectId });
-    const ceiling = getConfig().AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS;
 
     if (!config) {
       return {
@@ -361,7 +360,7 @@ export const agentVaultActivityServiceFactory = ({
           keyPrefix: null,
           configVersion: 1
         },
-        usage: { storedRecordCount: 0, ceiling },
+        isStorageFull: false,
         corsProbeUrl: null
       };
     }
@@ -381,7 +380,7 @@ export const agentVaultActivityServiceFactory = ({
 
     return {
       config: toConfigView(config),
-      usage: { storedRecordCount: toCount(config.storedRecordCount), ceiling },
+      isStorageFull: toCount(config.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
       corsProbeUrl
     };
   };
@@ -461,10 +460,7 @@ export const agentVaultActivityServiceFactory = ({
 
     return {
       config: toConfigView(saved),
-      usage: {
-        storedRecordCount: toCount(saved.storedRecordCount),
-        ceiling: getConfig().AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS
-      },
+      isStorageFull: toCount(saved.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
       corsProbeUrl,
       relocated
     };

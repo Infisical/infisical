@@ -133,11 +133,11 @@ Infisical adds no S3 lifecycle rule. Object keys carry the date, as `<prefix>/<p
 
 ## Storage limits
 
-What costs Infisical is the index, not the bytes in your bucket, so there's a cap on how many records an organization can have indexed at once. The **Activity Logging** panel shows the current count against it, and the **Settings** page warns at 80%.
+What costs Infisical is the index, not the bytes in your bucket, so there's a limit on how many records an organization can have indexed at once. It's set high enough that reaching it is unusual, and the **Settings** page says so if you do.
 
-At the cap, proxies stop recording. Each one pauses for 15 minutes and tries again, so raising the limit or letting old sessions age out resumes recording without restarting anything. Nothing already recorded is deleted to make room: dropping the oldest records would turn a flood of requests into a way of erasing evidence.
+At the limit, proxies stop recording. Each one pauses for 15 minutes and tries again, so recording resumes on its own once there's room, without restarting anything. Letting old sessions age out frees space, since deleting a session deletes its records. Nothing already recorded is deleted to make room: dropping the oldest records would turn a flood of requests into a way of erasing evidence.
 
-Self-hosted instances set the cap with `AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS`, which defaults to 10,000,000.
+If you reach it, contact us.
 
 ## What this doesn't cover
 

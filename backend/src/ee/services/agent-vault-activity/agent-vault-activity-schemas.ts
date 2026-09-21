@@ -92,10 +92,7 @@ export const AgentVaultActivityConfigViewSchema = z.object({
 
 export const AgentVaultActivityConfigResponseSchema = z.object({
   config: AgentVaultActivityConfigViewSchema,
-  usage: z.object({
-    storedRecordCount: z.number().describe(AGENT_VAULT.ACTIVITY.storedRecordCount),
-    ceiling: z.number().describe(AGENT_VAULT.ACTIVITY.ceiling)
-  }),
+  isStorageFull: z.boolean().describe(AGENT_VAULT.ACTIVITY.isStorageFull),
   corsProbeUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl)
 });
 

@@ -292,7 +292,8 @@ export type TAgentVaultActivityConfig = {
 
 export type TAgentVaultActivityConfigResponse = {
   config: TAgentVaultActivityConfig;
-  usage: { storedRecordCount: number; ceiling: number };
+  /** The record ceiling itself is internal, so only the fact that it has been reached is reported. */
+  isStorageFull: boolean;
   /**
    * A presigned GET the browser fetches to prove the bucket allows cross-origin reads. Server-side
    * validation cannot see a missing CORS rule, so without this an admin gets a green save and every
