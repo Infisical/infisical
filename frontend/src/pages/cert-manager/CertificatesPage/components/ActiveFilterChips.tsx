@@ -27,7 +27,7 @@ const FilterChip = ({
     <Badge variant="neutral" className="gap-1.5 pr-1" asChild>
       <button type="button" onClick={onRemove}>
         <span>{label}</span>
-        <XIcon className="size-3 text-muted transition-colors hover:text-red-400" />
+        <XIcon className="size-3 text-muted transition-colors hover:text-danger" />
       </button>
     </Badge>
   );

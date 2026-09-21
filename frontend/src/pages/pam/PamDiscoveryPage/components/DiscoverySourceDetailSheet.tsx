@@ -30,6 +30,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -548,8 +549,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {typeDetails && (
-                              <img
-                                src={`/images/integrations/${typeDetails.icon}`}
+                              <ProviderIcon
+                                icon={typeDetails.icon}
                                 alt={typeDetails.name}
                                 className="size-5 shrink-0 rounded-sm"
                               />
@@ -674,8 +675,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {typeDetails && (
-                              <img
-                                src={`/images/integrations/${typeDetails.icon}`}
+                              <ProviderIcon
+                                icon={typeDetails.icon}
                                 alt={typeDetails.name}
                                 className="size-5 shrink-0 rounded-sm"
                               />
@@ -849,8 +850,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         icon={
           <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
             {typeMeta?.icon ? (
-              <img
-                src={`/images/integrations/${typeMeta.icon}`}
+              <ProviderIcon
+                icon={typeMeta.icon}
                 alt={typeMeta.name}
                 className="size-10 rounded-sm"
               />

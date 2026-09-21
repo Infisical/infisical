@@ -23,6 +23,7 @@ export const SecretImportSecretRow = ({
 }: Props) => {
   return (
     <TableRow className="group">
+      <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
       <TableCell isTruncatable>
         <div className="flex items-center gap-1.5">
           <span className="truncate">{secretKey}</span>

@@ -60,7 +60,7 @@ import {
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
-import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
@@ -91,7 +91,7 @@ const Page = () => {
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
-  const { mutateAsync: removeAgentVaultIdentityMutateAsync } = useRemoveAgentVaultProductMember();
+  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
@@ -154,7 +154,7 @@ const Page = () => {
     } else if (isAgentVault) {
       // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
       // and reaps the identity's bundle grants, none of which the generic route does.
-      await removeAgentVaultIdentityMutateAsync({ identityId });
+      await revokeAgentVaultMembers({ machineIdentityIds: [identityId] });
     } else {
       await removeIdentityMutateAsync({
         identityId,
@@ -212,7 +212,7 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {identityMembershipDetails ? (
         <>
           <PageHeader
@@ -239,14 +239,11 @@ const Page = () => {
               {isProjectIdentity ? (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   projectId={currentProject.id}
-                  projectName={currentProject.name}
                 />
               ) : (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   readOnly
                 />
               )}
@@ -330,7 +327,7 @@ const Page = () => {
               </DropdownMenu>
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={isOrgIdentity}
@@ -338,7 +335,7 @@ const Page = () => {
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}

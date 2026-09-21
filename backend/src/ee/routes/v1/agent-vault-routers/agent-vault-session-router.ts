@@ -47,6 +47,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultSessions",
       description: "List Agent Vault sessions",
       tags: [ApiDocsTags.AgentVaultSessions],
@@ -92,6 +93,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createAgentVaultSession",
       description: "Create an Agent Vault session with an access bundle you can reach",
       tags: [ApiDocsTags.AgentVaultSessions],
@@ -200,6 +202,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     url: "/:sessionId/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "revokeAgentVaultSession",
       description: "Revoke an Agent Vault session",
       tags: [ApiDocsTags.AgentVaultSessions],

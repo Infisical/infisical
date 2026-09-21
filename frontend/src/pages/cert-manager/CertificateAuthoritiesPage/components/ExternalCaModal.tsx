@@ -15,6 +15,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -35,6 +36,7 @@ import {
 } from "@app/hooks/api/appConnections/digicert";
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePowerDnsConnectionListZones } from "@app/hooks/api/appConnections/powerdns";
 import {
   AcmeDnsProvider,
   CaStatus,
@@ -191,13 +193,13 @@ const CaTypeCard = ({
       type="button"
       onClick={onClick}
       disabled={isLocked}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-card"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors enabled:hover:border-border-strong enabled:hover:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
           {option.image ? (
-            <img
-              src={`/images/integrations/${option.image}`}
+            <ProviderIcon
+              icon={option.image}
               alt={`${option.name} logo`}
               className="h-6 w-6 object-contain"
             />
@@ -394,6 +396,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availablePowerDnsConnections, isPending: isPowerDnsPending } =
+    useListAvailableAppConnections(AppConnection.PowerDns, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -450,7 +457,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableRoute53Connections || []),
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
-      ...(availableAzureDNSConnections || [])
+      ...(availableAzureDNSConnections || []),
+      ...(availablePowerDnsConnections || [])
     ];
   }, [
     caType,
@@ -458,6 +466,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
+    availablePowerDnsConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -466,8 +475,36 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableGoDaddyConnections
   ]);
 
+  const dnsAppConnections: TAvailableAppConnection[] = useMemo(() => {
+    switch (dnsProvider) {
+      case AcmeDnsProvider.ROUTE53:
+        return availableRoute53Connections || [];
+      case AcmeDnsProvider.Cloudflare:
+        return availableCloudflareConnections || [];
+      case AcmeDnsProvider.DNSMadeEasy:
+        return availableDNSMadeEasyConnections || [];
+      case AcmeDnsProvider.AzureDNS:
+        return availableAzureDNSConnections || [];
+      case AcmeDnsProvider.PowerDns:
+        return availablePowerDnsConnections || [];
+      default:
+        return [];
+    }
+  }, [
+    dnsProvider,
+    availableRoute53Connections,
+    availableCloudflareConnections,
+    availableDNSMadeEasyConnections,
+    availableAzureDNSConnections,
+    availablePowerDnsConnections
+  ]);
+
   const isPending =
-    ((isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending) &&
+    ((isRoute53Pending ||
+      isCloudflarePending ||
+      isDNSMadeEasyPending ||
+      isAzureDNSPending ||
+      isPowerDnsPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -494,6 +531,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: azureDnsZones = [], isPending: isAzureDNSZonesPending } =
     useAzureDNSConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.AzureDNS && !!dnsAppConnection.id
+    });
+
+  const { data: powerDnsZones = [], isPending: isPowerDnsZonesPending } =
+    usePowerDnsConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.PowerDns && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -947,7 +989,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   dnsProvider={dnsProvider}
                   directoryUrl={directoryUrl}
                   dnsAppConnection={dnsAppConnection}
-                  availableConnections={availableConnections}
+                  availableConnections={dnsAppConnections}
                   isPending={isPending}
                   cloudflareZones={cloudflareZones}
                   isZonesPending={isZonesPending}
@@ -955,6 +997,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
                   azureDnsZones={azureDnsZones}
                   isAzureDNSZonesPending={isAzureDNSZonesPending}
+                  powerDnsZones={powerDnsZones}
+                  isPowerDnsZonesPending={isPowerDnsZonesPending}
+                  onDnsSelectionChange={() =>
+                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                      shouldDirty: true
+                    })
+                  }
                 />
               )}
               {caType === CaType.AZURE_AD_CS && (

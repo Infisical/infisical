@@ -30,7 +30,7 @@ const badgeVariants = cva(
       },
       variant: {
         ghost: "text-foreground border-none [a&,button&]:hover:bg-foreground/10",
-        default: "bg-label text-background border-label [a&,button&]:hover:bg-primary/35",
+        default: "bg-label text-background border-label [a&,button&]:hover:bg-project/35",
         outline: "border border-border text-muted",
         shaded: "bg-border text-foreground/60 border-none",
         neutral: "bg-neutral/15 border-neutral/10 text-neutral [a&,button&]:hover:bg-neutral/35",
