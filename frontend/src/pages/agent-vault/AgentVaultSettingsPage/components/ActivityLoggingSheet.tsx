@@ -7,10 +7,6 @@ import { AppConnectionOptionContent } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Alert,
   AlertDescription,
   Button,
@@ -376,23 +372,17 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                 )}
               </FieldSet>
 
-              <Accordion type="single" collapsible variant="ghost">
-                <AccordionItem value="bucket-setup">
-                  <AccordionTrigger>What the bucket needs</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="flex flex-col gap-4">
-                      <CodeBlock
-                        label="Bucket policy for the connection's credentials"
-                        value={iamPolicyFor(bucket, keyPrefix)}
-                      />
-                      <CodeBlock
-                        label="Bucket CORS rule, so your browser can read the records back"
-                        value={corsPolicyFor(window.location.origin)}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+              <FieldSet>
+                <FieldLegend variant="label">Bucket setup</FieldLegend>
+                <CodeBlock
+                  label="Bucket policy for the connection's credentials"
+                  value={iamPolicyFor(bucket, keyPrefix)}
+                />
+                <CodeBlock
+                  label="Bucket CORS rule, so your browser can read the records back"
+                  value={corsPolicyFor(window.location.origin)}
+                />
+              </FieldSet>
             </FieldGroup>
           </div>
 
