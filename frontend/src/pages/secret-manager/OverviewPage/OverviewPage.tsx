@@ -634,6 +634,20 @@ const OverviewPageContent = () => {
   const isProtectedBranch = Boolean(boardPolicy);
 
   const isSingleEnvView = visibleEnvs.length === 1;
+  const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(new Set());
+  const handleSecretRowExpandedChange = useCallback((secretKey: string, isExpanded: boolean) => {
+    setExpandedSecretRows((current) => {
+      if (current.has(secretKey) === isExpanded) return current;
+
+      const next = new Set(current);
+      if (isExpanded) {
+        next.add(secretKey);
+      } else {
+        next.delete(secretKey);
+      }
+      return next;
+    });
+  }, []);
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
   const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
@@ -3100,7 +3114,12 @@ const OverviewPageContent = () => {
                       )}
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="transition-all duration-500 [&:has(>tr[data-secret-row-expanded])>tr:not([data-secret-row-expanded])]:opacity-40 [&>tr]:transition-opacity [&>tr]:duration-200 motion-reduce:[&>tr]:transition-none">
+                  <TableBody
+                    className={twMerge(
+                      "transition-all duration-500 [&>tr]:transition-opacity [&>tr]:duration-200 motion-reduce:[&>tr]:transition-none",
+                      expandedSecretRows.size > 0 && "[&>tr]:opacity-40"
+                    )}
+                  >
                     {showOverviewSkeleton ? (
                       Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                         <TableRow className="group" key={`loading-row-${index + 1}`}>
@@ -3353,6 +3372,7 @@ const OverviewPageContent = () => {
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
+                            onExpandedChange={handleSecretRowExpandedChange}
                           />
                         ))}
                         <SecretNoAccessTableRow
