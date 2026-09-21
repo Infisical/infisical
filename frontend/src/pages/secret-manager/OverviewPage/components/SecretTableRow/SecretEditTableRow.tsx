@@ -970,10 +970,12 @@ export const SecretEditTableRow = ({
               : event.currentTarget.value;
             field.onChange(value);
           }}
+          onFocus={() => setIsFieldFocused.on()}
           onKeyDown={handleEditShortcut}
           onBlur={(e) => {
             field.onBlur();
             if (!isBatchMode && field.onChange) field.onChange(e);
+            setIsFieldFocused.off();
           }}
         />
       )}

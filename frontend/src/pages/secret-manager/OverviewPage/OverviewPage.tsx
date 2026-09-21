@@ -3116,8 +3116,8 @@ const OverviewPageContent = () => {
                   </TableHeader>
                   <TableBody
                     className={twMerge(
-                      "transition-all duration-500 [&>tr]:transition-opacity [&>tr]:duration-200 motion-reduce:[&>tr]:transition-none",
-                      expandedSecretRows.size > 0 && "[&>tr]:opacity-40"
+                      "transition-all duration-500 [&>tr>td>*]:transition-opacity [&>tr>td>*]:duration-200 motion-reduce:[&>tr>td>*]:transition-none",
+                      expandedSecretRows.size > 0 && "[&>tr>td>*]:opacity-40"
                     )}
                   >
                     {showOverviewSkeleton ? (

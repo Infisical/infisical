@@ -291,7 +291,7 @@ export const SecretTableRow = ({
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
         className={twMerge(
           "group hover:z-10",
-          isRowExpanded && "!opacity-100",
+          isRowExpanded && "[&>td>*]:!opacity-100",
           pendingActionRowClass(singleEnvPendingAction)
         )}
       >
@@ -539,7 +539,7 @@ export const SecretTableRow = ({
         <TableRow
           className={twMerge(
             "group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]",
-            isRowExpanded && "!opacity-100"
+            isRowExpanded && "[&>td>*]:!opacity-100"
           )}
         >
           <TableCell>
@@ -551,7 +551,7 @@ export const SecretTableRow = ({
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            {secretKey}
+            <span>{secretKey}</span>
           </TableCell>
           <TableCell>
             <SecretOverrideRow
@@ -598,7 +598,7 @@ export const SecretTableRow = ({
         </Dialog>
       )}
       {!isSingleEnvView && isFormExpanded && (
-        <TableRow className="border-0 !opacity-100 hover:bg-transparent">
+        <TableRow className="border-0 hover:bg-transparent [&>td>*]:!opacity-100">
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
