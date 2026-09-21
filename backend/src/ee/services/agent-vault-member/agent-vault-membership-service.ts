@@ -339,9 +339,18 @@ export const agentVaultMembershipServiceFactory = ({
     const machineIdentityIds = named(actors, AgentVaultMemberType.MachineIdentity);
     const userIds = named(actors, AgentVaultMemberType.User);
 
-    const [groups, identities, userMemberIds, identityMemberIds] = await Promise.all([
-      groupIds.length ? groupDAL.find({ $in: { id: groupIds }, orgId }) : [],
-      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds }, orgId }) : [],
+    // An org reaches a group or an identity through an org-scope membership row, not by owning the row:
+    // that is how a sub-org is given one of its parent's, and how the generic project membership path
+    // decides the same question. Reading orgId off the group or identity refuses every linked one.
+    const orgScoped = (column: "actorGroupId" | "actorIdentityId", ids: string[]) =>
+      ids.length
+        ? membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: orgId, $in: { [column]: ids } })
+        : [];
+
+    const [groupMemberships, identityMemberships, identities, userMemberIds, identityMemberIds] = await Promise.all([
+      orgScoped("actorGroupId", groupIds),
+      orgScoped("actorIdentityId", machineIdentityIds),
+      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : [],
       orgDAL.findActiveEffectiveOrgMemberActorIds({ actorType: ActorType.USER, actorIds: userIds, orgId }),
       orgDAL.findActiveEffectiveOrgMemberActorIds({
         actorType: ActorType.IDENTITY,
@@ -350,14 +359,17 @@ export const agentVaultMembershipServiceFactory = ({
       })
     ]);
 
-    const foundGroups = new Set(groups.map((group) => group.id));
+    const foundGroups = new Set(groupMemberships.map((membership) => membership.actorGroupId));
     const missingGroups = groupIds.filter((id) => !foundGroups.has(id));
     if (missingGroups.length) {
       throw new NotFoundError({ message: `Group(s) ${missingGroups.map((el) => `'${el}'`).join(", ")} not found` });
     }
 
+    // Keyed on the membership, so an identity in another org stays a 404 rather than reaching the
+    // active-member check below, which would confirm it exists.
+    const foundIdentities = new Set(identityMemberships.map((membership) => membership.actorIdentityId));
     const identityById = new Map(identities.map((identity) => [identity.id, identity]));
-    const missingIdentities = machineIdentityIds.filter((id) => !identityById.has(id));
+    const missingIdentities = machineIdentityIds.filter((id) => !foundIdentities.has(id));
     if (missingIdentities.length) {
       throw new NotFoundError({
         message: `Machine identity(s) ${missingIdentities.map((el) => `'${el}'`).join(", ")} not found`

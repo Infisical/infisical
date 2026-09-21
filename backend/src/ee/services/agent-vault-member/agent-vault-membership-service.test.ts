@@ -11,6 +11,7 @@ const PROJECT_ID = "project-1";
 const OTHER_PROJECT_ID = "project-2";
 const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
+const GROUP_ID = "group-1";
 
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
@@ -66,11 +67,16 @@ const buildService = ({
       )
     },
     membershipDAL: {
-      find: vi.fn(({ scope }: { scope: string }) =>
+      // The organization read is how an actor is judged to exist here, so it answers for whatever it is
+      // asked about. That is what an org holds for every actor it reaches, including one it does not own
+      // itself and one another product scoped to its own project.
+      find: vi.fn(({ scope, $in }: { scope: string; $in?: Record<string, string[] | undefined> }) =>
         Promise.resolve(
           scope === AccessScope.Project
             ? productMemberships.map((row) => ({ ...row, actorIdentityId: IDENTITY_ID, createdAt: new Date() }))
-            : []
+            : Object.entries($in ?? {}).flatMap(([column, ids]) =>
+                (ids ?? []).map((id) => ({ id: `org-${id}`, [column]: id }))
+              )
         )
       ),
       // assertWillRetainProjectAdmin takes an advisory lock through tx.raw, then counts live admins
@@ -166,6 +172,46 @@ describe("agentVaultMembership guards", () => {
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+  });
+
+  // A sub-organization reaches one of its parent's groups through a membership of its own, and the group
+  // row keeps pointing at the parent. Judging it by that row refused every linked group.
+  test("accepts a group the organization reaches but does not own", async () => {
+    const { service, deps } = buildService();
+
+    const { members } = await service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [],
+      machineIdentityIds: [],
+      groupIds: [GROUP_ID],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    expect(members[0].id).toBe("mem-new");
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: AccessScope.Organization, $in: { actorGroupId: [GROUP_ID] } })
+    );
+  });
+
+  test("refuses a group the organization does not reach at all", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [],
+        machineIdentityIds: [],
+        groupIds: [GROUP_ID],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
   test("refuses to change your own role", async () => {
