@@ -2,7 +2,8 @@ import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2Overview } from "@app/hooks/api";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
 import { BillingHeaderCard } from "./cards/BillingHeaderCard";
@@ -11,8 +12,9 @@ import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
 import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
-import { OverviewSkeleton } from "./states/OverviewSkeleton";
+import { BillingSectionSkeleton, StatTilesSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
+import { RootOrgFilter } from "./RootOrgFilter";
 import { TrialBanners } from "./TrialBanners";
 
 export type OverviewProps = {
@@ -22,6 +24,15 @@ export type OverviewProps = {
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
+  onViewBreakdown: (productId: string) => void;
+  rootOrgs: BillingV2Organization[];
+  rootOrgCount: number;
+  isRootOrgsLoading: boolean;
+  isReloading: boolean;
+  selectedOrgId: string;
+  onSelectOrg: (orgId: string) => void;
+  onSearchOrgs: (search: string) => void;
+  showOrgFilter: boolean;
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -37,19 +48,76 @@ export const Overview = ({
   onManageSubscription,
   onUpgrade,
   onSetCommitment,
+  onViewBreakdown,
+  rootOrgs,
+  rootOrgCount,
+  isRootOrgsLoading,
+  isReloading,
+  selectedOrgId,
+  onSelectOrg,
+  onSearchOrgs,
+  showOrgFilter,
   onUpdatePayment,
   onEditDetails,
   onContact,
   onRetry,
   canManageBilling
 }: OverviewProps) => {
-  if (subState === "loading") {
-    return <OverviewSkeleton />;
+  const orgFilter = showOrgFilter ? (
+    <RootOrgFilter
+      orgs={rootOrgs}
+      totalCount={rootOrgCount}
+      isLoading={isRootOrgsLoading}
+      value={selectedOrgId}
+      onChange={onSelectOrg}
+      onSearchChange={onSearchOrgs}
+    />
+  ) : null;
+
+  if (subState === "loading" || isReloading) {
+    const isManagedShell = overview ? overview.mode === "managed" : !isInfisicalCloud();
+    const hasHeaderTiles = overview ? overview.subState !== "no-subscription" : true;
+    const keepsBillingHistory = Boolean(
+      overview && (overview.payment || overview.billingDetails || overview.invoices.length > 0)
+    );
+    const hasBillingSection = overview
+      ? overview.isCloud && (overview.subState !== "no-subscription" || keepsBillingHistory)
+      : isInfisicalCloud();
+
+    return (
+      <div className="flex flex-col gap-4">
+        {isManagedShell && (
+          <Banner
+            mode="managed"
+            subState={subState}
+            canManage={false}
+            onUpdatePayment={onUpdatePayment}
+            onManageSubscription={onManageSubscription}
+          />
+        )}
+        {hasHeaderTiles && <StatTilesSkeleton />}
+        <ProductsCard
+          key="products"
+          overview={overview}
+          catalog={catalog}
+          readOnly
+          orgFilter={orgFilter}
+          isReloading
+          onManage={onUpgrade}
+          onSetCommitment={onSetCommitment}
+          onViewBreakdown={onViewBreakdown}
+          onContact={onContact}
+        />
+        {hasBillingSection && <BillingSectionSkeleton />}
+      </div>
+    );
   }
 
   if (subState === "error" || !overview) {
     return (
       <div className="flex flex-col gap-4">
+        {/* The picker stays reachable so a failing organization is not a dead end. */}
+        {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
         <ErrorPanel onRetry={onRetry} />
       </div>
     );
@@ -124,11 +192,14 @@ export const Overview = ({
           onManageSubscription={onManageSubscription}
         />
         <ProductsCard
+          key="products"
           overview={overview}
           catalog={catalog}
           readOnly={productsReadOnly}
+          orgFilter={orgFilter}
           onManage={onUpgrade}
           onSetCommitment={onSetCommitment}
+          onViewBreakdown={onViewBreakdown}
           onContact={onContact}
         />
         {hasBillingHistory && billingSection}
@@ -163,11 +234,14 @@ export const Overview = ({
       />
       <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard
+        key="products"
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
+        orgFilter={orgFilter}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
+        onViewBreakdown={onViewBreakdown}
         onContact={onContact}
       />
       {billingSection}

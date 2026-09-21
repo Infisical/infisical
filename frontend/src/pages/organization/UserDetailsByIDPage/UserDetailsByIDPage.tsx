@@ -96,7 +96,7 @@ const Page = withPermission(
     };
 
     return (
-      <div className="mx-auto flex max-w-8xl flex-col">
+      <div className="@container mx-auto flex max-w-8xl flex-col">
         {membership && (
           <>
             <Link
@@ -105,7 +105,7 @@ const Page = withPermission(
               search={{
                 selectedTab: OrgAccessControlTabSections.Member
               }}
-              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
             >
               <ChevronLeftIcon size={16} />
               {isSubOrganization ? "Sub-" : ""}Organization Users
@@ -215,7 +215,7 @@ const Page = withPermission(
                 </DropdownMenu>
               )}
             </PageHeader>
-            <div className="flex flex-col gap-5 lg:flex-row">
+            <div className="flex flex-col gap-5 @4xl:flex-row">
               <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
               <div className="flex min-w-0 flex-1 flex-col gap-y-5">
                 <UserProjectsSection membershipId={membershipId} />

@@ -53,6 +53,7 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.IdentityUniversalAuth}.identityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Identity}.orgId`, orgId)
         .where(`${TableName.IdentityUaClientSecret}.isClientSecretRevoked`, false)
         .where(`${TableName.IdentityUaClientSecret}.clientSecretTTL`, ">", 0)
         .whereRaw(`${expiresAtSql} > ?::timestamptz`, [asOf])
@@ -103,15 +104,15 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     identityId: string,
     orgId: string,
     tx?: Knex
-  ): Promise<{ projectId: string | null } | undefined> => {
+  ): Promise<{ orgId: string; projectId: string | null } | undefined> => {
     try {
       const row = (await (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .select(db.ref("projectId").withSchema(TableName.Identity))
-        .first()) as { projectId: string | null } | undefined;
+        .select(db.ref("orgId").withSchema(TableName.Identity), db.ref("projectId").withSchema(TableName.Identity))
+        .first()) as { orgId: string; projectId: string | null } | undefined;
       return row;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindIdentityInOrg" });
@@ -141,5 +142,36 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findExpiringUaClientSecrets, findIdentityInOrg, isIdentityInProject, getProjectType };
+  const findIdentitiesByIds = async (identityIds: string[], orgId: string): Promise<{ id: string; name: string }[]> => {
+    if (identityIds.length === 0) return [];
+    try {
+      const rows = (await db(TableName.Identity).whereIn("id", identityIds).where({ orgId }).select("id", "name")) as {
+        id: string;
+        name: string;
+      }[];
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindIdentitiesByIds" });
+    }
+  };
+
+  const findUserLabelById = async (userId: string): Promise<string | undefined> => {
+    try {
+      const row = (await db(TableName.Users).where({ id: userId }).select("email", "username").first()) as
+        | { email: string | null; username: string }
+        | undefined;
+      return row ? (row.email ?? row.username) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindUserLabelById" });
+    }
+  };
+
+  return {
+    findExpiringUaClientSecrets,
+    findIdentityInOrg,
+    isIdentityInProject,
+    getProjectType,
+    findIdentitiesByIds,
+    findUserLabelById
+  };
 };

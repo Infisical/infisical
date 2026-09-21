@@ -130,9 +130,7 @@ const createService = ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
     },
-    gatewayService: {},
     gatewayV2Service: {},
-    gatewayDAL: { find: vi.fn().mockResolvedValue([]) },
     gatewayV2DAL: { find: vi.fn().mockResolvedValue([]) },
     gatewayPoolService: { pickHealthyGateway: vi.fn(), runWithPoolFailover: vi.fn() },
     gatewayPoolDAL: { findById: vi.fn().mockResolvedValue(null) },
@@ -145,7 +143,8 @@ const createService = ({
       issueIdentityAccessToken: vi.fn(),
       revokeTokensForIdentityAuthMethod: vi.fn(),
       invalidateTrustedIpsCache: vi.fn()
-    }
+    },
+    eventEmitter: { emit: vi.fn() }
   } as unknown as Parameters<typeof identityKubernetesAuthServiceFactory>[0]);
 
   return { service, identityKubernetesAuthDAL };

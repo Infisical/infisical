@@ -118,7 +118,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             secretPath: dynamicSecretCfg.secretPath,
             defaultTTL: `${ms(dynamicSecretCfg.defaultTTL) / 1000}s`,
             maxTTL: dynamicSecretCfg.maxTTL ? `${ms(dynamicSecretCfg.maxTTL) / 1000}s` : null,
-            hasGateway: Boolean(dynamicSecretCfg.gatewayId || dynamicSecretCfg.gatewayV2Id)
+            hasGateway: Boolean(dynamicSecretCfg.gatewayV2Id)
           }
         })
         .catch(() => {});

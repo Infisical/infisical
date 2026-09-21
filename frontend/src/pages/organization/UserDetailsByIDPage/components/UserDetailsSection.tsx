@@ -102,7 +102,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const status = membership ? getStatus(membership) : null;
 
   return membership ? (
-    <Card className="w-full lg:max-w-[24rem] lg:shrink-0">
+    <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>User membership details</CardDescription>

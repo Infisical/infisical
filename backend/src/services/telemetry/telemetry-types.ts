@@ -1,5 +1,9 @@
 import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
-import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultTrafficPolicy
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -102,8 +106,6 @@ export enum PostHogEventTypes {
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
-  GatewayUpdated = "Gateway Updated",
-  GatewayDeleted = "Gateway Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
   PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
@@ -1099,20 +1101,6 @@ export type TGatewayCertExchangedEvent = {
     certificateSerialNumber: string;
     identityId: string;
     orgId?: string;
-  };
-};
-
-export type TGatewayUpdatedEvent = {
-  event: PostHogEventTypes.GatewayUpdated;
-  properties: {
-    gatewayId: string;
-  };
-};
-
-export type TGatewayDeletedEvent = {
-  event: PostHogEventTypes.GatewayDeleted;
-  properties: {
-    gatewayId: string;
   };
 };
 
@@ -2411,8 +2399,6 @@ type TAgentVaultEventBase = {
   actorType: string;
 };
 
-type TAgentVaultMemberType = "user" | "group" | "identity";
-
 export type TAgentVaultAccessBundleCreatedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleCreated;
   properties: TAgentVaultEventBase & { accessBundleId: string };
@@ -2435,6 +2421,10 @@ export type TAgentVaultServiceCreatedEvent = {
     serviceId: string;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
   };
 };
 
@@ -2445,6 +2435,10 @@ export type TAgentVaultServiceUpdatedEvent = {
     serviceId: string;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
   };
 };
 
@@ -2455,12 +2449,12 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded;
-  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
 };
 
 export type TAgentVaultAccessBundleMemberRemovedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved;
-  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
 };
 
 export type TAgentVaultSessionCreatedEvent = {
@@ -2522,17 +2516,17 @@ export type TAgentVaultProxyEnrolledEvent = {
 
 export type TAgentVaultProductMemberAddedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberAdded;
-  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
 };
 
 export type TAgentVaultProductMemberUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberUpdated;
-  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
 };
 
 export type TAgentVaultProductMemberRemovedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberRemoved;
-  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType };
 };
 
 export type TAgentVaultPostHogEvent =
@@ -2667,8 +2661,6 @@ export type TPostHogEvent = {
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
-  | TGatewayUpdatedEvent
-  | TGatewayDeletedEvent
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent

@@ -98,7 +98,7 @@ const Page = () => {
   if (isPending) {
     return (
       <div
-        className="mx-auto flex max-w-8xl flex-col gap-5"
+        className="@container mx-auto flex max-w-8xl flex-col gap-5"
         role="status"
         aria-label="Loading group details"
         aria-busy="true"
@@ -108,8 +108,8 @@ const Page = () => {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-80 max-w-full" />
         </div>
-        <div className="flex flex-col gap-5 lg:flex-row">
-          <Skeleton className="h-64 w-full lg:max-w-[24rem] lg:shrink-0" />
+        <div className="flex flex-col gap-5 @4xl:flex-row">
+          <Skeleton className="h-64 w-full @4xl:max-w-[24rem] @4xl:shrink-0" />
           <Skeleton className="h-64 min-w-0 flex-1" />
         </div>
       </div>
@@ -129,7 +129,7 @@ const Page = () => {
   const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {groupMembership ? (
         <>
           <PageHeader
@@ -184,7 +184,7 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <GroupDetailsSection groupMembership={groupMembership} />
             <GroupMembersSection groupMembership={groupMembership} />
           </div>

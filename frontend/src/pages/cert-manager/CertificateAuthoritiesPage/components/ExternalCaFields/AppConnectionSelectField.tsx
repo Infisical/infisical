@@ -27,6 +27,7 @@ type Props = {
   isLoading: boolean;
   required?: boolean;
   menuPlacement?: "top" | "bottom" | "auto";
+  onAfterChange?: () => void;
 };
 
 export const AppConnectionSelectField = ({
@@ -37,7 +38,8 @@ export const AppConnectionSelectField = ({
   options,
   isLoading,
   required,
-  menuPlacement
+  menuPlacement,
+  onAfterChange
 }: Props) => (
   <Controller
     control={control}
@@ -56,7 +58,10 @@ export const AppConnectionSelectField = ({
         <FilterableSelect
           {...(menuPlacement ? { menuPlacement } : {})}
           value={(value as AppConnectionValue)?.id ? (value as AppConnectionValue) : null}
-          onChange={(newValue) => onChange(newValue)}
+          onChange={(newValue) => {
+            onChange(newValue);
+            onAfterChange?.();
+          }}
           isLoading={isLoading}
           options={options}
           placeholder="Select connection..."

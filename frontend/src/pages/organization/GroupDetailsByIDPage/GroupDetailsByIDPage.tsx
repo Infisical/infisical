@@ -81,7 +81,7 @@ const Page = () => {
   const isLinkedGroup = data && currentOrg ? data.group.orgId !== currentOrg.id : false;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {data && (
         <>
           <Link
@@ -90,7 +90,7 @@ const Page = () => {
             search={{
               selectedTab: TabSections.Groups
             }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <ChevronLeftIcon size={16} />
             {isSubOrganization ? "Sub-" : ""}Organization Groups
@@ -164,7 +164,7 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <GroupDetailsSection
               groupId={groupId}
               handlePopUpOpen={handlePopUpOpen}
