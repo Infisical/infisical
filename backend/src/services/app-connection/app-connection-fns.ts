@@ -347,6 +347,10 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
+// Activity logs are the only consumer today, and they only write to S3. An app type nobody can
+// use just lets someone create a connection that nothing reaches.
+const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
@@ -452,7 +456,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.PAM:
           return false;
         case ProjectType.AgentVault:
-          return false;
+          return AGENT_VAULT_APP_CONNECTIONS.includes(option.app);
         default:
           return true;
       }

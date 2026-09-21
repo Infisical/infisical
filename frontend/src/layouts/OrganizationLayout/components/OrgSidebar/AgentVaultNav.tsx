@@ -1,4 +1,4 @@
-import { FileText, IdCard, Info, Package, Route, Settings, Shield } from "lucide-react";
+import { Blocks, FileText, IdCard, Info, Package, Route, Settings, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -20,35 +20,36 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" }
+    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
+    ...(isAdmin ? [{ label: "Integrations", icon: Blocks, pathSuffix: "integrations" }] : [])
   ];
 
-  const governanceItems: NavItem[] = isAdmin
+  const infrastructureItems: NavItem[] = [{ label: "Proxies", icon: Route, pathSuffix: "proxies" }];
+
+  const administrationItems: NavItem[] = isAdmin
     ? [
-        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
         {
           label: "Access Control",
           icon: Shield,
           pathSuffix: "access-management",
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
         },
+        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
         { label: "Settings", icon: Settings, pathSuffix: "settings" }
       ]
     : [];
 
-  const infrastructureItems: NavItem[] = [{ label: "Proxies", icon: Route, pathSuffix: "proxies" }];
-
   return (
     <>
       <ProjectNavList items={accessItems} onSubmenuOpen={onSubmenuOpen} />
-      {governanceItems.length > 0 && (
-        <SidebarCollapsibleGroup label="Governance">
-          <ProjectNavList items={governanceItems} onSubmenuOpen={onSubmenuOpen} />
-        </SidebarCollapsibleGroup>
-      )}
       <SidebarCollapsibleGroup label="Infrastructure">
         <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
+      {administrationItems.length > 0 && (
+        <SidebarCollapsibleGroup label="Administration">
+          <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
       <SidebarMenu className="mt-auto">
         <SidebarMenuItem>
           <SidebarMenuButton

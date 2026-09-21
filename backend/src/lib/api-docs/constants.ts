@@ -107,6 +107,7 @@ export enum ApiDocsTags {
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
   AgentVaultActivity = "Agent Vault Activity",
+  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }

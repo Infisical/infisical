@@ -387,6 +387,7 @@ const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
     ]),
     route("/proxies", "agent-vault/AgentVaultProxiesPage/route.tsx"),
     route("/settings", "agent-vault/AgentVaultSettingsPage/route.tsx"),
+    route("/integrations", "agent-vault/AgentVaultIntegrationsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-agent-vault.tsx"),
 
     route("/access-management", "project/AccessControlPage/route-agent-vault.tsx"),

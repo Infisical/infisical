@@ -104,6 +104,7 @@ import { Route as organizationNetworkingPageGatewayDetailsByIDPageRouteImport } 
 import { Route as agentVaultAgentVaultSettingsPageRouteImport } from './pages/agent-vault/AgentVaultSettingsPage/route'
 import { Route as agentVaultAgentVaultSessionsPageRouteImport } from './pages/agent-vault/AgentVaultSessionsPage/route'
 import { Route as agentVaultAgentVaultProxiesPageRouteImport } from './pages/agent-vault/AgentVaultProxiesPage/route'
+import { Route as agentVaultAgentVaultIntegrationsPageRouteImport } from './pages/agent-vault/AgentVaultIntegrationsPage/route'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
 import { Route as secretManagerLayoutImport } from './pages/secret-manager/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
@@ -1235,6 +1236,13 @@ const agentVaultAgentVaultProxiesPageRouteRoute =
   agentVaultAgentVaultProxiesPageRouteImport.update({
     id: '/proxies',
     path: '/proxies',
+    getParentRoute: () => agentVaultLayoutRoute,
+  } as any)
+
+const agentVaultAgentVaultIntegrationsPageRouteRoute =
+  agentVaultAgentVaultIntegrationsPageRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
     getParentRoute: () => agentVaultLayoutRoute,
   } as any)
 
@@ -3276,6 +3284,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organization/app-connections/github/manifest/callback'
       preLoaderRoute: typeof redirectsGithubManifestCallbackRedirectImport
       parentRoute: typeof middlewaresInjectOrgDetailsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/integrations': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/integrations'
+      path: '/integrations'
+      fullPath: '/organizations/$orgId/agent-vault/integrations'
+      preLoaderRoute: typeof agentVaultAgentVaultIntegrationsPageRouteImport
+      parentRoute: typeof agentVaultLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies'
@@ -5613,6 +5628,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAgentVaultAgentVaul
   )
 
 interface agentVaultLayoutRouteChildren {
+  agentVaultAgentVaultIntegrationsPageRouteRoute: typeof agentVaultAgentVaultIntegrationsPageRouteRoute
   agentVaultAgentVaultProxiesPageRouteRoute: typeof agentVaultAgentVaultProxiesPageRouteRoute
   agentVaultAgentVaultSessionsPageRouteRoute: typeof agentVaultAgentVaultSessionsPageRouteRoute
   agentVaultAgentVaultSettingsPageRouteRoute: typeof agentVaultAgentVaultSettingsPageRouteRoute
@@ -5627,6 +5643,8 @@ interface agentVaultLayoutRouteChildren {
 }
 
 const agentVaultLayoutRouteChildren: agentVaultLayoutRouteChildren = {
+  agentVaultAgentVaultIntegrationsPageRouteRoute:
+    agentVaultAgentVaultIntegrationsPageRouteRoute,
   agentVaultAgentVaultProxiesPageRouteRoute:
     agentVaultAgentVaultProxiesPageRouteRoute,
   agentVaultAgentVaultSessionsPageRouteRoute:
@@ -6183,6 +6201,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/organization/app-connections/$appConnection/oauth/callback': typeof redirectsOauthCallbackRedirectRoute
   '/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
+  '/organizations/$orgId/agent-vault/integrations': typeof agentVaultAgentVaultIntegrationsPageRouteRoute
   '/organizations/$orgId/agent-vault/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
   '/organizations/$orgId/agent-vault/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/agent-vault/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
@@ -6466,6 +6485,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/organization/app-connections/$appConnection/oauth/callback': typeof redirectsOauthCallbackRedirectRoute
   '/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
+  '/organizations/$orgId/agent-vault/integrations': typeof agentVaultAgentVaultIntegrationsPageRouteRoute
   '/organizations/$orgId/agent-vault/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
   '/organizations/$orgId/agent-vault/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/organizations/$orgId/agent-vault/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
@@ -6744,6 +6764,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/organization/app-connections/$appConnection/oauth/callback': typeof redirectsOauthCallbackRedirectRoute
   '/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/integrations': typeof agentVaultAgentVaultIntegrationsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies': typeof agentVaultAgentVaultProxiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions': typeof agentVaultAgentVaultSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings': typeof agentVaultAgentVaultSettingsPageRouteRoute
@@ -7040,6 +7061,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/secret-manager/$projectId'
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/organization/app-connections/github/manifest/callback'
+    | '/organizations/$orgId/agent-vault/integrations'
     | '/organizations/$orgId/agent-vault/proxies'
     | '/organizations/$orgId/agent-vault/sessions'
     | '/organizations/$orgId/agent-vault/settings'
@@ -7322,6 +7344,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/secret-manager/$projectId'
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/organization/app-connections/github/manifest/callback'
+    | '/organizations/$orgId/agent-vault/integrations'
     | '/organizations/$orgId/agent-vault/proxies'
     | '/organizations/$orgId/agent-vault/sessions'
     | '/organizations/$orgId/agent-vault/settings'
@@ -7598,6 +7621,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId'
     | '/_authenticate/_inject-org-details/organization/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/integrations'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings'
@@ -8306,6 +8330,7 @@ export const routeTree = rootRoute
       "filePath": "agent-vault/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/integrations",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/settings",
@@ -8351,6 +8376,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback": {
       "filePath": "redirects/github-manifest-callback-redirect.tsx",
       "parent": "/_authenticate/_inject-org-details"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/integrations": {
+      "filePath": "agent-vault/AgentVaultIntegrationsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies": {
       "filePath": "agent-vault/AgentVaultProxiesPage/route.tsx",

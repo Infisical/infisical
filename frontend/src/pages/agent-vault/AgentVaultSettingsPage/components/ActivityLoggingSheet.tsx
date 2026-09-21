@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { AppConnectionOptionContent } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
+import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared";
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +15,7 @@ import {
   AlertDescription,
   Button,
   CodeBlock,
+  Combobox,
   DocumentationLinkBadge,
   Field,
   FieldContent,
@@ -24,11 +26,6 @@ import {
   FieldLegend,
   FieldSet,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -37,17 +34,22 @@ import {
   SheetTitle,
   Toggle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
+import { usePopUp } from "@app/hooks";
 import {
   useGetAgentVaultActivityConfig,
-  useListAgentVaultAwsConnections,
   useUpdateAgentVaultActivityConfig
 } from "@app/hooks/api/agentVault";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 const NO_CONNECTION = "none";
+const CREATE_CONNECTION = "_create";
 
 /** Mirrors the server's normalisation, so "a", "/a" and "a/" are not read as three different prefixes. */
 const normalizePrefix = (value: string | null | undefined) => {
@@ -115,16 +117,22 @@ type Props = {
 };
 
 export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { data } = useGetAgentVaultActivityConfig();
   const formatCount = useMemo(() => new Intl.NumberFormat(), []);
-  const { data: connections, isPending: isLoadingConnections } = useListAgentVaultAwsConnections();
+  const { data: connections, isPending: isLoadingConnections } = useListAvailableAppConnections(
+    AppConnection.AWS,
+    currentProject.id
+  );
   const updateConfig = useUpdateAgentVaultActivityConfig();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addConnection"] as const);
 
   const {
     control,
     handleSubmit,
     reset,
+    setValue,
     watch,
     formState: { isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
@@ -144,7 +152,17 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
   const bucket = watch("bucket") ?? "";
   const keyPrefix = watch("keyPrefix") ?? "";
 
-  const hasConnections = (connections?.length ?? 0) > 0;
+  const canCreateConnection = permission.can(
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
+  );
+
+  // The create entry is a sentinel option rather than a button beside the field, matching every
+  // other product's connection picker.
+  const connectionOptions = [
+    ...(canCreateConnection ? [{ id: CREATE_CONNECTION, name: "Create New Connection" }] : []),
+    ...(connections ?? [])
+  ];
 
   // Only the bucket and the prefix decide where an object lives, so only a change to one of those
   // strands what is already recorded. Warning on a first setup, or on a change of connection or
@@ -235,51 +253,46 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
               <FieldSet>
                 <FieldLegend variant="label">Storage</FieldLegend>
 
-                {!isLoadingConnections && !hasConnections ? (
-                  <Alert variant="warning">
-                    <AlertDescription>
-                      Activity is stored in your own S3 bucket, which needs an AWS connection. This
-                      organization has none yet.{" "}
-                      <Link
-                        to="/organizations/$orgId/app-connections"
-                        params={{ orgId: currentOrg.id }}
-                        className="underline"
-                      >
-                        Add an AWS connection
-                      </Link>{" "}
-                      to continue.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Controller
-                    control={control}
-                    name="appConnectionId"
-                    render={({ field, fieldState }) => (
-                      <Field>
-                        <FieldLabel>AWS Connection</FieldLabel>
-                        <FieldContent>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a connection" />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              <SelectItem value={NO_CONNECTION}>None</SelectItem>
-                              {(connections ?? []).map((connection) => (
-                                <SelectItem key={connection.id} value={connection.id}>
-                                  {connection.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FieldDescription>
-                            Its credentials write the records and read them back for playback.
-                          </FieldDescription>
-                          <FieldError>{fieldState.error?.message}</FieldError>
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                )}
+                <Controller
+                  control={control}
+                  name="appConnectionId"
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>AWS Connection</FieldLabel>
+                      <FieldContent>
+                        <Combobox
+                          value={connectionOptions.find((option) => option.id === field.value)}
+                          onValueChange={(option) => {
+                            if (option.id === CREATE_CONNECTION) {
+                              handlePopUpOpen("addConnection");
+                              return;
+                            }
+                            field.onChange(option.id);
+                          }}
+                          isLoading={isLoadingConnections}
+                          isError={Boolean(fieldState.error)}
+                          options={connectionOptions}
+                          placeholder="Select a connection..."
+                          getOptionLabel={(option) => option.name}
+                          getOptionValue={(option) => option.id}
+                          renderOption={(option) => (
+                            <AppConnectionOptionContent
+                              data={option}
+                              isOnlyOption={
+                                option.id === CREATE_CONNECTION && connectionOptions.length === 1
+                              }
+                            />
+                          )}
+                          modal
+                        />
+                        <FieldDescription>
+                          Its credentials write the records and read them back for playback.
+                        </FieldDescription>
+                        <FieldError>{fieldState.error?.message}</FieldError>
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Controller
@@ -302,22 +315,23 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
                   <Controller
                     control={control}
                     name="region"
-                    render={({ field }) => (
+                    render={({ field, fieldState }) => (
                       <Field>
-                        <FieldLabel>Region</FieldLabel>
+                        <FieldLabel
+                          id="agent-vault-activity-region-label"
+                          htmlFor="agent-vault-activity-region"
+                        >
+                          Region
+                        </FieldLabel>
                         <FieldContent>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a region" />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {AWS_REGIONS.map((region) => (
-                                <SelectItem key={region.slug} value={region.slug}>
-                                  {region.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <AwsRegionSelect
+                            id="agent-vault-activity-region"
+                            value={field.value}
+                            onChange={field.onChange}
+                            isError={Boolean(fieldState.error)}
+                            aria-labelledby="agent-vault-activity-region-label"
+                          />
+                          <FieldError>{fieldState.error?.message}</FieldError>
                         </FieldContent>
                       </Field>
                     )}
@@ -398,6 +412,19 @@ export const ActivityLoggingSheet = ({ isOpen, onOpenChange }: Props) => {
           </SheetFooter>
         </form>
       </SheetContent>
+
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isModalOpen) => handlePopUpToggle("addConnection", isModalOpen)}
+        projectType={currentProject.type}
+        projectId={currentProject.id}
+        app={AppConnection.AWS}
+        onComplete={(connection) => {
+          if (connection) {
+            setValue("appConnectionId", connection.id, { shouldValidate: true, shouldDirty: true });
+          }
+        }}
+      />
     </Sheet>
   );
 };

@@ -40,7 +40,7 @@ Request and response bodies aren't recorded, and neither are headers. A request 
 
 ## Prerequisites
 
-- An AWS connection in the organization, under **App Connections**
+- An AWS connection, either organization-wide under **App Connections** or scoped to Agent Vault under **Integrations**
 - An S3 bucket, in a region the connection can reach
 
 Activity logs need a bucket you own. There's no option to store them inside Infisical, and no second storage backend, so an organization with only GCP or Azure connections can't turn this on.
@@ -50,7 +50,7 @@ Activity logs need a bucket you own. There's no option to store them inside Infi
 Go to **Settings** under Agent Vault and select **Set up** on the **Activity Logging** card:
 
 1. Turn on **Record session activity**.
-2. Pick the **AWS Connection** whose credentials write the records.
+2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the panel. A connection made here belongs to Agent Vault; organization-wide connections are marked as such in the list.
 3. Enter the **Bucket** and its **Region**.
 4. Optionally set a **Key Prefix**, so activity objects sit under one path in a bucket you use for other things.
 5. Select **Save**.

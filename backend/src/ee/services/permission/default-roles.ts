@@ -832,6 +832,21 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
     ProjectPermissionSub.AgentVaultProxies
   );
 
+  // The member set deliberately omits this: no member-facing surface picks a connection, and the
+  // shared AppConnectionsTable reads the subject off CASL rather than the role, so granting it here
+  // is what keeps its buttons live for an admin.
+  can(
+    [
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionAppConnectionActions.Edit,
+      ProjectPermissionAppConnectionActions.Delete,
+      ProjectPermissionAppConnectionActions.Connect,
+      ProjectPermissionAppConnectionActions.RotateCredentials
+    ],
+    ProjectPermissionSub.AppConnections
+  );
+
   can(
     [
       ProjectPermissionMemberActions.Create,

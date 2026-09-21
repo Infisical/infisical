@@ -370,9 +370,3 @@ export type TAgentVaultActivityDrop = {
   startedAt: string;
   droppedCount: number;
 };
-
-/** Just enough of an app connection to pick one in the activity storage form. */
-export type TAgentVaultAwsConnection = {
-  id: string;
-  name: string;
-};

@@ -215,6 +215,17 @@ only, never bodies or headers, and never the query string (the proxy builds the 
   detects and reports rather than presigning URLs that 404. Swapping the connection or the region does
   not bump: those leave every object exactly where it is.
 - Settings are admin-only by `hasRole(Admin)`, as everything else here is. No new CASL subject.
+- **App connections are the one CASL subject the admin role carries.** Agent Vault holds its own
+  AWS connections alongside the org's, and the shared `AppConnectionsTable` reads
+  `ProjectPermissionSub.AppConnections` off CASL rather than the role, so the grant is what keeps
+  its buttons live. The admin/member split still comes from `hasRole`; the member set grants
+  nothing. `listAppConnectionOptions` offers AWS alone here, so a picker with no allowlist entry
+  renders empty rather than offering apps nothing consumes.
+- **`/agent-vault/app-connections/aws/*` exists because the generic routes take a `projectId` this
+  product has no public one of.** Its handlers inject `internalAgentVaultProjectId` and reuse the
+  shared service, audit and telemetry events verbatim. Every by-id route re-reads the connection and
+  404s unless its `projectId` matches: `findAppConnectionById` authorizes the actor but says nothing
+  about scope, so without that check a delete here would reach an org connection Secret Sync uses.
 
 ## The CLI
 
