@@ -2,11 +2,15 @@ import { type ClickHouseClient, ClickHouseError, createClient } from "@clickhous
 import { Readable } from "stream";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 const REQUEST_TIMEOUT_MS = 30 * 60 * 1000;
 const CONNECT_TIMEOUT_MS = 30 * 1000;
 
 export const MAX_RESULT_BYTES = 16 * 1024 * 1024;
+
+const UNREACHABLE_MESSAGE =
+  "Could not reach ClickHouse through the gateway. Check that the account's host and port are correct and that the gateway can reach them.";
 
 export const createRelayClient = (opts: {
   relayPort: number;
@@ -39,9 +43,8 @@ export const openRelayClient = async (opts: {
     return client;
   } catch (err) {
     await client.close().catch(() => {});
-    throw new BadRequestError({
-      message: `Unable to open a ClickHouse session through the gateway: ${(err as Error)?.message ?? "connection failed"}`
-    });
+    logger.error(err, `Failed to open a ClickHouse session [relayPort=${opts.relayPort}]`);
+    throw new BadRequestError({ message: UNREACHABLE_MESSAGE });
   }
 };
 
@@ -68,9 +71,8 @@ export const verifyRelayReachable = async (opts: { relayPort: number; database?:
       await result.json();
     });
   } catch (err) {
-    throw new BadRequestError({
-      message: `Unable to reach ClickHouse through the gateway: ${(err as Error)?.message ?? "connection failed"}`
-    });
+    logger.error(err, `Failed to reach ClickHouse [relayPort=${opts.relayPort}]`);
+    throw new BadRequestError({ message: UNREACHABLE_MESSAGE });
   }
 };
 
@@ -81,27 +83,22 @@ export const readStreamText = async (
   // Stops an unhandled 'error' from taking the process down once iteration has moved on
   stream.on("error", () => {});
 
+  // Reads one byte past the ceiling, so a response that lands exactly on it is not called truncated
   const chunks: Buffer[] = [];
   let total = 0;
-  let truncated = false;
   try {
     for await (const chunk of stream) {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
-      const remaining = maxBytes - total;
-      if (buffer.length >= remaining) {
-        chunks.push(buffer.subarray(0, remaining));
-        total = maxBytes;
-        truncated = true;
-        break;
-      }
       chunks.push(buffer);
       total += buffer.length;
+      if (total > maxBytes) break;
     }
   } finally {
     stream.destroy();
   }
 
-  return { text: Buffer.concat(chunks).toString("utf8"), truncated };
+  const body = Buffer.concat(chunks);
+  return { text: body.subarray(0, maxBytes).toString("utf8"), truncated: body.length > maxBytes };
 };
 
 export class ClickhouseResultTooLargeError extends Error {
