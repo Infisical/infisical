@@ -47,7 +47,7 @@ Activity logs need a bucket you own. There's no option to store them inside Infi
 
 ## Setting up storage
 
-Go to **Settings** under Agent Vault and fill in the **Activity Logging** card:
+Go to **Settings** under Agent Vault and select **Set up** on the **Activity Logging** card:
 
 1. Turn on **Record session activity**.
 2. Pick the **AWS Connection** whose credentials write the records.
@@ -57,7 +57,7 @@ Go to **Settings** under Agent Vault and fill in the **Activity Logging** card:
 
 Saving checks the bucket before it stores anything: Infisical confirms the bucket exists, writes a test object under your prefix, and deletes it again. A failure names which step failed and what to grant.
 
-The page shows two policies with your bucket and prefix already filled in. Both are needed.
+Under **What the bucket needs**, the panel shows two policies with your bucket and prefix already filled in. Both are needed.
 
 The connection's credentials need this on the bucket:
 
@@ -133,7 +133,7 @@ Infisical adds no S3 lifecycle rule. Object keys carry the date, as `<prefix>/<p
 
 ## Storage limits
 
-What costs Infisical is the index, not the bytes in your bucket, so there's a cap on how many records an organization can have indexed at once. The **Settings** page shows the current count against it, and warns at 80%.
+What costs Infisical is the index, not the bytes in your bucket, so there's a cap on how many records an organization can have indexed at once. The **Activity Logging** panel shows the current count against it, and the **Settings** page warns at 80%.
 
 At the cap, proxies stop recording. Each one pauses for 15 minutes and tries again, so raising the limit or letting old sessions age out resumes recording without restarting anything. Nothing already recorded is deleted to make room: dropping the oldest records would turn a flood of requests into a way of erasing evidence.
 
