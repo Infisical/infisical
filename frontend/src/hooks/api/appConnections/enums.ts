@@ -11,6 +11,7 @@ export enum AppConnection {
   AzureADCS = "azure-adcs",
   ADCS = "adcs",
   AzureDNS = "azure-dns",
+  PowerDns = "powerdns",
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",

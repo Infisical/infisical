@@ -63,6 +63,7 @@ import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
 import { TPostgresConnection } from "./postgres-connection";
+import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
@@ -146,6 +147,7 @@ export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
 export * from "./postgres-connection";
+export * from "./powerdns-connection";
 export * from "./qovery-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
@@ -252,6 +254,7 @@ export type TAppConnection =
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
+  | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
   | TStripeConnection;

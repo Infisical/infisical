@@ -105,7 +105,7 @@ export enum ApiDocsTags {
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
-  AgentVaultMemberships = "Agent Vault Memberships",
+  AgentVaultMembers = "Agent Vault Members",
   KmipServers = "KMIP Servers"
 }
 
@@ -4138,9 +4138,9 @@ export const SecretValidationRules = {
     requiredSuffix: `A string the ${target} must end with.`
   }),
   REUSE_PREVENTION: {
-    reusePrevention:
-      "Rejects a value for repeating one already in use. Omit to allow any value the other constraints accept.",
-    previousVersions: `How many of the secret's own previous versions the new value must differ from. Between 1 and ${MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS}.`
+    uniqueAcrossLastVersions: `How many of the secret's own previous versions the new value must differ from. Between 1 and ${MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS}. Omit to accept a value the secret has held before.`,
+    uniqueWithinScope:
+      "Set to true to reject a value that another secret in the rule's scope already holds. Requires blind indexing on the project."
   },
   STATIC_SECRETS: {
     keyConstraints:
@@ -4234,15 +4234,19 @@ export const AGENT_VAULT = {
     description: "A description of what this access bundle is for.",
     serviceCount: "How many services the access bundle holds.",
     memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    orderBy: "What to sort access bundles by: name, serviceCount or createdAt.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match access bundles by name or description.",
+    limit: "The maximum number of access bundles to return.",
+    offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover."
   },
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
     hostPattern:
-      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
-    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
-    headerName: "The header the credential is written to. Defaults to Authorization.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
+    headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
     username:
@@ -4253,27 +4257,87 @@ export const AGENT_VAULT = {
     updatePassword:
       "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
     createdAt: "When the service was added to the access bundle.",
+    updatedAt: "When the service was last changed.",
     value: "The secret. Never returned once saved.",
     password:
-      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved."
+      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved.",
+    allowedMethods:
+      "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
+    allowedPathPrefixes:
+      "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    customHeaders:
+      "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
+    customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
+    customHeaderName: "The name of the header, which must not be the credential's own header.",
+    customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
+    updateCustomHeaderPrefix:
+      "Written before the header value, separated by one space. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
+    customHeaderValue: "The header value. Never returned once saved.",
+    updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
+    substitutions:
+      "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
+    substitutionId:
+      "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
+    placeholder:
+      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
+    surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
+    substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
+    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",
-    userId: "The ID of the user to grant the access bundle to.",
-    identityId: "The ID of the machine identity to grant the access bundle to.",
-    groupId: "The ID of the group to grant the access bundle to.",
+    createdAt: "When the access bundle was granted.",
+    userId: "The ID of the user whose Agent Vault membership this is.",
+    identityId: "The ID of the machine identity whose Agent Vault membership this is.",
+    groupId: "The ID of the group whose Agent Vault membership this is.",
     userIds: "The IDs of the users to grant the access bundle to.",
-    identityIds: "The IDs of the machine identities to grant the access bundle to.",
+    machineIdentityIds: "The IDs of the machine identities to grant the access bundle to.",
     groupIds: "The IDs of the groups to grant the access bundle to.",
-    skipped: "The IDs of the requested grantees who already had the access bundle and were left as they were."
+    actorType: "Whether this member is a user, a machine identity or a group.",
+    actorId: "The ID of the user, machine identity or group.",
+    username: "The username of the user.",
+    email: "The email address of the user.",
+    firstName: "The first name of the user.",
+    lastName: "The last name of the user.",
+    identityName: "The name of the machine identity.",
+    groupName: "The name of the group.",
+    isOrgMembershipPending: "Whether the user still has an unaccepted invitation to the organization.",
+    isManagedByAgentVault:
+      "Whether Agent Vault created the machine identity. One it owns is deleted rather than removed.",
+    machineIdentityOrgId: "The ID of the organization the machine identity belongs to.",
+    revokeUserIds: "The IDs of the users to revoke the access bundle from.",
+    revokeMachineIdentityIds: "The IDs of the machine identities to revoke the access bundle from.",
+    revokeGroupIds: "The IDs of the groups to revoke the access bundle from.",
+    skipped: "The requested grantees who already had the access bundle and were left as they were.",
+    revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
+    search: "Match members by name, username or email address.",
+    limit: "The maximum number of members to return.",
+    offset: "How many members to skip."
   },
   MEMBERSHIP: {
-    role: "The Agent Vault role: admin or member."
+    role: "The Agent Vault role: admin or member.",
+    isActive: "Whether the member can currently reach Agent Vault.",
+    userIds: "The IDs of the users to act on.",
+    machineIdentityIds: "The IDs of the machine identities to act on.",
+    groupIds: "The IDs of the groups to act on.",
+    emails: "The email addresses of the users to give access to. Each must already be in the organization.",
+    identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
+    addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
+    revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match members by name, username or email address.",
+    limit: "The maximum number of members to return.",
+    offset: "How many members to skip."
   },
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
-    heartbeat: "When the proxy last checked in, or null if it never has.",
+    orderBy: "What to sort proxies by: name or createdAt.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match proxies by name.",
+    limit: "The maximum number of proxies to return.",
+    offset: "How many proxies to skip.",
+    heartbeat: "When the proxy last checked in, or `null` if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
     enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
     rootCaCertificate:
@@ -4282,11 +4346,12 @@ export const AGENT_VAULT = {
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
     trafficPolicy:
-      "Which hosts an agent may reach through this proxy. 'any-host' lets every request out; 'bundle-hosts' allows only hosts an access bundle covers, plus anything in allowedHosts, and refuses the rest with a 403.",
+      "Which hosts an agent may reach through this proxy. `any-host` lets every request out; `bundle-hosts` allows only hosts an access bundle covers, plus anything in `allowedHosts`, and refuses the rest with a 403.",
     allowedHosts:
-      "Hosts that stay reachable under the 'bundle-hosts' traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+      "Hosts that stay reachable under the `bundle-hosts` traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
-    sessionToken: "The session an agent is running with. A selector, not a second credential."
+    sessionToken: "The session an agent is running with. A selector, not a second credential.",
+    createdAt: "When the proxy was registered."
   },
   SESSION: {
     sessionId: "The ID of the session.",

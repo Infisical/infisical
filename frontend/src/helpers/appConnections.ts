@@ -86,6 +86,7 @@ import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-con
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
+import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
@@ -326,6 +327,12 @@ export const APP_CONNECTION_MAP: Record<
     size: 120,
     category: "DNS",
     description: "Manage DNS records on DNS Made Easy."
+  },
+  [AppConnection.PowerDns]: {
+    name: "PowerDNS",
+    image: "PowerDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on a self-hosted PowerDNS server."
   },
   [AppConnection.Zabbix]: {
     name: "Zabbix",
@@ -749,6 +756,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };

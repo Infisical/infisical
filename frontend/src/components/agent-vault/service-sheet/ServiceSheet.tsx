@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -19,6 +19,7 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
@@ -37,21 +38,30 @@ import { ReviewFields } from "./ReviewFields";
 import {
   buildServiceSchema,
   displayHostPattern,
+  HTTP_METHODS,
+  isAllMethods,
   SERVICE_STEP_FIELDS,
   ServiceStep,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
-  hostPattern: "",
-  credentialType: AgentVaultCredentialType.Bearer,
+  hosts: [],
+  hostDraft: "",
+  pathDraft: "",
+  credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
   username: "",
-  secret: ""
+  secret: "",
+  methods: [...HTTP_METHODS],
+  pathPrefixes: [],
+  customHeaders: [],
+  substitutions: []
 };
 
 type Props = {
@@ -60,6 +70,11 @@ type Props = {
   accessBundleId: string;
   service?: TAgentVaultService | null;
 };
+
+// Long enough for the advanced section to open and settle. There is no event to wait on: the section
+// is a Radix accordion, whose content is unmounted while closed, so the control cannot be measured
+// until after it mounts and takes its height.
+const SECTION_OPEN_MS = 250;
 
 export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: Props) => {
   const isUpdate = Boolean(service);
@@ -70,13 +85,16 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
   const schema = useMemo(() => buildServiceSchema(service), [service]);
 
-  const formMethods = useForm<TServiceForm>({ resolver: zodResolver(schema) });
+  const formMethods = useForm<TServiceForm>({
+    defaultValues: BLANK_SERVICE_FORM,
+    resolver: zodResolver(schema)
+  });
   const {
     handleSubmit,
     reset,
     setError,
     trigger,
-    formState: { isDirty, isSubmitting }
+    formState: { errors, isDirty, isSubmitting }
   } = formMethods;
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
@@ -89,12 +107,41 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   );
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
+  // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
+  // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
+  // the errors it finds are the ones already there.
+  const [blockedAttempt, setBlockedAttempt] = useState(0);
+
   const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } = useWizardSteps<ServiceStep>({
     stepKeys,
     stepFields: SERVICE_STEP_FIELDS,
     invalidMessage: "Fix the errors before saving.",
-    validateStep: (fields) => trigger(fields as (keyof TServiceForm)[])
+    validateStep: async (fields) => {
+      const isValid = await trigger(fields as (keyof TServiceForm)[]);
+      if (!isValid) setBlockedAttempt((count) => count + 1);
+      return isValid;
+    }
   });
+
+  const hasAdvancedError = Boolean(errors.customHeaders || errors.substitutions);
+
+  useEffect(() => {
+    if (hasAdvancedError) setOpenItem(ADVANCED_ITEM);
+  }, [hasAdvancedError, blockedAttempt]);
+
+  useEffect(() => {
+    if (!blockedAttempt) return undefined;
+    // Once the accordion has finished opening: a control inside it is neither mounted nor at its final
+    // offset before then, so anything sooner scrolls to the wrong place or to nothing. The control
+    // rather than its message, which arrives a render later and keeps its text once the error clears.
+    const id = window.setTimeout(() => {
+      const invalid = panelRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      (invalid?.closest('[data-slot="field"]') ?? invalid)?.scrollIntoView({ block: "nearest" });
+    }, SECTION_OPEN_MS);
+    return () => window.clearTimeout(id);
+  }, [blockedAttempt]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -105,8 +152,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     if (service) {
       const { credential } = service;
       reset({
+        ...BLANK_SERVICE_FORM,
         name: service.name,
-        hostPattern: displayHostPattern(service.hostPattern),
+        hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
         // the same defaults a new service gets. Left undefined, the submit would send an empty
@@ -118,7 +166,22 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
+        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        methods: service.allowedMethods ?? [...HTTP_METHODS],
+        pathPrefixes: service.allowedPathPrefixes ?? [],
+        // The stored values never come back, so each row carries the sentinel until it is retyped.
+        customHeaders: service.customHeaders.map((header) => ({
+          id: header.id,
+          name: header.name,
+          prefix: header.prefix,
+          value: UNCHANGED_SECRET
+        })),
+        substitutions: service.substitutions.map((substitution) => ({
+          id: substitution.id,
+          placeholder: substitution.placeholder,
+          surfaces: substitution.surfaces,
+          value: UNCHANGED_SECRET
+        }))
       });
     } else {
       reset(BLANK_SERVICE_FORM);
@@ -130,10 +193,14 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
     if (picked) {
       const cred = picked.credential;
+      // A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
+      const parts = picked.hostPattern.split(",").map((host) => host.trim());
+
       reset({
         ...BLANK_SERVICE_FORM,
         name: picked.key,
-        hostPattern: picked.hostPattern,
+        hosts: parts.filter((host) => !hostError(host, [])),
+        hostDraft: parts.find((host) => Boolean(hostError(host, []))) ?? "",
         credentialType: cred.type,
         ...(cred.type === AgentVaultCredentialType.Bearer && {
           headerName: cred.headerName ?? "Authorization",
@@ -186,6 +253,26 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     };
   };
 
+  const buildPolicy = (data: TServiceForm) => ({
+    allowedMethods: isAllMethods(data.methods) ? null : data.methods,
+    allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
+  });
+
+  const buildTransformations = (data: TServiceForm) => ({
+    customHeaders: data.customHeaders.map((header) => ({
+      ...(header.id ? { id: header.id } : {}),
+      name: header.name,
+      prefix: header.prefix,
+      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
+    })),
+    substitutions: data.substitutions.map((substitution) => ({
+      ...(substitution.id ? { id: substitution.id } : {}),
+      placeholder: substitution.placeholder,
+      surfaces: substitution.surfaces,
+      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
+    }))
+  });
+
   const onSubmit = async (data: TServiceForm) => {
     try {
       if (service) {
@@ -193,15 +280,19 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           accessBundleId,
           serviceId: service.id,
           name: data.name,
-          hostPattern: data.hostPattern,
-          credential: buildCredentialPatch(data)
+          hostPattern: data.hosts.join(","),
+          ...buildPolicy(data),
+          credential: buildCredentialPatch(data),
+          ...buildTransformations(data)
         });
       } else {
         await createService.mutateAsync({
           accessBundleId,
           name: data.name,
-          hostPattern: data.hostPattern,
-          credential: buildCredential(data)
+          hostPattern: data.hosts.join(","),
+          ...buildPolicy(data),
+          credential: buildCredential(data),
+          ...buildTransformations(data)
         });
       }
 
@@ -220,23 +311,63 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
-        setError("hostPattern", { type: "server", message: serverResponse.message });
+        setError("hosts", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf(ServiceStep.Details));
         return;
       }
 
+      // Thrown after the stored halves are merged in, so the form cannot have known: it is told which
+      // halves exist only as "unchanged", never whether one of them is empty.
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        serverResponse.message.includes("needs a username")
+      ) {
+        setError("username", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
+        return;
+      }
+
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-        const hostIssues = serverResponse.message.filter(
-          (issue) => issue.path[0] === "hostPattern"
-        );
-        if (hostIssues.length > 0) {
-          setError("hostPattern", {
-            type: "server",
-            message: hostIssues.map((issue) => issue.message).join(" ")
-          });
-          setStep(stepKeys.indexOf(ServiceStep.Details));
-        }
-        if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+        const STEP_OF_FIELD: Record<string, ServiceStep> = {
+          name: ServiceStep.Details,
+          hostPattern: ServiceStep.Details,
+          allowedMethods: ServiceStep.Details,
+          allowedPathPrefixes: ServiceStep.Details,
+          credential: ServiceStep.Credential,
+          customHeaders: ServiceStep.Credential,
+          substitutions: ServiceStep.Credential
+        };
+
+        const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
+          hostPattern: "hosts",
+          allowedMethods: "methods",
+          allowedPathPrefixes: "pathPrefixes",
+          credential: "secret"
+        };
+
+        let earliestStep: number | null = null;
+        let unmapped = false;
+
+        serverResponse.message.forEach((issue) => {
+          const root = String(issue.path[0]);
+          const issueStep = STEP_OF_FIELD[root];
+          if (!issueStep) {
+            unmapped = true;
+            return;
+          }
+
+          const target =
+            issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
+              ? (issue.path.join(".") as keyof TServiceForm)
+              : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
+
+          setError(target, { type: "server", message: issue.message });
+          const index = stepKeys.indexOf(issueStep);
+          if (index !== -1 && (earliestStep === null || index < earliestStep)) earliestStep = index;
+        });
+
+        if (earliestStep !== null) setStep(earliestStep);
+        if (unmapped) onRequestError(error);
         return;
       }
 
@@ -290,7 +421,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         requestDiscard();
       }}
     >
-      <SheetContent className="sm:max-w-6xl">
+      <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
         <SheetHeader>
           {isTemplateStep ? (
             <>
@@ -327,7 +458,12 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
                     Setup steps
                   </p>
-                  <Stepper activeStep={step} orientation="vertical" onStepChange={handleStepChange}>
+                  <Stepper
+                    activeStep={step}
+                    orientation="vertical"
+                    nonLinear={isUpdate}
+                    onStepChange={handleStepChange}
+                  >
                     <StepperList>
                       {steps.map((meta, index) => (
                         <StepperStep
@@ -341,7 +477,10 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   </Stepper>
                 </aside>
 
-                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6">
+                <div
+                  ref={panelRef}
+                  className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6"
+                >
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
@@ -349,7 +488,10 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
                   {current.step === ServiceStep.Details && <DetailsFields />}
                   {current.step === ServiceStep.Credential && (
-                    <CredentialFields storedType={service?.credential.type} />
+                    <div className="flex flex-col gap-5">
+                      <CredentialFields storedType={service?.credential.type} />
+                      <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
+                    </div>
                   )}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>

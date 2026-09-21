@@ -163,6 +163,7 @@ import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { powerDnsConnectionService, ValidatePowerDnsConnectionCredentialsSchema } from "./powerdns";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
 import { qoveryConnectionService } from "./qovery/qovery-connection-service";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
@@ -305,6 +306,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
+  [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
@@ -1424,6 +1426,7 @@ export const appConnectionServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService
     ),
+    powerDns: powerDnsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     spacelift: spaceliftConnectionService(connectAppConnectionById)
   };
 };

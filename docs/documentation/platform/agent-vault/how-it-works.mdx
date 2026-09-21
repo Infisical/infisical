@@ -113,11 +113,12 @@ Here's a breakdown of each primitive that Agent Vault relies on.
 
 ### Services
 
-A service represents one external API, such as GitHub's REST API, Slack's Web API, or Anthropic's messages endpoint. Each service holds three things:
+A service represents one external API, such as GitHub's REST API, Slack's Web API, or Anthropic's messages endpoint. Each service holds:
 
 - **Hosts.** The host or hosts the service applies to, like `api.github.com`
 - **Authentication scheme.** How the API authenticates: bearer, basic, or pass-through
 - **Credential.** The real API token or username and password the proxy attaches to matching requests
+- **Rules.** The HTTP methods and paths the service allows, if you want to narrow it further
 
 You don't hand services to an agent directly—they're defined within access bundles.
 
@@ -129,7 +130,7 @@ You don't hand services to an agent directly—they're defined within access bun
 
 An access bundle groups a set of services under one name. A **code-review** bundle might hold services for GitHub, Slack, and Anthropic. An **on-call** bundle might hold services for PagerDuty, Datadog, and Slack.
 
-You grant access to a bundle for a user, group, or machine identity. Anyone with access to that bundle can create sessions that reference it.
+You grant a bundle to a user, group, or machine identity. Anyone holding that grant can create sessions that reference it.
 
 <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
   Lists of services that AI agents can access during a session.
@@ -141,7 +142,7 @@ A session is a time-bound access grant that's scoped to one access bundle. Infis
 
 When you create a session, you pick one access bundle and set an expiry. The agent never sees the real credentials inside the bundle. All it has is the session token, which only works when the proxy can authorize it against a live session.
 
-Even if an attacker stole the session token, they could only reach hosts that are defined by the access bundle's services, and only until the session expires or you revoke it.
+Even if an attacker stole the session token, they could only reach the hosts, methods, and paths that the access bundle's services allow, and only until the session expires or you revoke it.
 
 <Card title="Sessions" icon="monitor" href="/documentation/platform/agent-vault/sessions">
   Time-bound grants that let AI agents access services without holding real credentials.
@@ -149,7 +150,7 @@ Even if an attacker stole the session token, they could only reach hosts that ar
 
 ### Proxies
 
-A proxy runs where your agent's traffic leaves your network. It intercepts every outbound HTTPS request, authorizes the request against the session's access bundle, attaches the matching service's credential as a header, and forwards the request to the upstream host.
+A proxy runs where your agent's traffic leaves your network. It intercepts every outbound request, authorizes the request against the session's access bundle, attaches the matching service's credential as a header, and forwards the request to the upstream host. A request that breaks the service's rules is refused instead.
 
 <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
   Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
@@ -161,7 +162,7 @@ Here's what happens when an agent calls `api.github.com` through an Agent Vault 
 
 1. The agent's HTTPS client routes the request through the [proxy](#proxies) (because the `HTTPS_PROXY` environment variable points at it), including the [session](#sessions) token as the proxy credential.
 2. The proxy looks up the session with Infisical, checking if it's still live and which [access bundle](#access-bundles) it carries.
-3. The proxy looks inside the session's access bundle and finds a [service](#services) whose host pattern covers `api.github.com`. The proxy reads the real GitHub token from that service.
+3. The proxy looks inside the session's access bundle and finds a [service](#services) whose host pattern covers `api.github.com`. If that service allows only certain methods or paths, the request is checked against them first. The proxy reads the real GitHub token from that service.
 4. The proxy opens a new HTTPS connection to `api.github.com`, attaches the real token in the authorization header, and forwards the request.
 5. GitHub responds. The proxy pipes the response back to the agent.
 

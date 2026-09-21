@@ -314,17 +314,17 @@ describe("Secret rotations", async () => {
     test("A mapped secret cannot be given a value by hand", async () => {
       await newRotation("owns-secrets");
 
-      const { error } = await updateSecretV2({
+      await updateSecretV2({
         workspaceId: projectId,
         environmentSlug: ENV,
         secretPath: "/services",
         key: SECRET_KEYS.accessKeyId,
         value: "hand-written-value",
-        authToken,
-        expectStatusCode: 400
+        authToken
+      }).expect((res) => {
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toContain("Cannot update rotated secret");
       });
-
-      expect(error!.message).toContain("Cannot update rotated secret");
       expect(await secretsAt("/services")).toEqual(secretsHolding(1));
     });
 

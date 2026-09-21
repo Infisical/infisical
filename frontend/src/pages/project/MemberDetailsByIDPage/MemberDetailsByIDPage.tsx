@@ -154,7 +154,7 @@ export const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {membershipDetails ? (
         <>
           <PageHeader
@@ -272,9 +272,9 @@ export const Page = () => {
               )}
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectMemberDetailsSection membership={membershipDetails} />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <MemberRoleDetailsSection
                 membershipDetails={membershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
