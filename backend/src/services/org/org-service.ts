@@ -36,7 +36,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenRequestError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -701,8 +707,9 @@ export const orgServiceFactory = ({
 
         const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
         if (createdOrgs > 0) {
-          throw new BadRequestError({
-            message: "You have already created an organization. Contact your administrator to be added to another one."
+          throw new ConflictError({
+            message:
+              "You have already created an organization. Ask an administrator of an existing organization to invite you."
           });
         }
       }
