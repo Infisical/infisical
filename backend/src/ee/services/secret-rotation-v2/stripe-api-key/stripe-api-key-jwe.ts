@@ -88,19 +88,19 @@ export const decryptStripeJwe = (jwe: string, privateKeyPem: string): string => 
 };
 
 /**
- * Test and sandbox accounts return the secret in plaintext, live accounts return a JWE. Both shapes
- * are real, and the one we develop against is not the one that matters.
+ * Stripe returns both shapes when a public key is supplied: a JWE, and the plaintext token beside
+ * it. The JWE is preferred rather than the token, so the path live mode depends on is the one every
+ * sandbox rotation exercises. Reading the token first would leave decryption unexercised outside
+ * this module's own tests, which decrypt only what they themselves encrypted.
  */
 export const readStripeSecret = (secretKey: TStripeSecretKeyField | undefined, privateKeyPem: string): string => {
-  if (secretKey?.token) return secretKey.token;
-
   const ciphertext = secretKey?.encrypted_secret?.ciphertext;
 
-  if (!ciphertext) {
-    throw new BadRequestError({
-      message: "Stripe returned an API key without a secret. The key may need to be created again."
-    });
-  }
+  if (ciphertext) return decryptStripeJwe(ciphertext, privateKeyPem);
 
-  return decryptStripeJwe(ciphertext, privateKeyPem);
+  if (secretKey?.token) return secretKey.token;
+
+  throw new BadRequestError({
+    message: "Stripe returned an API key without a secret. The key may need to be created again."
+  });
 };

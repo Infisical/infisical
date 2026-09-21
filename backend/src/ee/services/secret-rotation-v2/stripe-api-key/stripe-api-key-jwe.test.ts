@@ -101,13 +101,24 @@ describe("decryptStripeJwe", () => {
 });
 
 describe("readStripeSecret", () => {
-  it("prefers the plaintext token test mode returns", async () => {
+  // Observed against a real sandbox: supplying a public key makes Stripe return the JWE and the
+  // plaintext token together, so this is the ordinary case rather than an edge one.
+  it("decrypts the JWE even when Stripe also returns the plaintext token", async () => {
+    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
+    const jwe = encryptJwe("rk_test_from_jwe", publicKey);
+
+    expect(readStripeSecret({ token: "rk_test_plain", encrypted_secret: { ciphertext: jwe } }, privateKey)).toBe(
+      "rk_test_from_jwe"
+    );
+  });
+
+  it("falls back to the plaintext token when Stripe returns no ciphertext", async () => {
     const { privateKey } = await generateStripeEncryptionKeyPair();
 
     expect(readStripeSecret({ token: "rk_test_plain", encrypted_secret: null }, privateKey)).toBe("rk_test_plain");
   });
 
-  it("decrypts the JWE live mode returns", async () => {
+  it("decrypts the JWE when it is the only shape returned", async () => {
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
     const jwe = encryptJwe("rk_live_secret", publicKey);
 
