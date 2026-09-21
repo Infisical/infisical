@@ -974,7 +974,7 @@ const SettingsTab = ({
                   control={control}
                   name="settings.sessionLogMaskingBuiltInDetection"
                   render={({ field }) => (
-                    <Field orientation="horizontal" className="items-center!">
+                    <Field orientation="horizontal">
                       <FieldContent>
                         <FieldTitle>
                           Built-in Detection
