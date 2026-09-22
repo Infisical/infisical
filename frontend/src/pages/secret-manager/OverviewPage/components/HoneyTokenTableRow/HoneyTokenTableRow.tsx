@@ -46,7 +46,7 @@ import {
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
-  TABLE_ROW_NAME_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
@@ -399,7 +399,7 @@ export const HoneyTokenTableRow = ({
                           )}
                         >
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
                             <span
                               className={twMerge(
                                 honeyToken.status === HoneyTokenStatus.Revoked && "text-muted"

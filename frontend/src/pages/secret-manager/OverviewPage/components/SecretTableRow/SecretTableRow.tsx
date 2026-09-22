@@ -55,6 +55,7 @@ import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnv
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import { SecretEditTableRow } from "./SecretEditTableRow";
@@ -633,7 +634,7 @@ export const SecretTableRow = ({
                           <TableCell
                             isTruncatable
                             className={twMerge(
-                              TABLE_ROW_NAME_COLUMN_CLASS_NAME,
+                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
                               hasOverride && "border-l border-b-border/50 border-l-override"
                             )}
                           >
