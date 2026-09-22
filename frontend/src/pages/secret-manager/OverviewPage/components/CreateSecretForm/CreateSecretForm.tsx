@@ -351,7 +351,7 @@ export const CreateSecretForm = ({
       const parsedEntries = Object.entries(parsedEnv);
       if (parsedEntries.length > 1) {
         const toSecret = ([parsedKey, parsedValue]: (typeof parsedEntries)[number]) => ({
-          key: currentProject.autoCapitalization ? parsedKey.toUpperCase() : parsedKey,
+          key: currentProject?.autoCapitalization ? parsedKey.toUpperCase() : parsedKey,
           value: parsedValue.value,
           comment: parsedValue.comments.join("\n"),
           skipMultilineEncoding: false,
@@ -363,7 +363,7 @@ export const CreateSecretForm = ({
         return;
       }
 
-      const keyStr = currentProject.autoCapitalization ? key.toUpperCase() : key;
+      const keyStr = currentProject?.autoCapitalization ? key.toUpperCase() : key;
       setValue(`secrets.${index}.key`, keyStr);
       if (value) {
         setValue(`secrets.${index}.value`, value);
