@@ -52,7 +52,8 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
-  TABLE_ROW_NAME_COLUMN_CLASS_NAME
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 
 type Props = {
@@ -450,7 +451,9 @@ export const SecretRotationTableRow = ({
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Environment</TableHead>
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
                     <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>

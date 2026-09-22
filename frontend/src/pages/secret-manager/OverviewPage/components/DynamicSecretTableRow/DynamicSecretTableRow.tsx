@@ -37,6 +37,7 @@ import {
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
   TABLE_ROW_NAME_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 
@@ -374,7 +375,9 @@ export const DynamicSecretTableRow = ({
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Environment</TableHead>
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
                     <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>

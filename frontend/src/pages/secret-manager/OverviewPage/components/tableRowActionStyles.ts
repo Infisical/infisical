@@ -25,3 +25,5 @@ export const TABLE_ROW_EXPANDED_ICON_CLASS_NAME = `block rotate-90 ${TABLE_ROW_E
 
 export const TABLE_ROW_NAME_COLUMN_CLASS_NAME =
   "w-60 max-w-60 min-w-60 lg:w-96 lg:max-w-96 lg:min-w-96";
+
+export const TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME = `${TABLE_ROW_NAME_COLUMN_CLASS_NAME} pl-1`;

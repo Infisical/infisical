@@ -58,7 +58,7 @@ import {
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
-  TABLE_ROW_NAME_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 import { SecretImportSecretRow } from "./SecretImportSecretRow";
@@ -512,7 +512,7 @@ export const SecretImportTableRow = ({
     if (envsWithImport.length <= 1) return null;
 
     return (
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-13">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-10">
         <span className="text-xs text-muted">Viewing secrets for:</span>
         <Select value={effectiveSelectedEnv} onValueChange={setSelectedReplicationEnv}>
           <SelectTrigger size="sm" onClick={(e) => e.stopPropagation()}>
@@ -592,7 +592,7 @@ export const SecretImportTableRow = ({
             <TableHeader className="bg-container-hover">
               <TableRow>
                 <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Name</TableHead>
+                <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
                 <TableHead className="w-full">Value</TableHead>
               </TableRow>
             </TableHeader>
@@ -645,7 +645,7 @@ export const SecretImportTableRow = ({
           <TableHeader className="bg-container-hover">
             <TableRow>
               <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-              <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Name</TableHead>
+              <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
               <TableHead className="w-full">Value</TableHead>
             </TableRow>
           </TableHeader>
@@ -681,7 +681,7 @@ export const SecretImportTableRow = ({
           </TableBody>
         </Table>
         {hasAnyDiscrepancy && (
-          <p className="max-w-full px-3 py-3 pl-13 text-xs text-wrap text-warning">
+          <p className="max-w-full px-3 py-3 pl-10 text-xs text-wrap text-warning">
             <TriangleAlertIcon className="mr-1.5 mb-0.5 inline-block size-3 shrink-0" />
             One or more replicated imports may be out of sync. Secrets marked with a warning
             indicator are not present across all importing environments. Select a single environment
@@ -717,7 +717,7 @@ export const SecretImportTableRow = ({
         <TableHeader className="bg-container-hover">
           <TableRow>
             <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-            <TableHead className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}>Name</TableHead>
+            <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>Name</TableHead>
             <TableHead className="w-full">Value</TableHead>
           </TableRow>
         </TableHeader>
@@ -890,7 +890,7 @@ export const SecretImportTableRow = ({
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                 className="sticky left-0 border-y border-border bg-container"
               >
-                <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-13">
+                <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-10">
                   <span className="text-sm text-muted">Imported in:</span>
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))
