@@ -296,7 +296,12 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.Identity).as("machineIdentityProjectId"),
           db.ref("orgId").withSchema(TableName.Identity).as("machineIdentityOrgId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
-          db.raw(`(??."status" = ?) as "isOrgMembershipPending"`, [TableName.Membership, OrgMembershipStatus.Invited])
+          // status is nullable and the response schema takes a boolean. The member query reads this through
+          // EXISTS, which cannot be null; this one compares the column, so it has to coalesce.
+          db.raw(`COALESCE(??."status" = ?, false) as "isOrgMembershipPending"`, [
+            TableName.Membership,
+            OrgMembershipStatus.Invited
+          ])
         )
         .orderByRaw(`COALESCE(??, ??, ??, '') ASC`, [
           `${TableName.Users}.username`,
