@@ -1085,6 +1085,52 @@ describe("handler concurrency cap", () => {
     await stopPromise;
   });
 
+  // The retry model assumes minute granularity. A 6-field pattern firing every 30s would get a
+  // 7.5s window whose first retry lands at 38.5s, past its own next fire, and be marked
+  // failed-final instead of retried. Reject it at registration rather than degrade quietly.
+  test("rejects a sub-minute (6-field) pattern", () => {
+    const { register } = makeFactory();
+    expect(() => register({ name: "x", pattern: "*/30 * * * * *", handler: vi.fn(), runHashTtlS: 3600 })).toThrow(
+      /must have 5 fields/
+    );
+  });
+
+  test("accepts the 5-field patterns the codebase registers", () => {
+    const { register } = makeFactory();
+    ["*/5 * * * *", "0 0 * * *", "0 0 19 2,5,8,11 *", "23 3 * * *"].forEach((pattern, i) => {
+      expect(() => register({ name: `x${i}`, pattern, handler: vi.fn(), runHashTtlS: 3 * 24 * 60 * 60 })).not.toThrow();
+    });
+  });
+
+  // The pod defers on every tick while saturated, so the line is throttled. Without it a long
+  // backlog emits one info line per processIntervalMs, for every pod, for as long as it lasts.
+  test("the at-capacity line is throttled, not emitted every tick", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const redis = makeRedis();
+    setupPendingRuns(redis, 4);
+    const { handler, resolvers } = makeBlockingHandler();
+    const redlock = makeRedlock();
+    vi.mocked(logger.info).mockClear();
+
+    const f = makeCappedFactory(redis, redlock, 1);
+    f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 60 * 60 });
+    f.start();
+
+    // ~30 process ticks (processIntervalMs=100 here) inside one throttle window.
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    const capacityLines = vi
+      .mocked(logger.info)
+      .mock.calls.map(([m]) => m)
+      .filter((m) => typeof m === "string" && m.includes("at handler capacity"));
+    expect(capacityLines.length).toBe(1);
+
+    resolvers.forEach((resolve) => resolve());
+    const stopPromise = f.stop();
+    await vi.advanceTimersByTimeAsync(100);
+    await stopPromise;
+  });
+
   test("factory rejects a cap below 1", () => {
     expect(() =>
       cronJobFactory({

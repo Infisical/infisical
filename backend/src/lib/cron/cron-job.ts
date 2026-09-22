@@ -65,6 +65,7 @@ export const CronJobName = {
 //     Raising this past ~0.48 would start costing short-interval jobs their retry.
 const JITTER_INTERVAL_FRACTION = 0.25;
 
+const CRON_FIELD_COUNT = 5;
 const PARTICIPANT_SLOTS = 5;
 const PROCESS_BATCH_SIZE = 50;
 // Safety buffer in `fitsBeforeNextFire`: if the retry's nextAttemptAt is within
@@ -248,6 +249,11 @@ export const cronJobFactory = ({
   }
 
   const workerId = randomUUID();
+  // A saturated pod defers on every tick, so logging per tick would emit a line every
+  // `processIntervalMs` for as long as the backlog lasts. Throttled so a sustained backlog
+  // stays visible without burying every other cron line.
+  const CAPACITY_LOG_INTERVAL_MS = 60_000;
+  let lastCapacityLogAtMs = 0;
   const entries = new Map<string, CronEntry>();
   const lastEnqueuedAt = new Map<string, number>();
   const inFlight = new Set<Promise<unknown>>();
@@ -412,6 +418,11 @@ export const cronJobFactory = ({
     }
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
+    if (pattern.trim().split(/\s+/).length !== CRON_FIELD_COUNT) {
+      throw new Error(
+        `cron[${name}] pattern "${pattern}" must have ${CRON_FIELD_COUNT} fields. The cron manager schedules at minute granularity; sub-minute work belongs on a setInterval or a queue`
+      );
+    }
 
     if (runHashTtlS * 1000 <= maxJitterMs) {
       throw new Error(
@@ -628,11 +639,11 @@ export const cronJobFactory = ({
       return;
     }
 
+    if (atHandlerCapacity()) return;
+
     if (isStalled) {
       logger.info(`cron[${data.name}]: re-claiming stalled run [id=${id}] [previous_worker=${data.worker_id}]`);
     }
-
-    if (atHandlerCapacity()) return;
 
     // Track the in-flight run so stop() can wait for it to settle before
     // tearing down. Lock-contention rejections settle within a tick, so they
@@ -666,11 +677,15 @@ export const cronJobFactory = ({
 
     for (let i = 0; i < ids.length; i += 1) {
       if (atHandlerCapacity()) {
-        logger.info(
-          `cron: at handler capacity (${maxConcurrentHandlers}), deferring ${
-            ids.length - i
-          } due run(s) [worker=${workerId}]`
-        );
+        const now = Date.now();
+        if (now - lastCapacityLogAtMs >= CAPACITY_LOG_INTERVAL_MS) {
+          lastCapacityLogAtMs = now;
+          logger.info(
+            `cron: at handler capacity (${maxConcurrentHandlers}), deferring ${
+              ids.length - i
+            } due run(s) [worker=${workerId}]`
+          );
+        }
         break;
       }
       try {
