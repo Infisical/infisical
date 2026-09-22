@@ -699,9 +699,19 @@ export const orgServiceFactory = ({
     trx?: Knex
   ) => {
     const createOrg = async (tx: Knex) => {
-      // Serializes concurrent creates so two requests cannot both read a count of zero.
+      // Serializes concurrent creates so two requests cannot both read a count of zero. Tried rather
+      // than waited on, so the loser answers immediately instead of holding one of the ten pool
+      // connections until the winner commits.
       if (blockIfUserHasCreatedOrg && userId) {
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateOrganization(userId)]);
+        const lock = await tx.raw<{ rows: { lock_acquired: boolean }[] }>(
+          "SELECT pg_try_advisory_xact_lock(?) as lock_acquired",
+          [PgSqlLock.CreateOrganization(userId)]
+        );
+        if (!lock?.rows[0]?.lock_acquired) {
+          throw new ConflictError({
+            message: "Another organization is already being created for your account. Try again in a moment."
+          });
+        }
 
         const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
         if (createdOrgs > 0) {
