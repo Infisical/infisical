@@ -2667,8 +2667,17 @@ const OverviewPageContent = () => {
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <PageHeader
+        className="[&_[data-slot=page-header-actions]]:min-w-0 [&_[data-slot=page-header-actions]]:flex-1 [&_[data-slot=page-header-row]]:justify-start [&_[data-slot=page-header-row]>div:first-child]:mr-0 [&_[data-slot=page-header-row]>div:first-child]:flex-none"
         scope={ProjectType.SecretManager}
-        title={currentProject.name}
+        title={
+          <Link
+            to="."
+            search={(prev) => ({ ...prev, secretPath: "/" })}
+            className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            {currentProject.name}
+          </Link>
+        }
         description={currentProject.description}
         backLink={
           <Link
@@ -2679,7 +2688,14 @@ const OverviewPageContent = () => {
             All Projects
           </Link>
         }
-      />
+      >
+        <FolderBreadcrumb
+          secretPath={secretPath}
+          onManageFolderAccess={
+            canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
+          }
+        />
+      </PageHeader>
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
           <div className="flex min-w-0 flex-col gap-2">
@@ -2809,24 +2825,6 @@ const OverviewPageContent = () => {
                 </AlertTitle>
               </Alert>
             ) : null)}
-          <div
-            className={twMerge(
-              "flex h-10 min-w-0 items-center border border-border bg-container-hover whitespace-nowrap",
-              tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
-            )}
-          >
-            <FolderBreadcrumb secretPath={secretPath} />
-            {canManageCurrentFolderAccess && (
-              <Button
-                variant="ghost"
-                size="xs"
-                className="mr-1.5 shrink-0"
-                onClick={handleCurrentFolderAccessOpen}
-              >
-                Manage Access
-              </Button>
-            )}
-          </div>
           {tableView === "no-environments" && (
             <EmptyResourceDisplay
               variant="no-environments"
@@ -2851,7 +2849,7 @@ const OverviewPageContent = () => {
                 <Table
                   ref={tableRef}
                   className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
-                  containerClassName="overscroll-x-none rounded-t-none"
+                  containerClassName="overscroll-x-none"
                 >
                   <TableHeader>
                     <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
