@@ -394,12 +394,13 @@ export const getCaCredentials = async ({
   certificateAuthoritySecretDAL,
   projectDAL,
   kmsService,
-  signatureAlgorithm
+  signatureAlgorithm,
+  prefetched
 }: TGetCaCredentialsDTO) => {
-  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  const ca = prefetched?.ca ?? (await certificateAuthorityDAL.findByIdWithAssociatedCa(caId));
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
-  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
+  const caSecret = prefetched?.caSecret ?? (await certificateAuthoritySecretDAL.findOne({ caId }));
   if (!caSecret) throw new NotFoundError({ message: `CA secret for CA with ID '${caId}' not found` });
   if (!caSecret.encryptedPrivateKey) {
     throw new BadRequestError({
@@ -527,7 +528,8 @@ export const getCaSigner = async ({
     certificateAuthoritySecretDAL,
     projectDAL,
     kmsService,
-    signatureAlgorithm
+    signatureAlgorithm,
+    prefetched: { ca, caSecret }
   });
   const signingAlgorithm = signatureAlgorithm || keyAlgorithmToAlgCfg(keyAlgorithm);
   const signer = buildLocalCaSigner({ privateKey: caPrivateKey, publicKey: caPublicKey, signingAlgorithm });
@@ -723,6 +725,21 @@ export const normalizeUrlForComparison = (url: string) => {
     return trimmed.replace(TRAILING_SLASHES_REGEX, "").toLowerCase();
   }
 };
+
+export const buildOcspResponderUrl = (siteUrl: string, caId: string): string =>
+  `${siteUrl}/api/v1/cert-manager/ocsp/${caId}`;
+
+export const buildAuthorityInfoAccessExtension = ({
+  caIssuerUrl,
+  ocspResponderUrl
+}: {
+  caIssuerUrl: string;
+  ocspResponderUrl?: string | null;
+}): x509.AuthorityInfoAccessExtension =>
+  new x509.AuthorityInfoAccessExtension({
+    caIssuers: new x509.GeneralName("url", caIssuerUrl),
+    ...(ocspResponderUrl ? { ocsp: new x509.GeneralName("url", ocspResponderUrl) } : {})
+  });
 
 export const buildCrlDistributionPointUrls = (
   managedUrl: string,

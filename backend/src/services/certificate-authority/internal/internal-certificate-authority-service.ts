@@ -6,6 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -73,7 +75,9 @@ import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-ce
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
+  buildAuthorityInfoAccessExtension,
   buildCrlDistributionPointUrls,
+  buildOcspResponderUrl,
   createDistinguishedName,
   createSerialNumber,
   expandInternalCa,
@@ -133,6 +137,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
+  certificateAuthorityOcspService: Pick<TCertificateAuthorityOcspServiceFactory, "invalidateAllCachedResponsesForCa">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
   certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
@@ -159,6 +164,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
+  certificateAuthorityOcspService,
   certificateTemplateDAL,
   certificateDAL,
   certificateBodyDAL,
@@ -184,6 +190,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const plan = await licenseService.getPlan(project.orgId);
     return plan.caCrl;
+  };
+
+  const $isOcspAllowed = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const plan = await licenseService.getPlan(project.orgId);
+    return plan.pkiOcsp;
   };
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
@@ -320,6 +334,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     name,
     crlDistributionPointUrls,
     disableManagedCrlDistributionPointUrl,
+    isOcspEnabled,
     ...dto
   }: TCreateCaDTO) => {
     let projectId: string;
@@ -373,6 +388,15 @@ export const internalCertificateAuthorityServiceFactory = ({
         message:
           "Failed to create certificate authority with CRL distribution points due to plan restriction. Upgrade plan to use certificate revocation lists."
       });
+    }
+
+    if (isOcspEnabled) {
+      if (!(await $isOcspAllowed(projectId))) {
+        throw new BadRequestError({
+          message:
+            "Failed to create certificate authority with OCSP enabled due to plan restriction. Upgrade plan to use OCSP."
+        });
+      }
     }
 
     const dn = createDistinguishedName({
@@ -578,6 +602,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           keyAlgorithm,
           crlDistributionPointUrls: crlDistributionPointUrls ?? [],
           disableManagedCrlDistributionPointUrl: disableManagedCrlDistributionPointUrl ?? false,
+          isOcspEnabled: isOcspEnabled ?? false,
           ...(type === InternalCaType.ROOT && {
             maxPathLength,
             ...(notAfter && {
@@ -674,6 +699,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     name,
     crlDistributionPointUrls,
     disableManagedCrlDistributionPointUrl,
+    isOcspEnabled,
     ...dto
   }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -706,17 +732,30 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
+    if (isOcspEnabled && !ca.internalCa.isOcspEnabled) {
+      if (!(await $isOcspAllowed(ca.projectId))) {
+        throw new BadRequestError({
+          message: "Failed to enable OCSP due to plan restriction. Upgrade plan to use OCSP."
+        });
+      }
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (status !== undefined || name !== undefined) {
         await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
       }
 
-      if (crlDistributionPointUrls !== undefined || disableManagedCrlDistributionPointUrl !== undefined) {
+      if (
+        crlDistributionPointUrls !== undefined ||
+        disableManagedCrlDistributionPointUrl !== undefined ||
+        isOcspEnabled !== undefined
+      ) {
         await internalCertificateAuthorityDAL.update(
           { caId: ca.id },
           {
             ...(crlDistributionPointUrls !== undefined && { crlDistributionPointUrls }),
-            ...(disableManagedCrlDistributionPointUrl !== undefined && { disableManagedCrlDistributionPointUrl })
+            ...(disableManagedCrlDistributionPointUrl !== undefined && { disableManagedCrlDistributionPointUrl }),
+            ...(isOcspEnabled !== undefined && { isOcspEnabled })
           },
           tx
         );
@@ -724,6 +763,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
     });
+
+    if (isOcspEnabled !== undefined && isOcspEnabled !== ca.internalCa.isOcspEnabled) {
+      try {
+        await certificateAuthorityOcspService.invalidateAllCachedResponsesForCa({ caId: ca.id });
+      } catch (error) {
+        logger.error(error, `Failed to invalidate OCSP cache after toggling OCSP [caId=${ca.id}]`);
+      }
+    }
 
     return expandInternalCa(updatedCa);
   };
@@ -1525,9 +1572,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
         ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
-        new x509.AuthorityInfoAccessExtension({
-          caIssuers: new x509.GeneralName("url", caIssuerUrl)
-        })
+        buildAuthorityInfoAccessExtension({ caIssuerUrl })
       ]
     });
 
@@ -2074,6 +2119,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
+    const ocspResponderUrl =
+      ca.internalCa.isOcspEnabled && appCfg.SITE_URL ? buildOcspResponderUrl(appCfg.SITE_URL, ca.id) : null;
+
     const basicConstraintsExtension = $createBasicConstraintsExtension({
       basicConstraints,
       pathLength,
@@ -2085,9 +2133,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
-      new x509.AuthorityInfoAccessExtension({
-        caIssuers: new x509.GeneralName("url", caIssuerUrl)
-      }),
+      buildAuthorityInfoAccessExtension({ caIssuerUrl, ocspResponderUrl }),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 
@@ -2500,6 +2546,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
+    const ocspResponderUrl =
+      ca.internalCa.isOcspEnabled && appCfg.SITE_URL ? buildOcspResponderUrl(appCfg.SITE_URL, ca.id) : null;
+
     const basicConstraintsExtension = $createBasicConstraintsExtension({
       basicConstraints,
       pathLength,
@@ -2511,9 +2560,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
       await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
       ...(cdpUrls.length > 0 ? [new x509.CRLDistributionPointsExtension(cdpUrls)] : []),
-      new x509.AuthorityInfoAccessExtension({
-        caIssuers: new x509.GeneralName("url", caIssuerUrl)
-      }),
+      buildAuthorityInfoAccessExtension({ caIssuerUrl, ocspResponderUrl }),
       new x509.CertificatePolicyExtension(["2.5.29.32.0"]) // anyPolicy
     ];
 

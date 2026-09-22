@@ -2764,7 +2764,11 @@ export const CertificateAuthorities = {
       crlDistributionPointUrls:
         "Additional CRL Distribution Point URLs (HTTP/HTTPS) embedded in every certificate issued by this CA. Up to 4 URLs; the Infisical-managed CRL endpoint is included by default unless disabled.",
       disableManagedCrlDistributionPointUrl:
-        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included."
+        "When set to true, the Infisical-managed CRL endpoint URL will not be embedded in certificates issued by this CA. Only custom CRL Distribution Point URLs (if any) will be included.",
+      isOcspEnabled:
+        "When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.",
+      ocspResponderUrl:
+        "Read-only. The OCSP responder URL embedded in certificates issued by this CA while OCSP is enabled, or null when it is disabled."
     }
   }
 };

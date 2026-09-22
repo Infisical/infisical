@@ -58,6 +58,7 @@ export type TCreateCaDTO =
       hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
+      isOcspEnabled?: boolean;
     }
   | ({
       isInternal: false;
@@ -80,6 +81,7 @@ export type TCreateCaDTO =
       hsmConnectorId?: string;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
+      isOcspEnabled?: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaDTO = {
@@ -94,6 +96,7 @@ export type TUpdateCaDTO =
       status?: CaStatus;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
+      isOcspEnabled?: boolean;
     }
   | ({
       isInternal: false;
@@ -102,6 +105,7 @@ export type TUpdateCaDTO =
       status?: CaStatus;
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
+      isOcspEnabled?: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TDeleteCaDTO = {
@@ -341,6 +345,10 @@ export type TGetCaCredentialsDTO = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
+  prefetched?: {
+    ca?: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>;
+    caSecret?: Awaited<ReturnType<TCertificateAuthoritySecretDALFactory["findOne"]>>;
+  };
 };
 
 export type TGetCaSignerDTO = {

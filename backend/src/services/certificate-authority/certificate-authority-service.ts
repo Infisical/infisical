@@ -12,6 +12,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -82,6 +83,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { buildOcspResponderUrl } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
 import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -170,6 +172,17 @@ type TCertificateAuthorityServiceFactoryDep = {
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
+
+type TInternalCaRow = { isOcspEnabled?: boolean | null };
+
+const withOcspResponderUrl = <T extends TInternalCaRow>(caId: string, internalCa: T) => {
+  const siteUrl = getConfig().SITE_URL;
+
+  return {
+    ...internalCa,
+    ocspResponderUrl: internalCa.isOcspEnabled && siteUrl ? buildOcspResponderUrl(siteUrl, caId) : null
+  };
+};
 
 export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
@@ -390,7 +403,7 @@ export const certificateAuthorityServiceFactory = ({
         name: ca.name,
         projectId,
         status,
-        configuration: ca.internalCa
+        configuration: withOcspResponderUrl(ca.id, ca.internalCa)
       } as TCertificateAuthority;
     }
 
@@ -513,7 +526,7 @@ export const certificateAuthorityServiceFactory = ({
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
         configuration: {
-          ...certificateAuthority.internalCa,
+          ...withOcspResponderUrl(certificateAuthority.id, certificateAuthority.internalCa),
           keySource: (caSecret?.keySource as CertKeySource | undefined) ?? CertKeySource.Infisical,
           hsmConnectorId: caSecret?.hsmConnectorId ?? undefined,
           hsmKeyLabel: caSecret?.hsmKeyLabel ?? undefined
@@ -604,7 +617,7 @@ export const certificateAuthorityServiceFactory = ({
         enableDirectIssuance: certificateAuthority.enableDirectIssuance,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: withOcspResponderUrl(certificateAuthority.id, certificateAuthority.internalCa),
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }
@@ -722,7 +735,7 @@ export const certificateAuthorityServiceFactory = ({
           enableDirectIssuance: ca.enableDirectIssuance,
           name: ca.name,
           projectId: ca.projectId,
-          configuration: ca.internalCa,
+          configuration: withOcspResponderUrl(ca.id, ca.internalCa),
           status: ca.status
         })) as TCertificateAuthority[];
     }
@@ -795,7 +808,11 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       const internalConfig = configuration as
-        | { crlDistributionPointUrls?: string[]; disableManagedCrlDistributionPointUrl?: boolean }
+        | {
+            crlDistributionPointUrls?: string[];
+            disableManagedCrlDistributionPointUrl?: boolean;
+            isOcspEnabled?: boolean;
+          }
         | undefined;
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
@@ -804,7 +821,8 @@ export const certificateAuthorityServiceFactory = ({
         status,
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
-        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl
+        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
+        isOcspEnabled: internalConfig?.isOcspEnabled
       });
 
       if (!updatedCa.internalCa) {
@@ -819,7 +837,7 @@ export const certificateAuthorityServiceFactory = ({
         enableDirectIssuance: updatedCa.enableDirectIssuance,
         name: updatedCa.name,
         projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa,
+        configuration: withOcspResponderUrl(updatedCa.id, updatedCa.internalCa),
         status: updatedCa.status
       } as TCertificateAuthority;
     }
@@ -951,7 +969,10 @@ export const certificateAuthorityServiceFactory = ({
         enableDirectIssuance: certificateAuthority.enableDirectIssuance,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: withOcspResponderUrl(
+          certificateAuthority.id,
+          certificateAuthority.internalCa ?? { isOcspEnabled: false }
+        ),
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }
@@ -1045,7 +1066,7 @@ export const certificateAuthorityServiceFactory = ({
         enableDirectIssuance: updatedCa.enableDirectIssuance,
         name: updatedCa.name,
         projectId: updatedCa.projectId,
-        configuration: updatedCa.internalCa,
+        configuration: withOcspResponderUrl(updatedCa.id, updatedCa.internalCa),
         status: updatedCa.status
       } as TCertificateAuthority;
     }
@@ -1183,7 +1204,10 @@ export const certificateAuthorityServiceFactory = ({
         enableDirectIssuance: certificateAuthority.enableDirectIssuance,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
-        configuration: certificateAuthority.internalCa,
+        configuration: withOcspResponderUrl(
+          certificateAuthority.id,
+          certificateAuthority.internalCa ?? { isOcspEnabled: false }
+        ),
         status: certificateAuthority.status
       } as TCertificateAuthority;
     }

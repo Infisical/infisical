@@ -27,6 +27,7 @@ export type TCaSigner = {
   createCertificate: (params: TCaCertificateParams) => Promise<x509.X509Certificate>;
   createCsr: (params: TCaCsrParams) => Promise<x509.Pkcs10CertificateRequest>;
   createCrl: (params: TCaCrlParams) => Promise<x509.X509Crl>;
+  signTbs: (tbs: Buffer) => Promise<ArrayBuffer>;
 };
 
 export type TCaExternalSignFn = (tbs: Buffer, mechanism: string, isDigest: boolean) => Promise<Buffer>;
@@ -117,7 +118,14 @@ export const buildLocalCaSigner = ({
       keys: { privateKey, publicKey },
       signingAlgorithm
     }),
-  createCrl: (params) => x509.X509CrlGenerator.create({ ...params, signingKey: privateKey, signingAlgorithm })
+  createCrl: (params) => x509.X509CrlGenerator.create({ ...params, signingKey: privateKey, signingAlgorithm }),
+  signTbs: async (tbs) => {
+    const signature = await x509.cryptoProvider
+      .get()
+      .subtle.sign(signingAlgorithm, privateKey, bufferToArrayBuffer(tbs));
+    if (signingAlgorithm.name !== "ECDSA") return signature;
+    return bufferToArrayBuffer(ecdsaRawRsToDer(Buffer.from(signature)));
+  }
 });
 
 const HSM_MECHANISM_BY_HASH: Record<"rsa" | "ecdsa", Record<string, string>> = {
@@ -217,6 +225,7 @@ export const buildHsmCaSigner = ({
       const crl = AsnConvert.parse(built.rawData, CertificateList);
       crl.signature = await signTbs(Buffer.from(AsnConvert.serialize(crl.tbsCertList)));
       return new x509.X509Crl(AsnConvert.serialize(crl));
-    }
+    },
+    signTbs
   };
 };

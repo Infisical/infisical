@@ -168,6 +168,8 @@ export type TInternalCertificateAuthority = {
     activeCaCertId?: string;
     crlDistributionPointUrls?: string[];
     disableManagedCrlDistributionPointUrl?: boolean;
+    isOcspEnabled?: boolean;
+    ocspResponderUrl?: string | null;
   };
 };
 

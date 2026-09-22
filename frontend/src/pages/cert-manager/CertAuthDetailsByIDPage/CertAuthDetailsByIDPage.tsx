@@ -38,6 +38,7 @@ import {
   CaDistributionPointsSection,
   CaGenerateRootCertModal,
   CaIssuerUrlSection,
+  CaOcspSection,
   CaRenewalModal,
   CaSigningConfigSection
 } from "./components";
@@ -193,6 +194,7 @@ const Page = () => {
                     <CaIssuerUrlSection caId={data.id} />
                     <CaCrlsSection caId={data.id} />
                     <CaDistributionPointsSection caId={data.id} />
+                    <CaOcspSection caId={data.id} />
                   </div>
                 </div>
               </div>

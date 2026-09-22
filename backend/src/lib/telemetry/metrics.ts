@@ -929,3 +929,43 @@ export const recordLegacyRootKeyUsageMetric = (params: {
     });
   });
 };
+
+// -- OCSP responder (InfisicalCore meter) -----------------------------------------------------------
+export type TOcspResponseResultLabel =
+  | "good"
+  | "revoked"
+  | "unknown"
+  | "unauthorized"
+  | "malformed_request"
+  | "internal_error"
+  | "try_later";
+
+export const ocspResponseCounter = infisicalCoreMeter.createCounter("infisical.ocsp.response.count", {
+  description: "OCSP responses by result and cache outcome. A rising try_later means the signing budget is saturated.",
+  unit: "{response}"
+});
+
+export const ocspSigningDurationHistogram = infisicalCoreMeter.createHistogram("infisical.ocsp.signing.duration", {
+  description: "Time spent resolving status and signing a fresh OCSP response, excluding cache hits.",
+  unit: "ms"
+});
+
+export const recordOcspResponseMetric = (params: {
+  result: TOcspResponseResultLabel;
+  cache: "hit" | "miss" | "skipped" | "coalesced";
+}) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    ocspResponseCounter.add(1, {
+      "ocsp.result": params.result,
+      "ocsp.cache": params.cache
+    });
+  });
+};
+
+export const recordOcspSigningDurationMetric = (params: { durationMs: number }) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    ocspSigningDurationHistogram.record(params.durationMs);
+  });
+};

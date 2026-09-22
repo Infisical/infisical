@@ -851,6 +851,134 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Certificate revocation: CRL and OCSP
+
+Internal CAs publish revocation two ways, and both are unauthenticated public endpoints mounted under
+`/api/v1/cert-manager` next to each other. CRL is `ee/services/certificate-authority-crl`; OCSP
+([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) is `ee/services/certificate-authority-ocsp`, opt-in
+per CA via `internal_certificate_authorities.isOcspEnabled` and gated on the `pkiOcsp` plan flag.
+
+Four things are easy to get wrong:
+
+- **The AIA extension is built in several places, and a new issuance path has to fill both slots.**
+  `buildAuthorityInfoAccessExtension` (`certificate-authority-fns.ts`) takes `caIssuerUrl` and an
+  optional `ocspResponderUrl`; it is called from `signIntermediate`, `issueCertFromCa`, and
+  `signCertFromCa`. A path that constructs `x509.AuthorityInfoAccessExtension` directly silently ships
+  certificates with no responder URL, and nothing fails until a validator tries to check one.
+- **The responder must never consult the plan.** The license check belongs on enabling OCSP
+  (`updateCaById` / `createCertificateAuthority`), never on answering, or a downgrade would change the
+  revocation status of certificates already in the field. Disabling is deliberately ungated.
+- **Protocol shape, not REST.** The responder returns HTTP 200 with the error inside the body
+  (`unauthorized`, `malformedRequest`, `internalError`), and the GET form carries the request as
+  url-encoded base64 in the path, so the route is a wildcard. Both are required by RFC 6960 appendix A.1,
+  the same deviation ACME and SCEP already carry.
+- **Serials have two forms and the database only knows one.** `certificates.serialNumber` stores the
+  serial exactly as issued, 40 lowercase hex characters, and `createSerialNumber` clears the top bit, so
+  roughly one certificate in eight begins with `0`. A request's CertID carries a DER INTEGER which may
+  also carry a sign byte. `parseOcspRequest` therefore keeps both `rawSerialNumber` and the zero-stripped
+  `serialNumber`, and `$resolveStatuses` queries on **both** while joining on the normalized value.
+  Querying only the normalized form silently answers `unknown` for every certificate whose serial starts
+  with a zero byte, including revoked ones, and nothing fails loudly.
+- **The CertID in a response is rebuilt, never echoed.** Two encodings of the same serial normalize to one
+  cache key, so echoing the requester's bytes would let one caller fix what every other client receives
+  for the life of the cache entry. `buildSignedOcspResponse` re-encodes the CertID from the validated OID
+  and our own computed issuer hashes.
+- **Signing is concurrency-capped two ways and sheds with `tryLater`.** A nonce makes a response
+  request-specific, so any caller can bypass the cache and force a fresh CA signature.
+  `createOcspSigningLimiterRegistry` holds a global budget *and* a smaller per-CA budget, and a caller
+  takes the per-CA slot before the global one. The per-CA tier is what stops one tenant's traffic shedding
+  every other tenant's; the global tier is what protects the process and the HSM behind it. The queue is
+  depth-capped so a flood is rejected immediately rather than admitted to a five-second wait. Shedding
+  returns OCSP `tryLater`, the protocol's own back-pressure signal. Both tiers are per-process, not
+  fleet-wide, so the rate limiter is still the outer bound.
+- **Responses are cached and the cache must be reaped on revoke.** A nonce makes a response specific to
+  one request, so nonced requests are never cached. Everything else is, under two schemes:
+  single-certID keys on CA certificate id, hash algorithm and serial, and is invalidated precisely;
+  multi-certID keys on an order-independent fingerprint of the whole certID set plus a per-CA generation
+  counter, and is invalidated by bumping that counter with `incrementSeededWithExpiry` (never the plain
+  `incrementByWithExpiry`, which restarts at 1 when the key is evicted and lets the counter climb back to
+  a value a still-live cached response was stamped with), because a serial cannot be mapped back to the sets
+  containing it without a reverse index. `revokeCert` does both beside `rebuildCaCrl`; skip it and a
+  revoked certificate reads `good` for up to the response validity window. The split is deliberate:
+  bumping the generation for single-certID entries too would make one revocation re-sign every cached
+  answer for that CA.
+- **Concurrent cache misses coalesce into one signing.** The cache only helps after the first response
+  exists, so a cold key under load used to send every concurrent caller through the limiter and sign the
+  same answer N times, which is also how the shed threshold gets crossed by a single popular certificate.
+  `inFlightResponses` keys an in-flight promise on the cache key *plus the generation read at the start of
+  the request*, so the first caller signs and the rest await that result. The generation is what makes the
+  dedup safe across a revocation: without it a request arriving after the revoke joins a flight that began
+  before it and is handed the pre-revocation `good`, because invalidation clears Redis and never touches
+  this map. The single-certID Redis key deliberately stays generation-free so one revoke does not re-sign
+  every cached answer for that CA; the generation lives in the in-flight key instead. It is keyed on the cache key rather than on anything requester-derived, which is what
+  makes nonced requests exempt for free: `$resolveCacheKey` returns `null` when a nonce is present, and a
+  null key skips coalescing entirely, so no caller can ever be handed a response carrying someone else's
+  nonce. A shed `tryLater` is shared the same way, on purpose.
+- **The route answers in DER even when Fastify never reaches the handler.** A POST with no `Content-Type`
+  skips the registered parser and arrives with `req.body` undefined, and a body over `bodyLimit` is
+  rejected before the handler runs. Both used to surface as the generic JSON 500, which an OCSP client
+  cannot parse at all. The handler coerces a non-Buffer body to empty, and both routes carry an
+  `errorHandler` that emits `malformedRequest` in DER, so every reachable input gets a parsable response.
+
+- **Every log line on the responder path is throttled, because the caller chooses how often it fires.**
+  The endpoint is unauthenticated and the rate limiter is only registered under
+  `isProductionMode && isCloud` (`server/app.ts`), so on self-hosted an anonymous caller sets the log
+  volume. Worse, the saturation warning fires hardest exactly when the responder is already shedding.
+  `createLogThrottle` (`lib/logger/log-throttle.ts`) gives each site a small budget per window, always
+  lets the first occurrence through so the onset is still visible, and carries a
+  `suppressedSinceLastLog` count on the next line so nothing is silently dropped. Throttle keys must be
+  constants or values the caller cannot choose: the saturation throttle keys on a resolved `ca.id`, the
+  two router throttles key on fixed strings, and the throttle's own key map is bounded so it cannot
+  become the leak it exists to prevent.
+- **OCSP deliberately does not re-check the plan at issuance, and the managed CRL URL beside it does.**
+  `$isManagedCrlDistributionAllowed` runs on every issuance; `$isOcspAllowed` runs only on create and on
+  the off-to-on transition. That asymmetry is intentional on the OCSP side and follows
+  `CODE_QUALITY.md`: entitlement gates creating, enabling and editing, never evaluating, and the plan
+  must never change a response. An org that enabled OCSP while entitled keeps issuing certificates that
+  carry the responder URL after a downgrade, exactly as the CA was configured, and what it loses is the
+  ability to turn OCSP on somewhere new. Do not "fix" this by copying the CRL pattern. Whether the CRL
+  side should stop re-checking is a separate question for whoever owns that code.
+
+- **A nonced response is advertised as uncacheable.** `maxAgeSeconds` is 0 whenever the request carried a
+  nonce, so the GET form emits no `Cache-Control`. A shared HTTP cache that stored one would replay nonce
+  A to a client that sent nonce B, and that client must reject it.
+- **Every responder read goes to a primary, in Redis *and* in Postgres.** `keyStore.getItem` is served by
+  a Redis read replica when `REDIS_READ_REPLICAS` is set, and `ormify().find` resolves
+  `(tx || db.replicaNode())`, so the default for both is a replica. Under replication lag either one
+  passes the post-sign generation guard, re-caches a pre-revocation answer, and a revoked certificate
+  reads `good` for the full validity window. So the keystore reads use `getItemPrimary` and the status
+  lookup passes `certificateDAL.primaryNode()` as its `tx`. Revocation status is the one thing here that
+  cannot tolerate a stale read, and fixing only the Redis half leaves the bug intact.
+- **Issuer hashes are memoized per CA certificate, and the memo is only bounded because the parser
+  rejects unknown hash OIDs.** `getCaOcspIdentifiers` re-parses the whole CA certificate with
+  `pkijs.Certificate.fromBER`, and the issuer check runs before the cache lookup and outside the limiter,
+  so without the memo on `TResolvedCaCertificate.identifiers` one unauthenticated 32-certID request buys
+  32 full DER parses of synchronous event-loop work. The memo is keyed on the hash OID *from the request*,
+  and an OID is a dotted-decimal string of unbounded length, so the allowlist check in `parseOcspRequest`
+  is what keeps that map at four entries instead of one entry per string an anonymous caller invents.
+  Never take the OID out of a CertID without checking it against `OCSP_HASH_NAME_BY_OID` first.
+- **`ocspResponderUrl` on the CA response is derived, response-only, and keyed on the parent CA id.**
+  The UI must show the URL certificates actually carry, which comes from `SITE_URL`, not from the
+  browser's origin. `InternalCertificateAuthorityConfigurationSchema` is the create/update input and
+  deliberately does not carry the field; `InternalCertificateAuthorityResponseConfigurationSchema` adds
+  it, so a caller cannot set a responder URL that contradicts its own certificates. Build it from the
+  `certificate_authorities` row id, not `internalCa.id`: those are different rows, and only the former
+  is what the AIA extension and the responder route use.
+
+**`signTbs` must DER-encode ECDSA itself.** WebCrypto returns an ECDSA signature as raw `r||s`, while
+X.509 and OCSP require the DER `ECDSA-Sig-Value` SEQUENCE. The certificate, CSR and CRL generators
+convert internally, so nothing above them ever had to; `signTbs` hands the signature straight to the
+caller, so it converts with `ecdsaRawRsToDer` exactly as the HSM path does. Without it every ECDSA CA's
+OCSP responses fail verification in openssl, Go and Windows alike, and nothing on our side errors.
+
+`TCaSigner` (`services/certificate-authority/ca-signer.ts`) gained `signTbs` for this: it signs arbitrary
+TBS bytes and abstracts over software, HSM, and PQC CAs, so anything else needing a raw signature over a
+DER structure should use it rather than reaching for a key directly. PQC works without a special case
+because `signTbs` goes through `x509.cryptoProvider.get()`, which `initializePqcSupport` has already
+pointed at the PQC engine; the only PQC-specific line in the responder is the signature OID, taken from
+`pqcNameToOid` rather than hardcoded. ML-DSA is verified end to end against the FIPS image's OpenSSL
+3.5.6; SLH-DSA OIDs are mapped but unreachable, since CA creation rejects SLH-DSA outright.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:

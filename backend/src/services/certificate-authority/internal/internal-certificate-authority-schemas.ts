@@ -38,69 +38,81 @@ type TInternalCertificateAuthorityConfiguration = {
   activeCaCertId?: string | null;
   crlDistributionPointUrls?: string[];
   disableManagedCrlDistributionPointUrl?: boolean;
+  isOcspEnabled?: boolean;
 };
 
-export const InternalCertificateAuthorityConfigurationSchema = z
-  .object({
-    type: z.nativeEnum(InternalCaType).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.type),
-    friendlyName: z
-      .string()
-      .trim()
-      .max(PKI_TEXT_COLUMN_MAX_LENGTH)
-      .optional()
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),
-    commonName: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
-    organization: subjectAttributeSchema
-      .default("")
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
-    ou: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
-    country: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
-    province: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
-    locality: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
-    notBefore: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notBefore),
-    notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
-    maxPathLength: z.number().min(-1).nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
-    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keyAlgorithm),
-    keySource: z
-      .nativeEnum(CertKeySource)
-      .optional()
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keySource),
-    hsmConnectorId: z
-      .string()
-      .uuid()
-      .optional()
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
-    hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
-    dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
-    parentCaId: z.string().uuid().nullish(),
-    serialNumber: z.string().trim().nullish(),
-    activeCaCertId: z.string().uuid().nullish(),
-    crlDistributionPointUrls: distributionPointUrlsSchema
-      .optional()
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls),
-    disableManagedCrlDistributionPointUrl: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
+const internalCertificateAuthorityConfigurationFields = z.object({
+  type: z.nativeEnum(InternalCaType).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.type),
+  friendlyName: z
+    .string()
+    .trim()
+    .max(PKI_TEXT_COLUMN_MAX_LENGTH)
+    .optional()
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),
+  commonName: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.commonName),
+  organization: subjectAttributeSchema
+    .default("")
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.organization),
+  ou: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ou),
+  country: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.country),
+  province: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.province),
+  locality: subjectAttributeSchema.default("").describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.locality),
+  notBefore: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notBefore),
+  notAfter: validateCaDateField.optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.notAfter),
+  maxPathLength: z.number().min(-1).nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.maxPathLength),
+  keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keyAlgorithm),
+  keySource: z.nativeEnum(CertKeySource).optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.keySource),
+  hsmConnectorId: z.string().uuid().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
+  hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
+  dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
+  parentCaId: z.string().uuid().nullish(),
+  serialNumber: z.string().trim().nullish(),
+  activeCaCertId: z.string().uuid().nullish(),
+  crlDistributionPointUrls: distributionPointUrlsSchema
+    .optional()
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls),
+  disableManagedCrlDistributionPointUrl: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
+  isOcspEnabled: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
+});
+
+const atLeastOneSubjectAttribute = (data: {
+  commonName: string;
+  organization: string;
+  ou: string;
+  country: string;
+  province: string;
+  locality: string;
+}) => [data.commonName, data.organization, data.ou, data.country, data.province, data.locality].some((f) => f !== "");
+
+const atLeastOneSubjectAttributeError = {
+  message: "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",
+  path: [] as string[]
+};
+
+export const InternalCertificateAuthorityConfigurationSchema = internalCertificateAuthorityConfigurationFields.refine(
+  atLeastOneSubjectAttribute,
+  atLeastOneSubjectAttributeError
+) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
+
+export const InternalCertificateAuthorityResponseConfigurationSchema = internalCertificateAuthorityConfigurationFields
+  .extend({
+    ocspResponderUrl: z.string().nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.ocspResponderUrl)
   })
-  .refine(
-    (data) => {
-      // Check that at least one of the specified fields is non-empty
-      return [data.commonName, data.organization, data.ou, data.country, data.province, data.locality].some(
-        (field) => field !== ""
-      );
-    },
-    {
-      message:
-        "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",
-      path: []
-    }
-  ) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
+  .refine(atLeastOneSubjectAttribute, atLeastOneSubjectAttributeError) as unknown as z.ZodType<
+  TInternalCertificateAuthorityConfiguration & { ocspResponderUrl?: string | null }
+>;
 
 export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.INTERNAL),
-  configuration: InternalCertificateAuthorityConfigurationSchema
+  configuration: InternalCertificateAuthorityResponseConfigurationSchema
 });
 
 export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
@@ -116,7 +128,8 @@ export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   disableManagedCrlDistributionPointUrl: z
     .boolean()
     .optional()
-    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
+  isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(

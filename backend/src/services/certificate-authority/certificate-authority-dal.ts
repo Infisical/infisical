@@ -58,7 +58,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
-          .as("internalDisableManagedCrlDistributionPointUrl")
+          .as("internalDisableManagedCrlDistributionPointUrl"),
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -95,7 +96,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
-            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: result.internalIsOcspEnabled ?? false
           }
         : undefined,
       externalCa: result
@@ -152,7 +154,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
-          .as("internalDisableManagedCrlDistributionPointUrl")
+          .as("internalDisableManagedCrlDistributionPointUrl"),
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -192,7 +195,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             notAfter: result.internalNotAfter?.toISOString(),
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
-            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false
+            disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
+            isOcspEnabled: result.internalIsOcspEnabled ?? false
           }
         : undefined,
       externalCa: result
@@ -290,7 +294,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           db
             .ref("disableManagedCrlDistributionPointUrl")
             .withSchema(TableName.InternalCertificateAuthority)
-            .as("internalDisableManagedCrlDistributionPointUrl")
+            .as("internalDisableManagedCrlDistributionPointUrl"),
+          db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -346,7 +351,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               notAfter: ca.internalNotAfter?.toISOString(),
               activeCaCertId: ca.internalActiveCaCertId,
               crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
-              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false
+              disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false,
+              isOcspEnabled: ca.internalIsOcspEnabled ?? false
             }
           : undefined,
         externalCa: ca

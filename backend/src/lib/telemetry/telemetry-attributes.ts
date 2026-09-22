@@ -41,6 +41,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "cache.result",
   "cache.if_none_match",
   "cache.etag_miss_reason",
+  "ocsp.result",
+  "ocsp.cache",
   "rate_limit.bucket",
   "provider",
   "destination",

@@ -9,6 +9,7 @@ import { registerAgentVaultRouters } from "./agent-vault-routers";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
+import { registerCaOcspRouter } from "./certificate-authority-ocsp-router";
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
@@ -115,6 +116,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(injectCertManagerProjectId);
 
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
+      await pkiRouter.register(registerCaOcspRouter, { prefix: "/ocsp" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
       await pkiRouter.register(registerPkiDiscoveryRouter, { prefix: "/discovery-jobs" });
       await pkiRouter.register(registerPkiInstallationRouter, { prefix: "/installations" });
