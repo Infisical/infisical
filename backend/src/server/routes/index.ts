@@ -606,7 +606,12 @@ export const registerRoutes = async (
   const appCfg = getConfig();
 
   const redlock = new Redlock([redis], { retryCount: 0 });
-  const cronJob = cronJobFactory({ redis, redlock, schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled });
+  const cronJob = cronJobFactory({
+    redis,
+    redlock,
+    schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled,
+    maxJitterMs: envConfig.isDevelopmentMode ? 0 : undefined
+  });
   if (envConfig.isGeneralWorkerRunModeEnabled) {
     cronJob.start();
   }

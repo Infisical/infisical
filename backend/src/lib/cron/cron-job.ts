@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { CronExpressionParser } from "cron-parser";
 import { Cluster, Redis } from "ioredis";
@@ -55,6 +55,16 @@ export const CronJobName = {
 
 // ── tuning constants ──────────────────────────────────────────────────────────
 
+// Jitter is derived from the pattern, never configured per job: how long a job may be held
+// back should follow how often it runs. A job's window is this fraction of its own interval,
+// capped by `maxJitterMs`. A fraction below 1 is what makes the offset safe by construction,
+// so it is not a free parameter:
+//   - a run can never reach its own next fire, which `fitsBeforeNextFire` relies on;
+//   - the first retry always fits. Worst case is 0.25 x interval + 30s backoff + 1s, under
+//     `interval` for any interval above ~41s, and cron cannot fire faster than every 60s.
+//     Raising this past ~0.48 would start costing short-interval jobs their retry.
+const JITTER_INTERVAL_FRACTION = 0.25;
+
 const PARTICIPANT_SLOTS = 5;
 const PROCESS_BATCH_SIZE = 50;
 // Safety buffer in `fitsBeforeNextFire`: if the retry's nextAttemptAt is within
@@ -73,7 +83,9 @@ const DEFAULTS = {
   handlerTimeoutMs: 5 * 60_000,
   retryBackoffBaseMs: 30_000,
   retryBackoffMaxMs: 5 * 60_000,
-  drainTimeoutMs: 25_000
+  drainTimeoutMs: 25_000,
+  maxJitterMs: 15 * 60_000,
+  maxConcurrentHandlers: 4
 } as const;
 
 // ── redis schema ──────────────────────────────────────────────────────────────
@@ -108,6 +120,9 @@ const F = {
 // ── lua scripts ───────────────────────────────────────────────────────────────
 
 // Atomic "enqueue this run hash + zset entry if no other pod beat us to it".
+// ARGV[2] is the unjittered scheduled fire, recorded on the hash as the run's
+// identity. ARGV[6] is the jittered eligibility time, and the zset is scored by
+// it so processTick's zrangebyscore holds the run back until its offset elapses.
 const ENQUEUE_RUN_LUA = `
   if redis.call('exists', KEYS[1]) == 0 then
     redis.call('hset', KEYS[1],
@@ -117,7 +132,7 @@ const ENQUEUE_RUN_LUA = `
       'attempts', 0,
       'enqueued_at_ms', ARGV[5])
     redis.call('expire', KEYS[1], ARGV[3])
-    redis.call('zadd', KEYS[2], ARGV[2], ARGV[4])
+    redis.call('zadd', KEYS[2], ARGV[6], ARGV[4])
     return 1
   end
   return 0
@@ -174,6 +189,8 @@ export const cronJobFactory = ({
   retryBackoffBaseMs = DEFAULTS.retryBackoffBaseMs,
   retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs,
   drainTimeoutMs = DEFAULTS.drainTimeoutMs,
+  maxJitterMs = DEFAULTS.maxJitterMs,
+  maxConcurrentHandlers = DEFAULTS.maxConcurrentHandlers,
   keyPrefix = KEY_HASH_TAG,
   schedulingEnabled = true
 }: {
@@ -190,6 +207,19 @@ export const cronJobFactory = ({
   retryBackoffMaxMs?: number;
   drainTimeoutMs?: number;
   /**
+   * Ceiling on the derived jitter window. Without it a daily job would be spread over six
+   * hours; with it, every job past a ~1h interval shares the same widest window. Set it to 0
+   * to disable jitter, which is what development wiring does so a job runs when its pattern
+   * says it should.
+   */
+  maxJitterMs?: number;
+  /**
+   * Ceiling on how many handlers this pod runs at once. At capacity the pod stops claiming for
+   * the tick and leaves the runs in the pending zset, so another pod or a later tick picks them
+   * up; nothing is dropped.
+   */
+  maxConcurrentHandlers?: number;
+  /**
    * Namespace for every Redis key this manager owns. Defaults to the production
    * `{cron}` namespace. Tests override it so a test-owned manager and the
    * server's real one can share a Redis without colliding on slot keys.
@@ -203,6 +233,12 @@ export const cronJobFactory = ({
   schedulingEnabled?: boolean;
 }) => {
   assertHashTagged(keyPrefix);
+  if (!Number.isFinite(maxJitterMs) || maxJitterMs < 0) {
+    throw new Error(`cron: maxJitterMs (${maxJitterMs}) must be a non-negative number`);
+  }
+  if (!Number.isInteger(maxConcurrentHandlers) || maxConcurrentHandlers < 1) {
+    throw new Error(`cron: maxConcurrentHandlers (${maxConcurrentHandlers}) must be an integer >= 1`);
+  }
 
   const SLOT_KEY = (i: number) => `${keyPrefix}:slot:${i}`;
   const RUN_KEY = (id: string) => `${keyPrefix}:run:${id}`;
@@ -230,6 +266,49 @@ export const cronJobFactory = ({
   const prevFireMs = (pattern: string) => CronExpressionParser.parse(pattern, { tz: "UTC" }).prev().toDate().getTime();
 
   const nextFireMs = (pattern: string) => CronExpressionParser.parse(pattern, { tz: "UTC" }).next().toDate().getTime();
+
+  // How far past its scheduled fire a job with this interval may be held back. Proportional
+  // to the interval so a frequent job is delayed proportionally less than a rare one, capped
+  // so a daily job is not spread across the whole day. NEXT_FIRE_BUFFER_MS is belt-and-braces:
+  // JITTER_INTERVAL_FRACTION already keeps the window well inside the interval, but the clamp
+  // means the next-fire property survives someone raising the fraction.
+  const jitterWindowMs = (intervalMs: number) =>
+    Math.min(intervalMs * JITTER_INTERVAL_FRACTION, maxJitterMs, Math.max(0, intervalMs - NEXT_FIRE_BUFFER_MS));
+
+  // The window for a pattern, sampled at registration. A pattern with uneven intervals (say
+  // quarterly) gets its window recomputed per fire at enqueue; this sample only has to be good
+  // enough for the run-hash TTL check.
+  const jitterWindowForPattern = (pattern: string) => {
+    const it = CronExpressionParser.parse(pattern, { tz: "UTC" });
+    const next = it.next().toDate().getTime();
+    return jitterWindowMs(it.next().toDate().getTime() - next);
+  };
+
+  // Per-job offset into the jitter window, derived from a stable hash of the job
+  // name. It MUST NOT be random: the run id is keyed on the scheduled fire time
+  // and every pod computes a run's eligibility time independently, so a per-pod offset
+  // would make pods disagree on run identity and break the enqueue dedup and the
+  // lease logic. Hashing also spreads the jobs permanently, where random offsets
+  // would re-collide on the next fire.
+  const jitterOffsetMs = (name: string, windowMs: number) => {
+    if (windowMs <= 0) return 0;
+    // Six bytes keeps the value inside Number.MAX_SAFE_INTEGER.
+    return createHash("sha256").update(name).digest().readUIntBE(0, 6) % windowMs;
+  };
+
+  // The earliest a fire may be picked up: its scheduled time plus the job's
+  // offset. Distinct from the run hash's `started_at`, which is when a handler
+  // actually began. The window is clamped so an offset can never push a run to
+  // or past its own next fire: the two would then become eligible in the wrong
+  // order, and `fitsBeforeNextFire`, which measures a retry against the raw next
+  // fire, would stop bounding the retry correctly. NEXT_FIRE_BUFFER_MS is the
+  // same margin that check uses.
+  const eligibleAtMs = (entry: CronEntry, scheduledAt: number, nextFire: number) => {
+    const windowMs = jitterWindowMs(nextFire - scheduledAt);
+    return scheduledAt + jitterOffsetMs(entry.name, windowMs);
+  };
+
+  const atHandlerCapacity = () => inFlight.size >= maxConcurrentHandlers;
 
   const shuffleInPlace = <T>(arr: T[]): void => {
     for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -345,6 +424,18 @@ export const cronJobFactory = ({
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
 
+    // The run hash has to outlive the offset, or it expires before its own pickup and
+    // processCandidate reaps the orphaned zset entry with no log and no failed status: the
+    // job would silently never run. Measured against this pattern's own window.
+    const windowMs = jitterWindowForPattern(pattern);
+    if (runHashTtlS * 1000 <= windowMs) {
+      throw new Error(
+        `cron[${name}] runHashTtlS (${runHashTtlS}s) must exceed its jitter window (${Math.round(
+          windowMs / 1000
+        )}s), otherwise the run hash expires before the run is picked up`
+      );
+    }
+
     const effectiveHandlerTimeoutMs = entryHandlerTimeoutMs ?? handlerTimeoutMs;
     const effectiveLeaseDurationMs = entryLeaseDurationMs ?? leaseDurationMs;
     if (effectiveHandlerTimeoutMs > effectiveLeaseDurationMs) {
@@ -362,7 +453,7 @@ export const cronJobFactory = ({
       handlerTimeoutMs: entryHandlerTimeoutMs,
       leaseDurationMs: entryLeaseDurationMs
     });
-    logger.info(`cron[${name}]: registered (pattern="${pattern}")`);
+    logger.info(`cron[${name}]: registered (pattern="${pattern}") [jitter_window_ms=${windowMs}]`);
   };
 
   // ── slot election ───────────────────────────────────────────────────────────
@@ -412,6 +503,10 @@ export const cronJobFactory = ({
   // and atomically inserts a run hash + pending-zset entry if not already
   // present. The Lua script makes the existence check + write a single op so
   // multiple pods racing to enqueue the same fire produce exactly one run.
+  //
+  // The run id and the hash's `scheduled_at` stay keyed on the unjittered fire,
+  // so run identity is exactly what it was before jitter existed. Only the zset
+  // score carries the offset, which is what holds the run back from processTick.
   const enqueueDueFires = async () => {
     for (const entry of entries.values()) {
       const scheduledAt = prevFireMs(entry.pattern);
@@ -419,6 +514,7 @@ export const cronJobFactory = ({
       if (lastEnqueuedAt.get(entry.name) === scheduledAt) continue;
 
       const id = `${entry.name}:${scheduledAt}`;
+      const eligibleAt = eligibleAtMs(entry, scheduledAt, nextFireMs(entry.pattern));
       // eslint-disable-next-line no-await-in-loop
       const initialized = await redis.eval(
         ENQUEUE_RUN_LUA,
@@ -429,11 +525,14 @@ export const cronJobFactory = ({
         String(scheduledAt),
         String(entry.runHashTtlS),
         id,
-        String(Date.now())
+        String(Date.now()),
+        String(eligibleAt)
       );
       if (initialized)
         logger.info(
-          `cron[${entry.name}]: enqueued run [id=${id}] [scheduled_at=${new Date(scheduledAt).toISOString()}]`
+          `cron[${entry.name}]: enqueued run [id=${id}] [scheduled_at=${new Date(
+            scheduledAt
+          ).toISOString()}] [eligible_at=${new Date(eligibleAt).toISOString()}]`
         );
       lastEnqueuedAt.set(entry.name, scheduledAt);
     }
@@ -546,6 +645,8 @@ export const cronJobFactory = ({
       logger.info(`cron[${data.name}]: re-claiming stalled run [id=${id}] [previous_worker=${data.worker_id}]`);
     }
 
+    if (atHandlerCapacity()) return;
+
     // Track the in-flight run so stop() can wait for it to settle before
     // tearing down. Lock-contention rejections settle within a tick, so they
     // don't measurably delay shutdown drain.
@@ -576,12 +677,20 @@ export const cronJobFactory = ({
     const ids = await redis.zrangebyscore(PENDING_ZSET, "-inf", Date.now(), "LIMIT", 0, PROCESS_BATCH_SIZE);
     shuffleInPlace(ids);
 
-    for (const id of ids) {
+    for (let i = 0; i < ids.length; i += 1) {
+      if (atHandlerCapacity()) {
+        logger.info(
+          `cron: at handler capacity (${maxConcurrentHandlers}), deferring ${
+            ids.length - i
+          } due run(s) [worker=${workerId}]`
+        );
+        break;
+      }
       try {
         // eslint-disable-next-line no-await-in-loop
-        await processCandidate(id);
+        await processCandidate(ids[i]);
       } catch (err) {
-        logger.error({ err, id }, "cron: processCandidate failed");
+        logger.error({ err, id: ids[i] }, "cron: processCandidate failed");
       }
     }
   };
