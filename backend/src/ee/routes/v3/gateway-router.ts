@@ -34,7 +34,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 
-const GatewayV2ResourceSchema = GatewaysV2Schema.pick({
+const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
   identityId: true,
   relayId: true,
@@ -45,9 +45,7 @@ const GatewayV2ResourceSchema = GatewaysV2Schema.pick({
   heartbeatTTL: true,
   directAddress: true,
   directHeartbeat: true
-});
-
-const SanitizedGatewayV2Schema = GatewayV2ResourceSchema.extend({
+}).extend({
   canRevoke: z.boolean()
 });
 
@@ -414,38 +412,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       });
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
       return { ...gateway, canRevoke, authMethod: view };
-    }
-  });
-
-  // ─── DELETE /:gatewayId ──────────────────────────────────────────────────
-  server.route({
-    method: "DELETE",
-    url: "/:gatewayId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      hide: false,
-      operationId: "deleteGateway",
-      tags: [ApiDocsTags.GatewaysV3],
-      params: z.object({ gatewayId: z.string().trim().uuid().describe(GATEWAYS.DELETE.gatewayId) }),
-      response: { 200: GatewayV2ResourceSchema }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const gateway = await server.services.gatewayV2.deleteGatewayById({
-        orgPermission: req.permission,
-        id: req.params.gatewayId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.GATEWAY_DELETE,
-          metadata: { gatewayId: gateway.id, name: gateway.name }
-        }
-      });
-
-      return gateway;
     }
   });
 

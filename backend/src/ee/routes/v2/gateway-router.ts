@@ -204,6 +204,16 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         orgPermission: req.permission,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_DELETE,
+          metadata: { gatewayId: gateway.id, name: gateway.name }
+        }
+      });
+
       return gateway;
     }
   });
