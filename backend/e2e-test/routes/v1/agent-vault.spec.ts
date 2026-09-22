@@ -123,6 +123,17 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
   const [group] = (await testDb("groups")
     .insert({ orgId: seedData1.organization.id, name, slug: `${name}-${Date.now()}` })
     .returning("*")) as { id: string }[];
+  // Every path that creates a group gives it an org-scope membership as well, and that row is what says
+  // the organization reaches it. Seeding only the project one leaves a group nothing can resolve.
+  const [orgMembership] = (await testDb("memberships")
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: seedData1.organization.id,
+      actorGroupId: group.id,
+      isActive: true
+    })
+    .returning("*")) as { id: string }[];
+  await testDb("membership_roles").insert({ membershipId: orgMembership.id, role: OrgMembershipRole.NoAccess });
   const [membership] = (await testDb("memberships")
     .insert({
       scope: AccessScope.Project,
@@ -137,7 +148,7 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
     id: group.id,
     cleanup: async () => {
       await testDb("identity_group_membership").where({ groupId: group.id }).delete();
-      await testDb("memberships").where({ id: membership.id }).delete();
+      await testDb("memberships").whereIn("id", [membership.id, orgMembership.id]).delete();
       await testDb("groups").where({ id: group.id }).delete();
     }
   };
