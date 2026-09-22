@@ -108,31 +108,29 @@ export const ShareSecretsRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {!isExpired && (
-              <DropdownMenuItem
-                onClick={async () => {
-                  try {
-                    const link = new URL(`${window.location.origin}/shared/secret/${row.id}`);
-                    if (subOrganization) {
-                      link.searchParams.set("subOrganization", subOrganization);
-                    }
-                    await navigator.clipboard.writeText(link.toString());
-                    createNotification({
-                      text: "Shared secret link copied to clipboard.",
-                      type: "success"
-                    });
-                  } catch {
-                    createNotification({
-                      text: "Could not copy the link. Your browser blocked clipboard access.",
-                      type: "error"
-                    });
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  const link = new URL(`${window.location.origin}/shared/secret/${row.id}`);
+                  if (subOrganization) {
+                    link.searchParams.set("subOrganization", subOrganization);
                   }
-                }}
-              >
-                <Copy />
-                Copy Link
-              </DropdownMenuItem>
-            )}
+                  await navigator.clipboard.writeText(link.toString());
+                  createNotification({
+                    text: "Shared secret link copied to clipboard.",
+                    type: "success"
+                  });
+                } catch {
+                  createNotification({
+                    text: "Could not copy the link. Your browser blocked clipboard access.",
+                    type: "error"
+                  });
+                }
+              }}
+            >
+              <Copy />
+              Copy Link
+            </DropdownMenuItem>
             <DropdownMenuItem
               variant="danger"
               onClick={() =>
