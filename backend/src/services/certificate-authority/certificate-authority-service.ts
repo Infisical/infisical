@@ -795,7 +795,11 @@ export const certificateAuthorityServiceFactory = ({
       }
 
       const internalConfig = configuration as
-        | { crlDistributionPointUrls?: string[]; disableManagedCrlDistributionPointUrl?: boolean }
+        | {
+            crlDistributionPointUrls?: string[];
+            disableManagedCrlDistributionPointUrl?: boolean;
+            isOcspEnabled?: boolean;
+          }
         | undefined;
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
@@ -804,7 +808,8 @@ export const certificateAuthorityServiceFactory = ({
         status,
         name,
         crlDistributionPointUrls: internalConfig?.crlDistributionPointUrls,
-        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl
+        disableManagedCrlDistributionPointUrl: internalConfig?.disableManagedCrlDistributionPointUrl,
+        isOcspEnabled: internalConfig?.isOcspEnabled
       });
 
       if (!updatedCa.internalCa) {

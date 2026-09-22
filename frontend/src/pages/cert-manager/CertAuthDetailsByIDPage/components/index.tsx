@@ -5,5 +5,6 @@ export { CaDetailsSection } from "./CaDetailsSection";
 export { CaDistributionPointsSection } from "./CaDistributionPointsSection";
 export { CaGenerateRootCertModal } from "./CaGenerateRootCertModal";
 export { CaIssuerUrlSection } from "./CaIssuerUrlSection";
+export { CaOcspSection } from "./CaOcspSection";
 export { CaRenewalModal } from "./CaRenewalModal";
 export { CaSigningConfigSection } from "./CaSigningConfigSection";

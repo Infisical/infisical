@@ -1,0 +1,126 @@
+---
+title: "OCSP"
+sidebarTitle: "OCSP"
+description: "Answer certificate revocation checks in real time with the Online Certificate Status Protocol."
+---
+
+A CRL tells a validator every certificate an internal CA has ever revoked, and the validator downloads the whole list to check one certificate. The Online Certificate Status Protocol (OCSP, [RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) answers a narrower question: is this one certificate revoked right now. Infisical runs an OCSP responder for each internal CA that has OCSP enabled.
+
+Load balancers, VPN concentrators, and mutual TLS gateways often check OCSP while ignoring CRLs entirely.
+
+<Info>
+  OCSP is available for internal CAs. A certificate from an external CA such as ACME, DigiCert, AWS Private CA, or Venafi carries its own issuer's responder URL, and only that issuer can answer for it.
+</Info>
+
+## How it works
+
+- Every end-entity certificate issued while OCSP is enabled carries the responder URL in its Authority Information Access extension, which is where validators read it from. Certificates for intermediate CAs aren't covered.
+- A validator sends the certificate's serial number and two hashes identifying the issuer, then receives a signed answer of `good`, `revoked`, or `unknown`.
+- The CA signs the response, so a validator can verify it without trusting the transport.
+- Revoking a certificate changes the answer Infisical returns straight away. How soon a validator sees the change depends on how long it caches the previous response.
+- A serial the CA never issued returns `unknown` rather than `good`.
+
+<Note>
+  Only certificates issued **after** OCSP is enabled carry the responder URL. Enabling OCSP doesn't change certificates that already exist, so reissue one if it needs to be checkable over OCSP.
+</Note>
+
+## Prerequisites
+
+- An internal CA with a certificate installed.
+- The Enterprise plan.
+- A responder URL your validators can reach. Infisical builds it from the instance URL, so a self-hosted instance that validators can't resolve needs a reachable address configured first.
+
+## Enable OCSP
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Open the CA">
+        Go to **Certificate Authorities** and select the internal CA.
+      </Step>
+      <Step title="Edit the OCSP card">
+        Select the pencil icon on the **OCSP** card.
+      </Step>
+      <Step title="Turn OCSP on">
+        Turn on **Enable OCSP**, then select **Save**.
+      </Step>
+      <Step title="Copy the responder URL">
+        The **OCSP** card now shows the responder URL. Certificates issued from this point carry it.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Set `isOcspEnabled` under `configuration` when you create or update an internal CA.
+
+    ### Enable on an existing CA
+
+    ```bash
+    curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "configuration": {
+              "isOcspEnabled": true
+          }
+      }'
+    ```
+
+    ### Enable at creation
+
+    ```bash
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "name": "my-internal-ca",
+          "configuration": {
+              "type": "root",
+              "commonName": "My Root CA",
+              "keyAlgorithm": "RSA_2048",
+              "isOcspEnabled": true
+          }
+      }'
+    ```
+
+    Turning `isOcspEnabled` off stops the responder answering for this CA and removes the URL from certificates issued afterwards. Certificates already carrying the URL get an `unauthorized` response, which RFC 6960 defines for a responder that can no longer answer authoritatively. Validators that require a status treat those certificates as uncheckable, so turn OCSP off only once you no longer need revocation checking for the certificates you have already issued.
+  </Tab>
+</Tabs>
+
+## Verify the responder
+
+Use `openssl` with the certificate and its issuer:
+
+```bash
+openssl ocsp -issuer ca.pem -cert certificate.pem \
+    -url https://app.infisical.com/api/v1/cert-manager/ocsp/<ca-id> \
+    -CAfile ca.pem
+```
+
+A working responder prints `Response verify OK` followed by the status:
+
+```
+Response verify OK
+certificate.pem: good
+	This Update: Sep 21 13:29:42 2026 GMT
+	Next Update: Sep 21 14:29:42 2026 GMT
+```
+
+## OCSP stapling
+
+OCSP stapling allows a server to include the OCSP response for its own certificate in the TLS handshake, so clients receive the revocation status without querying the responder themselves.
+
+Stapling is optional and is configured on the server that presents the certificate, not in Infisical. Enabling it reduces handshake latency and keeps connections working during a brief responder outage.
+
+```nginx
+ssl_stapling on;
+ssl_stapling_verify on;
+resolver 1.1.1.1 8.8.8.8 valid=300s;
+```
+
+<Note>
+  Stapling only applies to certificates a server presents. When a server validates a client certificate, such as in mutual TLS, stapling doesn't apply and each check queries the responder directly.
+</Note>
+
+## Limitations
+
+- Certificates issued before OCSP was enabled don't carry the responder URL.

@@ -5,6 +5,7 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -160,6 +161,7 @@ type TCertificateServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  certificateAuthorityOcspService: Pick<TCertificateAuthorityOcspServiceFactory, "invalidateCachedResponse">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -194,7 +196,8 @@ export const certificateServiceFactory = ({
   usageCounterDAL,
   keyStore,
   usageMeteringService,
-  hsmConnectorService
+  hsmConnectorService,
+  certificateAuthorityOcspService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -536,6 +539,20 @@ export const certificateServiceFactory = ({
       throw err;
     }
 
+    if (cert.caId) {
+      try {
+        await certificateAuthorityOcspService.invalidateCachedResponse({
+          caId: cert.caId,
+          serialNumber: cert.serialNumber
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to invalidate OCSP cache after deletion [caId=${cert.caId}] [serialNumber=${cert.serialNumber}]`
+        );
+      }
+    }
+
     await triggerSyncsForDeletedCertificate(
       cert.id,
       pkiSyncIdsHoldingCertificate,
@@ -746,6 +763,18 @@ export const certificateServiceFactory = ({
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
     if (!ca.externalCa?.id) {
+      try {
+        await certificateAuthorityOcspService.invalidateCachedResponse({
+          caId: ca.id,
+          serialNumber: cert.serialNumber
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to invalidate OCSP cache after revocation [caId=${ca.id}] [serialNumber=${cert.serialNumber}]`
+        );
+      }
+
       await rebuildCaCrl({
         caId: ca.id,
         certificateAuthorityDAL,

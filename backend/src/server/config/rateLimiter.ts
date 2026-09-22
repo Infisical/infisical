@@ -38,6 +38,18 @@ export const writeLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// OCSP is per-handshake traffic, so readLimit is the wrong budget: a mutual TLS fleet behind one NAT
+// address would spend it on revocation checks alone and read the resulting tryLater as the responder
+// being down. The endpoint is unauthenticated, so the IP is all there is to key on, and
+// OCSP_MAX_CONCURRENT_SIGNATURES is what caps the expensive work; this only has to stop one address
+// flooding us with cache hits.
+export const ocspLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 6000,
+  keyGenerator: (req) => req.realIp
+};
+
 // Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
 // landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
 // rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT

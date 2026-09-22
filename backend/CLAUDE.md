@@ -851,6 +851,69 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Certificate revocation: CRL and OCSP
+
+Internal CAs publish revocation two ways, both unauthenticated public endpoints under
+`/api/v1/cert-manager`. CRL is `ee/services/certificate-authority-crl`; OCSP
+([RFC 6960](https://www.rfc-editor.org/rfc/rfc6960)) is `ee/services/certificate-authority-ocsp`, opt-in
+per CA via `internal_certificate_authorities.isOcspEnabled` and gated on the `pkiOcsp` plan flag.
+
+The responder answers a status question for one certificate, so the things that bite are freshness and
+what an anonymous caller can cost us.
+
+- **Serials have two forms and the database knows one.** `certificates.serialNumber` is 40 lowercase hex
+  as issued, and `createSerialNumber` clears the top bit, so ~1 in 8 begins with `0`. A CertID carries a
+  DER INTEGER that may also carry a sign byte. `parseOcspRequest` keeps `rawSerialNumber` and the
+  zero-stripped `serialNumber`, and `$resolveStatuses` queries both. Querying one silently answers
+  `unknown` for every certificate whose serial starts with a zero byte, revoked ones included.
+- **Every read on the revocation path goes to a primary, in Redis and in Postgres.** `keyStore.getItem`
+  and `ormify().find` both default to a replica. Under lag either one re-caches a pre-revocation `good`
+  for the full validity window. Use `getItemPrimary` and pass `certificateDAL.primaryNode()` as the `tx`.
+- **The cache must be reaped wherever a status can change**: revoke, delete, and toggling the flag. A miss
+  leaves a revoked certificate reading `good` for up to an hour. Only single-certID responses are cached;
+  multi-certID requests are answered but never cached, so there is one key scheme to invalidate.
+- **Concurrent misses coalesce into one signing.** `inFlightResponses` keys on the cache key plus the
+  generation counter. The generation is what stops a request arriving after a revoke from joining a flight
+  that began before it. Nonced requests are exempt for free, because their cache key is `null`.
+- **Never take the hash OID out of a CertID without checking `OCSP_HASH_NAME_BY_OID` first.** An OID is an
+  unbounded dotted-decimal string and it keys the per-CA issuer-hash memo, so an unvalidated one is
+  unbounded attacker-controlled heap.
+- **Signing is concurrency-capped globally and per CA and sheds with `tryLater`.** The per-CA tier stops
+  one tenant's traffic shedding everyone else's. Both are per process, so the rate limiter is the outer
+  bound, and it is only registered under `isProductionMode && isCloud`.
+- **Do not log per request on this path.** The endpoint is unauthenticated and the rate limiter is only
+  registered under `isProductionMode && isCloud`, so on self-hosted an anonymous caller sets the log
+  volume. Malformed and unauthorized results are counted by `ocsp.result` and logged nowhere; the
+  saturation warning is interval-guarded because shedding is by definition high volume.
+- **Protocol shape, not REST.** HTTP 200 with the error in the DER body, and a wildcard GET path carrying
+  url-encoded base64. Required by RFC 6960 appendix A.1. Both routes also carry an `errorHandler`, because
+  a body over `bodyLimit` or a missing `Content-Type` never reaches the handler and would otherwise return
+  a JSON 500 an OCSP client cannot parse.
+- **The responder never consults the plan.** Entitlement gates enabling OCSP, never answering, per
+  `CODE_QUALITY.md`. Note the managed CRL URL beside it *does* re-check at issuance; that asymmetry is
+  deliberate on the OCSP side and should not be "fixed" by copying the CRL pattern.
+- **The response metric keeps those two states on separate dimensions.** `ocsp.status` is the envelope
+  and `ocsp.cert_status` is the per-certificate answer, which only exists inside a `successful` envelope
+  and is `none` otherwise. Flattening them onto one label made `unknown` and `unauthorized` look like
+  siblings when they come from different enumerations. Both names, plus `ocsp.cache`, have to be in
+  `INFISICAL_CORE_METER_ATTRIBUTES`: an attribute missing from that allowlist is dropped by the SDK View
+  with no error, so `ocsp-metric-attributes.test.ts` pins them.
+- **The two "I can't answer" states are different, and RFC 6960 picks between them.** `unauthorized`
+  (2.3, unsigned) is "not capable of responding authoritatively": no such CA, no active CA certificate,
+  issuer hashes that belong to someone else, and OCSP switched off for that CA. `unknown` (2.2, signed,
+  inside a successful response) is "I serve this issuer but have no record of this certificate", which is
+  a serial this CA never issued. Do not answer a disabled CA with `unknown`: we hold a record for those
+  certificates, so it is a false assertion signed with the CA key, and it would make the off switch still
+  cost a signature per request. `unknown` responses carry a short validity window, since their serial is
+  caller-chosen.
+
+**`signTbs` must DER-encode ECDSA itself.** WebCrypto returns raw `r||s`; X.509 and OCSP need the DER
+`ECDSA-Sig-Value` SEQUENCE. The certificate, CSR and CRL generators convert internally, so nothing above
+them ever had to. Without it every ECDSA CA's OCSP responses fail verification in openssl, Go and Windows,
+and nothing on our side errors. `TCaSigner` (`services/certificate-authority/ca-signer.ts`) gained
+`signTbs` for this and abstracts over software, HSM and PQC CAs. PQC needs no special case beyond taking
+the signature OID from `pqcNameToOid`.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
