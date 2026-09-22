@@ -14,8 +14,7 @@ const invalidateGatewayQueries = (
   queryClient: ReturnType<typeof useQueryClient>,
   gatewayId?: string
 ) => {
-  queryClient.invalidateQueries(gatewaysQueryKeys.list());
-  queryClient.invalidateQueries(gatewaysQueryKeys.listWithTokens());
+  queryClient.invalidateQueries({ queryKey: gatewaysQueryKeys.listKey() });
   if (gatewayId) {
     queryClient.invalidateQueries({ queryKey: gatewaysV2QueryKeys.byIdKey(gatewayId) });
     queryClient.invalidateQueries({

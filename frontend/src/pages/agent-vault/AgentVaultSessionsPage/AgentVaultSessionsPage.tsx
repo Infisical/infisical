@@ -107,7 +107,7 @@ export const AgentVaultSessionsPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const { data: accessBundles } = useListAgentVaultAccessBundles();
+  const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -117,7 +117,7 @@ export const AgentVaultSessionsPage = () => {
   // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
   // off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim()) || statusFilter !== ALL_STATUSES;
-  const hasReachableBundles = (accessBundles?.length ?? 0) > 0;
+  const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
 
   let emptyTitle: string;
   let emptyDescription: string;
@@ -352,7 +352,6 @@ export const AgentVaultSessionsPage = () => {
         )}
 
         {totalCount > 0 && (
-          // The card lays its children out with gap-5, which reads as a gap under the table.
           <CardContent className="-mt-5 pt-0">
             <Pagination
               count={totalCount}

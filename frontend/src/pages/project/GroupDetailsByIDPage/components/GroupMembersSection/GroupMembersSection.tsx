@@ -9,7 +9,7 @@ type Props = {
 
 export const GroupMembersSection = ({ groupMembership }: Props) => {
   return (
-    <Card className="flex-1">
+    <Card className="min-w-0 flex-1">
       <CardHeader>
         <CardTitle>Group Members</CardTitle>
         <CardDescription>View members of this group</CardDescription>

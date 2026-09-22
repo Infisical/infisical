@@ -51,7 +51,7 @@ import {
   dimCommitted,
   fmtMoney,
   isMeteredCadence,
-  pluralizeUnit,
+  unitForCount,
   unitPrice
 } from "../billing-v2-format";
 import { ActivateView } from "./ActivateView";
@@ -99,7 +99,7 @@ const dimPriceLine = (
       : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cadence)}`;
   const line: PriceLine = { amount: fmtMoney(amount, 2), unit, metered };
   if (metered && dim.included > 0) {
-    line.prefix = `First ${dim.included.toLocaleString()} ${pluralizeUnit(dim.noun)} included, then`;
+    line.prefix = `First ${dim.included.toLocaleString()} ${unitForCount(dim.noun, dim.included)} included, then`;
   }
   return line;
 };

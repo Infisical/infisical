@@ -16,6 +16,11 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
@@ -63,6 +68,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
@@ -75,7 +81,8 @@ export const identityTokenAuthServiceFactory = ({
   identityAccessTokenService,
   permissionService,
   licenseService,
-  orgDAL
+  orgDAL,
+  eventEmitter
 }: TIdentityTokenAuthServiceFactoryDep) => {
   const attachTokenAuth = async ({
     identityId,
@@ -183,6 +190,17 @@ export const identityTokenAuthServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
         },
         tx
       );
@@ -296,13 +314,31 @@ export const identityTokenAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedTokenAuth = await identityTokenAuthDAL.updateById(identityTokenAuth.id, {
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
+      const doc = await identityTokenAuthDAL.updateById(
+        identityTokenAuth.id,
+        {
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TOKEN_AUTH);
@@ -433,11 +469,19 @@ export const identityTokenAuthServiceFactory = ({
 
     const revokedIdentityTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
-      await identityAccessTokenDAL.delete({
-        identityId,
-        authMethod: IdentityAuthMethod.TOKEN_AUTH
-      });
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.TOKEN_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedTokenAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
@@ -579,7 +623,7 @@ export const identityTokenAuthServiceFactory = ({
         await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.TOKEN_AUTH, tx);
       }
 
-      return identityAccessTokenService.issueIdentityAccessToken({
+      const issued = await identityAccessTokenService.issueIdentityAccessToken({
         identityId: identity.id,
         identityName: identity.name,
         authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -595,6 +639,19 @@ export const identityTokenAuthServiceFactory = ({
         accessTokenTrustedIps: identityTokenAuth.accessTokenTrustedIps as TIp[],
         persistToPg: { tx, name }
       });
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialAdded,
+          actor,
+          actorId,
+          credential: { id: issued.identityAccessToken.id, name }
+        },
+        tx
+      );
+      return issued;
     });
 
     return { accessToken, identityTokenAuth, identityAccessToken, identity };
@@ -810,16 +867,26 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
 
-    const [token] = await identityAccessTokenDAL.update(
-      {
-        authMethod: IdentityAuthMethod.TOKEN_AUTH,
-        identityId: foundToken.identityId,
-        id: tokenId
-      },
-      {
-        name
-      }
-    );
+    const token = await identityTokenAuthDAL.transaction(async (tx) => {
+      const [doc] = await identityAccessTokenDAL.update(
+        { authMethod: IdentityAuthMethod.TOKEN_AUTH, identityId: foundToken.identityId, id: tokenId },
+        { name },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialUpdated,
+          actor,
+          actorId,
+          credential: { id: doc.id, name: doc.name }
+        },
+        tx
+      );
+      return doc;
+    });
 
     return { token, identityMembershipOrg };
   };
@@ -887,15 +954,26 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityAccessToken.identityId, isActorSuperAdmin);
 
-    const [revokedToken] = await identityAccessTokenDAL.update(
-      {
-        id: identityAccessToken.id,
-        authMethod: IdentityAuthMethod.TOKEN_AUTH
-      },
-      {
-        isAccessTokenRevoked: true
-      }
-    );
+    const revokedToken = await identityTokenAuthDAL.transaction(async (tx) => {
+      const [doc] = await identityAccessTokenDAL.update(
+        { id: identityAccessToken.id, authMethod: IdentityAuthMethod.TOKEN_AUTH },
+        { isAccessTokenRevoked: true },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityOrgMembership,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialRevoked,
+          actor,
+          actorId,
+          credential: { id: doc.id, name: doc.name }
+        },
+        tx
+      );
+      return doc;
+    });
 
     // No JWT here, so the helper anchors on now plus the row's issuance cap.
     const expiresAt = computeTokenAuthRevokeMarkerExpiry({

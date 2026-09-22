@@ -6,6 +6,7 @@ import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -124,7 +125,8 @@ export const TravisCISyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  async syncSecrets(secretSync: TTravisCISyncWithCredentials, secretMap: TSecretMap): Promise<void> {
+  async syncSecrets(secretSync: TTravisCISyncWithCredentials, payload: TSecretSyncPayload): Promise<void> {
+    const secretMap = payload.flatten();
     const {
       connection: {
         credentials: { apiToken }
@@ -189,7 +191,8 @@ export const TravisCISyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TTravisCISyncWithCredentials, secretMap: TSecretMap): Promise<void> {
+  async removeSecrets(secretSync: TTravisCISyncWithCredentials, payload: TSecretSyncPayload): Promise<void> {
+    const secretMap = payload.flatten();
     const {
       connection: {
         credentials: { apiToken }
