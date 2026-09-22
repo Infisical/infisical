@@ -365,7 +365,8 @@ export const agentVaultMembershipServiceFactory = ({
     const userMemberIds = activeIds(userMemberships, "actorUserId");
     const identityMemberIds = activeIds(identityMemberships, "actorIdentityId");
 
-    const foundGroups = new Set(groupMemberships.map((membership) => membership.actorGroupId));
+    // Active, so a deactivated group cannot be restored to Agent Vault by adding it again.
+    const foundGroups = activeIds(groupMemberships, "actorGroupId");
     const missingGroups = groupIds.filter((id) => !foundGroups.has(id));
     if (missingGroups.length) {
       throw new NotFoundError({ message: `Group(s) ${missingGroups.map((el) => `'${el}'`).join(", ")} not found` });

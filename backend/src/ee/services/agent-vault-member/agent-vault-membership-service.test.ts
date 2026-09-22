@@ -251,6 +251,26 @@ describe("agentVaultMembership guards", () => {
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
+  // A group whose organization membership was deactivated must not be restorable by adding it again.
+  test("refuses a group whose organization membership is deactivated", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorGroupId: GROUP_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [],
+        machineIdentityIds: [],
+        groupIds: [GROUP_ID],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
   test("refuses to change your own role", async () => {
     const { service, deps } = buildService();
 
