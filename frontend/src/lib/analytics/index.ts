@@ -27,4 +27,9 @@ export const analytics = {
 };
 
 export { AnalyticsEvent };
-export type { FolderAccessGrantSheetSource } from "./events";
+export type {
+  FolderAccessGrantSheetSource,
+  SecretsAddResourceAction,
+  SecretsAddResourceMenuLevel,
+  SecretsAddResourceMenuSource
+} from "./events";

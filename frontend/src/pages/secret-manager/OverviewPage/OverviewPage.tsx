@@ -2568,6 +2568,20 @@ const OverviewPageContent = () => {
     | undefined;
 
   const addResourceButtonsProps: AddResourceButtonsProps = {
+    onMenuOpen: (source, menuLevel) =>
+      analytics.captureForOrganization(AnalyticsEvent.SecretsAddResourceMenuOpened, orgId, {
+        projectId,
+        source,
+        menuLevel,
+        environmentMode: isSingleEnvView ? "single" : "multiple"
+      }),
+    onActionSelect: (action, source) =>
+      analytics.captureForOrganization(AnalyticsEvent.SecretsAddResourceActionSelected, orgId, {
+        projectId,
+        source,
+        action,
+        environmentMode: isSingleEnvView ? "single" : "multiple"
+      }),
     onAddSecret: () => handlePopUpOpen("addSecretsInAllEnvs"),
     onAddFolder: () => handlePopUpOpen("addFolder"),
     onImportSecrets: () => handlePopUpOpen("importSecrets"),
