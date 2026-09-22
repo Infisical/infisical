@@ -11,7 +11,6 @@ import { AxiosError } from "axios";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
-  ArrowUpDownIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -591,8 +590,6 @@ const OverviewPageContent = () => {
       getSecretSortValue(option.orderBy, option.orderDirection) ===
       getSecretSortValue(orderBy, orderDirection)
   );
-  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
-
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
     if (canApproveAny) return pendingApprovalsCount;
@@ -2873,11 +2870,11 @@ const OverviewPageContent = () => {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="flex h-full w-full cursor-pointer items-center gap-2 px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                              className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
                             >
                               <span className="text-foreground">Name</span>
-                              <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                              <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
