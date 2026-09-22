@@ -23,8 +23,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         name: slugSchema(),
         caName: slugSchema({ field: "caName" }),

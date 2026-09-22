@@ -215,7 +215,10 @@ export const KeyStorePrefixes = {
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
   NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
-    `native-integration-deprecation-notice:${orgId}:${period}` as const
+    `native-integration-deprecation-notice:${orgId}:${period}` as const,
+
+  LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
@@ -284,6 +287,7 @@ export const KeyStoreTtls = {
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 

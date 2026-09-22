@@ -40,10 +40,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { PageHeader } from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
+  useProject,
   useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -53,6 +55,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CertificateModal } from "../CertificatesPage/components/CertificateModal";
 import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
+import { LegacyPkiCreationBlockedModal } from "../components/LegacyPkiCreationBlockedModal";
+import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAlert";
 import { PkiTemplateForm } from "./components/PkiTemplateForm";
 
 const PER_PAGE_INIT = 25;
@@ -66,12 +70,15 @@ export const PkiTemplateListPage = () => {
     "deleteTemplate",
     "enrollmentOptions",
     "estUpgradePlan",
-    "certificateFromTemplate"
+    "certificateFromTemplate",
+    "creationBlocked"
   ] as const);
 
   const { subscription } = useSubscription();
+  const { currentProject } = useProject();
 
   const { data, isPending } = useListCertificateTemplates({
+    projectId: currentProject.id,
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -80,7 +87,8 @@ export const PkiTemplateListPage = () => {
 
   const onRemovePkiSubscriberSubmit = async () => {
     const pkiTemplate = await deleteCertTemplate.mutateAsync({
-      templateName: popUp?.deleteTemplate?.data?.name
+      templateName: popUp?.deleteTemplate?.data?.name,
+      projectId: currentProject.id
     });
 
     createNotification({
@@ -104,8 +112,8 @@ export const PkiTemplateListPage = () => {
               title="Certificate Templates"
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />
+            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.CertificateTemplate} />
             <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-border-control bg-surface-base p-4">
-              {/* TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation */}
               <div className="mb-4 flex justify-between">
                 <p className="text-xl font-medium text-foreground">Templates</p>
                 <div className="flex w-full justify-end">
@@ -118,7 +126,7 @@ export const PkiTemplateListPage = () => {
                         colorSchema="primary"
                         type="submit"
                         leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => handlePopUpOpen("certificateTemplate")}
+                        onClick={() => handlePopUpOpen("creationBlocked")}
                         isDisabled={!isAllowed}
                         className="ml-4"
                       >
@@ -307,6 +315,11 @@ export const PkiTemplateListPage = () => {
           </ModalContent>
         </Modal>
         <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <LegacyPkiCreationBlockedModal
+          resource={LegacyPkiResource.CertificateTemplate}
+          isOpen={popUp.creationBlocked.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
+        />
         <CertificateModal
           popUp={{
             certificate: {

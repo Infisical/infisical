@@ -74,9 +74,11 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "createPkiSubscriber",
       tags: [ApiDocsTags.PkiSubscribers],
-      description: "Create PKI Subscriber",
+      description:
+        "Create PKI Subscriber. Deprecated, use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         projectId: z.string().trim().describe(PKI_SUBSCRIBERS.CREATE.projectId),
         caId: z

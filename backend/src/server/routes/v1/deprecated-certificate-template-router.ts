@@ -58,7 +58,10 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     },
     schema: {
       hide: false,
+      deprecated: true,
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       body: z.object({
         caId: z.string().describe(CERTIFICATE_TEMPLATES.CREATE.caId),
         pkiCollectionId: z.string().optional().describe(CERTIFICATE_TEMPLATES.CREATE.pkiCollectionId),

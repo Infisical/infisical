@@ -17,6 +17,7 @@ export * from "./ExternalImportSucceededTemplate";
 export * from "./HealthAlertTemplate";
 export * from "./HoneyTokenTriggeredTemplate";
 export * from "./IntegrationSyncFailedTemplate";
+export * from "./LegacyPkiDeprecationTemplate";
 export * from "./MfaRecoveryCodeUsedTemplate";
 export * from "./NativeIntegrationDeprecationOrgAdminTemplate";
 export * from "./NativeIntegrationDeprecationProjectAdminTemplate";
