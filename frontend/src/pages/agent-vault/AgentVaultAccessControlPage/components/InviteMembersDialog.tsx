@@ -6,6 +6,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,8 +16,7 @@ import {
   Field,
   FieldContent,
   FieldDescription,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
@@ -31,8 +31,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
 import { ProductRoleField } from "./ProductRoleField";
-
-const CANDIDATE_LIMIT = 50;
 
 type TCandidate = { value: string; label: string; email: string };
 
@@ -64,11 +62,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const { data: availableData, isFetching: isCandidatesFetching } =
     useListAvailableAgentVaultMembers(
-      {
-        actorType: AgentVaultMemberType.User,
-        search: debouncedSearch.trim() || undefined,
-        limit: CANDIDATE_LIMIT
-      },
+      { actorType: AgentVaultMemberType.User, search: debouncedSearch.trim() || undefined },
       isOpen
     );
   // Only the ?requesterEmail= deep link needs the whole roster: it resolves an address the candidate
@@ -168,27 +162,33 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         </DialogHeader>
 
         <Field>
-          <FieldLabel>Users</FieldLabel>
+          <FieldLabel htmlFor="agent-vault-invite-users">Users</FieldLabel>
           <FieldContent>
-            <FilterableSelect
-              isMulti
-              value={selected}
-              onChange={(value) => setSelected((value ?? []) as TCandidate[])}
+            <Combobox
+              id="agent-vault-invite-users"
+              multiple
               options={candidates}
-              placeholder="Search by name or email..."
-              getOptionLabel={(option) => option.label}
-              getOptionValue={(option) => option.value}
-              isLoading={isCandidatesFetching || search !== debouncedSearch}
-              onInputChange={(value, actionMeta) => {
-                if (actionMeta.action === "input-change") setSearch(value);
-              }}
+              value={selected}
               // The server already matched the term, against fields the label does not show.
-              filterOption={() => true}
-              noOptionsMessage={() =>
-                search
+              shouldFilter={false}
+              isLoading={isCandidatesFetching}
+              // Without this a chip already picked vanishes when the next search returns a page it is not on.
+              includeMissingSelectedOptions
+              onInputValueChange={setSearch}
+              getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              getOptionKeywords={(option) => [option.email]}
+              placeholder="Pick users"
+              searchPlaceholder="Search by name or email..."
+              searchAriaLabel="Search users"
+              emptyMessage={(inputValue) =>
+                inputValue
                   ? "No one matches who is not already a member"
                   : "Everyone in the organization is already a member"
               }
+              clearAriaLabel="Clear all users"
+              modal
+              onValueChange={(next) => setSelected([...next])}
             />
             {isCandidateListTruncated && (
               <FieldDescription>

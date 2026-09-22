@@ -76,13 +76,18 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
   });
 };
 
+// One page is enough for a picker: past it the admin searches. The default lives here so both add
+// dialogs page the same way.
+const AVAILABLE_MEMBER_LIMIT = 50;
+
 export const useListAvailableAgentVaultMembers = <
   T extends AgentVaultMemberType = AgentVaultMemberType
 >(
-  params: TListAgentVaultMembersDTO & { actorType?: T } = {},
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO & { actorType?: T } = {},
   enabled = true
 ) => {
   const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
 
   return useQuery({
     queryKey: agentVaultKeys.availableMemberList(currentOrg.id, params),

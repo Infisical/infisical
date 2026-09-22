@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRightIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -12,20 +15,19 @@ import {
   Field,
   FieldContent,
   FieldDescription,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultMembers,
+  useListAgentVaultMembers,
   useListAvailableAgentVaultMembers
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
-
-const CANDIDATE_LIMIT = 50;
 
 type TOption = { value: string; label: string };
 
@@ -35,6 +37,7 @@ type Props = {
 };
 
 export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
+  const { currentOrg } = useOrganization();
   const addMembers = useAddAgentVaultMembers();
 
   const [group, setGroup] = useState<TOption | null>(null);
@@ -43,11 +46,13 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const [debouncedSearch] = useDebounce(search);
 
   const { data, isFetching } = useListAvailableAgentVaultMembers(
-    {
-      actorType: AgentVaultMemberType.Group,
-      search: debouncedSearch.trim() || undefined,
-      limit: CANDIDATE_LIMIT
-    },
+    { actorType: AgentVaultMemberType.Group, search: debouncedSearch.trim() || undefined },
+    isOpen
+  );
+  // Only for the empty state: with nothing available, this is what tells an organization that has no
+  // groups at all apart from one whose groups are all already members.
+  const { data: memberData } = useListAgentVaultMembers(
+    { actorType: AgentVaultMemberType.Group, limit: 1 },
     isOpen
   );
 
@@ -56,7 +61,12 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
     [data]
   );
 
-  const isListTruncated = (data?.totalCount ?? 0) > options.length;
+  const availableCount = data?.totalCount ?? 0;
+  const isListTruncated = availableCount > options.length;
+  // A search that matches nothing is not an empty organization, so it keeps the picker and answers
+  // inside the dropdown instead.
+  const hasNothingToAdd = Boolean(data) && availableCount === 0 && !debouncedSearch.trim();
+  const orgHasNoGroups = hasNothingToAdd && (memberData?.totalCount ?? 0) === 0;
 
   const handleClose = () => {
     setGroup(null);
@@ -100,55 +110,80 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
           </DialogDescription>
         </DialogHeader>
 
-        <Field>
-          <FieldLabel>Group</FieldLabel>
-          <FieldContent>
-            <FilterableSelect
-              value={group}
-              onChange={(value) => setGroup((value ?? null) as TOption | null)}
-              options={options}
-              placeholder="Search groups..."
-              getOptionLabel={(option) => option.label}
-              getOptionValue={(option) => option.value}
-              isLoading={isFetching || search !== debouncedSearch}
-              onInputChange={(value, actionMeta) => {
-                if (actionMeta.action === "input-change") setSearch(value);
-              }}
-              filterOption={() => true}
-              noOptionsMessage={() =>
-                search
-                  ? "No group matches that is not already a member"
-                  : "Every group in the organization is already a member"
-              }
-            />
-            {isListTruncated && (
-              <FieldDescription>
-                Search by name to find groups that are not listed.
-              </FieldDescription>
-            )}
-          </FieldContent>
-        </Field>
+        {hasNothingToAdd ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm">
+              {orgHasNoGroups
+                ? "Your organization has no groups yet. Create one at the organization level to add it to Agent Vault."
+                : "Every group in your organization is already added. To add another, create one at the organization level first."}
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button asChild variant="av">
+                <Link
+                  to={"/organizations/$orgId/access-management" as const}
+                  params={{ orgId: currentOrg.id }}
+                  search={{ selectedTab: "groups" }}
+                >
+                  Go to organization groups <ArrowRightIcon />
+                </Link>
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <>
+            <Field>
+              <FieldLabel htmlFor="agent-vault-add-group">Group</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  id="agent-vault-add-group"
+                  options={options}
+                  value={group}
+                  shouldFilter={false}
+                  isLoading={isFetching}
+                  includeMissingSelectedOptions
+                  onInputValueChange={setSearch}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  placeholder="Pick a group"
+                  searchPlaceholder="Search groups..."
+                  searchAriaLabel="Search groups"
+                  emptyMessage="No groups match your search"
+                  modal
+                  onValueChange={(next) => setGroup(next ?? null)}
+                />
+                {isListTruncated && (
+                  <FieldDescription>
+                    Search by name to find groups that are not listed.
+                  </FieldDescription>
+                )}
+              </FieldContent>
+            </Field>
 
-        <Field>
-          <FieldLabel>Product Role</FieldLabel>
-          <FieldContent>
-            <ProductRoleField value={role} onChange={setRole} idPrefix="add-group-role" />
-          </FieldContent>
-        </Field>
+            <Field>
+              <FieldLabel>Product Role</FieldLabel>
+              <FieldContent>
+                <ProductRoleField value={role} onChange={setRole} idPrefix="add-group-role" />
+              </FieldContent>
+            </Field>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="av"
-            isPending={addMembers.isPending}
-            isDisabled={!group}
-            onClick={handleAdd}
-          >
-            Add Group
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button
+                variant="av"
+                isPending={addMembers.isPending}
+                isDisabled={!group}
+                onClick={handleAdd}
+              >
+                Add Group
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
