@@ -1048,6 +1048,73 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("available lists the actors that are not members yet, and drops each one as it is added", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-available-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-available-group", ProjectMembershipRole.Member);
+
+      const listAvailable = async (query = "") => {
+        const res = await inject("GET", `${membersUrl}/available${query ? `?${query}` : ""}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as {
+          actors: { type: string; id: string }[];
+          totalCount: number;
+        };
+      };
+
+      try {
+        const idsOf = (actors: { id: string }[]) => actors.map((actor) => actor.id);
+
+        // The identity is in the organization but not in Agent Vault, so it is offered. The group and the
+        // seed admin are already members, so they are not.
+        const before = await listAvailable("limit=100");
+        expect(idsOf(before.actors)).toContain(identity.id);
+        expect(idsOf(before.actors)).not.toContain(group.id);
+        expect(idsOf(before.actors)).not.toContain(seedData1.id);
+
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" })).statusCode
+        ).toBe(200);
+
+        const afterAdd = await listAvailable("limit=100");
+        expect(idsOf(afterAdd.actors)).not.toContain(identity.id);
+        expect(afterAdd.totalCount).toBe(before.totalCount - 1);
+
+        // Revoking puts it back, so the list tracks membership rather than caching it.
+        expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
+          200
+        );
+        const afterRevoke = await listAvailable("limit=100");
+        expect(idsOf(afterRevoke.actors)).toContain(identity.id);
+        expect(afterRevoke.totalCount).toBe(before.totalCount);
+
+        // The filter and the search reach the same row.
+        const identitiesOnly = await listAvailable("actorType=machineIdentity&limit=100");
+        expect(identitiesOnly.actors.every((actor) => actor.type === "machineIdentity")).toBe(true);
+        expect(idsOf(identitiesOnly.actors)).toContain(identity.id);
+
+        const searched = await listAvailable(`search=${encodeURIComponent("av-available-")}`);
+        expect(idsOf(searched.actors)).toContain(identity.id);
+
+        // totalCount is the whole set, not the page, so a picker can say the list is truncated.
+        const firstPage = await listAvailable("limit=1");
+        expect(firstPage.actors).toHaveLength(1);
+        expect(firstPage.totalCount).toBe(before.totalCount);
+      } finally {
+        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await group.cleanup();
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("available rejects the same out-of-range query values the member list does", async () => {
+      const availableUrl = `${membersUrl}/available`;
+      expect((await inject("GET", `${availableUrl}?limit=0`)).statusCode).toBe(422);
+      expect((await inject("GET", `${availableUrl}?limit=101`)).statusCode).toBe(422);
+      expect((await inject("GET", `${availableUrl}?offset=10001`)).statusCode).toBe(422);
+      expect((await inject("GET", `${availableUrl}?actorType=nonsense`)).statusCode).toBe(422);
+    });
+
     test("one add names every actor kind at once, dedupes a repeat, and skips whoever already had access", async () => {
       const projectId = await getProjectId();
       const identity = await createOrgIdentity(`av-batch-add-${Date.now()}`);
