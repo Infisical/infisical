@@ -47,7 +47,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: auditSafeText(z.string().trim()).describe(IDENTITIES.CREATE.name),
+        name: auditSafeText(z.string().trim().max(255)).describe(IDENTITIES.CREATE.name),
         organizationId: z.string().trim().describe(IDENTITIES.CREATE.organizationId),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role),
         hasDeleteProtection: z.boolean().default(false).describe(IDENTITIES.CREATE.hasDeleteProtection),
@@ -126,7 +126,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
-        name: auditSafeText(z.string().trim()).optional().describe(IDENTITIES.UPDATE.name),
+        name: auditSafeText(z.string().trim().max(255)).optional().describe(IDENTITIES.UPDATE.name),
         role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role),
         hasDeleteProtection: z.boolean().optional().describe(IDENTITIES.UPDATE.hasDeleteProtection),
         metadata: z
