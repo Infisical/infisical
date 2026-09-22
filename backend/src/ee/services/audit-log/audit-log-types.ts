@@ -903,6 +903,8 @@ export enum EventType {
 
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
@@ -7410,6 +7412,23 @@ interface GatewayCreateEvent {
   };
 }
 
+interface GatewayUpdateEvent {
+  type: EventType.GATEWAY_UPDATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    previousName: string;
+  };
+}
+
+interface GatewayDeleteEvent {
+  type: EventType.GATEWAY_DELETE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
 interface GatewayEnrollmentTokenCreateEvent {
   type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
   metadata: {
@@ -8397,6 +8416,8 @@ export type Event =
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
+  | GatewayUpdateEvent
+  | GatewayDeleteEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
   | GatewayConnectEvent

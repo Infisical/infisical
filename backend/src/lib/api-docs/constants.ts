@@ -4023,7 +4023,11 @@ export const GATEWAYS = {
     authMethod:
       "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `gcp` carries the GCP token type and service account/project/zone allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
+  DELETE: {
+    gatewayId: "The ID of the gateway to delete."
+  },
   UPDATE: {
+    name: "New name for the gateway. Renaming does not affect the gateway's ID, so resources referencing it keep working.",
     authMethod:
       "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },

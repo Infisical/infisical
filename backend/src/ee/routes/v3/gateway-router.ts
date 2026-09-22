@@ -34,7 +34,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 
-const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
+const GatewayV2ResourceSchema = GatewaysV2Schema.pick({
   id: true,
   identityId: true,
   relayId: true,
@@ -45,7 +45,9 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   heartbeatTTL: true,
   directAddress: true,
   directHeartbeat: true
-}).extend({
+});
+
+const SanitizedGatewayV2Schema = GatewayV2ResourceSchema.extend({
   canRevoke: z.boolean()
 });
 
@@ -336,23 +338,35 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       body: z.object({
+        name: slugSchema({ field: "name" }).optional().describe(GATEWAYS.UPDATE.name),
         authMethod: SettableAuthMethodInputSchema.optional().describe(GATEWAYS.UPDATE.authMethod)
       }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.body.authMethod) {
-        const setInput = toSetAuthMethodArg(req.body.authMethod);
+      // The auth method goes first: it does the network work that actually fails, so a rejected
+      // change cannot leave behind a rename. Neither half is transactional.
+      const authResult = req.body.authMethod
+        ? await server.services.resourceAuthMethod.setMethod({
+            resource: { type: "gateway", id: req.params.gatewayId },
+            authMethod: toSetAuthMethodArg(req.body.authMethod),
+            actor: req.permission
+          })
+        : null;
 
-        const result = await server.services.resourceAuthMethod.setMethod({
-          resource: { type: "gateway", id: req.params.gatewayId },
-          authMethod: setInput,
-          actor: req.permission
-        });
+      const rename = req.body.name
+        ? await server.services.gatewayV2.renameGateway({
+            orgPermission: req.permission,
+            gatewayId: req.params.gatewayId,
+            name: req.body.name
+          })
+        : null;
 
-        const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
 
+      // Both events are written after the rename so they agree on what the gateway is called.
+      if (authResult) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -361,8 +375,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             metadata: resourceAuthMethodAuditMetadata({
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
-              resourceName: updated.name,
-              view: result
+              resourceName: gateway.name,
+              view: authResult
             })
           }
         });
@@ -376,7 +390,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
               orgId: req.permission.orgId,
-              method: result.method as TSettableAuthMethod
+              method: authResult.method as TSettableAuthMethod
             }
           })
           .catch((err) => {
@@ -384,13 +398,57 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+      if (rename && rename.previousName !== gateway.name) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.GATEWAY_UPDATE,
+            metadata: { gatewayId: gateway.id, name: gateway.name, previousName: rename.previousName }
+          }
+        });
+      }
+
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
       });
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
       return { ...gateway, canRevoke, authMethod: view };
+    }
+  });
+
+  // ─── DELETE /:gatewayId ──────────────────────────────────────────────────
+  // Removing the record disconnects the running gateway for good. The service refuses while the
+  // gateway is still attached to resources or reviewing Kubernetes tokens for other gateways.
+  server.route({
+    method: "DELETE",
+    url: "/:gatewayId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "deleteGateway",
+      tags: [ApiDocsTags.GatewaysV3],
+      params: z.object({ gatewayId: z.string().trim().uuid().describe(GATEWAYS.DELETE.gatewayId) }),
+      response: { 200: GatewayV2ResourceSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const gateway = await server.services.gatewayV2.deleteGatewayById({
+        orgPermission: req.permission,
+        id: req.params.gatewayId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_DELETE,
+          metadata: { gatewayId: gateway.id, name: gateway.name }
+        }
+      });
+
+      return gateway;
     }
   });
 

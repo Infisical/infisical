@@ -1317,6 +1317,48 @@ export const gatewayV2ServiceFactory = ({
 
   // --- V3 service methods ---
 
+  const renameGateway = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.EditGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    if (gateway.name === name) return { gateway, previousName: name };
+
+    try {
+      const renamed = await gatewayV2DAL.updateById(gateway.id, { name });
+      return { gateway: renamed, previousName: gateway.name };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+      }
+
+      throw err;
+    }
+  };
+
   const createGateway = async ({
     orgId,
     actorId,
@@ -1480,6 +1522,7 @@ export const gatewayV2ServiceFactory = ({
     enrollGateway,
     // V3
     createGateway,
+    renameGateway,
     connectGateway
   };
 };
