@@ -45,9 +45,6 @@ The per-minute limits by plan on Infisical Cloud are:
 
 If you self-host Infisical, no rate limits are enforced on the API by default. If you need throttling on your API surface, you'll need to configure an external rate limiter.
 
-<Tip>
-If you configure an external rate limiter for your self-hosted instance of Infisical, you can monitor those limits using the [`infisical.rate_limit.exceeded.count`](self-hosting/guides/monitoring-telemetry#rate-limit-metrics-infisicalcoreself-hosting/guides/monitoring-telemetry#rate-limit-metrics-infisicalcore) metric.
-</Tip>
 ## Exceeding rate limits (429 response)
 
 A request that exceeds the applicable limit returns HTTP `429` with the standard [error response](/api-reference/overview/errors):
