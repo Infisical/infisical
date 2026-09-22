@@ -76,6 +76,7 @@ type ComboboxSharedProps<TOption> = {
   renderValue?: (option: TOption) => React.ReactNode;
   clearAriaLabel?: string;
   placeholder?: string;
+  /** @deprecated Use `searchAriaLabel`. The visible placeholder no longer changes on focus. */
   searchPlaceholder?: string;
   searchAriaLabel?: string;
   emptyMessage?: React.ReactNode | ((inputValue: string) => React.ReactNode);
@@ -140,6 +141,61 @@ const normalizeSearchText = (value: string) =>
 
 const preventComboboxFormSubmit = (event: React.KeyboardEvent<HTMLInputElement>) => {
   if (event.key === "Enter") event.preventDefault();
+};
+
+const isComboboxTrailingSlotEvent = (event: Event) =>
+  event.target instanceof Element &&
+  Boolean(event.target.closest("[data-slot='combobox-trailing-slot']"));
+
+const isComboboxCreateItemEvent = (event: Event) =>
+  event.target instanceof Element &&
+  Boolean(event.target.closest("[data-slot='combobox-create-item']"));
+
+type ComboboxTrailingSlotProps = {
+  canClear: boolean;
+  clearAriaLabel: string;
+  isBusy: boolean;
+  className?: string;
+  onClear: () => void;
+};
+
+const ComboboxTrailingSlot = ({
+  canClear,
+  clearAriaLabel,
+  isBusy,
+  className,
+  onClear
+}: ComboboxTrailingSlotProps) => {
+  let state = "chevron";
+  if (canClear) state = "clear";
+  if (isBusy) state = "loading";
+
+  return (
+    <div
+      data-slot="combobox-trailing-slot"
+      data-state={state}
+      className={cn(
+        "pointer-events-none flex shrink-0 items-center justify-center text-accent",
+        className
+      )}
+    >
+      {state === "loading" && <Loader2Icon aria-hidden="true" className="size-4 animate-spin" />}
+      {state === "clear" && (
+        <button
+          type="button"
+          aria-label={clearAriaLabel}
+          onPointerDown={(event) => {
+            event.preventDefault();
+          }}
+          onClick={onClear}
+          className="pointer-events-auto flex size-full items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <XIcon aria-hidden="true" className="size-3.5" />
+        </button>
+      )}
+      {state === "chevron" && <ChevronDownIcon aria-hidden="true" className="size-4" />}
+    </div>
+  );
 };
 
 const useComboboxItems = <TOption,>(
@@ -274,6 +330,7 @@ const ComboboxList = <TOption,>({
       return (
         <ComboboxPrimitive.Item
           key={`create:${item.inputValue}`}
+          data-slot="combobox-create-item"
           value={item}
           disabled={creation?.isDisabled || creation?.isPending || isCreationPending}
           className={cn(
@@ -695,6 +752,8 @@ const SingleCombobox = <TOption,>({
   includeMissingSelectedOptions = true,
   creation,
   id,
+  onClick,
+  onFocus,
   onKeyDown,
   ...inputProps
 }: ComboboxSingleProps<TOption>) => {
@@ -705,6 +764,14 @@ const SingleCombobox = <TOption,>({
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
   searchRef.current = search;
+  const isDialogCreationActiveRef = React.useRef(false);
+  const [isEditing, setIsEditingState] = React.useState(false);
+  const isEditingRef = React.useRef(isEditing);
+  isEditingRef.current = isEditing;
+  const setIsEditing = React.useCallback((nextIsEditing: boolean) => {
+    isEditingRef.current = nextIsEditing;
+    setIsEditingState(nextIsEditing);
+  }, []);
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
   // A caller-owned search returns one already-filtered page after a debounce and a round trip.
   // The local matcher must not filter that page again, a selection missing from it is not a
@@ -734,8 +801,8 @@ const SingleCombobox = <TOption,>({
     [filter]
   );
   const visibleOptions = React.useMemo(
-    () => items.filter((option) => !isLocalFilterEnabled || filter(option, search)),
-    [filter, isLocalFilterEnabled, items, search]
+    () => items.filter((option) => !isLocalFilterEnabled || !isEditing || filter(option, search)),
+    [filter, isEditing, isLocalFilterEnabled, items, search]
   );
   const selectableOptions = React.useMemo(
     () => visibleOptions.filter((option) => !isOptionDisabled?.(option)),
@@ -750,30 +817,33 @@ const SingleCombobox = <TOption,>({
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
   };
-  const creationInput = creation
-    ? getComboboxCreationInput({
-        inputValue: search,
-        options,
-        selectedOptions,
-        getOptionLabel,
-        isDuplicate: creation.isDuplicate,
-        isValid: creation.isValid
-      })
-    : null;
+  const creationInput =
+    creation && isEditing
+      ? getComboboxCreationInput({
+          inputValue: search,
+          options,
+          selectedOptions,
+          getOptionLabel,
+          isDuplicate: creation.isDuplicate,
+          isValid: creation.isValid
+        })
+      : null;
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
       setOpen(false);
+      setIsEditing(false);
       setSearch("");
       onSearchChange?.("");
       onInputValueChange?.("");
     },
-    [onInputValueChange, onSearchChange]
+    [onInputValueChange, onSearchChange, setIsEditing]
   );
   const handleCreationDialogClosed = React.useCallback((outcome: "complete" | "cancel") => {
     if (outcome === "cancel") setOpen(true);
     window.requestAnimationFrame(() => {
       inputRef.current?.focus();
+      isDialogCreationActiveRef.current = false;
     });
   }, []);
   const dialogCreation = useComboboxDialogCreation({
@@ -815,183 +885,212 @@ const SingleCombobox = <TOption,>({
 
   return (
     <>
-      <ComboboxPrimitive.Root<ComboboxItem<TOption>, false>
-        items={primitiveItems}
-        value={selectedItem}
-        onValueChange={(nextValue, eventDetails) => {
-          if (nextValue == null) {
-            if (eventDetails.reason === "clear-press") {
+      <div data-slot="combobox-control" className="relative w-full">
+        <ComboboxPrimitive.Root<ComboboxItem<TOption>, false>
+          items={primitiveItems}
+          value={selectedItem}
+          onValueChange={(nextValue, eventDetails) => {
+            if (nextValue == null) {
+              if (eventDetails.reason === "clear-press") {
+                setIsEditing(false);
+                updateSearch("");
+                onClear?.();
+              }
+              return;
+            }
+            if (nextValue.type === "create") {
+              eventDetails.cancel();
+              if (dialogCreation.creation) {
+                isDialogCreationActiveRef.current = true;
+                setOpen(false);
+                dialogCreation.open(nextValue.inputValue);
+              } else {
+                createOption(nextValue.inputValue);
+              }
+              return;
+            }
+            onValueChange(nextValue.option);
+          }}
+          open={open}
+          onOpenChange={(nextOpen, eventDetails) => {
+            if (
+              !nextOpen &&
+              eventDetails.reason === "outside-press" &&
+              isComboboxTrailingSlotEvent(eventDetails.event)
+            ) {
+              eventDetails.cancel();
+              return;
+            }
+            if (!nextOpen && isCreationActive() && eventDetails.reason === "item-press") {
+              setOpen(true);
+              return;
+            }
+            const isOpeningCreationDialog =
+              !nextOpen &&
+              eventDetails.reason === "item-press" &&
+              isDialogCreationConfig(creation) &&
+              (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            setOpen(nextOpen);
+            if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
+              highlightedOptionValueRef.current = null;
+              setIsEditing(false);
               updateSearch("");
-              onClear?.();
+              clearCreationError();
             }
-            return;
-          }
-          if (nextValue.type === "create") {
-            eventDetails.cancel();
-            if (dialogCreation.creation) {
-              setOpen(false);
-              dialogCreation.open(nextValue.inputValue);
-            } else {
-              createOption(nextValue.inputValue);
+          }}
+          onItemHighlighted={(item) => {
+            highlightedOptionValueRef.current =
+              item?.type === "option" ? getOptionValue(item.option) : (item?.inputValue ?? null);
+          }}
+          inputValue={isEditing ? search : selectedLabel}
+          onInputValueChange={(nextValue, eventDetails) => {
+            if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+              if (
+                eventDetails.reason === "input-clear" &&
+                (isCreationActive() || isDialogCreationActiveRef.current)
+              )
+                return;
+              setIsEditing(eventDetails.reason === "input-change");
+              updateSearch(nextValue);
+              clearCreationError();
             }
-            return;
+          }}
+          itemToStringLabel={(item) =>
+            item.type === "create" ? item.inputValue : getOptionLabel(item.option)
           }
-          onValueChange(nextValue.option);
-        }}
-        open={open}
-        onOpenChange={(nextOpen, eventDetails) => {
-          if (!nextOpen && isCreationActive() && eventDetails.reason === "item-press") {
-            setOpen(true);
-            return;
+          itemToStringValue={(item) =>
+            item.type === "create" ? `create:${item.inputValue}` : getOptionValue(item.option)
           }
-          setOpen(nextOpen);
-          if (nextOpen && !isCreationActive()) {
-            // Clicking into a selected combobox starts from its current label. When
-            // typing itself opens the popup, preserve the query emitted just before
-            // this event instead of replacing the user's first keystroke. Consumers
-            // that search server-side never receive the seeded label (it would be
-            // sent as a query and match nothing), so their input must stay in step
-            // with the empty query the parent still holds.
-            const hasRetainedCreationError = creationError?.inputValue === searchRef.current.trim();
-            if (eventDetails.reason !== "input-change" && !hasRetainedCreationError) {
-              setSearch(isLocalFilterEnabled ? selectedLabel : "");
-            }
-          } else if (!isCreationActive()) {
-            highlightedOptionValueRef.current = null;
+          isItemEqualToValue={(option, selectedOption) =>
+            option.type === "option" &&
+            selectedOption.type === "option" &&
+            getOptionValue(option.option) === getOptionValue(selectedOption.option)
+          }
+          filter={isLocalFilterEnabled && isEditing ? primitiveFilter : null}
+          disabled={isDisabled}
+          modal={modal}
+          autoHighlight={!isSearchOwnedByCaller}
+        >
+          <div className="relative w-full">
+            <ComboboxPrimitive.Input
+              ref={inputRef}
+              id={id}
+              data-slot="combobox-input"
+              data-invalid={isError}
+              aria-invalid={isError || undefined}
+              aria-busy={isLoading || isCreationPending || undefined}
+              placeholder={placeholder}
+              onClick={(event) => {
+                onClick?.(event);
+                if (!event.defaultPrevented && value != null && !isEditingRef.current) {
+                  event.currentTarget.select();
+                }
+              }}
+              onFocus={(event) => {
+                onFocus?.(event);
+                if (!event.defaultPrevented && value != null && !isEditingRef.current) {
+                  event.currentTarget.select();
+                }
+              }}
+              onKeyDown={(event) => {
+                onKeyDown?.(event);
+
+                if (
+                  !event.defaultPrevented &&
+                  value != null &&
+                  !isEditingRef.current &&
+                  ((event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) ||
+                    event.key === "Backspace" ||
+                    event.key === "Delete")
+                ) {
+                  setIsEditing(true);
+                  setSearch("");
+                }
+
+                const hasHighlightedOption = highlightedOptionValueRef.current != null;
+                if (
+                  !event.defaultPrevented &&
+                  event.key === "Enter" &&
+                  open &&
+                  !isLoading &&
+                  !isSearchOwnedByCaller &&
+                  !hasHighlightedOption &&
+                  selectableOptions[0]
+                ) {
+                  onValueChange(selectableOptions[0]);
+                  setOpen(false);
+                  updateSearch("");
+                }
+
+                preventComboboxFormSubmit(event);
+              }}
+              className={cn(
+                "h-9 w-full rounded-md border border-border bg-transparent py-2 pr-9 pl-2.5 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+                "hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50",
+                "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+                !isEditing && value != null && renderValue && "text-transparent",
+                className
+              )}
+              {...inputProps}
+            />
+            {!isEditing && value != null && renderValue && (
+              <span
+                className={cn(
+                  "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+                  isDisabled && "opacity-50"
+                )}
+              >
+                {renderValue(value)}
+              </span>
+            )}
+            {isLoading && <span className="sr-only">{loadingMessage}</span>}
+          </div>
+          <ComboboxPrimitive.Status className="sr-only">{statusMessage}</ComboboxPrimitive.Status>
+          <ComboboxPopup
+            anchor={inputRef}
+            ariaLabel={searchAriaLabel}
+            className={contentClassName}
+            portalContainer={portalContainerProp}
+          >
+            <ComboboxList
+              emptyMessage={
+                typeof emptyMessage === "function" ? emptyMessage(search) : emptyMessage
+              }
+              loadingMessage={loadingMessage}
+              creation={creation}
+              isLoading={isLoading}
+              getOptionValue={getOptionValue}
+              getOptionLabel={getOptionLabel}
+              getOptionGroup={getOptionGroup}
+              isOptionDisabled={isOptionDisabled}
+              renderOption={renderOption}
+              renderOptionIndicator={renderOptionIndicator}
+              ariaLabel={`${searchAriaLabel} suggestions`}
+              isEmpty={visibleOptions.length === 0 && !creationItem}
+              selectedValues={selectedValues}
+              maxHeight={SINGLE_LIST_MAX_HEIGHT}
+              creationError={creationError}
+              isCreationPending={isCreationPending}
+            />
+            {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
+          </ComboboxPopup>
+        </ComboboxPrimitive.Root>
+        <ComboboxTrailingSlot
+          className="absolute top-0 right-0 z-10 h-9 w-9"
+          isBusy={isLoading || isCreationPending}
+          canClear={Boolean(
+            onClear && !isDisabled && (value != null || (isEditing && search.length > 0))
+          )}
+          clearAriaLabel={clearAriaLabel}
+          onClear={() => {
+            setIsEditing(false);
             updateSearch("");
             clearCreationError();
-          }
-        }}
-        onItemHighlighted={(item) => {
-          highlightedOptionValueRef.current =
-            item?.type === "option" ? getOptionValue(item.option) : (item?.inputValue ?? null);
-        }}
-        inputValue={open ? search : selectedLabel}
-        onInputValueChange={(nextValue, eventDetails) => {
-          if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
-            if (eventDetails.reason === "input-clear" && isCreationActive()) return;
-            updateSearch(nextValue);
-            clearCreationError();
-          }
-        }}
-        itemToStringLabel={(item) =>
-          item.type === "create" ? item.inputValue : getOptionLabel(item.option)
-        }
-        itemToStringValue={(item) =>
-          item.type === "create" ? `create:${item.inputValue}` : getOptionValue(item.option)
-        }
-        isItemEqualToValue={(option, selectedOption) =>
-          option.type === "option" &&
-          selectedOption.type === "option" &&
-          getOptionValue(option.option) === getOptionValue(selectedOption.option)
-        }
-        filter={isLocalFilterEnabled ? primitiveFilter : null}
-        disabled={isDisabled}
-        modal={modal}
-        autoHighlight={!isSearchOwnedByCaller}
-      >
-        <div className="relative w-full">
-          <ComboboxPrimitive.Input
-            ref={inputRef}
-            id={id}
-            data-slot="combobox-input"
-            data-invalid={isError}
-            aria-invalid={isError || undefined}
-            aria-busy={isLoading || isCreationPending || undefined}
-            placeholder={open ? searchPlaceholder : placeholder}
-            onKeyDown={(event) => {
-              onKeyDown?.(event);
-
-              const hasHighlightedOption = highlightedOptionValueRef.current != null;
-              if (
-                !event.defaultPrevented &&
-                event.key === "Enter" &&
-                open &&
-                !isLoading &&
-                !isSearchOwnedByCaller &&
-                !hasHighlightedOption &&
-                selectableOptions[0]
-              ) {
-                onValueChange(selectableOptions[0]);
-                setOpen(false);
-                updateSearch("");
-              }
-
-              preventComboboxFormSubmit(event);
-            }}
-            className={cn(
-              "h-9 w-full rounded-md border border-border bg-transparent py-2 pr-9 pl-2.5 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
-              "hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50",
-              "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
-              !open && value != null && renderValue && "text-transparent",
-              className
-            )}
-            {...inputProps}
-          />
-          {!open && value != null && renderValue && (
-            <span
-              className={cn(
-                "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
-                isDisabled && "opacity-50"
-              )}
-            >
-              {renderValue(value)}
-            </span>
-          )}
-          {value != null && onClear && (
-            <ComboboxPrimitive.Clear
-              aria-label={clearAriaLabel}
-              tabIndex={0}
-              onClick={() => window.requestAnimationFrame(() => inputRef.current?.focus())}
-              className={cn(
-                "absolute top-1/2 right-7 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted outline-none",
-                "hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[popup-open]:hidden"
-              )}
-            >
-              <XIcon className="size-3.5" />
-            </ComboboxPrimitive.Clear>
-          )}
-          {isLoading ? (
-            <Loader2Icon
-              className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 animate-spin text-accent"
-              aria-hidden="true"
-            />
-          ) : (
-            <ChevronDownIcon
-              className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-accent"
-              aria-hidden="true"
-            />
-          )}
-          {isLoading && <span className="sr-only">{loadingMessage}</span>}
-        </div>
-        <ComboboxPrimitive.Status className="sr-only">{statusMessage}</ComboboxPrimitive.Status>
-        <ComboboxPopup
-          anchor={inputRef}
-          ariaLabel={searchAriaLabel}
-          className={contentClassName}
-          portalContainer={portalContainerProp}
-        >
-          <ComboboxList
-            emptyMessage={typeof emptyMessage === "function" ? emptyMessage(search) : emptyMessage}
-            loadingMessage={loadingMessage}
-            creation={creation}
-            isLoading={isLoading}
-            getOptionValue={getOptionValue}
-            getOptionLabel={getOptionLabel}
-            getOptionGroup={getOptionGroup}
-            isOptionDisabled={isOptionDisabled}
-            renderOption={renderOption}
-            renderOptionIndicator={renderOptionIndicator}
-            ariaLabel={`${searchAriaLabel} suggestions`}
-            isEmpty={visibleOptions.length === 0 && !creationItem}
-            selectedValues={selectedValues}
-            maxHeight={SINGLE_LIST_MAX_HEIGHT}
-            creationError={creationError}
-            isCreationPending={isCreationPending}
-          />
-          {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
-        </ComboboxPopup>
-      </ComboboxPrimitive.Root>
+            onClear?.();
+            window.requestAnimationFrame(() => inputRef.current?.focus());
+          }}
+        />
+      </div>
       <ComboboxCreationDialog {...dialogCreation} />
     </>
   );
@@ -1048,6 +1147,7 @@ const MultipleCombobox = <TOption,>({
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
   searchRef.current = search;
+  const isDialogCreationActiveRef = React.useRef(false);
   const selectedOptions = React.useMemo(() => [...value], [value]);
   // A caller-owned search returns one already-filtered page after a debounce and a round trip.
   // The local matcher must not filter that page again, a selection missing from it is not a
@@ -1128,6 +1228,7 @@ const MultipleCombobox = <TOption,>({
     }
     window.requestAnimationFrame(() => {
       inputRef.current?.focus();
+      isDialogCreationActiveRef.current = false;
     });
   }, []);
   const dialogCreation = useComboboxDialogCreation({
@@ -1182,204 +1283,219 @@ const MultipleCombobox = <TOption,>({
 
   return (
     <>
-      <ComboboxPrimitive.Root<ComboboxItem<TOption>, true>
-        multiple
-        items={primitiveItems}
-        value={selectedItems}
-        onValueChange={(nextValue, eventDetails) => {
-          const createItem = nextValue.find((item) => item.type === "create");
-          if (createItem) {
-            eventDetails.cancel();
-            if (dialogCreation.creation) {
-              openRef.current = false;
-              setOpen(false);
-              dialogCreation.open(createItem.inputValue);
-            } else {
-              createOption(createItem.inputValue);
+      <div data-slot="combobox-control" className="relative w-full">
+        <ComboboxPrimitive.Root<ComboboxItem<TOption>, true>
+          multiple
+          items={primitiveItems}
+          value={selectedItems}
+          onValueChange={(nextValue, eventDetails) => {
+            const createItem = nextValue.find((item) => item.type === "create");
+            if (createItem) {
+              eventDetails.cancel();
+              if (dialogCreation.creation) {
+                isDialogCreationActiveRef.current = true;
+                openRef.current = false;
+                setOpen(false);
+                dialogCreation.open(createItem.inputValue);
+              } else {
+                createOption(createItem.inputValue);
+              }
+              return;
             }
-            return;
-          }
 
-          if (eventDetails.reason === "item-press") {
-            eventDetails.cancel();
-            updateSearch("");
-            setOpen(true);
-            window.requestAnimationFrame(() => inputRef.current?.focus());
-          }
+            if (eventDetails.reason === "item-press") {
+              eventDetails.cancel();
+              updateSearch("");
+              setOpen(true);
+              window.requestAnimationFrame(() => inputRef.current?.focus());
+            }
 
-          if (eventDetails.reason === "clear-press" && onClear) {
-            onClear();
-            return;
-          }
+            if (eventDetails.reason === "clear-press" && onClear) {
+              onClear();
+              return;
+            }
 
-          onValueChange(nextValue.flatMap((item) => (item.type === "option" ? [item.option] : [])));
-        }}
-        open={open}
-        onOpenChange={(nextOpen, eventDetails) => {
-          if (!nextOpen && isCreationActive() && eventDetails.reason === "item-press") {
-            openRef.current = true;
-            setOpen(true);
-            return;
+            onValueChange(
+              nextValue.flatMap((item) => (item.type === "option" ? [item.option] : []))
+            );
+          }}
+          open={open}
+          onOpenChange={(nextOpen, eventDetails) => {
+            if (
+              !nextOpen &&
+              eventDetails.reason === "outside-press" &&
+              isComboboxTrailingSlotEvent(eventDetails.event)
+            ) {
+              eventDetails.cancel();
+              return;
+            }
+            if (!nextOpen && isCreationActive() && eventDetails.reason === "item-press") {
+              openRef.current = true;
+              setOpen(true);
+              return;
+            }
+            const isOpeningCreationDialog =
+              !nextOpen &&
+              eventDetails.reason === "item-press" &&
+              isDialogCreationConfig(creation) &&
+              (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            openRef.current = nextOpen;
+            setOpen(nextOpen);
+            if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
+              updateSearch("");
+              clearCreationError();
+            }
+          }}
+          inputValue={search}
+          onInputValueChange={(nextValue, eventDetails) => {
+            if (
+              eventDetails.reason === "input-clear" &&
+              (isCreationActive() || isDialogCreationActiveRef.current)
+            )
+              return;
+            setSearch(nextValue);
+            if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+              clearCreationError();
+              onSearchChange?.(nextValue);
+              onInputValueChange?.(nextValue);
+            }
+          }}
+          itemToStringLabel={(item) =>
+            item.type === "create" ? item.inputValue : getOptionLabel(item.option)
           }
-          openRef.current = nextOpen;
-          setOpen(nextOpen);
-          if (!nextOpen && !isCreationActive()) {
-            updateSearch("");
-            clearCreationError();
+          itemToStringValue={(item) =>
+            item.type === "create" ? `create:${item.inputValue}` : getOptionValue(item.option)
           }
-        }}
-        inputValue={search}
-        onInputValueChange={(nextValue, eventDetails) => {
-          if (eventDetails.reason === "input-clear" && isCreationActive()) return;
-          setSearch(nextValue);
-          if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
-            clearCreationError();
-            onSearchChange?.(nextValue);
-            onInputValueChange?.(nextValue);
+          isItemEqualToValue={(option, selectedOption) =>
+            option.type === "option" &&
+            selectedOption.type === "option" &&
+            getOptionValue(option.option) === getOptionValue(selectedOption.option)
           }
-        }}
-        itemToStringLabel={(item) =>
-          item.type === "create" ? item.inputValue : getOptionLabel(item.option)
-        }
-        itemToStringValue={(item) =>
-          item.type === "create" ? `create:${item.inputValue}` : getOptionValue(item.option)
-        }
-        isItemEqualToValue={(option, selectedOption) =>
-          option.type === "option" &&
-          selectedOption.type === "option" &&
-          getOptionValue(option.option) === getOptionValue(selectedOption.option)
-        }
-        filter={isLocalFilterEnabled ? primitiveFilter : null}
-        disabled={isDisabled}
-        modal={modal}
-        autoHighlight={!isSearchOwnedByCaller}
-      >
-        <ComboboxPrimitive.Chips
-          ref={chipsRef}
-          data-slot="combobox-chips"
-          data-disabled={isDisabled ? "" : undefined}
-          data-invalid={isError}
-          className={cn(
-            COMBOBOX_CHIPS_CLASS,
-            singleLine ? "items-center" : "items-start",
-            value.length > 0 ? "p-1" : "py-1 pr-2 pl-2.5",
-            className
-          )}
+          filter={isLocalFilterEnabled ? primitiveFilter : null}
+          disabled={isDisabled}
+          modal={modal}
+          autoHighlight={!isSearchOwnedByCaller}
         >
-          <div
-            className={comboboxChipsViewportClass(singleLine)}
-            ref={setViewportRef}
-            data-scroll-edge-axis={singleLine ? "horizontal" : "vertical"}
-            data-scrollable-start={scrollEdges.start}
-            data-scrollable-end={scrollEdges.end}
-          >
-            <ComboboxPrimitive.Value>
-              {(selectedValue: ComboboxItem<TOption>[]) => (
-                <>
-                  {selectedValue.map((item) => {
-                    if (item.type === "create") return null;
-                    const { option } = item;
-                    const label = getOptionLabel(option);
-                    return (
-                      <ComboboxPrimitive.Chip
-                        key={getOptionValue(option)}
-                        className={COMBOBOX_CHIP_CLASS}
-                      >
-                        <span className={COMBOBOX_CHIP_LABEL_CLASS}>
-                          {renderValue?.(option) ?? label}
-                        </span>
-                        {!isDisabled && (
-                          <ComboboxPrimitive.ChipRemove
-                            aria-label={`Remove ${label}`}
-                            className={COMBOBOX_CHIP_REMOVE_CLASS}
-                          >
-                            <XIcon className="size-3" />
-                          </ComboboxPrimitive.ChipRemove>
-                        )}
-                      </ComboboxPrimitive.Chip>
-                    );
-                  })}
-                </>
-              )}
-            </ComboboxPrimitive.Value>
-            <ComboboxPrimitive.Input
-              ref={inputRef}
-              id={id}
-              aria-label={getComboboxInputAriaLabel({
-                ariaLabel,
-                ariaLabelledBy,
-                id,
-                searchAriaLabel
-              })}
-              aria-labelledby={ariaLabelledBy}
-              aria-invalid={isError || undefined}
-              aria-busy={isLoading || isCreationPending || undefined}
-              placeholder={value.length === 0 ? placeholder : undefined}
-              onKeyDown={(event) => {
-                onKeyDown?.(event);
-                preventComboboxFormSubmit(event);
-              }}
-              className={COMBOBOX_CHIPS_INPUT_CLASS}
-              {...inputProps}
-            />
-          </div>
-          {value.length > 0 && !isDisabled && (
-            <ComboboxPrimitive.Clear
-              aria-label={clearAriaLabel}
-              tabIndex={0}
-              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-            >
-              <XIcon className="size-3.5" />
-            </ComboboxPrimitive.Clear>
-          )}
-          <span
-            aria-hidden="true"
+          <ComboboxPrimitive.Chips
+            ref={chipsRef}
+            data-slot="combobox-chips"
+            data-disabled={isDisabled ? "" : undefined}
+            data-invalid={isError}
             className={cn(
-              "pointer-events-none flex h-6 shrink-0 items-center justify-center text-accent",
-              value.length > 0 && "mr-1"
+              COMBOBOX_CHIPS_CLASS,
+              singleLine ? "items-center" : "items-start",
+              value.length > 0 ? "p-1 pr-8" : "py-1 pr-8 pl-2.5",
+              className
             )}
           >
-            {isLoading ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <ChevronDownIcon className="size-4" />
+            <div
+              className={comboboxChipsViewportClass(singleLine)}
+              ref={setViewportRef}
+              data-scroll-edge-axis={singleLine ? "horizontal" : "vertical"}
+              data-scrollable-start={scrollEdges.start}
+              data-scrollable-end={scrollEdges.end}
+            >
+              <ComboboxPrimitive.Value>
+                {(selectedValue: ComboboxItem<TOption>[]) => (
+                  <>
+                    {selectedValue.map((item) => {
+                      if (item.type === "create") return null;
+                      const { option } = item;
+                      const label = getOptionLabel(option);
+                      return (
+                        <ComboboxPrimitive.Chip
+                          key={getOptionValue(option)}
+                          className={COMBOBOX_CHIP_CLASS}
+                        >
+                          <span className={COMBOBOX_CHIP_LABEL_CLASS}>
+                            {renderValue?.(option) ?? label}
+                          </span>
+                          {!isDisabled && (
+                            <ComboboxPrimitive.ChipRemove
+                              aria-label={`Remove ${label}`}
+                              className={COMBOBOX_CHIP_REMOVE_CLASS}
+                            >
+                              <XIcon className="size-3" />
+                            </ComboboxPrimitive.ChipRemove>
+                          )}
+                        </ComboboxPrimitive.Chip>
+                      );
+                    })}
+                  </>
+                )}
+              </ComboboxPrimitive.Value>
+              <ComboboxPrimitive.Input
+                ref={inputRef}
+                id={id}
+                aria-label={getComboboxInputAriaLabel({
+                  ariaLabel,
+                  ariaLabelledBy,
+                  id,
+                  searchAriaLabel
+                })}
+                aria-labelledby={ariaLabelledBy}
+                aria-invalid={isError || undefined}
+                aria-busy={isLoading || isCreationPending || undefined}
+                placeholder={value.length === 0 ? placeholder : undefined}
+                onKeyDown={(event) => {
+                  onKeyDown?.(event);
+                  preventComboboxFormSubmit(event);
+                }}
+                className={COMBOBOX_CHIPS_INPUT_CLASS}
+                {...inputProps}
+              />
+            </div>
+          </ComboboxPrimitive.Chips>
+          <ComboboxPrimitive.Status className="sr-only">{statusMessage}</ComboboxPrimitive.Status>
+          <ComboboxPopup
+            anchor={chipsRef}
+            className={contentClassName}
+            portalContainer={portalContainerProp}
+          >
+            {selectAllOptions.length > 0 && (
+              <ComboboxSelectAll
+                areAllSelected={areAllOptionsSelected}
+                optionCount={selectAllOptions.length}
+                onToggle={handleSelectAllToggle}
+              />
             )}
-          </span>
-        </ComboboxPrimitive.Chips>
-        <ComboboxPrimitive.Status className="sr-only">{statusMessage}</ComboboxPrimitive.Status>
-        <ComboboxPopup
-          anchor={chipsRef}
-          className={contentClassName}
-          portalContainer={portalContainerProp}
-        >
-          {selectAllOptions.length > 0 && (
-            <ComboboxSelectAll
-              areAllSelected={areAllOptionsSelected}
-              optionCount={selectAllOptions.length}
-              onToggle={handleSelectAllToggle}
+            <ComboboxList
+              emptyMessage={
+                typeof emptyMessage === "function" ? emptyMessage(search) : emptyMessage
+              }
+              loadingMessage={loadingMessage}
+              creation={creation}
+              isLoading={isLoading}
+              getOptionValue={getOptionValue}
+              getOptionLabel={getOptionLabel}
+              getOptionGroup={getOptionGroup}
+              isOptionDisabled={isOptionDisabled}
+              renderOption={renderOption}
+              renderOptionIndicator={renderOptionIndicator}
+              ariaLabel={`${searchAriaLabel} suggestions`}
+              isEmpty={visibleOptions.length === 0 && !creationItem}
+              selectedValues={selectedValues}
+              maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
+              creationError={creationError}
+              isCreationPending={isCreationPending}
             />
-          )}
-          <ComboboxList
-            emptyMessage={typeof emptyMessage === "function" ? emptyMessage(search) : emptyMessage}
-            loadingMessage={loadingMessage}
-            creation={creation}
-            isLoading={isLoading}
-            getOptionValue={getOptionValue}
-            getOptionLabel={getOptionLabel}
-            getOptionGroup={getOptionGroup}
-            isOptionDisabled={isOptionDisabled}
-            renderOption={renderOption}
-            renderOptionIndicator={renderOptionIndicator}
-            ariaLabel={`${searchAriaLabel} suggestions`}
-            isEmpty={visibleOptions.length === 0 && !creationItem}
-            selectedValues={selectedValues}
-            maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
-            creationError={creationError}
-            isCreationPending={isCreationPending}
-          />
-          {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
-        </ComboboxPopup>
-      </ComboboxPrimitive.Root>
+            {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
+          </ComboboxPopup>
+        </ComboboxPrimitive.Root>
+        <ComboboxTrailingSlot
+          className="absolute top-1 right-1 z-10 size-6"
+          isBusy={isLoading || isCreationPending}
+          canClear={!isDisabled && (value.length > 0 || search.length > 0)}
+          clearAriaLabel={clearAriaLabel}
+          onClear={() => {
+            updateSearch("");
+            clearCreationError();
+            if (onClear) onClear();
+            else onValueChange([]);
+            window.requestAnimationFrame(() => inputRef.current?.focus());
+          }}
+        />
+      </div>
       <ComboboxCreationDialog {...dialogCreation} />
     </>
   );

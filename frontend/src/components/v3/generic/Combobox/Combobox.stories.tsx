@@ -24,7 +24,7 @@ import {
 import { Field, FieldError, FieldLabel } from "../Field";
 import { Input } from "../Input";
 import { TextArea } from "../TextArea";
-import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from "./Combobox";
+import { Combobox, type ComboboxDialogCreationRenderProps, type ComboboxProps } from ".";
 
 const ENVIRONMENTS = [
   { id: "development", name: "Development" },
@@ -85,6 +85,17 @@ const sleep = (duration: number) =>
   new Promise<void>((resolve) => {
     window.setTimeout(resolve, duration);
   });
+
+const getTrailingSlot = (input: HTMLElement) => {
+  const control = input.closest("[data-slot='combobox-control']") ?? input.parentElement;
+  return control?.querySelector("[data-slot='combobox-trailing-slot']");
+};
+
+const clickOpenTrailingClear = (input: HTMLElement) => {
+  const button = getTrailingSlot(input)?.querySelector("button");
+  if (!(button instanceof HTMLButtonElement)) throw new Error("Expected a trailing clear button");
+  button.click();
+};
 
 const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
 
@@ -159,23 +170,30 @@ type Story = StoryObj;
 
 const DefaultRender = () => {
   const [value, setValue] = useState<(typeof ENVIRONMENTS)[number] | null>(null);
+  const [clearCount, setClearCount] = useState(0);
 
   return (
-    <Field>
-      <FieldLabel htmlFor="combobox-environment">Environment</FieldLabel>
-      <StoryCombobox
-        id="combobox-environment"
-        options={ENVIRONMENTS}
-        value={value}
-        onValueChange={setValue}
-        onClear={() => setValue(null)}
-        getOptionValue={(option) => option.id}
-        getOptionLabel={(option) => option.name}
-        placeholder="Select environment..."
-        searchPlaceholder="Search environments..."
-        searchAriaLabel="Search environments"
-      />
-    </Field>
+    <div>
+      <Field>
+        <FieldLabel htmlFor="combobox-environment">Environment</FieldLabel>
+        <StoryCombobox
+          id="combobox-environment"
+          options={ENVIRONMENTS}
+          value={value}
+          onValueChange={setValue}
+          onClear={() => {
+            setValue(null);
+            setClearCount((current) => current + 1);
+          }}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select environment..."
+          searchPlaceholder="Search environments..."
+          searchAriaLabel="Search environments"
+        />
+      </Field>
+      <p className="sr-only">Clear actions: {clearCount}</p>
+    </div>
   );
 };
 
@@ -186,7 +204,39 @@ const DefaultRender = () => {
  * values remain the original option objects for controlled form libraries.
  */
 export const Default: Story = {
-  render: () => <DefaultRender />
+  render: () => <DefaultRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "Environment" });
+
+    await expect(input).toHaveAttribute("placeholder", "Select environment...");
+    await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "chevron");
+    await userEvent.click(input);
+    await expect(input).toHaveAttribute("placeholder", "Select environment...");
+    await userEvent.type(input, "prod");
+    await expect(input).toHaveValue("prod");
+    await userEvent.click(canvas.getByRole("option", { name: "Production" }));
+    await expect(input).toHaveValue("Production");
+    await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "clear");
+
+    await userEvent.click(canvas.getByRole("button", { name: "Clear selection" }));
+    await expect(input).toHaveValue("");
+    await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "chevron");
+
+    await userEvent.click(input);
+    await userEvent.click(canvas.getByRole("option", { name: "Staging" }));
+    await userEvent.click(input);
+    await expect(input).toHaveValue("Staging");
+    await expect(canvas.getByRole("option", { name: "Development" })).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Clear selection", hidden: true })
+    ).toBeInTheDocument();
+    await userEvent.type(input, "dev");
+    await expect(input).toHaveValue("dev");
+    clickOpenTrailingClear(input);
+    await waitFor(() => expect(input).toHaveValue(""));
+    await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "chevron");
+  }
 };
 
 const ALL_ORGANIZATIONS = Array.from({ length: 2_000 }, (_, index) => ({
@@ -233,29 +283,40 @@ const ServerSearchRender = () => {
   }, [debouncedSearch]);
 
   return (
-    <Field>
-      <FieldLabel htmlFor="combobox-server-search">Organization</FieldLabel>
-      <StoryCombobox
-        id="combobox-server-search"
-        options={organizations}
-        value={value}
-        onValueChange={setValue}
-        onClear={() => setValue(null)}
-        onSearchChange={setSearch}
-        isLoading={isLoading || search !== debouncedSearch}
-        getOptionValue={(option) => option.id}
-        getOptionLabel={(option) => option.name}
-        placeholder="Select organization..."
-        searchPlaceholder="Search organizations..."
-        searchAriaLabel="Search organizations"
-        emptyMessage="No organizations match that search."
-        listFooter={
-          totalCount > organizations.length
-            ? `Showing ${organizations.length} of ${totalCount.toLocaleString()} — type to search the rest`
-            : null
-        }
-      />
-    </Field>
+    <div className="flex flex-col gap-2">
+      <Field>
+        <FieldLabel htmlFor="combobox-server-search">Organization</FieldLabel>
+        <StoryCombobox
+          id="combobox-server-search"
+          options={organizations}
+          value={value}
+          onValueChange={setValue}
+          onClear={() => setValue(null)}
+          onSearchChange={setSearch}
+          isLoading={isLoading || search !== debouncedSearch}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select organization..."
+          searchPlaceholder="Search organizations..."
+          searchAriaLabel="Search organizations"
+          emptyMessage="No organizations match that search."
+          renderValue={(option) => (
+            <span data-testid="server-selected-value" className="font-medium">
+              {option.name}
+            </span>
+          )}
+          listFooter={
+            totalCount > organizations.length
+              ? `Showing ${organizations.length} of ${totalCount.toLocaleString()} — type to search the rest`
+              : null
+          }
+        />
+      </Field>
+      <p data-testid="server-query" className="text-xs text-muted">
+        Remote query: {search || "(empty)"}
+      </p>
+      <p className="sr-only">Selected organization: {value?.name ?? "none"}</p>
+    </div>
   );
 };
 
@@ -285,9 +346,27 @@ export const ServerSearch: Story = {
   render: () => <ServerSearchRender />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("combobox", { name: "Organization" })).toHaveValue(
-      "Organization 1999"
+    const input = canvas.getByRole("combobox", { name: "Organization" });
+
+    await expect(input).toHaveValue("Organization 1999");
+    await expect(canvas.getByTestId("server-query")).toHaveTextContent("Remote query: (empty)");
+    await userEvent.click(input);
+    await expect(input).toHaveValue("Organization 1999");
+    await expect(canvas.getByTestId("server-selected-value")).toBeInTheDocument();
+    await expect(canvas.getByTestId("server-query")).toHaveTextContent("Remote query: (empty)");
+    await expect(input).toHaveAttribute("placeholder", "Select organization...");
+
+    await userEvent.type(input, "Organization 2");
+    await expect(input).toHaveValue("Organization 2");
+    await expect(canvas.queryByTestId("server-selected-value")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("server-query")).toHaveTextContent(
+      "Remote query: Organization 2"
     );
+    await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "loading");
+    await waitFor(() => expect(getTrailingSlot(input)).toHaveAttribute("data-state", "clear"));
+    clickOpenTrailingClear(input);
+    await waitFor(() => expect(input).toHaveValue(""));
+    await expect(canvas.getByTestId("server-query")).toHaveTextContent("Remote query: (empty)");
   }
 };
 
@@ -382,26 +461,29 @@ const MultipleRender = () => {
   const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 2));
 
   return (
-    <Field>
-      <FieldLabel id="combobox-projects-label" htmlFor="combobox-projects">
-        Projects
-      </FieldLabel>
-      <StoryCombobox
-        id="combobox-projects"
-        aria-labelledby="combobox-projects-label"
-        multiple
-        isSelectAll
-        options={PROJECTS}
-        value={value}
-        onValueChange={(options) => setValue(options)}
-        getOptionValue={(option) => option.id}
-        getOptionLabel={(option) => option.name}
-        placeholder="Select projects..."
-        searchPlaceholder="Search projects..."
-        searchAriaLabel="Search projects"
-        clearAriaLabel="Clear all projects"
-      />
-    </Field>
+    <div>
+      <Field>
+        <FieldLabel id="combobox-projects-label" htmlFor="combobox-projects">
+          Projects
+        </FieldLabel>
+        <StoryCombobox
+          id="combobox-projects"
+          aria-labelledby="combobox-projects-label"
+          multiple
+          isSelectAll
+          options={PROJECTS}
+          value={value}
+          onValueChange={(options) => setValue(options)}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          placeholder="Select projects..."
+          searchPlaceholder="Search projects..."
+          searchAriaLabel="Search projects"
+          clearAriaLabel="Clear all projects"
+        />
+      </Field>
+      <p className="sr-only">Selected projects: {value.length}</p>
+    </div>
   );
 };
 
@@ -417,10 +499,22 @@ export const Multiple: Story = {
     const canvas = within(canvasElement);
     const combobox = canvas.getByRole("combobox", { name: "Projects" });
 
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Remove Project 1 with a long descriptive name" })
+    );
+    await expect(
+      canvas.queryByRole("button", { name: "Remove Project 1 with a long descriptive name" })
+    ).not.toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Remove Project 2" })).toBeInTheDocument();
     await userEvent.click(canvas.getByText("Projects"));
     await userEvent.type(combobox, "Project 3");
     await expect(combobox).toHaveFocus();
     await expect(combobox).toHaveAccessibleName("Projects");
+    await expect(getTrailingSlot(combobox)).toHaveAttribute("data-state", "clear");
+    clickOpenTrailingClear(combobox);
+    await expect(canvas.queryByRole("button", { name: /Remove Project/ })).not.toBeInTheDocument();
+    await waitFor(() => expect(combobox).toHaveValue(""));
+    await expect(getTrailingSlot(combobox)).toHaveAttribute("data-state", "chevron");
   }
 };
 
@@ -501,6 +595,7 @@ const NestedDialogCreationField = () => {
         options={options}
         value={value}
         onValueChange={setValue}
+        onClear={() => setValue(null)}
         getOptionValue={(option) => option}
         getOptionLabel={(option) => option}
         placeholder="Select or create a tag..."
@@ -567,6 +662,7 @@ const InDialogRender = () => {
               options={ORGANIZATION_ROLES}
               value={value}
               onValueChange={setValue}
+              onClear={() => setValue(null)}
               getOptionValue={(option) => option.slug}
               getOptionLabel={(option) => option.name}
               getOptionKeywords={(option) => [option.description]}
@@ -609,6 +705,13 @@ export const InDialog: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Open Role Picker" }));
     const parentDialog = await body.findByRole("dialog", { name: "Invite Organization Member" });
+    const roleInput = within(parentDialog).getByRole("combobox", { name: "Organization role" });
+    const roleClear = within(parentDialog).getByRole("button", { name: "Clear selection" });
+    roleClear.focus();
+    await expect(roleClear).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(roleInput).toHaveValue(""));
+
     const input = within(parentDialog).getByRole("combobox", { name: "Primary tag" });
     await userEvent.click(input);
     await userEvent.type(input, "Enter tag");
@@ -625,6 +728,8 @@ export const InDialog: Story = {
     await waitFor(() => expect(input).toHaveFocus());
     await expect(input).toHaveValue("Enter tag");
     await expect(within(parentDialog).getByText("Parent form submits: 0")).toBeInTheDocument();
+    await userEvent.click(within(parentDialog).getByRole("button", { name: "Clear selection" }));
+    await waitFor(() => expect(input).toHaveValue(""));
 
     await userEvent.click(input);
     await userEvent.clear(input);
@@ -639,11 +744,23 @@ export const InDialog: Story = {
     await expect(input).toHaveValue("Button tag");
     await expect(within(parentDialog).getByText("Created tag: Button tag")).toBeInTheDocument();
     await expect(within(parentDialog).getByText("Parent form submits: 0")).toBeInTheDocument();
+    const nestedClear = within(parentDialog).getByRole("button", { name: "Clear selection" });
+    nestedClear.focus();
+    await expect(nestedClear).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(input).toHaveValue(""));
   }
 };
 
-export const States: Story = {
-  render: () => (
+const StatesRender = () => {
+  const [loadingSingleValue, setLoadingSingleValue] = useState<
+    (typeof ENVIRONMENTS)[number] | null
+  >(ENVIRONMENTS[0]);
+  const [loadingMultipleValue, setLoadingMultipleValue] = useState<(typeof PROJECTS)[number][]>(
+    PROJECTS.slice(0, 2)
+  );
+
+  return (
     <div className="flex flex-col gap-5">
       <Field data-invalid="true">
         <FieldLabel htmlFor="combobox-error">Environment</FieldLabel>
@@ -664,6 +781,7 @@ export const States: Story = {
           options={ENVIRONMENTS}
           value={ENVIRONMENTS[0]}
           onValueChange={() => undefined}
+          onClear={() => undefined}
           getOptionValue={(option) => option.id}
           getOptionLabel={(option) => option.name}
           isDisabled
@@ -686,18 +804,53 @@ export const States: Story = {
         />
       </Field>
       <Field>
-        <FieldLabel htmlFor="combobox-loading">Environment</FieldLabel>
+        <FieldLabel htmlFor="combobox-loading">Loading environment</FieldLabel>
         <StoryCombobox
           id="combobox-loading"
-          options={[]}
-          onValueChange={() => undefined}
+          options={ENVIRONMENTS}
+          value={loadingSingleValue}
+          onValueChange={setLoadingSingleValue}
+          onClear={() => setLoadingSingleValue(null)}
           getOptionValue={(option: (typeof ENVIRONMENTS)[number]) => option.id}
           getOptionLabel={(option) => option.name}
           isLoading
         />
       </Field>
+      <Field>
+        <FieldLabel htmlFor="combobox-loading-projects">Loading projects</FieldLabel>
+        <StoryCombobox
+          id="combobox-loading-projects"
+          multiple
+          options={PROJECTS}
+          value={loadingMultipleValue}
+          onValueChange={(nextValue) => setLoadingMultipleValue(nextValue)}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          isLoading
+        />
+      </Field>
     </div>
-  )
+  );
+};
+
+export const States: Story = {
+  render: () => <StatesRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const disabledSingle = canvasElement.querySelector<HTMLElement>("#combobox-disabled")!;
+    const disabledMultiple = canvas.getByRole("combobox", { name: "Projects", hidden: true });
+    const loadingSingle = canvas.getByRole("combobox", { name: "Loading environment" });
+    const loadingMultiple = canvas.getByRole("combobox", { name: "Loading projects" });
+
+    await expect(getTrailingSlot(disabledSingle)).toHaveAttribute("data-state", "chevron");
+    await expect(getTrailingSlot(disabledMultiple)).toHaveAttribute("data-state", "chevron");
+    await expect(canvas.queryByRole("button", { name: "Clear selection" })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: "Clear all selections" })
+    ).not.toBeInTheDocument();
+    await expect(getTrailingSlot(loadingSingle)).toHaveAttribute("data-state", "loading");
+    await expect(getTrailingSlot(loadingMultiple)).toHaveAttribute("data-state", "loading");
+  }
 };
 
 const ViewportEdgesRender = () => {
@@ -872,6 +1025,7 @@ export const SingleDismissedFailure: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "retryable");
     await userEvent.click(canvas.getByRole("option", { name: 'Create "retryable"' }));
+    await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "loading");
     await userEvent.keyboard("{Escape}");
     await userEvent.click(continueButton);
     await sleep(600);
@@ -963,9 +1117,14 @@ export const InlineCreation: Story = {
     await expect(
       canvas.getByRole("option", { name: 'Creating tag "release-ready"...' })
     ).toHaveAttribute("aria-disabled", "true");
+    await expect(getTrailingSlot(tagsInput)).toHaveAttribute("data-state", "loading");
+    await expect(
+      canvas.queryByRole("button", { name: "Clear all selections" })
+    ).not.toBeInTheDocument();
     await expect(
       await canvas.findByRole("button", { name: "Remove release-ready" })
     ).toBeInTheDocument();
+    await expect(getTrailingSlot(tagsInput)).toHaveAttribute("data-state", "clear");
 
     await userEvent.type(tagsInput, "reserved");
     await userEvent.keyboard("{Enter}{Escape}");
