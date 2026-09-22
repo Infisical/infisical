@@ -2667,7 +2667,6 @@ const OverviewPageContent = () => {
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <PageHeader
-        className="[&_[data-slot=page-header-actions]]:min-w-0 [&_[data-slot=page-header-actions]]:flex-1 [&_[data-slot=page-header-row]]:justify-start [&_[data-slot=page-header-row]>div:first-child]:mr-0 [&_[data-slot=page-header-row]>div:first-child]:max-w-1/2 [&_[data-slot=page-header-row]>div:first-child]:flex-none"
         scope={ProjectType.SecretManager}
         title={
           <Link
@@ -2677,6 +2676,14 @@ const OverviewPageContent = () => {
           >
             {currentProject.name}
           </Link>
+        }
+        titleTrailingContent={
+          <FolderBreadcrumb
+            secretPath={secretPath}
+            onManageFolderAccess={
+              canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
+            }
+          />
         }
         description={currentProject.description}
         backLink={
@@ -2688,14 +2695,7 @@ const OverviewPageContent = () => {
             All Projects
           </Link>
         }
-      >
-        <FolderBreadcrumb
-          secretPath={secretPath}
-          onManageFolderAccess={
-            canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
-          }
-        />
-      </PageHeader>
+      />
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
           <div className="flex min-w-0 flex-col gap-2">

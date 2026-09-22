@@ -124,6 +124,26 @@ export const WithDescriptionAndActions: Story = {
   }
 };
 
+export const WithTitleTrailingContent: Story = {
+  name: "Example: Title Trailing Content",
+  args: {
+    title: "Platform",
+    titleTrailingContent: (
+      <div className="truncate text-2xl font-medium text-foreground underline decoration-project/90 underline-offset-4">
+        / Production / API
+      </div>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use title trailing content for inline hierarchy or controls that belong directly after the page title. The title retains up to half the row while the trailing content receives the remaining space."
+      }
+    }
+  }
+};
+
 export const WithBackLink: Story = {
   name: "Example: Back Link",
   args: {

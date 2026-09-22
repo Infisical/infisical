@@ -11,6 +11,7 @@ export type TPageHeaderScope = "org" | "namespace" | "instance" | ProjectType | 
 
 export type TPageHeaderProps = Omit<ComponentProps<"header">, "title"> & {
   title: ReactNode;
+  titleTrailingContent?: ReactNode;
   description?: ReactNode;
   backLink?: ReactElement;
   scope: TPageHeaderScope;
@@ -73,6 +74,7 @@ const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeade
 
 export const PageHeader = ({
   title,
+  titleTrailingContent,
   description,
   backLink,
   children,
@@ -100,12 +102,15 @@ export const PageHeader = ({
       )}
       <div data-slot="page-header-content" className="flex flex-col gap-2">
         <div data-slot="page-header-row" className="flex w-full justify-between">
-          <div className="mr-4 flex min-w-0 flex-1 items-center">
+          <div
+            className={cn("mr-4 flex min-w-0 flex-1 items-center", titleTrailingContent && "gap-2")}
+          >
             <h1
               data-slot="page-header-title"
               className={cn(
                 "truncate text-2xl font-medium text-foreground underline underline-offset-4",
-                scopeConfig?.titleClassName ?? "no-underline"
+                scopeConfig?.titleClassName ?? "no-underline",
+                titleTrailingContent && "max-w-1/2 shrink-0"
               )}
             >
               {ResolvedIcon && (
@@ -118,6 +123,11 @@ export const PageHeader = ({
               )}
               {title}
             </h1>
+            {titleTrailingContent && (
+              <div data-slot="page-header-title-trailing-content" className="min-w-0 flex-1">
+                {titleTrailingContent}
+              </div>
+            )}
           </div>
           <div data-slot="page-header-actions" className="flex items-center gap-2">
             {children}
