@@ -37,6 +37,8 @@ import {
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 
@@ -380,8 +382,10 @@ export const DynamicSecretTableRow = ({
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className="w-full">Environment</TableHead>
-                    <TableHead variant="action" className="w-px" />
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
+                    <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -396,10 +400,12 @@ export const DynamicSecretTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell colSpan={2}>
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
+                            {envName}
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full flex-wrap items-center pr-40">
-                              <span>{envName}</span>
-                              <Badge variant="neutral" className="ml-2">
+                              <Badge variant="neutral">
                                 {
                                   dynamicSecretProviderRegistry.requireDefinition(
                                     dynamicSecret.type

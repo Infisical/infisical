@@ -209,6 +209,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { useSecretManagerScrollContainer } from "@app/layouts/SecretManagerLayout";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -1261,14 +1262,22 @@ const OverviewPageContent = () => {
       setFolderAccessTarget({
         folderPath: childFolderPath(folderName)
       });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "folder_row",
+        projectId
+      });
     },
-    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
     if (!ensureFolderRbacPlan()) return;
     setIsCurrentFolderAccessOpen(true);
-  }, [ensureFolderRbacPlan]);
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+      source: "breadcrumb",
+      projectId
+    });
+  }, [ensureFolderRbacPlan, orgId, projectId]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");

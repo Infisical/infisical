@@ -18,7 +18,9 @@ export const AgentVaultServicesSchema = z.object({
   credentialConfig: z.unknown(),
   encryptedCredential: zodBuffer.nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  allowedMethods: z.string().array().nullable().optional(),
+  allowedPathPrefixes: z.string().array().nullable().optional()
 });
 
 export type TAgentVaultServices = z.infer<typeof AgentVaultServicesSchema>;

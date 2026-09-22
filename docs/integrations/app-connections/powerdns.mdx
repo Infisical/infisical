@@ -1,0 +1,71 @@
+---
+title: "PowerDNS connection"
+sidebarTitle: "PowerDNS"
+description: "Learn how to configure a PowerDNS Connection for Infisical."
+---
+
+Infisical connects to the PowerDNS Authoritative Server through its HTTP API and authenticates with an API key. Use this connection to let Infisical create and remove the TXT records that answer an ACME DNS-01 challenge in a zone that server is authoritative for.
+
+<Note>
+  The PowerDNS API key grants full control over every zone the server hosts. PowerDNS has no
+  per-zone or read-only API scopes, so treat the key as an administrative credential.
+</Note>
+
+## Prerequisites
+
+- A PowerDNS Authoritative Server 4.1 or later with the HTTP API enabled.
+- A zone on that server for the domain you want certificates issued for.
+- If the server isn't reachable from the internet, an [Infisical Gateway](/documentation/platform/gateways/overview) with network access to it.
+
+## Enable the PowerDNS API
+
+The API is off by default. Add the following to `pdns.conf` and restart `pdns_server`:
+
+```ini
+api=yes
+api-key=<a-long-random-secret>
+webserver=yes
+webserver-address=0.0.0.0
+webserver-port=8081
+webserver-allow-from=<the address Infisical or your Gateway connects from>
+```
+
+Keep `webserver-allow-from` as narrow as your network allows. PowerDNS rejects every request from an address outside that range before it checks the API key.
+
+Confirm the API answers before you create the connection:
+
+```bash
+curl -H "X-API-Key: <your-api-key>" http://<your-server>:8081/api/v1/servers/localhost/zones
+```
+
+## Setup PowerDNS connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    In **Certificate Manager**, go to **Settings → App Connections**.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **PowerDNS Connection** option from the connection options modal.
+  </Step>
+  <Step title="Create Connection">
+    Fill in the **API URL** with the address of the PowerDNS web server, such as `https://pdns.example.com:8081`. Infisical appends the `/api/v1` path itself and rejects a URL that already includes it.
+
+    Fill in the **API Key** with the value of your `api-key` setting.
+
+    If your PowerDNS server sits on a private network, select a **Gateway** to route the requests through.
+
+    Leave **Server ID** empty unless you connect through a proxy that fronts several PowerDNS servers and gives each one its own ID. A PowerDNS Authoritative Server always reports its API server ID as `localhost`, and Infisical uses that by default.
+
+    On the **SSL** tab you can supply a CA certificate for a reverse proxy that presents a private certificate, or turn off **Reject Unauthorized** to accept a self-signed one.
+  </Step>
+  <Step title="Connection Created">
+    Your **PowerDNS Connection** is now available for use in Certificate Manager.
+  </Step>
+</Steps>
+
+## Use with ACME certificate authorities
+
+Select **PowerDNS** as the DNS provider when you register an external ACME certificate authority, then pick the zone Infisical should write challenge records into. Infisical reads the zone list from your server, and the zone must be authoritative for the domains you request certificates for.
+
+Infisical adds each challenge value to the `_acme-challenge` record set, then removes only that value once the certificate authority has validated it. Any other records you keep at the same name stay in place. See [ACME certificate authorities](/documentation/platform/pki/ca/acme-ca) for the rest of the setup.

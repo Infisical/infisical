@@ -4,13 +4,11 @@ import { AlertAction } from "@app/views/Alerts";
 
 type Props = {
   identityId: string;
-  identityName: string;
 };
 
-export const IdentityAlertAction = ({ identityId, identityName }: Props) => (
+export const IdentityAlertAction = ({ identityId }: Props) => (
   <AlertAction
     identityId={identityId}
-    identityName={identityName}
     renderPermissionGate={(render) => (
       <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
         {render}

@@ -81,7 +81,7 @@ const Page = () => {
   const isLinkedGroup = data && currentOrg ? data.group.orgId !== currentOrg.id : false;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {data && (
         <>
           <Link
@@ -164,13 +164,13 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <GroupDetailsSection
               groupId={groupId}
               handlePopUpOpen={handlePopUpOpen}
               canEditGroup={canEditGroup}
             />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <GroupMembersSection
                 groupId={groupId}
                 groupSlug={data.group.slug}

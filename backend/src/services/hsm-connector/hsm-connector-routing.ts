@@ -1,9 +1,9 @@
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callPkcs11Endpoint, isRetryablePkcs11RpcError, Pkcs11RpcEndpoint } from "@app/lib/gateway-v2/pkcs11-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 
 import {

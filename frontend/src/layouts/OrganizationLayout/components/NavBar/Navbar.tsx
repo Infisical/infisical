@@ -155,7 +155,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 
 export const Navbar = () => {
   const { user } = useUser();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { config: serverConfig } = useServerConfig();
@@ -711,6 +711,22 @@ export const Navbar = () => {
         </DropdownMenu>
         <AnnouncementNavButton />
         <NotificationDropdown />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+              aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark", "navbar-toggle")}
+            >
+              {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Switch to {resolvedTheme === "dark" ? "light" : "dark"} theme
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <IconButton variant="outline" size="sm" aria-label="User menu">

@@ -233,6 +233,7 @@ export type TGetDashboardProjectSecretsByKeys = {
   secretPath: string;
   environment: string;
   keys: string[];
+  viewSecretValue?: boolean;
 };
 
 export type TGetAccessibleSecretsDTO = {
