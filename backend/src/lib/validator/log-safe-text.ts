@@ -51,6 +51,12 @@ const TEXT_JOINERS = new Set([0x200c, 0x200d]);
 const isUncategorizedFormat = (code: number) =>
   code === 0x2028 || code === 0x2029 || (code >= 0xe0000 && code <= 0xe007f);
 
+// A whole-string screen, run before the per-character walk below. The walk crosses into RE2 once per
+// character, which measures ~30x the cost of the walk itself, and audit text is almost always clean,
+// so one call per string answers the common case. The screen over-matches on ZWNJ and ZWJ, which
+// only costs those strings a walk that then keeps them.
+const UNSAFE_SCREEN = new RE2("[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}]|[\\x{E0000}-\\x{E007F}]|\\p{Cf}", "u");
+
 // codePointAt, not charCodeAt: the astral ranges sit beyond U+FFFF, where charCodeAt would return a
 // surrogate half and never match.
 const isUnsafeCharacter = (character: string) => {
@@ -64,6 +70,8 @@ const isUnsafeCharacter = (character: string) => {
 // input. CR is included so CRLF-separated content is not rejected. The sink-side strip still
 // collapses them, so the stored record stays single-line.
 export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean => {
+  if (!UNSAFE_SCREEN.test(value)) return false;
+
   ANSI_ESCAPE_PATTERN.lastIndex = 0;
   if (ANSI_ESCAPE_PATTERN.test(value)) return true;
 
@@ -76,6 +84,7 @@ export const containsLogUnsafeCharacters = (value: string, { allowMultiline = fa
 
 export const sanitizeLogText = <T extends string | null | undefined>(value: T): T => {
   if (typeof value !== "string") return value;
+  if (!UNSAFE_SCREEN.test(value)) return value;
 
   // Sequences first, so a body leaves with its introducer rather than surviving as visible text.
   const collapsed = value.replace(ANSI_ESCAPE_PATTERN, "").replace(WHITESPACE_CONTROL_RUN, " ");
