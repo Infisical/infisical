@@ -118,10 +118,8 @@ export const sanitizeLogPayload = <T>(payload: T): T => {
   while (pending.length) {
     const [source, target] = pending.pop()!;
 
-    // defineProperty rather than assignment: a key of `__proto__` hits the inherited setter, which
-    // sets the prototype instead of writing an own property and drops the field from the serialized
-    // record. Metadata keys can come from a third party, since `oidcClaimsReceived` is whatever the
-    // IdP returned.
+    // defineProperty, not assignment: a `__proto__` key hits the inherited setter and sets the
+    // prototype instead of writing a field. Metadata keys come from the IdP on OIDC login.
     const put = (key: string | number, value: unknown) => {
       Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
     };

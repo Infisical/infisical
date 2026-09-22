@@ -77,8 +77,6 @@ describe("routes that feed audit metadata keep the wrapper", () => {
     const source = read(file);
     const wrapped = source.match(/reason: auditSafeText\(.*allowMultiline: true/g) ?? [];
 
-    // The count is the guard: a wrapper dropped from a field, or the multiline flag flipped off,
-    // takes it below the expected number.
     expect(wrapped).toHaveLength(expected);
   });
 });
