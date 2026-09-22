@@ -48,7 +48,7 @@ export const LegacyPkiCreationBlockedModal = ({ resource, isOpen, onOpenChange }
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Use Applications Instead</DialogTitle>
-          <DialogDescription className="my-4 whitespace-pre-line text-foreground/75">
+          <DialogDescription>
             {noun} are being removed on {LEGACY_PKI_DEPRECATION_DATE}, and new ones can no longer be
             created. Certificate applications replace them. Your existing {noun.toLowerCase()} keep
             issuing certificates until the removal date.{" "}
