@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ActivityIcon,
@@ -56,6 +56,7 @@ import {
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
 type Props = {
   secretRotationName: string;
@@ -72,6 +73,8 @@ type Props = {
   onViewGeneratedCredentials: (secretRotation: TSecretRotationV2) => void;
   onDelete: (secretRotation: TSecretRotationV2) => void;
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -97,7 +100,9 @@ export const SecretRotationTableRow = ({
   onViewGeneratedCredentials,
   onDelete,
   onReconcile,
-  onCheckActiveCredentials
+  onCheckActiveCredentials,
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
@@ -122,6 +127,17 @@ export const SecretRotationTableRow = ({
   const singleEnvRotation = isSingleEnvView
     ? getSecretRotationByName(singleEnvSlug, secretRotationName)
     : undefined;
+
+  useEffect(() => {
+    onActivityChange(activityId, isExpanded);
+  }, [activityId, isExpanded, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   const renderActionButtons = (secretRotation: TSecretRotationV2) => {
     const { environment, folder } = secretRotation;

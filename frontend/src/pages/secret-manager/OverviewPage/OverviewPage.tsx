@@ -234,6 +234,11 @@ import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection"
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
+  getTableRowActivityId,
+  type TableRowActivityChangeHandler,
+  type TableRowActivityId
+} from "./components/tableRowActivity";
+import {
   DownloadEnvButton,
   DynamicSecretTableRow,
   EmptyResourceDisplay,
@@ -634,20 +639,23 @@ const OverviewPageContent = () => {
   const isProtectedBranch = Boolean(boardPolicy);
 
   const isSingleEnvView = visibleEnvs.length === 1;
-  const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(new Set());
-  const handleSecretRowExpandedChange = useCallback((secretKey: string, isExpanded: boolean) => {
-    setExpandedSecretRows((current) => {
-      if (current.has(secretKey) === isExpanded) return current;
+  const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
+    (rowId, isActive) => {
+      setActiveTableRows((current) => {
+        if (current.has(rowId) === isActive) return current;
 
-      const next = new Set(current);
-      if (isExpanded) {
-        next.add(secretKey);
-      } else {
-        next.delete(secretKey);
-      }
-      return next;
-    });
-  }, []);
+        const next = new Set(current);
+        if (isActive) {
+          next.add(rowId);
+        } else {
+          next.delete(rowId);
+        }
+        return next;
+      });
+    },
+    []
+  );
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
   const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
@@ -3122,7 +3130,7 @@ const OverviewPageContent = () => {
                   <TableBody
                     className={twMerge(
                       "transition-all duration-500 [&>tr>td>*]:transition-[filter] [&>tr>td>*]:duration-200 motion-reduce:[&>tr>td>*]:transition-none",
-                      (expandedSecretRows.size > 0 || hasSelectedEntriesOnPage) &&
+                      (activeTableRows.size > 0 || hasSelectedEntriesOnPage) &&
                         "[&>tr>td>*]:filter-[opacity(40%)]"
                     )}
                   >
@@ -3179,6 +3187,8 @@ const OverviewPageContent = () => {
                               }
                               importedSecrets={importedSecretsFlat}
                               isVisible={isSingleEnvSecretsVisible}
+                              activityId={getTableRowActivityId("secret-import", imp.id)}
+                              onActivityChange={handleTableRowActivityChange}
                             />
                           ))}
                         {!isSingleEnvView &&
@@ -3201,6 +3211,12 @@ const OverviewPageContent = () => {
                                 }
                                 importedSecrets={importedSecretsFlat}
                                 isVisible={isSingleEnvSecretsVisible}
+                                activityId={getTableRowActivityId(
+                                  "secret-import",
+                                  importEnvSlug,
+                                  importPath
+                                )}
+                                onActivityChange={handleTableRowActivityChange}
                               />
                             )
                           )}
@@ -3317,6 +3333,11 @@ const OverviewPageContent = () => {
                                 text: `Successfully authenticated to ${SECRET_ROTATION_MAP[secretRotation.type].name} with the current rotated credentials for ${secretRotation.name}`
                               });
                             }}
+                            activityId={getTableRowActivityId(
+                              "secret-rotation",
+                              secretRotationName
+                            )}
+                            onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
                         {honeyTokenNames.map((honeyTokenName, index) => (
@@ -3378,7 +3399,8 @@ const OverviewPageContent = () => {
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
-                            onExpandedChange={handleSecretRowExpandedChange}
+                            activityId={getTableRowActivityId("secret", key)}
+                            onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
                         <SecretNoAccessTableRow

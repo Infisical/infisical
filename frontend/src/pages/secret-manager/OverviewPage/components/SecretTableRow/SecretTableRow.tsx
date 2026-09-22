@@ -59,6 +59,7 @@ import {
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -115,7 +116,8 @@ type Props = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
-  onExpandedChange?: (secretKey: string, isExpanded: boolean) => void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -144,31 +146,35 @@ export const SecretTableRow = ({
   onBatchRevert,
   isSelectionDisabled,
   onCopySecret,
-  onExpandedChange
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
-  const [isSingleEnvRowExpanded, setIsSingleEnvRowExpanded] = useState(false);
+  const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
+  const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
-  const isRowExpanded = isSingleEnvView ? isSingleEnvRowExpanded : isFormExpanded;
+  const isRowActive = isSingleEnvView
+    ? isSingleEnvBaseActive || isSingleEnvOverrideActive
+    : isFormExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
   useEffect(() => {
-    onExpandedChange?.(secretKey, isRowExpanded);
-  }, [isRowExpanded, onExpandedChange, secretKey]);
+    onActivityChange(activityId, isRowActive);
+  }, [activityId, isRowActive, onActivityChange]);
 
   useEffect(
     () => () => {
-      onExpandedChange?.(secretKey, false);
+      onActivityChange(activityId, false);
     },
-    [onExpandedChange, secretKey]
+    [activityId, onActivityChange]
   );
 
   // Pre-compute single-env data
@@ -292,7 +298,8 @@ export const SecretTableRow = ({
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
         className={twMerge(
           "group hover:z-10",
-          (isRowExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+          (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
+            TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
           pendingActionRowClass(singleEnvPendingAction)
         )}
       >
@@ -422,7 +429,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
-            onExpandedChange={setIsSingleEnvRowExpanded}
+            onExpandedChange={setIsSingleEnvBaseActive}
           />
         ) : (
           <TableCell
@@ -540,7 +547,7 @@ export const SecretTableRow = ({
         <TableRow
           className={twMerge(
             "group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]",
-            (isRowExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+            (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
           )}
         >
           <TableCell>
@@ -579,6 +586,7 @@ export const SecretTableRow = ({
               onSecretCreate={onSecretCreate}
               onSecretUpdate={onSecretUpdate}
               onSecretDelete={onSecretDelete}
+              onActiveChange={setIsSingleEnvOverrideActive}
             />
           </TableCell>
         </TableRow>
