@@ -124,6 +124,23 @@ describe("register", () => {
     ).not.toThrow();
   });
 
+  // The retry model assumes minute granularity: a 6-field pattern firing every 30s would get a
+  // 7.5s window whose first retry lands at 38.5s, past its own next fire, and be marked
+  // failed-final instead of retried. Reject it at registration rather than degrade quietly.
+  test("rejects a sub-minute (6-field) pattern", () => {
+    const { register } = makeFactory();
+    expect(() => register({ name: "x", pattern: "*/30 * * * * *", handler: vi.fn(), runHashTtlS: 3600 })).toThrow(
+      "must have 5 fields"
+    );
+  });
+
+  test("accepts the 5-field patterns the codebase registers", () => {
+    const { register } = makeFactory();
+    ["*/5 * * * *", "0 0 * * *", "0 0 19 2,5,8,11 *", "23 3 * * *"].forEach((pattern, i) => {
+      expect(() => register({ name: `x${i}`, pattern, handler: vi.fn(), runHashTtlS: 3 * 24 * 60 * 60 })).not.toThrow();
+    });
+  });
+
   test("throws when factory handlerTimeoutMs default exceeds factory leaseDurationMs", () => {
     const redis = makeRedis();
     const redlock = makeRedlock();
