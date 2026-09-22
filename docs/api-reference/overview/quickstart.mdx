@@ -1,0 +1,128 @@
+---
+title: "Quickstart"
+description: "Create a machine identity, authenticate with Universal Auth, and make your first request to the Infisical API."
+---
+
+This quickstart creates a machine identity with Universal Auth credentials and uses those credentials to make an authenticated request to the Infisical API.
+
+<Note>
+  This quickstart uses [Universal Auth](/documentation/platform/identities/universal-auth). For the full list of authentication methods and when to pick each one, see [Authentication](/api-reference/overview/authentication).
+</Note>
+
+## Prerequisites
+
+- The **Admin** role on either your Infisical organization or a project in the organization
+
+## Step 1: Create a machine identity
+
+You can create a machine identity at the organization level or scoped to a single project. The rest of the quickstart works the same either way.
+
+<Tabs>
+  <Tab title="Organization-level">
+    <Steps>
+      <Step>
+        In your organization, go to **Access Control** > **Machine Identities**, then select **Create**.
+      </Step>
+      <Step>
+        Enter a **Name** for the identity, pick an organization **Role** (**Admin** or **Member** are both fine for this guide), and select **Create**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Project-level">
+    <Steps>
+      <Step>
+        Open the project, go to **Access Control** > **Machine Identities**, then select **Add Machine Identity to Project**.
+      </Step>
+      <Step>
+        On the **Create New** tab, enter a **Name**, pick a project **Role**, and select **Create**.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+This creates the identity with Universal Auth enabled by default and opens the identity's details page.
+
+## Step 2: Generate a client secret
+
+Universal Auth uses a **Client ID** and **Client Secret** pair. Infisical creates the Client ID with the identity but issues each Client Secret on demand.
+
+<Steps>
+  <Step>
+    On the identity's details page, in the **Authentication** card, select the **Universal Auth** row.
+  </Step>
+  <Step>
+    In the sheet that opens, copy the **Client ID**.
+  </Step>
+  <Step>
+    Select **Add Client Secret**, then **Create** to generate a new secret.
+  </Step>
+</Steps>
+
+<Warning>
+  Infisical shows the Client Secret only once. Copy it now and store it somewhere safe before closing the dialog.
+</Warning>
+
+## Step 3: Exchange the credentials for an access token
+
+Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the Client ID and Client Secret in the request body:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clientId": "<your-client-id>",
+    "clientSecret": "<your-client-secret>"
+  }'
+```
+
+The response contains the access token, the token's remaining lifetime in seconds (`expiresIn`), and the maximum lifetime the token can reach with renewals (`accessTokenMaxTTL`):
+
+```json
+{
+  "accessToken": "st.xxxxxxxxxxxxxxxxxxxxxxxx",
+  "expiresIn": 7200,
+  "accessTokenMaxTTL": 43200,
+  "tokenType": "Bearer"
+}
+```
+
+## Step 4: Call the API with the access token
+
+Include the access token as an `Authorization: Bearer` header on every request. For example, to [look up the identity's own details](/api-reference/endpoints/identities/details):
+
+```bash
+curl https://app.infisical.com/api/v1/identities/details \
+  -H "Authorization: Bearer <your-access-token>"
+```
+
+The response returns the organization the identity belongs to:
+
+```json
+{
+  "identityDetails": {
+    "organization": {
+      "id": "...",
+      "name": "...",
+      "slug": "..."
+    }
+  }
+}
+```
+
+Every endpoint in this reference accepts the same `Authorization` header format.
+
+<Check>
+  You can now make authenticated calls to the Infisical API.
+</Check>
+
+## Next steps
+
+To call an endpoint that operates on a project's resources (for example, reading secrets, issuing certificates, or managing PAM resources), the identity needs to be a member of that project.
+
+If you create the machine identity at the organization-level, it needs to be added to each project you want it to reach. You can do this from **Access Control** > **Machine Identities** inside the project itself.
+
+For more information, check out the machine identity docs:
+
+<Card title="Machine identities" icon="id-card" href="/documentation/platform/identities/machine-identities">
+  How machine identities work, including scopes, project membership, roles, credential rotation, and alerts.
+</Card>

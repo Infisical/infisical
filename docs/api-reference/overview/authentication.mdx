@@ -1,28 +1,92 @@
 ---
 title: "Authentication"
-description: "Learn how to authenticate with the Infisical Public API."
+description: "Log in as a machine identity and use the returned access token on every Infisical API request."
 ---
 
-You can authenticate with the Infisical API using [Identities](/documentation/platform/identities/machine-identities) paired with authentication modes such as [Universal Auth](/documentation/platform/identities/universal-auth).
+To call the Infisical API, you need to authenticate as a [machine identity](/documentation/platform/identities/machine-identities) using one of the authentication methods listed below. The authentication method returns a short-lived access token. Include that token as an `Authorization: Bearer <token>` header on every Infisical API request.
+<Note>
+  For a guide on authenticating with Universal Auth and calling the API, check out the [Quickstart](/api-reference/overview/quickstart).
+</Note>
 
-To interact with the Infisical API, you'll need to obtain an access token. Follow the step by [step guide](/documentation/platform/identities/universal-auth) to get an access token via Universal Auth.
+## Authentication methods
 
+Each authentication method accepts a different type of credential:
 
-**FAQ**
+### Infisical-issued credentials
+
+These methods accept credentials that Infisical creates and manages directly, such as a client ID and client secret or a long-lived access token. They work from any environment.
+
+<CardGroup cols={2}>
+  <Card title="Universal Auth" href="/documentation/platform/identities/universal-auth">
+    Authenticate with a client ID and client secret.
+  </Card>
+  <Card title="Token Auth" href="/documentation/platform/identities/token-auth">
+    Authenticate with a long-lived, manually issued access token.
+  </Card>
+</CardGroup>
+
+### Cloud providers
+
+Cloud providers accept the identity the calling workload already has on that cloud, such as an IAM role, a managed identity, or a service account.
+
+<CardGroup cols={2}>
+  <Card title="AWS Auth" href="/documentation/platform/identities/aws-auth">
+    Authenticate from an EC2 instance, ECS task, Lambda function, or any AWS workload with an IAM role.
+  </Card>
+  <Card title="Azure Auth" href="/documentation/platform/identities/azure-auth">
+    Authenticate from an Azure workload with a managed identity.
+  </Card>
+  <Card title="GCP Auth" href="/documentation/platform/identities/gcp-auth">
+    Authenticate from a Compute Engine instance, GKE pod, or Cloud Run service using its GCP service account.
+  </Card>
+  <Card title="Kubernetes Auth" href="/documentation/platform/identities/kubernetes-auth">
+    Authenticate from a Kubernetes pod using its service account token.
+  </Card>
+  <Card title="OCI Auth" href="/documentation/platform/identities/oci-auth">
+    Authenticate from an Oracle Cloud compute instance using its instance principal.
+  </Card>
+  <Card title="AliCloud Auth" href="/documentation/platform/identities/alicloud-auth">
+    Authenticate from an Alibaba Cloud workload using an assumed RAM role.
+  </Card>
+</CardGroup>
+
+### External identity
+
+These methods accept a credential from a trusted external system, such as an OIDC identity token, a JWT signed by a trusted issuer, an LDAP bind, a client certificate, or a SPIFFE SVID.
+
+<CardGroup cols={2}>
+  <Card title="OIDC Auth" href="/documentation/platform/identities/oidc-auth">
+    Authenticate with an OIDC identity token from a trusted OIDC provider.
+  </Card>
+  <Card title="JWT Auth" href="/documentation/platform/identities/jwt-auth">
+    Authenticate with a JWT signed by a trusted issuer.
+  </Card>
+  <Card title="LDAP Auth" href="/documentation/platform/identities/ldap-auth">
+    Authenticate against a configured LDAP directory.
+  </Card>
+  <Card title="TLS certificate Auth" href="/documentation/platform/identities/tls-cert-auth">
+    Authenticate with a client certificate signed by a trusted certificate authority.
+  </Card>
+  <Card title="SPIFFE Auth" href="/documentation/platform/identities/spiffe-auth">
+    Authenticate with a SPIFFE SVID from a workload attested by SPIRE.
+  </Card>
+</CardGroup>
+
+## FAQ
 
 <AccordionGroup>
-<Accordion title="Why can I not create, read, update, or delete an identity?">
-  There are a few reasons for why this might happen:
+  <Accordion title="Why can I not create, read, update, or delete an identity?">
+    A few reasons this can happen:
 
-  - You have insufficient organization permissions to create, read, update, delete identities.
-  - The identity you're trying to read, update, or delete is more privileged than yourself.
-  - The role you're trying to create an identity for or update an identity to is more privileged than yours.
-</Accordion>
-<Accordion title="Why is the Infisical API rejecting my identity credentials?">
-  There are a few reasons for why this might happen:
+    - The calling identity doesn't have the org permissions required to manage identities
+    - The identity being changed is more privileged than the calling identity
+    - The role being assigned is more privileged than any role held by the calling identity
+  </Accordion>
+  <Accordion title="Why is the Infisical API rejecting my identity credentials?">
+    A few reasons this can happen:
 
-  - The client secret or access token has expired.
-  - The identity is insufficiently permissioned to interact with the resources you wish to access.
-  - The client secret/access token is being used from an untrusted IP.
-</Accordion>
+    - The client secret or access token has expired
+    - The identity doesn't have the permissions required by the endpoint
+    - The client secret or access token is being used from an IP address the identity doesn't trust
+  </Accordion>
 </AccordionGroup>

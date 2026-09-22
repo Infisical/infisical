@@ -1,0 +1,69 @@
+---
+title: "Rate limiting"
+description: "Learn how Infisical enforces rate limits on API requests."
+---
+
+Infisical enforces per-minute rate limits on API requests. Limits are grouped into categories, and each category is tracked separately per client IP address. Requests in one category don't count against the limit for another.
+
+## Categories
+
+Each API request is counted against one of the following categories:
+
+- **Read**: read operations
+- **Write**: create, update, and delete operations
+- **Secret**: secret management operations (for example, reading or creating a secret)
+- **Identity creation**: creating a new machine identity in an organization
+- **Project creation**: creating a new project in an organization
+
+## Limits on Infisical Cloud
+
+The per-minute limits by plan on Infisical Cloud are:
+
+<Tabs>
+  <Tab title="Free">
+    - **Read**: 200 per minute
+    - **Write**: 90 per minute
+    - **Secret**: 120 per minute
+    - **Identity creation**: 30 per minute
+    - **Project creation**: 30 per minute
+  </Tab>
+  <Tab title="Pro">
+    - **Read**: 350 per minute
+    - **Write**: 200 per minute
+    - **Secret**: 300 per minute
+    - **Identity creation**: 30 per minute
+    - **Project creation**: 30 per minute
+  </Tab>
+</Tabs>
+
+<Note>
+  Enterprise plans on Infisical Cloud can get higher custom rate limits. Contact
+  sales@infisical.com for details.
+</Note>
+
+## Limits on self-hosted instances
+
+If you self-host Infisical, per-minute limits still apply. The defaults on a self-hosted instance are:
+
+- **Read**: 60 per minute
+- **Write**: 200 per minute
+- **Secret**: 60 per minute
+- **Identity creation**: 30 per minute
+- **Project creation**: 30 per minute
+
+Changing these defaults requires the custom rate limits feature (included on Enterprise plans). A super admin on the instance can configure the limits in the [Server Console](/documentation/platform/admin-panel/server-admin). New limits apply to every organization on the instance.
+
+## Exceeding rate limits (429 response)
+
+A request that exceeds the applicable limit returns HTTP `429` with the standard [error response](/api-reference/overview/errors):
+
+```json
+{
+  "reqId": "req-abc123",
+  "statusCode": 429,
+  "message": "Rate limit exceeded. Please try again in 42 seconds",
+  "error": "RateLimitExceeded"
+}
+```
+
+The `message` field includes the number of seconds remaining in the current rate limit window. Wait at least that long before resending the request.
