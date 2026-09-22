@@ -19,7 +19,9 @@ When authenticated, a token is generated and saved in your system Keyring to all
 
 To change where the login credentials are stored, visit the [vaults command](./vault).
 
-Each login is stored as a profile: an account on the specified Infisical instance, with the organization that it uses by default. A login without flags becomes the default profile for this machine. To store a login under a name you choose, and leave the default alone, pass `--save-as`. See [profile](./profile) for how to select from existing profiles.
+A user login is stored as a profile: an account on the specified Infisical instance, with the organization that it uses by default. A user login without flags becomes the default profile for this machine. To store one under a name you choose, and leave the default alone, pass `--save-as`. See [profile](./profile) for how to select from existing profiles.
+
+Machine identity logins don't create a profile. They print an access token, which you supply through `INFISICAL_TOKEN` or `--token`.
 
     <Info>
       **JWT Token Output:**
@@ -69,7 +71,7 @@ User authentication is designed for individual developers and supports multiple 
     </ParamField>
     <ParamField query="save-as" type="string" optional>
       Store this login as the named profile, creating a new profile or replacing
-      an existing one's session. The new profile is not automatically selected.
+      an existing one's session. The new profile isn't automatically selected.
     </ParamField>
     <ParamField query="profile" type="string" optional>
       Sign back in to a profile that already exists, restoring its account,

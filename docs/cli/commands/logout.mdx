@@ -9,7 +9,7 @@ infisical logout
 
 ## Description
 
-This command ends a login session. The CLI removes the stored credentials of the profile from this machine, and revokes its session on the server.
+This command ends a login session. The CLI removes the stored credentials of the profile from this machine, and revokes its session on the server when no other profile still uses that session.
 
 The profile is kept, so `infisical login --profile <name>` signs back in without setting it up again. To remove the profile as well, run `infisical profile delete`.
 

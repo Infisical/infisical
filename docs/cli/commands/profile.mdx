@@ -79,7 +79,7 @@ Domain: https://app.infisical.com
 </Accordion>
 
 <Accordion title="infisical profile new">
-  Create a profile for another organization without logging in again. The new profile reuses the account and instance that you are signed in to.
+  Create a profile for another organization without logging in again. The new profile reuses the account and instance that you're signed in to.
 
 ```bash
 infisical profile new [name]
@@ -104,7 +104,7 @@ infisical profile new globex --org globex-inc
 
   <Accordion title="--pin">
     Also pin this terminal to the new profile. Run the command through `eval`,
-    because a command cannot change the environment of the shell that started it.
+    because a command can't change the environment of the shell that started it.
 
     ```bash
     eval "$(infisical profile new globex --org globex-inc --pin)"
@@ -131,7 +131,7 @@ infisical profile use globex
 <Accordion title="infisical profile pin">
   Pin the current terminal to a profile. Other terminals keep the profile that they already use.
 
-The command prints an export statement. Run it through `eval` to apply it to the shell that you are in.
+The command prints an export statement. Run it through `eval` to apply it to the shell that you're in.
 
 ```bash
 eval "$(infisical profile pin globex)"
@@ -166,7 +166,7 @@ If you omit the path, the CLI binds the current directory. If bindings overlap, 
 
 <Info>
   The binding is stored in your own configuration, never in the repository, so
-  it does not affect anyone else who clones the project.
+  it doesn't affect anyone else who clones the project.
 </Info>
 
 </Accordion>
@@ -250,7 +250,7 @@ These flags work on every command, not only on `infisical profile`.
   </Accordion>
 
   <Accordion title="--org">
-    Use a specific organization for this command. Name it by name, slug, or id. The default organization of the profile does not change.
+    Use a specific organization for this command. Name it by name, slug, or id. The default organization of the profile doesn't change.
 
     ```bash
     infisical --org globex-inc secrets

@@ -51,13 +51,13 @@ If you omit the organization, the CLI will ask you to pick one.
 
 ### Choosing an organization for one command
 
-Pass `--org` to retarget a single command. Name the organization by name, slug, or id.
+Pass `--org` to point a single command at another organization. Name the organization by name, slug, or id.
 
 ```bash
 infisical --org globex-inc secrets
 ```
 
-The default organization of the profile does not change. The CLI caches the session for each organization that you use this way.
+The default organization of the profile doesn't change. The CLI caches the session for each organization that you use this way.
 
 <Tip>
   The `org` flag can be substituted with the `INFISICAL_ORG` environment
