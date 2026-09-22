@@ -49,13 +49,17 @@ To view all events in an organization across every product:
 
 ### For a product
 
-To view all events scoped to a single project:
+<Note>
+  **Privileged Access Manager** and **Agent Vault** are organization-scoped. Follow the [organization instructions](#for-an-organization) instead.
+</Note>
+
+To view all events scoped to a single product:
 
 <Tabs>
   <Tab title="Infisical UI">
     <Steps>
       <Step>
-        Open the product from the organization sidebar (**Secrets Manager**, **KMS**, **PAM**, **Cert Manager**, **Secret Scanning**, or **Agent Vault**), then select the project.
+        Open the product from the organization sidebar, then select the project.
       </Step>
       <Step>
         Select **Audit Logs** in the product's sidebar.
@@ -242,33 +246,39 @@ Audit logs default to a rolling window at the top of the page. To narrow the res
   <Tab title="Infisical UI">
     Select **Search audit logs** from the audit logs menu and choose the filter you want to add:
 
-    | Filter        | Matches                                                                                        | Requires                                 |
-    | ------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------- |
-    | `event`       | One or more event types (for example, `create-secret`, `update-secret`)                        |                                          |
-    | `actor`       | The actor type (`user`, `identity`, `platform`, `kmipClient`, `scimClient`, and so on)         |                                          |
-    | `actor_id`    | A specific user or identity ID                                                                 | `actor` set to a non-user type           |
-    | `source`      | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                          |
-    | `project`     | A single project                                                                               |                                          |
-    | `environment` | An environment slug in that project (for example, `prod`)                                      | `project`                                |
-    | `secret_path` | The folder path a secret event touched (for example, `/db`)                                    | `project`; applies to secret events only |
-    | `secret_key`  | The exact key name a secret event touched (for example, `DATABASE_URL`)                        | `project`; applies to secret events only |
+    | Filter        | Matches                                                                                        | Requires                                                     |
+    | ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+    | `event`       | One or more event types (for example, `create-secret`, `update-secret`)                        |                                                              |
+    | `actor`       | The actor type (for example, `user`, `identity`, `platform`, `kmipClient`, `scimClient`, and so on)         |                                                              |
+    | `actor_id`    | A specific actor ID                                                                            | `actor` set to a type that carries an ID (see below)         |
+    | `source`      | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                                              |
+    | `project`     | A single project                                                                               |                                                              |
+    | `environment` | An environment slug in that project (for example, `prod`)                                      | `project`; applies to secret events only                     |
+    | `secret_path` | The folder path a secret event touched (for example, `/db`)                                    | `project`; applies to secret events only                     |
+    | `secret_key`  | The exact key name a secret event touched (for example, `DATABASE_URL`)                        | `project`; applies to secret events only                     |
   </Tab>
   <Tab title="API">
     Pass filters as query parameters to `GET /api/v1/organization/audit-logs`:
 
-    | Parameter       | Matches                                                                                        | Requires                                   |
-    | --------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------ |
-    | `eventType`     | One or more event types, comma-separated (for example, `create-secret,update-secret`)          |                                            |
-    | `actorType`     | The actor type (`user`, `identity`, `platform`, `kmipClient`, `scimClient`, and so on)         |                                            |
-    | `actor`         | A specific user or identity ID                                                                 | `actorType` for non-user actors            |
-    | `userAgentType` | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                            |
-    | `projectId`     | A single project                                                                               |                                            |
-    | `environment`   | An environment slug in that project (for example, `prod`)                                      | `projectId`                                |
-    | `secretPath`    | The folder path a secret event touched (for example, `/db`)                                    | `projectId`; applies to secret events only |
-    | `secretKey`     | The exact key name a secret event touched (for example, `DATABASE_URL`)                        | `projectId`; applies to secret events only |
-    | `eventMetadata` | A key/value pair inside `event.metadata`. See [Filtering by event metadata](#filtering-by-event-metadata). |                                  |
+    | Parameter       | Matches                                                                                        | Requires                                                          |
+    | --------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+    | `eventType`     | One or more event types, comma-separated (for example, `create-secret,update-secret`)          |                                                                   |
+    | `actorType`     | The actor type (for example, `user`, `identity`, `platform`, `kmipClient`, `scimClient`)         |                                                                   |
+    | `actor`         | A specific actor ID                                                                            | `actorType` set to a type that carries an ID (see below)          |
+    | `userAgentType` | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                                                   |
+    | `projectId`     | A single project                                                                               |                                                                   |
+    | `environment`   | An environment slug in that project (for example, `prod`)                                      | `projectId`; applies to secret events only                        |
+    | `secretPath`    | The folder path a secret event touched (for example, `/db`)                                    | `projectId`; applies to secret events only                        |
+    | `secretKey`     | The exact key name a secret event touched (for example, `DATABASE_URL`)                        | `projectId`; applies to secret events only                        |
+    | `eventMetadata` | A key/value pair inside `event.metadata`. See [Filtering by event metadata](#filtering-by-event-metadata). |                                                       |
   </Tab>
 </Tabs>
+
+<Note>
+Actor ID filtering is only supported for actor types that carry an ID: `user`, `identity`, `service`, `kmipClient`, `kmipServer`, `gateway`, `relay`, `agentVaultProxy`, `acmeProfile`, `acmeAccount`, `estAccount`, and `scepAccount`.
+
+`platform`, `scimClient`, and `unknownUser` don't have an ID field and can only be filtered by type.
+</Note>
 
 ### Special characters
 
@@ -290,7 +300,7 @@ In the above example, `\$` is only there to stop the shell from expanding `$DB` 
 
 The API accepts an `eventMetadata` query parameter that matches key/value pairs inside `event.metadata`. Pass it as `key1=value1,key2=value2`. Every pair has to match on the same event.
 
-Use it for questions the built-in filters can't express, like every login for a specific identity, or every secret sync run for a specific destination:
+Use it for queries the built-in filters can't express, like every login for a specific identity, or every secret sync run for a specific destination:
 
 ```bash
 curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
@@ -299,7 +309,9 @@ curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
   --data-urlencode "eventMetadata=identityId=<identity-id>"
 ```
 
-Values that contain a literal `,` or `=` can't be filtered this way, because both characters are reserved as separators.
+<Note>
+Values that contain a literal `,` can't be filtered this way, because `,` separates the pairs. Values with `=` work: only the first `=` in each pair is treated as the separator, so the rest of the string passes through.
+</Note>
 
 ## Common filters
 
@@ -342,7 +354,7 @@ Find every read of `DATABASE_URL` in the `prod` environment.
 
 ### All writes to production
 
-Find every create, update, and delete in the `prod` environment over the last 7 days.
+Find every create, update, and delete in a project's `prod` environment over the last 7 days.
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -356,20 +368,23 @@ Find every create, update, and delete in the `prod` environment over the last 7 
       <Step>
         Select **Search audit logs** and add these filters:
         - `event`: `create-secret`, `update-secret`, `delete-secret`, `create-secrets`, `update-secrets`, `delete-secrets`
+        - `project`: the project you want to audit
         - `environment`: `prod`
       </Step>
     </Steps>
 
-    Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed.
+    Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed. The `environment` filter only applies when a project is set.
   </Tab>
   <Tab title="API">
+    Replace `<start-date>` with an ISO 8601 timestamp for 7 days ago (for example, `2026-09-14T00:00:00Z`).
+
     ```bash
     curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
       -H "Authorization: Bearer <your-access-token>" \
       --data-urlencode "projectId=<project-id>" \
       --data-urlencode "environment=prod" \
       --data-urlencode "eventType=create-secret,update-secret,delete-secret,create-secrets,update-secrets,delete-secrets" \
-      --data-urlencode "startDate=$(date -u -v-7d +%Y-%m-%dT%H:%M:%SZ)"
+      --data-urlencode "startDate=<start-date>"
     ```
 
     Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed.
@@ -401,7 +416,7 @@ Investigate every action a machine identity took.
       --data-urlencode "actorType=identity"
     ```
 
-    Set `actorType` for any non-user actor so the filter targets the right ID column. Common values are `user`, `identity`, `service`, and `platform`.
+    Set `actorType` for any non-user actor so the filter targets the right ID column. Only actor types with an ID field can be filtered this way; see the note under [Advanced filters](#advanced-filters) for the full list.
   </Tab>
 </Tabs>
 
@@ -418,11 +433,12 @@ Find who removed a specific secret key. Include the batch event so single and bu
       <Step>
         Select **Search audit logs** and add these filters:
         - `event`: `delete-secret`, `delete-secrets`
+        - `project`: the project holding the secret
         - `secret_key`: the key that was deleted
       </Step>
     </Steps>
 
-    Read the actor column on each result to see who ran the delete.
+    Read the actor column on each result to see who ran the delete. The `secret_key` filter only applies when a project is set.
   </Tab>
   <Tab title="API">
     ```bash
@@ -481,16 +497,17 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
   <Accordion title="Approvals">
     | Event                                                                                                                                    | When it fires                                             |
     | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-    | `approval-request-create`, `approval-request-review`, `approval-request-approve`, `approval-request-reject`, `approval-request-cancel`   | The lifecycle of an approval request.                     |
+    | `approval-request-create`, `approval-request-approve`, `approval-request-reject`, `approval-request-cancel`                             | The lifecycle of an approval request.                     |
     | `access-approval-request-create`, `access-approval-request-review`, `access-approval-request-update`, `access-approval-request-revoke`   | The lifecycle of an access approval request.              |
     | `secret-approval-request`, `secret-approval-request-review`, `secret-approval-merged`, `secret-approval-closed`, `secret-approval-reopened` | The lifecycle of a secret change request.               |
     | `approval-policy-create`, `approval-policy-update`, `approval-policy-delete`                                                             | An admin changed an approval policy.                      |
   </Accordion>
-  <Accordion title="Audit logs and streams">
-    | Event                                                                            | When it fires                                     |
-    | -------------------------------------------------------------------------------- | ------------------------------------------------- |
-    | `view-audit-logs`                                                                | A user opened the audit log viewer.               |
-    | `create-audit-log-stream`, `update-audit-log-stream`, `delete-audit-log-stream`  | An admin configured audit log streaming.          |
+  <Accordion title="Audit logs">
+    | Event                                                                   | When it fires                                                        |
+    | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+    | `view-audit-logs`                                                       | A user opened the audit log viewer.                                  |
+    | `create-audit-report`, `get-audit-report`, `get-audit-reports`, `delete-audit-report` | A user managed a project-level audit report.           |
+    | `create-org-audit-report`, `get-org-audit-reports`, `delete-org-audit-report` | A user managed an organization-level audit report.             |
   </Accordion>
 </AccordionGroup>
 
