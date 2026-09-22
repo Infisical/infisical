@@ -121,30 +121,11 @@ export const secretScanningTimeoutsSchema = z.object({
     description: "Wall-clock ceiling for a single `git clone` invocation before its process group is killed",
     defaultValue: "10m",
     legacyMsEnvVar: "SECRET_SCANNING_CLONE_TIMEOUT_MS"
-  }),
-  SECRET_SCANNING_STUCK_SCAN_TIMEOUT: zodTimeoutMs({
-    envVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT",
-    description:
-      "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined.",
-    defaultValue: "1h",
-    legacyMsEnvVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"
   })
 });
 
-export const validateSecretScanningTimeouts = (
-  data: z.infer<typeof secretScanningTimeoutsSchema>,
-  ctx: z.RefinementCtx
-) => {
-  const scanBudgetMs =
-    data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
-  if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT <= scanBudgetMs) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT"],
-      message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_SCAN_OVERHEAD}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
-    });
-  }
-};
+export const getSecretScanningStuckScanTimeout = (data: z.infer<typeof secretScanningTimeoutsSchema>) =>
+  data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
 
 const databaseReadReplicaSchema = z
   .object({
@@ -689,11 +670,10 @@ const envSchema = z
         });
       }
     });
-
-    validateSecretScanningTimeouts(data, ctx);
   })
   .transform((data) => ({
     ...data,
+    SECRET_SCANNING_STUCK_SCAN_TIMEOUT: getSecretScanningStuckScanTimeout(data),
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
     DISABLE_POSTGRES_AUDIT_LOG_STORAGE:
       data.DISABLE_POSTGRES_AUDIT_LOG_STORAGE ?? data.DISABLE_AUDIT_LOG_STORAGE ?? false,
