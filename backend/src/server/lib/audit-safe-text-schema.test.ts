@@ -75,11 +75,10 @@ describe("routes that feed audit metadata keep the wrapper", () => {
     ["ee/routes/v1/pam-routers/pam-access-request-router.ts", 1]
   ])("%s wraps its reason fields as multiline", (file, expected) => {
     const source = read(file);
-    const reasonFields = source.match(/reason: /g) ?? [];
     const wrapped = source.match(/reason: auditSafeText\(.*allowMultiline: true/g) ?? [];
 
+    // The count is the guard: a wrapper dropped from a field, or the multiline flag flipped off,
+    // takes it below the expected number.
     expect(wrapped).toHaveLength(expected);
-    // Every request-body `reason:` on these routers goes through the wrapper.
-    expect(reasonFields.length).toBeGreaterThanOrEqual(wrapped.length);
   });
 });

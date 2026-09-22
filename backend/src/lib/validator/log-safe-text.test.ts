@@ -110,6 +110,24 @@ describe("sanitizeLogPayload", () => {
     expect(Object.values(sanitized).sort()).toEqual([1, 2]);
   });
 
+  test("keeps a key of __proto__ as an own property", () => {
+    // Plain assignment hits the inherited setter and the field never reaches the stored record.
+    // Computed keys, because the literal form would set the prototype as the object is built.
+    const sanitized = sanitizeLogPayload({
+      ["__proto__"]: { sub: `a${NUL}b` },
+      [`__pro${ZWSP}to__`]: "second",
+      ok: 1
+    }) as Record<string, unknown>;
+
+    const roundTripped = JSON.parse(JSON.stringify(sanitized)) as Record<string, unknown>;
+    const entry = (key: string) => Object.entries(roundTripped).find(([name]) => name === key)?.[1];
+
+    expect(Object.keys(roundTripped).sort()).toEqual(["__proto__", "__proto__~2", "ok"]);
+    expect(entry("__proto__")).toEqual({ sub: "ab" });
+    expect(entry("__proto__~2")).toBe("second");
+    expect(roundTripped.ok).toBe(1);
+  });
+
   test("whitespace controls collapse to a single space, preserving word boundaries", () => {
     expect(sanitizeLogText(`approved by${String.fromCharCode(10)}ops`)).toBe("approved by ops");
     expect(sanitizeLogText(`one${String.fromCharCode(13)}${String.fromCharCode(10)}two`)).toBe("one two");

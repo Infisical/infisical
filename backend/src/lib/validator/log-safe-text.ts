@@ -118,18 +118,26 @@ export const sanitizeLogPayload = <T>(payload: T): T => {
   while (pending.length) {
     const [source, target] = pending.pop()!;
 
+    // defineProperty rather than assignment: a key of `__proto__` hits the inherited setter, which
+    // sets the prototype instead of writing an own property and drops the field from the serialized
+    // record. Metadata keys can come from a third party, since `oidcClaimsReceived` is whatever the
+    // IdP returned.
+    const put = (key: string | number, value: unknown) => {
+      Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+    };
+
     const assign = (key: string | number, value: unknown) => {
       if (typeof value === "string") {
-        (target as Record<string | number, unknown>)[key] = sanitizeLogText(value);
+        put(key, sanitizeLogText(value));
         return;
       }
       if (value !== null && typeof value === "object") {
         const child = emptyLike(value);
-        (target as Record<string | number, unknown>)[key] = child;
+        put(key, child);
         pending.push([value, child]);
         return;
       }
-      (target as Record<string | number, unknown>)[key] = value;
+      put(key, value);
     };
 
     if (Array.isArray(source)) {
