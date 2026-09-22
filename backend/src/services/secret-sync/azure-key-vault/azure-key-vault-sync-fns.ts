@@ -28,6 +28,9 @@ type TGatewayConnection = { gatewayId?: string | null; gatewayPoolId?: string | 
 
 const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "application/x-pem-file"];
 
+// Azure Key Vault secret names only allow alphanumerics and hyphens, so underscores are mapped to hyphens on write
+const toAzureKeyVaultKey = (infisicalKey: string) => infisicalKey.replaceAll("_", "-");
+
 export const azureKeyVaultSyncFactory = ({
   kmsService,
   appConnectionDAL,
@@ -150,8 +153,10 @@ export const azureKeyVaultSyncFactory = ({
 
     const deleteSecrets: string[] = [];
 
+    const vaultKeysOfInfisicalSecrets = new Set(Object.keys(secretMap).map(toAzureKeyVaultKey));
+
     Object.keys(secretMap).forEach((infisicalKey) => {
-      const hyphenatedKey = infisicalKey.replaceAll("_", "-");
+      const hyphenatedKey = toAzureKeyVaultKey(infisicalKey);
       if (!(hyphenatedKey in vaultSecrets)) {
         // case: secret has been created
         setSecrets.push({
@@ -168,8 +173,7 @@ export const azureKeyVaultSyncFactory = ({
     });
 
     Object.keys(vaultSecrets).forEach((key) => {
-      const underscoredKey = key.replaceAll("-", "_");
-      if (!(underscoredKey in secretMap)) {
+      if (!vaultKeysOfInfisicalSecrets.has(key)) {
         deleteSecrets.push(key);
       }
     });
@@ -274,11 +278,11 @@ export const azureKeyVaultSyncFactory = ({
       { disableCertificateImport: secretSync.syncOptions.disableCertificateImport }
     );
 
-    for await (const [key] of Object.entries(vaultSecrets)) {
-      const underscoredKey = key.replaceAll("-", "_");
+    const vaultKeysOfInfisicalSecrets = new Set(Object.keys(secretMap).map(toAzureKeyVaultKey));
 
-      if (underscoredKey in secretMap) {
-        if (!disabledAzureKeyVaultSecretKeys.includes(underscoredKey)) {
+    for await (const [key] of Object.entries(vaultSecrets)) {
+      if (vaultKeysOfInfisicalSecrets.has(key)) {
+        if (!disabledAzureKeyVaultSecretKeys.includes(key)) {
           await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
             method: "DELETE",
             url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
@@ -313,8 +317,7 @@ export const azureKeyVaultSyncFactory = ({
 
     Object.keys(vaultSecrets).forEach((key) => {
       if (!disabledAzureKeyVaultSecretKeys.includes(key)) {
-        const underscoredKey = key.replaceAll("-", "_");
-        secretMap[underscoredKey] = {
+        secretMap[key] = {
           value: vaultSecrets[key].value
         };
       }
