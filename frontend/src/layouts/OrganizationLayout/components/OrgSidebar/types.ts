@@ -34,6 +34,8 @@ export type NavItem = {
   activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
   badgeVariant?: "warning" | "danger" | "pam";
+  /** A state dot rather than a count, for an item that is reporting a condition instead of a number. */
+  dotVariant?: "warning" | "danger";
   hidden?: boolean;
   submenu?: Submenu;
   /** Query params to append to the link and use for active state matching */

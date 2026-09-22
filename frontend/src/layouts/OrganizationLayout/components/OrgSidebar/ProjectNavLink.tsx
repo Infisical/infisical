@@ -70,7 +70,21 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
-          <ChevronRight className={twMerge("size-4 opacity-50", !item.badgeCount && "ml-auto")} />
+          {item.dotVariant && (
+            <span
+              aria-hidden
+              className={twMerge(
+                "ml-auto size-1.5 shrink-0 rounded-full",
+                item.dotVariant === "danger" ? "bg-danger" : "bg-warning"
+              )}
+            />
+          )}
+          <ChevronRight
+            className={twMerge(
+              "size-4 opacity-50",
+              !item.badgeCount && !item.dotVariant && "ml-auto"
+            )}
+          />
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -104,6 +118,15 @@ export const ProjectNavLink = ({
             <Badge variant={item.badgeVariant ?? "warning"} isSquare className="ml-auto">
               {item.badgeCount}
             </Badge>
+          )}
+          {item.dotVariant && (
+            <span
+              aria-hidden
+              className={twMerge(
+                "ml-auto size-1.5 shrink-0 rounded-full",
+                item.dotVariant === "danger" ? "bg-danger" : "bg-warning"
+              )}
+            />
           )}
         </Link>
       </SidebarMenuButton>

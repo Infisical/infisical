@@ -40,26 +40,26 @@ Request and response bodies aren't recorded, and neither are headers. A request 
 
 ## Prerequisites
 
-- An AWS connection, either organization-wide under **App Connections** or scoped to Agent Vault under [Integrations](/documentation/platform/agent-vault/integrations)
+- An AWS connection, either organization-wide under **App Connections** or scoped to Agent Vault under [Activity Logs](#connections)
 - An S3 bucket, in a region the connection can reach
 
 Activity logs need a bucket you own. There's no option to store them inside Infisical, and no second storage backend, so an organization with only GCP or Azure connections can't turn this on.
 
 ## Setting up storage
 
-Go to **Settings** under Agent Vault and select **Set up** on the **Activity Logging** card:
+Go to **Activity Logs** under Agent Vault and select **Set Up Logging** on the **Activity Logging** card:
 
 1. Turn on **Record session activity**.
-2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the panel. A connection made here belongs to Agent Vault; organization-wide connections are marked as such in the list.
+2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the dialog. A connection made here belongs to Agent Vault; organization-wide connections are marked as such in the list.
 3. Enter the **Bucket** and its **Region**.
 4. Optionally set a **Key Prefix**, so activity objects sit under one path in a bucket you use for other things.
 5. Select **Save**.
 
 Saving checks the bucket before it stores anything: Infisical confirms the bucket exists, writes a test object under your prefix, and deletes it again. A failure names which step failed and what to grant.
 
-Under **What the bucket needs**, the panel shows two policies with your bucket and prefix already filled in. Both are needed.
+Select **View AWS Setup** for both policies below, with your bucket and prefix already filled in. Both are needed, and the dialog opens on its own after a successful save. You can reopen it at any time from the **Activity Logging** card.
 
-The connection's credentials need this on the bucket:
+Attach this as an IAM policy to the user or role the connection authenticates as. It carries no `Principal`, so it's an identity policy rather than a bucket policy:
 
 ```json
 {
@@ -93,7 +93,7 @@ The bucket also needs a CORS rule, because your browser is what fetches and decr
 ]
 ```
 
-Use your own instance URL as the allowed origin. Infisical can't check this rule from the server, so after a successful save your browser tries the bucket itself and warns you if the rule is missing. Without it the settings save cleanly and every Activity tab fails to load.
+Use your own instance URL as the allowed origin. Infisical can't check this rule from the server, so the **AWS Setup** dialog tries the bucket from your browser each time it opens and tells you whether the rule is in place. Without it the settings save cleanly and every Activity tab fails to load.
 
 Recording starts within one poll interval on every proxy, and covers sessions that are already running.
 
@@ -133,11 +133,69 @@ Infisical adds no S3 lifecycle rule. Object keys carry the date, as `<prefix>/<p
 
 ## Storage limits
 
-What costs Infisical is the index, not the bytes in your bucket, so there's a limit on how many records an organization can have indexed at once. It's set high enough that reaching it is unusual, and the **Settings** page says so if you do.
+What costs Infisical is the index, not the bytes in your bucket, so there's a limit on how many records an organization can have indexed at once. It's set high enough that reaching it is unusual, and the **Activity Logs** page says so if you do.
 
 At the limit, proxies stop recording. Each one pauses for 15 minutes and tries again, so recording resumes on its own once there's room, without restarting anything. Letting old sessions age out frees space, since deleting a session deletes its records. Nothing already recorded is deleted to make room: dropping the oldest records would turn a flood of requests into a way of erasing evidence.
 
 If you reach it, contact us.
+
+## Connections
+
+The AWS credentials that write the records are stored as an [app connection](/documentation/getting-started/concepts/app-connections). Agent Vault's own connections live at the bottom of the **Activity Logs** page, which is visible to Agent Vault administrators only.
+
+### Two places a connection can live
+
+A connection is scoped either to your organization or to Agent Vault, and the choice decides who else can reach it.
+
+| Scope | Where you create it | Which products can use it |
+| --- | --- | --- |
+| Organization | **Integrations** at the organization level | every product, including Agent Vault |
+| Agent Vault | **Activity Logs** under Agent Vault | Agent Vault only |
+
+Both scopes are available to Agent Vault. Every connection dropdown in the product lists its own connections alongside the organization's, with the organization's marked so the two are easy to tell apart.
+
+Pick the Agent Vault scope when the credential exists for Agent Vault and nothing else, so a bucket holding session activity isn't reachable from a secret sync. Pick the organization scope for a credential several products share.
+
+Scope is fixed when the connection is created. Moving one means creating it again in the other scope and updating whatever used it, so it's worth a moment's thought up front.
+
+### Adding a connection
+
+On the **Activity Logs** page, select **Add Connection** and follow the form for the service you're connecting to.
+
+You can also add one without leaving the setup dialog: under **Configure**, the **AWS Connection** dropdown offers **Create New Connection**, and the connection it creates is scoped to Agent Vault and selected for you.
+
+Agent Vault supports **AWS** connections. Activity log storage is the only feature that reaches an outside service today, and it writes to S3. Organization-level connections of any type still appear in those dropdowns; the limit is on what you can create under Agent Vault, not on what it can use.
+
+### Managing connections through the API
+
+Agent Vault has its own endpoints, under `/api/v1/agent-vault/app-connections`. Use them rather than the general app connection endpoints, which need a project ID that Agent Vault doesn't expose.
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/agent-vault/app-connections/aws \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "agent-vault-activity",
+    "method": "access-key",
+    "credentials": {
+      "accessKeyId": "<access-key-id>",
+      "secretAccessKey": "<secret-access-key>"
+    }
+  }'
+```
+
+Everything these endpoints return is scoped to Agent Vault. A connection belonging to your organization answers `404` here; manage it through the organization's own endpoints instead.
+
+To reach an existing connection, add its ID: `GET`, `PATCH` and `DELETE` on
+`/api/v1/agent-vault/app-connections/aws/<connection-id>`, and `POST` on
+`/api/v1/agent-vault/app-connections/aws/<connection-id>/rotate-credentials`.
+
+### Deleting a connection
+
+Nothing blocks you from deleting a connection activity logging is using, and recording stops within one poll interval on every proxy. The bucket and prefix survive, so the credential is the only missing piece: pick another connection under **Activity Logs** and recording resumes.
+
+Nothing already written to your bucket is deleted. Those objects stay where they are, and Infisical can't read them until a connection that reaches the bucket is configured again.
 
 ## What this doesn't cover
 

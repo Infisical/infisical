@@ -1,4 +1,4 @@
-import { Blocks, FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
+import { FileText, IdCard, Info, Package, Server, Shield, SquareMenu } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -8,6 +8,8 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import { useGetAgentVaultActivityConfig } from "@app/hooks/api/agentVault";
+import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProjectNavList } from "./ProjectNavLink";
@@ -17,6 +19,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { hasProjectRole } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // Admin-only: the config endpoint answers a member with a 403, and a member cannot act on it anyway.
+  const { data: activityConfig } = useGetAgentVaultActivityConfig(isAdmin);
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
@@ -27,7 +31,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     { label: "Proxies", icon: Server, pathSuffix: "proxies" }
   ];
 
-  // The group is already behind isAdmin, so Integrations needs no guard of its own.
+  // The group is already behind isAdmin, so nothing in it needs a guard of its own.
   const administrationItems: NavItem[] = isAdmin
     ? [
         {
@@ -36,9 +40,16 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           pathSuffix: "access-management",
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
         },
-        { label: "Integrations", icon: Blocks, pathSuffix: "integrations" },
-        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-        { label: "Settings", icon: Settings, pathSuffix: "settings" }
+        {
+          label: "Activity Logs",
+          icon: SquareMenu,
+          pathSuffix: "activity-logs",
+          // Only once the config has loaded: an absent config reads as "not recording", so keying
+          // the dot on the negation alone would flash it on every cold load of a healthy org.
+          dotVariant:
+            activityConfig && !isAgentVaultRecording(activityConfig.config) ? "warning" : undefined
+        },
+        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
       ]
     : [];
 

@@ -300,7 +300,13 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
         <CardHeader>
           <CardTitle>
             App Connections
-            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/app-connections/overview" />
+            <DocumentationLinkBadge
+              href={
+                isAgentVaultView
+                  ? "https://infisical.com/docs/integrations/app-connections/aws"
+                  : "https://infisical.com/docs/integrations/app-connections/overview"
+              }
+            />
           </CardTitle>
           <CardDescription>
             {/* eslint-disable-next-line no-nested-ternary */}
@@ -329,7 +335,12 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               {(isAllowed) => (
                 <Button
                   variant={scopeVariant}
-                  onClick={() => handlePopUpOpen("addConnection")}
+                  onClick={() => {
+                    // Agent Vault allows one app type, so the provider picker would be a search box
+                    // and two section headings over a single card. Go straight to its form.
+                    if (isAgentVaultView) setPresetApp(AppConnection.AWS);
+                    handlePopUpOpen("addConnection");
+                  }}
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
