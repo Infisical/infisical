@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import RE2 from "re2";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/config/env", () => ({
@@ -18,6 +19,8 @@ import {
   throwStripeApiKeyManagementError,
   withIdempotencyKey
 } from "./stripe-connection-public-client";
+
+const UUID_PATTERN = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
 const axiosErrorWith = (status: number, data: unknown) =>
   new AxiosError("Request failed", "ERR_BAD_REQUEST", undefined, undefined, {
@@ -49,11 +52,10 @@ describe("stripe public client", () => {
 
   it("adds an idempotency key without dropping existing headers", () => {
     const config = withIdempotencyKey(getStripePlatformRequestConfig("acct_123"));
+    const idempotencyKey = config.headers?.["Idempotency-Key"] as string;
 
     expect(config.headers?.["Stripe-Context"]).toBe("acct_123");
-    expect(config.headers?.["Idempotency-Key"]).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-    );
+    expect(UUID_PATTERN.test(idempotencyKey), `expected a UUID, got "${idempotencyKey}"`).toBe(true);
   });
 
   it("reads Stripe's own error message when there is one", () => {
