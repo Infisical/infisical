@@ -3709,7 +3709,9 @@ const OverviewPageContent = () => {
       <CreateSecretSyncModal
         isOpen={popUp.addSecretSync.isOpen}
         initialFormData={
-          secretSyncSourceEnv ? { environment: secretSyncSourceEnv, secretPath } : undefined
+          isSingleEnvView && secretSyncSourceEnv
+            ? { environment: secretSyncSourceEnv, secretPath }
+            : undefined
         }
         initialFormDataIsDirty={false}
         startOnDestination={false}

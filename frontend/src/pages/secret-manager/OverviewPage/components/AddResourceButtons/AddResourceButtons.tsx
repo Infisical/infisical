@@ -246,8 +246,18 @@ export function AddResourceButtons({
                 Copy Secrets
               </DropdownMenuItem>
             </MenuItemTooltip>
-            <MenuItemTooltip isDisabled={!canCreateSecretSyncs} content="Access Restricted">
-              <DropdownMenuItem onSelect={onAddSecretSync} isDisabled={!canCreateSecretSyncs}>
+            <MenuItemTooltip
+              isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
+              content={
+                !canCreateSecretSyncs
+                  ? "Access Restricted"
+                  : "Select a single environment to add a secret sync"
+              }
+            >
+              <DropdownMenuItem
+                onSelect={onAddSecretSync}
+                isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
+              >
                 <RefreshCwIcon className="text-accent" />
                 Add Secret Sync
               </DropdownMenuItem>
