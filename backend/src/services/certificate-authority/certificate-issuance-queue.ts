@@ -1186,15 +1186,20 @@ export const certificateIssuanceQueueFactory = ({
         );
       }
 
-      try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId,
-          projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
-          applicationId: scopedApplicationId
-        });
-      } catch {
-        logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      if (issuedCertificateId) {
+        try {
+          await pkiAlertV2Queue?.queueCertificateEvent({
+            certificateId: issuedCertificateId,
+            projectId: ca.projectId,
+            eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+            applicationId: scopedApplicationId
+          });
+        } catch (alertErr) {
+          logger.warn(
+            alertErr,
+            `Failed to queue PKI alert event for async certificate issuance [certificateId=${issuedCertificateId}] [certificateRequestId=${certificateRequestId}]`
+          );
+        }
       }
 
       if (certificateExistsAfterThisJob) {

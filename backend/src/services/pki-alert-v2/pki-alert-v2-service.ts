@@ -69,6 +69,7 @@ type TPkiAlertV2ServiceFactoryDep = {
     | "countByProjectId"
     | "findMatchingCertificates"
     | "transaction"
+    | "primaryNode"
   >;
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
@@ -885,30 +886,42 @@ export const pkiAlertV2ServiceFactory = ({
     });
   };
 
-  const sendEventNotifications = async (alertId: string, certificateIds: string[], eventType: PkiAlertEventType) => {
-    const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
-    if (!alert || !alert.enabled) return;
+  // Event-path reads go to the primary: the certificate usually committed moments before the event
+  // was queued, and an empty read here is terminal (the job completes and never asks again).
+  const sendEventNotifications = async (
+    alertId: string,
+    certificateIds: string[],
+    eventType: PkiAlertEventType
+  ): Promise<{ sent: boolean; reason?: string }> => {
+    const primary = pkiAlertV2DAL.primaryNode();
+    const alert = await pkiAlertV2DAL.findByIdWithChannels(alertId, primary);
+    if (!alert || !alert.enabled) return { sent: false, reason: "alert not found or disabled" };
 
     const { projectId } = alert;
     const channels = alert.channels.filter((channel) => channel.enabled);
-    if (channels.length === 0) return;
+    if (channels.length === 0) return { sent: false, reason: "no enabled channels" };
 
     const filters = (alert.filters ?? []) as TPkiFilterRule[];
     const applicationScope = alert.applicationId ? { applicationId: alert.applicationId } : {};
 
     const matchingPerCert = await Promise.all(
       certificateIds.map((certId) =>
-        pkiAlertV2DAL.findMatchingCertificates(projectId, filters, {
-          certificateId: certId,
-          ...applicationScope
-        })
+        pkiAlertV2DAL.findMatchingCertificates(
+          projectId,
+          filters,
+          {
+            certificateId: certId,
+            ...applicationScope
+          },
+          primary
+        )
       )
     );
     const allCertificates: TCertificatePreview[] = matchingPerCert.flatMap((r) => r.certificates);
 
     const matchingCertificates = allCertificates.filter((cert) => cert.enrollmentType !== CertificateOrigin.CA);
 
-    if (matchingCertificates.length === 0) return;
+    if (matchingCertificates.length === 0) return { sent: false, reason: "no certificates matched alert filters" };
 
     await dispatchToChannels({
       alertId,
@@ -921,6 +934,8 @@ export const pkiAlertV2ServiceFactory = ({
       matchingCertificates,
       certificateIds
     });
+
+    return { sent: true };
   };
 
   const testWebhookConfig = async ({

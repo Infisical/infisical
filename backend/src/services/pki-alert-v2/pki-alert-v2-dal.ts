@@ -687,6 +687,8 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...pkiAlertV2Orm,
     create,
@@ -697,6 +699,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     findByProjectIdWithCount,
     countByProjectId,
     getDistinctProjectIds,
-    findMatchingCertificates
+    findMatchingCertificates,
+    primaryNode
   };
 };
