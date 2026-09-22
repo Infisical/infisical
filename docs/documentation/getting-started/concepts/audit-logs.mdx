@@ -23,11 +23,11 @@ To learn more, refer to the [audit logs documentation](/documentation/platform/a
 
 ## Log coverage
 
-Infisical tracks hundreds of event types across the platform, including secret access, permission changes, certificate issuance, SSH session activity, and identity management.
+Infisical tracks hundreds of event types across the platform, including secret access, permission changes, certificate issuance, privileged access sessions, and identity management.
 
 Each audit entry includes structured fields that make it easy to search, filter, and correlate across systems. For example:
 
-- Event Type: Action that occurred (e.g., `create-secret`, `issue-ssh-cert`).
+- Event Type: Action that occurred (e.g., `create-secret`, `issue-cert`).
 - Actor: Who performed the action (user or machine identity).
 - Resource: What was affected (e.g., project, secret, certificate).
 - Context: IP address, user agent, permissions, and more.

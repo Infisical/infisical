@@ -121,7 +121,7 @@ Each log contains the following fields:
 </ResponseField>
 
 <ResponseField name="updatedAt" type="string">
-  When the log entry was last updated. Matches `createdAt` for immutable events.
+  Always equals `createdAt`. Audit log entries are append-only.
 </ResponseField>
 
 <ResponseField name="orgId" type="string">
@@ -231,14 +231,12 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
 
 ### By date
 
-Audit logs default to a rolling window at the top of the page. To narrow the results to a specific timeframe:
-
 <Tabs>
   <Tab title="Infisical UI">
-    Use the date range buttons at the top of the audit logs page. Presets include 1 day, 1 week, 1 month, and 3 months, and the custom picker takes any range up to 3 months.
+    Use the date range buttons at the top of the audit logs page. The page defaults to the last hour on load. Presets include 1 day, 1 week, 1 month, and 3 months, and the custom picker takes any range up to 3 months.
   </Tab>
   <Tab title="API">
-    Pass `startDate` and `endDate` as ISO 8601 timestamps, up to 3 months apart.
+    Pass `startDate` and `endDate` as ISO 8601 timestamps, up to 3 months apart. If you omit `startDate`, the endpoint defaults to the previous day at 00:00 UTC; if you omit `endDate`, it defaults to now.
 
     ```bash
     curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
@@ -345,7 +343,7 @@ Find every read of `DATABASE_URL` in the `prod` environment.
       </Step>
     </Steps>
 
-    To include folder-level reads, add `get-secrets` to the `event` filter and remove the `secret_key` filter; folder reads don't record a specific key.
+    To include folder-level reads, add `get-secrets` to the `event` filter and remove the `secret_key` filter, since folder reads don't record a specific key.
   </Tab>
   <Tab title="API">
     ```bash
@@ -357,7 +355,7 @@ Find every read of `DATABASE_URL` in the `prod` environment.
       --data-urlencode "secretKey=DATABASE_URL"
     ```
 
-    To include folder-level reads, add `get-secrets` to `eventType` and drop `secretKey`; folder reads don't record a specific key.
+    To include folder-level reads, add `get-secrets` to `eventType` and remove `secretKey`, since folder reads don't record a specific key.
   </Tab>
 </Tabs>
 
