@@ -1,0 +1,54 @@
+---
+title: "infisical logout"
+description: "End a login session"
+---
+
+```bash
+infisical logout
+```
+
+## Description
+
+This command ends a login session. The CLI removes the stored credentials of the profile from this machine, and revokes its session on the server.
+
+The profile is kept, so `infisical login --profile <name>` signs back in without setting it up again. To remove the profile as well, run `infisical profile delete`.
+
+By default the command logs out of the profile that the current directory and terminal are set to. See [profile](./profile) for how the CLI selects profiles.
+
+<Info>
+  While each profile stores its own credentials, multiple profiles for one
+  account on a single machine share a server session. Logout always removes the
+  current profile's credentials, and revokes the shared session only when no
+  profile that you keep still uses it.
+</Info>
+
+### Flags
+
+<AccordionGroup>
+  <Accordion title="--all">
+    Log out of every profile on this machine.
+
+    ```bash
+    infisical logout --all
+    ```
+
+  </Accordion>
+
+  <Accordion title="--local-only">
+    Remove the stored credentials without revoking the session on the server. The session stays valid until it expires.
+
+    ```bash
+    infisical logout --local-only
+    ```
+
+  </Accordion>
+
+  <Accordion title="--profile">
+    Log out of a specific profile.
+
+    ```bash
+    infisical logout --profile globex
+    ```
+
+  </Accordion>
+</AccordionGroup>
