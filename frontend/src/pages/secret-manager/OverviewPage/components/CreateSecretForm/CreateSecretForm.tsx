@@ -48,7 +48,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { getKeyValue } from "@app/helpers/parseEnvVar";
+import { applyKeyCapitalization, getKeyValue } from "@app/helpers/parseEnvVar";
 import {
   useCreateSecretV3,
   useCreateWsTag,
@@ -58,7 +58,7 @@ import {
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
-import { applyKeyCapitalization, didAllSecretCreationsSucceed } from "./createSecretFormState";
+import { didAllSecretCreationsSucceed } from "./createSecretFormState";
 
 const formSchema = (enforceEncryptedMetadata: boolean) =>
   z
