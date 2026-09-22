@@ -18,10 +18,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/harness/infisical"
-	"github.com/Infisical/infisical/tests/harness/license"
 	"github.com/Infisical/infisical/tests/infra"
-	"github.com/Infisical/infisical/tests/infra/wiremock"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
 // current is the stack Main built, read by From. One per test binary, which is what
@@ -36,9 +36,11 @@ type Stack struct {
 	pkg      string
 	mainFile string
 
-	app     *infisical.Handle
-	root    infisical.Root
-	license *license.Server
+	app  *infisical.Handle
+	root infisical.Root
+
+	// defaultPlan is what a tenant gets unless it asks for something narrower.
+	defaultPlan license.Plan
 
 	adminOnce     sync.Once
 	instanceAdmin *Principal
@@ -126,8 +128,21 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 	if err != nil {
 		return nil, nil, err
 	}
+	fnImg, err := fakenet.ResolveImage(ctx, root, log)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	mods, scopes := profile.modules(img, cfg.extra...)
+	// Generated once and kept, because Infisical is handed this certificate when its
+	// container is created and adopted by later binaries. Editing a fake rebuilds
+	// fakenet; a CA minted per boot would leave the running Infisical trusting an
+	// authority that no longer exists.
+	caFile := filepath.Join(root, "tests", fakenet.CAFile)
+	if _, err = fakenet.LoadOrCreateCA(caFile); err != nil {
+		return nil, nil, err
+	}
+
+	mods, scopes := profile.modules(img, fnImg, caFile, cfg.extra...)
 	plan, err := infra.Resolve(mods, scopes)
 	if err != nil {
 		return nil, nil, err
@@ -138,16 +153,14 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
-	// An Isolated package takes its own network so its WireMock can hold a host alias
-	// without competing with the shared one for the name. Shared containers stay on
-	// the shared network and are connected to this one below.
+	// One network for everything, including Isolated packages.
+	//
+	// Isolated used to take its own, because two WireMocks on one network both
+	// claimed api.github.com and Docker DNS round-robined between them. fakenet holds
+	// no aliases -- it is reached as a resolver at a fixed address -- so that reason
+	// is gone. Isolation for an Isolated package is about instance state, not the
+	// network, and its containers are package-qualified by name anyway.
 	stackNet := infra.NetworkName
-	if profile == Isolated {
-		stackNet = infra.PackageNetwork(pkg)
-		if err := runner.Network(ctx, stackNet); err != nil {
-			return nil, nil, err
-		}
-	}
 
 	handles := map[infra.Key]infra.Handle{}
 	var owned []infra.Handle
@@ -160,27 +173,12 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 			name.ScopeID = pkg
 		}
 
-		net := stackNet
-		if scope == infra.Shared {
-			net = infra.NetworkName
-		}
-
-		h, err := mod.Start(ctx, infra.NewDeps(handles, net, infra.Workspace(), name, runner, log))
+		h, err := mod.Start(ctx, infra.NewDeps(handles, stackNet, infra.Workspace(), name, runner, log))
 		if err != nil {
 			stopAll(ctx, owned)
 			return nil, nil, err
 		}
 		handles[mod.Key()] = h
-
-		// A Shared container lives on the shared network, so an Isolated stack has to
-		// be let in explicitly. The alias is the container name, because that is what
-		// Internal addressing resolves to.
-		if scope == infra.Shared && net != stackNet {
-			if err := runner.Connect(ctx, infra.ContainerName(name), stackNet); err != nil {
-				stopAll(ctx, owned)
-				return nil, nil, err
-			}
-		}
 
 		if scope != infra.Shared {
 			owned = append(owned, h)
@@ -188,15 +186,7 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 	}
 
 	app := handles[infisical.Key].(*infisical.Handle)
-	stack := &Stack{profile: profile, modules: handles, log: log, pkg: pkg, app: app}
-
-	if wm, ok := handles[wiremock.Key].(*wiremock.Handle); ok {
-		stack.license = license.New(wm)
-		if err := stack.license.InstallFallback(ctx, cfg.plan); err != nil {
-			stopAll(ctx, owned)
-			return nil, nil, err
-		}
-	}
+	stack := &Stack{profile: profile, modules: handles, log: log, pkg: pkg, app: app, defaultPlan: cfg.plan}
 
 	if stack.root, err = infisical.Bootstrap(ctx, app.BaseURL(infra.External)); err != nil {
 		stopAll(ctx, owned)

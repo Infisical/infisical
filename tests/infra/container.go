@@ -32,8 +32,21 @@ type ContainerSpec struct {
 
 	// Network is which network to join. Empty means the runner's current one.
 	Network string
-	Files   []File
-	Labels  map[string]string
+
+	// IP pins the container's address on that network.
+	//
+	// Only fakenet needs one. Infisical is told where to resolve DNS when its
+	// container is created and is then adopted by later test binaries, so that
+	// address has to survive fakenet being rebuilt.
+	IP string
+
+	// DNS replaces the container's resolvers. Docker's embedded resolver still
+	// answers container names first and forwards only what it cannot, so sibling
+	// containers keep resolving normally.
+	DNS []string
+
+	Files  []File
+	Labels map[string]string
 
 	// Ready is applied by the container engine while the container starts. It
 	// answers "is it up".

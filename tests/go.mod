@@ -2,7 +2,13 @@ module github.com/Infisical/infisical/tests
 
 go 1.27.0
 
-require github.com/testcontainers/testcontainers-go v0.44.0
+require (
+	github.com/google/uuid v1.6.0
+	github.com/moby/moby/api v1.55.0
+	github.com/oapi-codegen/runtime v1.7.0
+	github.com/testcontainers/testcontainers-go v0.44.0
+	golang.org/x/crypto v0.54.0
+)
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -30,13 +36,11 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.23.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.26.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.7.0 // indirect
@@ -44,7 +48,6 @@ require (
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.2 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0 // indirect
-	github.com/oapi-codegen/runtime v1.7.0 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
@@ -67,7 +70,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect

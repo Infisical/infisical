@@ -1,2 +1,6 @@
 # Container logs, written unconditionally so you can tail one while a test hangs.
 .logs/
+
+# The fakenet CA, generated on first run. Removed by `inf down`, so it can never
+# outlive the Infisical container that was told to trust it.
+.cache/

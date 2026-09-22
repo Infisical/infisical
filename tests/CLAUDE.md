@@ -38,7 +38,7 @@ Each of the first three brings the stack up, runs its packages, and tears the st
 down on the way out, including after a failure or a Ctrl-C. The exit status is the
 test run's, so a red run stays red.
 
-They are separate targets so a red line says *which thing* broke: `test-suites`
+They are separate targets so a red line says _which thing_ broke: `test-suites`
 failing means Infisical is broken, `test-harness` failing means the harness is. One
 target reporting both would erase that distinction, which is the whole reason the two
 directories exist.
@@ -65,7 +65,7 @@ infra layer's own container tests, `make fmt` formats.
 inf-shared-postgres      postgres:14-alpine, max_locks_per_transaction=512
 inf-shared-redis         redis:7-alpine
 inf-shared-mailpit       fake SMTP with a search API
-inf-shared-wiremock      fake internet, in forward-proxy mode
+inf-shared-fakenet       the fake internet: DNS, our fakes over TLS, a control API
 inf-shared-infisical-<image id>   built from backend/Dockerfile
 ```
 
@@ -75,11 +75,15 @@ Boot costs about 25 seconds, almost all of it 540 migrations.
 name, adopts it if it exists and creates it if it does not. That is why `go test`
 with nothing running works, and why a second run is fast. It also means **changing a
 shared container's configuration silently adopts a stale one**: if you change an
-image tag, a command flag or a network alias, run `make down` first or the change
-will not take effect.
+image tag or a command flag, run `make down` first or the change will not take
+effect.
+
+fakenet is the exception, and deliberately so: its name carries its image ID, so
+editing a fake produces a fresh container, and the previous generation is removed
+first because only one container can hold the fixed address.
 
 **Nothing auto-cleans.** Testcontainers' reaper is disabled, because it deletes by
-the *creating* session's label and would reap containers another binary had adopted.
+the _creating_ session's label and would reap containers another binary had adopted.
 Cleanup belongs to `make down`. After an interrupted run, `make down` is also the fix
 for a stale container.
 
@@ -95,14 +99,15 @@ tests/
 │   ├── shared/
 │   └── isolated/
 ├── harness/         Stack, Profile, Tenant, Principal, instance lifecycle
-│   ├── infisical/   the application container module
-│   └── license/     the entitlement stub
+│   └── infisical/   the application container module
 ├── fixture/         per-product resource builders: project, appconnection
-├── provider/        what we know about third parties we stub
-├── stub/            WireMock scopes that can only match one caller
+├── fakes/           one package per faked service: github, license
+├── provider/        what creating an app connection needs, per service
 ├── infra/           product-agnostic container layer
+│   └── fakenet/     the fake-internet engine and its container module
 ├── internal/        mail, id, apierr, spec
 ├── clients/api/     generated Infisical client — never hand-edit
+├── cmd/fakenet/     the fake-internet server
 └── cmd/inf/         up, down, status
 ```
 
@@ -156,10 +161,10 @@ func TestSecret_Create(t *testing.T) {
 
 ### Profiles
 
-| profile | what it gives | when |
-|---|---|---|
-| `harness.Shared` | one instance for the whole run, a fresh organization per test | almost always |
-| `harness.Isolated` | the package's own Postgres, Redis, WireMock, Infisical and Docker network | only when the test writes instance-wide state |
+| profile            | what it gives                                                 | when                                          |
+| ------------------ | ------------------------------------------------------------- | --------------------------------------------- |
+| `harness.Shared`   | one instance for the whole run, a fresh organization per test | almost always                                 |
+| `harness.Isolated` | the package's own Postgres, Redis and Infisical               | only when the test writes instance-wide state |
 
 `Isolated` costs a full Infisical boot, roughly 40 to 50 seconds per package. Reach
 for it only when the test writes something not scoped to an organization: super-admin
@@ -198,16 +203,16 @@ func TestProject_Access(t *testing.T)
 Subtest: `<outcome>/<what happened, in words>`. The prefix is not decoration; it is
 what makes a run readable and what a lint can check.
 
-| prefix | meaning |
-|---|---|
-| `ok/` | the happy path |
-| `invalid/` | the request was malformed or referenced something that does not exist |
-| `forbidden/` | authenticated but not allowed |
-| `cross-tenant/` | another tenant's data was not reachable |
-| `notfound/` | the target does not exist |
-| `conflict/` | the request collided with existing state |
-| `unlicensed/` | the plan does not include the feature |
-| `idempotent/` | doing it twice is the same as doing it once |
+| prefix          | meaning                                                               |
+| --------------- | --------------------------------------------------------------------- |
+| `ok/`           | the happy path                                                        |
+| `invalid/`      | the request was malformed or referenced something that does not exist |
+| `forbidden/`    | authenticated but not allowed                                         |
+| `cross-tenant/` | another tenant's data was not reachable                               |
+| `notfound/`     | the target does not exist                                             |
+| `conflict/`     | the request collided with existing state                              |
+| `unlicensed/`   | the plan does not include the feature                                 |
+| `idempotent/`   | doing it twice is the same as doing it once                           |
 
 One file per resource or flow, named after it: `create_test.go`, `access_test.go`.
 Variants of one flow are subtests, not new files.
@@ -223,7 +228,7 @@ did exactly that; it now checks the project landed in the caller's organization 
 that `dev`, `staging` and `prod` were provisioned, because those are what a caller
 relies on.
 
-**A rejection test must also check nothing changed.** A route can refuse *and* have
+**A rejection test must also check nothing changed.** A route can refuse _and_ have
 already written. The duplicate-secret test re-reads the secret and asserts the
 original value survived.
 
@@ -282,6 +287,16 @@ conn := appconnection.New(t, tn, provider.GitHub)
 appconnection.Try(t, tn, provider.GitHub, appconnection.RejectCredentials(401))
 ```
 
+A connection carries the credential its fake is keyed on, so the two travel together:
+
+```go
+gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
+gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep"))
+gh.Repo(t, "acme/app").Secrets          // what the destination holds now
+gh.Fail(t, "PUT", "/repos/*", 500, 1)   // failure injection
+gh.Received(t, "GET", "/user")          // the call log
+```
+
 **Never build your own API client.** Use `tn.Admin.API`, a principal's `.API`, or
 `tn.Client(t, token)`. A hand-built client loses the tenant's `X-Forwarded-For`
 address and starts drawing down a rate-limit bucket shared with every other test, so
@@ -291,76 +306,108 @@ Organization roles and project roles are separate types on purpose:
 `harness.OrgRole("admin")` and `project.Role("viewer")`. Passing one where the other
 belongs does not compile. It used to be silently ignored.
 
-## 9. Outbound calls and stubbing
+## 9. Outbound calls and fakes
 
-The instance has **no access to the real internet.** WireMock runs as a forward proxy
-and a catch-all refuses anything unstubbed with a 501 naming the URL:
+The instance has **no access to the real internet.** fakenet answers DNS for every
+hostname, so nothing resolves to a real address, and a host nobody faked gets a 501
+naming it:
 
 ```
-The harness has no stub for GET https://api.checklyhq.com/v1/accounts
-Register one with conn.Stub(t), or add the host to the provider registry.
+fakenet has no fake for GET https://api.checklyhq.com/v1/accounts: no fake is
+registered for this host
 ```
 
-This is load bearing. Browser proxying forwards unmatched requests to the real host
-by default, so without the catch-all a test that forgot a stub would quietly pass
-against the live API.
+This is load bearing, and it was measured rather than assumed: with plain Docker
+network aliases and no DNS of our own, a container on the harness network reaches
+`api.checklyhq.com` and gets a real 401 back from Checkly.
 
-### Stubbing
+### Fakes, not stubs
+
+A fake is a working implementation of a service, holding real state. You assert on
+what the destination ended up holding, not on which requests were sent:
 
 ```go
 conn := appconnection.New(t, tn, provider.GitHub)
-sc := conn.Stub(t)
-sc.On(t, "PUT", "/repos/acme/app/actions/secrets/DB_URL").Return(t, 204, nil)
-...
-if n := sc.Received(t, "PUT", "/repos/acme/app/actions/secrets/DB_URL"); n != 1 { ... }
+gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
+
+gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep"))
+// ... trigger a sync, delete a secret, trigger again ...
+got := gh.Repo(t, "acme/app").Secrets
 ```
 
-One WireMock serves every tenant, so **isolation is by discriminator, not by server**.
-Each connection gets a unique credential, the provider's `Auth` function turns it into
-request matchers, and every stub and journal query carries them. Two tenants stubbing
-the same method and path cannot see each other, and that is enforced at registration
-rather than detected afterwards. No org id is threaded anywhere: the application
-already proves who it is by which credential it sends.
+That difference is the point. A secret sync computes what to delete from what the
+destination _returns_, so stubbing that list means asserting against a fixture you
+invented. The same goes for the key-schema guard, `disableSecretDeletion`, and the
+sealed box: the GitHub fake holds the private key, so `Secrets["DB_URL"].Value` is the
+plaintext that actually arrived.
 
-### Two interception paths, and why both exist
+One fakenet serves every tenant, so **isolation is by credential, not by server**.
+Each connection invents a unique one, the product sends it on every outbound call,
+and fakenet keys state on it. No org id is threaded anywhere.
 
-**Forward proxy.** `HTTP_PROXY` and `HTTPS_PROXY` point at WireMock; the client sends
-`CONNECT api.example.com:443`, and WireMock forges a certificate for that host signed
-by its own CA, which is injected into the container as `NODE_EXTRA_CA_CERTS`. Works
-for anything using plain axios through `createRequestClient`.
+### How interception works
 
-**DNS alias**, for clients that resolve the hostname themselves. Infisical's
-SSRF-safe client `safeRequest` resolves a hostname up front and **pins the socket to
-that IP**. With a proxy configured, axios then uses the proxy's *port* with the real
-host's *IP* and hangs for 100 seconds. The fix is `stubbedHosts` in
-`harness/profile.go`: Docker DNS resolves the name to WireMock, so the pin lands on
-the proxy and the `CONNECT` still tells WireMock which certificate to forge. This also
-needs `ALLOW_INTERNAL_IP_CONNECTIONS=true`, because the SSRF guard would otherwise
-reject a public hostname resolving to a private address.
+fakenet runs its own DNS server, and Infisical is started with `--dns <fakenet>`.
+Docker's embedded resolver still answers container names first, so `postgres` and
+`redis` are unaffected; everything else falls through to fakenet, which answers with
+its own address. It then serves 443, minting a certificate per name asked for, signed
+by a CA the instance was told to trust.
 
-If you add a host to `stubbedHosts`, **run `make down`**. The WireMock container name
-does not change, so a running one is adopted with the old aliases and the new host
-quietly reaches the internet.
+No `HTTP_PROXY`, no `CONNECT`, no host aliases. Three consequences worth knowing:
 
-A network alias belongs to the network, not the container, so two WireMocks claiming
-one name make Docker DNS round-robin between them. That is why an `Isolated` package
-gets its own network.
+- **`safeRequest` stops being a problem.** It resolves a hostname up front and pins
+  the socket to that IP. With a proxy that meant dialling the real host on the proxy's
+  port and hanging for 100 seconds. Now the pin lands on fakenet because fakenet _is_
+  the address.
+- **Clients that ignore proxy env are covered**, which the AWS, GCP and Azure SDKs all
+  do. DNS asks for no cooperation.
+- **`ALLOW_INTERNAL_IP_CONNECTIONS=true` is required**, because fakenet answers for
+  public hostnames from a private address and the SSRF guard would otherwise refuse.
+
+fakenet holds a fixed address (`10.201.0.53`) on a fixed subnet, because Infisical is
+told where to resolve when its container is created and is then adopted by later test
+binaries. Its CA lives in `tests/.cache/` for the same reason: editing a fake rebuilds
+fakenet, and a CA minted per boot would leave a running Infisical trusting an
+authority that no longer exists. `make down` removes both together.
+
+### Writing a fake
+
+One package under `fakes/<service>/`, holding three things:
+
+1. **The state struct**, shaped like the service rather than like our code.
+2. **`ServeHTTP`**, routing with Go 1.22 patterns
+   (`PUT /repos/{owner}/{repo}/actions/secrets/{name}`).
+3. **`Host`, `Scope` and `New`** — the hostname, how to read the credential off a
+   request, and an empty state.
+
+Then one line in `cmd/fakenet/main.go`. The generic `fakenet.Scope[S]` gives the test
+side `State`, `Seed`, `Fail`, `Calls` and cleanup, so a fake adds only naming.
+
+The state struct is declared once and imported by both halves, so a field rename is a
+compile error rather than a silent zero value.
+
+**A fake is a plain `http.Handler`, so develop it in-process with no Docker at all**
+(`fakes/github/fake_test.go` does this). The container is only how the suite consumes
+it.
+
+**One fake per service, never per feature.** GitHub is used by app connections, secret
+sync, rotation and scanning; they all talk to the same GitHub. Splitting them would
+mean two things claiming to be GitHub and free to disagree.
 
 ### Adding a provider
 
-Add an entry to `provider/`. It carries the app slug, the hostname the client
-hardcodes, an `Auth` function producing the discriminator, a `Validate` function
-listing the stubs a connection create requires, and a `Create` closure calling the
-generated client. Look at `provider.GitHub`.
+`provider/` carries only what _creating a connection_ needs: the app slug, the
+hostname the client hardcodes, and a `Create` closure calling the generated client.
+How the service behaves once reached lives in its fake.
 
 The hostname must be one the client hardcodes. If the provider lets you configure a
-base URL and you point it straight at WireMock, the test proves the stub works and
+base URL and you point it straight at fakenet, the test proves the fake works and
 nothing about interception.
 
 ## 10. Entitlements
 
 Every tenant gets a full enterprise plan by default. The instance runs in Cloud mode
-against a WireMock-stubbed license server, which is what makes plans resolve **per
+against a faked license server, which is what makes plans resolve **per
 organization** rather than instance-wide.
 
 ```go
@@ -369,7 +416,7 @@ tn.SetPlan(t, license.Enterprise())       // also verifies it took effect
 ```
 
 `SetPlan` and `Verify` read the plan back with `refreshCache=true`, which busts the
-900-second Redis cache and asserts the stub produced what was asked for. A wrong
+900-second Redis cache and asserts the fake produced what was asked for. A wrong
 feature key otherwise surfaces much later as a 403 in an unrelated test.
 
 Use `unlicensed/` subtests to pin downgrade behaviour. `CODE_QUALITY.md` requires that
@@ -381,11 +428,11 @@ to test that.
 The limiter is registered because the harness runs Cloud mode. Three tiers, and you
 can only move one:
 
-| where the limit comes from | examples | raisable |
-|---|---|---|
-| the organization's plan | `readLimit`, `writeLimit`, `secretsLimit` | yes, via the license stub |
-| instance configuration | `authRateLimit`, `inviteUserRateLimit`, `identityCreationLimit` | no |
-| a literal in the source | `smtpRateLimit`, 2 per **40s** | no |
+| where the limit comes from | examples                                                        | raisable                  |
+| -------------------------- | --------------------------------------------------------------- | ------------------------- |
+| the organization's plan    | `readLimit`, `writeLimit`, `secretsLimit`                       | yes, via the license fake |
+| instance configuration     | `authRateLimit`, `inviteUserRateLimit`, `identityCreationLimit` | no                        |
+| a literal in the source    | `smtpRateLimit`, 2 per **40s**                                  | no                        |
 
 `PUT /api/v1/rate-limit` looks like the lever for the middle tier and is inert here:
 the sync that reads its row is gated on an entitlement Cloud mode never resolves.
@@ -411,7 +458,7 @@ are user input. Issue a certificate valid for 7 days and set the alert threshold
 30, and the condition is true immediately.
 
 **Async work is polled, never slept.** Syncs, rotations, webhooks and audit logs land
-after the response returns. `time.Sleep` is how you get a suite that is slow *and*
+after the response returns. `time.Sleep` is how you get a suite that is slow _and_
 flaky. There is no shared polling helper yet; `internal/mail` has a private loop, and
 the second caller should extract one.
 
@@ -446,25 +493,26 @@ oapi-codegen derives a name from the path, which changes when the path does.
 ### Two generator traps
 
 **Union request bodies do not marshal.** oapi-codegen declares the request-body type
-as a *defined type* over the union struct, and a defined type does not inherit
+as a _defined type_ over the union struct, and a defined type does not inherit
 methods, so the generated `MarshalJSON` is lost and the union serialises as `{}`.
 Build the `JSONBody`, `json.Marshal` it yourself, and post through
 `...WithBodyWithResponse`.
 
-**Union responses need unwrapping.** `createSecretV4` returns a secret *or* an
+**Union responses need unwrapping.** `createSecretV4` returns a secret _or_ an
 approval request. Call `AsCreateSecretV4200JSONResponseBody0()` and fail loudly if it
 is the other branch, rather than letting an approval request read as success.
 
 ## 14. Debugging a failure
 
 1. **Container logs**: `.logs/<timestamp>/<container>.log`, written unconditionally.
-2. **The WireMock journal**: `curl localhost:<port>/__admin/requests` shows every
-   outbound call, whether it matched, and what was returned. `/__admin/mappings` shows
-   registered stubs.
+2. **The fakenet log**, which carries one line per outbound call:
+   `GET api.github.com/user -> 200 scope=7116dd6caf34...`. It answers "did the call
+   happen at all, and under which credential" before anything else.
+   `GET /__fake/denied` lists calls that reached no fake.
 3. **Mailpit UI**: the mapped port on the Mailpit container, for anything email.
 4. **`make status`** lists harness containers and their state.
-5. If a test hangs for ~100 seconds on an outbound call, suspect the `safeRequest`
-   pin: the host probably needs to be in `stubbedHosts`.
+5. If an outbound call is refused, the host has no fake. Register its `Service` in
+   `cmd/fakenet/main.go`, or add the missing route to the fake that owns it.
 
 ## 15. Anti-patterns
 
@@ -474,8 +522,8 @@ Each has bitten a suite like this before.
 - Asserting on log lines instead of responses, outside boot tests.
 - Package-level mutable state shared between tests.
 - Using `tn.Admin` in a test about what a member can do.
-- Over-stubbing: stubbing more than the test needs hides a real outbound call the
-  code should not have made.
+- Seeding more than the test needs, which hides an outbound call the code should not
+  have made.
 - A `Shared` test that cannot be `t.Parallel()`. It is in the wrong package.
 - Asserting only status codes where the message is part of the contract.
 - Reaching for the database. There is no client, deliberately.
@@ -504,8 +552,9 @@ Honest state, so you do not assume coverage that is not there.
 - Product coverage is thin: organization, project and secret creation only.
 - No `internal/wait` helper yet, so polling is hand-rolled per call site.
 - Secret sync and rotation are not covered; neither is PKI, PAM, KMS, scanning or SSO.
-- The license fallback and catch-all stubs accumulate on the shared WireMock across
-  runs, because nothing removes them. Harmless today since they are identical.
+  The GitHub fake already serves the sync endpoints, so the suite is the missing half.
+- Only two fakes exist: `github` and `license`. AWS Parameter Store is the next one
+  worth writing, since it is the only way to reach the SDK retry and batching paths.
 - Three operation IDs in the generated client have no caller
   (`listSecretsV4`, `beginEmailSignupV3`, `verifyEmailSignupV3`).
 - `-p` is not pinned in the Makefile, so local and CI exercise different amounts of

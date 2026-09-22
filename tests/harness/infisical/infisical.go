@@ -9,12 +9,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Infisical/infisical/tests/harness/license"
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
-	"github.com/Infisical/infisical/tests/infra/wiremock"
 )
 
 const (
@@ -71,8 +71,10 @@ func (m *module) Key() infra.Key { return Key }
 func (m *module) Requires() []infra.Key { return []infra.Key{postgres.Key, redis.Key} }
 
 // Optional is consumed if declared. SMTP is what makes user creation possible at
-// all; WireMock is what makes outbound calls and entitlements controllable.
-func (m *module) Optional() []infra.Key { return []infra.Key{mailpit.Key, wiremock.Key} }
+// all; fakenet is what makes outbound calls and entitlements controllable.
+func (m *module) Optional() []infra.Key {
+	return []infra.Key{mailpit.Key, fakenet.Key}
+}
 
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "infisical", Fingerprint: m.image.ShortID()}
@@ -114,30 +116,30 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	}
 
 	var files []infra.File
-	if wm, ok := wiremock.From(d); ok {
-		proxy := wm.ProxyURL(infra.Internal)
-		env["HTTP_PROXY"] = proxy
-		env["HTTPS_PROXY"] = proxy
-		env["NO_PROXY"] = wiremock.NoProxy(postgres.MustFrom(d).Endpoint(infra.Internal).Host,
-			redis.MustFrom(d).Endpoint(infra.Internal).Host)
+	var dns []string
 
-		// Browser proxying signs a certificate per host with WireMock's own CA, so
-		// without this every HTTPS call through the proxy fails verification. Node
-		// warns about a missing NODE_EXTRA_CA_CERTS and carries on, which makes the
-		// omission silent: HTTP keeps working and every real provider breaks.
-		ca, err := wm.CAFile(ctx)
-		if err != nil {
+	// Outbound interception is DNS, not a proxy. Every hostname resolves to fakenet,
+	// which answers as the service or refuses by name, so no HTTP client has to
+	// honour HTTP_PROXY. Docker's embedded resolver still answers container names
+	// first, so Postgres and Redis are unaffected.
+	if fn, ok := fakenet.From(d); ok {
+		if err := fn.VerifyCA(ctx); err != nil {
 			return nil, err
 		}
-		files = append(files, infra.File{Src: ca, Dst: wiremock.CAPath})
-		env["NODE_EXTRA_CA_CERTS"] = wiremock.CAPath
+		dns = append(dns, fn.Resolver())
+		files = append(files, infra.File{Src: fn.CAPEMFile(), Dst: fakenet.CAPath})
+		env["NODE_EXTRA_CA_CERTS"] = fakenet.CAPath
+
+		// fakenet answers for public hostnames from a private address, which the
+		// SSRF guard would otherwise refuse. Node also warns about a missing
+		// NODE_EXTRA_CA_CERTS and carries on, so the file above is not optional:
+		// without it HTTP keeps working and every real provider breaks.
 		env["ALLOW_INTERNAL_IP_CONNECTIONS"] = "true"
 
-		// Point the license client at the same WireMock, which is what makes
-		// entitlements resolve per organization. Without this the instance is not
-		// Cloud, and getPlan short-circuits to one instance-wide feature set for
-		// every tenant.
-		for k, v := range license.Env(wm) {
+		// The License Server is one more fake, reached the same way as any other
+		// third party: by name, over TLS fakenet terminates. It is what makes
+		// entitlements resolve per organization rather than per instance.
+		for k, v := range license.Env() {
 			env[k] = v
 		}
 	}
@@ -151,6 +153,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Env:   env,
 		Ports: []int{port},
 		Files: files,
+		DNS:   dns,
 		// /api/status is registered before the run-mode guard, so it answers even on
 		// a pod that serves no product routes. It also reports emailConfigured and
 		// redisConfigured, which the harness asserts so a misconfigured SMTP is a
