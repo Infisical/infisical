@@ -151,7 +151,7 @@ export const secretScanningTimeoutsSchema = z.object({
 });
 
 export const getSecretScanningStuckScanTimeout = (data: z.infer<typeof secretScanningTimeoutsSchema>) =>
-  data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+  getSecretScanningScanBudgetMs(data);
 
 const databaseReadReplicaSchema = z
   .object({
