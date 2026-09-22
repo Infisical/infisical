@@ -3129,9 +3129,9 @@ const OverviewPageContent = () => {
                   </TableHeader>
                   <TableBody
                     className={twMerge(
-                      "transition-all duration-500 [&>tr>td>*]:transition-[filter] [&>tr>td>*]:duration-200 motion-reduce:[&>tr>td>*]:transition-none",
+                      "transition-all duration-500 [&>tr>td>*:not([data-table-row-filter-contents])]:transition-[filter] [&>tr>td>*:not([data-table-row-filter-contents])]:duration-200 motion-reduce:[&>tr>td>*:not([data-table-row-filter-contents])]:transition-none [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-none [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-none [@media(hover:hover)]:[&>tr:hover>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none",
                       (activeTableRows.size > 0 || hasSelectedEntriesOnPage) &&
-                        "[&>tr>td>*]:filter-[opacity(40%)]"
+                        "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
                     )}
                   >
                     {showOverviewSkeleton ? (

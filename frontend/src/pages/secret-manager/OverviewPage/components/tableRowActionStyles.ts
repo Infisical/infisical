@@ -23,7 +23,8 @@ export const TABLE_ROW_EXPAND_ICON_CLASS_NAME = `block ${TABLE_ROW_EXPAND_ICON_T
 
 export const TABLE_ROW_EXPANDED_ICON_CLASS_NAME = `block rotate-90 ${TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME}`;
 
-export const TABLE_ROW_ACTIVE_FILTER_CLASS_NAME = "[&>td>*]:!filter-none";
+export const TABLE_ROW_ACTIVE_FILTER_CLASS_NAME =
+  "[&>td>*]:!filter-none [&>td>[data-table-row-filter-contents]>*]:!filter-none [&>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none";
 
 export const TABLE_ROW_NAME_COLUMN_CLASS_NAME =
   "w-60 max-w-60 min-w-60 lg:w-96 lg:max-w-96 lg:min-w-96";

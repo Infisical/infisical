@@ -1184,6 +1184,7 @@ export const SecretEditTableRow = ({
         !isBatchMode
       ) && (
         <div
+          data-table-row-filter-positioner
           onMouseEnter={() => setIsHoveringActionZone(true)}
           onMouseLeave={() => setIsHoveringActionZone(false)}
           className={twMerge(
@@ -1998,11 +1999,20 @@ export const SecretEditTableRow = ({
           {nameInput}
         </TableCell>
         <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>
-          <div className="flex w-full flex-col gap-y-2">{valueContent}</div>
+          <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
+            {valueContent}
+          </div>
         </TableCell>
       </>
     );
   }
 
-  return <div className="relative flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>;
+  return (
+    <div
+      data-table-row-filter-contents
+      className="relative flex w-full flex-col gap-y-2 py-1.5 !filter-none"
+    >
+      {valueContent}
+    </div>
+  );
 };
