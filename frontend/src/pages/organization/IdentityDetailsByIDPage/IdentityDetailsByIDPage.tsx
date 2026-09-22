@@ -92,7 +92,7 @@ const Page = () => {
   const isScopeIdentity = data?.identity.orgId === currentOrg.id;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {data && (
         <>
           <Link
@@ -112,7 +112,7 @@ const Page = () => {
             title={data.identity.name}
           >
             {isScopeIdentity && !data.identity.projectId && (
-              <IdentityAlertAction identityId={identityId} identityName={data.identity.name} />
+              <IdentityAlertAction identityId={identityId} />
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -155,13 +155,13 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <IdentityDetailsSection
               isCurrentOrgIdentity={data.identity.orgId === currentOrg.id}
               identityId={identityId}
               handlePopUpOpen={handlePopUpOpen}
             />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               {isAuthHidden ? (
                 <Card>
                   <CardHeader>

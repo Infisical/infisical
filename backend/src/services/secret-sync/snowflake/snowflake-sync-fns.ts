@@ -10,6 +10,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TSnowflakeSyncWithCredentials } from "./snowflake-sync-types";
@@ -78,7 +79,8 @@ const wrapSnowflakeError = (err: unknown, credentials: TSnowflakeConnection["cre
 };
 
 export const SnowflakeSyncFns = {
-  syncSecrets: async (secretSync: TSnowflakeSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TSnowflakeSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig: { database, schema },
       connection
@@ -133,7 +135,8 @@ export const SnowflakeSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TSnowflakeSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TSnowflakeSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig: { database, schema },
       connection

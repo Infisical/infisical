@@ -36,14 +36,17 @@ export const PamTemplateSettingsSchema = z.object({
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotation: PamRotationConfigSchema.optional(),
   heartbeat: PamHeartbeatConfigSchema.optional(),
-  sessionLogMaskingPatterns: z.string().optional()
+  sessionLogMaskingPatterns: z.string().optional(),
+  sessionLogMaskingBuiltInDetection: z.boolean().default(false)
 });
 
 export const PamTemplateSettingsInputSchema = PamTemplateSettingsSchema.extend({
-  sessionLogMaskingPatterns: patternsStringSchema().optional()
+  sessionLogMaskingPatterns: patternsStringSchema().optional(),
+  sessionLogMaskingBuiltInDetection: z.boolean().optional()
 });
 
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
+export type TPamTemplateSettingsInput = z.infer<typeof PamTemplateSettingsInputSchema>;
 export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
 export type TPamRotationConfig = z.infer<typeof PamRotationConfigSchema>;
 export type TPamHeartbeatConfig = z.infer<typeof PamHeartbeatConfigSchema>;

@@ -81,7 +81,7 @@ export const ProjectIdentityDetailsSection = ({
 
   return (
     <>
-      <Card className="w-full lg:max-w-[24rem]">
+      <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
         <CardHeader className="border-b">
           <CardTitle>Details</CardTitle>
           <CardDescription>Machine identity details</CardDescription>

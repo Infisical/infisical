@@ -968,6 +968,7 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
 
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
+  EventType.GET_SECRETS,
   EventType.DELETE_SECRETS,
   EventType.CREATE_SECRETS,
   EventType.UPDATE_SECRETS,
@@ -6324,6 +6325,11 @@ interface AgentVaultServiceCreateEvent {
     credentialType: string;
     headerName?: string;
     headerPrefix?: string;
+    allowedMethods?: string[] | null;
+    allowedPathPrefixes?: string[] | null;
+    // Names and placeholders only. A sealed value must never reach an audit row.
+    customHeaderNames?: string[];
+    substitutionPlaceholders?: string[];
   };
 }
 
@@ -6337,6 +6343,12 @@ interface AgentVaultServiceUpdateEvent {
     credentialType?: string;
     headerName?: string;
     headerPrefix?: string;
+    allowedMethods?: string[] | null;
+    allowedPathPrefixes?: string[] | null;
+    customHeaderNames?: string[];
+    customHeadersReplaced?: string[];
+    substitutionPlaceholders?: string[];
+    substitutionsReplaced?: string[];
     credentialReplaced: boolean;
   };
 }
@@ -6357,8 +6369,8 @@ interface AgentVaultProductMemberAddEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
     role: string;
   };
 }
@@ -6370,8 +6382,8 @@ interface AgentVaultProductMemberUpdateEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
     role: string;
   };
 }
@@ -6383,8 +6395,8 @@ interface AgentVaultProductMemberRemoveEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6395,7 +6407,7 @@ interface AgentVaultAccessBundleMemberAddEvent {
     accessBundleName: string;
     memberId: string;
     userId?: string;
-    identityId?: string;
+    machineIdentityId?: string;
     groupId?: string;
   };
 }
@@ -6406,6 +6418,9 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
     accessBundleId: string;
     accessBundleName: string;
     memberId: string;
+    userId?: string;
+    machineIdentityId?: string;
+    groupId?: string;
   };
 }
 
