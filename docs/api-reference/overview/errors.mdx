@@ -3,7 +3,7 @@ title: "Errors"
 description: "The Infisical API error response format, common HTTP status codes, and how to use the request ID when reporting an issue."
 ---
 
-Every error response from the Infisical API is a JSON object with four fields: the HTTP status, a short machine-readable identifier, a human-readable message, and a request identifier.
+Most error responses from the Infisical API share a standard JSON schema with four fields: the HTTP status, a short machine-readable identifier, a human-readable message, and a request identifier. A few protocol-specific endpoints return [their protocol's own error shape](#protocol-specific-error-shapes) instead.
 
 ## Response format
 
@@ -16,22 +16,26 @@ Every error response from the Infisical API is a JSON object with four fields: t
 }
 ```
 
-Every error response contains these four fields:
+The standard response schema contains these four fields:
 
 - `reqId`: the identifier assigned to this request by the Infisical server; include it when [reporting an issue](#reporting-an-issue)
 - `statusCode`: the HTTP status code, also included in the response body for logging
 - `error`: a short, stable identifier for the error class that can be used to branch application logic (for example, `NotFound`, `BadRequest`, `ValidationFailure`, `PermissionDenied`, `RateLimitExceeded`)
-- `message`: a description of the error; on a `ValidationFailure` response, it's an array of the individual field-level errors rather than a single string
+- `message`: a description of the error, usually a string; on a `ValidationFailure` returned by request-body schema validation, it can be an array of individual field-level errors instead
 
 Some responses also include an optional `details` field with additional structured information about the error (for example, the input value that failed validation, or the permission that was denied). The presence and structure of `details` depend on the specific error.
 
+## Protocol-specific error shapes
+
+A few endpoints implement well-known protocols and return the error shape those protocols define, rather than the standard envelope above:
+
+- **OAuth 2.0 token endpoints** (for example, `POST /api/v1/oauth/token`) return `{ error, error_description }` per [RFC 6749 §5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2)
+- **SCIM endpoints** (`/api/v1/scim/...`) return the SCIM error object (`schemas`, `status`, `detail`, `scimType`) per [RFC 7644 §3.12](https://datatracker.ietf.org/doc/html/rfc7644#section-3.12)
+- **ACME endpoints** (`/api/v1/pki/acme/...`) return `application/problem+json` per [RFC 8555 §6.7](https://datatracker.ietf.org/doc/html/rfc8555#section-6.7)
+
 ## Common status codes
 
-<Note>
-  A schema-level validation failure returns `422 ValidationFailure` with an array of failing
-  fields in the `message` field. `400 BadRequest` is returned when the request is
-  syntactically valid but rejected by a semantic check in the endpoint.
-</Note>
+Here are some common error codes returned by the API:
 
 | Status | `error` value | Meaning |
 | --- | --- | --- |
@@ -40,12 +44,12 @@ Some responses also include an optional `details` field with additional structur
 | 403 | `PermissionDenied` or `ForbiddenError` | The identity is authenticated but doesn't have a role or permission that this endpoint requires. |
 | 404 | `NotFound` | The requested resource doesn't exist, or the identity doesn't have access to it. Infisical returns `404` (rather than `403`) for resources outside the identity's scope so that the API can't be used to confirm the existence of another tenant's resources. |
 | 409 | `Conflict` | The request conflicts with the current state of the resource (for example, a duplicate name, or a state transition that isn't allowed). |
-| 422 | `ValidationFailure` | A field in the request failed schema validation. The `message` field contains an array of the individual field-level errors. |
+| 422 | `ValidationFailure` | A field in the request failed schema validation. The `message` field usually contains an array of individual field-level errors. |
 | 429 | `RateLimitExceeded` | The applicable [rate limit](/api-reference/overview/rate-limits) has been exceeded. The `message` field indicates the number of seconds to wait before retrying. |
 | 500 | `InternalServerError` | An unexpected error on the Infisical server. Include the `reqId` when reporting the error. |
 | 504 | `GatewayTimeoutError` | An upstream dependency (for example, a database, an external KMS, or a gateway target) didn't respond within the configured timeout. Retrying the request is usually safe. |
 
-Retry a `429` response after the wait time indicated in the `message` field. Retry a `5xx` response with exponential backoff. Don't retry a `4xx` response other than `429` without changing the request first.
+Retry a `429` response after the wait time indicated in the `message` field. For a `5xx` response, retry idempotent requests (`GET`, `PUT`, `DELETE`) with exponential backoff. Don't blindly retry a `POST` or `PATCH` on a `5xx`, since the server may have completed the write before the response failed; retry only if the endpoint documents an idempotency mechanism or you can verify the operation didn't take effect. Don't retry a `4xx` response other than `429` without changing the request first.
 
 ## Reporting an issue
 

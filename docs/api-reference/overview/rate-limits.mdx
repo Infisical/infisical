@@ -1,9 +1,9 @@
 ---
 title: "Rate limiting"
-description: "Learn how Infisical enforces rate limits on API requests."
+description: "Learn how Infisical Cloud enforces rate limits on API requests."
 ---
 
-Infisical enforces per-minute rate limits on API requests. Limits are grouped into categories, and each category is tracked separately per client IP address. Requests in one category don't count against the limit for another.
+Infisical Cloud enforces per-minute rate limits on API requests. Limits are grouped into categories, and each category is tracked separately per client IP address. Requests in one category don't count against the limit for another.
 
 ## Categories
 
@@ -43,16 +43,11 @@ The per-minute limits by plan on Infisical Cloud are:
 
 ## Limits on self-hosted instances
 
-If you self-host Infisical, per-minute limits still apply. The defaults on a self-hosted instance are:
+If you self-host Infisical, no rate limits are enforced on the API by default. If you need throttling on your API surface, you'll need to configure an external rate limiter.
 
-- **Read**: 60 per minute
-- **Write**: 200 per minute
-- **Secret**: 60 per minute
-- **Identity creation**: 30 per minute
-- **Project creation**: 30 per minute
-
-Changing these defaults requires the custom rate limits feature (included on Enterprise plans). A super admin on the instance can configure the limits in the [Server Console](/documentation/platform/admin-panel/server-admin). New limits apply to every organization on the instance.
-
+<Tip>
+If you configure an external rate limiter for your self-hosted instance of Infisical, you can monitor those limits using the [`infisical.rate_limit.exceeded.count`](self-hosting/guides/monitoring-telemetry#rate-limit-metrics-infisicalcoreself-hosting/guides/monitoring-telemetry#rate-limit-metrics-infisicalcore) metric.
+</Tip>
 ## Exceeding rate limits (429 response)
 
 A request that exceeds the applicable limit returns HTTP `429` with the standard [error response](/api-reference/overview/errors):
