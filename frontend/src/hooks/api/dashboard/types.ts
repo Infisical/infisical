@@ -125,7 +125,9 @@ export type DashboardProjectSecretsDetails = Omit<
 };
 
 export enum DashboardSecretsOrderBy {
-  Name = "name"
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
 }
 
 export type TGetDashboardProjectSecretsOverviewDTO = {
@@ -135,6 +137,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   limit?: number;
   orderBy?: DashboardSecretsOrderBy;
   orderDirection?: OrderByDirection;
+  sortEnvironment?: string;
   search?: string;
   tags?: Record<string, boolean>;
   includeSecrets?: boolean;
@@ -149,9 +152,10 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
 
 export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
-  "environments"
+  "environments" | "orderBy" | "sortEnvironment"
 > & {
   environment: string;
+  orderBy?: DashboardSecretsOrderBy.Name;
   includeImports?: boolean;
   tags: Record<string, boolean>;
 };
