@@ -14,7 +14,6 @@ import {
   MailCheck,
   SlidersHorizontal
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -378,7 +377,6 @@ export const ShareSecretForm = ({
                   placeholder="Enter sensitive data to share via an encrypted link"
                   {...field}
                   id="share-secret-value"
-                  className={twMerge("min-h-[70px] resize-y", isPublic ? "h-40" : "h-24")}
                   disabled={value !== undefined}
                   aria-invalid={Boolean(error)}
                 />
