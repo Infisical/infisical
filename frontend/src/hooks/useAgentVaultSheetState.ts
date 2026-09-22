@@ -1,13 +1,8 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
-export enum AgentVaultSheetTab {
-  Activity = "activity"
-}
-
 export const agentVaultSheetSearchParams = z.object({
-  sessionId: z.string().uuid().optional().catch(undefined),
-  tab: z.nativeEnum(AgentVaultSheetTab).optional().catch(undefined)
+  sessionId: z.string().uuid().optional().catch(undefined)
 });
 
 /**
@@ -25,18 +20,13 @@ export const useAgentVaultSheetState = () => {
   return {
     sessionId,
     isOpen: Boolean(sessionId),
-    tab: (search.tab as AgentVaultSheetTab | undefined) ?? AgentVaultSheetTab.Activity,
-    openSheet: (id: string, initialTab?: AgentVaultSheetTab) => {
+    openSheet: (id: string) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      navigate({ search: { ...search, sessionId: id, tab: initialTab } as any });
-    },
-    setTab: (tab: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      navigate({ search: { ...search, tab } as any, replace: true });
+      navigate({ search: { ...search, sessionId: id } as any });
     },
     closeSheet: () => {
       const rest = Object.fromEntries(
-        Object.entries(search).filter(([key]) => key !== "sessionId" && key !== "tab")
+        Object.entries(search).filter(([key]) => key !== "sessionId")
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: rest as any });

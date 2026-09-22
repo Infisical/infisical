@@ -11,10 +11,14 @@ import {
   PackageIcon,
   PlusIcon,
   SearchIcon,
+  SquareMenuIcon,
   UserIcon
 } from "lucide-react";
 
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   Card,
   CardAction,
@@ -64,11 +68,16 @@ import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
+  useGetAgentVaultActivityConfig,
   useGetAgentVaultSession,
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import {
+  isAgentVaultRecording,
+  TAgentVaultMintedSession,
+  TAgentVaultSession
+} from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -112,6 +121,8 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
+  // Admin-only: the config endpoint answers a member with a 403, and only an admin can act on it.
+  const { data: activityConfig } = useGetAgentVaultActivityConfig(isAdmin);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -160,6 +171,28 @@ export const AgentVaultSessionsPage = () => {
         title="Sessions"
         description="Create sessions that let your agents reach the services in an access bundle."
       />
+
+      {/* Only once the config has loaded, or a healthy org sees this on every cold navigation. */}
+      {activityConfig && !isAgentVaultRecording(activityConfig.config) && (
+        <Alert variant="warning">
+          <AlertDescription>
+            <p>
+              Session activity isn&apos;t being recorded, so there is no record of what your agents
+              reached.
+            </p>
+            <AlertAction>
+              <Button variant="outline" size="sm" asChild>
+                <Link
+                  to="/organizations/$orgId/agent-vault/activity-logs"
+                  params={{ orgId: currentOrg.id }}
+                >
+                  Go to Activity Logs
+                </Link>
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -346,24 +379,51 @@ export const AgentVaultSessionsPage = () => {
                     </TableCell>
                     {/* The row opens the sheet, so the action cell keeps its click to itself. */}
                     <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
-                      {session.status === AgentVaultSessionStatus.Active && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open session actions">
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setSessionToRevoke(session)}
+                      <div className="flex items-center justify-end gap-1">
+                        {/* On every row, revoked and expired included: those are the timelines most
+                            worth reading, and the menu beside this one renders only while active. */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="View session activity logs"
+                              onClick={() => openSheet(session.id)}
                             >
-                              <BanIcon />
-                              Revoke Session
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                              <SquareMenuIcon />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>View Activity Logs</TooltipContent>
+                        </Tooltip>
+                        {session.status === AgentVaultSessionStatus.Active && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
+                                aria-label="Open session actions"
+                              >
+                                <MoreHorizontalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setSessionToRevoke(session)}
+                              >
+                                <BanIcon />
+                                Revoke Session
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        {session.status !== AgentVaultSessionStatus.Active && (
+                          // Holds the menu's place. Revoke only applies to an active session, so
+                          // without this the activity button slides right on every other row and
+                          // the column stops lining up.
+                          <span aria-hidden className="size-7 shrink-0" />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

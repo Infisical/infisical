@@ -11,7 +11,7 @@ export const Route = createFileRoute(
   component: AgentVaultSessionsPage,
   // The open sheet lives in the URL, so a timeline is a link and the back button closes it.
   validateSearch: zodValidator(agentVaultSheetSearchParams),
-  search: { middlewares: [stripSearchParams({ sessionId: undefined, tab: undefined })] },
+  search: { middlewares: [stripSearchParams({ sessionId: undefined })] },
   beforeLoad: ({ context }) => {
     return { breadcrumbs: [...context.breadcrumbs, { label: "Sessions" }] };
   }

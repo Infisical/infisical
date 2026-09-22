@@ -181,6 +181,7 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
+  description: string | null;
   position: number;
 };
 
@@ -300,7 +301,17 @@ export type TAgentVaultActivityConfigResponse = {
    * Activity tab fails with an opaque network error.
    */
   corsProbeUrl: string | null;
+  /** When a record last landed in the bucket currently configured. Null after a repoint, by design. */
+  lastRecordedAt: string | null;
 };
+
+/**
+ * Mirrors isIngestEnabled in the backend's agent-vault-activity-service: the switch is on and the row
+ * actually points at a bucket. Callers must check the query has resolved first, since an absent config
+ * reads as "not recording" and would flash a warning on every cold load.
+ */
+export const isAgentVaultRecording = (config: TAgentVaultActivityConfig) =>
+  Boolean(config.enabled && config.appConnectionId && config.bucket && config.region);
 
 export type TUpdateAgentVaultActivityConfigDTO = {
   enabled?: boolean;

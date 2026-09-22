@@ -27,6 +27,12 @@ export const fetchAgentVaultProjectId = async () => {
 
 // Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
+/**
+ * Records per page, not chunks. A chunk holds 1 to 1000 depending on how busy the agent was, so
+ * asking for chunks makes the page size, and the browser's load, depend on the agent's pace.
+ */
+const ACTIVITY_PAGE_RECORDS = 200;
+
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
   accessBundles: (orgId: string) => [...agentVaultKeys.all(orgId), "access-bundles"] as const,
@@ -59,8 +65,8 @@ export const agentVaultKeys = {
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId), params] as const,
   activityConfig: (orgId: string) => [...agentVaultKeys.all(orgId), "activity-config"] as const,
-  sessionActivity: (orgId: string, sessionId: string) =>
-    [...agentVaultKeys.sessions(orgId), sessionId, "activity"] as const
+  sessionActivity: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
+    [...agentVaultKeys.sessions(orgId), sessionId, "activity", range ?? {}] as const
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -228,6 +234,10 @@ export const useGetAgentVaultSession = (sessionId: string | undefined, enabled =
       return data.session;
     },
     enabled: enabled && Boolean(sessionId),
+    // Matches the list query beside it. Status is derived from the clock, so a sheet left open on an
+    // active session has to notice it expiring: without this the header keeps saying Active and the
+    // activity tab keeps claiming Live, on a session that stopped working.
+    refetchInterval: 30_000,
     retry: false
   });
 };
@@ -235,31 +245,54 @@ export const useGetAgentVaultSession = (sessionId: string | undefined, enabled =
 /**
  * Cursor pagination, newest first.
  *
- * Polling stops the moment the viewer loads a second page. An interval refetch on an infinite query
- * re-runs every page it holds, not just the first, and each page costs a key unwrap plus a presigned URL
- * per chunk. Someone who has paged back is reading history rather than tailing a live agent, so the
- * refresh buys them nothing and the cost grows with every page they open.
+ * Polling continues however many pages the viewer has scrolled through. An interval refetch on an
+ * infinite query re-runs every page it holds, so the cost grows with each page opened; pages are small
+ * enough, and the poll slow enough, that this is cheaper than a Live badge that quietly goes dark once
+ * someone scrolls.
  */
 export const useGetAgentVaultSessionActivity = (
   sessionId: string | undefined,
-  { enabled = true, isActive = false }: { enabled?: boolean; isActive?: boolean } = {}
+  {
+    enabled = true,
+    isActive = false,
+    from,
+    to
+  }: { enabled?: boolean; isActive?: boolean; from?: Date; to?: Date } = {}
 ) => {
   const { currentOrg } = useOrganization();
 
+  // Serialised into the key, so narrowing the window starts a fresh page one rather than appending
+  // to the pages fetched for the previous one.
+  const range = { from: from?.toISOString(), to: to?.toISOString() };
+
   return useInfiniteQuery({
-    queryKey: agentVaultKeys.sessionActivity(currentOrg.id, sessionId ?? ""),
+    queryKey: agentVaultKeys.sessionActivity(currentOrg.id, sessionId ?? "", range),
     enabled: enabled && Boolean(sessionId),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const { data } = await apiRequest.get<TAgentVaultActivityPage>(
         `/api/v1/agent-vault/sessions/${sessionId}/activity`,
-        { params: { limit: 50, ...(pageParam ? { before: pageParam } : {}) } }
+        {
+          params: {
+            limit: ACTIVITY_PAGE_RECORDS,
+            ...(pageParam ? { before: pageParam } : {}),
+            ...(range.from ? { from: range.from } : {}),
+            ...(range.to ? { to: range.to } : {})
+          }
+        }
       );
       return data;
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    refetchInterval: (query) =>
-      isActive && (query.state.data?.pages.length ?? 0) <= 1 ? 30_000 : false,
+    // Narrowing the time range changes the key, and without this the query drops to `pending` with
+    // no data. The tab's loading branch then unmounts the whole filter row, so the date picker loses
+    // the range it is displaying and remounts on its own default.
+    placeholderData: (prev) => prev,
+    // 15s, not PAM's 5s. PAM tails a live terminal, where something new lands between any two ticks.
+    // Here the proxy buffers for about a minute before it ships, so a chunk arrives every minute or
+    // two and a faster poll mostly re-fetches a response the browser already holds — at the cost of
+    // an index read, a key unwrap and a presigned URL per chunk, for every page the viewer has open.
+    refetchInterval: isActive ? 15_000 : false,
     staleTime: 0
   });
 };
