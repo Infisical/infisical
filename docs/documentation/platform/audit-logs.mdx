@@ -322,143 +322,510 @@ Values that contain a literal `,` can't be filtered this way, because `,` separa
 
 ## Common filters
 
-Here are a few common patterns for filtering audit logs.
+Here are a few common patterns for filtering audit logs, grouped by product.
 
-### Who read a specific secret
+### Secrets Manager
 
-Find every read of `DATABASE_URL` in the `prod` environment.
+<AccordionGroup>
+  <Accordion title="Who read a specific secret">
+    Find every read of `DATABASE_URL` in the `prod` environment.
 
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step>
-        Go to **Organization > Audit Logs**.
-      </Step>
-      <Step>
-        Select **Search audit logs** and add these filters:
-        - `event`: `get-secret`
-        - `project`: the project holding the secret
-        - `environment`: `prod`
-        - `secret_key`: `DATABASE_URL`
-      </Step>
-    </Steps>
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Organization > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add these filters:
+            - `event`: `get-secret`
+            - `project`: the project holding the secret
+            - `environment`: `prod`
+            - `secret_key`: `DATABASE_URL`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "environment=prod" \
+          --data-urlencode "eventType=get-secret" \
+          --data-urlencode "secretKey=DATABASE_URL"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Who opened a folder">
+    Find every time someone loaded the secrets in the `/db` folder — for example, by opening it in the web UI, running `infisical secrets`, or having an app fetch it at startup. Each event records the folder, the actor, and how many secrets came back.
 
-    To include folder-level reads, add `get-secrets` to the `event` filter and remove the `secret_key` filter, since folder reads don't record a specific key.
-  </Tab>
-  <Tab title="API">
-    ```bash
-    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
-      -H "Authorization: Bearer <your-access-token>" \
-      --data-urlencode "projectId=<project-id>" \
-      --data-urlencode "environment=prod" \
-      --data-urlencode "eventType=get-secret" \
-      --data-urlencode "secretKey=DATABASE_URL"
-    ```
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Organization > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add these filters:
+            - `event`: `get-secrets`
+            - `project`: the project holding the folder
+            - `environment`: `prod`
+            - `secret_path`: `/db`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "environment=prod" \
+          --data-urlencode "eventType=get-secrets" \
+          --data-urlencode "secretPath=/db"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="All writes to production">
+    Find every creation, update, and deletion of secrets in a project's `prod` environment over the last 7 days.
 
-    To include folder-level reads, add `get-secrets` to `eventType` and remove `secretKey`, since folder reads don't record a specific key.
-  </Tab>
-</Tabs>
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Organization > Audit Logs**.
+          </Step>
+          <Step>
+            Set the date range to the last 7 days.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add these filters:
+            - `event`: `create-secret`, `update-secret`, `delete-secret`, `create-secrets`, `update-secrets`, `delete-secrets`
+            - `project`: the project you want to audit
+            - `environment`: `prod`
+          </Step>
+        </Steps>
 
-### All writes to production
+        Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed. The `environment` filter only applies when a project is set.
+      </Tab>
+      <Tab title="API">
+        Replace `<start-date>` with an ISO 8601 timestamp for 7 days ago (for example, `2026-09-15T00:00:00Z`).
 
-Find every create, update, and delete in a project's `prod` environment over the last 7 days.
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "environment=prod" \
+          --data-urlencode "eventType=create-secret,update-secret,delete-secret,create-secrets,update-secrets,delete-secrets" \
+          --data-urlencode "startDate=<start-date>"
+        ```
 
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step>
-        Go to **Organization > Audit Logs**.
-      </Step>
-      <Step>
-        Set the date range to the last 7 days.
-      </Step>
-      <Step>
-        Select **Search audit logs** and add these filters:
-        - `event`: `create-secret`, `update-secret`, `delete-secret`, `create-secrets`, `update-secrets`, `delete-secrets`
-        - `project`: the project you want to audit
-        - `environment`: `prod`
-      </Step>
-    </Steps>
+        Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed.
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Who deleted a secret">
+    Find who removed a specific secret key. Include the batch event so single and bulk deletes are both matched.
 
-    Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed. The `environment` filter only applies when a project is set.
-  </Tab>
-  <Tab title="API">
-    Replace `<start-date>` with an ISO 8601 timestamp for 7 days ago (for example, `2026-09-14T00:00:00Z`).
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Organization > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add these filters:
+            - `event`: `delete-secret`, `delete-secrets`
+            - `project`: the project holding the secret
+            - `secret_key`: the key that was deleted
+          </Step>
+        </Steps>
 
-    ```bash
-    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
-      -H "Authorization: Bearer <your-access-token>" \
-      --data-urlencode "projectId=<project-id>" \
-      --data-urlencode "environment=prod" \
-      --data-urlencode "eventType=create-secret,update-secret,delete-secret,create-secrets,update-secrets,delete-secrets" \
-      --data-urlencode "startDate=<start-date>"
-    ```
+        Read the actor column on each result to see who ran the delete. The `secret_key` filter only applies when a project is set.
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=delete-secret,delete-secrets" \
+          --data-urlencode "secretKey=DATABASE_URL"
+        ```
 
-    Include the batch event types (`create-secrets`, `update-secrets`, `delete-secrets`) so that bulk changes from the CLI or SDKs aren't missed.
-  </Tab>
-</Tabs>
+        Read `actor.type` and `actor.metadata` on each result to see who ran the delete.
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
 
-### Everything a specific identity did
+### Certificate Manager
 
-Investigate every action a machine identity took.
+<AccordionGroup>
+  <Accordion title="Recent certificate issuance">
+    Find every certificate issued from a project in the last 7 days.
 
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step>
-        Go to **Organization > Audit Logs**.
-      </Step>
-      <Step>
-        Select **Search audit logs** and add these filters:
-        - `actor`: `identity`
-        - `actor_id`: the identity's ID
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="API">
-    ```bash
-    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
-      -H "Authorization: Bearer <your-access-token>" \
-      --data-urlencode "actor=<identity-id>" \
-      --data-urlencode "actorType=identity"
-    ```
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Cert Manager**, select the project, and open **Audit Logs**.
+          </Step>
+          <Step>
+            Set the date range to the last 7 days.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `issue-cert`, `issue-pki-subscriber-cert`
+          </Step>
+        </Steps>
 
-    Set `actorType` for any non-user actor so the filter targets the right ID column. Only actor types with an ID field can be filtered this way; see the note under [Advanced filters](#advanced-filters) for the full list.
-  </Tab>
-</Tabs>
+        Each result's `event.metadata` names the CA and the serial number.
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=issue-cert,issue-pki-subscriber-cert" \
+          --data-urlencode "startDate=<start-date>"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Who revoked a certificate">
+    Find every revocation in a project.
 
-### Who deleted a secret
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Cert Manager**, select the project, and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `revoke-cert`
+          </Step>
+        </Steps>
 
-Find who removed a specific secret key. Include the batch event so single and bulk deletes are both matched.
+        Read the actor column on each result to see who ran the revocation.
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=revoke-cert"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
 
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step>
-        Go to **Organization > Audit Logs**.
-      </Step>
-      <Step>
-        Select **Search audit logs** and add these filters:
-        - `event`: `delete-secret`, `delete-secrets`
-        - `project`: the project holding the secret
-        - `secret_key`: the key that was deleted
-      </Step>
-    </Steps>
+### KMS
 
-    Read the actor column on each result to see who ran the delete. The `secret_key` filter only applies when a project is set.
-  </Tab>
-  <Tab title="API">
-    ```bash
-    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
-      -H "Authorization: Bearer <your-access-token>" \
-      --data-urlencode "projectId=<project-id>" \
-      --data-urlencode "eventType=delete-secret,delete-secrets" \
-      --data-urlencode "secretKey=DATABASE_URL"
-    ```
+<AccordionGroup>
+  <Accordion title="Recent key use">
+    Find every encryption, decryption, signature, and verification against KMS keys in a project.
 
-    Read `actor.type` and `actor.metadata` on each result to see who ran the delete.
-  </Tab>
-</Tabs>
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **KMS**, select the project, and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `cmek-encrypt`, `cmek-decrypt`, `cmek-sign`, `cmek-verify`
+          </Step>
+        </Steps>
+
+        To narrow the results to a specific key, read `event.metadata.keyId` on each row.
+      </Tab>
+      <Tab title="API">
+        `cmek-*` events carry `keyId` in `event.metadata`, so match it with `eventMetadata` to scope to a specific key.
+
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=cmek-encrypt,cmek-decrypt,cmek-sign,cmek-verify" \
+          --data-urlencode "eventMetadata=keyId=<kms-key-id>"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Key lifecycle changes">
+    Find every KMS key created, updated, or deleted in a project.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **KMS**, select the project, and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `create-cmek`, `update-cmek`, `delete-cmek`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=create-cmek,update-cmek,delete-cmek"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
+
+### Secret Scanning
+
+<AccordionGroup>
+  <Accordion title="Recent scans">
+    Find every scan run in the last 7 days, including on-demand scans.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Secret Scanning**, select the project, and open **Audit Logs**.
+          </Step>
+          <Step>
+            Set the date range to the last 7 days.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `secret-scanning-data-source-scan`, `secret-scanning-data-source-trigger-scan`
+          </Step>
+        </Steps>
+
+        Each result's `event.metadata` names the data source, the scan type, and the number of secrets detected.
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=secret-scanning-data-source-scan,secret-scanning-data-source-trigger-scan" \
+          --data-urlencode "startDate=<start-date>"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Finding updates">
+    View every finding an operator marked as remediated, dismissed, or otherwise updated.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Secret Scanning**, select the project, and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `secret-scanning-finding-update`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "projectId=<project-id>" \
+          --data-urlencode "eventType=secret-scanning-finding-update"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
+
+### Privileged Access Manager
+
+<AccordionGroup>
+  <Accordion title="All privileged sessions this week">
+    Find every session start, end, or termination in the last 7 days.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **PAM > Audit Logs**.
+          </Step>
+          <Step>
+            Set the date range to the last 7 days.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `pam-session-start`, `pam-session-end`, `pam-session-terminate`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        The PAM project ID isn't exposed publicly, so call the organization endpoint and filter by exact event names.
+
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "eventType=pam-session-start,pam-session-end,pam-session-terminate" \
+          --data-urlencode "startDate=<start-date>"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Who accessed a specific PAM account">
+    View all access to a PAM account using its account ID.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **PAM > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `pam-account-access`, `pam-account-credentials-view`
+          </Step>
+        </Steps>
+
+        Each result's `event.metadata.accountId` names the account and `actor` names the accessor.
+      </Tab>
+      <Tab title="API">
+        `pam-account-access` events carry `accountId` in `event.metadata`, so match it with `eventMetadata`.
+
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "eventType=pam-account-access,pam-account-credentials-view" \
+          --data-urlencode "eventMetadata=accountId=<pam-account-id>"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
+
+### Agent Vault
+
+<AccordionGroup>
+  <Accordion title="Sessions issued this week">
+    Find every Agent Vault session minted or revoked over the last 7 days.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Agent Vault > Audit Logs**.
+          </Step>
+          <Step>
+            Set the date range to the last 7 days.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `agent-vault-session-mint`, `agent-vault-session-revoke`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "eventType=agent-vault-session-mint,agent-vault-session-revoke" \
+          --data-urlencode "startDate=<start-date>"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Proxy lifecycle events">
+    Find every proxy registration, enrollment, and revocation.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Agent Vault > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `agent-vault-proxy-register`, `agent-vault-proxy-enroll`, `agent-vault-proxy-revoke`, `agent-vault-proxy-delete`
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "eventType=agent-vault-proxy-register,agent-vault-proxy-enroll,agent-vault-proxy-revoke,agent-vault-proxy-delete"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
+
+### Identities and authentication
+
+<AccordionGroup>
+  <Accordion title="Everything a specific identity did">
+    Investigate every action a machine identity took.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Organization > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add these filters:
+            - `actor`: `identity`
+            - `actor_id`: the identity's ID
+          </Step>
+        </Steps>
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "actor=<identity-id>" \
+          --data-urlencode "actorType=identity"
+        ```
+
+        Set `actorType` for any non-user actor so the filter targets the right ID column. Only actor types with an ID field can be filtered this way; see the note under [Advanced filters](#advanced-filters) for the full list.
+      </Tab>
+    </Tabs>
+  </Accordion>
+  <Accordion title="Failed login attempts for an identity">
+    Find failed login attempts by a machine identity, across every auth method.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Organization > Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add these filters:
+            - `event`: `login-identity-universal-auth-failed`, `login-identity-kubernetes-auth-failed`, `login-identity-oidc-auth-failed`, `login-identity-gcp-auth-failed`, `login-identity-aws-auth-failed`, `login-identity-jwt-auth-failed`
+            - `actor`: `identity`
+            - `actor_id`: the identity's ID
+          </Step>
+        </Steps>
+
+        Extend the `event` list to include any other `*-failed` variants your organization uses (SPIFFE, LDAP, AliCloud, and so on).
+      </Tab>
+      <Tab title="API">
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "eventType=login-identity-universal-auth-failed,login-identity-kubernetes-auth-failed,login-identity-oidc-auth-failed,login-identity-gcp-auth-failed,login-identity-aws-auth-failed,login-identity-jwt-auth-failed" \
+          --data-urlencode "actor=<identity-id>" \
+          --data-urlencode "actorType=identity"
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
 
 ## Event types
 
