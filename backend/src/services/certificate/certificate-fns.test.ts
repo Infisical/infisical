@@ -227,7 +227,9 @@ describe("extractExternallyIssuedCertificateFields", () => {
     expect(fields.altNames).toBe("issued.example.com,added.example.com");
   });
 
-  test("drops subject alternative names that would not fit the column rather than truncating one", async () => {
+  // Records the names that fit rather than dropping the list, and never cuts a name in half, so the
+  // stored value is always a valid prefix of what the authority issued.
+  test("keeps as many whole subject alternative names as the column holds", async () => {
     const many = Array.from({ length: 200 }, (_, index) => ({
       type: "dns" as const,
       value: `host-${String(index).padStart(3, "0")}.${"padding".repeat(4)}.example.com`
@@ -235,9 +237,14 @@ describe("extractExternallyIssuedCertificateFields", () => {
     const pem = await buildIssuedCert([new x509.SubjectAlternativeNameExtension(many)]);
 
     const fields = extractExternallyIssuedCertificateFields(pem);
+    const kept = fields.altNames!.split(",");
 
     expect(many.map((san) => san.value).join(",").length).toBeGreaterThan(4096);
-    expect(fields).not.toHaveProperty("altNames");
+    expect(fields.altNames!.length).toBeLessThanOrEqual(4096);
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.length).toBeLessThan(many.length);
+    // every kept entry is a whole name, in order, taken from the front of the issued list
+    expect(kept).toEqual(many.slice(0, kept.length).map((san) => san.value));
   });
 
   test("leaves the requested subject alternative names in place when the certificate carries none", async () => {

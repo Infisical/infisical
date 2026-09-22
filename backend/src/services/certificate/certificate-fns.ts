@@ -437,13 +437,22 @@ const extractIssuedAltNames = (decryptedCertificate: Buffer, serialNumber?: stri
 
     if (!values.length) return null;
 
-    const joined = values.join(",");
-    if (joined.length <= PKI_ALT_NAMES_COLUMN_MAX_LENGTH) return joined;
+    const kept: string[] = [];
+    let length = 0;
+    for (const value of values) {
+      const next = length ? length + 1 + value.length : value.length;
+      if (next > PKI_ALT_NAMES_COLUMN_MAX_LENGTH) break;
+      kept.push(value);
+      length = next;
+    }
 
-    logger?.warn(
-      `Issued certificate carries ${values.length} subject alternative names, over the ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} the column holds, so none were recorded [serialNumber=${serialNumber ?? "unknown"}]`
-    );
-    return null;
+    if (kept.length < values.length) {
+      logger?.warn(
+        `Issued certificate carries ${values.length} subject alternative names, over the ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} characters the column holds, so only the first ${kept.length} were recorded [serialNumber=${serialNumber ?? "unknown"}]`
+      );
+    }
+
+    return kept.length ? kept.join(",") : null;
   } catch (err) {
     logger?.warn(
       err,

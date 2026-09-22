@@ -114,6 +114,7 @@ describe("preset encoders", () => {
     expect(Object.values(CUSTOM_EXTENSION_PRESETS_BY_OID).map((preset) => preset.critical)).toEqual([
       false,
       false,
+      false,
       false
     ]);
   });
@@ -671,6 +672,7 @@ describe("findUnsatisfiedCustomExtensionOids", () => {
 describe("preset registry", () => {
   it("round-trips every preset through encode and describe", () => {
     const samples: Record<string, string> = {
+      "1.3.6.1.5.5.7.1.24": "5",
       [SID_OID]: SID,
       [TEMPLATE_NAME_OID]: "Machine",
       [TEMPLATE_INFO_OID]: "1.3.6.1.4.1.311.21.8.1.2:100.3"
@@ -720,14 +722,23 @@ describe("toCarriedCustomExtensions", () => {
 // This used to fail renewal with the very error this change removes.
 describe("parseImportedCustomExtensions", () => {
   it("invents no provenance, and a renewal drops what it cannot express rather than refusing", async () => {
-    const mustStaple = Buffer.from([0x30, 0x03, 0x02, 0x01, 0x05]);
-    const certificate = await buildCertificateWithExtension("1.3.6.1.5.5.7.1.24", mustStaple);
+    const qcStatements = Buffer.from([0x30, 0x08, 0x30, 0x06, 0x06, 0x04, 0x00, 0x8e, 0x46, 0x01]);
+    const certificate = await buildCertificateWithExtension("1.3.6.1.5.5.7.1.3", qcStatements);
 
     const stored = parseImportedCustomExtensions(certificate);
 
-    expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }]);
+    expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.3", critical: false, value: qcStatements.toString("base64") }]);
     expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
     expect(toCarriedCustomExtensions(stored)).toEqual([]);
+  });
+
+  // Dropping must-staple would hand back a renewed certificate with a weaker security posture than
+  // the one it replaces, so TLS Feature has a preset and round-trips.
+  it("carries must-staple rather than dropping it", () => {
+    const mustStaple = [{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }];
+
+    expect(toCarriedCustomExtensions(mustStaple)).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", value: "5", critical: false }]);
+    expect(toCarriedCustomExtensions([{ ...mustStaple[0], issuerAdded: true }])).toEqual([]);
   });
 
   it("keeps a readable extension an import carried, since nothing says the issuer wrote it", async () => {

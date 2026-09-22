@@ -350,6 +350,7 @@ export enum CertExtensionCriticality {
 
 const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
 const OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
+const TLS_FEATURE_PATTERN = /^[0-9]{1,5}(,[0-9]{1,5})*$/;
 const SID_PATTERN = /^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$/;
 const TEMPLATE_INFORMATION_PATTERN = new RegExp(
   `^(${OID_PATTERN_SOURCE}):(0|[1-9][0-9]{0,4})(\\.(0|[1-9][0-9]{0,4}))?$`
@@ -364,6 +365,15 @@ export const CUSTOM_EXTENSION_PRESETS: Record<
     validate: (value: string) => string | null;
   }
 > = {
+  "1.3.6.1.5.5.7.1.24": {
+    critical: false,
+    label: "TLS feature (must-staple)",
+    placeholder: "5",
+    validate: (value) =>
+      TLS_FEATURE_PATTERN.test(value)
+        ? null
+        : "Value must be a comma-separated list of TLS feature numbers, for example 5 for OCSP must-staple"
+  },
   "1.3.6.1.4.1.311.25.2": {
     critical: false,
     label: "AD SID security extension",

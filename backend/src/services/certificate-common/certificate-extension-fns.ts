@@ -143,7 +143,37 @@ const asn1StringPreset = ({
   }
 });
 
+// RFC 7633 TLS Feature, a SEQUENCE OF INTEGER. Without a preset its DER reads back as nothing a
+// request can carry, so a renewal would silently drop must-staple and issue a weaker certificate.
+const TLS_FEATURE_PATTERN = new RE2("^[0-9]{1,5}(,[0-9]{1,5})*$");
+
+const encodeTlsFeature = (value: string): Buffer =>
+  toDerBuffer(
+    new asn1js.Sequence({
+      value: value.split(",").map((entry) => new asn1js.Integer({ value: Number(entry.trim()) }))
+    })
+  );
+
+const describeTlsFeature = (der: Buffer): string | null => {
+  const parsed = parseSingleDerValue(der);
+  if (!(parsed instanceof asn1js.Sequence)) return null;
+
+  const features = parsed.valueBlock.value;
+  if (!features.length || !features.every((entry) => entry instanceof asn1js.Integer)) return null;
+
+  return features.map((entry) => (entry as asn1js.Integer).valueBlock.valueDec).join(",");
+};
+
 export const CUSTOM_EXTENSION_PRESETS_BY_OID: Record<string, TCustomExtensionPreset> = {
+  [CUSTOM_EXTENSION_PRESET_OIDS.TLS_FEATURE]: {
+    critical: false,
+    validateInput: (value) =>
+      TLS_FEATURE_PATTERN.test(value)
+        ? null
+        : "Value must be a comma-separated list of TLS feature numbers, for example 5 for OCSP must-staple",
+    encode: encodeTlsFeature,
+    describe: describeTlsFeature
+  },
   [CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID]: {
     critical: false,
     validateInput: (value) =>
