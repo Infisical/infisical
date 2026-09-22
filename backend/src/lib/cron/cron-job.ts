@@ -84,7 +84,7 @@ const DEFAULTS = {
   retryBackoffBaseMs: 30_000,
   retryBackoffMaxMs: 5 * 60_000,
   drainTimeoutMs: 25_000,
-  maxJitterMs: 15 * 60_000,
+  maxJitterMs: 5 * 60_000,
   maxConcurrentHandlers: 4
 } as const;
 
@@ -207,10 +207,8 @@ export const cronJobFactory = ({
   retryBackoffMaxMs?: number;
   drainTimeoutMs?: number;
   /**
-   * Ceiling on the derived jitter window. Without it a daily job would be spread over six
-   * hours; with it, every job past a ~1h interval shares the same widest window. Set it to 0
-   * to disable jitter, which is what development wiring does so a job runs when its pattern
-   * says it should.
+   * Ceiling on the derived jitter window. Set it to 0 to disable
+   * jitter, which is what development wiring does so a job runs when its pattern says.
    */
   maxJitterMs?: number;
   /**
@@ -274,15 +272,6 @@ export const cronJobFactory = ({
   // means the next-fire property survives someone raising the fraction.
   const jitterWindowMs = (intervalMs: number) =>
     Math.min(intervalMs * JITTER_INTERVAL_FRACTION, maxJitterMs, Math.max(0, intervalMs - NEXT_FIRE_BUFFER_MS));
-
-  // The window for a pattern, sampled at registration. A pattern with uneven intervals (say
-  // quarterly) gets its window recomputed per fire at enqueue; this sample only has to be good
-  // enough for the run-hash TTL check.
-  const jitterWindowForPattern = (pattern: string) => {
-    const it = CronExpressionParser.parse(pattern, { tz: "UTC" });
-    const next = it.next().toDate().getTime();
-    return jitterWindowMs(it.next().toDate().getTime() - next);
-  };
 
   // Per-job offset into the jitter window, derived from a stable hash of the job
   // name. It MUST NOT be random: the run id is keyed on the scheduled fire time
@@ -424,15 +413,11 @@ export const cronJobFactory = ({
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
 
-    // The run hash has to outlive the offset, or it expires before its own pickup and
-    // processCandidate reaps the orphaned zset entry with no log and no failed status: the
-    // job would silently never run. Measured against this pattern's own window.
-    const windowMs = jitterWindowForPattern(pattern);
-    if (runHashTtlS * 1000 <= windowMs) {
+    if (runHashTtlS * 1000 <= maxJitterMs) {
       throw new Error(
-        `cron[${name}] runHashTtlS (${runHashTtlS}s) must exceed its jitter window (${Math.round(
-          windowMs / 1000
-        )}s), otherwise the run hash expires before the run is picked up`
+        `cron[${name}] runHashTtlS (${runHashTtlS}s) must exceed the maximum jitter window (${Math.round(
+          maxJitterMs / 1000
+        )}s), otherwise the run hash can expire before the run is picked up`
       );
     }
 
@@ -453,7 +438,7 @@ export const cronJobFactory = ({
       handlerTimeoutMs: entryHandlerTimeoutMs,
       leaseDurationMs: entryLeaseDurationMs
     });
-    logger.info(`cron[${name}]: registered (pattern="${pattern}") [jitter_window_ms=${windowMs}]`);
+    logger.info(`cron[${name}]: registered (pattern="${pattern}")`);
   };
 
   // ── slot election ───────────────────────────────────────────────────────────
@@ -614,7 +599,9 @@ export const cronJobFactory = ({
   const processCandidate = async (id: string) => {
     const data = await redis.hgetall(RUN_KEY(id));
     if (!data?.name) {
-      // Hash expired (TTL) but zset entry lingered; clean up.
+      logger.error(
+        `cron: pending run expired before it was claimed and will not execute, raise its runHashTtlS above its jitter window and expected backlog [id=${id}]`
+      );
       await redis.zrem(PENDING_ZSET, id);
       return;
     }

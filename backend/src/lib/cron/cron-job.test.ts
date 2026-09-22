@@ -737,7 +737,7 @@ describe("derived jitter", () => {
   const SCHEDULED_AT = Date.parse("2024-01-01T00:00:00Z");
   // Mid-interval, so prevFire is SCHEDULED_AT for every pattern used below.
   const NOW = new Date("2024-01-01T00:00:30Z");
-  const MAX_JITTER_MS = 15 * 60_000; // factory default
+  const MAX_JITTER_MS = 5 * 60_000; // factory default
   const FRACTION = 0.25;
   const BACKOFF_MS = 30_000; // retryBackoffBaseMs default
   const NEXT_FIRE_BUFFER_MS = 1_000;
@@ -904,24 +904,83 @@ describe("derived jitter", () => {
     ).toThrow(/maxJitterMs/);
   });
 
-  // A run hash that expires before its jittered pickup is reaped as an orphan,
-  // so the job would silently never run. Catch that at registration.
-  test("register rejects a runHashTtlS shorter than the derived window", () => {
+  // A run hash that expires before its jittered pickup is reaped as an orphan, so the job
+  // would never run. The comparison is against the cap rather than the job's own window,
+  // which is what keeps it independent of the pattern.
+  test("register rejects a runHashTtlS that the cap could outlive", () => {
     const { register } = makeFactory();
-    // Daily pattern, so the window is the 15-minute cap; a 60s hash cannot cover it.
     expect(() => register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 60 })).toThrow(
-      /runHashTtlS.*must exceed its jitter window/
+      /runHashTtlS.*must exceed the maximum jitter window/
     );
   });
 
-  // The guard measures the job's own window, not the cap, so a short-interval job
-  // with a modest TTL is not rejected for a window it will never be given.
-  test("register accepts a short runHashTtlS when the job's own window is small", () => {
+  // The cap is deliberately set below every live registration's TTL, so the unconditional
+  // check costs nothing. This is the tightest one in the codebase.
+  test("register accepts the smallest runHashTtlS any live job uses", () => {
     const { register } = makeFactory();
-    // */15 gives a 225s window, comfortably under a 900s hash.
     expect(() =>
       register({ name: "x", pattern: "*/15 * * * *", handler: vi.fn(), runHashTtlS: 15 * 60 })
     ).not.toThrow();
+  });
+
+  // Each fire derives its window from the gap it sits in, so an uneven pattern gives different
+  // fires different windows. A guard that sampled one gap had a verdict that depended on which
+  // gap the process booted next to: registering at :00:10 rejected a 20s TTL while :01:10
+  // accepted it, and fires in the wider gap then outlived the hash and vanished with no trace.
+  // Comparing against the cap removes the sampling, so the verdict is the same from anywhere.
+  describe("uneven patterns", () => {
+    // Fires at :00,:01,:05,:06,... so gaps alternate 1 minute and 4 minutes.
+    const UNEVEN = "0,1,5,6,10,11,15,16,20,21,25,26,30,31,35,36,40,41,45,46,50,51,55,56 * * * *";
+    const BOOT_TIMES = ["2024-01-01T00:00:10Z", "2024-01-01T00:01:10Z", "2024-01-01T00:02:00Z"];
+
+    test("the guard's verdict does not depend on when the process booted", () => {
+      for (const now of BOOT_TIMES) {
+        vi.setSystemTime(new Date(now));
+        const { register } = makeFactory();
+        expect(() => register({ name: "x", pattern: UNEVEN, handler: vi.fn(), runHashTtlS: 20 })).toThrow(
+          /runHashTtlS.*must exceed the maximum jitter window/
+        );
+      }
+    });
+
+    test("a TTL above the cap is accepted from any gap", () => {
+      for (const now of BOOT_TIMES) {
+        vi.setSystemTime(new Date(now));
+        const { register } = makeFactory();
+        expect(() => register({ name: "x", pattern: UNEVEN, handler: vi.fn(), runHashTtlS: 30 * 60 })).not.toThrow();
+      }
+    });
+
+    // The property the cap buys: no fire of any pattern, uneven included, is held back
+    // longer than a TTL that already clears the cap.
+    test("no fire of an uneven pattern is held back past the cap", async () => {
+      const runs = await enqueueOnce([{ name: "x", pattern: UNEVEN, runHashTtlS: 30 * 60 }]);
+      expect(runs.length).toBeGreaterThan(0);
+      runs.forEach((run) => expect(run.eligibleAt - run.scheduledAt).toBeLessThan(MAX_JITTER_MS));
+    });
+  });
+
+  // A run whose hash expires before it is claimed is gone, and nothing else records it:
+  // it never completed, never failed, and its zset entry is reaped on sight. The log line
+  // is the only trace, so it is the thing an operator can alert on.
+  test("reaping a run whose hash expired before pickup is logged as an error", async () => {
+    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
+    const redis = makeRedis();
+    redis.set.mockResolvedValue("OK");
+    redis.zrangebyscore.mockResolvedValue(["x:1704067200000"]);
+    redis.hgetall.mockResolvedValue({}); // hash gone, zset entry lingers
+    vi.mocked(logger.error).mockClear();
+
+    const { register, start, stop } = makeFactory({ redis });
+    register({ name: "x", pattern: "*/10 * * * *", handler: vi.fn(), runHashTtlS: 3600 });
+    start();
+    await vi.advanceTimersByTimeAsync(300);
+
+    const messages = vi.mocked(logger.error).mock.calls.map(([a, b]) => (typeof a === "string" ? a : b));
+    expect(messages.some((m) => typeof m === "string" && m.includes("expired before it was claimed"))).toBe(true);
+    expect(redis.zrem).toHaveBeenCalledWith("{cron}:pending", "x:1704067200000");
+
+    await stop();
   });
 });
 
