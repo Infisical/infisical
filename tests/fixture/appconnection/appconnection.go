@@ -79,7 +79,7 @@ func Try(tt *testing.T, tn *harness.Tenant, p provider.Provider, opts ...Option)
 	// already knows, so the rule is in place before the first call carries it.
 	if cfg.rejectWith != 0 {
 		fakenet.Open[any](tt, conn.FakenetAdmin(tt), p.Host, conn.nonce).
-			Fail(tt, "", "*", cfg.rejectWith, 0)
+			Fail(tt, "", "*", cfg.rejectWith)
 	}
 
 	connID, err := p.Create(tt.Context(), tn.Admin.API, conn.Name, conn.nonce)

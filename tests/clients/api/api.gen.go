@@ -2487,6 +2487,1110 @@ func (e CreateProjectIdentityMembership500JSONResponseBodyStatusCode) Valid() bo
 	}
 }
 
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0ScopeOrganization CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0ScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilityAll      CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility = "all"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilityPrivate  CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility = "private"
+	CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilitySelected CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility = "selected"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilityAll:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilityPrivate:
+		return true
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig0VisibilitySelected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig1ScopeRepository CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope = "repository"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig1ScopeRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope.
+const (
+	CreateGitHubSecretSyncJSONBodyDestinationConfig2ScopeRepositoryEnvironment CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope = "repository-environment"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope enum.
+func (e CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodyDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior.
+const (
+	CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehaviorOverwriteDestination CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior enum.
+func (e CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp = "github"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination = "github"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate  CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "private"
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "selected"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate:
+		return true
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "repository"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync400JSONResponseBodyStatusCode.
+const (
+	CreateGitHubSecretSync400JSONResponseBodyStatusCodeN400 CreateGitHubSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync400JSONResponseBodyStatusCode enum.
+func (e CreateGitHubSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync401JSONResponseBodyStatusCode.
+const (
+	CreateGitHubSecretSync401JSONResponseBodyStatusCodeN401 CreateGitHubSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync401JSONResponseBodyStatusCode enum.
+func (e CreateGitHubSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync403JSONResponseBodyStatusCode.
+const (
+	CreateGitHubSecretSync403JSONResponseBodyStatusCodeN403 CreateGitHubSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync403JSONResponseBodyStatusCode enum.
+func (e CreateGitHubSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync404JSONResponseBodyStatusCode.
+const (
+	CreateGitHubSecretSync404JSONResponseBodyStatusCodeN404 CreateGitHubSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync404JSONResponseBodyStatusCode enum.
+func (e CreateGitHubSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync422JSONResponseBodyStatusCode.
+const (
+	CreateGitHubSecretSync422JSONResponseBodyStatusCodeN422 CreateGitHubSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync422JSONResponseBodyStatusCode enum.
+func (e CreateGitHubSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGitHubSecretSync500JSONResponseBodyStatusCode.
+const (
+	CreateGitHubSecretSync500JSONResponseBodyStatusCodeN500 CreateGitHubSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateGitHubSecretSync500JSONResponseBodyStatusCode enum.
+func (e CreateGitHubSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGitHubSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSyncParamsRemoveSecrets.
+const (
+	DeleteGitHubSecretSyncParamsRemoveSecretsFalse DeleteGitHubSecretSyncParamsRemoveSecrets = "false"
+	DeleteGitHubSecretSyncParamsRemoveSecretsTrue  DeleteGitHubSecretSyncParamsRemoveSecrets = "true"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSyncParamsRemoveSecrets enum.
+func (e DeleteGitHubSecretSyncParamsRemoveSecrets) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSyncParamsRemoveSecretsFalse:
+		return true
+	case DeleteGitHubSecretSyncParamsRemoveSecretsTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp = "github"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination = "github"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate  DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "private"
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "selected"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate:
+		return true
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "repository"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync400JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubSecretSync400JSONResponseBodyStatusCodeN400 DeleteGitHubSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync400JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync401JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubSecretSync401JSONResponseBodyStatusCodeN401 DeleteGitHubSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync401JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync403JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubSecretSync403JSONResponseBodyStatusCodeN403 DeleteGitHubSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync403JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync404JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubSecretSync404JSONResponseBodyStatusCodeN404 DeleteGitHubSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync404JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync422JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubSecretSync422JSONResponseBodyStatusCodeN422 DeleteGitHubSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync422JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGitHubSecretSync500JSONResponseBodyStatusCode.
+const (
+	DeleteGitHubSecretSync500JSONResponseBodyStatusCodeN500 DeleteGitHubSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteGitHubSecretSync500JSONResponseBodyStatusCode enum.
+func (e DeleteGitHubSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGitHubSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp = "github"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub GetGitHubSecretSync200JSONResponseBodySecretSyncDestination = "github"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate  GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "private"
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "selected"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate:
+		return true
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "repository"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync400JSONResponseBodyStatusCode.
+const (
+	GetGitHubSecretSync400JSONResponseBodyStatusCodeN400 GetGitHubSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync400JSONResponseBodyStatusCode enum.
+func (e GetGitHubSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync401JSONResponseBodyStatusCode.
+const (
+	GetGitHubSecretSync401JSONResponseBodyStatusCodeN401 GetGitHubSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync401JSONResponseBodyStatusCode enum.
+func (e GetGitHubSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync403JSONResponseBodyStatusCode.
+const (
+	GetGitHubSecretSync403JSONResponseBodyStatusCodeN403 GetGitHubSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync403JSONResponseBodyStatusCode enum.
+func (e GetGitHubSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync404JSONResponseBodyStatusCode.
+const (
+	GetGitHubSecretSync404JSONResponseBodyStatusCodeN404 GetGitHubSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync404JSONResponseBodyStatusCode enum.
+func (e GetGitHubSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync422JSONResponseBodyStatusCode.
+const (
+	GetGitHubSecretSync422JSONResponseBodyStatusCodeN422 GetGitHubSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync422JSONResponseBodyStatusCode enum.
+func (e GetGitHubSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSync500JSONResponseBodyStatusCode.
+const (
+	GetGitHubSecretSync500JSONResponseBodyStatusCodeN500 GetGitHubSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSync500JSONResponseBodyStatusCode enum.
+func (e GetGitHubSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGitHubSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionAppGithub RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp = "github"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionAppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationGithub RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination = "github"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate  RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility = "private"
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility = "selected"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate:
+		return true
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope = "repository"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode.
+const (
+	RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCodeN400 RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode enum.
+func (e RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode.
+const (
+	RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCodeN401 RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode enum.
+func (e RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode.
+const (
+	RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCodeN403 RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode enum.
+func (e RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode.
+const (
+	RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCodeN404 RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode enum.
+func (e RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode.
+const (
+	RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCodeN422 RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode enum.
+func (e RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode.
+const (
+	RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCodeN500 RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode enum.
+func (e RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp = "github"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionAppGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination = "github"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationGithub:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "organization"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate  SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "private"
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "selected"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityPrivate:
+		return true
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilitySelected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "repository"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeRepository:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync400JSONResponseBodyStatusCode.
+const (
+	SyncGitHubSecretSync400JSONResponseBodyStatusCodeN400 SyncGitHubSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync400JSONResponseBodyStatusCode enum.
+func (e SyncGitHubSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync401JSONResponseBodyStatusCode.
+const (
+	SyncGitHubSecretSync401JSONResponseBodyStatusCodeN401 SyncGitHubSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync401JSONResponseBodyStatusCode enum.
+func (e SyncGitHubSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync403JSONResponseBodyStatusCode.
+const (
+	SyncGitHubSecretSync403JSONResponseBodyStatusCodeN403 SyncGitHubSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync403JSONResponseBodyStatusCode enum.
+func (e SyncGitHubSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync404JSONResponseBodyStatusCode.
+const (
+	SyncGitHubSecretSync404JSONResponseBodyStatusCodeN404 SyncGitHubSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync404JSONResponseBodyStatusCode enum.
+func (e SyncGitHubSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync422JSONResponseBodyStatusCode.
+const (
+	SyncGitHubSecretSync422JSONResponseBodyStatusCodeN422 SyncGitHubSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync422JSONResponseBodyStatusCode enum.
+func (e SyncGitHubSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncGitHubSecretSync500JSONResponseBodyStatusCode.
+const (
+	SyncGitHubSecretSync500JSONResponseBodyStatusCodeN500 SyncGitHubSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SyncGitHubSecretSync500JSONResponseBodyStatusCode enum.
+func (e SyncGitHubSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncGitHubSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateOrganization400JSONResponseBodyStatusCode.
 const (
 	CreateOrganization400JSONResponseBodyStatusCodeN400 CreateOrganization400JSONResponseBodyStatusCode = 400
@@ -3336,6 +4440,114 @@ const (
 func (e ListSecretsV4500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListSecretsV4500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4JSONBodyType.
+const (
+	DeleteSecretV4JSONBodyTypePersonal DeleteSecretV4JSONBodyType = "personal"
+	DeleteSecretV4JSONBodyTypeShared   DeleteSecretV4JSONBodyType = "shared"
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4JSONBodyType enum.
+func (e DeleteSecretV4JSONBodyType) Valid() bool {
+	switch e {
+	case DeleteSecretV4JSONBodyTypePersonal:
+		return true
+	case DeleteSecretV4JSONBodyTypeShared:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4400JSONResponseBodyStatusCode.
+const (
+	DeleteSecretV4400JSONResponseBodyStatusCodeN400 DeleteSecretV4400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4400JSONResponseBodyStatusCode enum.
+func (e DeleteSecretV4400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSecretV4400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4401JSONResponseBodyStatusCode.
+const (
+	DeleteSecretV4401JSONResponseBodyStatusCodeN401 DeleteSecretV4401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4401JSONResponseBodyStatusCode enum.
+func (e DeleteSecretV4401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSecretV4401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4403JSONResponseBodyStatusCode.
+const (
+	DeleteSecretV4403JSONResponseBodyStatusCodeN403 DeleteSecretV4403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4403JSONResponseBodyStatusCode enum.
+func (e DeleteSecretV4403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSecretV4403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4404JSONResponseBodyStatusCode.
+const (
+	DeleteSecretV4404JSONResponseBodyStatusCodeN404 DeleteSecretV4404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4404JSONResponseBodyStatusCode enum.
+func (e DeleteSecretV4404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSecretV4404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4422JSONResponseBodyStatusCode.
+const (
+	DeleteSecretV4422JSONResponseBodyStatusCodeN422 DeleteSecretV4422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4422JSONResponseBodyStatusCode enum.
+func (e DeleteSecretV4422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSecretV4422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSecretV4500JSONResponseBodyStatusCode.
+const (
+	DeleteSecretV4500JSONResponseBodyStatusCodeN500 DeleteSecretV4500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteSecretV4500JSONResponseBodyStatusCode enum.
+func (e DeleteSecretV4500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSecretV4500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -4896,6 +6108,520 @@ type CreateProjectIdentityMembership422JSONResponseBodyStatusCode float32
 // CreateProjectIdentityMembership500JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
 type CreateProjectIdentityMembership500JSONResponseBodyStatusCode float32
 
+// CreateGitHubSecretSyncJSONBody defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBody struct {
+	// ConnectionId The ID of the GitHub Connection to use for syncing.
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+
+	// Description An optional description for the GitHub Sync.
+	Description       *string                                          `json:"description,omitempty"`
+	DestinationConfig CreateGitHubSecretSyncJSONBody_DestinationConfig `json:"destinationConfig"`
+
+	// Environment The slug of the project environment to sync secrets from.
+	Environment string `json:"environment"`
+
+	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
+	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
+
+	// Name The name of the GitHub Sync to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the sync in.
+	ProjectId string `json:"projectId"`
+
+	// SecretPath The folder path to sync secrets from.
+	SecretPath string `json:"secretPath"`
+
+	// SyncOptions Optional parameters to modify how secrets are synced.
+	SyncOptions struct {
+		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+		InitialSyncBehavior CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+		// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+		KeySchema *string `json:"keySchema,omitempty"`
+	} `json:"syncOptions"`
+}
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig0 defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig0 struct {
+	// Org The name of the GitHub organization.
+	Org string `json:"org"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope                 CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope      `json:"scope"`
+	SelectedRepositoryIds *[]float32                                                 `json:"selectedRepositoryIds,omitempty"`
+	Visibility            CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility `json:"visibility"`
+}
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig0Scope string
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig0Visibility string
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig1 defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig1 struct {
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope `json:"scope"`
+}
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig1Scope string
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig2 defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig2 struct {
+	// Env The name of the GitHub environment.
+	Env string `json:"env"`
+
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope `json:"scope"`
+}
+
+// CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodyDestinationConfig2Scope string
+
+// CreateGitHubSecretSyncJSONBody_DestinationConfig defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBody_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSyncJSONBodySyncOptionsInitialSyncBehavior string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// Org The name of the GitHub organization.
+	Org string `json:"org"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope                 CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
+	SelectedRepositoryIds *[]float32                                                                      `json:"selectedRepositoryIds,omitempty"`
+	Visibility            CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+}
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+}
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
+	// Env The name of the GitHub environment.
+	Env string `json:"env"`
+
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+}
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// CreateGitHubSecretSync400JSONResponseBodyStatusCode defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync400JSONResponseBodyStatusCode float32
+
+// CreateGitHubSecretSync401JSONResponseBodyStatusCode defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync401JSONResponseBodyStatusCode float32
+
+// CreateGitHubSecretSync403JSONResponseBodyStatusCode defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync403JSONResponseBodyStatusCode float32
+
+// CreateGitHubSecretSync404JSONResponseBodyStatusCode defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync404JSONResponseBodyStatusCode float32
+
+// CreateGitHubSecretSync422JSONResponseBodyStatusCode defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync422JSONResponseBodyStatusCode float32
+
+// CreateGitHubSecretSync500JSONResponseBodyStatusCode defines parameters for CreateGitHubSecretSync.
+type CreateGitHubSecretSync500JSONResponseBodyStatusCode float32
+
+// DeleteGitHubSecretSyncParams defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSyncParams struct {
+	// RemoveSecrets Whether previously synced secrets should be removed prior to deletion.
+	RemoveSecrets *DeleteGitHubSecretSyncParamsRemoveSecrets `form:"removeSecrets,omitempty" json:"removeSecrets,omitempty"`
+}
+
+// DeleteGitHubSecretSyncParamsRemoveSecrets defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSyncParamsRemoveSecrets string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// Org The name of the GitHub organization.
+	Org string `json:"org"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope                 DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
+	SelectedRepositoryIds *[]float32                                                                      `json:"selectedRepositoryIds,omitempty"`
+	Visibility            DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+}
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+}
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
+	// Env The name of the GitHub environment.
+	Env string `json:"env"`
+
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+}
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// DeleteGitHubSecretSync400JSONResponseBodyStatusCode defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync400JSONResponseBodyStatusCode float32
+
+// DeleteGitHubSecretSync401JSONResponseBodyStatusCode defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync401JSONResponseBodyStatusCode float32
+
+// DeleteGitHubSecretSync403JSONResponseBodyStatusCode defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync403JSONResponseBodyStatusCode float32
+
+// DeleteGitHubSecretSync404JSONResponseBodyStatusCode defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync404JSONResponseBodyStatusCode float32
+
+// DeleteGitHubSecretSync422JSONResponseBodyStatusCode defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync422JSONResponseBodyStatusCode float32
+
+// DeleteGitHubSecretSync500JSONResponseBodyStatusCode defines parameters for DeleteGitHubSecretSync.
+type DeleteGitHubSecretSync500JSONResponseBodyStatusCode float32
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestination defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestination string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// Org The name of the GitHub organization.
+	Org string `json:"org"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope                 GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
+	SelectedRepositoryIds *[]float32                                                                   `json:"selectedRepositoryIds,omitempty"`
+	Visibility            GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+}
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+}
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
+	// Env The name of the GitHub environment.
+	Env string `json:"env"`
+
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+}
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// GetGitHubSecretSync400JSONResponseBodyStatusCode defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync400JSONResponseBodyStatusCode float32
+
+// GetGitHubSecretSync401JSONResponseBodyStatusCode defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync401JSONResponseBodyStatusCode float32
+
+// GetGitHubSecretSync403JSONResponseBodyStatusCode defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync403JSONResponseBodyStatusCode float32
+
+// GetGitHubSecretSync404JSONResponseBodyStatusCode defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync404JSONResponseBodyStatusCode float32
+
+// GetGitHubSecretSync422JSONResponseBodyStatusCode defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync422JSONResponseBodyStatusCode float32
+
+// GetGitHubSecretSync500JSONResponseBodyStatusCode defines parameters for GetGitHubSecretSync.
+type GetGitHubSecretSync500JSONResponseBodyStatusCode float32
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// Org The name of the GitHub organization.
+	Org string `json:"org"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope                 RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
+	SelectedRepositoryIds *[]float32                                                                             `json:"selectedRepositoryIds,omitempty"`
+	Visibility            RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+}
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+}
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 struct {
+	// Env The name of the GitHub environment.
+	Env string `json:"env"`
+
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+}
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode float32
+
+// RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode float32
+
+// RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode float32
+
+// RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode float32
+
+// RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode float32
+
+// RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode defines parameters for RemoveGitHubSecretSyncSecrets.
+type RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode float32
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// Org The name of the GitHub organization.
+	Org string `json:"org"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope                 SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
+	SelectedRepositoryIds *[]float32                                                                    `json:"selectedRepositoryIds,omitempty"`
+	Visibility            SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+}
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+}
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
+	// Env The name of the GitHub environment.
+	Env string `json:"env"`
+
+	// Owner The name of the GitHub account owner of the repository.
+	Owner string `json:"owner"`
+
+	// Repo The name of the GitHub repository.
+	Repo string `json:"repo"`
+
+	// Scope The GitHub scope that secrets should be synced to
+	Scope SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+}
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// SyncGitHubSecretSync400JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync400JSONResponseBodyStatusCode float32
+
+// SyncGitHubSecretSync401JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync401JSONResponseBodyStatusCode float32
+
+// SyncGitHubSecretSync403JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync403JSONResponseBodyStatusCode float32
+
+// SyncGitHubSecretSync404JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync404JSONResponseBodyStatusCode float32
+
+// SyncGitHubSecretSync422JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync422JSONResponseBodyStatusCode float32
+
+// SyncGitHubSecretSync500JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
+type SyncGitHubSecretSync500JSONResponseBodyStatusCode float32
+
 // CreateOrganizationJSONBody defines parameters for CreateOrganization.
 type CreateOrganizationJSONBody struct {
 	Name string `json:"name"`
@@ -5151,6 +6877,98 @@ type ListSecretsV4422JSONResponseBodyStatusCode float32
 // ListSecretsV4500JSONResponseBodyStatusCode defines parameters for ListSecretsV4.
 type ListSecretsV4500JSONResponseBodyStatusCode float32
 
+// DeleteSecretV4JSONBody defines parameters for DeleteSecretV4.
+type DeleteSecretV4JSONBody struct {
+	// Environment The slug of the environment where the secret is located.
+	Environment string `json:"environment"`
+
+	// ProjectId The ID of the project where the secret is located.
+	ProjectId string `json:"projectId"`
+
+	// SecretPath The path of the secret.
+	SecretPath *string `json:"secretPath,omitempty"`
+
+	// Type The type of the secret to delete.
+	Type *DeleteSecretV4JSONBodyType `json:"type,omitempty"`
+}
+
+// DeleteSecretV4JSONBodyType defines parameters for DeleteSecretV4.
+type DeleteSecretV4JSONBodyType string
+
+// DeleteSecretV4200JSONResponseBody0 defines parameters for DeleteSecretV4.
+type DeleteSecretV4200JSONResponseBody0 struct {
+	Secret struct {
+		UnderscoreId string `json:"_id"`
+		Actor        *struct {
+			ActorId      *string `json:"actorId,omitempty"`
+			ActorType    *string `json:"actorType,omitempty"`
+			GroupId      *string `json:"groupId,omitempty"`
+			MembershipId *string `json:"membershipId,omitempty"`
+			Name         *string `json:"name,omitempty"`
+		} `json:"actor,omitempty"`
+		CreatedAt                time.Time           `json:"createdAt"`
+		Environment              string              `json:"environment"`
+		Id                       string              `json:"id"`
+		IsRotatedSecret          *bool               `json:"isRotatedSecret,omitempty"`
+		RotationId               *openapi_types.UUID `json:"rotationId,omitempty"`
+		SecretComment            string              `json:"secretComment"`
+		SecretKey                string              `json:"secretKey"`
+		SecretReminderNote       *string             `json:"secretReminderNote,omitempty"`
+		SecretReminderRepeatDays *float32            `json:"secretReminderRepeatDays,omitempty"`
+		SecretValue              string              `json:"secretValue"`
+		SecretValueHidden        bool                `json:"secretValueHidden"`
+		SkipMultilineEncoding    *bool               `json:"skipMultilineEncoding,omitempty"`
+		Type                     string              `json:"type"`
+		UpdatedAt                time.Time           `json:"updatedAt"`
+		Version                  float32             `json:"version"`
+		Workspace                string              `json:"workspace"`
+	} `json:"secret"`
+}
+
+// DeleteSecretV4200JSONResponseBody1 defines parameters for DeleteSecretV4.
+type DeleteSecretV4200JSONResponseBody1 struct {
+	Approval struct {
+		BypassReason          *string             `json:"bypassReason,omitempty"`
+		CommitMessage         *string             `json:"commitMessage,omitempty"`
+		CommitterIdentityId   *openapi_types.UUID `json:"committerIdentityId,omitempty"`
+		CommitterUserId       *openapi_types.UUID `json:"committerUserId,omitempty"`
+		Conflicts             interface{}         `json:"conflicts,omitempty"`
+		CreatedAt             time.Time           `json:"createdAt"`
+		FolderId              openapi_types.UUID  `json:"folderId"`
+		HasMerged             *bool               `json:"hasMerged,omitempty"`
+		Id                    openapi_types.UUID  `json:"id"`
+		IsReplicated          *bool               `json:"isReplicated,omitempty"`
+		PolicyId              openapi_types.UUID  `json:"policyId"`
+		Slug                  string              `json:"slug"`
+		Status                *string             `json:"status,omitempty"`
+		StatusChangedByUserId *openapi_types.UUID `json:"statusChangedByUserId,omitempty"`
+		UpdatedAt             time.Time           `json:"updatedAt"`
+	} `json:"approval"`
+}
+
+// DeleteSecretV4200JSONResponseBody defines parameters for DeleteSecretV4.
+type DeleteSecretV4200JSONResponseBody struct {
+	union json.RawMessage
+}
+
+// DeleteSecretV4400JSONResponseBodyStatusCode defines parameters for DeleteSecretV4.
+type DeleteSecretV4400JSONResponseBodyStatusCode float32
+
+// DeleteSecretV4401JSONResponseBodyStatusCode defines parameters for DeleteSecretV4.
+type DeleteSecretV4401JSONResponseBodyStatusCode float32
+
+// DeleteSecretV4403JSONResponseBodyStatusCode defines parameters for DeleteSecretV4.
+type DeleteSecretV4403JSONResponseBodyStatusCode float32
+
+// DeleteSecretV4404JSONResponseBodyStatusCode defines parameters for DeleteSecretV4.
+type DeleteSecretV4404JSONResponseBodyStatusCode float32
+
+// DeleteSecretV4422JSONResponseBodyStatusCode defines parameters for DeleteSecretV4.
+type DeleteSecretV4422JSONResponseBodyStatusCode float32
+
+// DeleteSecretV4500JSONResponseBodyStatusCode defines parameters for DeleteSecretV4.
+type DeleteSecretV4500JSONResponseBodyStatusCode float32
+
 // GetSecretByNameV4Params defines parameters for GetSecretByNameV4.
 type GetSecretByNameV4Params struct {
 	// ProjectId The ID of the project to get the secret from.
@@ -5361,6 +7179,9 @@ type InviteProjectMembersJSONRequestBody InviteProjectMembersJSONBody
 // CreateProjectIdentityMembershipJSONRequestBody defines body for CreateProjectIdentityMembership for application/json ContentType.
 type CreateProjectIdentityMembershipJSONRequestBody CreateProjectIdentityMembershipJSONBody
 
+// CreateGitHubSecretSyncJSONRequestBody defines body for CreateGitHubSecretSync for application/json ContentType.
+type CreateGitHubSecretSyncJSONRequestBody CreateGitHubSecretSyncJSONBody
+
 // CreateOrganizationJSONRequestBody defines body for CreateOrganization for application/json ContentType.
 type CreateOrganizationJSONRequestBody CreateOrganizationJSONBody
 
@@ -5378,6 +7199,9 @@ type BeginEmailSignupV3JSONRequestBody BeginEmailSignupV3JSONBody
 
 // VerifyEmailSignupV3JSONRequestBody defines body for VerifyEmailSignupV3 for application/json ContentType.
 type VerifyEmailSignupV3JSONRequestBody VerifyEmailSignupV3JSONBody
+
+// DeleteSecretV4JSONRequestBody defines body for DeleteSecretV4 for application/json ContentType.
+type DeleteSecretV4JSONRequestBody DeleteSecretV4JSONBody
 
 // CreateSecretV4JSONRequestBody defines body for CreateSecretV4 for application/json ContentType.
 type CreateSecretV4JSONRequestBody CreateSecretV4JSONBody
@@ -6582,6 +8406,534 @@ func (t *CreateProjectIdentityMembershipJSONBody_Roles_Item) UnmarshalJSON(b []b
 	return err
 }
 
+// AsCreateGitHubSecretSyncJSONBodyDestinationConfig0 returns the union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as a CreateGitHubSecretSyncJSONBodyDestinationConfig0
+func (t CreateGitHubSecretSyncJSONBody_DestinationConfig) AsCreateGitHubSecretSyncJSONBodyDestinationConfig0() (CreateGitHubSecretSyncJSONBodyDestinationConfig0, error) {
+	var body CreateGitHubSecretSyncJSONBodyDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubSecretSyncJSONBodyDestinationConfig0 overwrites any union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as the provided CreateGitHubSecretSyncJSONBodyDestinationConfig0
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) FromCreateGitHubSecretSyncJSONBodyDestinationConfig0(v CreateGitHubSecretSyncJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubSecretSyncJSONBodyDestinationConfig0 performs a merge with any union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig, using the provided CreateGitHubSecretSyncJSONBodyDestinationConfig0
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) MergeCreateGitHubSecretSyncJSONBodyDestinationConfig0(v CreateGitHubSecretSyncJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubSecretSyncJSONBodyDestinationConfig1 returns the union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as a CreateGitHubSecretSyncJSONBodyDestinationConfig1
+func (t CreateGitHubSecretSyncJSONBody_DestinationConfig) AsCreateGitHubSecretSyncJSONBodyDestinationConfig1() (CreateGitHubSecretSyncJSONBodyDestinationConfig1, error) {
+	var body CreateGitHubSecretSyncJSONBodyDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubSecretSyncJSONBodyDestinationConfig1 overwrites any union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as the provided CreateGitHubSecretSyncJSONBodyDestinationConfig1
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) FromCreateGitHubSecretSyncJSONBodyDestinationConfig1(v CreateGitHubSecretSyncJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubSecretSyncJSONBodyDestinationConfig1 performs a merge with any union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig, using the provided CreateGitHubSecretSyncJSONBodyDestinationConfig1
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) MergeCreateGitHubSecretSyncJSONBodyDestinationConfig1(v CreateGitHubSecretSyncJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubSecretSyncJSONBodyDestinationConfig2 returns the union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as a CreateGitHubSecretSyncJSONBodyDestinationConfig2
+func (t CreateGitHubSecretSyncJSONBody_DestinationConfig) AsCreateGitHubSecretSyncJSONBodyDestinationConfig2() (CreateGitHubSecretSyncJSONBodyDestinationConfig2, error) {
+	var body CreateGitHubSecretSyncJSONBodyDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubSecretSyncJSONBodyDestinationConfig2 overwrites any union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig as the provided CreateGitHubSecretSyncJSONBodyDestinationConfig2
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) FromCreateGitHubSecretSyncJSONBodyDestinationConfig2(v CreateGitHubSecretSyncJSONBodyDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubSecretSyncJSONBodyDestinationConfig2 performs a merge with any union data inside the CreateGitHubSecretSyncJSONBody_DestinationConfig, using the provided CreateGitHubSecretSyncJSONBodyDestinationConfig2
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) MergeCreateGitHubSecretSyncJSONBodyDestinationConfig2(v CreateGitHubSecretSyncJSONBodyDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubSecretSyncJSONBody_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubSecretSyncJSONBody_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 returns the union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2() (CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2, error) {
+	var body CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 overwrites any union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 performs a merge with any union data inside the CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v CreateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 returns the union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2() (DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2, error) {
+	var body DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 overwrites any union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 performs a merge with any union data inside the DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeDeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 returns the union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2() (GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2, error) {
+	var body GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 overwrites any union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 performs a merge with any union data inside the GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v GetGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig as a RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0
+func (t RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) AsRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0() (RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig as the provided RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) FromRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0(v RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig, using the provided RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) MergeRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0(v RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig as a RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1
+func (t RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) AsRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1() (RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig as the provided RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) FromRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1(v RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig, using the provided RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) MergeRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1(v RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 returns the union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig as a RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2
+func (t RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) AsRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2() (RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2, error) {
+	var body RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 overwrites any union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig as the provided RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) FromRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2(v RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 performs a merge with any union data inside the RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig, using the provided RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) MergeRemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2(v RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 returns the union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2() (SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2, error) {
+	var body SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 overwrites any union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 performs a merge with any union data inside the SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2(v SyncGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsCompleteAccountSignupV3JSONBody0 returns the union data inside the CompleteAccountSignupV3JSONBody as a CompleteAccountSignupV3JSONBody0
 func (t CompleteAccountSignupV3JSONBody) AsCompleteAccountSignupV3JSONBody0() (CompleteAccountSignupV3JSONBody0, error) {
 	var body CompleteAccountSignupV3JSONBody0
@@ -6640,6 +8992,68 @@ func (t CompleteAccountSignupV3JSONBody) MarshalJSON() ([]byte, error) {
 }
 
 func (t *CompleteAccountSignupV3JSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteSecretV4200JSONResponseBody0 returns the union data inside the DeleteSecretV4200JSONResponseBody as a DeleteSecretV4200JSONResponseBody0
+func (t DeleteSecretV4200JSONResponseBody) AsDeleteSecretV4200JSONResponseBody0() (DeleteSecretV4200JSONResponseBody0, error) {
+	var body DeleteSecretV4200JSONResponseBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteSecretV4200JSONResponseBody0 overwrites any union data inside the DeleteSecretV4200JSONResponseBody as the provided DeleteSecretV4200JSONResponseBody0
+func (t *DeleteSecretV4200JSONResponseBody) FromDeleteSecretV4200JSONResponseBody0(v DeleteSecretV4200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteSecretV4200JSONResponseBody0 performs a merge with any union data inside the DeleteSecretV4200JSONResponseBody, using the provided DeleteSecretV4200JSONResponseBody0
+func (t *DeleteSecretV4200JSONResponseBody) MergeDeleteSecretV4200JSONResponseBody0(v DeleteSecretV4200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteSecretV4200JSONResponseBody1 returns the union data inside the DeleteSecretV4200JSONResponseBody as a DeleteSecretV4200JSONResponseBody1
+func (t DeleteSecretV4200JSONResponseBody) AsDeleteSecretV4200JSONResponseBody1() (DeleteSecretV4200JSONResponseBody1, error) {
+	var body DeleteSecretV4200JSONResponseBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteSecretV4200JSONResponseBody1 overwrites any union data inside the DeleteSecretV4200JSONResponseBody as the provided DeleteSecretV4200JSONResponseBody1
+func (t *DeleteSecretV4200JSONResponseBody) FromDeleteSecretV4200JSONResponseBody1(v DeleteSecretV4200JSONResponseBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteSecretV4200JSONResponseBody1 performs a merge with any union data inside the DeleteSecretV4200JSONResponseBody, using the provided DeleteSecretV4200JSONResponseBody1
+func (t *DeleteSecretV4200JSONResponseBody) MergeDeleteSecretV4200JSONResponseBody1(v DeleteSecretV4200JSONResponseBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteSecretV4200JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteSecretV4200JSONResponseBody) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -6939,6 +9353,38 @@ type ClientInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateGitHubSecretSyncWithBody performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a GitHub Sync for the specified project environment.
+	CreateGitHubSecretSyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGitHubSecretSync performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a GitHub Sync for the specified project environment.
+	CreateGitHubSecretSync(ctx context.Context, body CreateGitHubSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteGitHubSecretSync performs a DELETE /api/v1/secret-syncs/github/{syncId} (the `DeleteGitHubSecretSync` operationId) request.
+	//
+	// Delete the specified GitHub Sync.
+	DeleteGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, params *DeleteGitHubSecretSyncParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGitHubSecretSync performs a GET /api/v1/secret-syncs/github/{syncId} (the `GetGitHubSecretSync` operationId) request.
+	//
+	// Get the specified GitHub Sync by ID.
+	GetGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveGitHubSecretSyncSecrets performs a POST /api/v1/secret-syncs/github/{syncId}/remove-secrets (the `RemoveGitHubSecretSyncSecrets` operationId) request.
+	//
+	// Remove previously synced secrets from the specified GitHub Sync destination.
+	RemoveGitHubSecretSyncSecrets(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SyncGitHubSecretSync performs a POST /api/v1/secret-syncs/github/{syncId}/sync-secrets (the `SyncGitHubSecretSync` operationId) request.
+	//
+	// Trigger a sync for the specified GitHub Sync.
+	SyncGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateOrganizationWithBody performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
 	// with any type of body and a specified content type.
 	CreateOrganizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6994,6 +9440,18 @@ type ClientInterface interface {
 	//
 	// List secrets.
 	ListSecretsV4(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteSecretV4WithBody performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Delete secret.
+	DeleteSecretV4WithBody(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteSecretV4 performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Delete secret.
+	DeleteSecretV4(ctx context.Context, secretName string, body DeleteSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSecretByNameV4 performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
 	//
@@ -7482,6 +9940,98 @@ func (c *Client) CreateProjectIdentityMembership(ctx context.Context, projectId 
 	return c.Client.Do(req)
 }
 
+// CreateGitHubSecretSyncWithBody performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a GitHub Sync for the specified project environment.
+func (c *Client) CreateGitHubSecretSyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGitHubSecretSyncRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGitHubSecretSync performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a GitHub Sync for the specified project environment.
+func (c *Client) CreateGitHubSecretSync(ctx context.Context, body CreateGitHubSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGitHubSecretSyncRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteGitHubSecretSync performs a DELETE /api/v1/secret-syncs/github/{syncId} (the `DeleteGitHubSecretSync` operationId) request.
+//
+// Delete the specified GitHub Sync.
+func (c *Client) DeleteGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, params *DeleteGitHubSecretSyncParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteGitHubSecretSyncRequest(c.Server, syncId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetGitHubSecretSync performs a GET /api/v1/secret-syncs/github/{syncId} (the `GetGitHubSecretSync` operationId) request.
+//
+// Get the specified GitHub Sync by ID.
+func (c *Client) GetGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGitHubSecretSyncRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveGitHubSecretSyncSecrets performs a POST /api/v1/secret-syncs/github/{syncId}/remove-secrets (the `RemoveGitHubSecretSyncSecrets` operationId) request.
+//
+// Remove previously synced secrets from the specified GitHub Sync destination.
+func (c *Client) RemoveGitHubSecretSyncSecrets(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveGitHubSecretSyncSecretsRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SyncGitHubSecretSync performs a POST /api/v1/secret-syncs/github/{syncId}/sync-secrets (the `SyncGitHubSecretSync` operationId) request.
+//
+// Trigger a sync for the specified GitHub Sync.
+func (c *Client) SyncGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSyncGitHubSecretSyncRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateOrganizationWithBody performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
 // with any type of body and a specified content type.
 func (c *Client) CreateOrganizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -7668,6 +10218,38 @@ func (c *Client) VerifyEmailSignupV3(ctx context.Context, body VerifyEmailSignup
 // List secrets.
 func (c *Client) ListSecretsV4(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListSecretsV4Request(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteSecretV4WithBody performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request,
+// with any type of body and a specified content type.
+//
+// Delete secret.
+func (c *Client) DeleteSecretV4WithBody(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSecretV4RequestWithBody(c.Server, secretName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteSecretV4 performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Delete secret.
+func (c *Client) DeleteSecretV4(ctx context.Context, secretName string, body DeleteSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSecretV4Request(c.Server, secretName, body)
 	if err != nil {
 		return nil, err
 	}
@@ -8521,6 +11103,209 @@ func NewCreateProjectIdentityMembershipRequestWithBody(server string, projectId 
 	return req, nil
 }
 
+// NewCreateGitHubSecretSyncRequest calls the generic CreateGitHubSecretSync builder with application/json body
+func NewCreateGitHubSecretSyncRequest(server string, body CreateGitHubSecretSyncJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGitHubSecretSyncRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateGitHubSecretSyncRequestWithBody constructs an http.Request for the CreateGitHubSecretSync method, with any body, and a specified content type
+func NewCreateGitHubSecretSyncRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/github")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteGitHubSecretSyncRequest constructs an http.Request for the DeleteGitHubSecretSync method
+func NewDeleteGitHubSecretSyncRequest(server string, syncId openapi_types.UUID, params *DeleteGitHubSecretSyncParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/github/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.RemoveSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "removeSecrets", *params.RemoveSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetGitHubSecretSyncRequest constructs an http.Request for the GetGitHubSecretSync method
+func NewGetGitHubSecretSyncRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/github/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRemoveGitHubSecretSyncSecretsRequest constructs an http.Request for the RemoveGitHubSecretSyncSecrets method
+func NewRemoveGitHubSecretSyncSecretsRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/github/%s/remove-secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSyncGitHubSecretSyncRequest constructs an http.Request for the SyncGitHubSecretSync method
+func NewSyncGitHubSecretSyncRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/github/%s/sync-secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateOrganizationRequest calls the generic CreateOrganization builder with application/json body
 func NewCreateOrganizationRequest(server string, body CreateOrganizationJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -8957,6 +11742,53 @@ func NewListSecretsV4Request(server string, params *ListSecretsV4Params) (*http.
 	return req, nil
 }
 
+// NewDeleteSecretV4Request calls the generic DeleteSecretV4 builder with application/json body
+func NewDeleteSecretV4Request(server string, secretName string, body DeleteSecretV4JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDeleteSecretV4RequestWithBody(server, secretName, "application/json", bodyReader)
+}
+
+// NewDeleteSecretV4RequestWithBody constructs an http.Request for the DeleteSecretV4 method, with any body, and a specified content type
+func NewDeleteSecretV4RequestWithBody(server string, secretName string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "secretName", secretName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v4/secrets/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetSecretByNameV4Request constructs an http.Request for the GetSecretByNameV4 method
 func NewGetSecretByNameV4Request(server string, secretName string, params *GetSecretByNameV4Params) (*http.Request, error) {
 	var err error
@@ -9384,6 +12216,48 @@ type ClientWithResponsesInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
 
+	// CreateGitHubSecretSyncWithBodyWithResponse performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a GitHub Sync for the specified project environment.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateGitHubSecretSyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGitHubSecretSyncResponse, error)
+
+	// CreateGitHubSecretSyncWithResponse performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a GitHub Sync for the specified project environment.
+	CreateGitHubSecretSyncWithResponse(ctx context.Context, body CreateGitHubSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGitHubSecretSyncResponse, error)
+
+	// DeleteGitHubSecretSyncWithResponse performs a DELETE /api/v1/secret-syncs/github/{syncId} (the `DeleteGitHubSecretSync` operationId) request.
+	//
+	// Delete the specified GitHub Sync.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, params *DeleteGitHubSecretSyncParams, reqEditors ...RequestEditorFn) (*DeleteGitHubSecretSyncResponse, error)
+
+	// GetGitHubSecretSyncWithResponse performs a GET /api/v1/secret-syncs/github/{syncId} (the `GetGitHubSecretSync` operationId) request.
+	//
+	// Get the specified GitHub Sync by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGitHubSecretSyncResponse, error)
+
+	// RemoveGitHubSecretSyncSecretsWithResponse performs a POST /api/v1/secret-syncs/github/{syncId}/remove-secrets (the `RemoveGitHubSecretSyncSecrets` operationId) request.
+	//
+	// Remove previously synced secrets from the specified GitHub Sync destination.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RemoveGitHubSecretSyncSecretsWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveGitHubSecretSyncSecretsResponse, error)
+
+	// SyncGitHubSecretSyncWithResponse performs a POST /api/v1/secret-syncs/github/{syncId}/sync-secrets (the `SyncGitHubSecretSync` operationId) request.
+	//
+	// Trigger a sync for the specified GitHub Sync.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SyncGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncGitHubSecretSyncResponse, error)
+
 	// CreateOrganizationWithBodyWithResponse performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -9455,6 +12329,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListSecretsV4WithResponse(ctx context.Context, params *ListSecretsV4Params, reqEditors ...RequestEditorFn) (*ListSecretsV4Response, error)
+
+	// DeleteSecretV4WithBodyWithResponse performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Delete secret.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteSecretV4WithBodyWithResponse(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteSecretV4Response, error)
+
+	// DeleteSecretV4WithResponse performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Delete secret.
+	DeleteSecretV4WithResponse(ctx context.Context, secretName string, body DeleteSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteSecretV4Response, error)
 
 	// GetSecretByNameV4WithResponse performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
 	//
@@ -12610,6 +15498,1271 @@ func (r CreateProjectIdentityMembershipResponse) ContentType() string {
 	return ""
 }
 
+type CreateGitHubSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                               `json:"id"`
+				Name string                                                           `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+			CreatedAt         time.Time                                                              `json:"createdAt"`
+			Description       *string                                                                `json:"description,omitempty"`
+			Destination       CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+				InitialSyncBehavior CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                               `json:"id"`
+			Name string                                                           `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+		CreatedAt         time.Time                                                              `json:"createdAt"`
+		Description       *string                                                                `json:"description,omitempty"`
+		Destination       CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+			InitialSyncBehavior CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateGitHubSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateGitHubSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGitHubSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGitHubSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGitHubSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteGitHubSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                               `json:"id"`
+				Name string                                                           `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+			CreatedAt         time.Time                                                              `json:"createdAt"`
+			Description       *string                                                                `json:"description,omitempty"`
+			Destination       DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+				InitialSyncBehavior DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                               `json:"id"`
+			Name string                                                           `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+		CreatedAt         time.Time                                                              `json:"createdAt"`
+		Description       *string                                                                `json:"description,omitempty"`
+		Destination       DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+			InitialSyncBehavior DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteGitHubSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteGitHubSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteGitHubSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteGitHubSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteGitHubSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetGitHubSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                            `json:"id"`
+				Name string                                                        `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+			CreatedAt         time.Time                                                           `json:"createdAt"`
+			Description       *string                                                             `json:"description,omitempty"`
+			Destination       GetGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+				InitialSyncBehavior GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                            `json:"id"`
+			Name string                                                        `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+		CreatedAt         time.Time                                                           `json:"createdAt"`
+		Description       *string                                                             `json:"description,omitempty"`
+		Destination       GetGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+			InitialSyncBehavior GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetGitHubSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetGitHubSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGitHubSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGitHubSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGitHubSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveGitHubSecretSyncSecretsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                                      `json:"id"`
+				Name string                                                                  `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                            `json:"connectionId"`
+			CreatedAt         time.Time                                                                     `json:"createdAt"`
+			Description       *string                                                                       `json:"description,omitempty"`
+			Destination       RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+				InitialSyncBehavior RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                                      `json:"id"`
+			Name string                                                                  `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                            `json:"connectionId"`
+		CreatedAt         time.Time                                                                     `json:"createdAt"`
+		Description       *string                                                                       `json:"description,omitempty"`
+		Destination       RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+			InitialSyncBehavior RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveGitHubSecretSyncSecretsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveGitHubSecretSyncSecretsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveGitHubSecretSyncSecretsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveGitHubSecretSyncSecretsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SyncGitHubSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                             `json:"id"`
+				Name string                                                         `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+			CreatedAt         time.Time                                                            `json:"createdAt"`
+			Description       *string                                                              `json:"description,omitempty"`
+			Destination       SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+				InitialSyncBehavior SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                             `json:"id"`
+			Name string                                                         `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+		CreatedAt         time.Time                                                            `json:"createdAt"`
+		Description       *string                                                              `json:"description,omitempty"`
+		Destination       SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+			InitialSyncBehavior SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SyncGitHubSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SyncGitHubSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SyncGitHubSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SyncGitHubSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SyncGitHubSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateOrganizationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14149,6 +18302,153 @@ func (r ListSecretsV4Response) ContentType() string {
 	return ""
 }
 
+type DeleteSecretV4Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DeleteSecretV4200JSONResponseBody
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode DeleteSecretV4400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode DeleteSecretV4401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode DeleteSecretV4403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode DeleteSecretV4404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode DeleteSecretV4422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode DeleteSecretV4500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteSecretV4Response) GetJSON200() *DeleteSecretV4200JSONResponseBody {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteSecretV4Response) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode DeleteSecretV4400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteSecretV4Response) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode DeleteSecretV4401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteSecretV4Response) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode DeleteSecretV4403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteSecretV4Response) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode DeleteSecretV4404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteSecretV4Response) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode DeleteSecretV4422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteSecretV4Response) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode DeleteSecretV4500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteSecretV4Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteSecretV4Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteSecretV4Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteSecretV4Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetSecretByNameV4Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -14902,6 +19202,84 @@ func (c *ClientWithResponses) CreateProjectIdentityMembershipWithResponse(ctx co
 	return ParseCreateProjectIdentityMembershipResponse(rsp)
 }
 
+// CreateGitHubSecretSyncWithBodyWithResponse performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a GitHub Sync for the specified project environment.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGitHubSecretSyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGitHubSecretSyncResponse, error) {
+	rsp, err := c.CreateGitHubSecretSyncWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGitHubSecretSyncResponse(rsp)
+}
+
+// CreateGitHubSecretSyncWithResponse performs a POST /api/v1/secret-syncs/github (the `CreateGitHubSecretSync` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a GitHub Sync for the specified project environment.
+func (c *ClientWithResponses) CreateGitHubSecretSyncWithResponse(ctx context.Context, body CreateGitHubSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGitHubSecretSyncResponse, error) {
+	rsp, err := c.CreateGitHubSecretSync(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGitHubSecretSyncResponse(rsp)
+}
+
+// DeleteGitHubSecretSyncWithResponse performs a DELETE /api/v1/secret-syncs/github/{syncId} (the `DeleteGitHubSecretSync` operationId) request.
+//
+// Delete the specified GitHub Sync.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, params *DeleteGitHubSecretSyncParams, reqEditors ...RequestEditorFn) (*DeleteGitHubSecretSyncResponse, error) {
+	rsp, err := c.DeleteGitHubSecretSync(ctx, syncId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteGitHubSecretSyncResponse(rsp)
+}
+
+// GetGitHubSecretSyncWithResponse performs a GET /api/v1/secret-syncs/github/{syncId} (the `GetGitHubSecretSync` operationId) request.
+//
+// Get the specified GitHub Sync by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGitHubSecretSyncResponse, error) {
+	rsp, err := c.GetGitHubSecretSync(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGitHubSecretSyncResponse(rsp)
+}
+
+// RemoveGitHubSecretSyncSecretsWithResponse performs a POST /api/v1/secret-syncs/github/{syncId}/remove-secrets (the `RemoveGitHubSecretSyncSecrets` operationId) request.
+//
+// Remove previously synced secrets from the specified GitHub Sync destination.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RemoveGitHubSecretSyncSecretsWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*RemoveGitHubSecretSyncSecretsResponse, error) {
+	rsp, err := c.RemoveGitHubSecretSyncSecrets(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveGitHubSecretSyncSecretsResponse(rsp)
+}
+
+// SyncGitHubSecretSyncWithResponse performs a POST /api/v1/secret-syncs/github/{syncId}/sync-secrets (the `SyncGitHubSecretSync` operationId) request.
+//
+// Trigger a sync for the specified GitHub Sync.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SyncGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncGitHubSecretSyncResponse, error) {
+	rsp, err := c.SyncGitHubSecretSync(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSyncGitHubSecretSyncResponse(rsp)
+}
+
 // CreateOrganizationWithBodyWithResponse performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -15056,6 +19434,32 @@ func (c *ClientWithResponses) ListSecretsV4WithResponse(ctx context.Context, par
 		return nil, err
 	}
 	return ParseListSecretsV4Response(rsp)
+}
+
+// DeleteSecretV4WithBodyWithResponse performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request,
+// with any type of body and a specified content type.
+//
+// Delete secret.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteSecretV4WithBodyWithResponse(ctx context.Context, secretName string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteSecretV4Response, error) {
+	rsp, err := c.DeleteSecretV4WithBody(ctx, secretName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSecretV4Response(rsp)
+}
+
+// DeleteSecretV4WithResponse performs a DELETE /api/v4/secrets/{secretName} (the `DeleteSecretV4` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Delete secret.
+func (c *ClientWithResponses) DeleteSecretV4WithResponse(ctx context.Context, secretName string, body DeleteSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteSecretV4Response, error) {
+	rsp, err := c.DeleteSecretV4(ctx, secretName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSecretV4Response(rsp)
 }
 
 // GetSecretByNameV4WithResponse performs a GET /api/v4/secrets/{secretName} (the `GetSecretByNameV4` operationId) request.
@@ -17140,6 +21544,771 @@ func ParseCreateProjectIdentityMembershipResponse(rsp *http.Response) (*CreatePr
 	return response, nil
 }
 
+// ParseCreateGitHubSecretSyncResponse parses an HTTP response from a CreateGitHubSecretSyncWithResponse call
+func ParseCreateGitHubSecretSyncResponse(rsp *http.Response) (*CreateGitHubSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGitHubSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  CreateGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                               `json:"id"`
+					Name string                                                           `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+				CreatedAt         time.Time                                                              `json:"createdAt"`
+				Description       *string                                                                `json:"description,omitempty"`
+				Destination       CreateGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig CreateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+					InitialSyncBehavior CreateGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteGitHubSecretSyncResponse parses an HTTP response from a DeleteGitHubSecretSyncWithResponse call
+func ParseDeleteGitHubSecretSyncResponse(rsp *http.Response) (*DeleteGitHubSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteGitHubSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  DeleteGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                               `json:"id"`
+					Name string                                                           `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+				CreatedAt         time.Time                                                              `json:"createdAt"`
+				Description       *string                                                                `json:"description,omitempty"`
+				Destination       DeleteGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig DeleteGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+					InitialSyncBehavior DeleteGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGitHubSecretSyncResponse parses an HTTP response from a GetGitHubSecretSyncWithResponse call
+func ParseGetGitHubSecretSyncResponse(rsp *http.Response) (*GetGitHubSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGitHubSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  GetGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                            `json:"id"`
+					Name string                                                        `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+				CreatedAt         time.Time                                                           `json:"createdAt"`
+				Description       *string                                                             `json:"description,omitempty"`
+				Destination       GetGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig GetGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+					InitialSyncBehavior GetGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveGitHubSecretSyncSecretsResponse parses an HTTP response from a RemoveGitHubSecretSyncSecretsWithResponse call
+func ParseRemoveGitHubSecretSyncSecretsResponse(rsp *http.Response) (*RemoveGitHubSecretSyncSecretsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveGitHubSecretSyncSecretsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                                      `json:"id"`
+					Name string                                                                  `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                            `json:"connectionId"`
+				CreatedAt         time.Time                                                                     `json:"createdAt"`
+				Description       *string                                                                       `json:"description,omitempty"`
+				Destination       RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig RemoveGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+					InitialSyncBehavior RemoveGitHubSecretSyncSecrets200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode RemoveGitHubSecretSyncSecrets400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode RemoveGitHubSecretSyncSecrets401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode RemoveGitHubSecretSyncSecrets403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode RemoveGitHubSecretSyncSecrets404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode RemoveGitHubSecretSyncSecrets422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode RemoveGitHubSecretSyncSecrets500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSyncGitHubSecretSyncResponse parses an HTTP response from a SyncGitHubSecretSyncWithResponse call
+func ParseSyncGitHubSecretSyncResponse(rsp *http.Response) (*SyncGitHubSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SyncGitHubSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  SyncGitHubSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                             `json:"id"`
+					Name string                                                         `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+				CreatedAt         time.Time                                                            `json:"createdAt"`
+				Description       *string                                                              `json:"description,omitempty"`
+				Destination       SyncGitHubSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the GitHub destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the GitHub destination.
+					InitialSyncBehavior SyncGitHubSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the GitHub destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncGitHubSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncGitHubSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncGitHubSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncGitHubSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncGitHubSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncGitHubSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateOrganizationResponse parses an HTTP response from a CreateOrganizationWithResponse call
 func ParseCreateOrganizationResponse(rsp *http.Response) (*CreateOrganizationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -18114,6 +23283,106 @@ func ParseListSecretsV4Response(rsp *http.Response) (*ListSecretsV4Response, err
 			Message    string                                     `json:"message"`
 			ReqId      string                                     `json:"reqId"`
 			StatusCode ListSecretsV4500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteSecretV4Response parses an HTTP response from a DeleteSecretV4WithResponse call
+func ParseDeleteSecretV4Response(rsp *http.Response) (*DeleteSecretV4Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteSecretV4Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeleteSecretV4200JSONResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode DeleteSecretV4400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode DeleteSecretV4401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode DeleteSecretV4403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode DeleteSecretV4404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode DeleteSecretV4422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode DeleteSecretV4500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
