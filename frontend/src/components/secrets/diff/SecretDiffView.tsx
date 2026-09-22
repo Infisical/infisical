@@ -120,10 +120,7 @@ export const SecretValueRenderer = ({
             <IconButton
               variant="ghost"
               size="xs"
-              className={twMerge(
-                isLoading ? "animate-pulse" : "",
-                isOldVersion ? "bg-[#161518]/80" : "bg-[#121819]/80"
-              )}
+              className={twMerge(isLoading ? "animate-pulse" : "", "bg-container/80")}
               onClick={handleToggleVisibility}
             >
               {isVisible ? <EyeOffIcon /> : <EyeIcon />}
@@ -138,7 +135,9 @@ export const SecretValueRenderer = ({
   const renderContent = () => {
     if (isLoading || !isVisible || value === HIDDEN_SECRET_VALUE_API_MASK) {
       return (
-        <div className="font-mono text-sm break-words text-bunker-300">{HIDDEN_SECRET_VALUE}</div>
+        <div className="font-mono text-sm break-words text-label-secondary">
+          {HIDDEN_SECRET_VALUE}
+        </div>
       );
     }
 

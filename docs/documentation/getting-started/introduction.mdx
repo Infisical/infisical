@@ -4,9 +4,9 @@ sidebarTitle: "What is Infisical?"
 description: "The open source platform for managing secrets, certificates, and secure infrastructure access."
 ---
 
-[Infisical](https://infisical.com) is the [open source](https://github.com/Infisical/infisical), all-in-one platform for secrets, certificates, and privileged access management.
+[Infisical](https://infisical.com) is the [open source](https://github.com/Infisical/infisical), all-in-one platform for secrets, certificates, privileged access, and AI agent access.
 
-It provides modern security workflows — including secrets rotation, dynamic credentials, access approvals, and privileged access management — all within one platform designed for developers, infrastructure, and security teams.
+It provides modern security workflows — including secrets rotation, dynamic credentials, access approvals, privileged access management, and credential-free access for AI agents — all within one platform designed for developers, infrastructure, and security teams.
 
 Start managing secrets securely with [Infisical Cloud](https://app.infisical.com) or learn how to [host Infisical](/self-hosting/overview) yourself.
 
@@ -27,35 +27,39 @@ Infisical addresses this challenge by providing an all-in-one platform and workf
 - Automate X.509 certificate issuance and renewal.
 - Govern privileged access to infrastructure with policy-driven sessions.
 - Encrypt and decrypt sensitive data with centralized key control.
+- Broker outbound API access for AI agents so they never hold real credentials.
 - Audit every access, credential use, and change.
 
 Infisical is designed to integrate cleanly into your stack—improving security without adding complexity.
 
 ## What can you do with Infisical?
 
-Infisical consists of five integrated products, each addressing a specific aspect of infrastructure security. The cards below link to an introduction to each product and the tasks it can be used for.
+Infisical consists of six integrated products, each addressing a specific aspect of infrastructure security. The cards below link to an introduction to each product and the tasks it can be used for.
 
 <CardGroup cols={2}>
-  <Card title="Manage secrets" icon="vault" href="/documentation/getting-started/choose-a-product/secrets-management/overview">
+  <Card title="Manage secrets" icon="key" href="/documentation/getting-started/choose-a-product/secrets-management/overview">
     Store, deliver, and rotate credentials used by applications, and broker access to services for AI agents.
   </Card>
   <Card title="Detect leaked secrets" icon="radar" href="/documentation/getting-started/choose-a-product/secret-scanning">
     Scan source code and developer systems to identify credentials that have been exposed.
   </Card>
-  <Card title="Manage certificates" icon="file-badge" href="/documentation/getting-started/choose-a-product/pki">
+  <Card title="Manage certificates" icon="file-key" href="/documentation/getting-started/choose-a-product/pki">
     Issue and automatically renew TLS, mTLS, and device certificates from internal or external certificate authorities.
   </Card>
-  <Card title="Manage cryptographic keys" icon="key" href="/documentation/getting-started/choose-a-product/kms">
+  <Card title="Manage cryptographic keys" icon="lock" href="/documentation/getting-started/choose-a-product/kms">
     Perform encryption, decryption, and signing operations using keys stored within Infisical.
   </Card>
-  <Card title="Manage privileged access" icon="shield-user" href="/documentation/getting-started/choose-a-product/pam">
+  <Card title="Manage privileged access" icon="users" href="/documentation/getting-started/choose-a-product/pam">
     Give users and AI agents session-based access to databases and servers without providing them with the underlying credentials.
+  </Card>
+  <Card title="Run AI agents securely" icon="vault" href="/documentation/getting-started/choose-a-product/agent-vault">
+    Broker outbound API access for AI agents so they call services under stored credentials they never see.
   </Card>
 </CardGroup>
 
 ## How the platform fits together
 
-All five products share the same underlying platform. This platform includes organizations, projects, identities, deployment configuration, and integrations with external services.
+All six products share the same underlying platform. This platform includes organizations, projects, identities, deployment configuration, and integrations with external services.
 
 <CardGroup cols={2}>
   <Card title="Account structure" icon="building" href="/documentation/getting-started/concepts/platform-hierarchy">

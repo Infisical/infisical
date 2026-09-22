@@ -282,7 +282,7 @@ for elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 
 | Layer           | Surface                                  | Border                              |
 | --------------- | ---------------------------------------- | ----------------------------------- |
-| Page            | `bg-page`                                | —                                   |
+| Page            | `bg-background`                          | —                                   |
 | Card            | `bg-card`                                | `border-border`                     |
 | Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg`       |
 | Floating bar    | `bg-popover`                             | `border-border` + `shadow-floating` |

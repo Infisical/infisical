@@ -95,6 +95,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
+  getCertificateDeletionBlockReason,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -917,6 +918,11 @@ export const CertificatesTable = ({
                   const canDeleteCertificate =
                     permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
                     canDeleteAtApplication;
+                  const certificateCaType = caCapabilityMap[certificate.caId];
+                  const canRevokeCertificate =
+                    Boolean(certificate.caId) &&
+                    (!certificateCaType ||
+                      caSupportsCapability(certificateCaType, CaCapability.REVOKE_CERTIFICATES));
                   const canEditPkiSyncs =
                     permission.can(
                       ProjectPermissionPkiSyncActions.Edit,
@@ -1295,13 +1301,8 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 )}
                               {(() => {
-                                const caType = caCapabilityMap[certificate.caId];
-                                const supportsRevocation =
-                                  !caType ||
-                                  caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
-
                                 if (
-                                  !supportsRevocation ||
+                                  !canRevokeCertificate ||
                                   isRevoked ||
                                   certificate.source === CertSource.Discovered ||
                                   (isInventoryView && certificate.applicationId)
@@ -1325,22 +1326,49 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 );
                               })()}
-                              {!(isInventoryView && certificate.applicationId) && (
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  isDisabled={!canDeleteCertificate}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteCertificate", {
-                                      certificateId: certificate.id,
-                                      commonName: certificate.commonName
-                                    });
-                                  }}
-                                >
-                                  <Trash2Icon />
-                                  Delete Certificate
-                                </DropdownMenuItem>
-                              )}
+                              {!(isInventoryView && certificate.applicationId) &&
+                                (() => {
+                                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                                    certificate,
+                                    canRevokeCertificate
+                                  );
+
+                                  const item = (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      isDisabled={
+                                        !canDeleteCertificate || Boolean(deletionBlockReason)
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteCertificate", {
+                                          certificateId: certificate.id,
+                                          commonName: certificate.commonName
+                                        });
+                                      }}
+                                    >
+                                      <Trash2Icon />
+                                      Delete Certificate
+                                    </DropdownMenuItem>
+                                  );
+
+                                  if (!deletionBlockReason) return item;
+
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div>{item}</div>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="left"
+                                        sideOffset={20}
+                                        className="max-w-72"
+                                      >
+                                        {deletionBlockReason}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })()}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

@@ -57,11 +57,12 @@ General use is the gateway acting as a network path to a private resource, such 
     ![Create Gateway button](/images/platform/gateways/gateway-create-button.png)
     3. Enter a name for the gateway, then select **Create Gateway**.
     ![Create Gateway form](/images/platform/gateways/gateway-create-form.png)
-    4. (Optional) Open the new gateway's detail page and change the method under **Authentication** in the **Details** card. Three methods are supported:
+    4. (Optional) Open the new gateway's detail page and change the method under **Authentication** in the **Details** card. Four methods are supported:
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the gateway.
         - **AWS**: the gateway authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
+        - **GCP**: the gateway authenticates with a token from the GCP metadata server, so no credential has to be distributed to the instance or cluster. Configure the allowed service accounts, and optionally the allowed projects and zones.
         - **Kubernetes**: the gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Configure the cluster's API server URL and the allowed namespaces and/or service account names.
-    5. In the **Deployment** card, select **Generate deploy command**. For the AWS and Kubernetes methods the command is shown without this step.
+    5. In the **Deployment** card, select **Generate deploy command**. For the AWS, GCP and Kubernetes methods the command is shown without this step.
     6. Under **Connection Mode**, select **Direct Listen** or **Relay**.
         - For **Direct Listen**, enter the **Listen Address** that Infisical will dial, as `host:port`.
         - For **Relay**, pick a relay, or leave **Auto Select Relay** so the gateway chooses the healthiest one.
@@ -234,6 +235,76 @@ General use is the gateway acting as a network path to a private resource, such 
           </Tab>
         </Tabs>
       </Accordion>
+      <Accordion title="GCP Auth">
+        The gateway sends a token proving which GCP service account it runs as, and Infisical verifies that token against Google's signing keys. Nothing has to be copied onto the instance, so this is the method to use when gateway creation is automated on GCP. The gateway re-authenticates on every start.
+
+        The token carries the gateway's ID as its audience, so a token minted for one gateway cannot authenticate as another.
+
+        Before deploying, configure the GCP auth method on the gateway's detail page:
+
+        | Field | Description |
+        | --- | --- |
+        | **Type** | **GCP ID Token Auth** reads a token from the instance metadata server, which covers Compute Engine VMs, GKE pods using workload identity, and other surfaces with a metadata server such as Cloud Run, Cloud Functions and App Engine. **GCP IAM Auth** signs one through the IAM Credentials API, for hosts outside Compute Engine. |
+        | **Allowed Service Account Emails** | Service account emails that may authenticate as this gateway. |
+        | **Allowed Projects** | Optional. Project IDs whose Compute Engine instances may authenticate as this gateway. |
+        | **Allowed Zones** | Optional, and only a narrowing of the two above. Zones whose Compute Engine instances may authenticate as this gateway. |
+
+        **Allowed Service Account Emails** or **Allowed Projects** is required. Either one names something inside your organization that nobody else can create.
+
+        Prefer the service account where you can. Restricting by project alone trusts every instance in that project, including one created by anyone who holds `compute.instances.create` there.
+
+        <Warning>
+          **Allowed Zones** is a narrowing on top of one of those. Zone names are a global namespace, so any GCP customer can place an instance in `us-central1-a` and match a zone-only configuration. A config carrying only zones is refused.
+        </Warning>
+
+        <Warning>
+          **Allowed Projects** and **Allowed Zones** are matched against Compute Engine instance details carried inside the token. Only a token from a Compute Engine VM carries them. A GKE workload identity token does not, nor does an IAM service account token, and a login presenting one is refused rather than skipping the check. On GKE, restrict by service account instead.
+        </Warning>
+
+        <Tabs>
+          <Tab title="GKE (Helm)">
+            Install the Infisical Helm chart repository:
+            ```bash
+            helm repo add infisical https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+            helm repo update
+            ```
+
+            Install the gateway with [Workload Identity Federation](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity):
+            ```bash
+            helm install infisical-gateway infisical/infisical-gateway \
+              --namespace infisical-gateway --create-namespace \
+              --set gateway.name=<gateway-name> \
+              --set gateway.enrollment.method=gcp \
+              --set gateway.enrollment.gcp.gatewayId=<gateway-id> \
+              --set gateway.domain=<your-infisical-domain> \
+              --set serviceAccount.annotations."iam\.gke\.io/gcp-service-account"=<gsa-name>@<project-id>.iam.gserviceaccount.com
+            ```
+
+            <Info>
+              The Google service account in that annotation is the one Infisical sees, so put its email in the gateway's **Allowed Service Account Emails**. Its IAM policy also needs a `roles/iam.workloadIdentityUser` binding for the Kubernetes service account the chart creates.
+            </Info>
+          </Tab>
+          <Tab title="Compute Engine (Production)">
+            ```bash
+            sudo infisical gateway systemd install <gateway-name> \
+              --enroll-method=gcp \
+              --gateway-id=<gateway-id> \
+              --domain=<your-infisical-domain>
+            sudo systemctl start <gateway-name>
+            ```
+          </Tab>
+          <Tab title="Foreground">
+            ```bash
+            infisical gateway start <gateway-name> \
+              --enroll-method=gcp \
+              --gateway-id=<gateway-id> \
+              --domain=<your-infisical-domain>
+            ```
+
+            Add `--gcp-auth-type=iam` to sign the token through the IAM Credentials API instead of reading it from the metadata server. That path needs the IAM Service Account Credentials API enabled and `roles/iam.serviceAccountTokenCreator` on the service account being signed as. On a Compute Engine instance it also needs the `cloud-platform` scope, because the default scopes omit `iamcredentials`. Point `--service-account-key-file-path` at a key file when the host has no credentials of its own.
+          </Tab>
+        </Tabs>
+      </Accordion>
       <Accordion title="Kubernetes Auth">
         The gateway sends the projected service account token of its own pod, and Infisical verifies it against your cluster's TokenReview API. Nothing has to be copied into the cluster, so this is the method to use when gateway creation is automated. The gateway re-authenticates on every start.
 
@@ -266,7 +337,7 @@ General use is the gateway acting as a network path to a private resource, such 
         <Warning>
           A gateway can't review its own token. The proxy runs over the gateway's own tunnel, which only exists once it has already authenticated, so the reviewer must be a different gateway that is already enrolled and connected.
 
-          This means the **first** gateway in a private cluster can't use Kubernetes auth. Enrol it with an enrollment token or AWS auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they're pointed elsewhere.
+          This means the **first** gateway in a private cluster can't use Kubernetes auth. Enroll it with an enrollment token, AWS auth or GCP auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they're pointed elsewhere.
         </Warning>
 
         <Tabs>
@@ -307,7 +378,7 @@ General use is the gateway acting as a network path to a private resource, such 
         </Tabs>
 
         <Warning>
-          Infisical must be able to reach the cluster's API server to review the token. For a cluster with no publicly reachable API server, use Token or AWS auth instead.
+          Infisical must be able to reach the cluster's API server to review the token. For a cluster with no publicly reachable API server, use Token, AWS or GCP auth instead. On GKE, GCP auth needs no inbound path at all.
         </Warning>
       </Accordion>
     </AccordionGroup>
@@ -336,8 +407,8 @@ General use is the gateway acting as a network path to a private resource, such 
 
 From the gateway's detail page (select the gateway row in the list):
 
-- **Generate deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
-- **Edit auth method**: Switch between Token, AWS, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
+- **Generate deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS, GCP and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
+- **Edit auth method**: Switch between Token, AWS, GCP, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
 - **Options → Delete Gateway** — Permanently removes the gateway.
 
@@ -461,7 +532,7 @@ For **token-method** gateways, the access token and domain are saved to a config
 - **Running as root/sudo:** `/etc/infisical/gateways/<gateway-name>.conf`
 - **Running as a regular user:** `~/.infisical/gateways/<gateway-name>.conf`
 
-For **AWS-method** and **Kubernetes-method** gateways, no JWT is persisted to disk. The gateway re-authenticates on every start, by signing a fresh STS request with the host's AWS credentials or by presenting the pod's service account token. Only the gateway id and domain are stored locally.
+For **AWS-method**, **GCP-method** and **Kubernetes-method** gateways, no JWT is persisted to disk. The gateway re-authenticates on every start, by signing a fresh STS request with the host's AWS credentials, by presenting a GCP identity token, or by presenting the pod's service account token. Only the gateway id and domain are stored locally.
 
 For systemd-based installations, the configuration is at `/etc/infisical/gateways/<gateway-name>.conf`. All config files are created with restricted permissions (0600).
 </Accordion>

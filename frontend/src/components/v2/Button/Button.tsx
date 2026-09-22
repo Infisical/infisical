@@ -29,10 +29,14 @@ const buttonVariants = cva(
   {
     variants: {
       colorSchema: {
-        primary: ["bg-primary", "text-black", "border-primary bg-opacity-90 hover:bg-opacity-100"],
-        secondary: ["bg-mineshaft", "text-gray-300", "border-mineshaft hover:bg-opacity-80"],
-        danger: ["bg-red!", "text-white!", "border-red! hover:!bg-opacity-90"],
-        gray: ["bg-bunker-500", "text-bunker-200"]
+        primary: ["bg-project", "text-black", "border-project bg-opacity-90 hover:bg-opacity-100"],
+        secondary: [
+          "bg-surface-selected",
+          "text-label-cool",
+          "border-border-strong hover:bg-opacity-80"
+        ],
+        danger: ["bg-danger!", "text-white!", "border-danger! hover:!bg-opacity-90"],
+        gray: ["bg-surface-recessed", "text-foreground-soft"]
       },
       variant: {
         solid: "",
@@ -41,11 +45,11 @@ const buttonVariants = cva(
         selected: "",
         outline_bg: "",
         // a constant color not in use on hover or click goes colorSchema color
-        star: "text-bunker-200 bg-mineshaft-700 border-mineshaft-600",
-        link: "text-primary p-0! bg-transparent outline-hidden border-none"
+        star: "text-foreground-soft bg-surface-hover border-border-control",
+        link: "text-project p-0! bg-transparent outline-hidden border-none"
       },
       isDisabled: {
-        true: "bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed",
+        true: "bg-surface-hover border border-border-control text-foreground-inverse opacity-50 cursor-not-allowed",
         false: "border"
       },
       isFullWidth: {
@@ -68,75 +72,75 @@ const buttonVariants = cva(
         colorSchema: "primary",
         variant: "star",
         className:
-          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary hover:text-black hover:border-primary-400 duration-100"
+          "bg-surface-hover border border-border-control hover:bg-project hover:text-black hover:border-project duration-100"
       },
       {
         colorSchema: "primary",
         variant: "solid",
-        className: "text-black bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black"
+        className: "text-black bg-project bg-opacity-90 hover:bg-project hover:text-black"
       },
       {
         colorSchema: "primary",
         variant: "selected",
-        className: "bg-primary/10 border border-primary/50 text-bunker-200"
+        className: "bg-project/10 border border-project/50 text-foreground-soft"
       },
       {
         colorSchema: "primary",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 text-bunker-200"
+          "bg-surface-active border border-border-strong hover:bg-project/10 hover:border-project/40 text-foreground-soft"
       },
       {
         colorSchema: "secondary",
         variant: "star",
         className:
-          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-white"
+          "bg-surface-hover border border-border-control hover:bg-surface-selected hover:text-foreground-inverse"
       },
       {
         colorSchema: "danger",
         variant: "star",
-        className: "hover:bg-red hover:text-white"
+        className: "hover:bg-danger hover:text-white"
       },
       {
         colorSchema: "primary",
         variant: "outline",
-        className: "text-primary hover:bg-primary hover:text-black"
+        className: "text-project hover:bg-project hover:text-black"
       },
       {
         colorSchema: "secondary",
         variant: "outline",
-        className: "border-mineshaft-700 hover:border-mineshaft-500"
+        className: "border-border-subtle hover:border-border-strong"
       },
       {
         colorSchema: "danger",
         variant: "outline",
-        className: "text-red hover:bg-red hover:text-black"
+        className: "text-danger hover:bg-danger hover:text-black"
       },
       {
         colorSchema: "danger",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-600 border border-red-500/40 hover:bg-red/15 bg-red/10 hover:border-red text-red-500"
+          "bg-surface-active border border-danger/40 hover:bg-danger/15 bg-danger/10 hover:border-danger text-danger"
       },
       {
         colorSchema: "primary",
         variant: "plain",
-        className: "text-primary"
+        className: "text-project"
       },
       {
         colorSchema: "gray",
         variant: "plain",
-        className: "bg-transparent text-bunker-200"
+        className: "bg-transparent text-foreground-soft"
       },
       {
         colorSchema: "secondary",
         variant: "plain",
-        className: "text-mineshaft-300 hover:text-mineshaft-200 border-none"
+        className: "text-label hover:text-foreground-secondary border-none"
       },
       {
         colorSchema: "danger",
         variant: "plain",
-        className: "text-red"
+        className: "text-danger"
       },
       {
         colorSchema: ["danger", "primary", "secondary"],

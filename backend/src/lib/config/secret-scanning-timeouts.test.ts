@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { secretScanningTimeoutsSchema, validateSecretScanningTimeouts } from "./env";
+import { getSecretScanningStuckScanTimeout, secretScanningTimeoutsSchema } from "./env";
 
-const schema = secretScanningTimeoutsSchema.superRefine(validateSecretScanningTimeouts);
-
-const parse = (env: Record<string, string>) => schema.safeParse(env);
+const parse = (env: Record<string, string>) => secretScanningTimeoutsSchema.safeParse(env);
 
 const issuesFor = (result: ReturnType<typeof parse>, key: string) =>
   result.success ? [] : result.error.issues.filter((issue) => issue.path[0] === key).map((issue) => issue.message);
@@ -14,15 +12,14 @@ afterEach(() => {
 });
 
 describe("secret scanning timeouts", () => {
-  test("defaults to ten minute clone and scan timeouts and a one hour stuck threshold", () => {
+  test("defaults to ten minute clone and scan timeouts", () => {
     const result = parse({});
 
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toEqual({
         SECRET_SCANNING_CLONE_TIMEOUT: 10 * 60 * 1000,
-        SECRET_SCANNING_SCAN_TIMEOUT: 10 * 60 * 1000,
-        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: 60 * 60 * 1000
+        SECRET_SCANNING_SCAN_TIMEOUT: 10 * 60 * 1000
       });
     }
   });
@@ -33,7 +30,7 @@ describe("secret scanning timeouts", () => {
     ["15m", 15 * 60 * 1000],
     ["2h", 2 * 60 * 60 * 1000]
   ])("reads %s as milliseconds", (value, expected) => {
-    const result = parse({ SECRET_SCANNING_SCAN_TIMEOUT: value, SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "6h" });
+    const result = parse({ SECRET_SCANNING_SCAN_TIMEOUT: value });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.SECRET_SCANNING_SCAN_TIMEOUT).toBe(expected);
@@ -59,15 +56,11 @@ describe("secret scanning timeouts", () => {
   describe("legacy `_MS` variables", () => {
     test("supplies the value when the duration variable is unset", () => {
       vi.stubEnv("SECRET_SCANNING_CLONE_TIMEOUT_MS", "60000");
-      vi.stubEnv("SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS", "5400000");
 
       const result = parse({});
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.SECRET_SCANNING_CLONE_TIMEOUT).toBe(60 * 1000);
-        expect(result.data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT).toBe(90 * 60 * 1000);
-      }
+      if (result.success) expect(result.data.SECRET_SCANNING_CLONE_TIMEOUT).toBe(60 * 1000);
     });
 
     test("loses to the duration variable when both are set", () => {
@@ -98,44 +91,27 @@ describe("secret scanning timeouts", () => {
   });
 
   describe("stuck scan threshold", () => {
-    test("must leave room for a clone, a scan and the fixed overhead", () => {
-      const result = parse({
-        SECRET_SCANNING_CLONE_TIMEOUT: "10m",
-        SECRET_SCANNING_SCAN_TIMEOUT: "10m",
-        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "20m"
-      });
-
-      expect(issuesFor(result, "SECRET_SCANNING_STUCK_SCAN_TIMEOUT")).toEqual([
-        "SECRET_SCANNING_STUCK_SCAN_TIMEOUT (1200000ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus 600000ms of commit enumeration, measurement and bookkeeping (1800000ms), otherwise healthy in-flight scans are reaped as stuck."
-      ]);
-    });
-
-    test("is rejected when it exactly equals the scan budget", () => {
-      const result = parse({
-        SECRET_SCANNING_CLONE_TIMEOUT: "1m",
-        SECRET_SCANNING_SCAN_TIMEOUT: "1m",
-        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "12m"
-      });
-
-      expect(result.success).toBe(false);
-    });
-
-    test("is accepted one millisecond above the scan budget", () => {
-      const result = parse({
-        SECRET_SCANNING_CLONE_TIMEOUT: "1m",
-        SECRET_SCANNING_SCAN_TIMEOUT: "1m",
-        SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "720001"
-      });
+    test("leaves room for a clone, a scan and the fixed overhead", () => {
+      const result = parse({ SECRET_SCANNING_CLONE_TIMEOUT: "10m", SECRET_SCANNING_SCAN_TIMEOUT: "20m" });
 
       expect(result.success).toBe(true);
+      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(35 * 60 * 1000);
     });
 
-    test("weighs the legacy variables the same way", () => {
+    test("tracks the defaults", () => {
+      const result = parse({});
+
+      expect(result.success).toBe(true);
+      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(25 * 60 * 1000);
+    });
+
+    test("tracks the legacy variables the same way", () => {
       vi.stubEnv("SECRET_SCANNING_SCAN_TIMEOUT_MS", "3600000");
 
-      const result = parse({ SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "1h" });
+      const result = parse({});
 
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(75 * 60 * 1000);
     });
   });
 });
@@ -183,9 +159,9 @@ describe("deprecation warning", () => {
   });
 
   test("warns even when the replacement is set, because the legacy value is then dead weight", () => {
-    vi.stubEnv("SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS", "3600000");
+    vi.stubEnv("SECRET_SCANNING_CLONE_TIMEOUT_MS", "600000");
 
-    parse({ SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "2h" });
+    parse({ SECRET_SCANNING_CLONE_TIMEOUT: "2h" });
 
     expect(warn).toHaveBeenCalledTimes(1);
   });

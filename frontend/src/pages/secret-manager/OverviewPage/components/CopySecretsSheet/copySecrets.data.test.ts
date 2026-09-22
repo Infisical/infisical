@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import type { TSecretMetadataPage } from "@app/hooks/api/dashboard/types";
 
-import { fetchCopySecrets, getCopySecretsRetryDelay } from "./copySecrets.data";
+import {
+  fetchCopySecrets,
+  getCopySecretsErrorKind,
+  getCopySecretsRetryDelay
+} from "./copySecrets.data";
 
 const secret = (
   id: string,
@@ -194,5 +198,20 @@ describe("copy rate-limit timing", () => {
     assert.equal(getCopySecretsRetryDelay(requestError(429)), 60_000);
     assert.equal(getCopySecretsRetryDelay(requestError(429, "invalid")), 60_000);
     assert.equal(getCopySecretsRetryDelay(requestError(403)), null);
+  });
+});
+
+describe("copy request errors", () => {
+  it("distinguishes authentication and permission failures from load errors", () => {
+    assert.equal(getCopySecretsErrorKind(requestError(401)), "unauthorized");
+    assert.equal(getCopySecretsErrorKind(requestError(403)), "forbidden");
+    assert.equal(getCopySecretsErrorKind(requestError(500)), "unknown");
+    assert.equal(getCopySecretsErrorKind(new Error("Network error")), "unknown");
+    assert.equal(getCopySecretsErrorKind(null, undefined), null);
+  });
+
+  it("prioritizes access failures across folder and metadata requests", () => {
+    assert.equal(getCopySecretsErrorKind(requestError(500), requestError(403)), "forbidden");
+    assert.equal(getCopySecretsErrorKind(requestError(403), requestError(401)), "unauthorized");
   });
 });

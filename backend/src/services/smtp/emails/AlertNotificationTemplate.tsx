@@ -34,8 +34,6 @@ export const AlertNotificationTemplate = ({
 }: AlertNotificationTemplateProps) => {
   const title = `${resourceKind} ${eventLabel} Notice`;
   const sev = SEVERITY_STYLES[severity] ?? SEVERITY_STYLES.info;
-  const resourceNoun = resourceKind.toLowerCase();
-  const resourceLabel = items.length === 1 ? resourceNoun : `${resourceNoun}s`;
 
   return (
     <BaseEmailWrapper title={title} preview={summary} siteUrl={siteUrl}>
@@ -60,10 +58,7 @@ export const AlertNotificationTemplate = ({
 
       <Heading className="text-black text-[20px] leading-[28px] text-center font-semibold p-0 mx-0">{title}</Heading>
 
-      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">
-        {summary}. Review the {resourceLabel} below and take action before {eventLabel.toLowerCase()} to avoid
-        disruption.
-      </Text>
+      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">{summary}.</Text>
 
       <Section className="mt-[28px] mb-[8px]">
         {items.map((item) => (

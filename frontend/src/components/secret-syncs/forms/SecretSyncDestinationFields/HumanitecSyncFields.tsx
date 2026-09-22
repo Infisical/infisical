@@ -157,7 +157,7 @@ export const HumanitecSyncFields = () => {
                       {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => (
                         <li key={name}>
                           <p className="text-label">
-                            <span className="font-medium text-foreground">{name}</span>:{" "}
+                            <span className="font-medium text-foreground-soft">{name}</span>:{" "}
                             {description}
                           </p>
                         </li>

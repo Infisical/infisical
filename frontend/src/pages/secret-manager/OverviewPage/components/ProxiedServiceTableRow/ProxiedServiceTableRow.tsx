@@ -37,6 +37,8 @@ import {
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 
@@ -142,13 +144,13 @@ export const ProxiedServiceTableRow = ({
     </div>
   );
 
-  const renderInlineDetails = (proxiedService: TDashboardProxiedService) => {
+  const renderInlineDetails = (proxiedService: TDashboardProxiedService, isExpandedRow = false) => {
     const lastUsedLabel = formatLastUsed(proxiedService.lastUsedAt);
 
     return (
       <>
         <span
-          className="ml-2 max-w-[240px] truncate text-xs text-muted"
+          className={twMerge("max-w-[240px] truncate text-xs text-muted", !isExpandedRow && "ml-2")}
           title={proxiedService.hostPattern}
         >
           {proxiedService.hostPattern}
@@ -255,17 +257,20 @@ export const ProxiedServiceTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow>
-          <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
+        <TableRow className="border-0 hover:bg-transparent">
+          <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
+              className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="border-none rounded-none bg-transparent">
-                <TableHeader>
+              <Table containerClassName="rounded-none border-0">
+                <TableHeader className="bg-container-hover">
                   <TableRow>
-                    <TableHead className="w-full">Environment</TableHead>
-                    <TableHead />
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
+                    <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -276,10 +281,13 @@ export const ProxiedServiceTableRow = ({
 
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
-                          <TableCell colSpan={2}>
+                          <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
+                            {envName}
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full items-center">
-                              <span>{envName}</span>
-                              {renderInlineDetails(proxiedService)}
+                              {renderInlineDetails(proxiedService, true)}
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
                                 {renderActionButtons(proxiedService)}
                               </div>

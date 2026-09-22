@@ -57,7 +57,8 @@
               "documentation/getting-started/choose-a-product/secret-scanning",
               "documentation/getting-started/choose-a-product/pki",
               "documentation/getting-started/choose-a-product/kms",
-              "documentation/getting-started/choose-a-product/pam"
+              "documentation/getting-started/choose-a-product/pam",
+              "documentation/getting-started/choose-a-product/agent-vault"
             ]
           },
           {
@@ -783,6 +784,14 @@
                 ]
               },
               {
+                "group": "Agent guides",
+                "pages": [
+                  "documentation/platform/agent-vault/guides/claude-code",
+                  "documentation/platform/agent-vault/guides/codex",
+                  "documentation/platform/agent-vault/guides/opencode"
+                ]
+              },
+              {
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
@@ -1082,6 +1091,7 @@
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/ovh",
                   "integrations/app-connections/postgres",
+                  "integrations/app-connections/powerdns",
                   "integrations/app-connections/qovery",
                   "integrations/app-connections/railway",
                   "integrations/app-connections/redis",
@@ -2294,6 +2304,18 @@
                           "api-reference/endpoints/app-connections/postgres/create",
                           "api-reference/endpoints/app-connections/postgres/update",
                           "api-reference/endpoints/app-connections/postgres/delete"
+                        ]
+                      },
+                      {
+                        "group": "PowerDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/powerdns/list",
+                          "api-reference/endpoints/app-connections/powerdns/available",
+                          "api-reference/endpoints/app-connections/powerdns/get-by-id",
+                          "api-reference/endpoints/app-connections/powerdns/get-by-name",
+                          "api-reference/endpoints/app-connections/powerdns/create",
+                          "api-reference/endpoints/app-connections/powerdns/update",
+                          "api-reference/endpoints/app-connections/powerdns/delete"
                         ]
                       },
                       {
@@ -4402,6 +4424,65 @@
                 ]
               },
               {
+                "group": "Agent Vault",
+                "pages": [
+                  {
+                    "group": "Access bundles",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-access-bundles/list",
+                      "api-reference/endpoints/agent-vault-access-bundles/get",
+                      "api-reference/endpoints/agent-vault-access-bundles/create",
+                      "api-reference/endpoints/agent-vault-access-bundles/update",
+                      "api-reference/endpoints/agent-vault-access-bundles/delete"
+                    ]
+                  },
+                  {
+                    "group": "Services",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-services/create",
+                      "api-reference/endpoints/agent-vault-services/update",
+                      "api-reference/endpoints/agent-vault-services/delete"
+                    ]
+                  },
+                  {
+                    "group": "Access bundle members",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-access-bundle-members/list",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/add",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Members",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-members/list",
+                      "api-reference/endpoints/agent-vault-members/add",
+                      "api-reference/endpoints/agent-vault-members/update-role",
+                      "api-reference/endpoints/agent-vault-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Proxies",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-proxies/list",
+                      "api-reference/endpoints/agent-vault-proxies/create",
+                      "api-reference/endpoints/agent-vault-proxies/update",
+                      "api-reference/endpoints/agent-vault-proxies/delete",
+                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
+                      "api-reference/endpoints/agent-vault-proxies/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Sessions",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-sessions/list",
+                      "api-reference/endpoints/agent-vault-sessions/create",
+                      "api-reference/endpoints/agent-vault-sessions/revoke"
+                    ]
+                  }
+                ]
+              },
+              {
                 "group": "KMIP servers",
                 "boost": 0.25,
                 "pages": [
@@ -4701,6 +4782,66 @@
     }
   },
   "redirects": [
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-users",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-groups",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-identities",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-users",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-group",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-identity",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-user-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-group-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-identity-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-user",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-group",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-identity",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-user",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-group",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-identity",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
     {
       "source": "/ai/model-context-protocol",
       "destination": "/documentation/getting-started/set-up-with-ai"
