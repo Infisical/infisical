@@ -465,6 +465,10 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   <Accordion title="Recent certificate issuance">
     Find every certificate issued from a project in the last 7 days.
 
+    <Note>
+      Externally-issued certificates (from a linked external CA) don't emit an issuance audit event when Infisical attaches the certificate. The `order-certificate-from-profile` event captures the request at submit time (typically with `event.metadata.status = pending`), and Infisical doesn't update the audit row later. To confirm which orders resulted in issued certificates, check the certificate list in **Certificate Manager**.
+    </Note>
+
     <Tabs>
       <Tab title="Infisical UI">
         <Steps>
