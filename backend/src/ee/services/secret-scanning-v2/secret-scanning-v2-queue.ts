@@ -124,6 +124,49 @@ export const secretScanningV2QueueServiceFactory = ({
     if ((await keyStore.getItemPrimary(key)) === scanId) await keyStore.deleteItem(key);
   };
 
+  /**
+   * Guarded so a retry cannot reopen a scan that already reached a terminal status. The work itself
+   * succeeded and only a side effect after it (a notification enqueue, an audit log) threw, so
+   * BullMQ hands the whole handler back; without this an already-Completed scan would be reset to
+   * `scanning` and, on the last attempt, closed out as Failed. Returns false when the scan was
+   * already closed out.
+   */
+  const markScanAsScanning = async ({ scanId, trackProgress }: { scanId: string; trackProgress?: boolean }) => {
+    const startedScans = await secretScanningV2DAL.scans.update(
+      {
+        id: scanId,
+        $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+      },
+      {
+        status: SecretScanningScanStatus.Scanning,
+        scanningStartedAt: new Date(),
+        ...(trackProgress ? { progressUpdatedAt: new Date() } : {})
+      }
+    );
+
+    return startedScans.length > 0;
+  };
+
+  /**
+   * `queued` is accepted alongside `scanning` because a failure before the status was set leaves the
+   * row `queued`. A scan the reaper has already failed and notified on is left exactly as it is,
+   * which is what the returned flag reports.
+   */
+  const markScanAsFailed = async ({ scanId, statusMessage }: { scanId: string; statusMessage: string }) => {
+    const failedScans = await secretScanningV2DAL.scans.update(
+      {
+        id: scanId,
+        $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+      },
+      {
+        status: SecretScanningScanStatus.Failed,
+        statusMessage
+      }
+    );
+
+    return failedScans.length > 0;
+  };
+
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     resourceExternalId?: string
@@ -251,39 +294,16 @@ export const secretScanningV2QueueServiceFactory = ({
       holdsLease = await acquireFullScanLease(resourceId, scanId);
 
       if (!holdsLease) {
-        await secretScanningV2DAL.scans.update(
-          {
-            id: scanId,
-            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
-          },
-          {
-            status: SecretScanningScanStatus.Failed,
-            statusMessage: DUPLICATE_FULL_SCAN_STATUS_MESSAGE
-          }
-        );
+        await markScanAsFailed({ scanId, statusMessage: DUPLICATE_FULL_SCAN_STATUS_MESSAGE });
 
         logger.warn(`secretScanningV2Queue: Full Scan Skipped, resource is already being scanned ${logDetails}`);
 
         return;
       }
 
-      // Guarded so a retry cannot reopen a scan that already reached a terminal status. The work
-      // itself succeeded and only a side effect after it (a notification enqueue, an audit log)
-      // threw, so BullMQ hands the whole handler back; without this an already-Completed scan would
-      // be reset to `scanning` and, on the last attempt, closed out as Failed.
-      const startedScans = await secretScanningV2DAL.scans.update(
-        {
-          id: scanId,
-          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
-        },
-        {
-          status: SecretScanningScanStatus.Scanning,
-          scanningStartedAt: new Date(),
-          progressUpdatedAt: new Date()
-        }
-      );
+      const started = await markScanAsScanning({ scanId, trackProgress: true });
 
-      if (!startedScans.length) {
+      if (!started) {
         logger.warn(
           `secretScanningV2Queue: Full Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.FullScan}]`
         );
@@ -400,16 +420,6 @@ export const secretScanningV2QueueServiceFactory = ({
             resumeAfterCommitDigest: scan.lastScannedCommitDigest
           });
 
-          // Two ways a resume point stops meaning anything: a rewritten history (force push, or a
-          // rebase landing between runs) takes the commit out of the repository entirely, or a newly
-          // reachable ref puts commits ahead of it that this scan has never looked at. Either way the
-          // repository is re-walked from the start rather than resumed past commits nobody scanned.
-          if (scan.lastScannedCommit && !plan.resumed) {
-            logger.warn(
-              `secretScanningV2Queue: Full Scan cannot resume, restarting ${logDetails} [lastScannedCommit=${scan.lastScannedCommit}] [reason=${plan.prefixChanged ? "history before the resume point changed" : "resume point is no longer in the repository"}]`
-            );
-          }
-
           logger.info(
             `secretScanningV2Queue: Full Scan Planned ${logDetails} totalCommits=[${plan.totalCommits}] batches=[${plan.batches.length}] batchSize=[${batchSize}] resumed=[${plan.resumed}]`
           );
@@ -512,21 +522,9 @@ export const secretScanningV2QueueServiceFactory = ({
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
-        // Only a scan this run still owns is closed out here. A failure before the status was set
-        // to `scanning` leaves the row `queued`, which is why that state is accepted too — but a
-        // scan the reaper has already failed and notified on is left exactly as it is.
-        const failedScans = await secretScanningV2DAL.scans.update(
-          {
-            id: scanId,
-            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
-          },
-          {
-            status: SecretScanningScanStatus.Failed,
-            statusMessage: errorMessage
-          }
-        );
+        const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
 
-        if (failedScans.length) {
+        if (failed) {
           await queueService.queue(
             QueueName.SecretScanningV2,
             QueueJobs.SecretScanningV2SendNotification,
@@ -667,20 +665,9 @@ export const secretScanningV2QueueServiceFactory = ({
     );
 
     try {
-      // Same guard as the full scan: a retry after a post-completion side effect failed must not
-      // reopen a scan that already reached a terminal status.
-      const startedScans = await secretScanningV2DAL.scans.update(
-        {
-          id: scanId,
-          $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
-        },
-        {
-          status: SecretScanningScanStatus.Scanning,
-          scanningStartedAt: new Date()
-        }
-      );
+      const started = await markScanAsScanning({ scanId });
 
-      if (!startedScans.length) {
+      if (!started) {
         logger.warn(
           `secretScanningV2Queue: Diff Scan skipped, scan was already closed out ${logDetails} [scanType=${SecretScanningScanType.DiffScan}]`
         );
@@ -799,20 +786,9 @@ export const secretScanningV2QueueServiceFactory = ({
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
-        // Same guard as the full scan: `queued` covers a failure before the scan started, and a
-        // scan the reaper already closed out is left alone.
-        const failedScans = await secretScanningV2DAL.scans.update(
-          {
-            id: scanId,
-            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
-          },
-          {
-            status: SecretScanningScanStatus.Failed,
-            statusMessage: errorMessage
-          }
-        );
+        const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
 
-        if (failedScans.length) {
+        if (failed) {
           await queueService.queue(
             QueueName.SecretScanningV2,
             QueueJobs.SecretScanningV2SendNotification,

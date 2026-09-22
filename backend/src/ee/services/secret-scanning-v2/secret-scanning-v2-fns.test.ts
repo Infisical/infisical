@@ -211,7 +211,6 @@ describe("planCommitBatches", () => {
       });
 
       expect(resumed.resumed).toBe(true);
-      expect(resumed.prefixChanged).toBe(false);
       expect(resumed.batches).toEqual(first.batches.slice(1));
     });
   });
@@ -257,7 +256,6 @@ describe("planCommitBatches", () => {
         resumeAfterCommitDigest: firstBatch.prefixDigest
       });
 
-      expect(resumed.prefixChanged).toBe(true);
       expect(resumed.resumed).toBe(false);
 
       // Every commit is back in the plan, the never-scanned one included.
@@ -281,7 +279,6 @@ describe("planCommitBatches", () => {
       });
 
       expect(plan.resumed).toBe(false);
-      expect(plan.prefixChanged).toBe(false);
       expect(plan.batches).toHaveLength(2);
     });
   });

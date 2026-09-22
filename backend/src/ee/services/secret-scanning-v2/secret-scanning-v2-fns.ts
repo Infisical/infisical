@@ -200,8 +200,6 @@ export const planCommitBatches = async ({
   totalCommits: number;
   batches: TCommitBatch[];
   resumed: boolean;
-  /** Set when the resume point is still present but the history before it is not the history that was scanned. */
-  prefixChanged: boolean;
 }> => {
   const boundaries: { index: number; commit: string; prefixDigest: string }[] = [];
   let totalCommits = 0;
@@ -252,6 +250,16 @@ export const planCommitBatches = async ({
   const prefixChanged = resumeIndex >= 0 && resumePrefixDigest !== resumeAfterCommitDigest;
   const resumableIndex = prefixChanged ? -1 : resumeIndex;
 
+  // Two ways a resume point stops meaning anything: a rewritten history (force push, or a rebase
+  // landing between runs) takes the commit out of the repository entirely, or a newly reachable ref
+  // puts commits ahead of it that this scan has never looked at. Either way the repository is
+  // re-walked from the start rather than resumed past commits nobody scanned.
+  if (resumeAfterCommit && resumableIndex < 0) {
+    logger.warn(
+      `secretScanningV2: Full Scan cannot resume, restarting [repoPath=${repoPath}] [lastScannedCommit=${resumeAfterCommit}] [reason=${prefixChanged ? "history before the resume point changed" : "resume point is no longer in the repository"}]`
+    );
+  }
+
   const batches = boundaries
     .map(({ index, commit, prefixDigest: boundaryPrefixDigest }, position) => ({
       index,
@@ -268,7 +276,7 @@ export const planCommitBatches = async ({
       prefixDigest: boundaryPrefixDigest
     }));
 
-  return { totalCommits, batches, resumed: resumableIndex >= 0, prefixChanged };
+  return { totalCommits, batches, resumed: resumableIndex >= 0 };
 };
 
 export async function scanDirectory(
