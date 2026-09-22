@@ -36,7 +36,9 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
         },
         sessionId: req.params.sessionId,
         limit: req.query.limit,
-        before: req.query.before
+        before: req.query.before,
+        from: req.query.from,
+        to: req.query.to
       })
   });
 };

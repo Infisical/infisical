@@ -27,6 +27,9 @@ export type TGetSessionActivityDTO = {
   sessionId: string;
   limit: number;
   before?: string;
+  /** Window over the chunk's startedAt. A filter only; the cursor stays on chunkId. */
+  from?: Date;
+  to?: Date;
 };
 
 export type TGetActivityConfigDTO = {

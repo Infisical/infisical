@@ -4,10 +4,10 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import {
-  AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_LIMIT,
+  AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS,
-  AGENT_VAULT_ACTIVITY_MAX_PAGE_LIMIT,
+  AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES
 } from "./agent-vault-activity-constants";
 
@@ -50,10 +50,12 @@ export const AgentVaultActivityQuerySchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(AGENT_VAULT_ACTIVITY_MAX_PAGE_LIMIT)
-    .default(AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_LIMIT)
+    .max(AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS)
+    .default(AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS)
     .describe(AGENT_VAULT.ACTIVITY.limit),
-  before: z.string().ulid().optional().describe(AGENT_VAULT.ACTIVITY.before)
+  before: z.string().ulid().optional().describe(AGENT_VAULT.ACTIVITY.before),
+  from: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.from),
+  to: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.to)
 });
 
 export const AgentVaultActivityChunkViewSchema = z.object({
@@ -93,7 +95,9 @@ export const AgentVaultActivityConfigViewSchema = z.object({
 export const AgentVaultActivityConfigResponseSchema = z.object({
   config: AgentVaultActivityConfigViewSchema,
   isStorageFull: z.boolean().describe(AGENT_VAULT.ACTIVITY.isStorageFull),
-  corsProbeUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl)
+  corsProbeUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl),
+  // Observed state rather than stored configuration, so it sits beside isStorageFull rather than in config.
+  lastRecordedAt: z.date().nullable().describe(AGENT_VAULT.ACTIVITY.lastRecordedAt)
 });
 
 /**

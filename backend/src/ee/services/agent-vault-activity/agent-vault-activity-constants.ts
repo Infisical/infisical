@@ -31,8 +31,17 @@ export const AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS = 24 * 60 * 60_000;
 export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000;
 
 export const AGENT_VAULT_ACTIVITY_SWEEP_BATCH = 500;
-export const AGENT_VAULT_ACTIVITY_MAX_PAGE_LIMIT = 100;
-export const AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_LIMIT = 50;
+/**
+ * A page is measured in records, not chunks. A chunk holds anywhere from 1 to 1000 of them depending
+ * on how busy the agent was, so paging by chunk hands a busy session thousands of rows and a quiet one
+ * a handful, off the same number. The budget is what keeps a page the same size to read, and the same
+ * weight for the browser, whatever the agent's pace.
+ */
+export const AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS = 5000;
+export const AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS = 1000;
+
+/** A ceiling on the walk, so a session of one-record chunks cannot make a page scan the whole table. */
+export const AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS = 200;
 
 // The Go proxy reads these off APIError.Name to decide whether to pause or drop. Changing a value is a
 // wire-contract change and needs the same change in cli/packages/agentvault/activity.go.

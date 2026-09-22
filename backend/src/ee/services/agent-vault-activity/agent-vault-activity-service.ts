@@ -30,6 +30,7 @@ import {
   AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS,
   AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS,
+  AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
   AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
@@ -264,7 +265,7 @@ export const agentVaultActivityServiceFactory = ({
     };
   };
 
-  const getSessionActivity = async ({ projectId, ctx, sessionId, limit, before }: TGetSessionActivityDTO) => {
+  const getSessionActivity = async ({ projectId, ctx, sessionId, limit, before, from, to }: TGetSessionActivityDTO) => {
     const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
@@ -296,7 +297,14 @@ export const agentVaultActivityServiceFactory = ({
     // ingest; chunks written before the switch was turned off are still served below.
     if (!config || !storage) return empty;
 
-    const rows = await agentVaultActivityChunkDAL.findForSessionPage({ sessionId, limit, before });
+    const { chunks: rows, hasMore } = await agentVaultActivityChunkDAL.findForSessionPage({
+      sessionId,
+      recordBudget: limit,
+      maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
+      before,
+      from,
+      to
+    });
     if (!rows.length) {
       return { ...empty, enabled: isIngestEnabled(config), configVersion: config.configVersion };
     }
@@ -341,7 +349,7 @@ export const agentVaultActivityServiceFactory = ({
       projectId,
       configVersion: config.configVersion,
       chunks,
-      nextCursor: rows.length === limit ? rows[rows.length - 1].chunkId : null
+      nextCursor: hasMore ? rows[rows.length - 1].chunkId : null
     };
   };
 
@@ -361,7 +369,8 @@ export const agentVaultActivityServiceFactory = ({
           configVersion: 1
         },
         isStorageFull: false,
-        corsProbeUrl: null
+        corsProbeUrl: null,
+        lastRecordedAt: null
       };
     }
 
@@ -381,7 +390,8 @@ export const agentVaultActivityServiceFactory = ({
     return {
       config: toConfigView(config),
       isStorageFull: toCount(config.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
-      corsProbeUrl
+      corsProbeUrl,
+      lastRecordedAt: await agentVaultActivityChunkDAL.lastRecordedAtForProject(projectId, config.configVersion)
     };
   };
 
@@ -406,9 +416,13 @@ export const agentVaultActivityServiceFactory = ({
       keyPrefix: patch.keyPrefix === undefined ? (current.keyPrefix ?? null) : normalizeKeyPrefix(patch.keyPrefix)
     };
 
-    if (next.appConnectionId) {
-      // Resolves the id through the app connection service's own org, type and project-availability
-      // checks. Never decrypt a caller-supplied connection id without them.
+    // Only when the caller is actually pointing at a different connection. The check resolves the id
+    // through the app connection service's own org, type and project-availability checks, which is
+    // required for an id the caller supplies but is pure cost for one already stored and unchanged:
+    // it was authorized when it was set, and this request has already cleared $requireAdmin. The
+    // form posts every field on every save, so without this a save that only flips the toggle pays
+    // for it too.
+    if (next.appConnectionId && next.appConnectionId !== current.appConnectionId) {
       await appConnectionService.validateAppConnectionUsageById(
         AppConnection.AWS,
         { connectionId: next.appConnectionId, projectId },
@@ -430,14 +444,18 @@ export const agentVaultActivityServiceFactory = ({
     // readable history as unreachable.
     // Both prefixes go through normalizeKeyPrefix before they are compared. next.keyPrefix is already
     // normalized, so a stored null (a config created through the API without a prefix) would otherwise
-    // read as a move the first time the settings sheet saves "", bumping configVersion and marking
+    // read as a move the first time the config dialog saves "", bumping configVersion and marking
     // every existing chunk unreachable when nothing had moved.
     const relocated =
       Boolean(existing) &&
       (next.bucket !== (current.bucket ?? null) ||
         normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix));
 
-    const storage = resolveStorageConfig(next);
+    // Only reached for a destination that is about to be used. Recording off means the bucket is
+    // not going to be written to, so checking it buys nothing and can do real harm: a bucket that
+    // has since become unreachable, or a connection whose credentials were rotated, would fail the
+    // check and leave an admin unable to turn recording off at all.
+    const storage = next.enabled ? resolveStorageConfig(next) : null;
     // Deliberately not cached: a save is the one path that has to see the connection as it is right now,
     // and it reuses this one client for both the reachability check and the probe below.
     const activityStorage = storage ? await buildActivityStorage(storage, ctx.actorOrgId, $storageDeps) : null;
@@ -462,6 +480,8 @@ export const agentVaultActivityServiceFactory = ({
       config: toConfigView(saved),
       isStorageFull: toCount(saved.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
       corsProbeUrl,
+      // Against the saved generation, so a relocating save reports the destination it just moved to.
+      lastRecordedAt: await agentVaultActivityChunkDAL.lastRecordedAtForProject(projectId, saved.configVersion),
       relocated
     };
   };

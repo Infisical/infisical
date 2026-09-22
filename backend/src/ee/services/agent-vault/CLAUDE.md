@@ -218,7 +218,13 @@ only, never bodies or headers, and never the query string (the proxy builds the 
 - **Changing the bucket or prefix bumps `configVersion` and orphans prior history**, which the UI
   detects and reports rather than presigning URLs that 404. Swapping the connection or the region does
   not bump: those leave every object exactly where it is.
-- Settings are admin-only by `hasRole(Admin)`, as everything else here is. No new CASL subject.
+- The Activity Logs surface (storage config plus the product's app connections) is admin-only by
+  `hasRole(Admin)`, as everything else here is. No new CASL subject.
+- **`lastRecordedAt` on the config response is scoped to `configVersion`, not just the project.** It
+  exists to show that records are genuinely landing, and chunks written before a repoint sit in a
+  bucket nothing can read, so counting them would report a fresh timestamp for a destination that has
+  recorded nothing. Both the GET and the PATCH answer with the same schema, so every return site in
+  `getActivityConfig` and `updateActivityConfig` carries it, the never-configured literal included.
 - **App connections are the one CASL subject the admin role carries.** Agent Vault holds its own
   AWS connections alongside the org's, and the shared `AppConnectionsTable` reads
   `ProjectPermissionSub.AppConnections` off CASL rather than the role, so the grant is what keeps

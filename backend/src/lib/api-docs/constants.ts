@@ -4386,7 +4386,10 @@ export const AGENT_VAULT = {
     sessionKey:
       "The session's activity key, base64 encoded. Decrypts every chunk in this response. Held only for the life of the view.",
     nextCursor: "Pass as `before` to fetch the next, older page. Null when there are no older chunks.",
-    limit: "The maximum number of chunks to return.",
+    limit:
+      "Roughly how many activity records to return. Chunks are returned whole, so a page holds at least this many records unless the session has no more, and the count stays comparable whatever the agent's pace.",
+    from: "Only return chunks holding records at or after this time. A chunk that overlaps the window is included whole.",
+    to: "Only return chunks holding records at or before this time. A chunk that overlaps the window is included whole.",
     before: "Return only chunks older than this chunk ID.",
     enabled: "Whether activity logging is on for this project.",
     configEnabled:
@@ -4399,7 +4402,9 @@ export const AGENT_VAULT = {
       "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
     isStorageFull:
       "Whether the organization has reached the number of activity records Infisical will index for it, at which point recording pauses. The limit itself is internal.",
-    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again."
+    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again.",
+    lastRecordedAt:
+      "When a record last landed in the bucket currently configured. Null when nothing has been recorded there yet, including right after the destination changed."
   },
   SESSION: {
     sessionId: "The ID of the session.",

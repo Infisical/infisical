@@ -267,6 +267,26 @@ describe("Agent Vault activity", async () => {
       expect(await testDb("agent_vault_activity_configs").where({ projectId }).first()).toBeUndefined();
     });
 
+    test("turning logging off is never blocked by a destination that has gone bad", async () => {
+      await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1"
+      });
+
+      // The bucket has since become unreachable, or its credentials were rotated away. Checking it
+      // on the way out would trap an admin in a configuration they are trying to switch off.
+      fakeActivityStorage.failsValidationWith("Unable to reach bucket");
+
+      const res = await saveConfig({ enabled: false });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.payload).config.enabled).toBe(false);
+
+      // Turning it back on is still gated on the bucket actually working.
+      expect((await saveConfig({ enabled: true })).statusCode).toBe(400);
+    });
+
     test("turning logging on without a complete destination names what is missing", async () => {
       const res = await saveConfig({ enabled: true });
       expect(res.statusCode).toBe(400);
@@ -362,6 +382,29 @@ describe("Agent Vault activity", async () => {
 
       // The presign pins the length, so a proxy cannot reuse the url for a larger body.
       expect(() => fakeActivityStorage.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
+    });
+
+    test("reports when a record last landed, and forgets it once the destination moves", async () => {
+      const readLastRecordedAt = async () => {
+        const res = await inject("GET", "/api/v1/agent-vault/activity/config");
+        expect(res.statusCode).toBe(200);
+        return (JSON.parse(res.payload) as { lastRecordedAt: string | null }).lastRecordedAt;
+      };
+
+      await configure();
+      expect(await readLastRecordedAt()).toBeNull();
+
+      const bundle = await createAccessBundle(`activity-last-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`activity-last-${Date.now()}`);
+      await recordChunk(proxy, session.id);
+
+      expect(await readLastRecordedAt()).not.toBeNull();
+
+      // A new bucket is a new generation, and the chunk above is in the old one. Reporting its
+      // timestamp here would claim a destination is working when nothing has reached it.
+      await configure({ bucket: `${BUCKET}-moved` });
+      expect(await readLastRecordedAt()).toBeNull();
     });
 
     test("counts the records against the org, and the sweep gives them back", async () => {
@@ -650,18 +693,74 @@ describe("Agent Vault activity", async () => {
       });
     });
 
+    test("a time window narrows the chunks without disturbing the cursor", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`activity-range-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`activity-range-${Date.now()}`);
+
+      // Three chunks an hour apart. chunkId is a ULID minted per post, so id order and startedAt
+      // order disagree here, which is exactly the case the cursor has to survive.
+      const hour = 60 * 60 * 1000;
+      const startedAts = [new Date(Date.now() - 3 * hour), new Date(Date.now() - 2 * hour), new Date()];
+      for (const startedAt of startedAts) {
+        // eslint-disable-next-line no-await-in-loop
+        const { uploadUrl } = await recordChunk(proxy, session.id, chunkBody({ startedAt, endedAt: startedAt }));
+        fakeActivityStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      }
+
+      const windowed = await inject(
+        "GET",
+        `/api/v1/agent-vault/sessions/${session.id}/activity` +
+          `?from=${new Date(Date.now() - 2.5 * hour).toISOString()}` +
+          `&to=${new Date(Date.now() - 1.5 * hour).toISOString()}`
+      );
+      expect(windowed.statusCode).toBe(200);
+      const body = JSON.parse(windowed.payload) as { chunks: { startedAt: string }[] };
+      expect(body.chunks).toHaveLength(1);
+      expect(new Date(body.chunks[0].startedAt).getTime()).toBe(startedAts[1].getTime());
+
+      // A chunk that merely overlaps the window counts: it began before `from` but holds records
+      // inside it. Matching on startedAt alone would drop it and lose those records silently.
+      const straddling = await recordChunk(
+        proxy,
+        session.id,
+        chunkBody({
+          startedAt: new Date(Date.now() - 5 * hour),
+          endedAt: new Date(Date.now() - 2 * hour)
+        })
+      );
+      fakeActivityStorage.put(straddling.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+
+      const overlapping = await inject(
+        "GET",
+        `/api/v1/agent-vault/sessions/${session.id}/activity` +
+          `?from=${new Date(Date.now() - 2.5 * hour).toISOString()}` +
+          `&to=${new Date(Date.now() - 1.5 * hour).toISOString()}`
+      );
+      expect((JSON.parse(overlapping.payload) as { chunks: unknown[] }).chunks).toHaveLength(2);
+
+      // No window still returns every chunk, so the filter is additive rather than a new default.
+      const all = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      expect((JSON.parse(all.payload) as { chunks: unknown[] }).chunks).toHaveLength(4);
+    });
+
     test("pages with a cursor, and the last page reports no more", async () => {
       await configure();
       const { session } = await seedChunks(5);
 
-      const first = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity?limit=2`);
+      // limit is a record budget, and every seeded chunk holds 10 records, so 20 buys two chunks.
+      // Chunks come back whole, so a page can overshoot the budget but never splits one.
+      const budget = 20;
+
+      const first = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity?limit=${budget}`);
       const firstBody = JSON.parse(first.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
       expect(firstBody.chunks).toHaveLength(2);
       expect(firstBody.nextCursor).toBe(firstBody.chunks[1].chunkId);
 
       const second = await inject(
         "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/activity?limit=2&before=${firstBody.nextCursor}`
+        `/api/v1/agent-vault/sessions/${session.id}/activity?limit=${budget}&before=${firstBody.nextCursor}`
       );
       const secondBody = JSON.parse(second.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
       expect(secondBody.chunks).toHaveLength(2);
@@ -670,7 +769,7 @@ describe("Agent Vault activity", async () => {
 
       const third = await inject(
         "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/activity?limit=2&before=${secondBody.nextCursor}`
+        `/api/v1/agent-vault/sessions/${session.id}/activity?limit=${budget}&before=${secondBody.nextCursor}`
       );
       const thirdBody = JSON.parse(third.payload) as { chunks: unknown[]; nextCursor: string | null };
       expect(thirdBody.chunks).toHaveLength(1);
@@ -712,7 +811,7 @@ describe("Agent Vault activity", async () => {
         // eslint-disable-next-line no-await-in-loop
         const res = await inject(
           "GET",
-          `/api/v1/agent-vault/sessions/${session.id}/activity?limit=2${cursor ? `&before=${cursor}` : ""}`
+          `/api/v1/agent-vault/sessions/${session.id}/activity?limit=1${cursor ? `&before=${cursor}` : ""}`
         );
         const body = JSON.parse(res.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
         seen.push(...body.chunks.map((chunk) => chunk.chunkId));
@@ -770,7 +869,7 @@ describe("Agent Vault activity", async () => {
 
     test.each([
       { limit: "0", why: "below the floor" },
-      { limit: "101", why: "above the ceiling" },
+      { limit: "5001", why: "above the ceiling" },
       { limit: "abc", why: "not a number" }
     ])("rejects a limit that is $why", async ({ limit }) => {
       await configure();
