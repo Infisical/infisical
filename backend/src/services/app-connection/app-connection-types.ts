@@ -371,6 +371,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TPowerDnsConnection,
+  TPowerDnsConnectionConfig,
+  TPowerDnsConnectionInput,
+  TValidatePowerDnsConnectionCredentialsSchema
+} from "./powerdns";
+import {
   TQoveryConnection,
   TQoveryConnectionConfig,
   TQoveryConnectionInput,
@@ -582,6 +588,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
+  | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
 );
@@ -677,6 +684,7 @@ export type TAppConnectionInput = { id: string } & (
   | TLiteLLMConnectionInput
   | TFireworksConnectionInput
   | TNutanixPrismCentralConnectionInput
+  | TPowerDnsConnectionInput
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
 );
@@ -804,6 +812,7 @@ export type TAppConnectionConfig =
   | TLiteLLMConnectionConfig
   | TFireworksConnectionConfig
   | TNutanixPrismCentralConnectionConfig
+  | TPowerDnsConnectionConfig
   | TSpaceliftConnectionConfig
   | TDaytonaConnectionConfig;
 
@@ -890,6 +899,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateLiteLLMConnectionCredentialsSchema
   | TValidateFireworksConnectionCredentialsSchema
   | TValidateNutanixPrismCentralConnectionCredentialsSchema
+  | TValidatePowerDnsConnectionCredentialsSchema
   | TValidateSpaceliftConnectionCredentialsSchema
   | TValidateDaytonaConnectionCredentialsSchema;
 

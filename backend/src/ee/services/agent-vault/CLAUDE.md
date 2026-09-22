@@ -77,7 +77,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `--access-bundle` and the single-select Create Session sheet. The mint body stays a list, the junction table
   keeps `position`, resolve orders by position then name, and the Go matcher breaks ties by slice order, so
   lifting the cap is those three places plus the copy that says one (the api-docs string, the service's cap
-  message, the sheet and sessions page, the CLI help and the docs), not a migration.
+  message, the sheet and sessions page, the CLI help and the docs), not a migration. It also needs a
+  decision `bestMatch` does not make: it picks by host specificity alone, so a restricted winner would 403
+  a request the other bundle's unrestricted service would have served.
 - The bundle on a session is a ceiling fixed at mint and intersected with live reachability on every resolve.
   It can shrink and grow back, never past what was minted.
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
@@ -110,19 +112,49 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   token is burned too.
 - Resolve is not audited: once per poll per session would swamp the audit table.
 
-## Host grammar
+## Host and path grammar
 
 `agent-vault-host-pattern.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
-- Paths are rejected: the matcher would compare the decoded path while the upstream gets the escaped one.
-- A portless pattern means 443. An explicit port is allowed, `:80` included, so the proxy must also refuse
-  to inject over plaintext, and it does.
+- Paths are rejected *in a host pattern*; `allowedPathPrefixes` is a separate filter that never decodes.
+  A filter is judged by what it *allows*, so the refusals are the load-bearing half. The grammar is an
+  allowlist because a prefix is compared against the escaped path: one carrying anything Go's encoder
+  rewrites could never match. `agent-vault-path-prefix.ts` is the grammar of record, `policy.go` the match.
+- Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
+  so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
+  is still a hard reject.
+- A violation is a 403 from the proxy, not a withheld credential. `NULL` is the only "unrestricted"; an
+  empty array is never stored.
+- There is no version negotiation with the proxy. A binary predating this drops the new resolve fields and
+  enforces nothing while the UI shows the rules. Settled: accepted while the product is in preview.
+- A portless pattern means 443, and that is the whole of what keeps a credential off a plaintext wire:
+  injection in the proxy is scheme-blind, so naming a port (`:80` included) is how an admin opts a service
+  into brokering over http.
 - A wildcard is the leftmost label only and matches exactly one label. This is what makes every pattern pair
   identical, contained or disjoint, which is what makes conflict detection exact. Do not loosen it.
 - Conflict detection is an intersection over individual patterns, because `hostPattern` is a comma-separated
   set. Same bundle: hard reject. Across bundles: allowed, since a session carries one bundle they never meet.
 - Patterns are stored as typed and normalised at match time. `*.com` is accepted; settled as not a bug.
+
+## Transformations
+
+Two child tables, `agent_vault_service_custom_headers` and `agent_vault_service_substitutions`. "Custom
+header" is the name in every layer; unqualified "header" means the credential's own.
+
+- **There is no unique index on name or placeholder, and there must not be.** A rename that swaps two rows
+  emits the two UPDATEs in sequence, so `UNIQUE (serviceId, lower(name))` fails the first against the
+  second row's current value. Uniqueness is the list-level refine plus the bundle lock. Adding an index
+  needs deferred constraints or delete-then-insert.
+- The proxy writes substitutions, then custom headers, then **the credential last**, so nothing can
+  overwrite the credential. A path substitution rewrites the path after the policy check, so a restricted
+  service re-checks it.
+- Stored rows **and the credential** are read inside the transaction, after the bundle lock. Outside it two
+  concurrent PATCHes both pass the ownership check and the loser's writes no-op.
+- A refusal after substitution must never quote the path: by then it carries the real credential, and the
+  error text is both the 403 body and the log line.
+- A PATCH replaces the whole list. Omitting a row's `value` keeps what is sealed; every other field
+  replaces.
 
 ## Credentials at rest
 

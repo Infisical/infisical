@@ -239,6 +239,11 @@ import {
 import { getOpenAIConnectionListItem, OpenAIConnectionMethod, validateOpenAIConnectionCredentials } from "./openai";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import {
+  getPowerDnsConnectionListItem,
+  PowerDnsConnectionMethod,
+  validatePowerDnsConnectionCredentials
+} from "./powerdns";
 import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
@@ -327,6 +332,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
+  AppConnection.PowerDns,
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
@@ -425,6 +431,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
     getNutanixPrismCentralConnectionListItem(),
+    getPowerDnsConnectionListItem(),
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem()
   ]
@@ -680,6 +687,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NutanixPrismCentral]:
       validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator
   };
@@ -790,6 +798,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case NutanixPrismCentralConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
@@ -952,6 +961,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
   [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
+  [AppConnection.PowerDns]: platformManagedCredentialsNotSupported,
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported
 };

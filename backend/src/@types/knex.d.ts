@@ -26,8 +26,14 @@ import {
   TAgentVaultProxies,
   TAgentVaultProxiesInsert,
   TAgentVaultProxiesUpdate,
+  TAgentVaultServiceCustomHeaders,
+  TAgentVaultServiceCustomHeadersInsert,
+  TAgentVaultServiceCustomHeadersUpdate,
   TAgentVaultServices,
   TAgentVaultServicesInsert,
+  TAgentVaultServiceSubstitutions,
+  TAgentVaultServiceSubstitutionsInsert,
+  TAgentVaultServiceSubstitutionsUpdate,
   TAgentVaultServicesUpdate,
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
@@ -521,6 +527,9 @@ import {
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
+  TResourceGcpAuths,
+  TResourceGcpAuthsInsert,
+  TResourceGcpAuthsUpdate,
   TResourceKubernetesAuths,
   TResourceKubernetesAuthsInsert,
   TResourceKubernetesAuthsUpdate,
@@ -1735,6 +1744,11 @@ declare module "knex/types/tables" {
       TResourceAwsAuthsInsert,
       TResourceAwsAuthsUpdate
     >;
+    [TableName.ResourceGcpAuth]: KnexOriginal.CompositeTableType<
+      TResourceGcpAuths,
+      TResourceGcpAuthsInsert,
+      TResourceGcpAuthsUpdate
+    >;
     [TableName.ResourceKubernetesAuth]: KnexOriginal.CompositeTableType<
       TResourceKubernetesAuths,
       TResourceKubernetesAuthsInsert,
@@ -1784,6 +1798,16 @@ declare module "knex/types/tables" {
       TAgentVaultServices,
       TAgentVaultServicesInsert,
       TAgentVaultServicesUpdate
+    >;
+    [TableName.AgentVaultServiceCustomHeader]: KnexOriginal.CompositeTableType<
+      TAgentVaultServiceCustomHeaders,
+      TAgentVaultServiceCustomHeadersInsert,
+      TAgentVaultServiceCustomHeadersUpdate
+    >;
+    [TableName.AgentVaultServiceSubstitution]: KnexOriginal.CompositeTableType<
+      TAgentVaultServiceSubstitutions,
+      TAgentVaultServiceSubstitutionsInsert,
+      TAgentVaultServiceSubstitutionsUpdate
     >;
     [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
       TAgentVaultSessions,

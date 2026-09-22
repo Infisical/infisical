@@ -11,7 +11,6 @@ import { AxiosError } from "axios";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
-  ArrowUpDownIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -54,6 +53,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Alert,
@@ -122,7 +122,8 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSecretRotationActions
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
@@ -204,6 +205,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -598,8 +600,6 @@ const OverviewPageContent = () => {
       getSecretSortValue(option.orderBy, option.orderDirection) ===
       getSecretSortValue(orderBy, orderDirection)
   );
-  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
-
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
     if (canApproveAny) return pendingApprovalsCount;
@@ -668,6 +668,13 @@ const OverviewPageContent = () => {
       subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
     )
   );
+  const secretSyncSourceEnv = visibleEnvs.find((env) =>
+    permission.can(
+      ProjectPermissionSecretSyncActions.Create,
+      subject(ProjectPermissionSub.SecretSyncs, { environment: env.slug, secretPath })
+    )
+  );
+  const canCreateSecretSyncs = Boolean(secretSyncSourceEnv);
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
@@ -1109,6 +1116,7 @@ const OverviewPageContent = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
+    "addSecretSync",
     "deleteEnv",
     "requestAccess",
     "importFromVault",
@@ -1240,14 +1248,22 @@ const OverviewPageContent = () => {
       setFolderAccessTarget({
         folderPath: childFolderPath(folderName)
       });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "folder_row",
+        projectId
+      });
     },
-    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
     if (!ensureFolderRbacPlan()) return;
     setIsCurrentFolderAccessOpen(true);
-  }, [ensureFolderRbacPlan]);
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+      source: "breadcrumb",
+      projectId
+    });
+  }, [ensureFolderRbacPlan, orgId, projectId]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -2703,6 +2719,7 @@ const OverviewPageContent = () => {
     isSecretRotationAvailable: visibleSecretRotationEnvs.length > 0,
     isHoneyTokenAvailable: true,
     onAddSecretImport: handleAddSecretImport,
+    onAddSecretSync: () => handlePopUpOpen("addSecretSync"),
     isSecretImportAvailable: visibleSecretImportEnvs.length > 0,
     isSingleEnvSelected: isSingleEnvView,
     hasVaultConnection,
@@ -2710,6 +2727,7 @@ const OverviewPageContent = () => {
     canCreateSecrets,
     canCreateFolders,
     canCreateHoneyTokens,
+    canCreateSecretSyncs,
     onImportFromVault: () => handlePopUpOpen("importFromVault"),
     onImportFromDoppler: () => handlePopUpOpen("importFromDoppler")
   };
@@ -2870,7 +2888,7 @@ const OverviewPageContent = () => {
               tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
             )}
           >
-            <FolderBreadcrumb projectName={currentProject.name} secretPath={secretPath} />
+            <FolderBreadcrumb secretPath={secretPath} />
             {canManageCurrentFolderAccess && (
               <Button
                 variant="ghost"
@@ -2937,11 +2955,11 @@ const OverviewPageContent = () => {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="flex h-full w-full cursor-pointer items-center gap-2 px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                              className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
                             >
                               <span className="text-foreground">Name</span>
-                              <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                              <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
@@ -3766,6 +3784,17 @@ const OverviewPageContent = () => {
             text: "Secret import replication requires an upgraded plan."
           })
         }
+      />
+      <CreateSecretSyncModal
+        isOpen={popUp.addSecretSync.isOpen}
+        initialFormData={
+          isSingleEnvView && secretSyncSourceEnv
+            ? { environment: secretSyncSourceEnv, secretPath }
+            : undefined
+        }
+        initialFormDataIsDirty={false}
+        startOnDestination={false}
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
       />
       {subscription && (
         <UpgradePlanModal

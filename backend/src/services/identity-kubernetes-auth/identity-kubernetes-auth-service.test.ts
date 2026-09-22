@@ -143,7 +143,8 @@ const createService = ({
       issueIdentityAccessToken: vi.fn(),
       revokeTokensForIdentityAuthMethod: vi.fn(),
       invalidateTrustedIpsCache: vi.fn()
-    }
+    },
+    eventEmitter: { emit: vi.fn() }
   } as unknown as Parameters<typeof identityKubernetesAuthServiceFactory>[0]);
 
   return { service, identityKubernetesAuthDAL };

@@ -32,7 +32,6 @@ import {
   productAnnualCommitted,
   tierLabel
 } from "../../billing-v2-format";
-import { asPlanDeprecation, deprecationSubline } from "../deprecation/deprecation-data";
 import { ActiveBadge, CardEmpty, DimensionMeter, ProductIcon } from "../shared";
 import { breakdownableDimensions } from "../UsageBreakdownSheet";
 import {
@@ -64,9 +63,6 @@ const ActiveProductCard = ({
   // "Commit annually and save" nudge: shown when the org holds this product monthly but hasn't set the
   // available commitment. Clicking opens the set-commitment flow. Hidden for enterprise-managed orgs.
   const commitNudge = readOnly || !selfServe ? null : commitSavingsNudge(entitlement);
-  const deprecation = selfServe ? asPlanDeprecation(entitlement?.deprecation) : null;
-  const isProductDeprecated = deprecation?.kind === "product";
-  const isPlanDeprecated = deprecation?.kind === "plan";
 
   // Two independent price clocks (never summed): the recurring charge plus any on-demand overage.
   const dims = entitlement?.dimensions ?? [];
@@ -99,15 +95,9 @@ const ActiveProductCard = ({
 
   const hasBreakdown = breakdownableDimensions(entitlement).length > 0;
 
-  // Cadence and renewal (or trial / deprecation) as one muted subline under the product name.
+  // Cadence and renewal (or trial) as one muted subline under the product name.
   let subline: ReactNode = null;
-  if (deprecation) {
-    subline = (
-      <span className={isProductDeprecated ? "text-danger" : "text-warning"}>
-        {deprecationSubline(deprecation, entitlement?.planTier)}
-      </span>
-    );
-  } else if (isTrialing) {
+  if (isTrialing) {
     subline = entitlement?.trialEndsAt ? (
       <span>Trial ends {entitlement.trialEndsAt}</span>
     ) : (
@@ -125,17 +115,13 @@ const ActiveProductCard = ({
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-container p-4">
       <div className="flex items-center gap-3">
-        {/* A discontinued product's icon is dimmed so a glance down the list reads it as winding down. */}
-        <div className={isProductDeprecated ? "opacity-40 grayscale" : undefined}>
-          <ProductIcon product={prod} size={40} />
-        </div>
+        <ProductIcon product={prod} size={40} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[15px] font-semibold text-foreground">{prod.name}</span>
             {entitlement?.planTier && (
               <Badge variant="info">{tierLabel(entitlement.planTier)}</Badge>
             )}
-            {isProductDeprecated && <Badge variant="danger">Deprecated</Badge>}
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
             {isTrialing ? <Badge variant="info">Trial</Badge> : <ActiveBadge />}
           </div>
@@ -169,7 +155,7 @@ const ActiveProductCard = ({
             className="shrink-0"
             onClick={() => onManage(prod.id)}
           >
-            {isPlanDeprecated ? "Review plan" : "Manage"}
+            Manage
           </Button>
         )}
       </div>
