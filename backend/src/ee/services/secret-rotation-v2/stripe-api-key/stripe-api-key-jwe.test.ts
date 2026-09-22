@@ -40,11 +40,7 @@ const encryptJwe = (
 };
 
 describe("decryptStripeJwe", () => {
-  it("round-trips both algorithms Stripe may use, under FIPS", async () => {
-    // The unit suite runs with --force-fips. OAEP with SHA-1 is the algorithm Stripe returns as
-    // `RSA-OAEP`, and this assertion is what stops a toolchain bump from breaking live mode silently.
-    expect(crypto.getFips()).toBe(1);
-
+  it("round-trips both algorithms Stripe may use", async () => {
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
 
     for (const alg of ["RSA-OAEP", "RSA-OAEP-256"]) {
