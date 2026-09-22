@@ -7,7 +7,6 @@ import {
   CopyIcon,
   DownloadIcon,
   EraserIcon,
-  FolderTreeIcon,
   InfoIcon,
   MoreHorizontalIcon,
   RefreshCwIcon,
@@ -66,25 +65,19 @@ const SecretSyncDestinationSourceCell = ({
   environmentName: string;
   includeAllSubFolders: boolean;
 }) => {
+  const displayPath = includeAllSubFolders ? `${folderPath.replace(/\/+$/, "")}/**` : folderPath;
+
   return (
     <TableCell className="max-w-0 min-w-32!">
       <Tooltip>
         <TooltipTrigger asChild>
           <div>
-            <div className="flex items-center gap-1.5">
-              <p className="truncate text-sm">{folderPath}</p>
-              {includeAllSubFolders && (
-                <Badge variant="neutral">
-                  <FolderTreeIcon />
-                  <span>Includes All Subfolders</span>
-                </Badge>
-              )}
-            </div>
+            <p className="truncate text-sm">{displayPath}</p>
             <p className="truncate text-xs leading-4 text-accent">{environmentName}</p>
           </div>
         </TooltipTrigger>
         <TooltipContent side="left" className="max-w-2xl break-words">
-          <p className="text-sm">{folderPath}</p>
+          <p className="text-sm">{displayPath}</p>
           <p className="text-xs leading-3 text-accent">{environmentName}</p>
           {includeAllSubFolders && (
             <p className="mt-1 max-w-xs text-xs">
