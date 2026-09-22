@@ -1127,6 +1127,7 @@
                 "pages": [
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
+                  "documentation/platform/gateways/terraform",
                   "documentation/platform/gateways/gateway-pools",
                   "documentation/platform/gateways/security"
                 ]
