@@ -35,6 +35,11 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
@@ -95,6 +100,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -110,7 +116,8 @@ export const identityLdapAuthServiceFactory = ({
   identityAuthTemplateDAL,
   keyStore,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -466,6 +473,11 @@ export const identityLdapAuthServiceFactory = ({
       let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
       if (template) {
         ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+        if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
+          throw new BadRequestError({
+            message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
+          });
+        }
       } else {
         if (!bindDN || !bindPass || !searchBase || !url) {
           throw new BadRequestError({
@@ -531,6 +543,17 @@ export const identityLdapAuthServiceFactory = ({
           lockoutThreshold,
           lockoutDurationSeconds,
           lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
         },
         tx
       );
@@ -716,6 +739,15 @@ export const identityLdapAuthServiceFactory = ({
       };
     }
 
+    const nextUrl = config.url?.trim();
+    if (nextUrl && nextUrl !== identityLdapAuth.url.trim() && !config.bindPass) {
+      throw new BadRequestError({
+        message: template
+          ? `LDAP auth template '${template.name}' has no bind password stored, so it cannot move this identity to a different LDAP URL. Add a bind password to the template first.`
+          : "Changing the LDAP URL requires supplying bindPass, because the stored bind password cannot be read back. Send the bind password for the new server with this change."
+      });
+    }
+
     let encryptedBindPass: Buffer | undefined;
     if (config.bindPass) {
       const { cipherTextBlob: bindPassCiphertext } = encryptor({
@@ -759,25 +791,43 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const updatedLdapAuth = await identityLdapAuthDAL.updateById(identityLdapAuth.id, {
-      url: config.url,
-      searchBase: config.searchBase,
-      searchFilter,
-      encryptedBindDN,
-      encryptedBindPass,
-      encryptedLdapCaCertificate,
-      allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
-      accessTokenMaxTTL,
-      templateId: template?.id || null,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined,
-      lockoutEnabled,
-      lockoutThreshold,
-      lockoutDurationSeconds,
-      lockoutCounterResetSeconds
+    const updatedLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      const doc = await identityLdapAuthDAL.updateById(
+        identityLdapAuth.id,
+        {
+          url: config.url,
+          searchBase: config.searchBase,
+          searchFilter,
+          encryptedBindDN,
+          encryptedBindPass,
+          encryptedLdapCaCertificate,
+          allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
+          accessTokenMaxTTL,
+          templateId: template?.id || null,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
@@ -917,6 +967,17 @@ export const identityLdapAuthServiceFactory = ({
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
     });
 

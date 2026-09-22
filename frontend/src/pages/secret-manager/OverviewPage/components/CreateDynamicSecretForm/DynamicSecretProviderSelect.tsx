@@ -10,7 +10,8 @@ import {
   EmptyTitle,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput
+  InputGroupInput,
+  ProviderIcon
 } from "@app/components/v3";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -34,8 +35,8 @@ const ProviderCard = ({
       <div className="flex items-start justify-between gap-2">
         <div className="flex size-9 items-center justify-center rounded-md bg-container">
           {logoFileName ? (
-            <img
-              src={`/images/integrations/${logoFileName}`}
+            <ProviderIcon
+              icon={logoFileName}
               alt={`${providerFamily} logo`}
               className="size-6 object-contain"
             />

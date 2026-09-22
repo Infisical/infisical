@@ -31,7 +31,8 @@ const templateNameSchema = z
 // exact shape here documents each method's fields and makes the response serializer a
 // second barrier that drops anything undeclared
 // the gateway reference is stored in columns so it can carry a foreign key, but it stays
-// inside templateFields in the API, so the v1/v2 column split is not part of the contract
+// inside templateFields in the API, so the column names are not part of the contract.
+// gatewayId is the retired v1 column, kept on the table but never read or written any more
 const templateRowSchema = IdentityAuthTemplatesSchema.omit({
   gatewayId: true,
   gatewayV2Id: true,

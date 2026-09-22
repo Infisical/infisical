@@ -40,6 +40,7 @@ export type AddResourceButtonsProps = {
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
   onCopySecrets: () => void;
+  canCopySecrets: boolean;
   isCopySecretsDisabled: boolean;
   copySecretsDisabledReason?: string;
   onImportFromVault: () => void;
@@ -68,6 +69,7 @@ export function AddResourceButtons({
   onAddSecretImport,
   onImportSecrets,
   onCopySecrets,
+  canCopySecrets,
   isCopySecretsDisabled,
   copySecretsDisabledReason,
   onImportFromVault,
@@ -218,15 +220,20 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access Restricted</TooltipContent>
           </Tooltip>
-          <Tooltip open={isCopySecretsDisabled ? undefined : false}>
+          <Tooltip open={isCopySecretsDisabled || !canCopySecrets ? undefined : false}>
             <TooltipTrigger className="block w-full">
-              <DropdownMenuItem onClick={onCopySecrets} isDisabled={isCopySecretsDisabled}>
+              <DropdownMenuItem
+                onClick={onCopySecrets}
+                isDisabled={isCopySecretsDisabled || !canCopySecrets}
+              >
                 <ClipboardPasteIcon className="text-accent" />
                 Copy Secrets
               </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">
-              {copySecretsDisabledReason ?? "Copy secrets is unavailable"}
+              {!canCopySecrets
+                ? "Access Restricted"
+                : (copySecretsDisabledReason ?? "Copy secrets is unavailable")}
             </TooltipContent>
           </Tooltip>
           {(hasVaultConnection || hasDopplerConnection) && (

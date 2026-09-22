@@ -1,6 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import {
+  CodeBlock,
   Detail,
   DetailGroup,
   DetailGroupHeader,
@@ -10,7 +11,27 @@ import {
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { credentialPreview } from "./CredentialFields";
-import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  CREDENTIAL_LABELS,
+  isAllMethods,
+  SURFACE_LABELS,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
+
+const MASK = "\u2022".repeat(8);
+
+const alignColumns = (rows: string[][]) => {
+  const widths = rows[0].map((_, column) => Math.max(...rows.map((row) => row[column].length)));
+  return rows
+    .map((row) =>
+      row
+        .map((cell, column) => (column === row.length - 1 ? cell : cell.padEnd(widths[column])))
+        .join("  ")
+        .trimEnd()
+    )
+    .join("\n");
+};
 
 type Props = {
   isUpdate: boolean;
@@ -23,6 +44,20 @@ export const ReviewFields = ({ isUpdate }: Props) => {
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const secretLabel = isBasic ? "Password" : "Token";
   const sends = credentialPreview(form);
+
+  const headerRows = form.customHeaders
+    .filter((header) => header.name)
+    .map((header) => [`${header.name}:`, header.prefix ? `${header.prefix} ${MASK}` : MASK]);
+
+  const substitutionRows = form.substitutions
+    .filter((substitution) => substitution.placeholder)
+    .map((substitution) => [
+      substitution.placeholder,
+      `\u2192 ${MASK}`,
+      substitution.surfaces.length
+        ? `in ${substitution.surfaces.map((surface) => SURFACE_LABELS[surface]).join(", ")}`
+        : ""
+    ]);
 
   const outcome = (value: string | undefined, canClear: boolean) => {
     if (!isUpdate) return value ? "Set" : "None";
@@ -42,7 +77,19 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>Hosts</DetailLabel>
-            <DetailValue className="font-mono">{form.hostPattern}</DetailValue>
+            <DetailValue>{form.hosts.join(", ")}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Methods</DetailLabel>
+            <DetailValue>
+              {isAllMethods(form.methods) ? "All" : form.methods.join(", ")}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Paths</DetailLabel>
+            <DetailValue>
+              {form.pathPrefixes.length ? form.pathPrefixes.join(", ") : "All"}
+            </DetailValue>
           </Detail>
         </div>
       </DetailGroup>
@@ -57,7 +104,7 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           {sends && (
             <Detail>
               <DetailLabel>Sends</DetailLabel>
-              <DetailValue className="font-mono">{sends}</DetailValue>
+              <DetailValue>{sends}</DetailValue>
             </Detail>
           )}
           {isBasic && (
@@ -73,6 +120,24 @@ export const ReviewFields = ({ isUpdate }: Props) => {
             </Detail>
           )}
         </div>
+        {(headerRows.length > 0 || substitutionRows.length > 0) && (
+          <div className="flex flex-col gap-3">
+            {headerRows.length > 0 && (
+              <CodeBlock
+                label="Custom headers"
+                isCopyable={false}
+                value={alignColumns(headerRows)}
+              />
+            )}
+            {substitutionRows.length > 0 && (
+              <CodeBlock
+                label="Substitutions"
+                isCopyable={false}
+                value={alignColumns(substitutionRows)}
+              />
+            )}
+          </div>
+        )}
       </DetailGroup>
     </div>
   );

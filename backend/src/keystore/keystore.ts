@@ -17,8 +17,6 @@ export const PgSqlLock = {
   KmsRootKeyInit: 2025,
   SanitizedSchemaGeneration: 2026,
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
-  OrgGatewayRootCaInit: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-root-ca:${orgId}`),
-  OrgGatewayCertExchange: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-cert-exchange:${orgId}`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
@@ -64,6 +62,8 @@ export const KeyStorePrefixes = {
     `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
     `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AcmeDnsRecordLock: (connectionId: string, zoneId: string, recordName: string) =>
+    `acme-dns-record-mutex-${connectionId}-${zoneId.toLowerCase()}-${recordName.toLowerCase()}` as const,
   LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
   LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
@@ -89,7 +89,6 @@ export const KeyStorePrefixes = {
   IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
   // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
   // cluster refuses a multi-key command whose keys span slots. They are small counters, so
@@ -283,7 +282,6 @@ export const KeyStoreTtls = {
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
-  GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats

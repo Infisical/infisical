@@ -3,7 +3,7 @@ import tls from "node:tls";
 
 import forge from "node-forge";
 
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 
 import { setupGatewayProxy } from "./gateway-v2";
 

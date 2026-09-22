@@ -31,7 +31,7 @@ import {
   useListProjectIdentityMemberships,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
-import { agentVaultKeys, useAddAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { agentVaultKeys, useAddAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { pamKeys, useAddPamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -162,7 +162,7 @@ export const CreateProjectIdentityForm = ({
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
   const { mutateAsync: createMembership } = useCreateProjectIdentityMembership();
   const { mutateAsync: addPamProductIdentityMember } = useAddPamProductIdentityMember();
-  const { mutateAsync: addAgentVaultProductMember } = useAddAgentVaultProductMember();
+  const { mutateAsync: addAgentVaultMembers } = useAddAgentVaultMembers();
   const { mutateAsync: addUniversalAuth } = useAddIdentityUniversalAuth();
   const { mutateAsync: createAdditionalPrivilege } = useCreateIdentityProjectAdditionalPrivilege();
 
@@ -209,7 +209,7 @@ export const CreateProjectIdentityForm = ({
             role: data.role.slug
           });
         } else if (isAgentVault) {
-          await addAgentVaultProductMember({ identityId, role: data.role.slug });
+          await addAgentVaultMembers({ machineIdentityIds: [identityId], role: data.role.slug });
         } else {
           await createMembership({
             projectId,
@@ -224,7 +224,7 @@ export const CreateProjectIdentityForm = ({
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }
       if (isAgentVault) {
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(currentOrg.id) });
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;
