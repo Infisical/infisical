@@ -49,10 +49,6 @@ To view all events in an organization across every product:
 
 ### For a product
 
-<Note>
-  **Privileged Access Manager** and **Agent Vault** are opened from the organization sidebar, but their audit logs are scoped to a unique project within that product. In the UI, Infisical selects that project automatically. When using the API, pass the product's `projectId`.
-</Note>
-
 To view all events scoped to a single product:
 
 <Tabs>
@@ -87,6 +83,10 @@ To view all events scoped to a single product:
     ```
 
     See the [audit log export API reference](/api-reference/endpoints/audit-logs/export-audit-log) for the full parameter list.
+
+    <Note>
+      **Privileged Access Manager** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID. Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and isolate the product's events by filtering `eventType` to the `pam-*` or `agent-vault-*` prefixes.
+    </Note>
   </Tab>
 </Tabs>
 
