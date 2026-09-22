@@ -126,12 +126,10 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
     // We use 12px as a safe default since we can't easily detect breakpoint
     const GAP = 12;
 
-    // Calculate total width of all segments (including separators and gaps)
-    // Each segment has: gap + separator + gap + segment text
-    const totalSegmentWidth = segmentWidths.reduce(
-      (sum, w) => sum + w + separatorWidth + GAP * 2,
-      0
-    );
+    const itemSpacing = separatorWidth + GAP * 2;
+    const totalSegmentWidth =
+      segmentWidths.reduce((sum, width) => sum + width, 0) +
+      Math.max(segmentWidths.length - 1, 0) * itemSpacing;
     const availableWidth = containerWidth - rootWidth - GAP;
 
     // If everything fits, show all
@@ -140,12 +138,11 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
     }
 
     // Need to collapse - prioritize showing the last segment
-    const ellipsisFullWidth = ellipsisWidth + separatorWidth + GAP * 2;
-    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + separatorWidth + GAP * 2;
-    const firstSegmentFullWidth = segmentWidths[0] + separatorWidth + GAP * 2;
+    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + itemSpacing;
+    const firstSegmentFullWidth = segmentWidths[0] + itemSpacing;
 
     // Minimum: just ellipsis + last segment
-    const minWidth = ellipsisFullWidth + lastSegmentFullWidth;
+    const minWidth = ellipsisWidth + lastSegmentFullWidth;
 
     // If we can't even fit ellipsis + last, just show what we can
     if (minWidth > availableWidth) {
@@ -297,9 +294,11 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           {/* Start segments */}
           {startSegments.map((path, index) => (
             <React.Fragment key={`start-${path}-${index + 1}`}>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
+              {index > 0 && (
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+              )}
               {!needsEllipsis && index === startSegments.length - 1 ? (
                 <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
               ) : (
@@ -325,9 +324,11 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
           {/* Ellipsis dropdown for hidden segments */}
           {needsEllipsis && hiddenSegments.length > 0 && (
             <>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
+              {startSegments.length > 0 && (
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+              )}
               <BreadcrumbItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -374,9 +375,11 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
             const isLast = index === endSegments.length - 1;
             return (
               <React.Fragment key={`end-${originalIndex}`}>
-                <BreadcrumbSeparator>
-                  <SlashIcon className="size-3 -rotate-12" />
-                </BreadcrumbSeparator>
+                {(index > 0 || startSegments.length > 0 || hiddenSegments.length > 0) && (
+                  <BreadcrumbSeparator>
+                    <SlashIcon className="size-3 -rotate-12" />
+                  </BreadcrumbSeparator>
+                )}
                 {isLast ? (
                   <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
                 ) : (
