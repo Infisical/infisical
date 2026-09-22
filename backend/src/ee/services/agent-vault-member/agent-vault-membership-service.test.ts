@@ -12,6 +12,7 @@ const OTHER_PROJECT_ID = "project-2";
 const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
 const GROUP_ID = "group-1";
+const OTHER_USER_ID = "user-2";
 
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
@@ -60,12 +61,7 @@ const buildService = ({
     groupDAL: { find: vi.fn().mockResolvedValue([]) },
     userDAL: { find: vi.fn().mockResolvedValue([]) },
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
-    orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
-      findActiveEffectiveOrgMemberActorIds: vi.fn(({ actorIds }: { actorIds: string[] }) =>
-        Promise.resolve(new Set(actorIds))
-      )
-    },
+    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }) },
     membershipDAL: {
       // The organization read is how an actor is judged to exist here, so it answers for whatever it is
       // asked about. That is what an org holds for every actor it reaches, including one it does not own
@@ -75,7 +71,7 @@ const buildService = ({
           scope === AccessScope.Project
             ? productMemberships.map((row) => ({ ...row, actorIdentityId: IDENTITY_ID, createdAt: new Date() }))
             : Object.entries($in ?? {}).flatMap(([column, ids]) =>
-                (ids ?? []).map((id) => ({ id: `org-${id}`, [column]: id }))
+                (ids ?? []).map((id) => ({ id: `org-${id}`, [column]: id, isActive: true }))
               )
         )
       ),
@@ -210,6 +206,47 @@ describe("agentVaultMembership guards", () => {
         ctx
       })
     ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // Reaching the organization through a group is how a sub-org is given a parent group's members. They
+  // reach Agent Vault the same way, by the group being a member, so neither is individually assignable.
+  // Authentication resolves them through the group and is deliberately untouched by this.
+  test("refuses an actor whose organization access comes only from a group", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not an active member of this organization");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("refuses an actor whose organization membership is deactivated", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not an active member of this organization");
 
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });

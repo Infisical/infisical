@@ -44,7 +44,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findActiveEffectiveOrgMemberActorIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
@@ -112,7 +112,9 @@ const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembe
 
 const ALL_ACTOR_TYPES = [AgentVaultMemberType.User, AgentVaultMemberType.Group, AgentVaultMemberType.MachineIdentity];
 
-const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
+type TActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+const ACTOR_COLUMN: Record<AgentVaultMemberType, TActorColumn> = {
   [AgentVaultMemberType.User]: "actorUserId",
   [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
   [AgentVaultMemberType.Group]: "actorGroupId"
@@ -342,22 +344,26 @@ export const agentVaultMembershipServiceFactory = ({
     // An org reaches a group or an identity through an org-scope membership row, not by owning the row:
     // that is how a sub-org is given one of its parent's, and how the generic project membership path
     // decides the same question. Reading orgId off the group or identity refuses every linked one.
-    const orgScoped = (column: "actorGroupId" | "actorIdentityId", ids: string[]) =>
+    const orgScoped = (column: TActorColumn, ids: string[]) =>
       ids.length
         ? membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: orgId, $in: { [column]: ids } })
         : [];
 
-    const [groupMemberships, identityMemberships, identities, userMemberIds, identityMemberIds] = await Promise.all([
+    const [groupMemberships, identityMemberships, userMemberships, identities] = await Promise.all([
       orgScoped("actorGroupId", groupIds),
       orgScoped("actorIdentityId", machineIdentityIds),
-      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : [],
-      orgDAL.findActiveEffectiveOrgMemberActorIds({ actorType: ActorType.USER, actorIds: userIds, orgId }),
-      orgDAL.findActiveEffectiveOrgMemberActorIds({
-        actorType: ActorType.IDENTITY,
-        actorIds: machineIdentityIds,
-        orgId
-      })
+      orgScoped("actorUserId", userIds),
+      machineIdentityIds.length ? identityDAL.find({ $in: { id: machineIdentityIds } }) : []
     ]);
+
+    // A row of the actor's own, not one it inherits from a group. An actor that reaches the org only
+    // through a group is meant to reach Agent Vault the same way, by the group being a member, so it is
+    // never granted a membership here. Authentication is separate and still resolves it through groups.
+    const activeIds = (memberships: TMemberships[], column: TActorColumn) =>
+      new Set(memberships.filter((membership) => membership.isActive).map((membership) => membership[column]));
+
+    const userMemberIds = activeIds(userMemberships, "actorUserId");
+    const identityMemberIds = activeIds(identityMemberships, "actorIdentityId");
 
     const foundGroups = new Set(groupMemberships.map((membership) => membership.actorGroupId));
     const missingGroups = groupIds.filter((id) => !foundGroups.has(id));
