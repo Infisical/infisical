@@ -1,6 +1,6 @@
 import type { PostHog } from "posthog-js";
 
-import { resolveFeatureFlagVariant } from "../../../../../components/analytics/experiments/resolveFeatureFlagVariant";
+import { resolveFeatureFlagVariant } from "@app/lib/analytics/experiments/resolveFeatureFlagVariant";
 
 export const ACTIVATION_PRESENTATION_FLAG = "secrets-activation-presentation";
 export type ActivationVariant = "control" | "card" | null;

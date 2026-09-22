@@ -1,6 +1,4 @@
 export const SIGNUP_FLOW_FEATURE_FLAG = "signup-flow";
-export const SIGNUP_COMPLETED_EVENT = "Signup Flow Completed";
-
 export enum SignupFlowVariant {
   Control = "control",
   DashboardPreview = "test"

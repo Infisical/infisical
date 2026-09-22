@@ -6,7 +6,8 @@ export const AnalyticsEvent = {
   FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened",
   SecretsAddResourceMenuOpened: "Secrets Add Resource Menu Opened",
   SecretsAddResourceActionSelected: "Secrets Add Resource Action Selected",
-  ThemePreferenceChanged: "Theme Preference Changed"
+  ThemePreferenceChanged: "Theme Preference Changed",
+  SignupFlowCompleted: "Signup Flow Completed"
 } as const;
 
 type PaywallProperties = {
@@ -82,4 +83,9 @@ export type ThemePreferenceChangedProperties = {
   source: "command-menu" | "navbar-toggle" | "profile-menu";
   theme: "dark" | "light" | "system";
   resolvedTheme: "dark" | "light";
+};
+
+export type SignupFlowCompletedProperties = {
+  signupMethod: "email" | "sso";
+  signupFlowVariant: "control" | "test" | "unassigned";
 };

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { analytics } from "@app/lib/analytics";
+import { resolveFeatureFlagVariant } from "@app/lib/analytics/experiments/resolveFeatureFlagVariant";
 
 import { getPostHog, isPostHogEnabled } from "../../posthog";
-import { resolveFeatureFlagVariant } from "../resolveFeatureFlagVariant";
 import {
   resolveSignupFlowVariant,
-  SIGNUP_COMPLETED_EVENT,
   SIGNUP_FLOW_FEATURE_FLAG,
   SignupFlowVariant
 } from "./signupExperimentConfig";
@@ -107,9 +106,8 @@ export const useSignupFlowVariant = (enabled = true) => {
 export const captureSignupCompleted = (signupMethod: "email" | "sso") => {
   if (!isInfisicalCloud()) return;
 
-  const telemetry = new Telemetry().getInstance();
-  telemetry.capture(SIGNUP_COMPLETED_EVENT, {
-    signup_method: signupMethod,
-    signup_flow_variant: getPersistedSignupFlowVariant() ?? "unassigned"
+  analytics.captureSignupFlowCompleted({
+    signupMethod,
+    signupFlowVariant: getPersistedSignupFlowVariant() ?? "unassigned"
   });
 };

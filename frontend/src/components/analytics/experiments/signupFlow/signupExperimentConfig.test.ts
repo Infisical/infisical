@@ -1,15 +1,14 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 
 import { resolveSignupFlowVariant, SignupFlowVariant } from "./signupExperimentConfig";
 
 describe("resolveSignupFlowVariant", () => {
   it("keeps assigned experiment variants sticky", () => {
-    assert.deepEqual(resolveSignupFlowVariant("control"), {
+    expect(resolveSignupFlowVariant("control")).toEqual({
       variant: SignupFlowVariant.Control,
       shouldPersist: true
     });
-    assert.deepEqual(resolveSignupFlowVariant("test"), {
+    expect(resolveSignupFlowVariant("test")).toEqual({
       variant: SignupFlowVariant.DashboardPreview,
       shouldPersist: true
     });
@@ -17,7 +16,7 @@ describe("resolveSignupFlowVariant", () => {
 
   it("falls back without persisting inactive or unavailable flags", () => {
     [false, undefined, "unexpected-variant"].forEach((value) => {
-      assert.deepEqual(resolveSignupFlowVariant(value), {
+      expect(resolveSignupFlowVariant(value)).toEqual({
         variant: SignupFlowVariant.Control,
         shouldPersist: false
       });
