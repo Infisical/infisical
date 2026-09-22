@@ -21,7 +21,7 @@ export const LogFilterItem = ({
   tooltipText
 }: Props) => {
   return (
-    <div className={twMerge("flex flex-col gap-1", className)}>
+    <div className={twMerge("flex min-w-0 flex-col gap-1", className)}>
       <div className="flex items-center gap-1">
         <p className="text-xs text-muted">{label}</p>
         {tooltipText && (

@@ -146,7 +146,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
       <PopoverContent
         align="end"
         aria-label="Audit log filters"
-        className="max-h-(--radix-popover-content-available-height) overflow-y-auto"
+        className="max-h-(--radix-popover-content-available-height) w-96 max-w-[calc(100vw-1rem)] overflow-y-auto"
       >
         <form onSubmit={handleSubmit(setFilter)} className="space-y-4">
           <div className="flex items-center justify-between">
@@ -174,9 +174,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <LogFilterItem
               label="Events"
+              className="sm:col-span-2"
               onClear={() => {
                 setValue("eventType", [], { shouldDirty: true });
               }}
@@ -285,8 +286,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               </LogFilterItem>
             )}
             {showSecretsSection && (
-              <div className="space-y-3 border-t border-border pt-3">
-                <p className="text-xs text-muted">Secrets</p>
+              <div className="grid grid-cols-1 gap-3 border-t border-border pt-3 sm:col-span-2 sm:grid-cols-2">
+                <p className="text-xs text-muted sm:col-span-2">Secrets</p>
                 <LogFilterItem
                   label="Environment"
                   hoverTooltip={
@@ -294,7 +295,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       ? "Select a project before filtering by environment."
                       : undefined
                   }
-                  className={twMerge(!selectedProject && "opacity-50")}
+                  className={twMerge("sm:col-span-2", !selectedProject && "opacity-50")}
                   onClear={() => {
                     setValue("environment", null, { shouldDirty: true });
                   }}
