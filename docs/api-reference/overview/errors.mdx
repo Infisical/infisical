@@ -27,7 +27,7 @@ Some responses also include an optional `details` field with additional structur
 
 ## Protocol-specific error shapes
 
-A few endpoints implement well-known protocols and return the error shape those protocols define, rather than the standard envelope above:
+A few endpoints implement well-known protocols and return the error shape those protocols define:
 
 - **OAuth 2.0 token endpoints** (for example, `POST /api/v1/oauth/token`) return `{ error, error_description }` per [RFC 6749 §5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2)
 - **SCIM endpoints** (`/api/v1/scim/...`) return the SCIM error object (`schemas`, `status`, `detail`, `scimType`) per [RFC 7644 §3.12](https://datatracker.ietf.org/doc/html/rfc7644#section-3.12)
