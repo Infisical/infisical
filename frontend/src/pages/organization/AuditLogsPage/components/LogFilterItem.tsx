@@ -21,8 +21,8 @@ export const LogFilterItem = ({
   tooltipText
 }: Props) => {
   return (
-    <div className={twMerge("flex flex-col justify-between", className)}>
-      <div className="flex items-center pr-1">
+    <div className={twMerge("flex flex-col gap-1", className)}>
+      <div className="flex items-center gap-1">
         <p className="text-xs text-muted">{label}</p>
         {tooltipText && (
           <Tooltip>
@@ -32,12 +32,7 @@ export const LogFilterItem = ({
             <TooltipContent className="max-w-sm">{tooltipText}</TooltipContent>
           </Tooltip>
         )}
-        <Button
-          onClick={() => onClear()}
-          variant="ghost"
-          size="xs"
-          className="ml-auto h-auto px-1.5 py-0.5 text-xs font-normal text-muted hover:text-foreground"
-        >
+        <Button onClick={() => onClear()} variant="ghost" size="xs" className="ml-auto">
           Clear
         </Button>
       </div>
