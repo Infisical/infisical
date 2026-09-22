@@ -512,7 +512,7 @@ export const SecretImportTableRow = ({
     if (envsWithImport.length <= 1) return null;
 
     return (
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-10">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-3 pl-11">
         <span className="text-xs text-muted">Viewing secrets for:</span>
         <Select value={effectiveSelectedEnv} onValueChange={setSelectedReplicationEnv}>
           <SelectTrigger size="sm" onClick={(e) => e.stopPropagation()}>
@@ -681,7 +681,7 @@ export const SecretImportTableRow = ({
           </TableBody>
         </Table>
         {hasAnyDiscrepancy && (
-          <p className="max-w-full px-3 py-3 pl-10 text-xs text-wrap text-warning">
+          <p className="max-w-full px-3 py-3 pl-11 text-xs text-wrap text-warning">
             <TriangleAlertIcon className="mr-1.5 mb-0.5 inline-block size-3 shrink-0" />
             One or more replicated imports may be out of sync. Secrets marked with a warning
             indicator are not present across all importing environments. Select a single environment
@@ -890,8 +890,8 @@ export const SecretImportTableRow = ({
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                 className="sticky left-0 border-y border-border bg-container"
               >
-                <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-10">
-                  <span className="text-sm text-muted">Imported in:</span>
+                <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-11">
+                  <span className="text-xs text-muted">Imported in:</span>
                   {environments
                     .filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug))
                     .map(({ name: envName, slug }) => {
