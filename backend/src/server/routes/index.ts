@@ -3554,7 +3554,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     licenseService,
     telemetryService,
-    keyStore
+    keyStore,
+    pkiAlertV2Queue
   });
 
   const certificateEstService = certificateEstServiceFactory({

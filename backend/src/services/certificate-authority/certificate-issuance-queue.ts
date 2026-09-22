@@ -420,6 +420,7 @@ export const certificateIssuanceQueueFactory = ({
     // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
     // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
     let certificateExistsAfterThisJob = true;
+    let issuedCertificateId: string | null | undefined;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -525,6 +526,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmeResult.id
             });
+            issuedCertificateId = acmeResult.id;
 
             // Copy metadata from cert request to newly issued cert
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
@@ -591,6 +593,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: azureResult.certificateId
             });
+            issuedCertificateId = azureResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -661,6 +664,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: adcsResult.certificateId
             });
+            issuedCertificateId = adcsResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -729,6 +733,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmResult.certificateId
             });
+            issuedCertificateId = acmResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -799,6 +804,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: awsPcaResult.certificateId
             });
+            issuedCertificateId = awsPcaResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -928,6 +934,7 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 certificateId: attachedCertificateId
               });
+              issuedCertificateId = attachedCertificateId;
               await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
                 certificateRequestId,
                 certificateId: attachedCertificateId
@@ -1076,6 +1083,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: venafiTppResult.certificateId
             });
+            issuedCertificateId = venafiTppResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -1109,16 +1117,17 @@ export const certificateIssuanceQueueFactory = ({
       );
 
       let scopedApplicationId: string | null = data.applicationId ?? null;
-      let issuedCertificateId: string | null | undefined;
       try {
         if (!scopedApplicationId && isRenewal && originalCertificateId) {
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
         }
-        issuedCertificateId =
-          certificateRequestId && certificateRequestDAL
-            ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
-            : certificateId;
+        if (!issuedCertificateId) {
+          issuedCertificateId =
+            certificateRequestId && certificateRequestDAL
+              ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
+              : certificateId;
+        }
         if (scopedApplicationId && issuedCertificateId) {
           await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
         }

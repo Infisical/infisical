@@ -47,7 +47,7 @@ const buildRequest = (overrides: Partial<TCertificateRequests> = {}, isRenewal =
     ...overrides
   }) as TCertificateRequests;
 
-const buildDeps = (opts?: { queueError?: Error; withQueue?: boolean }) => {
+const buildDeps = (opts?: { queueError?: Error }) => {
   const queuedEvents: unknown[] = [];
   const attached: unknown[] = [];
 
@@ -68,15 +68,12 @@ const buildDeps = (opts?: { queueError?: Error; withQueue?: boolean }) => {
     } as never,
     projectDAL: { findById: async () => ({ orgId: "org-1" }) } as never,
     telemetryService: { sendPostHogEvents: async () => {} } as never,
-    pkiAlertV2Queue:
-      opts?.withQueue === false
-        ? undefined
-        : {
-            queueCertificateEvent: async (payload: unknown) => {
-              if (opts?.queueError) throw opts.queueError;
-              queuedEvents.push(payload);
-            }
-          }
+    pkiAlertV2Queue: {
+      queueCertificateEvent: async (payload: unknown) => {
+        if (opts?.queueError) throw opts.queueError;
+        queuedEvents.push(payload);
+      }
+    }
   };
 
   return { deps, queuedEvents, attached };
@@ -137,14 +134,6 @@ describe("processDigiCertPendingValidationRequest", () => {
 
     expect(result.status).toBe(CertificateRequestStatus.ISSUED);
     expect(attached).toHaveLength(1);
-  });
-
-  it("finalises without an alert queue configured", async () => {
-    const { deps } = buildDeps({ withQueue: false });
-
-    const result = await processDigiCertPendingValidationRequest(deps, buildRequest(), clientCacheFor(issuedClient));
-
-    expect(result.status).toBe(CertificateRequestStatus.ISSUED);
   });
 
   it("does not queue an alert event while the order is still pending", async () => {

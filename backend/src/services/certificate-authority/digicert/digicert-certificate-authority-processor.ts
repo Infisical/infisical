@@ -65,7 +65,7 @@ export type TProcessDigiCertRequestDeps = {
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  pkiAlertV2Queue: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TProcessDigiCertRequestResult =
@@ -192,7 +192,7 @@ export const processDigiCertPendingValidationRequest = async (
     );
 
     try {
-      await deps.pkiAlertV2Queue?.queueCertificateEvent({
+      await deps.pkiAlertV2Queue.queueCertificateEvent({
         certificateId,
         projectId: request.projectId,
         eventType: parsed.digicert.isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
