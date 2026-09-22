@@ -187,6 +187,9 @@ versions:
   - version: v0.165.10
     releasedAt: 2026-09-11T11:19:33-03:00
     file: releases/v0.165.10.yaml
+  - version: v0.165.12
+    releasedAt: 2026-09-16T15:30:18-03:00
+    file: releases/v0.165.12.yaml
   - version: v0.165.13
     releasedAt: 2026-09-18T13:49:21-07:00
     file: releases/v0.165.13.yaml
