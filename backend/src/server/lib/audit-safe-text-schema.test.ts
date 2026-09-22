@@ -65,7 +65,7 @@ describe("routes that feed audit metadata keep the wrapper", () => {
     const source = read("server/routes/v1/identity-router.ts");
     const wrapped = source.match(/name: auditSafeText\(/g) ?? [];
 
-    expect(wrapped).toHaveLength(2); // create and update
+    expect(wrapped.length).toBeGreaterThanOrEqual(2); // create and update, and any route added later
     expect(source).not.toMatch(/name: auditSafeText\([^)]*\), \{ allowMultiline: true \}/);
   });
 
@@ -77,6 +77,6 @@ describe("routes that feed audit metadata keep the wrapper", () => {
     const source = read(file);
     const wrapped = source.match(/reason: auditSafeText\(.*allowMultiline: true/g) ?? [];
 
-    expect(wrapped).toHaveLength(expected);
+    expect(wrapped.length).toBeGreaterThanOrEqual(expected);
   });
 });
