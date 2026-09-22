@@ -63,13 +63,30 @@ func (s *Scope[S]) Seed(tt *testing.T, fragments ...any) {
 	}
 }
 
+// RuleOption narrows how a failure is injected.
+type RuleOption func(*Rule)
+
+// Times limits a rule to the next n matching requests. Without it the rule applies
+// to every one.
+func Times(n int) RuleOption { return func(r *Rule) { r.Times = n } }
+
+// Body sets what the refusal answers with, for a destination whose error shape the
+// product parses.
+func Body(s string) RuleOption { return func(r *Rule) { r.Body = s } }
+
 // Fail makes matching requests answer with status instead of reaching the fake.
-// times of 0 applies to every matching request. Path may end in * to match a prefix.
-func (s *Scope[S]) Fail(tt *testing.T, method, path string, status, times int) {
+//
+// Method, path and status are required because a rule without them refuses nothing
+// in particular. Path may end in * to match a prefix, and an empty method matches
+// any.
+func (s *Scope[S]) Fail(tt *testing.T, method, path string, status int, opts ...RuleOption) {
 	tt.Helper()
-	if err := s.do(http.MethodPost, "/rules", Rule{
-		Method: method, Path: path, Status: status, Times: times,
-	}, nil); err != nil {
+
+	rule := Rule{Method: method, Path: path, Status: status}
+	for _, o := range opts {
+		o(&rule)
+	}
+	if err := s.do(http.MethodPost, "/rules", rule, nil); err != nil {
 		tt.Fatalf("fakenet: adding a rule: %v", err)
 	}
 }

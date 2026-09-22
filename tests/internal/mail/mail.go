@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/Infisical/infisical/tests/internal/wait"
 )
 
 // Message is the part of a Mailpit message the harness cares about.
@@ -60,35 +62,38 @@ func (in *Inbox) Await(ctx context.Context, addr string, filters ...Filter) (Mes
 			in.domain, addr)
 	}
 
-	deadline := time.Now().Add(20 * time.Second)
-	var lastErr error
-	for {
+	// Tracked across attempts so the timeout can say how many arrived and matched
+	// nothing, which is a different bug from none arriving at all.
+	delivered := 0
+
+	msg, err := wait.For(ctx, func(ctx context.Context) (Message, bool, error) {
 		msgs, err := in.search(ctx, "to:"+addr)
 		if err != nil {
-			lastErr = err
+			return Message{}, false, err
 		}
+		delivered = len(msgs)
+
+		// One unreadable message does not abandon the rest of the round: Mailpit can
+		// report an id before the body is retrievable, and the match may be the
+		// message after it.
+		var lastErr error
 		for _, m := range msgs {
-			full, err := in.message(ctx, m.ID)
-			if err != nil {
-				lastErr = err
+			full, mErr := in.message(ctx, m.ID)
+			if mErr != nil {
+				lastErr = mErr
 				continue
 			}
 			if matches(full, filters) {
-				return full, nil
+				return full, true, nil
 			}
 		}
-		if time.Now().After(deadline) {
-			if lastErr != nil {
-				return Message{}, fmt.Errorf("mail: no message for %s within 20s, last error: %w", addr, lastErr)
-			}
-			return Message{}, fmt.Errorf("mail: no message for %s within 20s (%d delivered, none matched)", addr, len(msgs))
-		}
-		select {
-		case <-ctx.Done():
-			return Message{}, ctx.Err()
-		case <-time.After(200 * time.Millisecond):
-		}
+		return Message{}, false, lastErr
+	}, wait.Timeout(20*time.Second))
+
+	if err != nil {
+		return Message{}, fmt.Errorf("mail: no message for %s (%d delivered, none matched): %w", addr, delivered, err)
 	}
+	return msg, nil
 }
 
 func matches(m Message, filters []Filter) bool {

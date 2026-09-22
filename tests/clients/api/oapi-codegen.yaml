@@ -37,10 +37,16 @@ output-options:
     - createProjectIdentityMembership
     - listProjectMachineIdentities
     - createGitHubAppConnection
+    - createGitHubSecretSync
+    - getGitHubSecretSync
+    - deleteGitHubSecretSync
+    - syncGitHubSecretSync
+    - removeGitHubSecretSyncSecrets
     - deleteGitHubAppConnection
     - attachUniversalAuth
     - createUniversalAuthClientSecret
     - loginWithUniversalAuth
     - createSecretV4
+    - deleteSecretV4
     - getSecretByNameV4
     - listSecretsV4
