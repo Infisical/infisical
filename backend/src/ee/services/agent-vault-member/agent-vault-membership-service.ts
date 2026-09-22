@@ -400,18 +400,43 @@ export const agentVaultMembershipServiceFactory = ({
     // Status is not required: an org invite that has not been accepted still gets project access
     // everywhere else on the platform, and resolveSession refuses the actor until it is. isActive is the
     // real gate, so a deactivated member is still refused.
-    const outsiders = actors.filter((actor) => {
-      if (actor.type === AgentVaultMemberType.User) return !userMemberIds.has(actor.id);
-      if (actor.type === AgentVaultMemberType.MachineIdentity) return !identityMemberIds.has(actor.id);
-      return false;
+    //
+    // The two refusals are separated because the remedy differs, and this runs on a role change as well as
+    // an add, so neither message may name one of them.
+    const deactivated: TAgentVaultNamedActor[] = [];
+    const strangers: TAgentVaultNamedActor[] = [];
+    actors.forEach((actor) => {
+      const isUser = actor.type === AgentVaultMemberType.User;
+      if (!isUser && actor.type !== AgentVaultMemberType.MachineIdentity) return;
+      if ((isUser ? userMemberIds : identityMemberIds).has(actor.id)) return;
+
+      const column = isUser ? "actorUserId" : "actorIdentityId";
+      const hasRow = (isUser ? userMemberships : identityMemberships).some((row) => row[column] === actor.id);
+      (hasRow ? deactivated : strangers).push(actor);
     });
-    if (outsiders.length) {
+
+    if (deactivated.length || strangers.length) {
+      // Only on the refusal path: the happy path has no use for the names.
+      const nameByKey = await resolveActorNames([...deactivated, ...strangers]);
+      const listOf = (refused: TAgentVaultNamedActor[]) =>
+        refused.map((actor) => `'${nameByKey.get(actorKey(actor)) ?? actor.identifier}'`).join(", ");
+
+      if (deactivated.length) {
+        throw new BadRequestError({
+          message: `${listOf(deactivated)} ${
+            deactivated.length === 1 ? "is" : "are"
+          } deactivated in this organization. Reactivate ${
+            deactivated.length === 1 ? "them" : "those members"
+          } before changing their Agent Vault access.`
+        });
+      }
+
       throw new BadRequestError({
-        message: `Cannot add ${outsiders
-          .map((actor) => `'${actor.identifier}'`)
-          .join(
-            ", "
-          )} to Agent Vault because they are not an active member of this organization. Invite them to the organization first.`
+        message: `${listOf(strangers)} ${
+          strangers.length === 1 ? "is" : "are"
+        } not a member of this organization. Invite ${
+          strangers.length === 1 ? "them" : "those members"
+        } to the organization first.`
       });
     }
   };

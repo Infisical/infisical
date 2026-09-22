@@ -967,7 +967,8 @@ describe("Agent Vault V1 Router", async () => {
         // group they belong to stays active, so the group row must not vouch for them.
         const refused = await inject("POST", membersUrl, { userIds: [user.id], role: "member" });
         expect(refused.statusCode).toBe(400);
-        expect(JSON.parse(refused.payload).message).toContain("not an active member");
+        // Named as deactivated rather than missing: reactivating is the remedy, not inviting.
+        expect(JSON.parse(refused.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("user_group_membership").where({ userId: user.id }).delete();
         await testDb("memberships").where({ actorUserId: user.id }).delete();
@@ -2313,7 +2314,7 @@ describe("Agent Vault V1 Router", async () => {
         role: ProjectMembershipRole.Member
       });
       expect(stranger.statusCode).toBe(400);
-      expect(JSON.parse(stranger.payload).message).toContain("not an active member of this organization");
+      expect(JSON.parse(stranger.payload).message).toContain("is not a member of this organization");
 
       const rows = await testDb("memberships").where({ actorUserId: "99999999-8888-7777-6666-555555555555" });
       expect(rows).toHaveLength(0);
@@ -2339,7 +2340,7 @@ describe("Agent Vault V1 Router", async () => {
           role: ProjectMembershipRole.Member
         });
         expect(res.statusCode).toBe(400);
-        expect(JSON.parse(res.payload).message).toContain("not an active member of this organization");
+        expect(JSON.parse(res.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: true });
       }

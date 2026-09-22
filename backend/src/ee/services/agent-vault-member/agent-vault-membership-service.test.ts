@@ -227,7 +227,7 @@ describe("agentVaultMembership guards", () => {
         role: ProjectMembershipRole.Member,
         ctx
       })
-    ).rejects.toThrow("not an active member of this organization");
+    ).rejects.toThrow("is not a member of this organization");
 
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
@@ -246,7 +246,8 @@ describe("agentVaultMembership guards", () => {
         role: ProjectMembershipRole.Member,
         ctx
       })
-    ).rejects.toThrow("not an active member of this organization");
+      // Named as deactivated rather than missing, because reactivating is the remedy, not inviting.
+    ).rejects.toThrow("is deactivated in this organization");
 
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
