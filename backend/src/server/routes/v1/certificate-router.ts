@@ -1842,7 +1842,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "deleteCertificate",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate. Only expired, discovered and imported certificates can be deleted.",
+      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
       params: z.object({
         id: z.string().trim().uuid().describe(CERTIFICATES.DELETE.id)
       }),
