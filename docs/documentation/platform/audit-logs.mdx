@@ -469,25 +469,28 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Cert Manager**, select the project, and open **Audit Logs**.
+            Go to **Certificate Manager**, select the project, and open **Audit Logs**.
           </Step>
           <Step>
             Set the date range to the last 7 days.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `issue-cert`, `issue-pki-subscriber-cert`
+            - `event`: `issue-cert`, `issue-pki-subscriber-cert`, `issue-certificate-from-profile`, `order-certificate-from-profile`
           </Step>
         </Steps>
 
-        Each result's `event.metadata` names the CA and the serial number.
+        The returned `event.metadata` varies by issuance path:
+        
+        - `issue-cert` records the certificate authority (CA), its distinguished name (DN), and serial number
+        - Subscriber and profile events record the subscriber or profile ID and common name, with the serial number added once the certificate is issued
       </Tab>
       <Tab title="API">
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
           --data-urlencode "projectId=<project-id>" \
-          --data-urlencode "eventType=issue-cert,issue-pki-subscriber-cert" \
+          --data-urlencode "eventType=issue-cert,issue-pki-subscriber-cert,issue-certificate-from-profile,order-certificate-from-profile" \
           --data-urlencode "startDate=<start-date>"
         ```
       </Tab>
@@ -500,7 +503,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Cert Manager**, select the project, and open **Audit Logs**.
+            Go to **Certificate Manager**, select the project, and open **Audit Logs**.
           </Step>
           <Step>
             Select **Search audit logs** and add:
@@ -585,8 +588,8 @@ Here are a few common patterns for filtering audit logs, grouped by product.
 ### Secret Scanning
 
 <AccordionGroup>
-  <Accordion title="Recent scans">
-    Find every scan run in the last 7 days, including on-demand scans.
+  <Accordion title="Recent scan runs">
+    Find every completed scan run in the last 7 days (both scheduled and on-demand). Each row represents one run, and `event.metadata` records the data source, the scan type, and the status. Successful runs also include `numberOfSecretsDetected`.
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -599,20 +602,22 @@ Here are a few common patterns for filtering audit logs, grouped by product.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `secret-scanning-data-source-scan`, `secret-scanning-data-source-trigger-scan`
+            - `event`: `secret-scanning-data-source-scan`
           </Step>
         </Steps>
 
-        Each result's `event.metadata` names the data source, the scan type, and the number of secrets detected.
+        To also see the request rows for on-demand scans (which fire before the run completes), add `secret-scanning-data-source-trigger-scan` to the `event` filter. On-demand scans then appear twice: once as a trigger and once as a completed run.
       </Tab>
       <Tab title="API">
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
           --data-urlencode "projectId=<project-id>" \
-          --data-urlencode "eventType=secret-scanning-data-source-scan,secret-scanning-data-source-trigger-scan" \
+          --data-urlencode "eventType=secret-scanning-data-source-scan" \
           --data-urlencode "startDate=<start-date>"
         ```
+
+        Add `secret-scanning-data-source-trigger-scan` to `eventType` to also see the request rows for on-demand scans. On-demand scans then appear twice: once as a trigger and once as a completed run.
       </Tab>
     </Tabs>
   </Accordion>
