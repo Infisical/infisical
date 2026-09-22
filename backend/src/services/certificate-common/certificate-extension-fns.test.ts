@@ -719,15 +719,26 @@ describe("toCarriedCustomExtensions", () => {
 
 // This used to fail renewal with the very error this change removes.
 describe("parseImportedCustomExtensions", () => {
-  it("marks every extension issuer-added so a renewal never asks for it back", async () => {
+  it("invents no provenance, and a renewal drops what it cannot express rather than refusing", async () => {
     const mustStaple = Buffer.from([0x30, 0x03, 0x02, 0x01, 0x05]);
     const certificate = await buildCertificateWithExtension("1.3.6.1.5.5.7.1.24", mustStaple);
 
     const stored = parseImportedCustomExtensions(certificate);
 
-    expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=", issuerAdded: true }]);
+    expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }]);
     expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
     expect(toCarriedCustomExtensions(stored)).toEqual([]);
+  });
+
+  it("keeps a readable extension an import carried, since nothing says the issuer wrote it", async () => {
+    const certificate = await buildCertificateWithExtension(
+      CUSTOM_OID,
+      Buffer.from(encodeCustomExtensionValue(CUSTOM_OID, "retain-me"), "base64")
+    );
+
+    expect(toCarriedCustomExtensions(parseImportedCustomExtensions(certificate))).toEqual([
+      { oid: CUSTOM_OID, value: "retain-me", critical: false }
+    ]);
   });
 });
 
@@ -743,14 +754,16 @@ describe("parseExternallyIssuedCustomExtensions", () => {
     ).toEqual([{ oid: SCT_LIST_OID, critical: false, value: "BAIAQg==" }]);
   });
 
-  // The CA can rewrite what it was asked for, so the record has to come off the certificate.
-  it("records the value the certificate carries when the CA rewrote a requested extension", async () => {
+  // The CA can rewrite what it was asked for, so the record has to come off the certificate. Matching on
+  // the OID alone would treat the rewritten value as the requester's own and replay it on renewal.
+  it("records the value the certificate carries and flags it when the CA rewrote a requested extension", async () => {
     const certificate = await buildCertificateWithExtension(CUSTOM_OID, Buffer.from([0x04, 0x02, 0x00, 0x43]));
 
-    expect(
-      parseExternallyIssuedCustomExtensions(certificate, [
-        { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
-      ])
-    ).toEqual([{ oid: CUSTOM_OID, critical: false, value: "BAIAQw==" }]);
+    const stored = parseExternallyIssuedCustomExtensions(certificate, [
+      { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+    ]);
+
+    expect(stored).toEqual([{ oid: CUSTOM_OID, critical: false, value: "BAIAQw==", issuerAdded: true }]);
+    expect(toCarriedCustomExtensions(stored)).toEqual([]);
   });
 });

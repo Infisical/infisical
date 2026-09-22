@@ -3,6 +3,7 @@ import * as asn1js from "asn1js";
 import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { matchesNormalizedPattern } from "../certificate-policy/certificate-policy-fns";
 import {
@@ -279,21 +280,21 @@ export const parseIssuedCustomExtensions = (
 };
 
 export const parseImportedCustomExtensions = (certificateDer: Buffer): TIssuedCustomExtension[] =>
-  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer)).map((extension) => ({
-    ...extension,
-    issuerAdded: true
-  }));
+  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer));
 
 export const parseExternallyIssuedCustomExtensions = (
   certificateDer: Buffer,
   requested?: TResolvedCustomExtension[]
 ): TIssuedCustomExtension[] => {
-  const requestedOids = new Set((requested ?? []).map((extension) => extension.oid));
+  const requestedByOid = new Map((requested ?? []).map((extension) => [extension.oid, extension]));
 
   return withDisplayValue(
-    parseCustomExtensionsFromCertificate(certificateDer).map((extension) =>
-      requestedOids.has(extension.oid) ? extension : { ...extension, issuerAdded: true }
-    )
+    parseCustomExtensionsFromCertificate(certificateDer).map((extension) => {
+      const asked = requestedByOid.get(extension.oid);
+      const issuedAsAsked = asked && asked.value === extension.value && asked.critical === extension.critical;
+
+      return issuedAsAsked ? extension : { ...extension, issuerAdded: true };
+    })
   );
 };
 
@@ -359,11 +360,18 @@ export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtens
   });
 
 export const toCarriedCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
-  toRequestCustomExtensions(
-    readStoredCustomExtensions(stored).filter(
-      (extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid)
-    )
-  );
+  readStoredCustomExtensions(stored)
+    .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+    .flatMap((extension) => {
+      const value = describeCustomExtensionValue(extension.oid, extension.value);
+      if (value === null) {
+        logger?.warn(
+          `Custom extension '${extension.oid}' cannot be read back into a value a request can carry, so the renewal omits it`
+        );
+        return [];
+      }
+      return [{ oid: extension.oid, value, critical: extension.critical }];
+    });
 
 export const assertAwsPcaCustomExtensionLimit = (count: number): void => {
   if (count > MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE) {
