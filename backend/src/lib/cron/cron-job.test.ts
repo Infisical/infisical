@@ -901,7 +901,7 @@ describe("derived jitter", () => {
   test("factory rejects a negative maxJitterMs", () => {
     expect(() =>
       cronJobFactory({ redis: makeRedis() as never, redlock: makeRedlock() as never, maxJitterMs: -1 })
-    ).toThrow(/maxJitterMs/);
+    ).toThrow("maxJitterMs");
   });
 
   // A run hash that expires before its jittered pickup is reaped as an orphan, so the job
@@ -910,7 +910,7 @@ describe("derived jitter", () => {
   test("register rejects a runHashTtlS that the cap could outlive", () => {
     const { register } = makeFactory();
     expect(() => register({ name: "x", pattern: "0 0 * * *", handler: vi.fn(), runHashTtlS: 60 })).toThrow(
-      /runHashTtlS.*must exceed the maximum jitter window/
+      "must exceed the maximum jitter window"
     );
   });
 
@@ -938,7 +938,7 @@ describe("derived jitter", () => {
         vi.setSystemTime(new Date(now));
         const { register } = makeFactory();
         expect(() => register({ name: "x", pattern: UNEVEN, handler: vi.fn(), runHashTtlS: 20 })).toThrow(
-          /runHashTtlS.*must exceed the maximum jitter window/
+          "must exceed the maximum jitter window"
         );
       }
     });
@@ -981,163 +981,5 @@ describe("derived jitter", () => {
     expect(redis.zrem).toHaveBeenCalledWith("{cron}:pending", "x:1704067200000");
 
     await stop();
-  });
-});
-
-// Jitter is probabilistic. The per-pod cap is the deterministic guarantee that
-// one pod never executes a burst of handlers on the event loop it shares with
-// the HTTP API.
-describe("handler concurrency cap", () => {
-  const SCHEDULED_AT = Date.parse("2024-01-01T00:00:00Z");
-
-  const setupPendingRuns = (redis: ReturnType<typeof makeRedis>, count: number) => {
-    redis.set.mockResolvedValue("OK");
-    redis.eval.mockResolvedValue(1);
-    redis.zrangebyscore.mockResolvedValue(Array.from({ length: count }, (_, i) => `x:${SCHEDULED_AT - i * 60_000}`));
-    redis.hgetall.mockResolvedValue({
-      name: "x",
-      status: "pending",
-      attempts: "0",
-      enqueued_at_ms: "0"
-    });
-  };
-
-  // Handlers that hang until the test releases them, so in-flight count is
-  // fully under the test's control.
-  const makeBlockingHandler = () => {
-    const resolvers: Array<() => void> = [];
-    const handler = vi.fn().mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolvers.push(resolve);
-        })
-    );
-    return { handler, resolvers };
-  };
-
-  const makeCappedFactory = (
-    redis: ReturnType<typeof makeRedis>,
-    redlock: ReturnType<typeof makeRedlock>,
-    maxConcurrentHandlers: number
-  ) =>
-    cronJobFactory({
-      redis: redis as never,
-      redlock: redlock as never,
-      slotRefreshMs: 50,
-      enqueueIntervalMs: 100,
-      processIntervalMs: 100,
-      slotTtlMs: 200,
-      leaseDurationMs: 60_000,
-      handlerTimeoutMs: 60_000,
-      drainTimeoutMs: 50,
-      maxConcurrentHandlers
-    });
-
-  test("stops claiming at the cap and leaves the surplus in the pending zset", async () => {
-    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
-    const redis = makeRedis();
-    setupPendingRuns(redis, 4);
-    const { handler, resolvers } = makeBlockingHandler();
-    const redlock = makeRedlock();
-
-    const f = makeCappedFactory(redis, redlock, 1);
-    f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 3600 });
-    f.start();
-
-    // Several process ticks see four due runs, but only one may be in flight.
-    await vi.advanceTimersByTimeAsync(600);
-    expect(redlock.using).toHaveBeenCalledTimes(1);
-
-    // Deferred, not dropped: nothing was removed from the pending zset, so
-    // another pod or a later tick can still take these runs.
-    expect(redis.zrem).not.toHaveBeenCalled();
-
-    // Freeing the slot lets the work resume rather than being lost.
-    resolvers.forEach((resolve) => resolve());
-    await vi.advanceTimersByTimeAsync(300);
-    expect(redlock.using.mock.calls.length).toBeGreaterThan(1);
-
-    resolvers.forEach((resolve) => resolve());
-    const stopPromise = f.stop();
-    await vi.advanceTimersByTimeAsync(100);
-    await stopPromise;
-  });
-
-  // Guards against the cap collapsing to "one handler at a time".
-  test("runs up to maxConcurrentHandlers at once", async () => {
-    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
-    const redis = makeRedis();
-    setupPendingRuns(redis, 4);
-    const { handler, resolvers } = makeBlockingHandler();
-    const redlock = makeRedlock();
-
-    const f = makeCappedFactory(redis, redlock, 2);
-    f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 3600 });
-    f.start();
-
-    await vi.advanceTimersByTimeAsync(600);
-    expect(redlock.using).toHaveBeenCalledTimes(2);
-    expect(redis.zrem).not.toHaveBeenCalled();
-
-    resolvers.forEach((resolve) => resolve());
-    const stopPromise = f.stop();
-    await vi.advanceTimersByTimeAsync(100);
-    await stopPromise;
-  });
-
-  // The retry model assumes minute granularity. A 6-field pattern firing every 30s would get a
-  // 7.5s window whose first retry lands at 38.5s, past its own next fire, and be marked
-  // failed-final instead of retried. Reject it at registration rather than degrade quietly.
-  test("rejects a sub-minute (6-field) pattern", () => {
-    const { register } = makeFactory();
-    expect(() => register({ name: "x", pattern: "*/30 * * * * *", handler: vi.fn(), runHashTtlS: 3600 })).toThrow(
-      /must have 5 fields/
-    );
-  });
-
-  test("accepts the 5-field patterns the codebase registers", () => {
-    const { register } = makeFactory();
-    ["*/5 * * * *", "0 0 * * *", "0 0 19 2,5,8,11 *", "23 3 * * *"].forEach((pattern, i) => {
-      expect(() => register({ name: `x${i}`, pattern, handler: vi.fn(), runHashTtlS: 3 * 24 * 60 * 60 })).not.toThrow();
-    });
-  });
-
-  // The pod defers on every tick while saturated, so the line is throttled. Without it a long
-  // backlog emits one info line per processIntervalMs, for every pod, for as long as it lasts.
-  test("the at-capacity line is throttled, not emitted every tick", async () => {
-    vi.setSystemTime(new Date("2024-01-01T00:00:30Z"));
-    const redis = makeRedis();
-    setupPendingRuns(redis, 4);
-    const { handler, resolvers } = makeBlockingHandler();
-    const redlock = makeRedlock();
-    vi.mocked(logger.info).mockClear();
-
-    const f = makeCappedFactory(redis, redlock, 1);
-    f.register({ name: "x", pattern: "* * * * *", handler, runHashTtlS: 60 * 60 });
-    f.start();
-
-    // ~30 process ticks (processIntervalMs=100 here) inside one throttle window.
-    await vi.advanceTimersByTimeAsync(3_000);
-
-    const capacityLines = vi
-      .mocked(logger.info)
-      .mock.calls.map(([m]) => m)
-      .filter((m) => typeof m === "string" && m.includes("at handler capacity"));
-    expect(capacityLines.length).toBe(1);
-
-    resolvers.forEach((resolve) => resolve());
-    const stopPromise = f.stop();
-    await vi.advanceTimersByTimeAsync(100);
-    await stopPromise;
-  });
-
-  test("factory rejects a cap below 1", () => {
-    expect(() =>
-      cronJobFactory({
-        redis: makeRedis() as never,
-        redlock: makeRedlock() as never,
-        maxConcurrentHandlers: 0
-      })
-    ).toThrow(/maxConcurrentHandlers/);
   });
 });

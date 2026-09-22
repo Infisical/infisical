@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { CronExpressionParser } from "cron-parser";
 import { Cluster, Redis } from "ioredis";
+import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
 import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock";
@@ -53,6 +54,7 @@ export const CronJobName = {
 
 const JITTER_INTERVAL_FRACTION = 0.25; // keep below ~0.48 so 30s retry fits before next 1-min fire
 const CRON_FIELD_COUNT = 5;
+const CRON_FIELD_SEPARATOR = new RE2(/\s+/);
 const PARTICIPANT_SLOTS = 5;
 const PROCESS_BATCH_SIZE = 50;
 const NEXT_FIRE_BUFFER_MS = 1_000; // shared margin for fitsBeforeNextFire and jitterWindowMs
@@ -69,8 +71,7 @@ const DEFAULTS = {
   retryBackoffBaseMs: 30_000,
   retryBackoffMaxMs: 5 * 60_000,
   drainTimeoutMs: 25_000,
-  maxJitterMs: 5 * 60_000,
-  maxConcurrentHandlers: 4
+  maxJitterMs: 5 * 60_000
 } as const;
 
 const KEY_HASH_TAG = "{cron}";
@@ -114,7 +115,6 @@ const ENQUEUE_RUN_LUA = `
 // Release slot only if we still own it (stale stop() after TTL expiry).
 const RELEASE_SLOT_IF_MINE_LUA = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
 
-
 type Handler = () => Promise<void>;
 type CronEntry = {
   name: string;
@@ -157,7 +157,6 @@ export const cronJobFactory = ({
   retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs,
   drainTimeoutMs = DEFAULTS.drainTimeoutMs,
   maxJitterMs = DEFAULTS.maxJitterMs,
-  maxConcurrentHandlers = DEFAULTS.maxConcurrentHandlers,
   keyPrefix = KEY_HASH_TAG,
   schedulingEnabled = true
 }: {
@@ -173,21 +172,22 @@ export const cronJobFactory = ({
   retryBackoffBaseMs?: number;
   retryBackoffMaxMs?: number;
   drainTimeoutMs?: number;
-  /** 0 disables jitter (dev wiring). */
+  /**
+   * 0 disables jitter (dev wiring).
+   */
   maxJitterMs?: number;
-  /** In-flight handler ceiling per pod; excess stays in the pending zset. */
-  maxConcurrentHandlers?: number;
-  /** Must include a Redis Cluster hash tag; tests override to avoid slot collisions. */
+  /**
+   * Must include a Redis Cluster hash tag; tests override to avoid slot collisions.
+   */
   keyPrefix?: string;
-  /** When false, register is a no-op (api-only pods). */
+  /**
+   * When false, register is a no-op (api-only pods).
+   */
   schedulingEnabled?: boolean;
 }) => {
   assertHashTagged(keyPrefix);
   if (!Number.isFinite(maxJitterMs) || maxJitterMs < 0) {
     throw new Error(`cron: maxJitterMs (${maxJitterMs}) must be a non-negative number`);
-  }
-  if (!Number.isInteger(maxConcurrentHandlers) || maxConcurrentHandlers < 1) {
-    throw new Error(`cron: maxConcurrentHandlers (${maxConcurrentHandlers}) must be an integer >= 1`);
   }
 
   const SLOT_KEY = (i: number) => `${keyPrefix}:slot:${i}`;
@@ -200,8 +200,6 @@ export const cronJobFactory = ({
   }
 
   const workerId = randomUUID();
-  const CAPACITY_LOG_INTERVAL_MS = 60_000; // throttle capacity logs during sustained backlog
-  let lastCapacityLogAtMs = 0;
   const entries = new Map<string, CronEntry>();
   const lastEnqueuedAt = new Map<string, number>();
   const inFlight = new Set<Promise<unknown>>();
@@ -230,8 +228,6 @@ export const cronJobFactory = ({
     return scheduledAt + jitterOffsetMs(entry.name, windowMs);
   };
 
-  const atHandlerCapacity = () => inFlight.size >= maxConcurrentHandlers;
-
   const shuffleInPlace = <T>(arr: T[]): void => {
     for (let i = arr.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -253,6 +249,7 @@ export const cronJobFactory = ({
       await Promise.race([taskPromise, timeout]);
     } finally {
       if (timer) clearTimeout(timer);
+      // Nothing waits on the handler after a timeout, so absorb its eventual rejection.
       taskPromise.catch(() => {});
     }
   };
@@ -332,7 +329,7 @@ export const cronJobFactory = ({
     }
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
-    if (pattern.trim().split(/\s+/).length !== CRON_FIELD_COUNT) {
+    if (pattern.trim().split(CRON_FIELD_SEPARATOR).length !== CRON_FIELD_COUNT) {
       throw new Error(
         `cron[${name}] pattern "${pattern}" must have ${CRON_FIELD_COUNT} fields. The cron manager schedules at minute granularity; sub-minute work belongs on a setInterval or a queue`
       );
@@ -478,7 +475,7 @@ export const cronJobFactory = ({
     const data = await redis.hgetall(RUN_KEY(id));
     if (!data?.name) {
       logger.error(
-        `cron: pending run expired before it was claimed and will not execute, raise its runHashTtlS above its jitter window and expected backlog [id=${id}]`
+        `cron: pending run expired before it was claimed and will not execute, raise its runHashTtlS [id=${id}]`
       );
       await redis.zrem(PENDING_ZSET, id);
       return;
@@ -504,8 +501,6 @@ export const cronJobFactory = ({
       return;
     }
 
-    if (atHandlerCapacity()) return;
-
     if (isStalled) {
       logger.info(`cron[${data.name}]: re-claiming stalled run [id=${id}] [previous_worker=${data.worker_id}]`);
     }
@@ -530,24 +525,12 @@ export const cronJobFactory = ({
     const ids = await redis.zrangebyscore(PENDING_ZSET, "-inf", Date.now(), "LIMIT", 0, PROCESS_BATCH_SIZE);
     shuffleInPlace(ids);
 
-    for (let i = 0; i < ids.length; i += 1) {
-      if (atHandlerCapacity()) {
-        const now = Date.now();
-        if (now - lastCapacityLogAtMs >= CAPACITY_LOG_INTERVAL_MS) {
-          lastCapacityLogAtMs = now;
-          logger.info(
-            `cron: at handler capacity (${maxConcurrentHandlers}), deferring ${
-              ids.length - i
-            } due run(s) [worker=${workerId}]`
-          );
-        }
-        break;
-      }
+    for (const id of ids) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        await processCandidate(ids[i]);
+        await processCandidate(id);
       } catch (err) {
-        logger.error({ err, id: ids[i] }, "cron: processCandidate failed");
+        logger.error({ err, id }, "cron: processCandidate failed");
       }
     }
   };
