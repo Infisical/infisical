@@ -165,7 +165,7 @@ export const SecretInsightsPage = withPermission(
           <link rel="icon" href="/infisical.ico" />
         </Helmet>
         <div className="h-full">
-          <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
+          <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
             <PageHeader
               className="mb-4 dashboard:mb-10"
               scope={ProjectType.SecretManager}
@@ -174,7 +174,7 @@ export const SecretInsightsPage = withPermission(
             >
               <div className="flex items-center gap-3">
                 {lastSentReport && (
-                  <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-mineshaft-300">
+                  <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-label">
                     <FileTextIcon className="size-3.5" />
                     Last report sent {format(new Date(lastSentReport.createdAt), "MMM d, yyyy")}
                   </span>
@@ -279,6 +279,7 @@ export const SecretInsightsPage = withPermission(
           isAuditLogSupported={isClickhouseEnabled}
         />
         <UpgradePlanModal
+          paywallKey="organization.secret-insights"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."

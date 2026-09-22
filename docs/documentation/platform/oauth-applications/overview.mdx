@@ -11,14 +11,14 @@ An OAuth application obtains its tokens through one of two flows, chosen when yo
 <CardGroup cols={2}>
   <Card
     title="Authorization code"
-    icon="browser"
+    icon="app-window"
     href="/documentation/platform/oauth-applications/authorization-code"
   >
     The user approves the application on an Infisical consent screen in their browser. Best for a platform integrating with Infisical as an external auth provider, such as one where `infisical run` fetches secrets with the developer's own permissions.
   </Card>
   <Card
     title="Token exchange"
-    icon="right-left"
+    icon="arrow-right-left"
     href="/documentation/platform/oauth-applications/token-exchange"
   >
     Trusted middleware you run presents a user's token from your identity provider and receives an Infisical token for that same user. Best for MCP servers, internal developer portals, and API gateways that have no browser to redirect through.

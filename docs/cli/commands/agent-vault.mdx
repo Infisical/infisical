@@ -149,7 +149,7 @@ infisical agent-vault run --session-token <session-token> --proxy 10.0.1.5:17323
 
 #### `--access-bundle`
 
-Create a session with this access bundle, by name. Pass it once. Creates it as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the access bundle. Can't be combined with `--session-token`.
+Create a session with this access bundle, by name. Pass it once. Creates it as the machine identity from `--client-id` and `--client-secret`, or as your login. The machine identity has to be an Agent Vault member with a grant on the access bundle. Can't be combined with `--session-token`.
 
 ```bash
 # Example

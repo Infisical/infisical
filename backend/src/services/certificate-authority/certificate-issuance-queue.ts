@@ -3,6 +3,7 @@ import { UnrecoverableError } from "bullmq";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -47,7 +48,11 @@ import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-applica
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import {
+  addRenewedCertificateToSyncs,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate
+} from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../resource-metadata/resource-metadata-fns";
 import { runWithAcmeCancellation } from "./acme/acme-cancellation";
@@ -163,10 +168,14 @@ type TCertificateIssuanceQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+    | "findPkiSyncIdsByCertificateId"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncMetadata"
+    | "primaryNode"
   >;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
   certificateRequestService?: Pick<
@@ -183,6 +192,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -212,6 +222,7 @@ export const certificateIssuanceQueueFactory = ({
   apiEnrollmentConfigDAL,
   gatewayV2Service,
   gatewayPoolService,
+  keyStore,
   telemetryService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
@@ -227,7 +238,10 @@ export const certificateIssuanceQueueFactory = ({
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -1095,16 +1109,18 @@ export const certificateIssuanceQueueFactory = ({
       );
 
       let scopedApplicationId: string | null = data.applicationId ?? null;
+      let issuedCertificateId: string | null | undefined;
       try {
         if (!scopedApplicationId && isRenewal && originalCertificateId) {
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
         }
-        if (scopedApplicationId && certificateRequestId && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId);
-          if (req?.certificateId) {
-            await certificateDAL.updateById(req.certificateId, { applicationId: scopedApplicationId });
-          }
+        issuedCertificateId =
+          certificateRequestId && certificateRequestDAL
+            ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
+            : certificateId;
+        if (scopedApplicationId && issuedCertificateId) {
+          await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
         }
       } catch (stampErr) {
         logger.warn(
@@ -1114,28 +1130,25 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        if (scopedApplicationId && profileId && certificateProfileDAL && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId!);
-          if (req?.certificateId) {
-            const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-            if (profile) {
-              const effectiveApiConfig = await resolveEffectiveApiConfig({
-                applicationId: scopedApplicationId,
-                profileId,
-                profileApiConfig: profile.apiConfig,
-                pkiApplicationProfileDAL,
-                apiEnrollmentConfigDAL
-              });
-              const cert = await certificateDAL.findById(req.certificateId);
-              if (cert && !cert.renewBeforeDays) {
-                const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-                  { apiConfig: effectiveApiConfig },
-                  ttl,
-                  new Date(cert.notAfter)
-                );
-                if (finalRenewBeforeDays !== undefined) {
-                  await certificateDAL.updateById(req.certificateId, { renewBeforeDays: finalRenewBeforeDays });
-                }
+        if (scopedApplicationId && profileId && certificateProfileDAL && issuedCertificateId) {
+          const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+          if (profile) {
+            const effectiveApiConfig = await resolveEffectiveApiConfig({
+              applicationId: scopedApplicationId,
+              profileId,
+              profileApiConfig: profile.apiConfig,
+              pkiApplicationProfileDAL,
+              apiEnrollmentConfigDAL
+            });
+            const cert = await certificateDAL.findById(issuedCertificateId);
+            if (cert && !cert.renewBeforeDays) {
+              const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+                { apiConfig: effectiveApiConfig },
+                ttl,
+                new Date(cert.notAfter)
+              );
+              if (finalRenewBeforeDays !== undefined) {
+                await certificateDAL.updateById(issuedCertificateId, { renewBeforeDays: finalRenewBeforeDays });
               }
             }
           }
@@ -1148,21 +1161,28 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        if (isRenewal && originalCertificateId && certificateRequestId && certificateRequestDAL) {
-          const req = await certificateRequestDAL.findById(certificateRequestId);
-          if (req?.certificateId) {
-            await addRenewedCertificateToSyncs(originalCertificateId, req.certificateId, { certificateSyncDAL });
-            await triggerAutoSyncForCertificate(req.certificateId, {
-              certificateSyncDAL,
-              pkiSyncDAL,
-              pkiSyncQueue
-            });
+        if (isRenewal && originalCertificateId && issuedCertificateId) {
+          await addRenewedCertificateToSyncs(originalCertificateId, issuedCertificateId, { certificateSyncDAL });
+          await triggerAutoSyncForCertificate(issuedCertificateId, {
+            certificateSyncDAL,
+            pkiSyncDAL,
+            pkiSyncQueue
+          });
+        }
+
+        if (issuedCertificateId && scopedApplicationId) {
+          await queueCertificateFilterReconcile(issuedCertificateId, scopedApplicationId, pkiSyncQueue);
+
+          if (isRenewal && originalCertificateId) {
+            await queueCertificateFilterReconcile(originalCertificateId, scopedApplicationId, pkiSyncQueue);
           }
         }
       } catch (syncErr) {
         logger.warn(
           syncErr,
-          `Failed to link renewed certificate to PKI syncs [originalCertificateId=${originalCertificateId}] [certificateRequestId=${certificateRequestId}]`
+          `Failed to link certificate to PKI syncs [isRenewal=${String(isRenewal)}] [originalCertificateId=${
+            originalCertificateId ?? "none"
+          }] [certificateRequestId=${certificateRequestId}]`
         );
       }
 

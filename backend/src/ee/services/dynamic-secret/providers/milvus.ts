@@ -5,16 +5,16 @@ import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -24,7 +24,6 @@ import { generateUsername } from "./templateUtils";
 type TMilvusProviderInputs = z.infer<typeof DynamicSecretMilvusSchema>;
 
 type TMilvusProviderDTO = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -85,11 +84,7 @@ export const sanitizeMilvusUsername = (username: string) => username.substring(0
 export const deriveRoleName = (username: string) =>
   `${MILVUS_ROLE_PREFIX}${username}`.substring(0, MILVUS_MAX_USERNAME_LENGTH);
 
-export const MilvusProvider = ({
-  gatewayService,
-  gatewayV2Service,
-  gatewayPoolService
-}: TMilvusProviderDTO): TDynamicProviderFns => {
+export const MilvusProvider = ({ gatewayV2Service, gatewayPoolService }: TMilvusProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: object) => {
     const providerInputs = await DynamicSecretMilvusSchema.parseAsync(inputs);
     const { hostname, origin } = parseMilvusHost(providerInputs, providerInputs.host, providerInputs.port);
@@ -140,20 +135,15 @@ export const MilvusProvider = ({
       targetPort: inputs.targetPort
     });
 
-    if (gatewayV2ConnectionDetails) {
-      return withGatewayV2Proxy(async (port) => gatewayCallback("localhost", port), {
-        ...gatewayV2ConnectionDetails,
-        protocol: GatewayProxyProtocol.Tcp,
-        httpsAgent: inputs.httpsAgent
-      });
+    // Falling through here would silently bypass the gateway this dynamic secret is pinned to
+    // and dial the target host from the platform instead.
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(inputs.gatewayId) });
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
-    return withGatewayProxy(async (port) => gatewayCallback("localhost", port), {
-      relayDetails,
+    return withGatewayV2Proxy(async (port) => gatewayCallback("localhost", port), {
+      ...gatewayV2ConnectionDetails,
       protocol: GatewayProxyProtocol.Tcp,
-      targetHost: bareHostname,
-      targetPort: inputs.targetPort,
       httpsAgent: inputs.httpsAgent
     });
   };

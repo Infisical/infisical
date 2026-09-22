@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -1841,7 +1842,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "deleteCertificate",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate",
+      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
       params: z.object({
         id: z.string().trim().uuid().describe(CERTIFICATES.DELETE.id)
       }),
@@ -1852,12 +1853,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
         id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1868,7 +1870,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certId: deletedCert.id,
             cn: deletedCert.commonName,
+            friendlyName: deletedCert.friendlyName,
             serialNumber: deletedCert.serialNumber,
+            notAfter: deletedCert.notAfter.toISOString(),
+            source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+            deletionAllowedReason: deletionEligibility,
             applicationId: deletedCert.applicationId,
             applicationName
           }

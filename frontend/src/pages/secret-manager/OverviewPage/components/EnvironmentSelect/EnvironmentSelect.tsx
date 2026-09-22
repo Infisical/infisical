@@ -115,6 +115,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
         }}
       />
       <UpgradePlanModal
+        paywallKey="secret-manager.environment-select"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
         text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."

@@ -147,7 +147,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Choose a Kubernetes auth engine to filter available roles
           </p>
         </>
@@ -176,7 +176,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Select the Kubernetes role to load configuration from
           </p>
         </>

@@ -40,6 +40,25 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
+// Informational conditions on an account. Unlike PamAccountAccessibilityIssue these gate nothing:
+// the account launches, records and rotates as normal. Mirrors PamAccountWarning in
+// backend/src/ee/services/pam/pam-enums.ts.
+export enum PamAccountWarning {
+  SessionLogMaskingDegraded = "session-log-masking-degraded"
+}
+
+// Windows is brokered over RDP, whose recordings the gateway never masks; AWS IAM is gateway-less
+// and produces no session log. Mirrors accountTypeSupportsSessionLogMasking in
+// backend/src/ee/services/pam/pam-enums.ts.
+export const UNMASKABLE_PAM_ACCOUNT_TYPES = [
+  PamAccountType.Windows,
+  PamAccountType.WindowsAd,
+  PamAccountType.AwsIam
+];
+
+export const pamAccountTypeSupportsSessionLogMasking = (type: PamAccountType | string) =>
+  !(UNMASKABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
+
 // Mirrors ORACLE_MAX_PASSWORD_LENGTH in backend/src/ee/services/pam-account/pam-account-schemas.ts, which is
 // what actually rejects a longer one. Change both together.
 export const ORACLE_MAX_PASSWORD_LENGTH = 30;

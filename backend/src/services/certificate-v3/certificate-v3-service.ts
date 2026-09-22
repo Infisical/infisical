@@ -54,6 +54,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import { queueCertificateFilterReconcile } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -151,10 +152,14 @@ type TCertificateV3ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+    | "findPkiSyncIdsByCertificateId"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncMetadata"
+    | "primaryNode"
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   kmsService: Pick<
     TKmsServiceFactory,
     "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
@@ -978,6 +983,10 @@ export const certificateV3ServiceFactory = ({
         logger.debug("Failed to queue PKI issuance alert event");
       }
 
+      if (certificateData.id && applicationId) {
+        await queueCertificateFilterReconcile(certificateData.id, applicationId, pkiSyncQueue);
+      }
+
       await $reportCertificateIssued({
         orgId: profile.project?.orgId ?? actorOrgId,
         projectId: profile.projectId,
@@ -1215,6 +1224,10 @@ export const certificateV3ServiceFactory = ({
       });
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
+    }
+
+    if (cert.id && applicationId) {
+      await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
     }
 
     await $reportCertificateIssued({
@@ -1691,6 +1704,10 @@ export const certificateV3ServiceFactory = ({
       });
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
+    }
+
+    if (certResult.certificateId && applicationId) {
+      await queueCertificateFilterReconcile(certResult.certificateId, applicationId, pkiSyncQueue);
     }
 
     await $reportCertificateIssued({
@@ -2209,6 +2226,10 @@ export const certificateV3ServiceFactory = ({
         });
       });
       updatedMetadata = metadata;
+
+      if (certificate.applicationId) {
+        await queueCertificateFilterReconcile(certificateId, certificate.applicationId, pkiSyncQueue);
+      }
     }
 
     return {

@@ -339,6 +339,7 @@ export const EnvironmentSection = () => {
         </AlertDialogContent>
       </AlertDialog>
       <UpgradePlanModal
+        paywallKey="secret-manager.environment"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You have reached the maximum number of environments allowed on the free plan. Upgrade to Infisical Pro plan to add more environments."

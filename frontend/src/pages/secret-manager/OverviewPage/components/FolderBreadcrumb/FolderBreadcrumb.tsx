@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon, UsersIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -15,29 +15,25 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  IconButton
 } from "@app/components/v3";
 
 type Props = {
   secretPath?: string;
-  onManageFolderAccess?: () => void;
 };
 
 type Measurements = {
   containerWidth: number;
   segmentWidths: number[];
   ellipsisWidth: number;
-  folderIconWidth: number;
+  rootWidth: number;
   separatorWidth: number;
 };
 
 const breadcrumbLinkClassName =
   "-my-1 inline-flex min-h-7 items-center rounded px-1.5 hover:bg-foreground/10 hover:no-underline";
 
-export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Props) {
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +41,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
     containerWidth: 0,
     segmentWidths: [],
     ellipsisWidth: 0,
-    folderIconWidth: 0,
+    rootWidth: 0,
     separatorWidth: 0
   });
 
@@ -65,7 +61,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
     if (!container || !measureContainer) return;
 
     const containerWidth = container.getBoundingClientRect().width;
-    const folderIcon = measureContainer.querySelector("[data-measure='folder-icon']");
+    const root = measureContainer.querySelector("[data-measure='root']");
     const separator = measureContainer.querySelector("[data-measure='separator']");
     const ellipsis = measureContainer.querySelector("[data-measure='ellipsis']");
     const segments = measureContainer.querySelectorAll("[data-measure='segment']");
@@ -78,14 +74,14 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
         containerWidth,
         segmentWidths,
         ellipsisWidth: ellipsis?.getBoundingClientRect().width ?? 0,
-        folderIconWidth: folderIcon?.getBoundingClientRect().width ?? 0,
+        rootWidth: root?.getBoundingClientRect().width ?? 0,
         separatorWidth: separator?.getBoundingClientRect().width ?? 0
       };
 
       if (
         prev.containerWidth === newMeasurements.containerWidth &&
         prev.ellipsisWidth === newMeasurements.ellipsisWidth &&
-        prev.folderIconWidth === newMeasurements.folderIconWidth &&
+        prev.rootWidth === newMeasurements.rootWidth &&
         prev.separatorWidth === newMeasurements.separatorWidth &&
         prev.segmentWidths.length === newMeasurements.segmentWidths.length &&
         prev.segmentWidths.every((w, i) => w === newMeasurements.segmentWidths[i])
@@ -118,7 +114,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
 
   // Calculate visible segments based on actual measurements
   const { startCount, endCount, needsEllipsis } = useMemo(() => {
-    const { containerWidth, segmentWidths, ellipsisWidth, folderIconWidth, separatorWidth } =
+    const { containerWidth, segmentWidths, ellipsisWidth, rootWidth, separatorWidth } =
       measurements;
 
     // Before measurements are ready, show minimal state to prevent overflow
@@ -130,18 +126,11 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
     // We use 12px as a safe default since we can't easily detect breakpoint
     const GAP = 12;
 
-    // Calculate total width of all segments (including separators and gaps)
-    // Each segment has: gap + separator + gap + segment text
-    const totalSegmentWidth = segmentWidths.reduce(
-      (sum, w) => sum + w + separatorWidth + GAP * 2,
-      0
-    );
-    // The folder access button is a fixed-width sibling after the breadcrumb; subtract its
-    // footprint so the path collapses before it would collide with the button.
-    // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
-    const ACCESS_BUTTON_WIDTH = 28;
-    const accessButtonReserve = onManageFolderAccess ? ACCESS_BUTTON_WIDTH + GAP : 0;
-    const availableWidth = containerWidth - folderIconWidth - GAP - accessButtonReserve;
+    const itemSpacing = separatorWidth + GAP * 2;
+    const totalSegmentWidth =
+      segmentWidths.reduce((sum, width) => sum + width, 0) +
+      Math.max(segmentWidths.length - 1, 0) * itemSpacing;
+    const availableWidth = containerWidth - rootWidth - GAP;
 
     // If everything fits, show all
     if (totalSegmentWidth <= availableWidth) {
@@ -149,12 +138,11 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
     }
 
     // Need to collapse - prioritize showing the last segment
-    const ellipsisFullWidth = ellipsisWidth + separatorWidth + GAP * 2;
-    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + separatorWidth + GAP * 2;
-    const firstSegmentFullWidth = segmentWidths[0] + separatorWidth + GAP * 2;
+    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + itemSpacing;
+    const firstSegmentFullWidth = segmentWidths[0] + itemSpacing;
 
     // Minimum: just ellipsis + last segment
-    const minWidth = ellipsisFullWidth + lastSegmentFullWidth;
+    const minWidth = ellipsisWidth + lastSegmentFullWidth;
 
     // If we can't even fit ellipsis + last, just show what we can
     if (minWidth > availableWidth) {
@@ -199,7 +187,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
       endCount: needsCollapse ? end : 0,
       needsEllipsis: needsCollapse
     };
-  }, [measurements, folderPaths.length, Boolean(onManageFolderAccess)]);
+  }, [measurements, folderPaths.length]);
 
   // Derive visible segments
   const startSegments = needsEllipsis ? folderPaths.slice(0, startCount) : folderPaths;
@@ -247,7 +235,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
   return (
     <div
       ref={containerRef}
-      className="relative flex h-7 min-w-0 flex-1 items-center gap-1 overflow-hidden"
+      className="relative flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
     >
       {/* Hidden measurement container */}
       <div
@@ -255,8 +243,12 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
         className="pointer-events-none invisible absolute flex items-center gap-1.5 whitespace-nowrap sm:gap-3"
         aria-hidden="true"
       >
-        <span data-measure="folder-icon" className="inline-flex items-center">
+        <span
+          data-measure="root"
+          className="inline-flex max-w-48 items-center gap-4 pr-1.5 pl-3 text-sm"
+        >
           <FolderIcon className="size-4" />
+          <span>/</span>
         </span>
         <span data-measure="separator" className="inline-flex items-center">
           <SlashIcon className="size-3 -rotate-12" />
@@ -278,20 +270,23 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
         </span>
       </div>
 
-      {/* Visible breadcrumb (shrinks/clips on its own so the access button is never clipped) */}
-      <Breadcrumb className="min-w-0 overflow-hidden">
+      <Breadcrumb className="min-w-0">
         <BreadcrumbList className="flex-nowrap">
-          {/* Root folder icon */}
+          {/* Root folder */}
           <BreadcrumbItem>
-            <BreadcrumbLink asChild>
+            <BreadcrumbLink
+              asChild
+              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline"
+            >
               <Link
-                className="inline-flex size-7 items-center justify-center rounded hover:bg-foreground/10"
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
                 aria-label="Root folder"
+                title="/"
               >
-                <FolderIcon />
+                <FolderIcon className="size-4 shrink-0 text-folder" />
+                <span>/</span>
               </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -299,9 +294,11 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
           {/* Start segments */}
           {startSegments.map((path, index) => (
             <React.Fragment key={`start-${path}-${index + 1}`}>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
+              {index > 0 && (
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+              )}
               {!needsEllipsis && index === startSegments.length - 1 ? (
                 <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
               ) : (
@@ -327,9 +324,11 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
           {/* Ellipsis dropdown for hidden segments */}
           {needsEllipsis && hiddenSegments.length > 0 && (
             <>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
+              {startSegments.length > 0 && (
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+              )}
               <BreadcrumbItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -376,9 +375,11 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
             const isLast = index === endSegments.length - 1;
             return (
               <React.Fragment key={`end-${originalIndex}`}>
-                <BreadcrumbSeparator>
-                  <SlashIcon className="size-3 -rotate-12" />
-                </BreadcrumbSeparator>
+                {(index > 0 || startSegments.length > 0 || hiddenSegments.length > 0) && (
+                  <BreadcrumbSeparator>
+                    <SlashIcon className="size-3 -rotate-12" />
+                  </BreadcrumbSeparator>
+                )}
                 {isLast ? (
                   <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
                 ) : (
@@ -406,23 +407,6 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
           })}
         </BreadcrumbList>
       </Breadcrumb>
-
-      {onManageFolderAccess && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              variant="ghost-muted"
-              size="xs"
-              className="shrink-0"
-              aria-label="Manage folder access"
-              onClick={onManageFolderAccess}
-            >
-              <UsersIcon />
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>Manage Folder Access</TooltipContent>
-        </Tooltip>
-      )}
     </div>
   );
 }

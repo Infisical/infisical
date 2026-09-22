@@ -225,8 +225,8 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
                 <FormControl>
                   <Switch
                     id="disableManagedCrlDistributionPointUrl"
-                    className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                    thumbClassName="bg-mineshaft-800"
+                    className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
+                    thumbClassName="bg-surface-raised"
                     isChecked={value}
                     onCheckedChange={onChange}
                   >
@@ -304,6 +304,7 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
       </Modal>
 
       <UpgradePlanModal
+        paywallKey="cert-manager.ca-distribution-points"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Certificate revocation lists are available on Infisical's Enterprise plan."

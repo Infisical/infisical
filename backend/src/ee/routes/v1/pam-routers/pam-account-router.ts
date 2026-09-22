@@ -2,7 +2,7 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessStatus, PamAccountType, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -58,6 +58,9 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
     .describe("Reasons the account cannot launch a session, if any"),
   isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
+  warnings: z
+    .array(z.nativeEnum(PamAccountWarning))
+    .describe("Conditions worth surfacing on the account that do not block launching a session."),
   heartbeatStatus: z
     .nativeEnum(PamHeartbeatStatus)
     .nullable()
