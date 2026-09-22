@@ -476,7 +476,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `issue-cert`, `issue-pki-subscriber-cert`, `issue-certificate-from-profile`, `order-certificate-from-profile`
+            - `event`: `issue-cert`, `issue-pki-subscriber-cert`, `issue-certificate-from-profile`
           </Step>
         </Steps>
 
@@ -490,7 +490,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
           --data-urlencode "projectId=<project-id>" \
-          --data-urlencode "eventType=issue-cert,issue-pki-subscriber-cert,issue-certificate-from-profile,order-certificate-from-profile" \
+          --data-urlencode "eventType=issue-cert,issue-pki-subscriber-cert,issue-certificate-from-profile" \
           --data-urlencode "startDate=<start-date>"
         ```
       </Tab>
