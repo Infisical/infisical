@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldContent,
   FieldError,
   FieldLabel,
   Input
@@ -23,6 +26,8 @@ const formSchema = z.object({
   name: slugSchema({ field: "name" })
 });
 
+type TFormData = z.infer<typeof formSchema>;
+
 type Props = {
   isOpen: boolean;
   onToggle: (isOpen: boolean) => void;
@@ -31,39 +36,29 @@ type Props = {
 
 export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
   const updateGateway = useUpdateGateway();
-  const [name, setName] = useState(gateway.name);
-  const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
 
-  const errors = useMemo(() => {
-    const errorMap: Record<string, string | undefined> = {};
-    formErrors.forEach((issue) => {
-      if (issue.path.length > 0) errorMap[String(issue.path[0])] = issue.message;
-    });
-    return errorMap;
-  }, [formErrors]);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting }
+  } = useForm<TFormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { name: gateway.name }
+  });
 
   useEffect(() => {
-    if (isOpen) {
-      setName(gateway.name);
-      setFormErrors([]);
-    }
-  }, [isOpen, gateway.name]);
+    if (isOpen) reset({ name: gateway.name });
+  }, [isOpen, gateway.name, reset]);
 
-  const handleSubmit = async () => {
-    setFormErrors([]);
-    const validation = formSchema.safeParse({ name });
-    if (!validation.success) {
-      setFormErrors(validation.error.issues);
-      return;
-    }
-
-    if (name.trim() === gateway.name) {
+  const onFormSubmit = async ({ name }: TFormData) => {
+    if (name === gateway.name) {
       onToggle(false);
       return;
     }
 
     try {
-      await updateGateway.mutateAsync({ gatewayId: gateway.id, name: name.trim() });
+      await updateGateway.mutateAsync({ gatewayId: gateway.id, name });
       createNotification({ type: "success", text: "Gateway renamed" });
       onToggle(false);
     } catch (err: unknown) {
@@ -75,30 +70,35 @@ export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onToggle}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Rename Gateway</DialogTitle>
-          <DialogDescription>
-            The gateway keeps its ID, so anything already pointing at it carries on working.
-          </DialogDescription>
-        </DialogHeader>
-        <Field data-invalid={Boolean(errors.name)}>
-          <FieldLabel htmlFor="rename-gateway-name">Name</FieldLabel>
-          <Input
-            id="rename-gateway-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            isError={Boolean(errors.name)}
+        <form onSubmit={handleSubmit(onFormSubmit)}>
+          <DialogHeader>
+            <DialogTitle>Rename Gateway</DialogTitle>
+            <DialogDescription>
+              The gateway keeps its ID, so anything already pointing at it carries on working.
+            </DialogDescription>
+          </DialogHeader>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Name</FieldLabel>
+                <FieldContent>
+                  <Input {...field} isError={Boolean(error)} placeholder="prod-us-east" />
+                </FieldContent>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
           />
-          <FieldError>{errors.name}</FieldError>
-        </Field>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onToggle(false)} type="button">
-            Cancel
-          </Button>
-          <Button variant="org" onClick={handleSubmit} isPending={updateGateway.isPending}>
-            Save Changes
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button variant="ghost" type="button" onClick={() => onToggle(false)}>
+              Cancel
+            </Button>
+            <Button variant="org" type="submit" isPending={isSubmitting}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

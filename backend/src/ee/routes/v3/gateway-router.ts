@@ -347,26 +347,17 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       // The auth method goes first: it does the network work that actually fails, so a rejected
       // change cannot leave behind a rename. Neither half is transactional.
-      const authResult = req.body.authMethod
-        ? await server.services.resourceAuthMethod.setMethod({
-            resource: { type: "gateway", id: req.params.gatewayId },
-            authMethod: toSetAuthMethodArg(req.body.authMethod),
-            actor: req.permission
-          })
-        : null;
+      if (req.body.authMethod) {
+        const result = await server.services.resourceAuthMethod.setMethod({
+          resource: { type: "gateway", id: req.params.gatewayId },
+          authMethod: toSetAuthMethodArg(req.body.authMethod),
+          actor: req.permission
+        });
 
-      const rename = req.body.name
-        ? await server.services.gatewayV2.renameGateway({
-            orgPermission: req.permission,
-            gatewayId: req.params.gatewayId,
-            name: req.body.name
-          })
-        : null;
+        const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
-
-      // Both events are written after the rename so they agree on what the gateway is called.
-      if (authResult) {
+        // Written before the rename is attempted. Deferring it would lose the record entirely
+        // when a rename fails, leaving an auth method change that nothing audited.
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -375,8 +366,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             metadata: resourceAuthMethodAuditMetadata({
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
-              resourceName: gateway.name,
-              view: authResult
+              resourceName: updated.name,
+              view: result
             })
           }
         });
@@ -390,7 +381,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
               orgId: req.permission.orgId,
-              method: authResult.method as TSettableAuthMethod
+              method: result.method as TSettableAuthMethod
             }
           })
           .catch((err) => {
@@ -398,17 +389,28 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
-      if (rename && rename.previousName !== gateway.name) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          orgId: req.permission.orgId,
-          event: {
-            type: EventType.GATEWAY_UPDATE,
-            metadata: { gatewayId: gateway.id, name: gateway.name, previousName: rename.previousName }
-          }
+      if (req.body.name) {
+        // renameGateway returns the row it wrote on the primary. Re-reading here instead would
+        // route through a replica, where a lagging read can hide the rename and skip the event.
+        const { gateway: renamed, previousName } = await server.services.gatewayV2.renameGateway({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
         });
+
+        if (previousName !== renamed.name) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            event: {
+              type: EventType.GATEWAY_UPDATE,
+              metadata: { gatewayId: renamed.id, name: renamed.name, previousName }
+            }
+          });
+        }
       }
 
+      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
