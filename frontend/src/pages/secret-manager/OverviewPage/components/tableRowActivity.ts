@@ -1,4 +1,4 @@
-export type TableRowActivityType = "secret" | "secret-import" | "secret-rotation";
+export type TableRowActivityType = "quick-add" | "secret" | "secret-import" | "secret-rotation";
 
 export type TableRowActivityId = `${TableRowActivityType}:${string}`;
 

@@ -3423,8 +3423,10 @@ const OverviewPageContent = () => {
                           !isTableEmpty && (
                             <QuickAddSecretRow
                               autoQueueOnBlur={isBatchModeActive}
+                              activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
                               existingSecretKeys={mergedSecKeys}
+                              onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment) =>
                                 handleSecretCreate(
