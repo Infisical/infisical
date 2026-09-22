@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { SquareMenu } from "lucide-react";
+import { ActivityIcon } from "lucide-react";
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle, PageHeader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
@@ -27,7 +27,7 @@ export const AgentVaultActivityLogsPage = () => {
         <>
           <PageHeader
             scope={ProjectType.AgentVault}
-            icon={SquareMenu}
+            icon={ActivityIcon}
             title="Activity Logs"
             description="Record what your agents reached, and where those records are stored."
           />

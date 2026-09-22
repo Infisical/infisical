@@ -1,4 +1,4 @@
-import { FileText, IdCard, Info, Package, Server, Shield, SquareMenu } from "lucide-react";
+import { ActivityIcon, FileText, IdCard, Info, Package, Server, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -42,7 +42,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
         },
         {
           label: "Activity Logs",
-          icon: SquareMenu,
+          icon: ActivityIcon,
           pathSuffix: "activity-logs",
           // Only once the config has loaded: an absent config reads as "not recording", so keying
           // the dot on the negation alone would flash it on every cold load of a healthy org.

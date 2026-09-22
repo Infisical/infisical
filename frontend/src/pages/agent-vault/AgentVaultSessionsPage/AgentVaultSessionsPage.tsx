@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
+  ActivityIcon,
   BanIcon,
   BotIcon,
   IdCardIcon,
@@ -11,7 +12,6 @@ import {
   PackageIcon,
   PlusIcon,
   SearchIcon,
-  SquareMenuIcon,
   UserIcon
 } from "lucide-react";
 
@@ -390,7 +390,7 @@ export const AgentVaultSessionsPage = () => {
                               aria-label="View session activity logs"
                               onClick={() => openSheet(session.id)}
                             >
-                              <SquareMenuIcon />
+                              <ActivityIcon />
                             </IconButton>
                           </TooltipTrigger>
                           <TooltipContent>View Activity Logs</TooltipContent>
