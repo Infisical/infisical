@@ -36,30 +36,28 @@ const LINE_BREAKS = new Set([0x09, 0x0a, 0x0d, 0x2028, 0x2029]);
 
 const isControlCharacter = (code: number) => code <= 0x1f || (code >= 0x7f && code <= 0x9f);
 
-// Invisible and bidirectional formatting characters. Two deliberate exclusions: U+200C/U+200D
-// (ZWNJ/ZWJ) join emoji sequences and Persian, Arabic and Indic script, and U+FE00-U+FE0F
-// (variation selectors) select emoji presentation. Removing either corrupts ordinary text.
-const isFormatCharacter = (code: number) =>
-  code === 0x061c || // Arabic letter mark
-  code === 0x180e || // Mongolian vowel separator
-  code === 0x200b || // zero-width space
-  code === 0x200e || // left-to-right mark
-  code === 0x200f || // right-to-left mark
-  (code >= 0x202a && code <= 0x202e) || // bidi embeddings and overrides
-  (code >= 0x2060 && code <= 0x2064) || // word joiner and invisible operators
-  (code >= 0x2066 && code <= 0x2069) || // bidi isolates
-  code === 0x2028 || // line separator
-  code === 0x2029 || // paragraph separator
-  code === 0xfeff || // byte order mark
-  (code >= 0xfff9 && code <= 0xfffb) || // interlinear annotation
-  (code >= 0x1d173 && code <= 0x1d17a) || // musical format controls
-  (code >= 0xe0000 && code <= 0xe007f); // tags block
+// The whole Unicode format category, rather than a list of its members: an enumeration of invisible
+// code points is a category Unicode keeps extending, and it has already been extended past two
+// rounds of this one.
+const FORMAT_CATEGORY = new RE2("\\p{Cf}", "u");
 
-// codePointAt, not charCodeAt: the astral ranges above sit beyond U+FFFF, where charCodeAt would
-// return a surrogate half and never match.
+// U+200C/U+200D (ZWNJ/ZWJ) are in that category but are ordinary text, joining emoji sequences and
+// Persian, Arabic and Indic script. Variation selectors are marks rather than format characters, so
+// they survive without an exclusion.
+const TEXT_JOINERS = new Set([0x200c, 0x200d]);
+
+// What the category misses: U+2028/U+2029 are line and paragraph separators, and the unassigned
+// half of the tags block is ignorable in rendering without being classified.
+const isUncategorizedFormat = (code: number) =>
+  code === 0x2028 || code === 0x2029 || (code >= 0xe0000 && code <= 0xe007f);
+
+// codePointAt, not charCodeAt: the astral ranges sit beyond U+FFFF, where charCodeAt would return a
+// surrogate half and never match.
 const isUnsafeCharacter = (character: string) => {
   const code = character.codePointAt(0) ?? 0;
-  return isControlCharacter(code) || isFormatCharacter(code);
+  if (TEXT_JOINERS.has(code)) return false;
+
+  return isControlCharacter(code) || isUncategorizedFormat(code) || FORMAT_CATEGORY.test(character);
 };
 
 // `allowMultiline` is for fields a user types into a textarea, where a line break or tab is ordinary

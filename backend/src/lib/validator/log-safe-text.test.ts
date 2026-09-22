@@ -149,7 +149,10 @@ describe("sanitizeLogPayload", () => {
     ["word joiner", 0x2060],
     ["interlinear annotation anchor", 0xfff9],
     ["musical format control", 0x1d173],
-    ["tag character", 0xe0020]
+    ["tag character", 0xe0020],
+    ["soft hyphen", 0x00ad],
+    ["deprecated bidi format", 0x206a],
+    ["egyptian hieroglyph format control", 0x13430]
   ])("catches the %s", (_label, code) => {
     const value = `a${String.fromCodePoint(code)}b`;
 
