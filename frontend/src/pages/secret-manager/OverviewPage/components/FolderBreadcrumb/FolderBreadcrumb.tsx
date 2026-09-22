@@ -19,7 +19,6 @@ import {
 } from "@app/components/v3";
 
 type Props = {
-  projectName: string;
   secretPath?: string;
 };
 
@@ -34,7 +33,7 @@ type Measurements = {
 const breadcrumbLinkClassName =
   "-my-1 inline-flex min-h-7 items-center rounded px-1.5 hover:bg-foreground/10 hover:no-underline";
 
-export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +96,7 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
   // Initial measurement and re-measure on path change
   useEffect(() => {
     measureElements();
-  }, [measureElements, folderPaths, projectName]);
+  }, [measureElements, folderPaths]);
 
   // Track container width with ResizeObserver
   useEffect(() => {
@@ -252,7 +251,7 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
           className="inline-flex max-w-48 items-center gap-4 pr-1.5 pl-3 text-sm"
         >
           <FolderIcon className="size-4" />
-          <span className="truncate">{projectName}</span>
+          <span>/</span>
         </span>
         <span data-measure="separator" className="inline-flex items-center">
           <SlashIcon className="size-3 -rotate-12" />
@@ -286,11 +285,11 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
-                aria-label={`${projectName} root folder`}
-                title={projectName}
+                aria-label="Root folder"
+                title="/"
               >
                 <FolderIcon className="size-4 shrink-0 text-folder" />
-                <span className="truncate">{projectName}</span>
+                <span>/</span>
               </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>

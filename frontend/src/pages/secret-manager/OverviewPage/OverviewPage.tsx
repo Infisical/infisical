@@ -2806,7 +2806,7 @@ const OverviewPageContent = () => {
               tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
             )}
           >
-            <FolderBreadcrumb projectName={currentProject.name} secretPath={secretPath} />
+            <FolderBreadcrumb secretPath={secretPath} />
             {canManageCurrentFolderAccess && (
               <Button
                 variant="ghost"
