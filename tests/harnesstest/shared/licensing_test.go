@@ -3,8 +3,8 @@ package harnesstest_test
 import (
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/harness"
-	"github.com/Infisical/infisical/tests/harness/license"
 	"github.com/Infisical/infisical/tests/internal/spec"
 )
 

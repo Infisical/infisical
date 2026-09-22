@@ -13,12 +13,15 @@ const Prefix = "inf"
 // Isolated suite can still reach the shared Mailpit. It holds no state.
 const NetworkName = Prefix + "-net"
 
-// PackageNetwork is the network an Isolated package gets to itself.
+// NetworkSubnet is fixed so fakenet can take a fixed address on it.
 //
-// Its own, because a host alias belongs to the network: two WireMocks claiming
-// api.github.com on one network make Docker DNS round-robin between them, so a stub
-// registered on one is missed by a request that lands on the other.
-func PackageNetwork(pkg string) string { return NetworkName + "-" + Sanitize(pkg) }
+// Infisical is told which resolver to use when its container is created and is then
+// adopted by later test binaries, so that address has to survive fakenet being
+// rebuilt. Docker will not assign a fixed address on a network whose subnet it chose.
+//
+// Outside Docker's default 172.16-172.31 pools, so creating this network cannot
+// collide with whatever else is already running on the machine.
+const NetworkSubnet = "10.201.0.0/16"
 
 var unsafeNameChars = regexp.MustCompile(`[^a-zA-Z0-9_.-]+`)
 

@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
 func main() {
@@ -107,6 +109,17 @@ func down() int {
 
 	if _, err := docker("network", "rm", infra.NetworkName); err == nil {
 		fmt.Println("removed network " + infra.NetworkName)
+	}
+
+	// The CA goes with the containers. Infisical is told to trust it when its
+	// container is created, so a CA that outlived the stack would be a certificate
+	// the next Infisical never sees, and the failure would be a TLS error with
+	// nothing pointing at the cause.
+	if root, err := infra.RepoRoot(); err == nil {
+		ca := filepath.Join(root, "tests", fakenet.CAFile)
+		if err := os.Remove(ca); err == nil {
+			fmt.Println("removed the fakenet CA")
+		}
 	}
 	return 0
 }

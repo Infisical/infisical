@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/harness/infisical"
-	"github.com/Infisical/infisical/tests/harness/license"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 )
@@ -148,12 +149,10 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 // through the API and asserts the stub produced what was asked for in one call.
 func (t *Tenant) SetPlan(tt *testing.T, p license.Plan) {
 	tt.Helper()
-	if t.stack.license == nil {
-		tt.Fatalf("%s: SetPlan needs the license stub, which needs WireMock", t.stack.pkg)
-	}
-	if err := t.stack.license.SetOrgPlan(tt.Context(), t.OrgID.String(), p); err != nil {
-		tt.Fatalf("harness: %v", err)
-	}
+
+	fn := t.stack.Require(tt, fakenet.Key, "harness.Shared").(*fakenet.Handle)
+	license.Open(tt, fn.AdminURL(), t.OrgID.String()).Seed(tt, p)
+
 	t.plan = &p
 	t.Verify(tt, p)
 }

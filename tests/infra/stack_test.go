@@ -8,7 +8,6 @@ import (
 	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
-	"github.com/Infisical/infisical/tests/infra/wiremock"
 	"github.com/Infisical/infisical/tests/internal/spec"
 )
 
@@ -61,7 +60,6 @@ func TestStack_AllModulesComeUpTogether(t *testing.T) {
 		postgres.Module(),
 		redis.Module(),
 		mailpit.Module(),
-		wiremock.Module(),
 	}, infra.Shared)
 
 	t.Run("ok/every module reports a usable external address", func(t *testing.T) {
@@ -88,10 +86,4 @@ func TestStack_AllModulesComeUpTogether(t *testing.T) {
 		}
 	})
 
-	t.Run("ok/wiremock serves its admin API", func(t *testing.T) {
-		wm := handles[wiremock.Key].(*wiremock.Handle)
-		if got := wm.AdminURL(infra.External); got == "" {
-			t.Fatal("no admin URL")
-		}
-	})
 }

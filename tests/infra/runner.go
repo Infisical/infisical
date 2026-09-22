@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/netip"
 	"os"
 	"os/exec"
 	"strconv"
@@ -11,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/moby/moby/api/types/container"
+	dockernetwork "github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
 	"github.com/testcontainers/testcontainers-go/network"
@@ -64,19 +67,29 @@ func NewRunner(workspace string, log Logger) Runner {
 // package network afterwards. testcontainers' network.New generates a random name per
 // process, which would give every test binary its own island.
 //
-// Shelled out rather than using the Docker API, because importing the moby network
-// types reintroduces an ambiguous import between github.com/moby/moby and
-// github.com/moby/moby/api. This runs once per machine, so a subprocess is free.
+// Shelled out rather than using the Docker API. This runs once per machine, so a
+// subprocess is free, and it keeps network creation independent of testcontainers.
+//
+// The subnet is fixed because fakenet needs a fixed address on it. An existing
+// network with a different subnet is refused rather than silently reused, since the
+// symptom would otherwise be Docker rejecting fakenet's address much later.
 func (r *dockerRunner) Network(ctx context.Context, name string) error {
 	if r.netName == name {
 		return nil
 	}
-	if err := exec.CommandContext(ctx, "docker", "network", "inspect", name).Run(); err == nil {
+	if out, err := exec.CommandContext(ctx, "docker", "network", "inspect",
+		"-f", "{{range .IPAM.Config}}{{.Subnet}}{{end}}", name).Output(); err == nil {
+		if got := strings.TrimSpace(string(out)); got != NetworkSubnet {
+			return fmt.Errorf("infra: network %s has subnet %q, want %s.\n"+
+				"fakenet needs a fixed address, which needs a known subnet.\n"+
+				"Run `make down` once to recreate the network", name, got, NetworkSubnet)
+		}
 		r.netName = name
 		return nil
 	}
 
 	out, err := exec.CommandContext(ctx, "docker", "network", "create",
+		"--subnet", NetworkSubnet,
 		"--label", LabelScope+"=shared",
 		"--label", LabelWorkspace+"="+r.workspace,
 		name,
@@ -146,6 +159,36 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		}
 		aliases := append([]string{alias}, spec.Aliases...)
 		opts = append(opts, network.WithNetworkName(aliases, net))
+
+		if spec.IP != "" {
+			addr, err := netip.ParseAddr(spec.IP)
+			if err != nil {
+				return Container{}, fmt.Errorf("infra: %s has an unparseable IP %q: %w", spec.Name, spec.IP, err)
+			}
+			netName := net
+			opts = append(opts, testcontainers.WithEndpointSettingsModifier(
+				func(settings map[string]*dockernetwork.EndpointSettings) {
+					s, ok := settings[netName]
+					if !ok {
+						s = &dockernetwork.EndpointSettings{}
+						settings[netName] = s
+					}
+					s.IPAMConfig = &dockernetwork.EndpointIPAMConfig{IPv4Address: addr}
+				}))
+		}
+	}
+	if len(spec.DNS) > 0 {
+		resolvers := make([]netip.Addr, 0, len(spec.DNS))
+		for _, d := range spec.DNS {
+			addr, err := netip.ParseAddr(d)
+			if err != nil {
+				return Container{}, fmt.Errorf("infra: %s has an unparseable DNS address %q: %w", spec.Name, d, err)
+			}
+			resolvers = append(resolvers, addr)
+		}
+		opts = append(opts, testcontainers.WithHostConfigModifier(func(hc *container.HostConfig) {
+			hc.DNS = resolvers
+		}))
 	}
 	for _, f := range spec.Files {
 		mode := f.Mode
