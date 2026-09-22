@@ -187,13 +187,7 @@ export const certificateAuthorityOcspServiceFactory = ({
     return "good";
   };
 
-  const getOcspResponse: TCertificateAuthorityOcspServiceFactory["getOcspResponse"] = async ({ caId, requestDer }) => {
-    const parsed = parseOcspRequest(requestDer);
-    if (!parsed) {
-      recordOcspResponseMetric({ status: "malformed_request", certStatus: "none", cache: "skipped" });
-      return { response: buildOcspErrorResponse(OcspResponseStatus.MalformedRequest), maxAgeSeconds: 0 };
-    }
-
+  const $resolveAuthoritativeCa = async (caId: string, entries: TParsedOcspRequestEntry[]) => {
     const ca = await certificateAuthorityDAL
       .findByIdWithAssociatedCa(caId, certificateAuthorityDAL.primaryNode())
       .catch((error) => {
@@ -201,30 +195,38 @@ export const certificateAuthorityOcspServiceFactory = ({
         throw error;
       });
 
-    if (!ca?.internalCa?.id || !ca.internalCa.isOcspEnabled || !ca.internalCa.activeCaCertId) {
-      recordOcspResponseMetric({ status: "unauthorized", certStatus: "none", cache: "skipped" });
-      return { response: buildOcspErrorResponse(OcspResponseStatus.Unauthorized), maxAgeSeconds: 0 };
-    }
+    if (!ca?.internalCa?.id || !ca.internalCa.isOcspEnabled || !ca.internalCa.activeCaCertId) return null;
 
     const activeCaCert = await $getActiveCaCertificate(ca.id, ca.projectId, ca.internalCa.activeCaCertId);
-    if (!activeCaCert) {
+    if (!activeCaCert) return null;
+
+    const issuedByThisCa = entries.every((entry) => {
+      const identifiers = $getIdentifiers(activeCaCert, entry.hashAlgorithmOid);
+      return (
+        identifiers &&
+        identifiers.issuerNameHash.equals(entry.issuerNameHash) &&
+        identifiers.issuerKeyHash.equals(entry.issuerKeyHash)
+      );
+    });
+    if (!issuedByThisCa) return null;
+
+    return { ca, activeCaCert, generation: String(ca.internalCa.ocspGeneration) };
+  };
+
+  const getOcspResponse: TCertificateAuthorityOcspServiceFactory["getOcspResponse"] = async ({ caId, requestDer }) => {
+    const parsed = parseOcspRequest(requestDer);
+    if (!parsed) {
+      recordOcspResponseMetric({ status: "malformed_request", certStatus: "none", cache: "skipped" });
+      return { response: buildOcspErrorResponse(OcspResponseStatus.MalformedRequest), maxAgeSeconds: 0 };
+    }
+
+    const authoritative = await $resolveAuthoritativeCa(caId, parsed.entries);
+    if (!authoritative) {
       recordOcspResponseMetric({ status: "unauthorized", certStatus: "none", cache: "skipped" });
       return { response: buildOcspErrorResponse(OcspResponseStatus.Unauthorized), maxAgeSeconds: 0 };
     }
 
-    for (const entry of parsed.entries) {
-      const identifiers = $getIdentifiers(activeCaCert, entry.hashAlgorithmOid);
-      if (
-        !identifiers ||
-        !identifiers.issuerNameHash.equals(entry.issuerNameHash) ||
-        !identifiers.issuerKeyHash.equals(entry.issuerKeyHash)
-      ) {
-        recordOcspResponseMetric({ status: "unauthorized", certStatus: "none", cache: "skipped" });
-        return { response: buildOcspErrorResponse(OcspResponseStatus.Unauthorized), maxAgeSeconds: 0 };
-      }
-    }
-
-    const generationAtStart = String(ca.internalCa.ocspGeneration);
+    const { ca, activeCaCert, generation: generationAtStart } = authoritative;
 
     const cacheKey =
       parsed.nonce || parsed.entries.length !== 1

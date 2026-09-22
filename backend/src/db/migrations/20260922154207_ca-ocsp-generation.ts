@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
 
   if (!hasColumn) {
     await knex.schema.alterTable(TableName.InternalCertificateAuthority, (t) => {
-      t.integer("ocspGeneration").defaultTo(0).notNullable();
+      t.bigint("ocspGeneration").defaultTo(0).notNullable();
     });
   }
 }
