@@ -50,7 +50,7 @@ To view all events in an organization across every product:
 ### For a product
 
 <Note>
-  **Privileged Access Manager** and **Agent Vault** are organization-scoped. Follow the [organization instructions](#for-an-organization) instead.
+  **Privileged Access Manager** and **Agent Vault** are opened from the organization sidebar, but their audit logs are scoped to a unique project within that product. In the UI, Infisical selects that project automatically. When using the API, pass the product's `projectId`.
 </Note>
 
 To view all events scoped to a single product:
@@ -59,7 +59,14 @@ To view all events scoped to a single product:
   <Tab title="Infisical UI">
     <Steps>
       <Step>
-        Open the product from the organization sidebar, then select the project.
+        Open the product from the organization sidebar.
+      </Step>
+      <Step>
+        For **Secrets Management**, **Certificate Manager**, **KMS**, and **Secret Scanning**, select the project you want to audit.
+        
+        <Note>
+        For **Privileged Access Manager** and **Agent Vault**, skip this step.
+        </Note>
       </Step>
       <Step>
         Select **Audit Logs** in the product's sidebar.
