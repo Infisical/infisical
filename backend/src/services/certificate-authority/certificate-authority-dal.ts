@@ -59,7 +59,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalDisableManagedCrlDistributionPointUrl"),
-        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled")
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -97,7 +98,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
-            isOcspEnabled: result.internalIsOcspEnabled ?? false
+            isOcspEnabled: result.internalIsOcspEnabled ?? false,
+            ocspGeneration: result.internalOcspGeneration ?? 0
           }
         : undefined,
       externalCa: result
@@ -155,7 +157,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .ref("disableManagedCrlDistributionPointUrl")
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalDisableManagedCrlDistributionPointUrl"),
-        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled")
+        db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -196,7 +199,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             activeCaCertId: result.internalActiveCaCertId,
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
-            isOcspEnabled: result.internalIsOcspEnabled ?? false
+            isOcspEnabled: result.internalIsOcspEnabled ?? false,
+            ocspGeneration: result.internalOcspGeneration ?? 0
           }
         : undefined,
       externalCa: result
@@ -295,7 +299,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             .ref("disableManagedCrlDistributionPointUrl")
             .withSchema(TableName.InternalCertificateAuthority)
             .as("internalDisableManagedCrlDistributionPointUrl"),
-          db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled")
+          db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
+          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -352,7 +357,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               activeCaCertId: ca.internalActiveCaCertId,
               crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
               disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false,
-              isOcspEnabled: ca.internalIsOcspEnabled ?? false
+              isOcspEnabled: ca.internalIsOcspEnabled ?? false,
+              ocspGeneration: ca.internalOcspGeneration ?? 0
             }
           : undefined,
         externalCa: ca
@@ -407,8 +413,11 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...caOrm,
+    primaryNode,
     findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa,

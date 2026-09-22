@@ -21,8 +21,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import {
-  OCSP_GENERATION_TTL_SECONDS,
-  OCSP_HASH_NAME_BY_OID,
   OCSP_MAX_CACHED_CA_CERTIFICATES,
   OCSP_MAX_CONCURRENT_SIGNATURES,
   OCSP_MAX_CONCURRENT_SIGNATURES_PER_CA,
@@ -30,6 +28,7 @@ import {
   OCSP_RESPONSE_VALIDITY_SECONDS,
   OCSP_SATURATION_LOG_INTERVAL_MS,
   OCSP_SIGNING_MAX_QUEUE_DEPTH,
+  OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT,
   OCSP_SIGNING_QUEUE_TIMEOUT_MS,
   OCSP_UNKNOWN_RESPONSE_VALIDITY_SECONDS,
   OcspCertStatus,
@@ -52,26 +51,20 @@ import {
 } from "./certificate-authority-ocsp-types";
 
 type TCertificateAuthorityOcspServiceFactoryDep = {
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "primaryNode">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
-  keyStore: Pick<
-    TKeyStoreFactory,
-    "getItemPrimary" | "setItemWithExpiry" | "deleteItemsByKeyIn" | "incrementSeededWithExpiry"
-  >;
+  keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
 };
 
 const OCSP_CACHE_PREFIX = "ocsp-response";
-const OCSP_GENERATION_PREFIX = "ocsp-generation";
 
 const buildCacheKey = (caCertId: string, hashAlgorithmOid: string, serialNumber: string) =>
   `${OCSP_CACHE_PREFIX}:${caCertId}:${hashAlgorithmOid}:${serialNumber}`;
-
-const buildGenerationKey = (caId: string) => `${OCSP_GENERATION_PREFIX}:${caId}`;
 
 type TCaOcspIdentifiers = ReturnType<typeof getCaOcspIdentifiers>;
 
@@ -96,7 +89,8 @@ const signingLimiters = createOcspSigningLimiterRegistry({
   perCaLimit: OCSP_MAX_CONCURRENT_SIGNATURES_PER_CA,
   maxWaitMs: OCSP_SIGNING_QUEUE_TIMEOUT_MS,
   maxQueueDepth: OCSP_SIGNING_MAX_QUEUE_DEPTH,
-  maxTrackedCas: OCSP_MAX_TRACKED_CA_LIMITERS
+  maxTrackedCas: OCSP_MAX_TRACKED_CA_LIMITERS,
+  maxTotalInFlight: OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT
 });
 
 export const certificateAuthorityOcspServiceFactory = ({
@@ -200,10 +194,12 @@ export const certificateAuthorityOcspServiceFactory = ({
       return { response: buildOcspErrorResponse(OcspResponseStatus.MalformedRequest), maxAgeSeconds: 0 };
     }
 
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId).catch((error) => {
-      if (error instanceof NotFoundError) return null;
-      throw error;
-    });
+    const ca = await certificateAuthorityDAL
+      .findByIdWithAssociatedCa(caId, certificateAuthorityDAL.primaryNode())
+      .catch((error) => {
+        if (error instanceof NotFoundError) return null;
+        throw error;
+      });
 
     if (!ca?.internalCa?.id || !ca.internalCa.isOcspEnabled || !ca.internalCa.activeCaCertId) {
       recordOcspResponseMetric({ status: "unauthorized", certStatus: "none", cache: "skipped" });
@@ -228,8 +224,7 @@ export const certificateAuthorityOcspServiceFactory = ({
       }
     }
 
-    const generationKey = buildGenerationKey(ca.id);
-    const generationAtStart = (await keyStore.getItemPrimary(generationKey)) ?? "0";
+    const generationAtStart = String(ca.internalCa.ocspGeneration);
 
     const cacheKey =
       parsed.nonce || parsed.entries.length !== 1
@@ -239,13 +234,14 @@ export const certificateAuthorityOcspServiceFactory = ({
     if (cacheKey) {
       const cached = await keyStore.getItemPrimary(cacheKey);
       if (cached) {
-        const { der, expiresAt, certStatus } = JSON.parse(cached) as {
+        const { der, expiresAt, certStatus, generation } = JSON.parse(cached) as {
           der: string;
           expiresAt: number;
           certStatus: TOcspCertStatusLabel;
+          generation: string;
         };
         const remaining = Math.floor((expiresAt - Date.now()) / 1000);
-        if (remaining > 0) {
+        if (remaining > 0 && generation === generationAtStart) {
           recordOcspResponseMetric({ status: "successful", certStatus, cache: "hit" });
           return { response: Buffer.from(der, "base64"), maxAgeSeconds: remaining };
         }
@@ -315,18 +311,16 @@ export const certificateAuthorityOcspServiceFactory = ({
       });
 
       if (cacheKey) {
-        const generationNow = (await keyStore.getItemPrimary(generationKey)) ?? "0";
-        if (generationNow === generationAtStart) {
-          await keyStore.setItemWithExpiry(
-            cacheKey,
-            validitySeconds,
-            JSON.stringify({
-              der: response.toString("base64"),
-              expiresAt: nextUpdate.getTime(),
-              certStatus: resolvedCertStatus
-            })
-          );
-        }
+        await keyStore.setItemWithExpiry(
+          cacheKey,
+          validitySeconds,
+          JSON.stringify({
+            der: response.toString("base64"),
+            expiresAt: nextUpdate.getTime(),
+            generation: generationAtStart,
+            certStatus: resolvedCertStatus
+          })
+        );
       }
 
       return {
@@ -357,20 +351,5 @@ export const certificateAuthorityOcspServiceFactory = ({
     }
   };
 
-  const invalidateCachedResponse: TCertificateAuthorityOcspServiceFactory["invalidateCachedResponse"] = async ({
-    caId,
-    serialNumber
-  }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    const activeCaCertId = ca?.internalCa?.activeCaCertId;
-    if (!activeCaCertId) return;
-
-    const normalized = normalizeSerialNumber(serialNumber);
-    const keys = Object.keys(OCSP_HASH_NAME_BY_OID).map((oid) => buildCacheKey(activeCaCertId, oid, normalized));
-
-    await keyStore.incrementSeededWithExpiry(buildGenerationKey(caId), Date.now(), OCSP_GENERATION_TTL_SECONDS);
-    await keyStore.deleteItemsByKeyIn(keys);
-  };
-
-  return { getOcspResponse, invalidateCachedResponse };
+  return { getOcspResponse };
 };

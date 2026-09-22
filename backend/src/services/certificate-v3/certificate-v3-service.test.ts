@@ -431,7 +431,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-123",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -496,7 +497,8 @@ describe("CertificateV3Service", () => {
             caId: "ca-123",
             crlDistributionPointUrls: [],
             disableManagedCrlDistributionPointUrl: false,
-            isOcspEnabled: false
+            isOcspEnabled: false,
+            ocspGeneration: 0
           }
         }
       };
@@ -607,7 +609,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-123",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -952,7 +955,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-123",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1068,7 +1072,8 @@ describe("CertificateV3Service", () => {
             caId: "ca-123",
             crlDistributionPointUrls: [],
             disableManagedCrlDistributionPointUrl: false,
-            isOcspEnabled: false
+            isOcspEnabled: false,
+            ocspGeneration: 0
           }
         }
       };
@@ -1239,7 +1244,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-123",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         },
         name: "Test CA",
         status: "ACTIVE",
@@ -1287,7 +1293,8 @@ describe("CertificateV3Service", () => {
             caId: "ca-123",
             crlDistributionPointUrls: [],
             disableManagedCrlDistributionPointUrl: false,
-            isOcspEnabled: false
+            isOcspEnabled: false,
+            ocspGeneration: 0
           }
         }
       };
@@ -1704,7 +1711,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-1",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -1878,7 +1886,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-1",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -2052,7 +2061,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-1",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -2226,7 +2236,8 @@ describe("CertificateV3Service", () => {
           caId: "ca-1",
           crlDistributionPointUrls: [],
           disableManagedCrlDistributionPointUrl: false,
-          isOcspEnabled: false
+          isOcspEnabled: false,
+          ocspGeneration: 0
         }
       };
 
@@ -2468,7 +2479,8 @@ describe("CertificateV3Service", () => {
         serialNumber: "123456789",
         crlDistributionPointUrls: [],
         disableManagedCrlDistributionPointUrl: false,
-        isOcspEnabled: false
+        isOcspEnabled: false,
+        ocspGeneration: 0
       }
     };
 

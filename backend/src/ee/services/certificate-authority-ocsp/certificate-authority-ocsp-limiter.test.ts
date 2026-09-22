@@ -113,7 +113,8 @@ describe("createOcspSigningLimiterRegistry", () => {
       perCaLimit: 2,
       maxWaitMs: 5000,
       maxQueueDepth: 64,
-      maxTrackedCas: 8
+      maxTrackedCas: 8,
+      maxTotalInFlight: 512
     });
     const gate = deferred();
     let noisyPeak = 0;
@@ -148,7 +149,8 @@ describe("createOcspSigningLimiterRegistry", () => {
       perCaLimit: 2,
       maxWaitMs: 1000,
       maxQueueDepth: 64,
-      maxTrackedCas: 3
+      maxTrackedCas: 3,
+      maxTotalInFlight: 512
     });
 
     for (let i = 0; i < 10; i += 1) {
@@ -157,5 +159,47 @@ describe("createOcspSigningLimiterRegistry", () => {
     }
 
     expect(registry.getTrackedCaCount()).toBeLessThanOrEqual(4);
+  });
+});
+
+describe("aggregate admission across CAs", () => {
+  it("should shed once total in-flight reaches the cap, however many CAs the traffic is spread over", async () => {
+    const registry = createOcspSigningLimiterRegistry({
+      globalLimit: 8,
+      perCaLimit: 4,
+      maxWaitMs: 60_000,
+      maxQueueDepth: 64,
+      maxTrackedCas: 256,
+      maxTotalInFlight: 32
+    });
+
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const inFlight: Promise<unknown>[] = [];
+    for (let ca = 0; ca < 64; ca += 1) {
+      for (let i = 0; i < 10; i += 1) {
+        inFlight.push(
+          registry.runForCa(`ca-${ca}`, async () => {
+            await gate;
+          })
+        );
+      }
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect(registry.getTotalInFlight()).toBe(32);
+    expect(registry.getTrackedCaCount()).toBeLessThanOrEqual(32);
+
+    release();
+    const results = await Promise.all(inFlight);
+
+    expect(results.filter((result) => result === null).length).toBeGreaterThan(0);
+    expect(registry.getTotalInFlight()).toBe(0);
   });
 });

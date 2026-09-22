@@ -8,14 +8,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Button as ButtonV2,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch
-} from "@app/components/v2";
-import {
+  Button,
   Card,
   CardAction,
   CardContent,
@@ -26,7 +19,19 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  IconButton
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldTitle,
+  IconButton,
+  Toggle
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -96,10 +101,7 @@ export const CaOcspSection = ({ caId }: Props) => {
       });
       handlePopUpToggle("editOcsp", false);
     } catch {
-      createNotification({
-        text: "Failed to update OCSP",
-        type: "error"
-      });
+      // MutationCache.onError already surfaces the server message, so the dialog only stays open
     }
   };
 
@@ -116,6 +118,7 @@ export const CaOcspSection = ({ caId }: Props) => {
             >
               {(isAllowed) => (
                 <IconButton
+                  aria-label="Edit OCSP"
                   variant="outline"
                   size="xs"
                   isDisabled={!isAllowed}
@@ -147,50 +150,54 @@ export const CaOcspSection = ({ caId }: Props) => {
         </CardContent>
       </Card>
 
-      <Modal
-        isOpen={popUp.editOcsp.isOpen}
+      <Dialog
+        open={popUp.editOcsp.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("editOcsp", isOpen);
           if (!isOpen) reset();
         }}
       >
-        <ModalContent title="Edit OCSP">
-          <form onSubmit={handleSubmit(onEditSubmit)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit OCSP</DialogTitle>
+            <DialogDescription>
+              Only certificates issued after OCSP is enabled carry the responder URL.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onEditSubmit)} className="flex flex-col gap-4">
             <Controller
               control={control}
               name="isOcspEnabled"
               render={({ field: { value, onChange } }) => (
-                <FormControl helperText="Only certificates issued after OCSP is enabled carry the responder URL.">
-                  <Switch
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Enable OCSP</FieldTitle>
+                    <FieldDescription>
+                      Answer revocation status checks for certificates issued by this CA.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
                     id="isOcspEnabled"
-                    className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
-                    thumbClassName="bg-surface-raised"
-                    isChecked={value}
+                    variant="success"
+                    checked={value}
                     onCheckedChange={onChange}
-                  >
-                    Enable OCSP
-                  </Switch>
-                </FormControl>
+                  />
+                </Field>
               )}
             />
-            <div className="flex w-full justify-between gap-4 pt-4">
-              <ModalClose asChild>
-                <ButtonV2 colorSchema="secondary" variant="plain">
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="ghost">
                   Cancel
-                </ButtonV2>
-              </ModalClose>
-              <ButtonV2
-                type="submit"
-                colorSchema="secondary"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
+                </Button>
+              </DialogClose>
+              <Button type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
                 Save
-              </ButtonV2>
-            </div>
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
 
       <UpgradePlanModal
         paywallKey="cert-manager.ca-ocsp"

@@ -33,7 +33,8 @@ export const InternalCertificateAuthoritiesSchema = z.object({
   lastRenewalAt: z.date().nullable().optional(),
   crlDistributionPointUrls: z.string().array().nullable().optional(),
   disableManagedCrlDistributionPointUrl: z.boolean().default(false),
-  isOcspEnabled: z.boolean().default(false)
+  isOcspEnabled: z.boolean().default(false),
+  ocspGeneration: z.number().default(0)
 });
 
 export type TInternalCertificateAuthorities = z.infer<typeof InternalCertificateAuthoritiesSchema>;

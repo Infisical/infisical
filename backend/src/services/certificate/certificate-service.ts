@@ -5,7 +5,6 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TCertificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -74,6 +73,7 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
@@ -161,7 +161,7 @@ type TCertificateServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
-  certificateAuthorityOcspService: Pick<TCertificateAuthorityOcspServiceFactory, "invalidateCachedResponse">;
+  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -197,7 +197,7 @@ export const certificateServiceFactory = ({
   keyStore,
   usageMeteringService,
   hsmConnectorService,
-  certificateAuthorityOcspService
+  internalCertificateAuthorityDAL
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -522,7 +522,13 @@ export const certificateServiceFactory = ({
           );
         }
 
-        return certificateDAL.deleteById(cert.id, tx);
+        const removed = await certificateDAL.deleteById(cert.id, tx);
+
+        if (cert.caId) {
+          await internalCertificateAuthorityDAL.update({ caId: cert.caId }, { $incr: { ocspGeneration: 1 } }, tx);
+        }
+
+        return removed;
       });
     } catch (err) {
       const innerError = err instanceof DatabaseError ? (err.error as { code?: string; constraint?: string }) : null;
@@ -537,20 +543,6 @@ export const certificateServiceFactory = ({
         });
       }
       throw err;
-    }
-
-    if (cert.caId) {
-      try {
-        await certificateAuthorityOcspService.invalidateCachedResponse({
-          caId: cert.caId,
-          serialNumber: cert.serialNumber
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `Failed to invalidate OCSP cache after deletion [caId=${cert.caId}] [serialNumber=${cert.serialNumber}]`
-        );
-      }
     }
 
     await triggerSyncsForDeletedCertificate(
@@ -735,16 +727,24 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    await certificateDAL.update(
-      {
-        id: cert.id
-      },
-      {
-        status: CertStatus.REVOKED,
-        revokedAt,
-        revocationReason: revocationReasonToCrlCode(revocationReason)
+    const revokedCertId = cert.id;
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.update(
+        {
+          id: revokedCertId
+        },
+        {
+          status: CertStatus.REVOKED,
+          revokedAt,
+          revocationReason: revocationReasonToCrlCode(revocationReason)
+        },
+        tx
+      );
+
+      if (!ca.externalCa?.id) {
+        await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
-    );
+    });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
@@ -763,18 +763,6 @@ export const certificateServiceFactory = ({
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
     if (!ca.externalCa?.id) {
-      try {
-        await certificateAuthorityOcspService.invalidateCachedResponse({
-          caId: ca.id,
-          serialNumber: cert.serialNumber
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `Failed to invalidate OCSP cache after revocation [caId=${ca.id}] [serialNumber=${cert.serialNumber}]`
-        );
-      }
-
       await rebuildCaCrl({
         caId: ca.id,
         certificateAuthorityDAL,

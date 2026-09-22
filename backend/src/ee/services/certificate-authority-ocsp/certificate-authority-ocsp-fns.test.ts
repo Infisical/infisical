@@ -355,6 +355,52 @@ describe("nonce extension hardening", () => {
   });
 });
 
+describe("nonce encoding", () => {
+  const buildWithNonceExtension = (extnValue: Uint8Array) => {
+    const certId = new asn1js.Sequence({
+      value: [
+        new asn1js.Sequence({
+          value: [new asn1js.ObjectIdentifier({ value: "1.3.14.3.2.26" }), new asn1js.Null()]
+        }),
+        new asn1js.OctetString({ valueHex: new Uint8Array(20).fill(0xaa) }),
+        new asn1js.OctetString({ valueHex: new Uint8Array(20).fill(0xbb) }),
+        new asn1js.Integer({ value: 1 })
+      ]
+    });
+    const extensions = new asn1js.Constructed({
+      idBlock: { tagClass: 3, tagNumber: 2 },
+      value: [
+        new asn1js.Sequence({
+          value: [
+            new asn1js.Sequence({
+              value: [
+                new asn1js.ObjectIdentifier({ value: OCSP_NONCE_OID }),
+                new asn1js.OctetString({ valueHex: extnValue })
+              ]
+            })
+          ]
+        })
+      ]
+    });
+    const tbs = new asn1js.Sequence({
+      value: [new asn1js.Sequence({ value: [new asn1js.Sequence({ value: [certId] })] }), extensions]
+    });
+    return Buffer.from(new asn1js.Sequence({ value: [tbs] }).toBER(false));
+  };
+
+  it("should accept a nonce wrapped as an OCTET STRING, which is what RFC 6960 defines", () => {
+    const wrapped = new Uint8Array(new asn1js.OctetString({ valueHex: new Uint8Array(16).fill(0xab) }).toBER(false));
+    const parsed = parseOcspRequest(buildWithNonceExtension(wrapped));
+
+    expect(parsed?.nonce?.equals(Buffer.alloc(16, 0xab))).toBe(true);
+  });
+
+  it("should reject an unwrapped nonce rather than signing a response it can never match", () => {
+    // the response re-encodes the nonce wrapped, so echoing raw bytes would not match the request
+    expect(parseOcspRequest(buildWithNonceExtension(new Uint8Array(16).fill(0xab)))).toBeNull();
+  });
+});
+
 describe("hash algorithm allowlist", () => {
   const buildRequestWithOid = (oid: string) => {
     const certId = new asn1js.Sequence({

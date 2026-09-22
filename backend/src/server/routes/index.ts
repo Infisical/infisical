@@ -2947,6 +2947,7 @@ export const registerRoutes = async (
     certificateCleanupConfigDAL,
     certificateDAL,
     certificateRequestDAL,
+    internalCertificateAuthorityDAL,
     auditLogService,
     telemetryService
   });
@@ -3649,7 +3650,7 @@ export const registerRoutes = async (
     licenseService,
     usageMeteringService,
     hsmConnectorService,
-    certificateAuthorityOcspService
+    internalCertificateAuthorityDAL
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({

@@ -122,11 +122,8 @@ export const parseOcspRequest = (der: Buffer): TParsedOcspRequest | null => {
   if (nonceExtension) {
     const rawExtnValue = new Uint8Array(nonceExtension.extnValue.valueBlock.valueHexView);
     const decoded = asn1js.fromBER(toArrayBuffer(rawExtnValue));
-    if (decoded.offset !== -1 && !(decoded.result instanceof asn1js.OctetString)) return null;
-    const candidate =
-      decoded.offset === -1
-        ? Buffer.from(rawExtnValue)
-        : Buffer.from((decoded.result as asn1js.OctetString).valueBlock.valueHexView);
+    if (decoded.offset === -1 || !(decoded.result instanceof asn1js.OctetString)) return null;
+    const candidate = Buffer.from(decoded.result.valueBlock.valueHexView);
 
     if (candidate.length === 0 || candidate.length > OCSP_MAX_NONCE_BYTES) return null;
     nonce = candidate;

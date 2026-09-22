@@ -867,19 +867,33 @@ what an anonymous caller can cost us.
   zero-stripped `serialNumber`, and `$resolveStatuses` queries both. Querying one silently answers
   `unknown` for every certificate whose serial starts with a zero byte, revoked ones included.
 - **Every read on the revocation path goes to a primary, in Redis and in Postgres.** `keyStore.getItem`
-  and `ormify().find` both default to a replica. Under lag either one re-caches a pre-revocation `good`
-  for the full validity window. Use `getItemPrimary` and pass `certificateDAL.primaryNode()` as the `tx`.
-- **The cache must be reaped wherever a status can change**: revoke, delete, and toggling the flag. A miss
-  leaves a revoked certificate reading `good` for up to an hour. Only single-certID responses are cached;
-  multi-certID requests are answered but never cached, so there is one key scheme to invalidate.
+  and `ormify().find` both default to a replica, and so does `findByIdWithAssociatedCa`. Under lag any of
+  them re-caches a pre-revocation `good` for the full validity window, or answers for a CA whose OCSP was
+  just switched off. Use `getItemPrimary` and pass a `primaryNode()` as the `tx`.
+- **Invalidation is a Postgres counter, not a Redis write.** `internal_certificate_authorities.ocspGeneration`
+  is bumped in the *same transaction* as the write that changes a status: the revoke, the single delete, and
+  the bulk cleanup delete. Each cached entry records the generation it was signed under and a read rejects a
+  mismatch, so nothing has to delete a key and a Redis outage cannot leave a revoked certificate reading
+  `good`. The responder already reads the CA row from the primary every request, so comparing it is free.
+  A new path that deletes or revokes a certificate must bump it too, or it will serve a stale `good` for up
+  to an hour. Only single-certID responses are cached; multi-certID requests are answered but never cached.
+  Do not reintroduce a best-effort invalidation call after the commit: that is exactly the shape that failed
+  review, because a failure there is unrecoverable and silent.
 - **Concurrent misses coalesce into one signing.** `inFlightResponses` keys on the cache key plus the
-  generation counter. The generation is what stops a request arriving after a revoke from joining a flight
+  generation. The generation is what stops a request arriving after a revoke from joining a flight
   that began before it. Nonced requests are exempt for free, because their cache key is `null`.
+- **A nonce is an OCTET STRING, and an extnValue that is not one is rejected.** The response always
+  re-encodes the nonce wrapped, so accepting a raw inner value would sign an echo that can never match what
+  the client sent. `parseOcspRequest` returns `null`, which the service answers as `malformedRequest`.
 - **Never take the hash OID out of a CertID without checking `OCSP_HASH_NAME_BY_OID` first.** An OID is an
   unbounded dotted-decimal string and it keys the per-CA issuer-hash memo, so an unvalidated one is
   unbounded attacker-controlled heap.
-- **Signing is concurrency-capped globally and per CA and sheds with `tryLater`.** The per-CA tier stops
-  one tenant's traffic shedding everyone else's. Both are per process, so the rate limiter is the outer
+- **Signing is capped three ways and sheds with `tryLater`**: globally, per CA, and in aggregate across
+  every CA (`OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT`, checked before a per-CA limiter is created or entered). The
+  per-CA tier stops one tenant's traffic shedding everyone else's, but on its own it multiplies how many
+  requests are parked at once, because a caller choosing to spray across many valid CA ids gets a fresh
+  queue per id. The aggregate cap is what bounds that, and it is deliberately far above any single CA's
+  own limit so the fairness the per-CA tier buys is preserved. Both are per process, so the rate limiter is the outer
   bound, and it is only registered under `isProductionMode && isCloud`.
 - **Do not log per request on this path.** The endpoint is unauthenticated and the rate limiter is only
   registered under `isProductionMode && isCloud`, so on self-hosted an anonymous caller sets the log

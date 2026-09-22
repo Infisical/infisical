@@ -55,16 +55,19 @@ export const createOcspSigningLimiterRegistry = ({
   perCaLimit,
   maxWaitMs,
   maxQueueDepth,
-  maxTrackedCas
+  maxTrackedCas,
+  maxTotalInFlight
 }: {
   globalLimit: number;
   perCaLimit: number;
   maxWaitMs: number;
   maxQueueDepth: number;
   maxTrackedCas: number;
+  maxTotalInFlight: number;
 }) => {
   const globalLimiter = createOcspSigningLimiter(globalLimit, maxWaitMs, maxQueueDepth);
   const perCaLimiters = new Map<string, TOcspSigningLimiter>();
+  let totalInFlight = 0;
 
   const pruneIdle = () => {
     if (perCaLimiters.size <= maxTrackedCas) return;
@@ -75,14 +78,21 @@ export const createOcspSigningLimiterRegistry = ({
   };
 
   const runForCa = async <T>(caId: string, fn: () => Promise<T>): Promise<T | null> => {
-    let caLimiter = perCaLimiters.get(caId);
-    if (!caLimiter) {
-      pruneIdle();
-      caLimiter = createOcspSigningLimiter(perCaLimit, maxWaitMs, maxQueueDepth);
-      perCaLimiters.set(caId, caLimiter);
-    }
+    if (totalInFlight >= maxTotalInFlight) return null;
 
-    return caLimiter.run(() => globalLimiter.run(fn));
+    totalInFlight += 1;
+    try {
+      let caLimiter = perCaLimiters.get(caId);
+      if (!caLimiter) {
+        pruneIdle();
+        caLimiter = createOcspSigningLimiter(perCaLimit, maxWaitMs, maxQueueDepth);
+        perCaLimiters.set(caId, caLimiter);
+      }
+
+      return await caLimiter.run(() => globalLimiter.run(fn));
+    } finally {
+      totalInFlight -= 1;
+    }
   };
 
   return {
@@ -90,7 +100,8 @@ export const createOcspSigningLimiterRegistry = ({
     getGlobalActiveCount: () => globalLimiter.getActiveCount(),
     getGlobalQueueDepth: () => globalLimiter.getQueueDepth(),
     getCaQueueDepth: (caId: string) => perCaLimiters.get(caId)?.getQueueDepth() ?? 0,
-    getTrackedCaCount: () => perCaLimiters.size
+    getTrackedCaCount: () => perCaLimiters.size,
+    getTotalInFlight: () => totalInFlight
   };
 };
 

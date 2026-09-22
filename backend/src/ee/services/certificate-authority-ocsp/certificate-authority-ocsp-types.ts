@@ -23,11 +23,6 @@ export type TGetOcspResponseDTO = {
   requestDer: Buffer;
 };
 
-export type TInvalidateOcspCacheDTO = {
-  caId: string;
-  serialNumber: string;
-};
-
 export type TOcspResponseResult = {
   response: Buffer;
   maxAgeSeconds: number;
@@ -35,5 +30,4 @@ export type TOcspResponseResult = {
 
 export type TCertificateAuthorityOcspServiceFactory = {
   getOcspResponse: (dto: TGetOcspResponseDTO) => Promise<TOcspResponseResult>;
-  invalidateCachedResponse: (dto: TInvalidateOcspCacheDTO) => Promise<void>;
 };

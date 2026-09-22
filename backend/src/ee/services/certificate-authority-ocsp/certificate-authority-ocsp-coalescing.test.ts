@@ -30,15 +30,12 @@ const buildKeyStore = () => {
       store.set(key, value);
       return "OK" as const;
     }),
-    deleteItemsByKeyIn: vi.fn(async (keys: string[]) => {
-      keys.forEach((key) => store.delete(key));
-      return keys.length;
-    }),
     incrementSeededWithExpiry: vi.fn(async (key: string, seed: number) => {
       const next = store.has(key) ? Number(store.get(key)) + 1 : seed + 1;
       store.set(key, String(next));
       return next;
-    })
+    }),
+    store
   };
 };
 
@@ -86,12 +83,15 @@ const buildHarness = async () => {
 
   const keyStore = buildKeyStore();
 
+  let ocspGeneration = 0;
+
   const service = certificateAuthorityOcspServiceFactory({
     certificateAuthorityDAL: {
+      primaryNode: vi.fn(() => undefined),
       findByIdWithAssociatedCa: vi.fn(async () => ({
         id: caId,
         projectId: "project-1",
-        internalCa: { id: "internal-1", isOcspEnabled: true, activeCaCertId: caCertId }
+        internalCa: { id: "internal-1", isOcspEnabled: true, activeCaCertId: caCertId, ocspGeneration }
       }))
     } as never,
     certificateAuthorityCertDAL: {
@@ -133,8 +133,13 @@ const buildHarness = async () => {
     service,
     buildRequestDer,
     keyStore,
+    cacheKeys: () => [...keyStore.store.keys()].filter((k) => k.startsWith("ocsp-response:")),
+    storeHas: (cacheKeys: string[]) => cacheKeys.length > 0 && cacheKeys.every((k) => keyStore.store.has(k)),
     getSignCount: () => signCount,
-    releaseGate: () => releaseGate()
+    releaseGate: () => releaseGate(),
+    revoke: () => {
+      ocspGeneration += 1;
+    }
   };
 };
 
@@ -209,7 +214,7 @@ describe("revocation during an in-flight signing", () => {
       setTimeout(resolve, 20);
     });
 
-    await harness.service.invalidateCachedResponse({ caId: harness.caId, serialNumber: "01" });
+    harness.revoke();
 
     const follower = harness.service.getOcspResponse({ caId: harness.caId, requestDer });
 
@@ -222,5 +227,28 @@ describe("revocation during an in-flight signing", () => {
 
     expect(harness.getSignCount()).toBe(2);
     expect(followerResult.response.equals(leaderResult.response)).toBe(false);
+  });
+});
+
+describe("cache coherence after revocation", () => {
+  it("should not serve a cached good once the generation moves, even with nothing deleting the key", async () => {
+    const harness: THarness = await buildHarness();
+    const requestDer = await harness.buildRequestDer();
+
+    harness.releaseGate();
+    const first = await harness.service.getOcspResponse({ caId: harness.caId, requestDer });
+    expect(harness.getSignCount()).toBe(1);
+
+    const second = await harness.service.getOcspResponse({ caId: harness.caId, requestDer });
+    expect(harness.getSignCount()).toBe(1);
+    expect(second.response.equals(first.response)).toBe(true);
+
+    // the cached entry is deliberately left in the store: only the generation moved
+    harness.revoke();
+    expect(harness.storeHas(harness.cacheKeys())).toBe(true);
+
+    const third = await harness.service.getOcspResponse({ caId: harness.caId, requestDer });
+    expect(harness.getSignCount()).toBe(2);
+    expect(third.response.equals(first.response)).toBe(false);
   });
 });
