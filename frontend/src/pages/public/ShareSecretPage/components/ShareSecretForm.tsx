@@ -440,9 +440,12 @@ export const ShareSecretForm = ({
                 <span className="text-xs font-normal text-muted">Password, views, delivery</span>
               </span>
             </AccordionTrigger>
-            <AccordionContent className="space-y-6 p-5">
+            <AccordionContent className="p-5">
               <FieldSet className="gap-4">
-                <FieldLegend variant="label">Access</FieldLegend>
+                <FieldLegend variant="label" className="flex w-full items-center gap-3">
+                  Access
+                  <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                </FieldLegend>
 
                 {!isViewLimitEnforced && (
                   <Controller
@@ -543,8 +546,11 @@ export const ShareSecretForm = ({
               </FieldSet>
 
               {!isPublic && (
-                <FieldSet className="gap-4">
-                  <FieldLegend variant="label">Delivery</FieldLegend>
+                <FieldSet className="gap-4 pt-6">
+                  <FieldLegend variant="label" className="flex w-full items-center gap-3">
+                    Delivery
+                    <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                  </FieldLegend>
                   <Controller
                     control={control}
                     name="accessType"
