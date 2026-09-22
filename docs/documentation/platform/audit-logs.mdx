@@ -85,7 +85,9 @@ To view all events scoped to a single product:
     See the [audit log export API reference](/api-reference/endpoints/audit-logs/export-audit-log) for the full parameter list.
 
     <Note>
-      **Privileged Access Manager** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID. Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and isolate the product's events by filtering `eventType` to the `pam-*` or `agent-vault-*` prefixes.
+      **Privileged Access Manager** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
+      
+      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to Privileged Access Manager and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
     </Note>
   </Tab>
 </Tabs>
