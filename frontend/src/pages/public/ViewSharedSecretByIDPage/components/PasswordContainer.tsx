@@ -84,7 +84,7 @@ export const PasswordContainer = ({
                   name="shared-secret-passphrase"
                   autoFocus
                   placeholder="Enter password to view secret"
-                  type="text"
+                  type="password"
                   autoComplete="off"
                   autoCorrect="off"
                   spellCheck={false}
@@ -94,7 +94,7 @@ export const PasswordContainer = ({
                   data-lpignore="true"
                   style={inputStyle}
                   className={twMerge(
-                    "flex-1 [-webkit-text-security:disc]",
+                    "flex-1",
                     brandingTheme &&
                       "border placeholder:text-[var(--muted-color)]/50 focus-visible:ring-[var(--muted-color)]/50"
                   )}

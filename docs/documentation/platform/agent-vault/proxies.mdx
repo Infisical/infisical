@@ -84,6 +84,8 @@ no service covers host "internal.example.com": host blocked by policy
 
 Ports are part of the match. A [service's host pattern](/documentation/platform/agent-vault/services#host-patterns) that names no port covers port 443 only, so a service on `example.com` doesn't cover `example.com:8443`, and under this policy a request to the second is refused. Name the port in the pattern to cover it.
 
+The proxy returns a 403 the same way for a request that breaks a service's own [method or path rules](/documentation/platform/agent-vault/services#methods-and-paths), whichever traffic policy it runs.
+
 <Frame>
   <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />
 </Frame>
@@ -92,7 +94,7 @@ Ports are part of the match. A [service's host pattern](/documentation/platform/
 
 A comma-separated list of hosts that stay reachable under **Only allow requests to reach hosts specified in access bundles**, with no credential attached. Use it for hosts every agent needs, such as a package registry or a documentation site. Under **Allow requests to reach any host** the list changes nothing.
 
-An exception written without a port matches that host on every port, unlike a service pattern, which means port 443 when it names none.
+An exception written without a port matches that host on every port, unlike a [service pattern](/documentation/platform/agent-vault/services#default-port), which means port 443 when it names none. An exception never carries a credential, so the wider match attaches nothing extra.
 
 An exception isn't exempt from interception. Every HTTPS host is TLS-terminated by the proxy before any policy applies, so an exception is a host the proxy doesn't block, not a host it leaves alone. To open a host for one access bundle rather than for every agent on the proxy, add a pass-through service to that bundle instead.
 

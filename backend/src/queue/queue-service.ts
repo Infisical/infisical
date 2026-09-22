@@ -52,6 +52,8 @@ import { TCreateUserNotificationDTO } from "@app/services/notification/notificat
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
+  TQueuePkiSyncLinkMatchingCertificatesDTO,
+  TQueuePkiSyncReconcileFiltersDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncRunHealthCheckByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
@@ -112,6 +114,7 @@ export enum QueueName {
   SecretScanningV2RealtimeScan = "secret-scanning-v2-realtime-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
+  EventOutboxFlush = "event-outbox-flush",
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
   PamDiscoveryScan = "pam-discovery-scan",
@@ -162,6 +165,8 @@ export enum QueueJobs {
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
+  PkiSyncLinkMatchingCertificates = "pki-sync-link-matching-certificates",
+  PkiSyncReconcileFilters = "pki-sync-reconcile-filters",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
   PkiSyncRunHealthCheck = "pki-sync-run-health-check",
@@ -188,6 +193,7 @@ export enum QueueJobs {
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
   AlertDispatch = "alert-dispatch-job",
+  EventOutboxFlush = "event-outbox-flush-job",
   GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
@@ -369,6 +375,14 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncLinkMatchingCertificates;
+        payload: TQueuePkiSyncLinkMatchingCertificatesDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncReconcileFilters;
+        payload: TQueuePkiSyncReconcileFiltersDTO;
       };
   [QueueName.PkiSyncHealthCheck]: {
     name: QueueJobs.PkiSyncRunHealthCheck;
@@ -526,6 +540,10 @@ export type TQueueJobTypes = {
   [QueueName.AlertDispatch]: {
     name: QueueJobs.AlertDispatch;
     payload: { alertId: string; scheduledAt: string };
+  };
+  [QueueName.EventOutboxFlush]: {
+    name: QueueJobs.EventOutboxFlush;
+    payload: { consumer: string };
   };
   [QueueName.AuditReportGeneration]: {
     name: QueueJobs.GenerateAuditReport;

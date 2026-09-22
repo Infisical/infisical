@@ -344,7 +344,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, product analytics aggregation, alert dispatch, permission cache, secret cache, rate limit, build info, `infisical.core.http.request.count`, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, product analytics aggregation, alert dispatch, event outbox, permission cache, secret cache, rate limit, build info, `infisical.core.http.request.count`, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you're a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
@@ -941,7 +941,7 @@ High-volume product analytics events (secret pulls, machine identity logins, cer
 
 ### Alert dispatch metrics (InfisicalCore)
 
-Every "notify me when X happens" alert (credential expiry and anything else built on the alert module) is delivered by a dispatch job. This metric records how each job ended, so you can tell a dropped notification apart from a job that had nothing to send.
+Every "notify me when X happens" alert (credential expiry and anything else built on the alert module) is delivered by a dispatch job. Jobs come from two places: a scheduled scan that looks for targets that have come due, and an event the product recorded, such as an identity's authentication method changing. This metric records how each job ended, so you can tell a dropped notification apart from a job that had nothing to send.
 
 <AccordionGroup>
   <Accordion title="Alert Dispatch Outcome">
@@ -967,16 +967,65 @@ Every "notify me when X happens" alert (credential expiry and anything else buil
     | `alert_not_found` | The alert was deleted between enqueue and run. |
     | `alert_disabled` | The alert was disabled between enqueue and run. |
     | `no_provider` | No provider is registered for the alert's resource type. A misconfiguration. |
-    | `no_due_targets` | Nothing matched the alert condition this run. |
+    | `no_due_targets` | Nothing to alert on: either nothing matched the alert condition this run, or the targets named by the event no longer exist. |
     | `no_channels` | The alert has no enabled channels, so the run is skipped before scanning. |
     | `no_recipients` | Every channel in the run was email with no resolvable recipient — the recipients left the organization, or the recipient group emptied out. |
     | `all_deduped` | Targets matched, but all had already been alerted inside the dedup window. |
+    | `no_matching_alert` | Event path only. The event arrived and no alert subscribes to it. Normal in steady state. |
 
     **What to alarm on**: `delivery_failed` and `delivery_partial`. Both mean a channel could not be reached and a notification was dropped. Keep `no_recipients` out of that alarm — it is customer configuration drift, not a delivery fault, and it needs a nudge to the organization rather than a page to you.
 
-    Track the `delivery_*` share of the total separately, as a health signal rather than an alarm: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead.
+    Track the `delivery_*` share of the total separately, as a health signal rather than an alarm: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead. Leave `no_matching_alert` out of that ratio. Events are recorded whether or not anyone subscribes to them, so on the event path it's the majority outcome by design.
   </Accordion>
 </AccordionGroup>
+
+### Event outbox metrics (InfisicalCore)
+
+Event-triggered features don't poll for changes. The product writes an event to an outbox table in the same transaction as the change itself. A relay picks pending events up every 10 seconds and hands each one to the consumers that subscribe to it. Alerts are the first consumer, under the name `alert`. These metrics cover the outbox itself rather than what a consumer does with an event; for that, see the alert dispatch metrics above.
+
+<AccordionGroup>
+  <Accordion title="Oldest Pending Event Age">
+    **Metric Name**: `infisical.event_outbox.oldest_pending_age`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `s`
+
+    **Description**: Age of the oldest event that hasn't reached its consumer yet. Refreshed on each relay tick, and absent for a consumer with nothing pending.
+
+    **Attributes**:
+      - `event_outbox.consumer` (string): the consumer the events are waiting for, e.g. `alert`
+  </Accordion>
+
+  <Accordion title="Event Delivery Lag">
+    **Metric Name**: `infisical.event_outbox.lag`
+
+    **Type**: Histogram
+
+    **Unit**: `s`
+
+    **Description**: Seconds from the event happening to the outbox recording a result for it. The floor is the 10-second relay interval, so a p99 well above that puts the delay in delivery rather than in pickup.
+
+    **Attributes**:
+      - `event_outbox.consumer` (string)
+      - `event_outbox.status` (string): `delivered`, `retry` (the consumer asked for another attempt), or `failed`
+  </Accordion>
+
+  <Accordion title="Events Exhausted">
+    **Metric Name**: `infisical.event_outbox.exhausted.count`
+
+    **Type**: Counter
+
+    **Unit**: `{event}`
+
+    **Description**: Events given up on, because the consumer rejected the event outright, because it used up all 8 delivery attempts, or because a worker claimed it and never reported back. Each one is a notification a customer configured and didn't receive.
+
+    **Attributes**:
+      - `event_outbox.consumer` (string)
+  </Accordion>
+</AccordionGroup>
+
+**What to alarm on**: any sustained rate of exhausted events, and an `oldest_pending_age` above a small multiple of the relay interval. The two say different things. A rising age with no exhausted events means events are being recorded but not delivered, and they're still in the table waiting for the relay or its workers to come back. An exhausted event is one nothing will retry; its row stays for 30 days with the last error on it, and the delivery failures leading up to it are in the logs.
 
 ### Permission cache metrics (InfisicalCore)
 

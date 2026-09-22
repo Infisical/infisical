@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useDiscardChangesGuard } from "@app/hooks";
+import { useDebounce, useDiscardChangesGuard } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles
@@ -73,7 +73,14 @@ type Props = {
 };
 
 export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
-  const { data: accessBundles } = useListAgentVaultAccessBundles();
+  const [bundleSearch, setBundleSearch] = useState("");
+  const [debouncedBundleSearch] = useDebounce(bundleSearch);
+  const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles({
+    search: debouncedBundleSearch.trim() || undefined,
+    orderBy: "name",
+    orderDirection: "asc",
+    limit: 50
+  });
   const createSession = useCreateAgentVaultSession();
 
   const [selectedBundle, setSelectedBundle] = useState<TAgentVaultAccessBundleListItem | null>(
@@ -133,8 +140,8 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
         <DialogHeader>
           <DialogTitle>Create Session</DialogTitle>
           <DialogDescription>
-            An agent running with this session reaches the hosts in this access bundle and nothing
-            else.
+            An agent running with this session can only reach the hosts in the session&apos;s
+            associated access bundle.
           </DialogDescription>
         </DialogHeader>
 
@@ -144,8 +151,12 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
             <FieldContent>
               <Combobox
                 id="agent-vault-session-bundle"
-                options={accessBundles ?? []}
+                options={accessBundles?.accessBundles ?? []}
                 value={selectedBundle}
+                shouldFilter={false}
+                isLoading={isSearchingBundles}
+                includeMissingSelectedOptions
+                onInputValueChange={setBundleSearch}
                 getOptionValue={(bundle) => bundle.id}
                 getOptionLabel={(bundle) => bundle.name}
                 placeholder="Pick an access bundle"
@@ -214,9 +225,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                 </>
               )}
               {ttlPreset === NEVER_TTL && (
-                <FieldDescription>
-                  This session keeps working until someone revokes it.
-                </FieldDescription>
+                <FieldDescription>This session runs until someone revokes it.</FieldDescription>
               )}
             </FieldContent>
           </Field>

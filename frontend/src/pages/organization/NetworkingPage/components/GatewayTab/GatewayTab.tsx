@@ -7,7 +7,6 @@ import {
   HeartPulseIcon,
   InfoIcon,
   MoreHorizontalIcon,
-  PencilIcon,
   PlusIcon,
   SearchIcon,
   TrashIcon
@@ -28,7 +27,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -36,10 +34,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -80,11 +74,10 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
-import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 
 import { CreateGatewayPoolModal } from "./components/CreateGatewayPoolModal";
-import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
 import { GatewayPoolsContent } from "./components/GatewayPoolsContent";
@@ -104,7 +97,7 @@ export const GatewayTab = withPermission(
     const [poolSearch, setPoolSearch] = useState("");
     const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
-      ...gatewaysQueryKeys.listWithTokens(),
+      ...gatewaysQueryKeys.listAll(),
       refetchInterval: 15_000
     });
     const { data: pools } = useListGatewayPools({ enabled: Boolean(showPoolsTab) });
@@ -125,12 +118,10 @@ export const GatewayTab = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deployGateway",
       "deleteGateway",
-      "editDetails",
       "createPool",
       "upgradePlan"
     ] as const);
 
-    const deleteGatewayById = useDeleteGatewayById();
     const deleteGatewayV2ById = useDeleteGatewayV2ById();
     const triggerGatewayV2Heartbeat = useTriggerGatewayV2Heartbeat();
 
@@ -147,13 +138,9 @@ export const GatewayTab = withPermission(
     };
 
     const handleDeleteGateway = async () => {
-      const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
+      const data = popUp.deleteGateway.data as { id: string };
       try {
-        if (data.isV1) {
-          await deleteGatewayById.mutateAsync(data.id);
-        } else {
-          await deleteGatewayV2ById.mutateAsync(data.id);
-        }
+        await deleteGatewayV2ById.mutateAsync(data.id);
         handlePopUpToggle("deleteGateway", false);
         createNotification({ type: "success", text: "Successfully deleted gateway" });
       } catch {
@@ -325,19 +312,15 @@ export const GatewayTab = withPermission(
                         </TableRow>
                       ))}
                     {filteredGateway?.map((el) => {
-                      const canNavigate = !el.isV1;
                       return (
                         <TableRow
                           key={el.id}
-                          className={canNavigate ? "cursor-pointer" : undefined}
-                          onClick={
-                            canNavigate
-                              ? () =>
-                                  navigate({
-                                    to: "/organizations/$orgId/networking/gateways/$gatewayId",
-                                    params: { orgId, gatewayId: el.id }
-                                  })
-                              : undefined
+                          className="cursor-pointer"
+                          onClick={() =>
+                            navigate({
+                              to: "/organizations/$orgId/networking/gateways/$gatewayId",
+                              params: { orgId, gatewayId: el.id }
+                            })
                           }
                         >
                           <TableCell>
@@ -348,16 +331,6 @@ export const GatewayTab = withPermission(
                                 </TooltipTrigger>
                                 <TooltipContent>{el.name}</TooltipContent>
                               </Tooltip>
-                              {el.isV1 && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="neutral" className="shrink-0">
-                                      V1
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Legacy</TooltipContent>
-                                </Tooltip>
-                              )}
                             </div>
                           </TableCell>
                           {showPoolsTab && (
@@ -377,7 +350,7 @@ export const GatewayTab = withPermission(
                             </TableCell>
                           )}
                           <TableCell className="whitespace-nowrap">
-                            {!el.isV1 && el.connectedResourcesCount > 0 ? (
+                            {el.connectedResourcesCount > 0 ? (
                               <span>
                                 {el.connectedResourcesCount} resource
                                 {el.connectedResourcesCount !== 1 ? "s" : ""}
@@ -409,33 +382,14 @@ export const GatewayTab = withPermission(
                                   <CopyIcon />
                                   Copy ID
                                 </DropdownMenuItem>
-                                {!el.isV1 &&
-                                  (!!el.directAddress ||
-                                    !!el.relayId ||
-                                    !!el.heartbeat ||
-                                    el.heartbeatTTL !== null) && (
-                                    <DropdownMenuItem
-                                      onClick={() => handleTriggerHealthCheck(el.id)}
-                                    >
-                                      <HeartPulseIcon />
-                                      Trigger Health Check
-                                    </DropdownMenuItem>
-                                  )}
-                                {el.isV1 && (
-                                  <OrgPermissionCan
-                                    I={OrgGatewayPermissionActions.EditGateways}
-                                    a={OrgPermissionSubjects.Gateway}
-                                  >
-                                    {(isAllowed: boolean) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={() => handlePopUpOpen("editDetails", el)}
-                                      >
-                                        <PencilIcon />
-                                        Edit Details
-                                      </DropdownMenuItem>
-                                    )}
-                                  </OrgPermissionCan>
+                                {(!!el.directAddress ||
+                                  !!el.relayId ||
+                                  !!el.heartbeat ||
+                                  el.heartbeatTTL !== null) && (
+                                  <DropdownMenuItem onClick={() => handleTriggerHealthCheck(el.id)}>
+                                    <HeartPulseIcon />
+                                    Trigger Health Check
+                                  </DropdownMenuItem>
                                 )}
                                 <OrgPermissionCan
                                   I={OrgGatewayPermissionActions.DeleteGateways}
@@ -461,20 +415,6 @@ export const GatewayTab = withPermission(
                   </TableBody>
                 </Table>
               )}
-              <Dialog
-                open={popUp.editDetails.isOpen}
-                onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit Gateway</DialogTitle>
-                  </DialogHeader>
-                  <EditGatewayDetailsModal
-                    gatewayDetails={popUp.editDetails.data}
-                    onClose={() => handlePopUpToggle("editDetails")}
-                  />
-                </DialogContent>
-              </Dialog>
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
                 confirmationValue={
@@ -499,14 +439,12 @@ export const GatewayTab = withPermission(
                     <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                   </Alert>
                   <AlertDialogFooter>
-                    <AlertDialogCancel
-                      isDisabled={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
-                    >
+                    <AlertDialogCancel isDisabled={deleteGatewayV2ById.isPending}>
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
                       variant="danger"
-                      isPending={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
+                      isPending={deleteGatewayV2ById.isPending}
                       onClick={(event) => {
                         event.preventDefault();
                         handleDeleteGateway();
@@ -536,6 +474,7 @@ export const GatewayTab = withPermission(
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
         />
         <UpgradePlanModal
+          paywallKey="organization.gateway"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."

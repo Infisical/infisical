@@ -138,7 +138,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 signers.map((signer) => (
                   <TableRow
                     key={signer.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
+                    className="cursor-pointer hover:bg-surface-hover"
                     onClick={() =>
                       navigate({
                         to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
@@ -228,6 +228,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
         )}
       </CardContent>
       <UpgradePlanModal
+        paywallKey="cert-manager.signers"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Code signing is available on Infisical's Enterprise plan."

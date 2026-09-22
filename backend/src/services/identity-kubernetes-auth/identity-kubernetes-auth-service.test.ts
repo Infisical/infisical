@@ -113,7 +113,8 @@ const createService = ({
       getOrgPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getProjectPermission: vi.fn()
+      getProjectPermission: vi.fn(),
+      getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
     licenseService: {
       getPlan: vi.fn().mockResolvedValue({
@@ -129,18 +130,21 @@ const createService = ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
     },
-    gatewayService: {},
     gatewayV2Service: {},
-    gatewayDAL: { find: vi.fn().mockResolvedValue([]) },
     gatewayV2DAL: { find: vi.fn().mockResolvedValue([]) },
     gatewayPoolService: { pickHealthyGateway: vi.fn(), runWithPoolFailover: vi.fn() },
     gatewayPoolDAL: { findById: vi.fn().mockResolvedValue(null) },
-    orgDAL: { findById: vi.fn(), findOne: vi.fn(), findEffectiveOrgMembership: vi.fn() },
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }),
+      findOne: vi.fn(),
+      findEffectiveOrgMembership: vi.fn()
+    },
     identityAccessTokenService: {
       issueIdentityAccessToken: vi.fn(),
       revokeTokensForIdentityAuthMethod: vi.fn(),
       invalidateTrustedIpsCache: vi.fn()
-    }
+    },
+    eventEmitter: { emit: vi.fn() }
   } as unknown as Parameters<typeof identityKubernetesAuthServiceFactory>[0]);
 
   return { service, identityKubernetesAuthDAL };

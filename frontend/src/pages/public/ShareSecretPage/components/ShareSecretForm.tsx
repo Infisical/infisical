@@ -519,7 +519,7 @@ export const ShareSecretForm = ({
                           id="share-secret-password"
                           name="shared-secret-passphrase"
                           placeholder="Password"
-                          type="text"
+                          type={isPasswordVisible ? "text" : "password"}
                           autoComplete="off"
                           autoCorrect="off"
                           spellCheck={false}
@@ -527,7 +527,6 @@ export const ShareSecretForm = ({
                           data-form-type="other"
                           data-1p-ignore
                           data-lpignore="true"
-                          className={twMerge(!isPasswordVisible && "[-webkit-text-security:disc]")}
                           aria-invalid={Boolean(error)}
                         />
                         <InputGroupAddon align="inline-end">
