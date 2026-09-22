@@ -475,9 +475,10 @@ export const CreateSecretForm = ({
                             id={`create-secret-${index}-key`}
                             value={field.value ?? ""}
                             onChange={(e) => {
-                              const val = currentProject?.autoCapitalization
-                                ? e.target.value.toUpperCase()
-                                : e.target.value;
+                              const val = applyKeyCapitalization(
+                                e.target.value,
+                                currentProject?.autoCapitalization
+                              );
                               field.onChange(val);
                             }}
                             onBlur={field.onBlur}
