@@ -345,8 +345,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // The auth method goes first: it does the network work that actually fails, so a rejected
-      // change cannot leave behind a rename. Neither half is transactional.
+      // Auth first: it is the half that fails, so a rejection cannot leave behind a rename.
       if (req.body.authMethod) {
         const result = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "gateway", id: req.params.gatewayId },
@@ -356,8 +355,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
 
         const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
 
-        // Written before the rename is attempted. Deferring it would lose the record entirely
-        // when a rename fails, leaving an auth method change that nothing audited.
+        // Before the rename, so a failed rename cannot lose the record.
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
@@ -390,8 +388,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       }
 
       if (req.body.name) {
-        // renameGateway returns the row it wrote on the primary. Re-reading here instead would
-        // route through a replica, where a lagging read can hide the rename and skip the event.
+        // Use the row from the primary; a lagging replica read would hide the rename.
         const { gateway: renamed, previousName } = await server.services.gatewayV2.renameGateway({
           orgPermission: req.permission,
           gatewayId: req.params.gatewayId,
@@ -421,8 +418,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   });
 
   // ─── DELETE /:gatewayId ──────────────────────────────────────────────────
-  // Removing the record disconnects the running gateway for good. The service refuses while the
-  // gateway is still attached to resources or reviewing Kubernetes tokens for other gateways.
   server.route({
     method: "DELETE",
     url: "/:gatewayId",
