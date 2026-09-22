@@ -33,9 +33,6 @@ type Measurements = {
   separatorWidth: number;
 };
 
-const breadcrumbLinkClassName =
-  "inline-flex min-h-8 items-center rounded px-1.5 text-2xl font-medium text-foreground underline decoration-project/90 underline-offset-4 hover:bg-foreground/10";
-
 export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
@@ -215,12 +212,12 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
-          size="xs"
+          variant="page-header"
+          size="page-header"
           aria-current="page"
           aria-label={`Open actions for ${path}`}
           title={path}
-          className={`${breadcrumbLinkClassName} max-w-full min-w-0 shrink gap-1 focus-visible:ring-inset`}
+          className="max-w-full min-w-0 shrink focus-visible:ring-inset"
         >
           <span className="truncate">{path}</span>
           <ChevronDownIcon className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
@@ -280,11 +277,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
                 <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
               ) : (
                 <BreadcrumbItem>
-                  <BreadcrumbLink
-                    asChild
-                    title={path}
-                    className={`${breadcrumbLinkClassName} truncate`}
-                  >
+                  <BreadcrumbLink asChild variant="page-header" title={path} className="truncate">
                     <Link
                       from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                       to="."
@@ -361,11 +354,7 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
                   <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
                 ) : (
                   <BreadcrumbItem>
-                    <BreadcrumbLink
-                      asChild
-                      title={path}
-                      className={`${breadcrumbLinkClassName} truncate`}
-                    >
+                    <BreadcrumbLink asChild variant="page-header" title={path} className="truncate">
                       <Link
                         from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                         to="."

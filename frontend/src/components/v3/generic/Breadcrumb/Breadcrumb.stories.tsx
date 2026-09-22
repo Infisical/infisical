@@ -130,6 +130,31 @@ export const CustomSeparatorSlash: Story = {
   )
 };
 
+export const PageHeaderLink: Story = {
+  name: "Variant: Page Header Link",
+  render: () => (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbSeparator>
+          <SlashIcon className="-rotate-12" />
+        </BreadcrumbSeparator>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="#" variant="page-header">
+            platform
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: "Use this variant when a breadcrumb link continues a page header title inline."
+      }
+    }
+  }
+};
+
 export const CustomSeparatorDot: Story = {
   name: "Variant: Dot Separator",
   parameters: {

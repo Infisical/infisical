@@ -34,9 +34,11 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
 function BreadcrumbLink({
   asChild,
   className,
+  variant = "default",
   ...props
 }: React.ComponentProps<"a"> & {
   asChild?: boolean;
+  variant?: "default" | "page-header";
 }) {
   const Comp = asChild ? Slot : "a";
 
@@ -45,6 +47,8 @@ function BreadcrumbLink({
       data-slot="breadcrumb-link"
       className={cn(
         "cursor-pointer rounded-sm outline-0 transition-colors hover:text-foreground hover:underline",
+        variant === "page-header" &&
+          "inline-flex min-h-8 items-center rounded px-1.5 text-2xl font-medium text-foreground underline decoration-project/90 underline-offset-4 hover:bg-foreground/10",
         className
       )}
       {...props}

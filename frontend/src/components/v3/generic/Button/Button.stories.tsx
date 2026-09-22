@@ -35,6 +35,7 @@ const meta = {
         "outline",
         "ghost",
         "link",
+        "page-header",
         "neutral",
         "success",
         "info",
@@ -47,7 +48,7 @@ const meta = {
     },
     size: {
       control: "select",
-      options: ["xs", "sm", "md", "lg"]
+      options: ["xs", "sm", "md", "lg", "page-header"]
     },
     isPending: {
       control: "boolean"
@@ -143,7 +144,7 @@ export const Neutral: Story = {
 export const Ghost: Story = {
   name: "Variant: Ghost",
   args: {
-    variant: "ghost",
+    variant: "page-header",
     children: <>Cancel</>
   },
   parameters: {
@@ -166,6 +167,23 @@ export const Link: Story = {
       description: {
         story:
           "Use this zero-padding text variant for compact secondary actions embedded in labels or prose."
+      }
+    }
+  }
+};
+
+export const PageHeader: Story = {
+  name: "Size: Page Header",
+  args: {
+    variant: "ghost",
+    size: "page-header",
+    children: <>production</>
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use this size for an interactive breadcrumb segment that continues a page header title."
       }
     }
   }
