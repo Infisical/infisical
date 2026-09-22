@@ -8,7 +8,8 @@ import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  isIssuerGeneratedExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { RenewalFormData } from "./CertificateRenewalModal";
@@ -127,7 +128,12 @@ export const buildRenewalFormDefaults = (
   keyUsages: toUsageFormKeys(cert.keyUsages, KEY_USAGE_BY_NAME),
   extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME),
   customExtensions: (cert.customExtensions ?? [])
-    .filter((extension) => extension.displayValue !== undefined)
+    .filter(
+      (extension) =>
+        extension.displayValue !== undefined &&
+        !extension.issuerAdded &&
+        !isIssuerGeneratedExtensionOid(extension.oid)
+    )
     .map((extension) => ({ oid: extension.oid, value: extension.displayValue as string }))
 });
 

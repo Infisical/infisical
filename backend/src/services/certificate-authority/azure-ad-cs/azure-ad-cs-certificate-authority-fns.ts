@@ -17,7 +17,11 @@ import {
 } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate, splitPemChain } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate,
+  splitPemChain
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -1046,13 +1050,19 @@ export const AzureAdCsCertificateAuthorityFns = ({
       plainText: Buffer.from(skLeaf)
     });
 
+    const parsedFields = extractExternallyIssuedCertificateFields(
+      Buffer.from(cleanedCertificatePem),
+      undefined,
+      certObj.serialNumber
+    );
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
           pkiSubscriberId: subscriber.id,
           status: CertStatus.ACTIVE,
-          friendlyName: subscriber.commonName,
+          friendlyName: parsedFields.commonName ?? subscriber.commonName,
           commonName: subscriber.commonName,
           altNames: subscriber.subjectAlternativeNames.join(","),
           serialNumber: certObj.serialNumber,
@@ -1060,7 +1070,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
           notAfter: certObj.notAfter,
           keyUsages: subscriber.keyUsages as CertKeyUsage[],
           extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
-          projectId: ca.projectId
+          projectId: ca.projectId,
+          ...parsedFields
         },
         tx
       );
@@ -1414,13 +1425,19 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     let certificateId: string;
 
+    const parsedFields = extractExternallyIssuedCertificateFields(
+      Buffer.from(cleanedCertificatePem),
+      undefined,
+      certObj.serialNumber
+    );
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
+          friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.join(","),
           serialNumber: certObj.serialNumber,
@@ -1431,7 +1448,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
           keyAlgorithm,
           signatureAlgorithm,
           projectId: ca.projectId,
-          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
+          ...parsedFields
         },
         tx
       );

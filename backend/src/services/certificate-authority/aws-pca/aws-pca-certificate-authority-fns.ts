@@ -29,7 +29,10 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -823,7 +826,11 @@ export const AwsPcaCertificateAuthorityFns = ({
 
     let certificateId: string;
 
-    const parsedFields = extractCertificateFields(Buffer.from(certificatePem), customExtensions);
+    const parsedFields = extractExternallyIssuedCertificateFields(
+      Buffer.from(certificatePem),
+      customExtensions,
+      certObj.serialNumber
+    );
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -831,7 +838,7 @@ export const AwsPcaCertificateAuthorityFns = ({
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
+          friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.map((san) => san.value).join(","),
           serialNumber: certObj.serialNumber,

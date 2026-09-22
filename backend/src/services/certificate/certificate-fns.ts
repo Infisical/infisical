@@ -5,7 +5,13 @@ import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import {
+  PKI_ALT_NAMES_COLUMN_MAX_LENGTH,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "@app/services/certificate-common/certificate-constants";
+import {
+  parseExternallyIssuedCustomExtensions,
   parseIssuedCustomExtensions,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
@@ -312,6 +318,9 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
   }
 };
 
+const KEY_ALGORITHM_VALUES = new Set<string>(Object.values(CertKeyAlgorithm));
+const SIGNATURE_ALGORITHM_VALUES = new Set<string>(Object.values(CertSignatureAlgorithm));
+
 const EC_CURVE_KEY_ALGORITHMS: Record<string, CertKeyAlgorithm> = {
   "P-256": CertKeyAlgorithm.ECDSA_P256,
   "P-384": CertKeyAlgorithm.ECDSA_P384,
@@ -410,6 +419,80 @@ export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?
     ...(parsed.subject?.commonName && { commonName: parsed.subject.commonName }),
     ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
     ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
+  };
+};
+
+const extractIssuedAltNames = (decryptedCertificate: Buffer, serialNumber?: string): string | null => {
+  try {
+    const sanExtension = new x509.X509Certificate(decryptedCertificate).getExtension("2.5.29.17");
+    if (!sanExtension) return null;
+
+    const values = [
+      ...new Set(
+        new x509.GeneralNames(sanExtension.value).items
+          .filter((item) => SUPPORTED_GENERAL_NAME_TYPES.has(item.type))
+          .map((item) => item.value)
+      )
+    ];
+
+    if (!values.length) return null;
+
+    const joined = values.join(",");
+    if (joined.length <= PKI_ALT_NAMES_COLUMN_MAX_LENGTH) return joined;
+
+    logger?.warn(
+      `Issued certificate carries ${values.length} subject alternative names, over the ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} the column holds, so none were recorded [serialNumber=${serialNumber ?? "unknown"}]`
+    );
+    return null;
+  } catch (err) {
+    logger?.warn(
+      err,
+      `Could not read the subject alternative names off an issued certificate [serialNumber=${serialNumber ?? "unknown"}]`
+    );
+    return null;
+  }
+};
+
+const safeExtractCertificateAlgorithms = (decryptedCertificate: Buffer, serialNumber?: string) => {
+  try {
+    const algorithms = extractCertificateAlgorithms(decryptedCertificate);
+
+    const offEnum = [
+      !!algorithms.keyAlgorithm && !KEY_ALGORITHM_VALUES.has(algorithms.keyAlgorithm) && algorithms.keyAlgorithm,
+      !!algorithms.signatureAlgorithm &&
+        !SIGNATURE_ALGORITHM_VALUES.has(algorithms.signatureAlgorithm) &&
+        algorithms.signatureAlgorithm
+    ].filter(Boolean);
+
+    if (offEnum.length) {
+      logger?.warn(
+        `Issued certificate uses ${offEnum.join(" and ")}, which is outside the algorithms this platform can request, so a renewal cannot ask for it again [serialNumber=${serialNumber ?? "unknown"}]`
+      );
+    }
+
+    return algorithms;
+  } catch (err) {
+    logger?.warn(
+      err,
+      `Could not name the algorithms on an issued certificate, so the requested ones stand [serialNumber=${serialNumber ?? "unknown"}]`
+    );
+    return {};
+  }
+};
+
+export const extractExternallyIssuedCertificateFields = (
+  decryptedCertificate: Buffer,
+  requestedCustomExtensions?: TResolvedCustomExtension[],
+  serialNumber?: string
+) => {
+  const issuedCustomExtensions = parseExternallyIssuedCustomExtensions(decryptedCertificate, requestedCustomExtensions);
+  const altNames = extractIssuedAltNames(decryptedCertificate, serialNumber);
+
+  return {
+    ...extractCertificateFields(decryptedCertificate),
+    ...safeExtractCertificateAlgorithms(decryptedCertificate, serialNumber),
+    ...(altNames !== null && { altNames }),
+    customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null
   };
 };
 

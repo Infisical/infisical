@@ -26,14 +26,13 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
-  CertExtendedKeyUsage,
-  CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
-  CertKeyUsage,
-  CertSignatureAlgorithm,
   CertStatus,
   CertSubjectAlternativeNameType,
   CrlReason
@@ -670,49 +669,11 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       plainText: Buffer.from(privateKeyPem)
     });
 
-    const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
-
-    // Extract key usages and extended key usages from the certificate ACM actually issued —
-    // ACM applies its own policy and revises it over time, so the request is not the source of truth.
-    let issuedKeyUsages: CertKeyUsage[] = [];
-    const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
-    if (keyUsagesExt) {
-      issuedKeyUsages = Object.values(CertKeyUsage).filter(
-        // eslint-disable-next-line no-bitwise
-        (usage) => (x509.KeyUsageFlags[usage] & keyUsagesExt.usages) !== 0
-      );
-    }
-
-    let issuedExtendedKeyUsages: CertExtendedKeyUsage[] = [];
-    const extKeyUsageExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
-    if (extKeyUsageExt) {
-      issuedExtendedKeyUsages = extKeyUsageExt.usages
-        .map((oid) => CertExtendedKeyUsageOIDToName[oid as string])
-        .filter(Boolean);
-    }
-
-    // ACM picks the signature algorithm server-side — derive it from the issued cert
-    // so the persisted value matches what was actually signed.
-    const sigAlgName = certObj.signatureAlgorithm.name;
-    const sigHashName = (certObj.signatureAlgorithm as unknown as { hash?: { name: string } }).hash?.name;
-    let issuedSignatureAlgorithm: CertSignatureAlgorithm;
-    if (sigAlgName === "RSASSA-PKCS1-v1_5" && sigHashName === "SHA-256") {
-      issuedSignatureAlgorithm = CertSignatureAlgorithm.RSA_SHA256;
-    } else if (sigAlgName === "RSASSA-PKCS1-v1_5" && sigHashName === "SHA-384") {
-      issuedSignatureAlgorithm = CertSignatureAlgorithm.RSA_SHA384;
-    } else if (sigAlgName === "RSASSA-PKCS1-v1_5" && sigHashName === "SHA-512") {
-      issuedSignatureAlgorithm = CertSignatureAlgorithm.RSA_SHA512;
-    } else if (sigAlgName === "ECDSA" && sigHashName === "SHA-256") {
-      issuedSignatureAlgorithm = CertSignatureAlgorithm.ECDSA_SHA256;
-    } else if (sigAlgName === "ECDSA" && sigHashName === "SHA-384") {
-      issuedSignatureAlgorithm = CertSignatureAlgorithm.ECDSA_SHA384;
-    } else if (sigAlgName === "ECDSA" && sigHashName === "SHA-512") {
-      issuedSignatureAlgorithm = CertSignatureAlgorithm.ECDSA_SHA512;
-    } else {
-      throw new BadRequestError({
-        message: `Unsupported signature algorithm from AWS ACM: ${sigAlgName} with ${sigHashName}`
-      });
-    }
+    const parsedFields = extractExternallyIssuedCertificateFields(
+      Buffer.from(certificatePem),
+      undefined,
+      certObj.serialNumber
+    );
 
     const externalMetadata = ExternalMetadataSchema.parse({
       type: CaType.AWS_ACM_PUBLIC_CA,
@@ -732,16 +693,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
+          friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.map((san) => san.value).join(","),
           serialNumber: certObj.serialNumber,
           notBefore: certObj.notBefore,
           notAfter: certObj.notAfter,
           keyAlgorithm,
-          signatureAlgorithm: issuedSignatureAlgorithm,
-          keyUsages: issuedKeyUsages,
-          extendedKeyUsages: issuedExtendedKeyUsages,
           projectId: ca.projectId,
           externalMetadata,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,

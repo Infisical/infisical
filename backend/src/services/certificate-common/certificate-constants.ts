@@ -399,6 +399,17 @@ export const RESERVED_CERT_EXTENSION_OID_MESSAGES: Record<string, string> = {
     "Use a UPN subject alternative name instead of declaring OID 1.3.6.1.4.1.311.20.2.3 as a custom extension."
 };
 
+// Mirrored by ISSUER_GENERATED_EXTENSION_LABELS in the frontend's shared certificate-constants.ts,
+// which filters the renewal form. Add an OID to one and the two disagree.
+export const ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "signed certificate timestamp list",
+  "1.3.6.1.4.1.11129.2.4.3": "precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamp list",
+  "1.3.101.75": "certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "certification authority version",
+  "1.3.6.1.4.1.311.21.2": "previous certification authority certificate hash"
+};
+
 export const CERT_EXTENSION_OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
 
 const CERT_EXTENSION_OID_PATTERN = new RE2(`^${CERT_EXTENSION_OID_PATTERN_SOURCE}$`);

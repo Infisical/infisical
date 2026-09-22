@@ -9,6 +9,7 @@ import {
   CERT_EXTENSION_OID_PATTERN_SOURCE,
   CertExtensionCriticality,
   CUSTOM_EXTENSION_PRESET_OIDS,
+  ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS,
   MAX_CUSTOM_EXTENSION_VALUE_BYTES,
   MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE,
   RESERVED_CERT_EXTENSION_OID_MESSAGES,
@@ -20,6 +21,7 @@ export type TIssuedCustomExtension = {
   critical: boolean;
   value: string;
   displayValue?: string;
+  issuerAdded?: boolean;
 };
 
 export type TResolvedCustomExtension = TIssuedCustomExtension;
@@ -190,6 +192,9 @@ export const isReservedExtensionOid = (oid: string): boolean =>
   RESERVED_CERT_EXTENSION_OID_PREFIXES.some((prefix) => oid.startsWith(prefix)) ||
   Object.hasOwn(RESERVED_CERT_EXTENSION_OID_MESSAGES, oid);
 
+export const isIssuerGeneratedExtensionOid = (oid: string): boolean =>
+  Object.hasOwn(ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS, oid);
+
 export const describeReservedExtensionOid = (oid: string): string =>
   RESERVED_CERT_EXTENSION_OID_MESSAGES[oid] ??
   `OID ${oid} is a standard X.509 extension that Infisical manages, so it cannot be used as a custom extension.`;
@@ -274,7 +279,23 @@ export const parseIssuedCustomExtensions = (
 };
 
 export const parseImportedCustomExtensions = (certificateDer: Buffer): TIssuedCustomExtension[] =>
-  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer));
+  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer)).map((extension) => ({
+    ...extension,
+    issuerAdded: true
+  }));
+
+export const parseExternallyIssuedCustomExtensions = (
+  certificateDer: Buffer,
+  requested?: TResolvedCustomExtension[]
+): TIssuedCustomExtension[] => {
+  const requestedOids = new Set((requested ?? []).map((extension) => extension.oid));
+
+  return withDisplayValue(
+    parseCustomExtensionsFromCertificate(certificateDer).map((extension) =>
+      requestedOids.has(extension.oid) ? extension : { ...extension, issuerAdded: true }
+    )
+  );
+};
 
 export type TCsrCustomExtensionMismatch = { oid: string; reason: "missing" | "value" | "criticality" };
 
@@ -317,8 +338,11 @@ export const findUnsatisfiedCustomExtensionOids = (
     .map((extension) => extension.oid);
 };
 
+const readStoredCustomExtensions = (stored: unknown): TResolvedCustomExtension[] =>
+  (stored as TResolvedCustomExtension[] | null) ?? [];
+
 export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
-  ((stored as TResolvedCustomExtension[] | null) ?? []).flatMap((extension) => {
+  readStoredCustomExtensions(stored).flatMap((extension) => {
     const value = describeCustomExtensionValue(extension.oid, extension.value);
     if (value === null) {
       throw new BadRequestError({
@@ -333,6 +357,13 @@ export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtens
       }
     ];
   });
+
+export const toCarriedCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
+  toRequestCustomExtensions(
+    readStoredCustomExtensions(stored).filter(
+      (extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid)
+    )
+  );
 
 export const assertAwsPcaCustomExtensionLimit = (count: number): void => {
   if (count > MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE) {

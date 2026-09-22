@@ -29,7 +29,10 @@ import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-ea
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -609,7 +612,7 @@ export const executeAcmeOrder = async (
       })
     : { cipherTextBlob: undefined };
 
-  const parsedFields = extractCertificateFields(Buffer.from(leafCert));
+  const parsedFields = extractExternallyIssuedCertificateFields(Buffer.from(leafCert), undefined, certObj.serialNumber);
 
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
@@ -618,7 +621,7 @@ export const executeAcmeOrder = async (
         pkiSubscriberId: subscriberId,
         profileId,
         status: CertStatus.ACTIVE,
-        friendlyName: commonName,
+        friendlyName: parsedFields.commonName ?? commonName,
         commonName,
         altNames: altNames?.join(","),
         serialNumber: certObj.serialNumber,

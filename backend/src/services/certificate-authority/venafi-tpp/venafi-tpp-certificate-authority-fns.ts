@@ -23,7 +23,11 @@ import {
 } from "@app/services/app-connection/venafi-tpp/venafi-tpp-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate, splitPemChain } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate,
+  splitPemChain
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -841,13 +845,19 @@ export const VenafiTppCertificateAuthorityFns = ({
 
       let certificateId: string;
 
+      const parsedFields = extractExternallyIssuedCertificateFields(
+        Buffer.from(cleanedCertificatePem),
+        undefined,
+        certObj.serialNumber
+      );
+
       await certificateDAL.transaction(async (tx) => {
         const cert = await certificateDAL.create(
           {
             caId: ca.id,
             profileId,
             status: CertStatus.ACTIVE,
-            friendlyName: commonName,
+            friendlyName: parsedFields.commonName ?? commonName,
             commonName,
             altNames: altNames.map((san) => san.value).join(","),
             serialNumber: certObj.serialNumber,
@@ -858,7 +868,8 @@ export const VenafiTppCertificateAuthorityFns = ({
             keyAlgorithm,
             signatureAlgorithm,
             projectId: ca.projectId,
-            renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
+            renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
+            ...parsedFields
           },
           tx
         );

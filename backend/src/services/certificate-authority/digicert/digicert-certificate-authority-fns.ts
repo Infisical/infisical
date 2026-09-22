@@ -14,7 +14,10 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { DIGICERT_CS_PRODUCT_NAME_IDS } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/services/certificate/certificate-types";
 import {
@@ -508,6 +511,11 @@ export const DigiCertCertificateAuthorityFns = ({
 
     const certObj = new x509.X509Certificate(leaf);
     const issued = extractIssuedCertificateFields(certObj);
+    const parsedFields = extractExternallyIssuedCertificateFields(
+      Buffer.from(new Uint8Array(certObj.rawData)),
+      undefined,
+      certObj.serialNumber
+    );
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: ca.projectId,
@@ -532,7 +540,6 @@ export const DigiCertCertificateAuthorityFns = ({
           status: CertStatus.ACTIVE,
           friendlyName: issued.commonName || "",
           commonName: issued.commonName || "",
-          altNames: issued.altNames.length > 0 ? issued.altNames.join(",") : "",
           serialNumber: certObj.serialNumber,
           notBefore: certObj.notBefore,
           notAfter: certObj.notAfter,
@@ -545,7 +552,8 @@ export const DigiCertCertificateAuthorityFns = ({
             type: CaType.DIGICERT,
             orderId: digicertOrderId
           } satisfies TDigiCertExternalMetadata,
-          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
+          ...parsedFields
         },
         tx
       );

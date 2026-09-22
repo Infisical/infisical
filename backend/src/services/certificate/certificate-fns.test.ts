@@ -8,6 +8,7 @@ import {
   buildCertificateBundle,
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
+  extractExternallyIssuedCertificateFields,
   normalizeThumbprint,
   parseCertificateBody
 } from "./certificate-fns";
@@ -143,5 +144,108 @@ describe("parseCertificateBody usages", () => {
     const fields = extractCertificateFields(pem);
 
     expect(fields.extendedKeyUsages).toEqual(["serverAuth", "smartCardLogon"]);
+  });
+});
+
+describe("extractExternallyIssuedCertificateFields", () => {
+  x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+
+  const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
+  const TEMPLATE_NAME_OID = "1.3.6.1.4.1.311.20.2";
+
+  const buildIssuedCert = async (extensions: x509.Extension[], name = "CN=issued.example.com,O=Issued Corp") => {
+    const keys = await webcrypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: "SHA-384",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength: 3072
+      },
+      true,
+      ["sign", "verify"]
+    );
+
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "02",
+      name,
+      notBefore: new Date("2026-01-01"),
+      notAfter: new Date("2027-01-01"),
+      keys: keys as CryptoKeyPair,
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-384" },
+      extensions
+    });
+
+    return Buffer.from(cert.toString("pem"));
+  };
+
+  test("records every extension the certificate carries, flagging the ones the request never asked for", async () => {
+    const requestedValue = Buffer.from([0x0c, 0x07, 0x4d, 0x61, 0x63, 0x68, 0x69, 0x6e, 0x65]);
+    const pem = await buildIssuedCert([
+      new x509.Extension(TEMPLATE_NAME_OID, false, requestedValue),
+      new x509.Extension(SCT_LIST_OID, false, Buffer.from([0x04, 0x02, 0x00, 0x42]))
+    ]);
+
+    const fields = extractExternallyIssuedCertificateFields(pem, [
+      { oid: TEMPLATE_NAME_OID, critical: false, value: requestedValue.toString("base64") }
+    ]);
+
+    expect(JSON.parse(fields.customExtensions as string)).toEqual([
+      { oid: SCT_LIST_OID, critical: false, value: "BAIAQg==", issuerAdded: true },
+      { oid: TEMPLATE_NAME_OID, critical: false, value: requestedValue.toString("base64") }
+    ]);
+  });
+
+  test("reads the subject, algorithms and subject alternative names the CA actually issued", async () => {
+    const pem = await buildIssuedCert([
+      new x509.SubjectAlternativeNameExtension([
+        { type: "dns", value: "issued.example.com" },
+        { type: "dns", value: "added-by-ca.example.com" }
+      ])
+    ]);
+
+    const fields = extractExternallyIssuedCertificateFields(pem);
+
+    expect(fields.commonName).toBe("issued.example.com");
+    expect(fields.subjectOrganization).toBe("Issued Corp");
+    expect(fields.altNames).toBe("issued.example.com,added-by-ca.example.com");
+    expect(fields.keyAlgorithm).toBe("RSA_3072");
+    expect(fields.signatureAlgorithm).toBe("RSA-SHA384");
+  });
+
+  // Otherwise each renewal asks for the duplicate again and the list grows until it overruns 4096.
+  test("collapses a repeated subject alternative name so renewals cannot accumulate copies", async () => {
+    const pem = await buildIssuedCert([
+      new x509.SubjectAlternativeNameExtension([
+        { type: "dns", value: "issued.example.com" },
+        { type: "dns", value: "added.example.com" },
+        { type: "dns", value: "issued.example.com" }
+      ])
+    ]);
+
+    const fields = extractExternallyIssuedCertificateFields(pem);
+
+    expect(fields.altNames).toBe("issued.example.com,added.example.com");
+  });
+
+  test("drops subject alternative names that would not fit the column rather than truncating one", async () => {
+    const many = Array.from({ length: 200 }, (_, index) => ({
+      type: "dns" as const,
+      value: `host-${String(index).padStart(3, "0")}.${"padding".repeat(4)}.example.com`
+    }));
+    const pem = await buildIssuedCert([new x509.SubjectAlternativeNameExtension(many)]);
+
+    const fields = extractExternallyIssuedCertificateFields(pem);
+
+    expect(many.map((san) => san.value).join(",").length).toBeGreaterThan(4096);
+    expect(fields).not.toHaveProperty("altNames");
+  });
+
+  test("leaves the requested subject alternative names in place when the certificate carries none", async () => {
+    const pem = await buildIssuedCert([new x509.BasicConstraintsExtension(false)]);
+
+    const fields = extractExternallyIssuedCertificateFields(pem);
+
+    expect(fields).not.toHaveProperty("altNames");
+    expect({ altNames: "requested.example.com", ...fields }.altNames).toBe("requested.example.com");
   });
 });

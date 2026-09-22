@@ -22,7 +22,11 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
-import { toRequestCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
+import {
+  isIssuerGeneratedExtensionOid,
+  toCarriedCustomExtensions,
+  TRequestCustomExtension
+} from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
@@ -86,9 +90,11 @@ const text = (value: string | null | undefined) => value ?? "";
 
 const describeStoredCustomExtensions = (stored: unknown): TRequestCustomExtension[] => {
   try {
-    return toRequestCustomExtensions(stored);
+    return toCarriedCustomExtensions(stored);
   } catch {
-    return ((stored as { oid: string }[] | null) ?? []).map(({ oid }) => ({ oid, value: "" }));
+    return ((stored as { oid: string; issuerAdded?: boolean }[] | null) ?? [])
+      .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+      .map(({ oid }) => ({ oid, value: "" }));
   }
 };
 

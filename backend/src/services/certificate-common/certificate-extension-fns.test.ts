@@ -12,8 +12,11 @@ import {
   findUnsatisfiedCustomExtensionOids,
   isReservedExtensionOid,
   parseCustomExtensionsFromCertificate,
+  parseExternallyIssuedCustomExtensions,
+  parseImportedCustomExtensions,
   resolveCustomExtensions,
   TCustomExtensionRule,
+  toCarriedCustomExtensions,
   toRequestCustomExtensions,
   TProfileCustomExtension,
   validateCustomExtensionValue
@@ -24,8 +27,28 @@ const TEMPLATE_NAME_OID = "1.3.6.1.4.1.311.20.2";
 const TEMPLATE_INFO_OID = "1.3.6.1.4.1.311.21.7";
 const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
 const OPAQUE_OID = "1.3.6.1.4.1.311.21.20";
+const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
 
 const SID = "S-1-5-21-1004336348-1177238915-682003330-1103";
+
+const buildCertificateWithExtension = async (oid: string, der: Buffer) => {
+  const keys = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"]
+  );
+  const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: "01",
+    name: "CN=custom-extension-test",
+    notBefore: new Date(),
+    notAfter: new Date(Date.now() + 60 * 60 * 1000),
+    keys,
+    signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    extensions: [new x509.Extension(oid, false, der)]
+  });
+
+  return Buffer.from(certificate.toString("pem"));
+};
 
 describe("certificateExtensionOidSchema", () => {
   it.each(["1.3.6.1.4.1.311.25.2", "2.999.1", "0.9.2342"])("accepts %s", (oid) => {
@@ -659,5 +682,75 @@ describe("preset registry", () => {
       expect(validateCustomExtensionValue(oid, sample)).toBeNull();
       expect(describeCustomExtensionValue(oid, encodeCustomExtensionValue(oid, sample))).toBe(sample);
     });
+  });
+});
+
+describe("toCarriedCustomExtensions", () => {
+  it("never carries an extension the upstream CA added of its own accord", () => {
+    const stored = [
+      { oid: OPAQUE_OID, critical: false, value: "BAIAQg==", issuerAdded: true },
+      { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+    ];
+
+    expect(toCarriedCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
+  });
+
+  // Certificates stored before the flag existed rely on the OID list alone.
+  it.each([
+    [SCT_LIST_OID, "signed certificate timestamps"],
+    ["1.3.6.1.4.1.11129.2.4.3", "precertificate poison"],
+    ["1.3.101.75", "certificate transparency information"],
+    ["1.3.6.1.4.1.311.21.1", "ADCS certification authority version"],
+    ["1.3.6.1.4.1.311.21.2", "ADCS previous certification authority certificate hash"]
+  ])("never copies %s (%s) from one certificate to the next", (oid) => {
+    expect(toCarriedCustomExtensions([{ oid, critical: false, value: "BQA=" }])).toEqual([]);
+  });
+
+  // toRequestCustomExtensions throws on a non-text value, so the filter has to run before it.
+  it("does not throw on a binary issuer-written value that a plain reissue would refuse", () => {
+    const stored = [
+      { oid: SCT_LIST_OID, critical: false, value: Buffer.from([0x04, 0x02, 0x00, 0x42]).toString("base64") }
+    ];
+
+    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
+    expect(toCarriedCustomExtensions(stored)).toEqual([]);
+  });
+});
+
+// This used to fail renewal with the very error this change removes.
+describe("parseImportedCustomExtensions", () => {
+  it("marks every extension issuer-added so a renewal never asks for it back", async () => {
+    const mustStaple = Buffer.from([0x30, 0x03, 0x02, 0x01, 0x05]);
+    const certificate = await buildCertificateWithExtension("1.3.6.1.5.5.7.1.24", mustStaple);
+
+    const stored = parseImportedCustomExtensions(certificate);
+
+    expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=", issuerAdded: true }]);
+    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
+    expect(toCarriedCustomExtensions(stored)).toEqual([]);
+  });
+});
+
+describe("parseExternallyIssuedCustomExtensions", () => {
+  it("flags an extension the upstream CA added and leaves a requested one unmarked", async () => {
+    const certificate = await buildCertificateWithExtension(SCT_LIST_OID, Buffer.from([0x04, 0x02, 0x00, 0x42]));
+
+    expect(parseExternallyIssuedCustomExtensions(certificate)).toEqual([
+      { oid: SCT_LIST_OID, critical: false, value: "BAIAQg==", issuerAdded: true }
+    ]);
+    expect(
+      parseExternallyIssuedCustomExtensions(certificate, [{ oid: SCT_LIST_OID, critical: false, value: "BAIAQg==" }])
+    ).toEqual([{ oid: SCT_LIST_OID, critical: false, value: "BAIAQg==" }]);
+  });
+
+  // The CA can rewrite what it was asked for, so the record has to come off the certificate.
+  it("records the value the certificate carries when the CA rewrote a requested extension", async () => {
+    const certificate = await buildCertificateWithExtension(CUSTOM_OID, Buffer.from([0x04, 0x02, 0x00, 0x43]));
+
+    expect(
+      parseExternallyIssuedCustomExtensions(certificate, [
+        { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
+      ])
+    ).toEqual([{ oid: CUSTOM_OID, critical: false, value: "BAIAQw==" }]);
   });
 });

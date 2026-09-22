@@ -9,6 +9,7 @@ import {
 } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { extractExternallyIssuedCertificateFields } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -324,6 +325,11 @@ export const digiCertCodeSigningFns = ({
 
     const certObj = new x509.X509Certificate(leaf);
     const issued = extractIssuedCertificateFields(certObj);
+    const parsedFields = extractExternallyIssuedCertificateFields(
+      Buffer.from(new Uint8Array(certObj.rawData)),
+      undefined,
+      certObj.serialNumber
+    );
 
     const existingCert = await certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber });
     if (existingCert) {
@@ -352,7 +358,6 @@ export const digiCertCodeSigningFns = ({
           status: CertStatus.ACTIVE,
           friendlyName: issued.commonName || "",
           commonName: issued.commonName || "",
-          altNames: issued.altNames.length > 0 ? issued.altNames.join(",") : "",
           serialNumber: certObj.serialNumber,
           notBefore: certObj.notBefore,
           notAfter: certObj.notAfter,
@@ -364,7 +369,8 @@ export const digiCertCodeSigningFns = ({
           externalMetadata: {
             type: CaType.DIGICERT,
             orderId
-          } satisfies TDigiCertExternalMetadata
+          } satisfies TDigiCertExternalMetadata,
+          ...parsedFields
         },
         tx
       );

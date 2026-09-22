@@ -410,8 +410,25 @@ export const getPresetExtensionCriticality = (oid: string): CertExtensionCritica
 
 export const isPresetExtensionOid = (oid: string) => Boolean(getCustomExtensionPreset(oid));
 
+// Mirrored by ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS in the backend's certificate-constants.ts,
+// which does the real filtering. Add an OID to one and the two disagree.
+export const ISSUER_GENERATED_EXTENSION_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "Signed certificate timestamps",
+  "1.3.6.1.4.1.11129.2.4.3": "Precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamps",
+  "1.3.101.75": "Certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "CA version",
+  "1.3.6.1.4.1.311.21.2": "Previous CA certificate hash"
+};
+
+export const isIssuerGeneratedExtensionOid = (oid: string) =>
+  Object.prototype.hasOwnProperty.call(ISSUER_GENERATED_EXTENSION_LABELS, oid);
+
 export const customExtensionLabelFor = (oid: string, label?: string | null) =>
-  label?.trim() || getCustomExtensionPreset(oid)?.label || oid;
+  label?.trim() ||
+  getCustomExtensionPreset(oid)?.label ||
+  ISSUER_GENERATED_EXTENSION_LABELS[oid] ||
+  oid;
 
 export const validateCustomExtensionValue = (oid: string, value: string): string | null => {
   const preset = getCustomExtensionPreset(oid);

@@ -33,6 +33,7 @@ export type TCertificateCustomExtension = {
   critical: boolean;
   value: string;
   displayValue?: string;
+  issuerAdded?: boolean;
 };
 
 export type TCertificate = {
