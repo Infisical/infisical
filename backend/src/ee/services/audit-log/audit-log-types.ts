@@ -968,6 +968,7 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
 
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
+  EventType.GET_SECRETS,
   EventType.DELETE_SECRETS,
   EventType.CREATE_SECRETS,
   EventType.UPDATE_SECRETS,
