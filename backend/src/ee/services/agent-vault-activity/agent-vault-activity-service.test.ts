@@ -78,6 +78,8 @@ const build = (overrides: TOverrides = {}) => {
   });
   const recordStoredChunk = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
   const findChunk = vi.fn(async () => overrides.existingChunk ?? null);
+  const validateConnection = vi.fn(async () => ({}));
+  const config = "config" in overrides ? overrides.config : enabledConfig();
 
   const service = agentVaultActivityServiceFactory({
     agentVaultActivityChunkDAL: {
@@ -89,8 +91,12 @@ const build = (overrides: TOverrides = {}) => {
       countForSession: vi.fn(async () => 0)
     } as never,
     agentVaultActivityConfigDAL: {
-      findOne: vi.fn(async () => ("config" in overrides ? overrides.config : enabledConfig())),
-      recordStoredChunk
+      findOne: vi.fn(async () => config),
+      recordStoredChunk,
+      updateById: vi.fn(async (_id: string, values: Record<string, unknown>) => ({
+        ...(config as object),
+        ...values
+      }))
     } as never,
     agentVaultSessionDAL: {
       findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
@@ -99,12 +105,14 @@ const build = (overrides: TOverrides = {}) => {
       findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
     } as never,
     appConnectionDAL: { findById: vi.fn() } as never,
-    appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
-    permissionService: { getProjectPermission: vi.fn() } as never,
+    appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
+    permissionService: {
+      getProjectPermission: vi.fn(async () => ({ permission: {}, hasRole: () => true }))
+    } as never,
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
 
-  return { service, createIfAbsent, recordStoredChunk, findChunk };
+  return { service, createIfAbsent, recordStoredChunk, findChunk, validateConnection };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -340,5 +348,49 @@ describe("recordChunk: re-sending a chunk", () => {
     const { service, findChunk } = build({ createThrows: other });
     await expect(record(service)).rejects.toThrow();
     expect(findChunk).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateActivityConfig: when the connection is checked again", () => {
+  // Admin is all the permission mock ever answers; the connection check itself is what is under test.
+  const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
+  const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+
+  const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
+    service.updateActivityConfig({ projectId: "proj-1", ctx, actor, ...patch });
+
+  test.each([
+    { use: "a different connection", patch: { appConnectionId: "5c6fd1a9-3c89-4a64-9e5f-6b7cfe0f1a2b" } },
+    { use: "a different bucket", patch: { bucket: "another-bucket" } },
+    { use: "a different region", patch: { region: "us-west-2" } },
+    { use: "a different prefix", patch: { keyPrefix: "elsewhere" } }
+  ])("checks it when the save points it at $use", async ({ patch }) => {
+    const { service, validateConnection } = build();
+    await save(service, patch);
+    expect(validateConnection).toHaveBeenCalledTimes(1);
+  });
+
+  test("checks it when the save turns recording on", async () => {
+    const { service, validateConnection } = build({ config: { ...enabledConfig(), enabled: false } });
+    await save(service, { enabled: true });
+    expect(validateConnection).toHaveBeenCalledTimes(1);
+  });
+
+  test("never checks it when the save turns recording off, so an unusable connection cannot block that", async () => {
+    const { service, validateConnection } = build();
+    await save(service, { enabled: false });
+    expect(validateConnection).not.toHaveBeenCalled();
+  });
+
+  test("skips it when the save leaves the destination as it was, however the prefix is spelled", async () => {
+    const { service, validateConnection } = build();
+    await save(service, {
+      enabled: true,
+      appConnectionId: "conn-1",
+      bucket: "my-bucket",
+      region: "us-east-1",
+      keyPrefix: "/logs/"
+    });
+    expect(validateConnection).not.toHaveBeenCalled();
   });
 });

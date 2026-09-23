@@ -455,13 +455,20 @@ export const agentVaultActivityServiceFactory = ({
       keyPrefix: patch.keyPrefix === undefined ? (current.keyPrefix ?? null) : normalizeKeyPrefix(patch.keyPrefix)
     };
 
-    // Only when the caller is actually pointing at a different connection. The check resolves the id
-    // through the app connection service's own org, type and project-availability checks, which is
-    // required for an id the caller supplies but is pure cost for one already stored and unchanged:
-    // it was authorized when it was set, and this request has already cleared $requireAdmin. The
-    // form posts every field on every save, so without this a save that only flips the toggle pays
-    // for it too.
-    if (next.appConnectionId && next.appConnectionId !== current.appConnectionId) {
+    // Checked whenever this save puts the connection's credentials to a new use: a different connection,
+    // a different destination, or recording turned on. The check resolves the id through the app
+    // connection service's own org, type and project-availability checks and asks whether this caller
+    // may use it, so skipping it on a destination change would let an admin who may not use a connection
+    // point it at a bucket of their choosing. Never on a save that only stops using it or leaves the
+    // destination alone: a connection that has since become unusable must not stop anyone turning
+    // recording off.
+    const usesConnectionAnew =
+      next.appConnectionId !== current.appConnectionId ||
+      next.bucket !== (current.bucket ?? null) ||
+      next.region !== (current.region ?? null) ||
+      normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix) ||
+      (next.enabled && !current.enabled);
+    if (next.appConnectionId && usesConnectionAnew) {
       await appConnectionService.validateAppConnectionUsageById(
         AppConnection.AWS,
         { connectionId: next.appConnectionId, projectId },

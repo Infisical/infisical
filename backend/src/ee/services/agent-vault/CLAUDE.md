@@ -204,6 +204,10 @@ only, never bodies or headers, and never the query string (the proxy builds the 
   connection link (`20260603120100_defer-app-connection-fks`) so an org delete is checked at commit. The
   shared delete names activity logging in its refusal. Freeing the connection means switching it, or
   detaching it (`appConnectionId: null`, only with recording off), which keeps the bucket and prefix.
+- **A save re-checks the connection whenever it puts it to a new use** (a different connection, bucket,
+  region or prefix, or recording turned on), because the check is what asks whether this caller may use
+  those credentials. Never on a save that only turns recording off, so an unusable connection cannot
+  stop anyone switching it off.
 - **`agent_vault_activity_chunks.proxyId` has no foreign key, deliberately.** It is an input to the
   encryption AAD, so `SET NULL` on proxy deletion would make every chunk that proxy wrote permanently
   undecryptable. `proxyName` is denormalised for the same reason.

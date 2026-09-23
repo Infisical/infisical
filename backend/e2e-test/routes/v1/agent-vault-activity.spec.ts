@@ -316,6 +316,34 @@ describe("Agent Vault activity", async () => {
       });
     });
 
+    /**
+     * The connection is re-checked whenever a save puts its credentials to a new use, and never when a
+     * save only stops using them. Moving the connection into another project is the simplest way to make
+     * the check refuse it.
+     */
+    test("a save that puts the connection to a new use checks it again; turning recording off does not", async () => {
+      await saveConfig({
+        enabled: true,
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
+
+      const { projectId: originalProjectId } = await testDb("app_connections").where({ id: connectionId }).first();
+      await testDb("app_connections").where({ id: connectionId }).update({ projectId: seedData1.project.id });
+      try {
+        expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
+        expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
+        expect((await saveConfig({ enabled: true })).statusCode).toBe(400);
+        expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(400);
+        expect((await saveConfig({ region: "us-west-2" })).statusCode).toBe(400);
+        expect((await saveConfig({ keyPrefix: "elsewhere" })).statusCode).toBe(400);
+      } finally {
+        await testDb("app_connections").where({ id: connectionId }).update({ projectId: originalProjectId });
+      }
+    });
+
     test("moving the bucket bumps configVersion; changing the region or the connection does not", async () => {
       await saveConfig({
         enabled: true,
