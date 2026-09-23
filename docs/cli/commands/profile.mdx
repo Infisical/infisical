@@ -78,17 +78,17 @@ Domain: https://app.infisical.com
 
 </Accordion>
 
-<Accordion title="infisical profile new">
+<Accordion title="infisical profile create">
   Create a profile for another organization without logging in again. The new profile reuses the account and instance that you're signed in to.
 
 ```bash
-infisical profile new [name]
+infisical profile create [name]
 ```
 
 If you omit `--org`, the CLI will ask you to pick an organization.
 
 ```bash
-infisical profile new globex --org globex-inc
+infisical profile create globex --org globex-inc
 ```
 
 #### Flags
@@ -97,7 +97,7 @@ infisical profile new globex --org globex-inc
     Also make the new profile the default for this machine.
 
     ```bash
-    infisical profile new globex --org globex-inc --use
+    infisical profile create globex --org globex-inc --use
     ```
 
   </Accordion>
@@ -107,7 +107,7 @@ infisical profile new globex --org globex-inc
     because a command can't change the environment of the shell that started it.
 
     ```bash
-    eval "$(infisical profile new globex --org globex-inc --pin)"
+    eval "$(infisical profile create globex --org globex-inc --pin)"
     ```
 
   </Accordion>
@@ -191,7 +191,7 @@ infisical profile set-org globex-inc
 
 <Tip>
   To use another organization for a single command, pass `--org`. To keep a
-  second organization available as its own profile, run `infisical profile new`.
+  second organization available as its own profile, run `infisical profile create`.
 </Tip>
 
 </Accordion>
@@ -256,7 +256,7 @@ These flags work on every command, not only on `infisical profile`.
   <Accordion title="Work in two organizations at once">
     ```bash
     # You are already logged in to Acme.
-    infisical profile new globex --org globex-inc
+    infisical profile create globex --org globex-inc
 
     # Use Globex in this terminal only.
     eval "$(infisical profile pin globex)"
