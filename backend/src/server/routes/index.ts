@@ -174,6 +174,7 @@ import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-auth-method/aws-auth-dal";
 import { gatewayProxyRegistryFactory } from "@app/ee/services/resource-auth-method/gateway-proxy-registry";
+import { resourceGcpAuthDALFactory } from "@app/ee/services/resource-auth-method/gcp-auth-dal";
 import { resourceKubernetesAuthDALFactory } from "@app/ee/services/resource-auth-method/kubernetes-auth-dal";
 import { resourceAuthMethodDALFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-dal";
 import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
@@ -606,7 +607,12 @@ export const registerRoutes = async (
   const appCfg = getConfig();
 
   const redlock = new Redlock([redis], { retryCount: 0 });
-  const cronJob = cronJobFactory({ redis, redlock, schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled });
+  const cronJob = cronJobFactory({
+    redis,
+    redlock,
+    schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled,
+    maxJitterMs: envConfig.isDevelopmentMode ? 0 : undefined
+  });
   if (envConfig.isGeneralWorkerRunModeEnabled) {
     cronJob.start();
   }
@@ -1754,6 +1760,7 @@ export const registerRoutes = async (
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
+  const resourceGcpAuthDAL = resourceGcpAuthDALFactory(db);
   const resourceKubernetesAuthDAL = resourceKubernetesAuthDALFactory(db);
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
@@ -1950,6 +1957,7 @@ export const registerRoutes = async (
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
+    resourceGcpAuthDAL,
     resourceKubernetesAuthDAL,
     resourceTokenAuthDAL,
     kmsService,

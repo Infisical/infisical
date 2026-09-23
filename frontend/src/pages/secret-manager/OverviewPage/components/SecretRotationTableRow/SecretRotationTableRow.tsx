@@ -2,9 +2,9 @@ import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ActivityIcon,
-  AsteriskIcon,
   ChevronDownIcon,
   EditIcon,
+  EyeIcon,
   HandshakeIcon,
   InfoIcon,
   LoaderCircleIcon,
@@ -192,7 +192,7 @@ export const SecretRotationTableRow = ({
                   isDisabled={!isAllowed}
                   onClick={() => onViewGeneratedCredentials(secretRotation)}
                 >
-                  <AsteriskIcon />
+                  <EyeIcon />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>View Generated Credentials</TooltipContent>
