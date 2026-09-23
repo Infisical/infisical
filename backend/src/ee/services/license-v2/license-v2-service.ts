@@ -1347,8 +1347,8 @@ export const licenseV2ServiceFactory = ({
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
-  // Start a plan-scoped self-serve trial. The trial is granted immediately (no upfront charge);
-  // cardSetupUrl, when present, is a best-effort card-setup checkout the client redirects to.
+  // Start a plan-scoped self-serve trial. Existing-card customers are granted immediately; others
+  // must complete the returned card-setup checkout before the license server grants the trial.
   const startTrial = async ({ orgId, actor, productId, plan, email, returnPath }: TStartBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
     // The trial has no Stripe customer yet, so the server creates one from the org's own name + the

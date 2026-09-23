@@ -1,9 +1,11 @@
-import { useEffect } from "react";
-import { CircleAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Check, CircleAlert, Sparkles } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -19,8 +21,13 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
-import { useGetBillingV2Catalog, useGetBillingV2Overview } from "@app/hooks/api";
-import { ProductSheet } from "@app/pages/organization/BillingV2Page/components/ProductSheet";
+import {
+  BillingV2Plan,
+  useGetBillingV2Catalog,
+  useGetBillingV2Overview,
+  useStartBillingV2Trial
+} from "@app/hooks/api";
+import { fmtMoney } from "@app/pages/organization/BillingV2Page/billing-v2-format";
 
 import { buildUpgradeReturnPath, UpgradeIntent } from "./upgrade-intents";
 
@@ -33,7 +40,17 @@ type Props = {
   onGranted: () => void;
 };
 
+type GateView = "plan" | "confirm";
+
+const monthlyPrice = (plan: BillingV2Plan) => {
+  if (plan.base?.monthly) {
+    return plan.base.monthly;
+  }
+  return plan.dims.find((dimension) => dimension.monthly > 0)?.monthly ?? 0;
+};
+
 export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) => {
+  const [view, setView] = useState<GateView>("plan");
   const { currentOrg, isSubOrganization } = useOrganization();
   const { permission } = useOrgPermission();
   const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
@@ -44,19 +61,14 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
   const canLoadBilling = isOpen && canManageBilling && !isSubOrganization;
   const overview = useGetBillingV2Overview(billingOrgId, { enabled: canLoadBilling });
   const catalog = useGetBillingV2Catalog(billingOrgId, { enabled: canLoadBilling });
+  const startTrial = useStartBillingV2Trial();
   const entitlement = overview.data?.entitlements[intent.productKey];
 
   useEffect(() => {
-    if (!isOpen || !isSubOrganization) {
-      return;
+    if (!isOpen) {
+      setView("plan");
     }
-
-    const search = new URLSearchParams({
-      upgradeProduct: intent.productKey,
-      upgradeReturnPath: buildUpgradeReturnPath(intent, window.location)
-    });
-    window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
-  }, [billingOrgId, intent, isOpen, isSubOrganization]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && entitlement?.entitled) {
@@ -69,6 +81,15 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     return null;
   }
 
+  const returnPath = buildUpgradeReturnPath(intent, window.location);
+  const openRootBilling = () => {
+    const search = new URLSearchParams({
+      upgradeProduct: intent.productKey,
+      upgradeReturnPath: returnPath
+    });
+    window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
+  };
+
   if (isSubOrganization) {
     return (
       <Dialog open onOpenChange={onOpenChange}>
@@ -77,10 +98,21 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
             <DialogTitle>{intent.title}</DialogTitle>
             <DialogDescription>{intent.description}</DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-3 text-sm text-muted">
-            <Loader size="xs" label="Opening billing" />
-            Opening billing for the root organization
-          </div>
+          <Alert variant="info">
+            <CircleAlert />
+            <AlertDescription>
+              Sub-organizations share the root organization&apos;s subscription. Continue to root
+              billing to start the trial or update the subscription.
+            </AlertDescription>
+          </Alert>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+            <Button variant="org" onClick={openRootBilling}>
+              Continue to root billing
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
@@ -104,6 +136,9 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
+            </Button>
+            <Button variant="org" onClick={openRootBilling}>
+              Continue to billing
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -163,23 +198,201 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     );
   }
 
-  return (
-    <ProductSheet
-      orgId={billingOrgId}
-      prod={product}
-      entitlement={entitlement}
-      hasActiveSubscription={overview.data.subState === "active"}
-      returnPath={buildUpgradeReturnPath(intent, window.location)}
-      renewsOn={entitlement?.renewsOn ?? null}
-      selfServe={
-        overview.data.mode !== "managed" && overview.data.selfServe && !overview.data.checkoutFrozen
+  const plan = product.plans.find((candidate) => candidate.tier === intent.planKey);
+  if (!plan) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{intent.title}</DialogTitle>
+            <DialogDescription>{intent.description}</DialogDescription>
+          </DialogHeader>
+          <Alert variant="danger">
+            <CircleAlert />
+            <AlertDescription>This plan is not available for your organization.</AlertDescription>
+          </Alert>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const trialAvailable = plan.selfServe && plan.trialable;
+  const selfServe =
+    overview.data.mode !== "managed" && overview.data.selfServe && !overview.data.checkoutFrozen;
+  const price = monthlyPrice(plan);
+  const trialLength = plan.trialDays > 0 ? `${plan.trialDays}-day` : "free";
+  const trialButtonLabel =
+    plan.trialDays > 0 ? `Start ${plan.trialDays}-day free trial` : "Start free trial";
+
+  const handleStartTrial = async () => {
+    try {
+      const result = await startTrial.mutateAsync({
+        orgId: billingOrgId,
+        productId: product.id,
+        plan: plan.tier,
+        returnPath
+      });
+
+      if (result.outcome === "awaiting_card") {
+        if (result.cardSetupUrl) {
+          window.location.assign(result.cardSetupUrl);
+          return;
+        }
+        createNotification({
+          type: "error",
+          text: "Failed to open secure card setup. Please try again."
+        });
+        return;
       }
-      onClose={() => onOpenChange(false)}
-      onEntitlementChanged={onGranted}
-      onRemove={() => undefined}
-      onContact={() => {
-        window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
-      }}
-    />
+
+      createNotification({ type: "success", text: `Your ${plan.name} trial has started.` });
+      onOpenChange(false);
+      onGranted();
+    } catch {
+      setView("plan");
+    }
+  };
+
+  let primaryAction = (
+    <Button variant="org" onClick={openRootBilling}>
+      View billing options
+    </Button>
+  );
+  if (!selfServe) {
+    primaryAction = (
+      <Button
+        variant="org"
+        onClick={() => window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer")}
+      >
+        Contact sales
+      </Button>
+    );
+  } else if (trialAvailable) {
+    primaryAction = (
+      <Button variant="org" onClick={() => setView("confirm")}>
+        {trialButtonLabel}
+      </Button>
+    );
+  }
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        {view === "plan" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>{intent.title}</DialogTitle>
+              <DialogDescription>{intent.description}</DialogDescription>
+            </DialogHeader>
+
+            <div className="rounded-lg border border-border bg-card">
+              <div className="flex flex-col gap-4 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-medium text-foreground">{plan.name}</span>
+                      {trialAvailable && <Badge variant="success">{trialLength} trial</Badge>}
+                    </div>
+                    <p className="mt-1 text-sm text-muted">{plan.feature}</p>
+                  </div>
+                  {price > 0 && (
+                    <div className="text-right">
+                      <span className="text-2xl font-medium text-foreground">
+                        {fmtMoney(price)}
+                      </span>
+                      <span className="text-sm text-muted"> / month</span>
+                    </div>
+                  )}
+                </div>
+
+                {product.includes && product.includes.length > 0 && (
+                  <div className="grid gap-x-5 gap-y-2 border-t border-border pt-4 sm:grid-cols-2">
+                    {product.includes.map((feature) => (
+                      <div key={feature} className="flex items-start gap-2 text-sm text-accent">
+                        <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {!selfServe && (
+              <Alert variant="info">
+                <CircleAlert />
+                <AlertDescription>
+                  Contact your Infisical account manager to update this subscription.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              {primaryAction}
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Sparkles className="size-5" />
+              </div>
+              <DialogTitle>Start your {plan.name} trial</DialogTitle>
+              <DialogDescription>
+                Your {trialLength} trial is free. A payment method is required; if you do not have
+                one on file, you will complete secure card setup before the trial starts. After the
+                trial, billing continues monthly unless you cancel.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="divide-y divide-border rounded-lg border border-border bg-card text-sm">
+              <div className="flex items-center justify-between p-4">
+                <div>
+                  <div className="font-medium text-foreground">Due today</div>
+                  <div className="text-muted">Free during your trial</div>
+                </div>
+                <span className="font-medium text-foreground">$0</span>
+              </div>
+              <div className="flex items-center justify-between p-4">
+                <div>
+                  <div className="font-medium text-foreground">After your trial</div>
+                  <div className="text-muted">Billed monthly based on usage</div>
+                </div>
+                <span className="font-medium text-foreground">
+                  {price > 0 ? `${fmtMoney(price)} / month` : "Usage-based"}
+                </span>
+              </div>
+            </div>
+
+            <DialogFooter className="sm:justify-between">
+              <Button
+                variant="outline"
+                isDisabled={startTrial.isPending}
+                onClick={() => setView("plan")}
+              >
+                <ArrowLeft />
+                Back
+              </Button>
+              <Button
+                variant="org"
+                isPending={startTrial.isPending}
+                isDisabled={startTrial.isPending}
+                onClick={handleStartTrial}
+              >
+                Start free trial
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
