@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
@@ -31,7 +32,7 @@ import {
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 type TCreatePolicySchema =
   | typeof CreatePamAccessPolicySchema
@@ -73,6 +74,14 @@ export const registerApprovalPolicyEndpoints = ({
   // whose requests are raised and reviewed by delegated tokens widens this.
   requestAuthModes?: AuthMode[];
 }) => {
+  const sendTelemetry = async (event: TPostHogEvent) => {
+    try {
+      await server.services.telemetry.sendPostHogEvents(event);
+    } catch (err) {
+      logger.error(err, `Failed to send ${policyType} approval telemetry`);
+    }
+  };
+
   // Policies
   server.route({
     method: "POST",
@@ -112,7 +121,7 @@ export const registerApprovalPolicyEndpoints = ({
       });
 
       if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
+        await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
@@ -255,7 +264,7 @@ export const registerApprovalPolicyEndpoints = ({
       });
 
       if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
+        await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
@@ -310,7 +319,7 @@ export const registerApprovalPolicyEndpoints = ({
       });
 
       if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
+        await sendTelemetry({
           event: PostHogEventTypes.PkiApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
@@ -444,7 +453,7 @@ export const registerApprovalPolicyEndpoints = ({
         });
 
         if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-          await server.services.telemetry.sendPostHogEvents({
+          await sendTelemetry({
             event: PostHogEventTypes.PkiApprovalRequestCreated,
             distinctId: getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
@@ -565,7 +574,7 @@ export const registerApprovalPolicyEndpoints = ({
         distinctId: getTelemetryDistinctId(req),
         decision: "approved"
       });
-      if (telemetry) await server.services.telemetry.sendPostHogEvents(telemetry);
+      if (telemetry) await sendTelemetry(telemetry);
 
       return { request };
     }
@@ -597,7 +606,8 @@ export const registerApprovalPolicyEndpoints = ({
       const { request } = await server.services.approvalPolicy.rejectRequest(
         req.params.requestId,
         req.body,
-        req.permission
+        req.permission,
+        policyType
       );
 
       await server.services.auditLog.createAuditLog({
@@ -628,7 +638,7 @@ export const registerApprovalPolicyEndpoints = ({
         distinctId: getTelemetryDistinctId(req),
         decision: "rejected"
       });
-      if (telemetry) await server.services.telemetry.sendPostHogEvents(telemetry);
+      if (telemetry) await sendTelemetry(telemetry);
 
       return { request };
     }
@@ -788,7 +798,8 @@ export const registerApprovalPolicyEndpoints = ({
       const { grant, request } = await server.services.approvalPolicy.revokeGrant(
         req.params.grantId,
         req.body,
-        req.permission
+        req.permission,
+        policyType
       );
 
       await server.services.auditLog.createAuditLog({
@@ -817,7 +828,7 @@ export const registerApprovalPolicyEndpoints = ({
           request,
           distinctId: getTelemetryDistinctId(req)
         });
-        if (telemetry) await server.services.telemetry.sendPostHogEvents(telemetry);
+        if (telemetry) await sendTelemetry(telemetry);
       }
 
       return { grant };

@@ -1097,13 +1097,25 @@ export const approvalPolicyServiceFactory = ({
     const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
     const userGroupIds = new Set(userGroups.map((g) => g.groupId));
 
-    const isApprover = steps.some((step) =>
+    const isSnapshotApprover = steps.some((step) =>
       step.approvers.some(
         (approver) =>
           (approver.type === ApproverType.User && approver.id === actor.id) ||
           (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
       )
     );
+
+    const checkLiveApprover = resources[request.type as ApprovalPolicyType]?.isLiveApprover;
+    const isApprover =
+      isSnapshotApprover &&
+      (!checkLiveApprover ||
+        !request.scopeId ||
+        (await checkLiveApprover({
+          projectId: request.projectId,
+          scopeId: request.scopeId,
+          actor,
+          userGroupIds
+        })));
 
     // If user is requester or approver, allow access regardless of role permission
     if (!isRequester && !isApprover) {
@@ -1368,10 +1380,21 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
-  const rejectRequest = async (requestId: string, { comment }: { comment?: string }, actor: TApprovalActor) => {
+  const rejectRequest = async (
+    requestId: string,
+    { comment }: { comment?: string },
+    actor: TApprovalActor,
+    policyType: ApprovalPolicyType
+  ) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
+    }
+
+    if (request.type !== policyType) {
+      throw new BadRequestError({
+        message: `Request type mismatch: expected ${policyType}, got ${request.type}`
+      });
     }
 
     if (request.status !== ApprovalRequestStatus.Pending) {
@@ -1689,7 +1712,8 @@ export const approvalPolicyServiceFactory = ({
   const revokeGrant = async (
     grantId: string,
     { revocationReason }: { revocationReason?: string },
-    actor: TApprovalActor
+    actor: TApprovalActor,
+    policyType: ApprovalPolicyType
   ) => {
     const grant = await approvalRequestGrantsDAL.findById(grantId);
     if (!grant) {
@@ -1697,6 +1721,12 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const grantPolicyType = grant.type as ApprovalPolicyType;
+    if (grantPolicyType !== policyType) {
+      throw new BadRequestError({
+        message: `Grant type mismatch: expected ${policyType}, got ${grantPolicyType}`
+      });
+    }
+
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
 
