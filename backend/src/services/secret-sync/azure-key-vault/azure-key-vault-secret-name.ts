@@ -2,13 +2,6 @@ import handlebars from "handlebars";
 
 import { SecretSyncError } from "../secret-sync-errors";
 
-// Azure Key Vault secret names allow hyphens and reject underscores. Infisical names may use
-// either character, so an imported vault name is stored unchanged. Sync still rewrites each
-// underscore to a hyphen on the way out, because that is the only form Key Vault accepts.
-// Two Infisical names that differ only by that substitution refer to the same vault secret,
-// which keeps older underscored imports matched. Key Vault names are also case-insensitive, so
-// `API_KEY` and `api-key` are one vault secret as well.
-
 export const toAzureKeyVaultSecretName = (infisicalKey: string) => infisicalKey.replaceAll("_", "-");
 
 export const normalizeAzureKeyVaultSecretName = (name: string) => toAzureKeyVaultSecretName(name).toLowerCase();
@@ -24,12 +17,13 @@ export const infisicalImportKeyFromAzureKeyVaultName = (azureKey: string, enviro
   const infisicalPrefix = infisicalParts[0];
   const infisicalSuffix = infisicalParts[infisicalParts.length - 1];
 
-  const azureSchema = toAzureKeyVaultSecretName(compiledSchema);
-  const azureParts = azureSchema.split("{{secretKey}}");
+  const azureSchema = normalizeAzureKeyVaultSecretName(compiledSchema);
+  const azureParts = azureSchema.split("{{secretkey}}");
   const azurePrefix = azureParts[0];
   const azureSuffix = azureParts[azureParts.length - 1];
+  const normalizedAzureKey = azureKey.toLowerCase();
 
-  if (!azureKey.startsWith(azurePrefix) || !azureKey.endsWith(azureSuffix)) return azureKey;
+  if (!normalizedAzureKey.startsWith(azurePrefix) || !normalizedAzureKey.endsWith(azureSuffix)) return azureKey;
   if (azureKey.length < azurePrefix.length + azureSuffix.length) return azureKey;
 
   const secretPortion = azureKey.slice(

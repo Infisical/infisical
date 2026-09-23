@@ -70,6 +70,20 @@ describe("Azure Key Vault secret names", () => {
     expect(importKey.slice(0, -"_prod".length)).toBe("user-password");
   });
 
+  test("matches the key schema regardless of the vault name's case", () => {
+    const schema = "TESTE_ADILSON_{{secretKey}}";
+
+    expect(infisicalImportKeyFromAzureKeyVaultName("teste-adilson-my-secret", "dev", schema)).toBe(
+      "TESTE_ADILSON_my-secret"
+    );
+    expect(infisicalImportKeyFromAzureKeyVaultName("Teste-Adilson-My-Secret", "dev", schema)).toBe(
+      "TESTE_ADILSON_My-Secret"
+    );
+    expect(infisicalImportKeyFromAzureKeyVaultName("my-secret-PROD", "prod", "{{secretKey}}_{{environment}}")).toBe(
+      "my-secret_prod"
+    );
+  });
+
   test("leaves a vault name unchanged when it does not match the key schema", () => {
     expect(infisicalImportKeyFromAzureKeyVaultName("user-password", "dev", "{{environment}}_{{secretKey}}")).toBe(
       "user-password"
