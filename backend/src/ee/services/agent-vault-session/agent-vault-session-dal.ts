@@ -80,7 +80,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       projectId,
       sessionId,
       actor,
-      status,
+      statuses,
       search,
       limit,
       offset
@@ -89,7 +89,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       /** Narrows to one session, so a link can be opened without it being on the caller's page. */
       sessionId?: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
-      status?: AgentVaultSessionStatus;
+      statuses?: AgentVaultSessionStatus[];
       search?: string;
       limit: number;
       offset: number;
@@ -105,7 +105,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         if (sessionId) void query.where(`${TableName.AgentVaultSession}.id`, sessionId);
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
-        if (status) statusFilter(query, status, now);
+        if (statuses?.length) {
+          void query.where((qb) => {
+            statuses.forEach((status) => {
+              void qb.orWhere((sub) => statusFilter(sub, status, now));
+            });
+          });
+        }
         // Shared with the count query, so the pager describes the filtered set rather than the whole one.
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;

@@ -14,7 +14,7 @@ export type TListSessionsDTO = {
   projectId: string;
   ctx: TAgentVaultActorContext;
   scope: AgentVaultSessionScope;
-  status?: AgentVaultSessionStatus;
+  statuses?: AgentVaultSessionStatus[];
   limit: number;
   offset: number;
   search?: string;

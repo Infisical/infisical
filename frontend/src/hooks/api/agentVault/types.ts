@@ -226,7 +226,7 @@ export type TAgentVaultEnrollment = {
 
 export type TListAgentVaultSessionsDTO = {
   scope?: AgentVaultSessionScope;
-  status?: AgentVaultSessionStatus;
+  statuses?: AgentVaultSessionStatus[];
   limit?: number;
   offset?: number;
   search?: string;

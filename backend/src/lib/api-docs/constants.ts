@@ -4413,7 +4413,7 @@ export const AGENT_VAULT = {
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
-    status: "Filter by session status: active, revoked or expired.",
+    status: "Filter by session status: active, revoked or expired. Separate several with commas to match any of them.",
     search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip."

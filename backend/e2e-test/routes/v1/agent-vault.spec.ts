@@ -1613,6 +1613,19 @@ describe("Agent Vault V1 Router", async () => {
           why: "a status with no members inside the match is empty",
           query: "search=matrix-&status=expired&limit=100",
           expect: (r) => expect(r.totalCount).toBe(0)
+        },
+        {
+          why: "several statuses match any of them",
+          query: "search=matrix-&status=active,revoked&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(7)
+        },
+        {
+          why: "a status with no members adds nothing to one that has them",
+          query: "search=matrix-&status=revoked,expired&limit=100",
+          expect: (r) => {
+            expect(r.totalCount).toBe(1);
+            expect(r.sessions[0].id).toBe(orphaned);
+          }
         }
       ];
 

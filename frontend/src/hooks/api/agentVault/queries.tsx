@@ -179,10 +179,13 @@ export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) =
   return useQuery({
     queryKey: agentVaultKeys.sessionList(currentOrg.id, params),
     queryFn: async () => {
+      const { statuses, ...rest } = params ?? {};
       const { data } = await apiRequest.get<{
         sessions: TAgentVaultSession[];
         totalCount: number;
-      }>("/api/v1/agent-vault/sessions", { params });
+      }>("/api/v1/agent-vault/sessions", {
+        params: { ...rest, status: statuses?.length ? statuses.join(",") : undefined }
+      });
       return data;
     },
     refetchInterval: 30_000,

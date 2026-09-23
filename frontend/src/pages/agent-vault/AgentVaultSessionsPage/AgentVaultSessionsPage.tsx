@@ -7,6 +7,7 @@ import {
   ActivityIcon,
   BanIcon,
   BotIcon,
+  FilterIcon,
   IdCardIcon,
   MoreHorizontalIcon,
   PackageIcon,
@@ -28,8 +29,10 @@ import {
   CardTitle,
   DocumentationLinkBadge,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -42,11 +45,6 @@ import {
   OverflowBadgeList,
   PageHeader,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -54,6 +52,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -88,9 +89,13 @@ import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
-import { SessionStatusBadge } from "./components/SessionStatusBadge";
+import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
-const ALL_STATUSES = "all";
+const STATUS_OPTIONS = [
+  AgentVaultSessionStatus.Active,
+  AgentVaultSessionStatus.Revoked,
+  AgentVaultSessionStatus.Expired
+];
 
 export const AgentVaultSessionsPage = () => {
   const { t } = useTranslation();
@@ -100,10 +105,14 @@ export const AgentVaultSessionsPage = () => {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const [statusFilter, setStatusFilter] = useState<AgentVaultSessionStatus | typeof ALL_STATUSES>(
-    ALL_STATUSES
+  const [statuses, setStatuses] = useState<AgentVaultSessionStatus[]>([]);
+  const [scope, setScope] = useState(() =>
+    getUserTablePreference(
+      "agentVaultSessionsTable",
+      PreferenceKey.SessionScope,
+      AgentVaultSessionScope.All
+    )
   );
-  const [scope, setScope] = useState(AgentVaultSessionScope.Mine);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
@@ -115,7 +124,7 @@ export const AgentVaultSessionsPage = () => {
 
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
-    status: statusFilter === ALL_STATUSES ? undefined : statusFilter,
+    statuses,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
@@ -142,7 +151,7 @@ export const AgentVaultSessionsPage = () => {
 
   // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
   // off the live input would caption a stale result set.
-  const isFiltered = Boolean(debouncedSearch.trim()) || statusFilter !== ALL_STATUSES;
+  const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
 
   let emptyTitle: string;
@@ -215,55 +224,67 @@ export const AgentVaultSessionsPage = () => {
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <div className="flex-1">
-            <InputGroup>
-              <InputGroupAddon>
-                <SearchIcon />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search by identity, email, or access bundle..."
-              />
-            </InputGroup>
-          </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => {
-              setStatusFilter(value as AgentVaultSessionStatus | typeof ALL_STATUSES);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value={ALL_STATUSES}>All Statuses</SelectItem>
-              <SelectItem value={AgentVaultSessionStatus.Active}>Active</SelectItem>
-              <SelectItem value={AgentVaultSessionStatus.Revoked}>Revoked</SelectItem>
-              <SelectItem value={AgentVaultSessionStatus.Expired}>Expired</SelectItem>
-            </SelectContent>
-          </Select>
+        <CardContent className="flex items-center gap-2">
+          <InputGroup className="flex-1">
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search by identity, email, or access bundle..."
+            />
+          </InputGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label="Filter sessions" variant={statuses.length ? "av" : "outline"}>
+                <FilterIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Status</DropdownMenuLabel>
+              {STATUS_OPTIONS.map((status) => {
+                const { label, icon: Icon, iconClassName } = SESSION_STATUS_PRESENTATION[status];
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={statuses.includes(status)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setStatuses((prev) =>
+                        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
+                      );
+                      setPage(1);
+                    }}
+                  >
+                    <Icon className={iconClassName} />
+                    {label}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isAdmin && (
-            <Select
+            <Tabs
               value={scope}
               onValueChange={(value) => {
                 setScope(value as AgentVaultSessionScope);
                 setPage(1);
+                setUserTablePreference(
+                  "agentVaultSessionsTable",
+                  PreferenceKey.SessionScope,
+                  value
+                );
               }}
             >
-              <SelectTrigger aria-label="Session scope">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value={AgentVaultSessionScope.All}>All Sessions</SelectItem>
-                <SelectItem value={AgentVaultSessionScope.Mine}>My Sessions</SelectItem>
-              </SelectContent>
-            </Select>
+              <TabsList variant="filled">
+                <TabsTrigger value={AgentVaultSessionScope.All}>All Sessions</TabsTrigger>
+                <TabsTrigger value={AgentVaultSessionScope.Mine}>My Sessions</TabsTrigger>
+              </TabsList>
+            </Tabs>
           )}
         </CardContent>
 
