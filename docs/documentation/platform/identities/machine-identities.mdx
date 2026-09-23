@@ -123,7 +123,7 @@ Each notification names the auth method, the kind of change, the credential wher
 
 ### Create an alert
 
-Open the machine identity you want to monitor and select **Alert** in the top-right of the page to create one. An identity holds one alert, so pick the event you care about most.
+Open the machine identity you want to monitor and select **Alerts** in the top-right of the page. An identity can have one alert per event, so you can watch for both credential expiration and auth method changes. If the identity has no alerts yet, the alert form opens right away. Otherwise the list of its alerts opens, and **Add Alert** at the bottom creates another. **Add Alert** is hidden once every event has an alert.
 
 ![Create Machine Identity Alert](/images/platform/organization/mi-create-alert.png)
 
@@ -137,6 +137,10 @@ Open the machine identity you want to monitor and select **Alert** in the top-ri
 | **Enabled** | Turn the alert off without deleting it |
 
 With **Daily Reminder** off, each credential triggers the expiration alert once. Turn it on for credentials you can't afford to miss, and you'll get one notification per day until the credential expires or is rotated.
+
+### Manage alerts
+
+Select **Alerts** on the machine identity to see its alerts. The number next to **Alerts** counts the enabled ones. Use the toggle on a row to turn that alert on or off, or open the menu at the end of the row and select **Edit Details** or **Remove Alert**. Removing an alert asks you to type its name to confirm.
 
 ### Notification channels
 

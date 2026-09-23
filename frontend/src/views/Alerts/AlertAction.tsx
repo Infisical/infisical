@@ -188,7 +188,7 @@ export const AlertAction = ({
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openAlertForm(alert)}>
                                 <PencilIcon />
-                                Edit Details
+                                Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="danger"
@@ -199,7 +199,7 @@ export const AlertAction = ({
                                 }}
                               >
                                 <TrashIcon />
-                                Remove Alert
+                                Remove
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
