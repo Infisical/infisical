@@ -256,6 +256,12 @@ type TRenewalSubject = {
   domainComponents?: string[];
 };
 
+export const resolveRenewalCustomExtensions = (
+  requested: { exists: boolean; customExtensions: unknown },
+  certificate: { customExtensions?: unknown }
+): TRequestCustomExtension[] =>
+  toRequestCustomExtensions(requested.exists ? requested.customExtensions : certificate.customExtensions);
+
 export const resolveRenewalUsages = (
   requested: { exists: boolean; keyUsages: string[] | null; extendedKeyUsages: string[] | null },
   certificate: { keyUsages?: unknown; extendedKeyUsages?: unknown }

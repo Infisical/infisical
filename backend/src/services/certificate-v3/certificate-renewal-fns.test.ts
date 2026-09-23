@@ -20,6 +20,7 @@ import {
   importKeyPairFromPem,
   isCertificateContentEdit,
   resolveRenewalAltNames,
+  resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
   resolveRenewalSubject,
   resolveRenewalUsages
@@ -135,6 +136,42 @@ describe("resolveRenewalSubject", () => {
       locality: undefined,
       domainComponents: undefined
     });
+  });
+});
+
+describe("resolveRenewalCustomExtensions", () => {
+  const CUSTOM_OID = "1.3.6.1.4.1.99001.1";
+  const SCT_OID = "1.3.6.1.4.1.11129.2.4.2";
+  const asked = { oid: CUSTOM_OID, value: encodeCustomExtensionValue(CUSTOM_OID, "mine"), critical: false };
+
+  it("keeps what the request asked for even when the authority dropped it", () => {
+    expect(
+      resolveRenewalCustomExtensions({ exists: true, customExtensions: [asked] }, { customExtensions: null })
+    ).toEqual([{ oid: CUSTOM_OID, value: "mine", critical: false }]);
+  });
+
+  it("asks for nothing when the request asked for nothing, whatever the authority stamped on", () => {
+    expect(
+      resolveRenewalCustomExtensions(
+        { exists: true, customExtensions: null },
+        { customExtensions: [{ oid: SCT_OID, value: "BAIAQg==", critical: false, issuerAdded: true }] }
+      )
+    ).toEqual([]);
+  });
+
+  it("reads the certificate back when there is no request behind it, for imports and discovery", () => {
+    expect(
+      resolveRenewalCustomExtensions({ exists: false, customExtensions: null }, { customExtensions: [asked] })
+    ).toEqual([{ oid: CUSTOM_OID, value: "mine", critical: false }]);
+  });
+
+  it("still drops an issuer-generated oid when falling back to the certificate", () => {
+    expect(
+      resolveRenewalCustomExtensions(
+        { exists: false, customExtensions: null },
+        { customExtensions: [{ oid: SCT_OID, value: "BAIAQg==", critical: false }] }
+      )
+    ).toEqual([]);
   });
 });
 

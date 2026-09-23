@@ -27,7 +27,6 @@ import { assertCaInProfileProject } from "@app/services/certificate-authority/ce
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
-  toRequestCustomExtensions,
   TProfileCustomExtension,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
@@ -108,6 +107,7 @@ import {
   importKeyPairFromPem,
   isCertificateContentEdit,
   resolveRenewalAltNames,
+  resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
   resolveRenewalSubject,
   resolveRenewalUsages,
@@ -743,7 +743,7 @@ export const certificateRenewalServiceFactory = ({
   }) => {
     const originalTtl = certificateSpanToTtl(originalCert.notBefore, originalCert.notAfter);
 
-    const carriedCustomExtensions = toRequestCustomExtensions(originalCert.customExtensions);
+    const carriedCustomExtensions = resolveRenewalCustomExtensions(issuedFrom, originalCert);
 
     const requested = issuedFrom.exists ? issuedFrom : null;
 

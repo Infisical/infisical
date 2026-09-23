@@ -265,7 +265,8 @@ describe("CertificateV3Service", () => {
       domainComponents: null,
       altNames: null,
       keyUsages: null,
-      extendedKeyUsages: null
+      extendedKeyUsages: null,
+      customExtensions: null
     });
 
     mockCertificateIssuanceQueue.queueCertificateIssuance.mockResolvedValue(undefined);
@@ -2828,7 +2829,8 @@ describe("CertificateV3Service", () => {
         domainComponents: null,
         altNames: null,
         keyUsages: null,
-        extendedKeyUsages: null
+        extendedKeyUsages: null,
+        customExtensions: null
       });
 
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -2861,7 +2863,8 @@ describe("CertificateV3Service", () => {
         domainComponents: null,
         altNames: null,
         keyUsages: null,
-        extendedKeyUsages: null
+        extendedKeyUsages: null,
+        customExtensions: null
       });
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
