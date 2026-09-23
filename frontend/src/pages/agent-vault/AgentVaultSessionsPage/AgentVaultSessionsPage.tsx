@@ -106,13 +106,18 @@ export const AgentVaultSessionsPage = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [statuses, setStatuses] = useState<AgentVaultSessionStatus[]>([]);
-  const [scope, setScope] = useState(() =>
-    getUserTablePreference(
+  const [scope, setScope] = useState(() => {
+    const stored = getUserTablePreference(
       "agentVaultSessionsTable",
       PreferenceKey.SessionScope,
       AgentVaultSessionScope.All
-    )
-  );
+    );
+    // The browser keeps whatever was saved, including a value a later release no longer has, and the API
+    // refuses a scope it does not know.
+    return Object.values(AgentVaultSessionScope).includes(stored)
+      ? stored
+      : AgentVaultSessionScope.All;
+  });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
