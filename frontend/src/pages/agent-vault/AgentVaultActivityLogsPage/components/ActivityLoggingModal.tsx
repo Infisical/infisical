@@ -58,25 +58,46 @@ const normalizePrefix = (value: string | null | undefined) => {
   return trimmed ? `${trimmed}/` : "";
 };
 
-const schema = z
-  .object({
-    enabled: z.boolean(),
-    appConnectionId: z.string(),
-    bucket: z.string().trim().max(255),
-    region: z.string(),
-    keyPrefix: z
-      .string()
-      .trim()
-      .max(512)
-      .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "Use only letters, numbers and - _ . / characters")
-      .refine((value) => !value.split("/").includes(".."), "Cannot contain '..'")
-  })
-  .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
-    message: "Recording needs an AWS connection",
-    path: ["appConnectionId"]
-  });
+// Built per saved state: a bucket already saved can be replaced but not cleared, since the API has no way
+// to remove one and an empty field would otherwise save as "keep the old one".
+const buildSchema = (hasSavedBucket: boolean) =>
+  z
+    .object({
+      enabled: z.boolean(),
+      appConnectionId: z.string(),
+      bucket: z.string().trim().max(255),
+      region: z.string(),
+      keyPrefix: z
+        .string()
+        .trim()
+        .max(512)
+        .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "Use only letters, numbers and - _ . / characters")
+        .refine((value) => !value.split("/").includes(".."), "Cannot contain '..'")
+    })
+    .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
+      message: "Recording needs an AWS connection",
+      path: ["appConnectionId"]
+    })
+    .superRefine((values, ctx) => {
+      const { length } = values.bucket;
+      if (length === 0 && hasSavedBucket) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["bucket"],
+          message: "A bucket can be replaced, not removed"
+        });
+      } else if (length === 0 && values.enabled) {
+        ctx.addIssue({ code: "custom", path: ["bucket"], message: "Recording needs a bucket" });
+      } else if (length > 0 && length < 3) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["bucket"],
+          message: "Bucket names are at least 3 characters"
+        });
+      }
+    });
 
-type FormData = z.infer<typeof schema>;
+type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
 type Props = {
   isOpen: boolean;
@@ -102,7 +123,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
     setValue,
     watch,
     formState: { isSubmitting, isDirty }
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({ resolver: zodResolver(buildSchema(Boolean(data?.config.bucket))) });
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
@@ -146,9 +167,11 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
   // Only the bucket and the prefix decide where an object lives, so only a change to one of those
   // strands what is already recorded. Warning on a first setup, or on a change of connection or
   // region, is noise that trains people to skip the warning that matters.
+  // Only once a real bucket name is typed: a field mid-edit, or one being cleared, moves nothing.
+  const typedBucket = bucket.trim();
   const willRelocate =
     Boolean(data?.config.bucket) &&
-    (bucket.trim() !== (data?.config.bucket ?? "") ||
+    ((typedBucket.length >= 3 && typedBucket !== data?.config.bucket) ||
       normalizePrefix(keyPrefix) !== normalizePrefix(data?.config.keyPrefix));
 
   const onSubmit = async (values: FormData) => {
