@@ -346,6 +346,9 @@ export type TAgentVaultActivityPage = {
   configVersion: number;
   chunks: TAgentVaultActivityChunk[];
   nextCursor: string | null;
+  hasMore: boolean;
+  /** Where the next read of what arrived picks up. Points a little behind this read, so repeats are expected. */
+  nextReceivedAfter: string;
 };
 
 export type TAgentVaultActivityRecord = {

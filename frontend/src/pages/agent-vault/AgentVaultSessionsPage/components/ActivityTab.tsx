@@ -143,24 +143,49 @@ export const ActivityTab = ({ session }: Props) => {
   const [rangeKey, setRangeKey] = useState(0);
   const seenProxiesSessionId = useRef(session.id);
 
+  // A range that has already ended can take nothing new, so the view is live only until its end passes.
+  // The presets all end at the moment they are picked. Decided when the range is applied rather than in
+  // the effect, which runs after paint and would show Live for a frame.
+  const [isRangeOpen, setIsRangeOpen] = useState(true);
+  const applyRange = (next: DateRangeFilterResult | null) => {
+    setRange(next);
+    setIsRangeOpen(!next || next.endDate.getTime() > Date.now());
+  };
+  useEffect(() => {
+    if (!range || !isRangeOpen) return undefined;
+    const remaining = range.endDate.getTime() - Date.now();
+    // Past this setTimeout fires at once rather than never, and no sheet stays open that long anyway.
+    if (remaining > 2 ** 31 - 1) return undefined;
+    const timer = setTimeout(() => setIsRangeOpen(false), Math.max(remaining, 0));
+    return () => clearTimeout(timer);
+  }, [range, isRangeOpen]);
+
   const isActive = session.status === AgentVaultSessionStatus.Active;
+  const isLive = isActive && isRangeOpen;
+  const { history, arrived } = useGetAgentVaultSessionActivity(session.id, {
+    isLive,
+    from: range?.startDate,
+    to: range?.endDate
+  });
   const {
     data,
     isPending,
     isPlaceholderData,
     isError,
     isFetching,
+    isRefetching,
     refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useGetAgentVaultSessionActivity(session.id, {
-    isActive,
-    from: range?.startDate,
-    to: range?.endDate
-  });
+  } = history;
 
-  const pages = data?.pages;
+  // What arrived while the sheet was open goes first, so the proxy list, the enabled flag and every
+  // count below see it along with the pages.
+  const pages = useMemo(() => {
+    if (!data) return undefined;
+    return arrived ? [arrived, ...data.pages] : data.pages;
+  }, [data, arrived]);
   const { records, gaps, drops, arrivals, isTruncated } = useAgentVaultActivityTimeline(pages);
   // Only when there is nothing to show at all. A failed poll keeps the last good data on screen.
   const isLoadError = isError && !data;
@@ -217,8 +242,6 @@ export const ActivityTab = ({ session }: Props) => {
     decisionFilter !== "all" ||
     proxyFilter !== ALL_PROXIES ||
     Boolean(range);
-
-  const isLive = isActive;
 
   // Scrolling keeps appending pages, so a long session ends up with thousands of rows in memory. The
   // v3 Table has no virtualiser of its own, so the rows are windowed here: spacer rows above and below
@@ -309,6 +332,19 @@ export const ActivityTab = ({ session }: Props) => {
   const isUnreachable =
     gaps.length > 0 && records.length === 0 && gaps.every((gap) => gap.reason === "fetch");
 
+  // Pages are loaded once, so a download that failed stays failed until asked again. Refetching brings
+  // fresh links for every loaded page; chunks already open are not downloaded twice.
+  const retryButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      isPending={isRefetching}
+      onClick={() => refetch().catch(() => {})}
+    >
+      Retry
+    </Button>
+  );
+
   // Only a product nobody has set up takes the whole tab: there is nothing to search, and the one
   // useful thing on screen is the way to turn it on. A session that simply has not recorded anything
   // yet keeps its filters, so the controls do not appear from nowhere when the first request lands.
@@ -396,14 +432,14 @@ export const ActivityTab = ({ session }: Props) => {
           accent="av"
           className="h-9"
           isActive={Boolean(range)}
-          onChange={(result) => setRange(result)}
+          onChange={(result) => applyRange(result)}
         />
         {range && (
           <IconButton
             variant="ghost"
             aria-label="Clear time range"
             onClick={() => {
-              setRange(null);
+              applyRange(null);
               setRangeKey((key) => key + 1);
             }}
           >
@@ -435,12 +471,18 @@ export const ActivityTab = ({ session }: Props) => {
       {isUnreachable && (
         <Alert variant="warning">
           <AlertDescription>
-            <p>
-              None of this session&apos;s activity could be read from the bucket. The bucket has to
-              allow requests from this origin.
-            </p>
-            {isAdmin ? (
-              <AlertAction>
+            <div className="flex flex-col gap-1">
+              <p>
+                None of this session&apos;s activity could be read from the bucket. The bucket has
+                to allow requests from this origin.
+              </p>
+              {!isAdmin && (
+                <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
+              )}
+            </div>
+            <AlertAction className="flex gap-2">
+              {retryButton}
+              {isAdmin && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
                     to="/organizations/$orgId/agent-vault/activity-logs"
@@ -449,26 +491,27 @@ export const ActivityTab = ({ session }: Props) => {
                     Go to Activity Logs
                   </Link>
                 </Button>
-              </AlertAction>
-            ) : (
-              <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
-            )}
+              )}
+            </AlertAction>
           </AlertDescription>
         </Alert>
       )}
 
       {!isUnreachable && gaps.length > 0 && (
         <Alert variant="warning">
-          <AlertDescription className="flex flex-col gap-1">
-            {gaps.slice(0, 5).map((gap) => (
-              <span key={gap.chunkId}>
-                {gap.recordCount} {gap.recordCount === 1 ? "request" : "requests"} from{" "}
-                {gap.proxyName ?? gap.proxyId} around{" "}
-                {format(new Date(gap.startedAt), "MMM d, h:mm a")} cannot be shown.{" "}
-                {GAP_EXPLANATION[gap.reason]}.
-              </span>
-            ))}
-            {gaps.length > 5 && <span>and {gaps.length - 5} more.</span>}
+          <AlertDescription>
+            <div className="flex flex-col gap-1">
+              {gaps.slice(0, 5).map((gap) => (
+                <span key={gap.chunkId}>
+                  {gap.recordCount} {gap.recordCount === 1 ? "request" : "requests"} from{" "}
+                  {gap.proxyName ?? gap.proxyId} around{" "}
+                  {format(new Date(gap.startedAt), "MMM d, h:mm a")} cannot be shown.{" "}
+                  {GAP_EXPLANATION[gap.reason]}.
+                </span>
+              ))}
+              {gaps.length > 5 && <span>and {gaps.length - 5} more.</span>}
+            </div>
+            {gaps.some((gap) => gap.reason === "fetch") && <AlertAction>{retryButton}</AlertAction>}
           </AlertDescription>
         </Alert>
       )}

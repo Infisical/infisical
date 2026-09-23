@@ -18,7 +18,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
     schema: {
       operationId: "getAgentVaultSessionActivity",
       description:
-        "Read a page of a session's activity. Chunks come back sealed, with a presigned URL to fetch each one and the key to open them: the bytes are fetched and decrypted by the caller, never by Infisical.",
+        "Read a session's activity: a page going back through it, newest first, or with `receivedAfter`, what arrived since an earlier read, to follow the session live. Chunks come back sealed, with a presigned URL to fetch each one and the key to open them: the bytes are fetched and decrypted by the caller, never by Infisical.",
       tags: [ApiDocsTags.AgentVaultActivity],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultActivityQuerySchema,
@@ -38,7 +38,8 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
         limit: req.query.limit,
         before: req.query.before,
         from: req.query.from,
-        to: req.query.to
+        to: req.query.to,
+        receivedAfter: req.query.receivedAfter
       })
   });
 };

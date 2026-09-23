@@ -57,7 +57,8 @@ export const AgentVaultActivityQuerySchema = z.object({
     .describe(AGENT_VAULT.ACTIVITY.limit),
   before: z.string().ulid().optional().describe(AGENT_VAULT.ACTIVITY.before),
   from: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.from),
-  to: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.to)
+  to: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.to),
+  receivedAfter: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.receivedAfter)
 });
 
 export const AgentVaultActivityChunkViewSchema = z.object({
@@ -82,7 +83,9 @@ export const AgentVaultActivityResponseSchema = z.object({
   projectId: z.string().describe("The project the session belongs to. Part of the decryption context."),
   configVersion: z.number().describe(AGENT_VAULT.ACTIVITY.configVersion),
   chunks: AgentVaultActivityChunkViewSchema.array(),
-  nextCursor: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.nextCursor)
+  nextCursor: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.nextCursor),
+  hasMore: z.boolean().describe(AGENT_VAULT.ACTIVITY.hasMore),
+  nextReceivedAfter: z.date().describe(AGENT_VAULT.ACTIVITY.nextReceivedAfter)
 });
 
 export const AgentVaultActivityConfigViewSchema = z.object({

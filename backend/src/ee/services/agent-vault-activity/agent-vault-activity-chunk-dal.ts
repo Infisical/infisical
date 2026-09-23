@@ -86,6 +86,50 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Chunks the server received at or after `receivedAfter`, oldest received first.
+   *
+   * Keyed on createdAt, our clock, rather than chunkId, the proxy's. A proxy whose clock runs behind, or
+   * one draining a backlog after an outage, writes chunks whose ids sort among old ones, so a read for
+   * "ids newer than the newest I hold" would never reach them.
+   */
+  const findReceivedForSession = async (
+    {
+      sessionId,
+      receivedAfter,
+      recordBudget,
+      maxChunks
+    }: { sessionId: string; receivedAfter: Date; recordBudget: number; maxChunks: number },
+    tx?: Knex
+  ): Promise<{ chunks: TAgentVaultActivityChunks[]; hasMore: boolean }> => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
+        .where({ sessionId })
+        .andWhere("createdAt", ">=", receivedAfter)
+        .orderBy([
+          { column: "createdAt", order: "asc" },
+          { column: "chunkId", order: "asc" }
+        ])
+        .limit(maxChunks)) as TAgentVaultActivityChunks[];
+
+      let taken = 0;
+      const page: TAgentVaultActivityChunks[] = [];
+      for (const row of rows) {
+        page.push(row);
+        // A chunk stamped exactly at receivedAfter is the one the previous read ended on, returned again
+        // so a second chunk sharing its millisecond is not skipped. It rides along without spending the
+        // budget: counted, a large one could fill every page on its own and the caller would ask for the
+        // same page forever.
+        if (row.createdAt.getTime() > receivedAfter.getTime()) taken += row.recordCount;
+        if (taken >= recordBudget) break;
+      }
+
+      return { chunks: page, hasMore: page.length < rows.length || rows.length === maxChunks };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find received agent vault activity chunks" });
+    }
+  };
+
   const countForSession = async (sessionId: string, tx?: Knex): Promise<number> => {
     try {
       const row = await (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
@@ -119,5 +163,5 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForSessionPage, countForSession, createIfAbsent };
+  return { ...orm, findForSessionPage, findReceivedForSession, countForSession, createIfAbsent };
 };

@@ -194,6 +194,12 @@ only, never bodies or headers, and never the query string (the proxy builds the 
 - **Chunk ids are ULIDs minted by the proxy**, unique per session, not globally. A proxy-side counter
   would reset on every cache eviction and then collide for the rest of the session's life. They sort by
   time, so the read cursor is a plain `chunkId <` comparison.
+- **Live views read by arrival, not by chunk id.** `receivedAfter` returns chunks by our `createdAt`,
+  because a proxy whose clock runs behind, or one draining a backlog, mints ids that sort among old
+  chunks. Each response's `nextReceivedAfter` points `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS` behind the
+  read (uncommitted inserts, replica lag), so repeats are expected and dropped by chunk id. `createdAt` is
+  millisecond precision so that cursor survives a JavaScript `Date`. The sheet loads history pages once
+  and polls only this read, so nothing under the reader moves and a poll costs one request.
 - **The config's `appConnectionId` blocks deleting its connection**, deferred like every other product's
   connection link (`20260603120100_defer-app-connection-fks`) so an org delete is checked at commit. The
   shared delete names activity logging in its refusal. Freeing the connection means switching it, or

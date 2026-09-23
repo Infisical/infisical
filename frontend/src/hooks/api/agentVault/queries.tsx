@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -7,6 +7,7 @@ import { useOrganization } from "@app/context";
 import {
   createActivityChunkCache,
   decryptActivityPage,
+  mergeActivityPages,
   TAgentVaultActivityChunkCache
 } from "./activityDecrypt";
 import { AgentVaultMemberType } from "./enums";
@@ -15,6 +16,7 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultActivityConfigResponse,
   TAgentVaultActivityPage,
+  TAgentVaultDecryptedActivityPage,
   TAgentVaultMember,
   TAgentVaultProductActor,
   TAgentVaultProductMemberOf,
@@ -38,6 +40,22 @@ export const fetchAgentVaultProjectId = async () => {
  * asking for chunks makes the page size, and the browser's load, depend on the agent's pace.
  */
 const ACTIVITY_PAGE_RECORDS = 200;
+
+/**
+ * Records per read of what arrived. Larger than a page, so a tab back from the background catches up in a
+ * read or two rather than one small read per poll.
+ */
+const ACTIVITY_LIVE_RECORDS = 1000;
+
+/** Reads one poll may chain while a backlog drains. Whatever is left waits for the next poll. */
+const ACTIVITY_LIVE_MAX_READS = 10;
+
+/**
+ * 15s, not PAM's 5s. PAM tails a live terminal, where something new lands between any two ticks. Here the
+ * proxy buffers for about a minute before it ships, so a chunk arrives every minute or two and a faster
+ * poll mostly asks for nothing.
+ */
+const ACTIVITY_LIVE_POLL_MS = 15_000;
 
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
@@ -72,7 +90,9 @@ export const agentVaultKeys = {
     [...agentVaultKeys.availableMembers(orgId), params] as const,
   activityConfig: (orgId: string) => [...agentVaultKeys.all(orgId), "activity-config"] as const,
   sessionActivity: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
-    [...agentVaultKeys.sessions(orgId), sessionId, "activity", range ?? {}] as const
+    [...agentVaultKeys.sessions(orgId), sessionId, "activity", range ?? {}] as const,
+  sessionActivityLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
+    [...agentVaultKeys.sessions(orgId), sessionId, "activity-live", range ?? {}] as const
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -252,53 +272,54 @@ export const useGetAgentVaultSession = (sessionId: string | undefined, enabled =
 };
 
 /**
- * Cursor pagination, newest first. Each page is decrypted inside its own fetch, so loading, cancelling
- * and retrying are React Query's state rather than something the sheet has to track alongside it.
+ * A session's activity, in two queries: older pages, loaded once each as the viewer scrolls, and a poll for
+ * what arrives while the sheet is open. Each fetch decrypts its own chunks, so loading, cancelling and
+ * retrying are React Query's state rather than something the sheet tracks alongside it.
  *
- * Polling continues however many pages the viewer has scrolled through. An interval refetch on an
- * infinite query re-runs every page it holds, so the cost grows with each page opened; pages are small
- * enough, and the poll slow enough, that this is cheaper than a Live badge that quietly goes dark once
- * someone scrolls.
+ * The poll is its own query on purpose. Polling the pages re-fetched every page held, so the cost grew
+ * with each page opened, and every new chunk shifted each page boundary down, dropping rows off the
+ * bottom. Writing arrivals into the pages' cache instead races "load more", which saves the pages it
+ * started from over anything written in the meantime.
  */
 export const useGetAgentVaultSessionActivity = (
   sessionId: string | undefined,
   {
     enabled = true,
-    isActive = false,
+    isLive = false,
     from,
     to
-  }: { enabled?: boolean; isActive?: boolean; from?: Date; to?: Date } = {}
+  }: { enabled?: boolean; isLive?: boolean; from?: Date; to?: Date } = {}
 ) => {
   const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
 
   // Serialised into the key, so narrowing the window starts a fresh page one rather than appending
   // to the pages fetched for the previous one.
   const range = { from: from?.toISOString(), to: to?.toISOString() };
+  const url = `/api/v1/agent-vault/sessions/${sessionId}/activity`;
 
-  // Swapped during render, so the query below never fetches a new session into the old one's cache.
+  // Swapped during render, so neither query below fetches a new session into the old one's cache. Shared
+  // by both, so a chunk the poll opened is not downloaded again when a page lists it.
   const chunkCache = useRef<TAgentVaultActivityChunkCache | null>(null);
   if (!chunkCache.current || chunkCache.current.sessionId !== sessionId) {
     chunkCache.current = createActivityChunkCache(sessionId ?? "");
   }
 
-  return useInfiniteQuery({
+  const history = useInfiniteQuery({
     queryKey: agentVaultKeys.sessionActivity(currentOrg.id, sessionId ?? "", range),
     enabled: enabled && Boolean(sessionId),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
       const cache = chunkCache.current as TAgentVaultActivityChunkCache;
-      const { data } = await apiRequest.get<TAgentVaultActivityPage>(
-        `/api/v1/agent-vault/sessions/${sessionId}/activity`,
-        {
-          params: {
-            limit: ACTIVITY_PAGE_RECORDS,
-            ...(pageParam ? { before: pageParam } : {}),
-            ...(range.from ? { from: range.from } : {}),
-            ...(range.to ? { to: range.to } : {})
-          },
-          signal
-        }
-      );
+      const { data } = await apiRequest.get<TAgentVaultActivityPage>(url, {
+        params: {
+          limit: ACTIVITY_PAGE_RECORDS,
+          ...(pageParam ? { before: pageParam } : {}),
+          ...(range.from ? { from: range.from } : {}),
+          ...(range.to ? { to: range.to } : {})
+        },
+        signal
+      });
       return decryptActivityPage(data, cache, signal);
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -308,14 +329,47 @@ export const useGetAgentVaultSessionActivity = (
     // session's rows shown under this one's header would be wrong in a way no loading state covers.
     placeholderData: (prev, prevQuery) =>
       sessionId && prevQuery?.queryKey.includes(sessionId) ? prev : undefined,
-    // 15s, not PAM's 5s. PAM tails a live terminal, where something new lands between any two ticks.
-    // Here the proxy buffers for about a minute before it ships, so a chunk arrives every minute or
-    // two and a faster poll mostly re-fetches a response the browser already holds — at the cost of
-    // an index read, a key unwrap and a presigned URL per chunk, for every page the viewer has open.
-    refetchInterval: isActive ? 15_000 : false,
     staleTime: 0,
     // Pages carry decrypted plaintext, so they go the moment nothing shows them rather than after
     // the default five minutes.
     gcTime: 0
   });
+
+  // Picks up where the first page's read left off. Never from a placeholder, which belongs to the
+  // previous range.
+  const receivedFrom = history.isPlaceholderData
+    ? undefined
+    : history.data?.pages[0]?.nextReceivedAfter;
+  const liveKey = agentVaultKeys.sessionActivityLive(currentOrg.id, sessionId ?? "", range);
+
+  const live = useQuery({
+    queryKey: liveKey,
+    enabled: enabled && isLive && Boolean(sessionId) && Boolean(receivedFrom),
+    // Accumulates: each poll folds what arrived into everything the earlier polls returned.
+    queryFn: async ({ signal }) => {
+      const cache = chunkCache.current as TAgentVaultActivityChunkCache;
+      let arrived = queryClient.getQueryData<TAgentVaultDecryptedActivityPage>(liveKey);
+      let receivedAfter = arrived?.nextReceivedAfter ?? receivedFrom;
+      let hasMore = true;
+      for (let read = 0; hasMore && read < ACTIVITY_LIVE_MAX_READS; read += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data } = await apiRequest.get<TAgentVaultActivityPage>(url, {
+          params: { limit: ACTIVITY_LIVE_RECORDS, receivedAfter },
+          signal
+        });
+        // eslint-disable-next-line no-await-in-loop
+        arrived = mergeActivityPages(arrived, await decryptActivityPage(data, cache, signal));
+        receivedAfter = data.nextReceivedAfter;
+        ({ hasMore } = data);
+      }
+      return arrived as TAgentVaultDecryptedActivityPage;
+    },
+    refetchInterval: ACTIVITY_LIVE_POLL_MS,
+    staleTime: 0,
+    gcTime: 0
+  });
+
+  // Kept after the poll stops, so a session that expires with the sheet open does not lose the rows that
+  // arrived while it was watched.
+  return { history, arrived: live.data };
 };

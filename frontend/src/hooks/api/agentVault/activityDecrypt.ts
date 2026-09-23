@@ -242,6 +242,23 @@ export const decryptActivityPage = async (
   return { ...page, decrypted };
 };
 
+/**
+ * Folds one read of what arrived into everything read that way so far. The newer copy of a chunk wins:
+ * reads overlap, and a chunk whose download failed comes back in the overlap with a fresh link.
+ */
+export const mergeActivityPages = (
+  previous: TAgentVaultDecryptedActivityPage | undefined,
+  page: TAgentVaultDecryptedActivityPage
+): TAgentVaultDecryptedActivityPage => {
+  if (!previous) return page;
+  const reread = new Set(page.chunks.map((chunk) => chunk.chunkId));
+  return {
+    ...page,
+    chunks: [...previous.chunks.filter((chunk) => !reread.has(chunk.chunkId)), ...page.chunks],
+    decrypted: { ...previous.decrypted, ...page.decrypted }
+  };
+};
+
 export type TAgentVaultActivityTimeline = {
   records: TAgentVaultActivityRecord[];
   gaps: TAgentVaultActivityGap[];
@@ -256,28 +273,34 @@ export const useAgentVaultActivityTimeline = (
   pages: TAgentVaultDecryptedActivityPage[] | undefined
 ): TAgentVaultActivityTimeline =>
   useMemo(() => {
-    // Chunks are identified across pages by their own id: a page boundary that moved between two
-    // fetches can list the same chunk on both.
-    const seen = new Set<string>();
+    // Chunks are identified across pages by their own id: the live reads and a page can both hold one,
+    // and so can two pages after a refetch moves a boundary.
+    const opened = new Map<string, TAgentVaultDecryptedChunk>();
+    (pages ?? []).forEach((page) =>
+      page.chunks.forEach((chunk) => {
+        const result = page.decrypted[chunk.chunkId];
+        if (!result) return;
+        const known = opened.get(chunk.chunkId);
+        // A failed download is the one outcome a later fetch can change, so a copy that opened beats it.
+        if (known && (known.gap?.reason !== "fetch" || result.gap?.reason === "fetch")) return;
+        opened.set(chunk.chunkId, result);
+      })
+    );
+
     const records: TAgentVaultActivityRecord[] = [];
     const gaps: TAgentVaultActivityGap[] = [];
     const drops: TAgentVaultActivityDrop[] = [];
     const arrivals = new Map<string, number>();
 
-    (pages ?? []).forEach((page) =>
-      page.chunks.forEach((chunk) => {
-        const result = page.decrypted[chunk.chunkId];
-        if (!result || seen.has(chunk.chunkId)) return;
-        seen.add(chunk.chunkId);
-        records.push(...result.records);
-        if (result.arrivedAt !== null) {
-          const { arrivedAt } = result;
-          result.records.forEach((record) => arrivals.set(activityRecordKey(record), arrivedAt));
-        }
-        if (result.gap) gaps.push(result.gap);
-        if (result.drop) drops.push(result.drop);
-      })
-    );
+    opened.forEach((result) => {
+      records.push(...result.records);
+      if (result.arrivedAt !== null) {
+        const { arrivedAt } = result;
+        result.records.forEach((record) => arrivals.set(activityRecordKey(record), arrivedAt));
+      }
+      if (result.gap) gaps.push(result.gap);
+      if (result.drop) drops.push(result.drop);
+    });
 
     // Newest first. Sequence numbers are per proxy, so they settle ties only within one proxy; across
     // proxies this is wall-clock order and adjacent lines can be a second out of order.

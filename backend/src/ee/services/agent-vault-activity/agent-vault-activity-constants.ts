@@ -46,6 +46,14 @@ export const AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS = 1000;
 /** A ceiling on the walk, so a session of one-record chunks cannot make a page scan the whole table. */
 export const AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS = 200;
 
+/**
+ * How far behind the moment of a read `nextReceivedAfter` points. A chunk's createdAt is stamped when its
+ * insert begins, but the row only becomes visible once that transaction commits, and reads go to a replica
+ * that can lag the primary. Either way a chunk can surface after a read that already ran past its
+ * createdAt, so every read re-asks for this much of what came before it and the caller drops the repeats.
+ */
+export const AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS = 2 * 60_000;
+
 // The Go proxy reads these off APIError.Name to decide whether to pause or drop. Changing a value is a
 // wire-contract change and needs the same change in cli/packages/agentvault/activity.go.
 export const AgentVaultActivityErrorName = {

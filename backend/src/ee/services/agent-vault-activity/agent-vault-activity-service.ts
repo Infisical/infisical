@@ -33,6 +33,7 @@ import {
   AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
+  AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS,
   AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS,
   AgentVaultActivityErrorName
 } from "./agent-vault-activity-constants";
@@ -267,7 +268,26 @@ export const agentVaultActivityServiceFactory = ({
     };
   };
 
-  const getSessionActivity = async ({ projectId, ctx, sessionId, limit, before, from, to }: TGetSessionActivityDTO) => {
+  const getSessionActivity = async ({
+    projectId,
+    ctx,
+    sessionId,
+    limit,
+    before,
+    from,
+    to,
+    receivedAfter
+  }: TGetSessionActivityDTO) => {
+    // Taken before the read, so nothing the read could have missed is ahead of it.
+    const readAt = Date.now();
+
+    if (receivedAfter && (before || from || to)) {
+      throw new BadRequestError({
+        message:
+          "receivedAfter reads what arrived since an earlier read, so it cannot be combined with before, from or to"
+      });
+    }
+
     const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
@@ -286,36 +306,54 @@ export const agentVaultActivityServiceFactory = ({
     const config = await agentVaultActivityConfigDAL.findOne({ projectId });
     const storage = config ? resolveStorageConfig(config) : null;
 
+    const caughtUpTo = new Date(readAt - AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS);
+
     const empty = {
       enabled: false,
       sessionKey: null,
       projectId,
       configVersion: config?.configVersion ?? 1,
       chunks: [],
-      nextCursor: null
+      nextCursor: null,
+      hasMore: false,
+      nextReceivedAfter: caughtUpTo
     };
 
     // No storage at all means nothing was ever written and nothing can be read. `enabled: false` is about
     // ingest; chunks written before the switch was turned off are still served below.
     if (!config || !storage) return empty;
 
-    const { chunks: rows, hasMore } = await agentVaultActivityChunkDAL.findForSessionPage({
-      sessionId,
-      recordBudget: limit,
-      maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
-      before,
-      from,
-      to
-    });
+    const { chunks: rows, hasMore } = receivedAfter
+      ? await agentVaultActivityChunkDAL.findReceivedForSession({
+          sessionId,
+          receivedAfter,
+          recordBudget: limit,
+          maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS
+        })
+      : await agentVaultActivityChunkDAL.findForSessionPage({
+          sessionId,
+          recordBudget: limit,
+          maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
+          before,
+          from,
+          to
+        });
+
+    // A read cut short resumes from its last chunk, so a backlog is worked through rather than re-read. One
+    // that reached the end steps back by the overlap instead, for chunks written before it that were not
+    // yet visible to it.
+    const nextReceivedAfter = receivedAfter && hasMore ? rows[rows.length - 1].createdAt : caughtUpTo;
+    const continuation = { hasMore, nextReceivedAfter };
+
     if (!rows.length) {
-      return { ...empty, enabled: isIngestEnabled(config), configVersion: config.configVersion };
+      return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
     }
 
     if (!session.encryptedActivityKey) {
       // Minted before this feature shipped. Chunks cannot exist for it, but be explicit rather than
       // handing the browser rows it has no key for.
       logger.warn(`agentVaultActivity: session has chunks but no activity key [sessionId=${sessionId}]`);
-      return { ...empty, enabled: isIngestEnabled(config), configVersion: config.configVersion };
+      return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
     }
 
     const activityStorage = await $getStorage(storage, ctx.actorOrgId);
@@ -351,7 +389,9 @@ export const agentVaultActivityServiceFactory = ({
       projectId,
       configVersion: config.configVersion,
       chunks,
-      nextCursor: hasMore ? rows[rows.length - 1].chunkId : null
+      // Only a page going back through the session has older chunks to page to.
+      nextCursor: hasMore && !receivedAfter ? rows[rows.length - 1].chunkId : null,
+      ...continuation
     };
   };
 

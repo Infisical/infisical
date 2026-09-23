@@ -4385,7 +4385,14 @@ export const AGENT_VAULT = {
     expiresInSeconds: "How long the presigned URL stays valid.",
     sessionKey:
       "The session's activity key, base64 encoded. Decrypts every chunk in this response. Held only for the life of the view.",
-    nextCursor: "Pass as `before` to fetch the next, older page. Null when there are no older chunks.",
+    nextCursor:
+      "Pass as `before` to fetch the next, older page. Null when there are no older chunks, and always null when reading with `receivedAfter`.",
+    hasMore:
+      "Whether more chunks are waiting past this response: older ones for a page, or later arrivals when reading with `receivedAfter`, in which case call again straight away with `nextReceivedAfter`.",
+    nextReceivedAfter:
+      "Pass as `receivedAfter` on the next read to get only what arrived after this one. It deliberately points a little earlier than this read, so chunks still being written are not missed; the next read can therefore return chunks you already hold, which you drop by `chunkId`.",
+    receivedAfter:
+      "Return the chunks received after this time, oldest received first, instead of a page going back through the session. Pass the `nextReceivedAfter` of the previous response. A chunk that arrives late, from a proxy that was offline or whose clock runs behind, still comes back here, where it would sort among old chunks in a page. Cannot be combined with `before`, `from` or `to`.",
     limit:
       "Roughly how many activity records to return. Chunks are returned whole, so a page holds at least this many records unless the session has no more, and the count stays comparable whatever the agent's pace.",
     from: "Only return chunks holding records at or after this time. A chunk that overlaps the window is included whole.",

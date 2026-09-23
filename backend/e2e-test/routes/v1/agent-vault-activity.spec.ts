@@ -856,6 +856,89 @@ describe("Agent Vault activity", async () => {
       expect(new Set(seen).size).toBe(written.length);
     });
 
+    type TReceivedBody = {
+      chunks: { chunkId: string }[];
+      nextCursor: string | null;
+      hasMore: boolean;
+      nextReceivedAfter: string;
+    };
+
+    /**
+     * What a live view polls. A chunk from a proxy whose clock runs behind carries an id that sorts among
+     * old chunks, so a page only reaches it at the end of the session; reading by arrival returns it on
+     * the next poll.
+     */
+    test("reading by arrival returns a late chunk that a page would sort among old ones", async () => {
+      await configure();
+      const { session, proxy } = await seedChunks(3);
+
+      const first = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity?limit=20`);
+      const firstBody = JSON.parse(first.payload) as TReceivedBody;
+      expect(firstBody.chunks).toHaveLength(2);
+      expect(new Date(firstBody.nextReceivedAfter).getTime()).toBeLessThanOrEqual(Date.now());
+
+      // Every id the spec mints starts 01K5, so this one sorts below all of them.
+      const late = await recordChunk(proxy, session.id, chunkBody({ chunkId: `01K4${"0".repeat(21)}1` }));
+      fakeActivityStorage.put(late.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+
+      const newest = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity?limit=20`);
+      expect((JSON.parse(newest.payload) as TReceivedBody).chunks.map((c) => c.chunkId)).not.toContain(late.chunkId);
+
+      const received = await inject(
+        "GET",
+        `/api/v1/agent-vault/sessions/${session.id}/activity?receivedAfter=${firstBody.nextReceivedAfter}`
+      );
+      expect(received.statusCode).toBe(200);
+      const body = JSON.parse(received.payload) as TReceivedBody;
+      const ids = body.chunks.map((c) => c.chunkId);
+
+      // Oldest received first, and the overlap hands back the chunks the first read already returned.
+      expect(ids[ids.length - 1]).toBe(late.chunkId);
+      expect(ids).toEqual(expect.arrayContaining(firstBody.chunks.map((c) => c.chunkId)));
+      expect(body.nextCursor).toBeNull();
+      expect(body.hasMore).toBe(false);
+    });
+
+    test("a read by arrival cut short resumes after its last chunk, so a backlog is worked through", async () => {
+      await configure();
+      const { session } = await seedChunks(3);
+
+      // Each seeded chunk holds 10 records, so a budget of 10 returns one new chunk per read.
+      let receivedAfter = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const seen = new Set<string>();
+      let reads = 0;
+      let hasMore = true;
+      while (hasMore && reads < 10) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await inject(
+          "GET",
+          `/api/v1/agent-vault/sessions/${session.id}/activity?limit=10&receivedAfter=${receivedAfter}`
+        );
+        const body = JSON.parse(res.payload) as TReceivedBody;
+        body.chunks.forEach((chunk) => seen.add(chunk.chunkId));
+        ({ hasMore } = body);
+        receivedAfter = body.nextReceivedAfter;
+        reads += 1;
+      }
+
+      expect(hasMore).toBe(false);
+      expect(seen.size).toBe(3);
+      expect(reads).toBeLessThan(10);
+    });
+
+    test.each([
+      { param: `before=01K5${"0".repeat(22)}`, why: "a cursor" },
+      { param: `from=${new Date().toISOString()}`, why: "a window" }
+    ])("reading by arrival cannot be combined with $why", async ({ param }) => {
+      await configure();
+      const { session } = await seedChunks(1);
+      const res = await inject(
+        "GET",
+        `/api/v1/agent-vault/sessions/${session.id}/activity?receivedAfter=${new Date().toISOString()}&${param}`
+      );
+      expect(res.statusCode).toBe(400);
+    });
+
     test("a chunk written before the destination moved is reported unreachable rather than presigned", async () => {
       await configure();
       const { session } = await seedChunks(1);

@@ -99,11 +99,11 @@ Recording starts within one poll interval on every proxy, and covers sessions th
 
 ## Reading a session's activity
 
-Go to **Sessions** and select a row. The **Activity** tab shows the merged timeline, newest first, with a summary of the hosts the agent reached and how many requests went to each. A host that no access bundle covers is marked, which is how a request to somewhere unexpected stands out.
+Go to **Sessions** and select a row. The **Activity** tab shows the merged timeline, newest first. A host that no access bundle covers is marked, which is how a request to somewhere unexpected stands out.
 
-Filter by outcome to see only what was blocked or only what failed, and search by host, path, method, or service. Both work over the records already loaded, so they narrow what's on screen rather than fetching again. **Load more** fetches the page before it.
+Filter by outcome to see only what was blocked or only what failed, and search by host, path, method, or service. Both work over the records already loaded, so they narrow what's on screen rather than fetching again. Scroll down to load older requests.
 
-While a session is active the first page refreshes every 30 seconds, so a running agent's requests appear without a reload.
+While a session is active, the tab checks for new requests every 15 seconds, so a running agent's requests appear without a reload. Proxies ship records every 60 seconds, so a new request can take a minute or so to arrive. Batches that reach Infisical late still show up in their place in the timeline, for example from a proxy that was offline or whose clock runs behind. Setting a time range that has already ended stops the checks.
 
 Search covers the pages you've loaded, not the whole session, and there's no view that spans sessions. Each session's records are encrypted under a key of their own, so a question like "which agent reached this host" is one you answer per session.
 
@@ -116,7 +116,7 @@ A session token works on any enrolled proxy, so several proxies can serve one se
 A record that couldn't be kept is still counted, so a gap is visible rather than silent:
 
 - **Records not kept.** A proxy buffers records in memory and ships them every 60 seconds. If it's cut off from Infisical or from your bucket for long enough, the oldest buffered records are dropped and the tab reports how many.
-- **A batch that can't be read.** If a batch is missing from the bucket, the wrong size, or fails decryption, the tab marks it and shows the rest.
+- **A batch that can't be read.** If a batch is missing from the bucket, the wrong size, or fails decryption, the tab marks it and shows the rest. If the download failed, select **Retry** to fetch it again.
 - **A batch stored somewhere else.** Changing the bucket or the prefix leaves everything recorded before the change where it was, and Infisical stops being able to read it. Those batches are marked as stored in a bucket the project no longer uses.
 
 ## Changing where activity is stored

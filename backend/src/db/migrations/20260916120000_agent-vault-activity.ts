@@ -69,13 +69,19 @@ export async function up(knex: Knex): Promise<void> {
       t.string("iv", 24).notNullable();
 
       // Rows are immutable: createdAt only, no updatedAt and no trigger.
-      t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
+      //
+      // Millisecond precision, because createdAt is also the cursor for reading what arrived since a moment,
+      // and that cursor round-trips through a JavaScript Date. At Postgres's default microseconds the Date
+      // would truncate it, and a read resuming from the last row it returned would keep matching that row.
+      t.timestamp("createdAt", { useTz: true, precision: 3 }).notNullable().defaultTo(knex.fn.now());
 
       // Scoped to the session rather than a global unique on a proxy-minted id, so a foreign proxy
       // cannot squat an id.
       t.unique(["sessionId", "chunkId"]);
 
       t.index(["sessionId", "startedAt"]);
+      // What a live view polls: a session's chunks in the order the server received them.
+      t.index(["sessionId", "createdAt"]);
       t.index(["projectId"]);
     });
   }

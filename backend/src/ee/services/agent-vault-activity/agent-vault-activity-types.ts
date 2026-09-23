@@ -30,6 +30,8 @@ export type TGetSessionActivityDTO = {
   /** Window over the chunk's startedAt. A filter only; the cursor stays on chunkId. */
   from?: Date;
   to?: Date;
+  /** Reads by when the server received each chunk instead of paging back through the session. */
+  receivedAfter?: Date;
 };
 
 export type TGetActivityConfigDTO = {
