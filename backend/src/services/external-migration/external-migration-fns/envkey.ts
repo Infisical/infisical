@@ -5,6 +5,7 @@ import tweetnaclUtil from "tweetnacl-util";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TFolderCommitServiceFactory } from "../../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../../kms/kms-service";
@@ -26,6 +27,7 @@ export type TImportDataIntoInfisicalDTO = {
   projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;

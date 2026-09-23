@@ -29,6 +29,7 @@ import {
   SymmetricKeySize
 } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
@@ -47,6 +48,7 @@ import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
@@ -70,8 +72,11 @@ type TProjectQueueFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find" | "findById"
+  >;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findById">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
 };
@@ -689,10 +694,14 @@ export const projectQueueFactory = ({
 
     logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
 
-    const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, orgDAL });
 
     let totalProcessed = 0;
 
@@ -702,12 +711,12 @@ export const projectQueueFactory = ({
 
       if (secrets.length === 0) break;
 
-      const updates: { id: string; secretValueBlindIndex: string }[] = [];
+      const updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string | null }[] = [];
       for (const secret of secrets) {
         if (secret.encryptedValue) {
           const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
-          const blindIndex = await generateSecretBlindIndex(decryptedValue);
-          updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+          const blindIndexes = await blindIndexer.generate(decryptedValue);
+          updates.push({ id: secret.id, ...blindIndexes });
         }
       }
 

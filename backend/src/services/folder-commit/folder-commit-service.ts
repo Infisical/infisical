@@ -1064,7 +1064,8 @@ export const folderCommitServiceFactory = ({
                 encryptedComment: secretVersion.encryptedComment,
                 userId: secretVersion.userId,
                 folderId,
-                secretValueBlindIndex: secretVersion.secretValueBlindIndex
+                secretValueBlindIndex: secretVersion.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion.secretValueOrgBlindIndex
               }
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
@@ -1102,6 +1103,7 @@ export const folderCommitServiceFactory = ({
                 actorType: actorInfo.actorType,
                 metadata: metadata ? JSON.stringify(metadata) : null,
                 secretValueBlindIndex: secretVersion.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion.secretValueOrgBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
@@ -1143,7 +1145,8 @@ export const folderCommitServiceFactory = ({
                 encryptedValue: secretVersion?.encryptedValue,
                 encryptedComment: secretVersion?.encryptedComment,
                 userId: secretVersion?.userId,
-                secretValueBlindIndex: secretVersion?.secretValueBlindIndex
+                secretValueBlindIndex: secretVersion?.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion?.secretValueOrgBlindIndex
               },
               tx
             );
@@ -1182,6 +1185,7 @@ export const folderCommitServiceFactory = ({
                 folderId,
                 secretId: secretVersion.secretId,
                 secretValueBlindIndex: secretVersion.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion.secretValueOrgBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },

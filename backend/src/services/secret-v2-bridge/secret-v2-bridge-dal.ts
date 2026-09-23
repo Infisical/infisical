@@ -1283,20 +1283,24 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const batchSetBlindIndexes = async (updates: { id: string; secretValueBlindIndex: string }[], tx?: Knex) => {
+  const batchSetBlindIndexes = async (
+    updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string | null }[],
+    tx?: Knex
+  ) => {
     if (updates.length === 0) return;
 
     try {
-      const bindings: string[] = [];
-      const valuePlaceholders = updates.map(({ id, secretValueBlindIndex }) => {
-        bindings.push(id, secretValueBlindIndex);
-        return "(CAST(? AS uuid), ?)";
+      const bindings: (string | null)[] = [];
+      const valuePlaceholders = updates.map(({ id, secretValueBlindIndex, secretValueOrgBlindIndex }) => {
+        bindings.push(id, secretValueBlindIndex, secretValueOrgBlindIndex);
+        return "(CAST(? AS uuid), ?, CAST(? AS varchar))";
       });
 
       const query = `
         UPDATE ${TableName.SecretV2}
-        SET "secretValueBlindIndex" = v.blind_index
-        FROM (VALUES ${valuePlaceholders.join(", ")}) AS v(id, blind_index)
+        SET "secretValueBlindIndex" = v.blind_index,
+            "secretValueOrgBlindIndex" = v.org_blind_index
+        FROM (VALUES ${valuePlaceholders.join(", ")}) AS v(id, blind_index, org_blind_index)
         WHERE ${TableName.SecretV2}.id = v.id
           AND ${TableName.SecretV2}."secretValueBlindIndex" IS NULL
       `;

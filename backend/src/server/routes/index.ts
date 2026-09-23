@@ -3121,6 +3121,7 @@ export const registerRoutes = async (
     projectService,
     smtpService,
     kmsService,
+    orgDAL,
     projectEnvDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,
     secretTagDAL,
