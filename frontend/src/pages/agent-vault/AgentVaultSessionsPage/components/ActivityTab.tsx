@@ -52,6 +52,8 @@ import {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
+import { findRowShift } from "./ActivityTab.utils";
+
 const ALL_PROXIES = "all";
 
 /**
@@ -85,7 +87,10 @@ const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: Re
   );
 };
 
-/** Single-line rows, so a fixed estimate is exact and the virtualiser never has to remeasure. */
+/**
+ * Single-line rows, so a fixed estimate is exact: the virtualiser never has to remeasure, and holding the
+ * reader's place when rows land above them is arithmetic on this number.
+ */
 const ACTIVITY_ROW_HEIGHT = 41;
 
 type DecisionFilter = "all" | AgentVaultActivityDecision;
@@ -275,20 +280,20 @@ export const ActivityTab = ({ session }: Props) => {
   // session used more than one.
   const columnCount = proxies.length > 1 ? 9 : 8;
   const overflows = rowVirtualizer.getTotalSize() > (rowVirtualizer.scrollRect?.height ?? Infinity);
-  // A poll inserts the newest requests above whatever the viewer is reading, which would slide the
-  // page down under their eyes. Scrolling by the height of what was inserted keeps the same rows
-  // where they were. Only when scrolled away from the top: at the top, watching new rows push the
-  // list down is the point of a live view.
-  const previousFirstKey = useRef<string | null>(null);
+  // New rows can land anywhere above the reader: at the top as they arrive, or further down when a
+  // late chunk slots in by time. Either would slide what they are reading down the screen, so after
+  // each change the row that was at the top of the view goes back where it was. Not at the very top,
+  // where watching new rows push the list down is the point of a live view.
+  const shownBefore = useRef(visible);
   useLayoutEffect(() => {
+    const before = shownBefore.current;
+    shownBefore.current = visible;
     const scroller = scrollRef.current;
-    const firstKey = visible.length ? activityRecordKey(visible[0]) : null;
-    const previous = previousFirstKey.current;
-    previousFirstKey.current = firstKey;
-
-    if (!scroller || !previous || firstKey === previous || scroller.scrollTop === 0) return;
-    const inserted = visible.findIndex((record) => activityRecordKey(record) === previous);
-    if (inserted > 0) scroller.scrollTop += inserted * ACTIVITY_ROW_HEIGHT;
+    if (!scroller || scroller.scrollTop === 0) return;
+    // The sticky header offsets the rows by its own height, so this is the first row showing under it.
+    const top = Math.floor(scroller.scrollTop / ACTIVITY_ROW_HEIGHT);
+    const shift = findRowShift(before, visible, top);
+    if (shift) scroller.scrollTop += shift * ACTIVITY_ROW_HEIGHT;
   }, [visible]);
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;
@@ -544,8 +549,12 @@ export const ActivityTab = ({ session }: Props) => {
       ) : (
         // The scroller is the table's own container, not a wrapper around it: the container is
         // `overflow-x-auto` for wide rows, which makes it the scrollport a sticky header resolves
-        // against, so a header inside a wrapper would never stick.
-        <Table ref={scrollRef} containerClassName="min-h-0 thin-scrollbar flex-1 overflow-auto">
+        // against, so a header inside a wrapper would never stick. The browser's own scroll anchoring
+        // is off, because the effect above holds the reader's place and the two would move it twice.
+        <Table
+          ref={scrollRef}
+          containerClassName="min-h-0 thin-scrollbar flex-1 overflow-auto [overflow-anchor:none]"
+        >
           {/* Sticky so the column names, and the live indicator beside them, stay put while the
                 viewer scrolls back through the session. */}
           <TableHeader className="sticky top-0 z-10 bg-container">
