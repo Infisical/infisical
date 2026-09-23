@@ -388,6 +388,8 @@ export type TAgentVaultDecryptedChunk = {
   records: TAgentVaultActivityRecord[];
   gap: TAgentVaultActivityGap | null;
   drop: TAgentVaultActivityDrop | null;
+  /** When its records reached the sheet, or null when they came with the first load. */
+  arrivedAt: number | null;
 };
 
 /** A page as the sheet holds it: the index the server sent, plus every chunk opened in the browser. */

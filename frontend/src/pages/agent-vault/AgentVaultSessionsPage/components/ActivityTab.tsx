@@ -1,12 +1,4 @@
-import {
-  ReactNode,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState
-} from "react";
+import { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format } from "date-fns";
@@ -47,9 +39,10 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import {
+  activityRecordKey,
   AgentVaultActivityDecision,
   AgentVaultSessionStatus,
-  useDecryptedAgentVaultActivity,
+  useAgentVaultActivityTimeline,
   useGetAgentVaultSessionActivity
 } from "@app/hooks/api/agentVault";
 import {
@@ -72,14 +65,16 @@ const ARRIVAL_HOLD_MS = 1200;
  * mounts partway through its window tints for whatever is left of it.
  */
 const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: ReactNode }) => {
-  const [, expire] = useReducer((tick: number) => tick + 1, 0);
-  const isArriving = arrivedAt !== undefined && Date.now() - arrivedAt < ARRIVAL_HOLD_MS;
+  const [isArriving, setIsArriving] = useState(false);
 
   useEffect(() => {
-    if (!isArriving || arrivedAt === undefined) return undefined;
-    const timer = setTimeout(expire, arrivedAt + ARRIVAL_HOLD_MS - Date.now());
+    if (arrivedAt === undefined) return undefined;
+    const remaining = arrivedAt + ARRIVAL_HOLD_MS - Date.now();
+    if (remaining <= 0) return undefined;
+    setIsArriving(true);
+    const timer = setTimeout(() => setIsArriving(false), remaining);
     return () => clearTimeout(timer);
-  }, [isArriving, arrivedAt]);
+  }, [arrivedAt]);
 
   return (
     <TableRow
@@ -92,10 +87,6 @@ const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: Re
 
 /** Single-line rows, so a fixed estimate is exact and the virtualiser never has to remeasure. */
 const ACTIVITY_ROW_HEIGHT = 41;
-
-/** Stable per record: seq is unique within a proxy, and ts separates two proxies' streams. */
-const recordKey = (record: TAgentVaultActivityRecord) =>
-  `${record.proxyId}-${record.seq}-${record.ts}`;
 
 type DecisionFilter = "all" | AgentVaultActivityDecision;
 
@@ -153,15 +144,26 @@ export const ActivityTab = ({ session }: Props) => {
   const seenProxiesSessionId = useRef(session.id);
 
   const isActive = session.status === AgentVaultSessionStatus.Active;
-  const { data, isPending, isPlaceholderData, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetAgentVaultSessionActivity(session.id, {
-      isActive,
-      from: range?.startDate,
-      to: range?.endDate
-    });
+  const {
+    data,
+    isPending,
+    isPlaceholderData,
+    isError,
+    isFetching,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useGetAgentVaultSessionActivity(session.id, {
+    isActive,
+    from: range?.startDate,
+    to: range?.endDate
+  });
 
   const pages = data?.pages;
-  const { records, gaps, drops, isTruncated } = useDecryptedAgentVaultActivity(pages);
+  const { records, gaps, drops, arrivals, isTruncated } = useAgentVaultActivityTimeline(pages);
+  // Only when there is nothing to show at all. A failed poll keeps the last good data on screen.
+  const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.enabled ?? false;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
@@ -218,21 +220,6 @@ export const ActivityTab = ({ session }: Props) => {
 
   const isLive = isActive;
 
-  // Which rows arrived since the last settled render, so a poll bringing new activity is visible
-  // rather than silently reflowing the table.
-  const seenRecords = useRef(new Set<string>());
-  const hasSettled = useRef(false);
-  const animatedSessionId = useRef(session.id);
-  // Reset during render rather than in an effect: an effect keyed on session.id runs *after* the
-  // seeding effect below, so on mount it would wipe the seed and animate the whole table.
-  if (animatedSessionId.current !== session.id) {
-    animatedSessionId.current = session.id;
-    seenRecords.current = new Set();
-    hasSettled.current = false;
-  }
-
-  const [arrivedAt, setArrivedAt] = useState<Map<string, number>>(new Map());
-
   // Scrolling keeps appending pages, so a long session ends up with thousands of rows in memory. The
   // v3 Table has no virtualiser of its own, so the rows are windowed here: spacer rows above and below
   // keep the scrollbar honest while only the visible slice is mounted.
@@ -272,12 +259,12 @@ export const ActivityTab = ({ session }: Props) => {
   const previousFirstKey = useRef<string | null>(null);
   useLayoutEffect(() => {
     const scroller = scrollRef.current;
-    const firstKey = visible.length ? recordKey(visible[0]) : null;
+    const firstKey = visible.length ? activityRecordKey(visible[0]) : null;
     const previous = previousFirstKey.current;
     previousFirstKey.current = firstKey;
 
     if (!scroller || !previous || firstKey === previous || scroller.scrollTop === 0) return;
-    const inserted = visible.findIndex((record) => recordKey(record) === previous);
+    const inserted = visible.findIndex((record) => activityRecordKey(record) === previous);
     if (inserted > 0) scroller.scrollTop += inserted * ACTIVITY_ROW_HEIGHT;
   }, [visible]);
 
@@ -285,30 +272,6 @@ export const ActivityTab = ({ session }: Props) => {
   const padBottom = virtualRows.length
     ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
     : 0;
-
-  useEffect(() => {
-    // Pages arrive already decrypted, so the first real data is the whole initial load and is seeded
-    // rather than animated. Placeholder rows belong to the previous range and settle nothing.
-    if (isPending || isPlaceholderData) return undefined;
-
-    const fresh = hasSettled.current
-      ? records.map(recordKey).filter((key) => !seenRecords.current.has(key))
-      : [];
-    records.forEach((record) => seenRecords.current.add(recordKey(record)));
-    hasSettled.current = true;
-
-    if (!fresh.length) return undefined;
-
-    // Merged rather than replaced, so a page landing right after another does not cut the first one's
-    // window short. Expired entries are dropped on the way.
-    const now = Date.now();
-    setArrivedAt((prev) => {
-      const next = new Map([...prev].filter(([, at]) => now - at < ARRIVAL_HOLD_MS));
-      fresh.forEach((key) => next.set(key, now));
-      return next;
-    });
-    return undefined;
-  }, [records, isPending, isPlaceholderData]);
 
   // Loading covers only the first load and a change of range. A poll retrying a chunk it could not read
   // keeps the previous result on screen, so the failure it is retrying stays put instead of flickering.
@@ -319,6 +282,9 @@ export const ActivityTab = ({ session }: Props) => {
   if (isOpening) {
     noRecordsTitle = "Loading requests";
     noRecordsDescription = "";
+  } else if (isLoadError) {
+    noRecordsTitle = "Failed to load activity";
+    noRecordsDescription = "Something went wrong while loading this session's requests.";
   } else if (range && !hasChunks) {
     noRecordsTitle = "No activity in this range";
     noRecordsDescription = `This session recorded nothing between ${format(
@@ -350,7 +316,7 @@ export const ActivityTab = ({ session }: Props) => {
   // Never while pending: there are no chunks before the first response either, and this branch would
   // call logging off. Never with a window set: returning a different tree unmounts the date picker,
   // which both shifts the layout and resets the picker's own label back to its default.
-  if (!isPending && !isPlaceholderData && !isEnabled && !hasChunks && !range) {
+  if (!isPending && !isPlaceholderData && !isLoadError && !isEnabled && !hasChunks && !range) {
     // An admin can fix this themselves; a member can only be told who to ask. The old copy told
     // everyone that "an administrator can turn it on", which reads as a shrug to the very person
     // holding the switch.
@@ -521,6 +487,16 @@ export const ActivityTab = ({ session }: Props) => {
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
             {noRecordsDescription && <EmptyDescription>{noRecordsDescription}</EmptyDescription>}
           </EmptyHeader>
+          {isLoadError && (
+            <Button
+              variant="outline"
+              size="sm"
+              isPending={isFetching}
+              onClick={() => refetch().catch(() => {})}
+            >
+              Retry
+            </Button>
+          )}
         </Empty>
       ) : (
         // The scroller is the table's own container, not a wrapper around it: the container is
@@ -558,7 +534,10 @@ export const ActivityTab = ({ session }: Props) => {
               const record = visible[virtualRow.index] as TAgentVaultActivityRecord;
               const presentation = decisionPresentation(record.decision);
               return (
-                <ArrivingRow key={recordKey(record)} arrivedAt={arrivedAt.get(recordKey(record))}>
+                <ArrivingRow
+                  key={activityRecordKey(record)}
+                  arrivedAt={arrivals.get(activityRecordKey(record))}
+                >
                   <TableCell>
                     <Tooltip>
                       <TooltipTrigger asChild>

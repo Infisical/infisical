@@ -25,6 +25,10 @@ const CHUNK_DOWNLOAD_TIMEOUT_MS = 60_000;
 
 const AAD_VERSION = "v1";
 
+/** Stable per record: seq is unique within a proxy, and ts separates two proxies' streams. */
+export const activityRecordKey = (record: TAgentVaultActivityRecord) =>
+  `${record.proxyId}-${record.seq}-${record.ts}`;
+
 // There are no shared base64 or hex helpers anywhere in lib/ or helpers/, so these two are local.
 const base64ToBytes = (value: string) => {
   const binary = atob(value);
@@ -60,7 +64,8 @@ const gapFor = (
     reason,
     recordCount: chunk.recordCount
   },
-  drop: null
+  drop: null,
+  arrivedAt: null
 });
 
 const dropFor = (chunk: TAgentVaultActivityChunk): TAgentVaultActivityDrop | null =>
@@ -144,7 +149,12 @@ const openChunk = async (
   try {
     const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
     if (!Array.isArray(parsed)) return gapFor(chunk, "json");
-    return { records: parsed as TAgentVaultActivityRecord[], gap: null, drop: dropFor(chunk) };
+    return {
+      records: parsed as TAgentVaultActivityRecord[],
+      gap: null,
+      drop: dropFor(chunk),
+      arrivedAt: null
+    };
   } catch {
     return gapFor(chunk, "json");
   }
@@ -155,17 +165,22 @@ const openChunk = async (
  * downloads only what is new. Plaintext, so it belongs to the hook instance that made it and is never
  * module-level.
  */
-export type TAgentVaultActivityChunkCache = {
-  sessionId: string;
-  keys: Map<string, Promise<CryptoKey>>;
-  chunks: Map<string, TAgentVaultDecryptedChunk>;
+export const createActivityChunkCache = (sessionId: string) => {
+  // Set once the sheet's first page has finished opening. Anything opened after it arrived while the
+  // sheet was being watched, rather than as part of what it opened with.
+  let isSettled = false;
+  return {
+    sessionId,
+    keys: new Map<string, Promise<CryptoKey>>(),
+    chunks: new Map<string, TAgentVaultDecryptedChunk>(),
+    isSettled: () => isSettled,
+    settle: () => {
+      isSettled = true;
+    }
+  };
 };
 
-export const createActivityChunkCache = (sessionId: string): TAgentVaultActivityChunkCache => ({
-  sessionId,
-  keys: new Map(),
-  chunks: new Map()
-});
+export type TAgentVaultActivityChunkCache = ReturnType<typeof createActivityChunkCache>;
 
 /**
  * Opens every chunk on one page. A failed download is the one result left out of the cache: the object
@@ -179,7 +194,12 @@ export const decryptActivityPage = async (
 ): Promise<TAgentVaultDecryptedActivityPage> => {
   const decrypted: Record<string, TAgentVaultDecryptedChunk> = {};
   const { sessionKey } = page;
-  if (!sessionKey || !page.chunks.length) return { ...page, decrypted };
+  if (!sessionKey || !page.chunks.length) {
+    // Settled even with nothing to open, or the first requests a quiet session makes would count as
+    // part of its first load and never be marked as arriving.
+    cache.settle();
+    return { ...page, decrypted };
+  }
 
   let keyPromise = cache.keys.get(sessionKey);
   if (!keyPromise) {
@@ -191,6 +211,7 @@ export const decryptActivityPage = async (
   // An unusable key fails every chunk the same way, so they are all marked rather than tried.
   const key = await keyPromise.catch(() => null);
   const context = { projectId: page.projectId, sessionId: cache.sessionId };
+  const opened: string[] = [];
 
   await Promise.all(
     page.chunks.map(async (chunk) => {
@@ -202,8 +223,21 @@ export const decryptActivityPage = async (
       const result = key ? await openChunk(chunk, key, context, signal) : gapFor(chunk, "gcm");
       if (result.gap?.reason !== "fetch") cache.chunks.set(chunk.chunkId, result);
       decrypted[chunk.chunkId] = result;
+      opened.push(chunk.chunkId);
     })
   );
+
+  // Stamped once the whole page is ready rather than as each chunk opens: the rows reach the screen
+  // together, and a chunk that opened early would otherwise spend its window waiting on the slowest.
+  if (cache.isSettled()) {
+    const arrivedAt = Date.now();
+    opened.forEach((chunkId) => {
+      const stamped = { ...decrypted[chunkId], arrivedAt };
+      decrypted[chunkId] = stamped;
+      if (cache.chunks.has(chunkId)) cache.chunks.set(chunkId, stamped);
+    });
+  }
+  cache.settle();
 
   return { ...page, decrypted };
 };
@@ -212,11 +246,13 @@ export type TAgentVaultActivityTimeline = {
   records: TAgentVaultActivityRecord[];
   gaps: TAgentVaultActivityGap[];
   drops: TAgentVaultActivityDrop[];
+  /** When each record arrived, by `activityRecordKey`, for records that came after the first load. */
+  arrivals: Map<string, number>;
   isTruncated: boolean;
 };
 
 /** Merges the proxies' streams across every loaded page into one timeline. */
-export const useDecryptedAgentVaultActivity = (
+export const useAgentVaultActivityTimeline = (
   pages: TAgentVaultDecryptedActivityPage[] | undefined
 ): TAgentVaultActivityTimeline =>
   useMemo(() => {
@@ -226,6 +262,7 @@ export const useDecryptedAgentVaultActivity = (
     const records: TAgentVaultActivityRecord[] = [];
     const gaps: TAgentVaultActivityGap[] = [];
     const drops: TAgentVaultActivityDrop[] = [];
+    const arrivals = new Map<string, number>();
 
     (pages ?? []).forEach((page) =>
       page.chunks.forEach((chunk) => {
@@ -233,6 +270,10 @@ export const useDecryptedAgentVaultActivity = (
         if (!result || seen.has(chunk.chunkId)) return;
         seen.add(chunk.chunkId);
         records.push(...result.records);
+        if (result.arrivedAt !== null) {
+          const { arrivedAt } = result;
+          result.records.forEach((record) => arrivals.set(activityRecordKey(record), arrivedAt));
+        }
         if (result.gap) gaps.push(result.gap);
         if (result.drop) drops.push(result.drop);
       })
@@ -251,6 +292,7 @@ export const useDecryptedAgentVaultActivity = (
       records: records.slice(0, AGENT_VAULT_ACTIVITY_MAX_RECORDS),
       gaps,
       drops,
+      arrivals,
       isTruncated: records.length > AGENT_VAULT_ACTIVITY_MAX_RECORDS
     };
   }, [pages]);
