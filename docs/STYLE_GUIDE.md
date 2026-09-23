@@ -428,7 +428,7 @@ Write "it's", "don't", "you'll", and "can't". Full forms sound stiff and make se
 
 **Write:** You can't recover a deleted secret, so you'll need to create it again.
 
-Vale reports the common full forms as suggestions.
+Vale reports the common full forms as errors.
 
 ### Read it out loud
 
@@ -701,12 +701,10 @@ em dashes in one paragraph, "click" and "tap" where the verb should be "select",
 forms of common contractions. Vale doesn't check the `description` frontmatter field, so check
 the description yourself when you review a page.
 
-Two of those rules don't fail the run yet. `Infisical.UIActions` reports at warning level and
-`Infisical.Contractions` reports at suggestion level, because existing pages have several
-hundred violations of each rule, and making either rule an error would fail every pull request
-that edits those pages. Both rules will become errors once the existing violations are fixed,
-so fix any violations on the pages you edit. Read the output Vale prints, not just the exit
-code.
+Every rule except the em dash rule reports at error level, so a finding from any other rule,
+including "click" and "tap" and the full forms of contractions, fails the run. The em dash rule
+reports at warning level and doesn't change the exit code, so read the output Vale prints, not
+just the exit code.
 
 No automated check covers the two bold rules in section 11. Only a reviewer who knows the
 product can tell whether a word is the name of a button that should be bold.

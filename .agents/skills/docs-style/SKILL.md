@@ -44,10 +44,11 @@ Review your own drafts the same way you review anyone else's. Work in the follow
 Check the structure first, because rewriting a sentence is wasted work if the sentence is in
 the wrong section.
 
-**1. Run the linter.** Run `make lint-docs-branch` from the repository root. The command exits
-with an error only for error-level problems, so also read the warnings and suggestions it
-prints. `Infisical.UIActions` and `Infisical.Contractions` don't affect the exit code yet, and
-those two rules are the ones most likely to report problems.
+**1. Run the linter.** Run `make lint-docs-branch` from the repository root. Every rule except
+`Infisical.EmDashes` reports at error level, so any other finding fails the command, including
+`Infisical.UIActions` and `Infisical.Contractions`, the two rules most likely to report problems.
+`Infisical.EmDashes` reports at warning level and doesn't change the exit code, so also read the
+warnings the command prints.
 
 Vale doesn't check text indented four or more spaces inside a Mintlify component, and about
 half of the text in this repository is indented that way. If Vale reports no problems on a
