@@ -54,6 +54,29 @@ const REQUEST_ID_PATTERNS = [
   new RE2("requestid[:\\s]*(\\d+)", "i")
 ];
 
+const RE_N_RENEWALS = new RE2("var\\s+nRenewals\\s*=\\s*(\\d+)\\s*;", "i");
+
+/**
+ * certnew.cer?ReqID=CACert&Renewal=N returns the CA certificate at renewal index N, where 0 is
+ * the CA's original certificate. certcarc.asp publishes the current index as nRenewals; if it
+ * cannot be read the original certificate is fetched, which only validates issued certificates
+ * while the CA has never been renewed with a new key.
+ */
+const getAdcsCurrentRenewalIndex = async (adcsClient: ReturnType<typeof createAdcsHttpClient>): Promise<number> => {
+  try {
+    const response = await adcsClient.get("/certsrv/certcarc.asp", { Accept: "text/html,*/*" });
+    const match = response.data.match(RE_N_RENEWALS);
+    if (!match?.[1]) {
+      logger.warn("ADCS: nRenewals not found on certcarc.asp, fetching the original CA certificate (Renewal=0)");
+      return 0;
+    }
+    return parseInt(match[1], 10);
+  } catch (error) {
+    logger.warn({ error }, "ADCS: failed to read certcarc.asp, fetching the original CA certificate (Renewal=0)");
+    return 0;
+  }
+};
+
 /**
  * Fetch the issuing CA certificate from ADCS web enrollment.
  * Uses the /certsrv/certnew.cer endpoint which returns an X.509 certificate,
@@ -61,7 +84,8 @@ const REQUEST_ID_PATTERNS = [
  * parsed as individual X.509 certs.
  */
 const fetchAdcsCaChain = async (adcsClient: ReturnType<typeof createAdcsHttpClient>): Promise<string> => {
-  const caCertResponse = await adcsClient.get("/certsrv/certnew.cer?ReqID=CACert&Renewal=0&Enc=b64", {
+  const renewalIndex = await getAdcsCurrentRenewalIndex(adcsClient);
+  const caCertResponse = await adcsClient.get(`/certsrv/certnew.cer?ReqID=CACert&Renewal=${renewalIndex}&Enc=b64`, {
     Accept: "application/pkix-cert,application/x-x509-ca-cert,*/*"
   });
 

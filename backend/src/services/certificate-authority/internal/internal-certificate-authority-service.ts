@@ -44,7 +44,11 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { extractCertificateFields } from "../../certificate/certificate-fns";
+import {
+  constructPemChainFromCerts,
+  extractCertificateFields,
+  normalizeCaCertChain
+} from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -1621,9 +1625,19 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     // validate imported certificate and certificate chain
-    const certificates = extractX509CertFromChain(certificateChain)?.map((cert) => new x509.X509Certificate(cert));
+    const suppliedCertificates = extractX509CertFromChain(certificateChain)?.map(
+      (cert) => new x509.X509Certificate(cert)
+    );
 
-    if (!certificates) throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    if (!suppliedCertificates) throw new BadRequestError({ message: "Failed to parse certificate chain" });
+
+    const certificates = normalizeCaCertChain(certObj, suppliedCertificates);
+
+    if (certificates.length === 0) {
+      throw new BadRequestError({
+        message: "Invalid certificate chain: the chain must contain the CA certificate that issued this certificate"
+      });
+    }
 
     const chain = new x509.X509ChainBuilder({
       certificates
@@ -1632,8 +1646,20 @@ export const internalCertificateAuthorityServiceFactory = ({
     const chainItems = await chain.build(certObj);
 
     // chain.build() implicitly verifies the chain
-    if (chainItems.length !== certificates.length + 1)
-      throw new BadRequestError({ message: "Invalid certificate chain" });
+    if (chainItems.length === 1) {
+      throw new BadRequestError({
+        message:
+          "Invalid certificate chain: none of the certificates in the chain issued this certificate. If the issuing CA has been renewed, use the chain of its current CA certificate."
+      });
+    }
+
+    if (chainItems.length !== certificates.length + 1) {
+      throw new BadRequestError({
+        message: `Invalid certificate chain: ${certificates.length + 1 - chainItems.length} certificate(s) in the chain are not part of the path from this certificate to its root`
+      });
+    }
+
+    const normalizedCertificateChain = constructPemChainFromCerts(chainItems.slice(1));
 
     const parentCertObj = chainItems[1];
     const parentSerialNumber = parentCertObj.serialNumber;
@@ -1657,7 +1683,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
-      plainText: Buffer.from(certificateChain)
+      plainText: Buffer.from(normalizedCertificateChain)
     });
 
     // TODO: validate that latest key-pair of CA is used to sign the certificate
@@ -1693,9 +1719,13 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      await certificateAuthorityDAL.updateById(ca.id, {
-        status: CaStatus.ACTIVE
-      });
+      await certificateAuthorityDAL.updateById(
+        ca.id,
+        {
+          status: CaStatus.ACTIVE
+        },
+        tx
+      );
 
       await internalCertificateAuthorityDAL.update(
         {

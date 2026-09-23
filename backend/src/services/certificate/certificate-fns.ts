@@ -80,6 +80,23 @@ export const isCertChainValid = async (certificates: x509.X509Certificate[]) => 
   return chainItems.length === certificates.length;
 };
 
+/**
+ * Drops the issued certificate and byte-identical duplicates from a CA chain supplied alongside
+ * it. External CAs commonly return both (AD CS PKCS#7 responses include the issued certificate,
+ * and bundles repeat a CA certificate), and neither affects trust, so they must not fail a
+ * check that expects every supplied certificate to sit on the issuing path.
+ */
+export const normalizeCaCertChain = (issuedCert: x509.X509Certificate, chainCerts: x509.X509Certificate[]) => {
+  const seen = new Set<string>();
+  return chainCerts.filter((cert) => {
+    if (cert.equal(issuedCert)) return false;
+    const key = Buffer.from(cert.rawData).toString("base64");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 export const constructPemChainFromCerts = (certificates: x509.X509Certificate[]) =>
   certificates
     .map((cert) => cert.toString("pem"))
