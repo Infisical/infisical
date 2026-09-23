@@ -118,7 +118,10 @@ export const identityAliCloudAuthServiceFactory = ({
       }
 
       const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
-        logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
+        logger.error(
+          { status: err.response?.status, code: err.code, message: err.message, responseData: err.response?.data },
+          `AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud [identityId=${identity.id}] [status=${err.response?.status}]`
+        );
         throw err;
       });
 

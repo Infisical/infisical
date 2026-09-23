@@ -2,9 +2,29 @@ import { isIP } from "node:net";
 
 import RE2 from "re2";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 const SCHEME_PREFIX = "^https?://";
+const MAX_STATUS_FIELD_LOG_LENGTH = 1024;
+const JWT_FINGERPRINT_LENGTH = 12;
+
+export const getJwtFingerprintForLog = (jwt?: string) =>
+  jwt ? crypto.nativeCrypto.createHash("sha256").update(jwt).digest("hex").slice(0, JWT_FINGERPRINT_LENGTH) : undefined;
+
+const truncateStatusField = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+  return value.length > MAX_STATUS_FIELD_LOG_LENGTH
+    ? `${value.slice(0, MAX_STATUS_FIELD_LOG_LENGTH)}...[truncated]`
+    : value;
+};
+
+export const getKubernetesStatusForLog = (data: unknown): { reason?: string; message?: string } => {
+  if (typeof data === "string") return { message: truncateStatusField(data) };
+  if (!data || typeof data !== "object") return {};
+  const { reason, message } = data as { reason?: unknown; message?: unknown };
+  return { reason: truncateStatusField(reason), message: truncateStatusField(message) };
+};
 
 // The stored host may omit a scheme. URL parsing, SSRF validation and Axios all need one.
 export const withKubernetesHostScheme = (kubernetesHost: string) =>

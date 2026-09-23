@@ -140,7 +140,10 @@ export const identityOciAuthServiceFactory = ({
           headers
         })
         .catch((err: AxiosError) => {
-          logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
+          logger.error(
+            { status: err.response?.status, code: err.code, message: err.message, responseData: err.response?.data },
+            `OciIdentityLogin: Failed to authenticate with Oracle Cloud [identityId=${identity.id}] [status=${err.response?.status}]`
+          );
           throw err;
         });
 

@@ -2,10 +2,44 @@ import { describe, expect, it } from "vitest";
 
 import {
   extractK8sUsername,
+  getJwtFingerprintForLog,
   getKubernetesHostname,
   getKubernetesServerName,
+  getKubernetesStatusForLog,
   withKubernetesHostScheme
 } from "./identity-kubernetes-auth-fns";
+
+describe("getJwtFingerprintForLog", () => {
+  const jwt = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQifQ.c2lnbmF0dXJlLWJ5dGVz";
+
+  it("returns a stable 12-char hex digest that shares no substring with the token", () => {
+    const fingerprint = getJwtFingerprintForLog(jwt) as string;
+
+    expect(fingerprint).toMatch(/^[0-9a-f]{12}$/);
+    expect(getJwtFingerprintForLog(jwt)).toBe(fingerprint);
+    expect(getJwtFingerprintForLog(`${jwt}x`)).not.toBe(fingerprint);
+    expect(jwt).not.toContain(fingerprint);
+  });
+
+  it("returns undefined for a missing token", () => {
+    expect(getJwtFingerprintForLog("")).toBeUndefined();
+    expect(getJwtFingerprintForLog(undefined)).toBeUndefined();
+  });
+});
+
+describe("getKubernetesStatusForLog", () => {
+  it("keeps only reason and message from a Status body, bounded", () => {
+    expect(
+      getKubernetesStatusForLog({ kind: "Status", reason: "Forbidden", message: "m".repeat(5000), details: { x: 1 } })
+    ).toEqual({ reason: "Forbidden", message: `${"m".repeat(1024)}...[truncated]` });
+  });
+
+  it("treats a string body as the message and ignores anything else", () => {
+    expect(getKubernetesStatusForLog("upstream error")).toEqual({ message: "upstream error" });
+    expect(getKubernetesStatusForLog(undefined)).toEqual({});
+    expect(getKubernetesStatusForLog(401)).toEqual({});
+  });
+});
 
 describe("withKubernetesHostScheme", () => {
   it("leaves an explicit scheme alone and defaults the rest to https", () => {

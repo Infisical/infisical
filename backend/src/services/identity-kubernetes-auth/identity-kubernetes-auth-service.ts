@@ -72,8 +72,10 @@ import { TIdentityKubernetesAuthDALFactory } from "./identity-kubernetes-auth-da
 import { handleAxiosError, isKnownError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
 import {
   extractK8sUsername,
+  getJwtFingerprintForLog,
   getKubernetesHostname,
   getKubernetesServerName,
+  getKubernetesStatusForLog,
   withKubernetesHostScheme
 } from "./identity-kubernetes-auth-fns";
 import {
@@ -421,28 +423,29 @@ export const identityKubernetesAuthServiceFactory = ({
                 servername
               })
         ).catch((err) => {
-          const tokenReviewerJwtSnippet = `${tokenReviewerJwt?.substring?.(0, 10) || ""}...${tokenReviewerJwt?.substring?.(tokenReviewerJwt.length - 10) || ""}`;
-          const serviceAccountJwtSnippet = `${serviceAccountJwt?.substring?.(0, 10) || ""}...${serviceAccountJwt?.substring?.(serviceAccountJwt.length - 10) || ""}`;
+          const tokenReviewerJwtFingerprint = getJwtFingerprintForLog(tokenReviewerJwt);
+          const serviceAccountJwtFingerprint = getJwtFingerprintForLog(serviceAccountJwt);
 
           if (err instanceof AxiosError) {
             logger.error(
               {
-                response: err.response,
                 host,
                 port,
-                tokenReviewerJwtSnippet,
-                serviceAccountJwtSnippet,
-                code: err.code
+                status: err.response?.status,
+                code: err.code,
+                ...getKubernetesStatusForLog(err.response?.data),
+                tokenReviewerJwtFingerprint,
+                serviceAccountJwtFingerprint
               },
-              "tokenReviewCallbackRaw: Kubernetes token review request error (request error)"
+              `tokenReviewCallbackRaw: Kubernetes token review request error (request error) [identityId=${identityKubernetesAuth.identityId}] [status=${err.response?.status}] [code=${err.code}]`
             );
 
             throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.KubernetesApiServer);
           }
 
           logger.error(
-            { error: err as Error, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
-            "tokenReviewCallbackRaw: Kubernetes token review request error (non-request error)"
+            { error: err as Error, host, port, tokenReviewerJwtFingerprint, serviceAccountJwtFingerprint },
+            `tokenReviewCallbackRaw: Kubernetes token review request error (non-request error) [identityId=${identityKubernetesAuth.identityId}]`
           );
 
           if (isKnownError(err)) {
