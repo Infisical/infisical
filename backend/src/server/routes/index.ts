@@ -834,7 +834,8 @@ export const registerRoutes = async (
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
-    permissionService
+    permissionService,
+    userDAL
   });
 
   // Offline (air-gapped) licenses are stored in LICENSE_KEY too, but must never reach the license

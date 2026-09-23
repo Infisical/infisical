@@ -66,7 +66,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
   };
 
-  type ConditionCheckType = "unrestricted" | "hasSubjectOrAction" | "hasAction";
+  type ConditionCheckType = "unrestricted" | "hasSubjectOrAction" | "hasAction" | "conditionalForbid";
 
   const checkPermissionConditions = (
     actorPermission: MongoAbility,
@@ -99,14 +99,20 @@ export const newProjectAdditionalPrivilegesFactory = ({
           );
         case "hasAction":
           return Boolean(conditions) && "assignableAction" in (conditions as object);
+        case "conditionalForbid":
+          return Boolean(conditions) && Object.keys(conditions as object).length > 0;
         default:
           return false;
       }
     };
 
+    const matchInverted = checkType === "conditionalForbid";
     return actorPermission.rules.some(
       (rule) =>
-        !rule.inverted && actionMatches(rule.action) && subjectMatches(rule.subject) && conditionCheck(rule.conditions)
+        Boolean(rule.inverted) === matchInverted &&
+        actionMatches(rule.action) &&
+        subjectMatches(rule.subject) &&
+        conditionCheck(rule.conditions)
     );
   };
 
@@ -150,6 +156,9 @@ export const newProjectAdditionalPrivilegesFactory = ({
       "unrestricted"
     );
     if (!hasUnconditionalAllowRule) {
+      return false;
+    }
+    if (checkPermissionConditions(actorPermission, permissionAction, permissionSubject, "conditionalForbid")) {
       return false;
     }
     // This ensures that cannot rules take precedence over can rules.

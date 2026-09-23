@@ -4,7 +4,10 @@ import { ActionProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -16,11 +19,18 @@ import { TAssumePrivilegeServiceFactory } from "./assume-privilege-types";
 
 type TAssumePrivilegeServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export const assumePrivilegeServiceFactory = ({
-  permissionService
+  permissionService,
+  userDAL
 }: TAssumePrivilegeServiceFactoryDep): TAssumePrivilegeServiceFactory => {
+  const $getMemberSubject = async (userId: string) => {
+    const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
+    return subject(ProjectPermissionSub.Member, { userEmail: user?.email ?? undefined });
+  };
+
   const assumeProjectPrivileges: TAssumePrivilegeServiceFactory["assumeProjectPrivileges"] = async ({
     targetActorType,
     targetActorId,
@@ -40,7 +50,7 @@ export const assumePrivilegeServiceFactory = ({
     if (targetActorType === ActorType.USER) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionMemberActions.AssumePrivileges,
-        ProjectPermissionSub.Member
+        await $getMemberSubject(targetActorId)
       );
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -105,7 +115,7 @@ export const assumePrivilegeServiceFactory = ({
     if (decodedToken.actorType === ActorType.USER) {
       ForbiddenError.from(requesterPermission.permission).throwUnlessCan(
         ProjectPermissionMemberActions.AssumePrivileges,
-        ProjectPermissionSub.Member
+        await $getMemberSubject(decodedToken.actorId)
       );
     } else {
       ForbiddenError.from(requesterPermission.permission).throwUnlessCan(
