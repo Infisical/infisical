@@ -16,7 +16,6 @@ import {
   parseImportedCustomExtensions,
   resolveCustomExtensions,
   TCustomExtensionRule,
-  toCarriedCustomExtensions,
   toRequestCustomExtensions,
   TProfileCustomExtension,
   validateCustomExtensionValue
@@ -447,10 +446,10 @@ describe("resolveCustomExtensions", () => {
     expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID, SID_OID]);
   });
 
-  it("refuses to reissue an extension whose stored value cannot be read back", () => {
+  it("omits an extension whose stored value cannot be read back", () => {
     const stored = [{ oid: SID_OID, critical: false, value: Buffer.from([0x05, 0x00]).toString("base64") }];
 
-    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 
   it("keeps the profile default and the request's own OID side by side", () => {
@@ -687,14 +686,14 @@ describe("preset registry", () => {
   });
 });
 
-describe("toCarriedCustomExtensions", () => {
+describe("toRequestCustomExtensions", () => {
   it("never carries an extension the upstream CA added of its own accord", () => {
     const stored = [
       { oid: OPAQUE_OID, critical: false, value: "BAIAQg==", issuerAdded: true },
       { oid: CUSTOM_OID, critical: false, value: encodeCustomExtensionValue(CUSTOM_OID, "ops-prod") }
     ];
 
-    expect(toCarriedCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
+    expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
   });
 
   // Certificates stored before the flag existed rely on the OID list alone.
@@ -705,7 +704,7 @@ describe("toCarriedCustomExtensions", () => {
     ["1.3.6.1.4.1.311.21.1", "ADCS certification authority version"],
     ["1.3.6.1.4.1.311.21.2", "ADCS previous certification authority certificate hash"]
   ])("never copies %s (%s) from one certificate to the next", (oid) => {
-    expect(toCarriedCustomExtensions([{ oid, critical: false, value: "BQA=" }])).toEqual([]);
+    expect(toRequestCustomExtensions([{ oid, critical: false, value: "BQA=" }])).toEqual([]);
   });
 
   // toRequestCustomExtensions throws on a non-text value, so the filter has to run before it.
@@ -714,8 +713,8 @@ describe("toCarriedCustomExtensions", () => {
       { oid: SCT_LIST_OID, critical: false, value: Buffer.from([0x04, 0x02, 0x00, 0x42]).toString("base64") }
     ];
 
-    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
-    expect(toCarriedCustomExtensions(stored)).toEqual([]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 });
 
@@ -728,8 +727,8 @@ describe("parseImportedCustomExtensions", () => {
     const stored = parseImportedCustomExtensions(certificate);
 
     expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.3", critical: false, value: qcStatements.toString("base64") }]);
-    expect(() => toRequestCustomExtensions(stored)).toThrow(/cannot be read back into a value/);
-    expect(toCarriedCustomExtensions(stored)).toEqual([]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 
   // Dropping must-staple would hand back a renewed certificate with a weaker security posture than
@@ -737,8 +736,8 @@ describe("parseImportedCustomExtensions", () => {
   it("carries must-staple rather than dropping it", () => {
     const mustStaple = [{ oid: "1.3.6.1.5.5.7.1.24", critical: false, value: "MAMCAQU=" }];
 
-    expect(toCarriedCustomExtensions(mustStaple)).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", value: "5", critical: false }]);
-    expect(toCarriedCustomExtensions([{ ...mustStaple[0], issuerAdded: true }])).toEqual([]);
+    expect(toRequestCustomExtensions(mustStaple)).toEqual([{ oid: "1.3.6.1.5.5.7.1.24", value: "5", critical: false }]);
+    expect(toRequestCustomExtensions([{ ...mustStaple[0], issuerAdded: true }])).toEqual([]);
   });
 
   it("keeps a readable extension an import carried, since nothing says the issuer wrote it", async () => {
@@ -747,7 +746,7 @@ describe("parseImportedCustomExtensions", () => {
       Buffer.from(encodeCustomExtensionValue(CUSTOM_OID, "retain-me"), "base64")
     );
 
-    expect(toCarriedCustomExtensions(parseImportedCustomExtensions(certificate))).toEqual([
+    expect(toRequestCustomExtensions(parseImportedCustomExtensions(certificate))).toEqual([
       { oid: CUSTOM_OID, value: "retain-me", critical: false }
     ]);
   });
@@ -775,6 +774,6 @@ describe("parseExternallyIssuedCustomExtensions", () => {
     ]);
 
     expect(stored).toEqual([{ oid: CUSTOM_OID, critical: false, value: "BAIAQw==", issuerAdded: true }]);
-    expect(toCarriedCustomExtensions(stored)).toEqual([]);
+    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 });

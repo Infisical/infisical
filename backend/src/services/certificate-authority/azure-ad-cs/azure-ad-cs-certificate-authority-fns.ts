@@ -1050,11 +1050,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(cleanedCertificatePem),
-      undefined,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -1065,9 +1061,6 @@ export const AzureAdCsCertificateAuthorityFns = ({
           friendlyName: parsedFields.commonName ?? subscriber.commonName,
           commonName: subscriber.commonName,
           altNames: subscriber.subjectAlternativeNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyUsages: subscriber.keyUsages as CertKeyUsage[],
           extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
           projectId: ca.projectId,
@@ -1425,11 +1418,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     let certificateId: string;
 
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(cleanedCertificatePem),
-      undefined,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -1440,9 +1429,6 @@ export const AzureAdCsCertificateAuthorityFns = ({
           friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyUsages,
           extendedKeyUsages,
           keyAlgorithm,

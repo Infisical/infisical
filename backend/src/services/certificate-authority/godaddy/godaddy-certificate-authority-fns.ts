@@ -529,11 +529,7 @@ export const GoDaddyCertificateAuthorityFns = ({
 
     const certObj = new x509.X509Certificate(leaf);
     const issued = extractIssuedCertificateFields(certObj);
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(new Uint8Array(certObj.rawData)),
-      undefined,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     if (isRenewal && originalCertificateId) {
       const original = await certificateDAL.findOne({ id: originalCertificateId });
@@ -567,9 +563,6 @@ export const GoDaddyCertificateAuthorityFns = ({
           status: CertStatus.ACTIVE,
           friendlyName: issued.commonName || "",
           commonName: issued.commonName || "",
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyUsages: issued.keyUsages,
           extendedKeyUsages: issued.extendedKeyUsages,
           keyAlgorithm: certificateRequest.keyAlgorithm ?? undefined,

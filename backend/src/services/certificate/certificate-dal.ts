@@ -11,6 +11,7 @@ import {
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
 import {
+  CertSubjectAlternativeNameType,
   mapExtendedKeyUsageToLegacy,
   mapLegacyExtendedKeyUsageToStandard
 } from "@app/services/certificate-common/certificate-constants";
@@ -47,6 +48,20 @@ const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   } catch {
     return usage;
   }
+};
+
+export type TOriginatingCertificateRequest = {
+  exists: boolean;
+  enrollmentType: string | null;
+  csr: string | null;
+  commonName: string | null;
+  organization: string | null;
+  organizationalUnit: string | null;
+  country: string | null;
+  state: string | null;
+  locality: string | null;
+  domainComponents: string | null;
+  altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null;
 };
 
 export const certificateDALFactory = (db: TDbClient) => {
@@ -740,19 +755,39 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getOriginatingRequestByCertId = async (
-    certId: string,
-    tx?: Knex
-  ): Promise<{ enrollmentType: string | null; csr: string | null }> => {
+  const getOriginatingRequestByCertId = async (certId: string, tx?: Knex): Promise<TOriginatingCertificateRequest> => {
     try {
       // Primary, not replica: eligibility checks must not miss a recently-issued request row.
       const row = (await (tx || db)(TableName.CertificateRequests)
         .where(`${TableName.CertificateRequests}.certificateId`, certId)
         .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc")
-        .select(`${TableName.CertificateRequests}.enrollmentType`, `${TableName.CertificateRequests}.csr`)
-        .first()) as { enrollmentType?: string | null; csr?: string | null } | undefined;
+        .select(
+          `${TableName.CertificateRequests}.enrollmentType`,
+          `${TableName.CertificateRequests}.csr`,
+          `${TableName.CertificateRequests}.commonName`,
+          `${TableName.CertificateRequests}.organization`,
+          `${TableName.CertificateRequests}.organizationalUnit`,
+          `${TableName.CertificateRequests}.country`,
+          `${TableName.CertificateRequests}.state`,
+          `${TableName.CertificateRequests}.locality`,
+          `${TableName.CertificateRequests}.domainComponents`,
+          `${TableName.CertificateRequests}.altNames`
+        )
+        .first()) as Partial<TOriginatingCertificateRequest> | undefined;
 
-      return { enrollmentType: row?.enrollmentType ?? null, csr: row?.csr ?? null };
+      return {
+        exists: Boolean(row),
+        enrollmentType: row?.enrollmentType ?? null,
+        csr: row?.csr ?? null,
+        commonName: row?.commonName ?? null,
+        organization: row?.organization ?? null,
+        organizationalUnit: row?.organizationalUnit ?? null,
+        country: row?.country ?? null,
+        state: row?.state ?? null,
+        locality: row?.locality ?? null,
+        domainComponents: row?.domainComponents ?? null,
+        altNames: row?.altNames ?? null
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Get originating request by cert id" });
     }

@@ -175,17 +175,17 @@ describe("extractExternallyIssuedCertificateFields", () => {
       extensions
     });
 
-    return Buffer.from(cert.toString("pem"));
+    return cert;
   };
 
   test("records every extension the certificate carries, flagging the ones the request never asked for", async () => {
     const requestedValue = Buffer.from([0x0c, 0x07, 0x4d, 0x61, 0x63, 0x68, 0x69, 0x6e, 0x65]);
-    const pem = await buildIssuedCert([
+    const issued = await buildIssuedCert([
       new x509.Extension(TEMPLATE_NAME_OID, false, requestedValue),
       new x509.Extension(SCT_LIST_OID, false, Buffer.from([0x04, 0x02, 0x00, 0x42]))
     ]);
 
-    const fields = extractExternallyIssuedCertificateFields(pem, [
+    const fields = extractExternallyIssuedCertificateFields(issued, [
       { oid: TEMPLATE_NAME_OID, critical: false, value: requestedValue.toString("base64") }
     ]);
 
@@ -196,14 +196,14 @@ describe("extractExternallyIssuedCertificateFields", () => {
   });
 
   test("reads the subject, algorithms and subject alternative names the CA actually issued", async () => {
-    const pem = await buildIssuedCert([
+    const issued = await buildIssuedCert([
       new x509.SubjectAlternativeNameExtension([
         { type: "dns", value: "issued.example.com" },
         { type: "dns", value: "added-by-ca.example.com" }
       ])
     ]);
 
-    const fields = extractExternallyIssuedCertificateFields(pem);
+    const fields = extractExternallyIssuedCertificateFields(issued);
 
     expect(fields.commonName).toBe("issued.example.com");
     expect(fields.subjectOrganization).toBe("Issued Corp");
@@ -214,7 +214,7 @@ describe("extractExternallyIssuedCertificateFields", () => {
 
   // Otherwise each renewal asks for the duplicate again and the list grows until it overruns 4096.
   test("collapses a repeated subject alternative name so renewals cannot accumulate copies", async () => {
-    const pem = await buildIssuedCert([
+    const issued = await buildIssuedCert([
       new x509.SubjectAlternativeNameExtension([
         { type: "dns", value: "issued.example.com" },
         { type: "dns", value: "added.example.com" },
@@ -222,35 +222,30 @@ describe("extractExternallyIssuedCertificateFields", () => {
       ])
     ]);
 
-    const fields = extractExternallyIssuedCertificateFields(pem);
+    const fields = extractExternallyIssuedCertificateFields(issued);
 
     expect(fields.altNames).toBe("issued.example.com,added.example.com");
   });
 
-  // Records the names that fit rather than dropping the list, and never cuts a name in half, so the
-  // stored value is always a valid prefix of what the authority issued.
-  test("keeps as many whole subject alternative names as the column holds", async () => {
+  // The column is text, so a long list from a public CA is recorded in full rather than trimmed to
+  // whatever fit. Requests stay bounded at 4096 characters by the policy schema.
+  test("records every subject alternative name, past the old column width", async () => {
     const many = Array.from({ length: 200 }, (_, index) => ({
       type: "dns" as const,
       value: `host-${String(index).padStart(3, "0")}.${"padding".repeat(4)}.example.com`
     }));
-    const pem = await buildIssuedCert([new x509.SubjectAlternativeNameExtension(many)]);
+    const issued = await buildIssuedCert([new x509.SubjectAlternativeNameExtension(many)]);
 
-    const fields = extractExternallyIssuedCertificateFields(pem);
-    const kept = fields.altNames!.split(",");
+    const fields = extractExternallyIssuedCertificateFields(issued);
 
     expect(many.map((san) => san.value).join(",").length).toBeGreaterThan(4096);
-    expect(fields.altNames!.length).toBeLessThanOrEqual(4096);
-    expect(kept.length).toBeGreaterThan(0);
-    expect(kept.length).toBeLessThan(many.length);
-    // every kept entry is a whole name, in order, taken from the front of the issued list
-    expect(kept).toEqual(many.slice(0, kept.length).map((san) => san.value));
+    expect(fields.altNames).toBe(many.map((san) => san.value).join(","));
   });
 
   test("leaves the requested subject alternative names in place when the certificate carries none", async () => {
-    const pem = await buildIssuedCert([new x509.BasicConstraintsExtension(false)]);
+    const issued = await buildIssuedCert([new x509.BasicConstraintsExtension(false)]);
 
-    const fields = extractExternallyIssuedCertificateFields(pem);
+    const fields = extractExternallyIssuedCertificateFields(issued);
 
     expect(fields).not.toHaveProperty("altNames");
     expect({ altNames: "requested.example.com", ...fields }.altNames).toBe("requested.example.com");

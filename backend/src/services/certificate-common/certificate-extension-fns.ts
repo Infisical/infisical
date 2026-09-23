@@ -16,6 +16,7 @@ import {
   RESERVED_CERT_EXTENSION_OID_MESSAGES,
   RESERVED_CERT_EXTENSION_OID_PREFIXES
 } from "./certificate-constants";
+import { TCertificateSource, toX509Certificate } from "./certificate-parse-utils";
 
 export type TIssuedCustomExtension = {
   oid: string;
@@ -267,18 +268,12 @@ export const describeCustomExtensionValue = (oid: string, base64Value: string): 
   }
 };
 
-export const parseCustomExtensionsFromCertificate = (
-  source: Buffer | x509.X509Certificate
-): TIssuedCustomExtension[] => {
+export const parseCustomExtensionsFromCertificate = (source: TCertificateSource): TIssuedCustomExtension[] => {
   let certificate: x509.X509Certificate;
-  if (source instanceof x509.X509Certificate) {
-    certificate = source;
-  } else {
-    try {
-      certificate = new x509.X509Certificate(source);
-    } catch {
-      return [];
-    }
+  try {
+    certificate = toX509Certificate(source);
+  } catch {
+    return [];
   }
 
   return certificate.extensions
@@ -298,28 +293,28 @@ const withDisplayValue = (extensions: TIssuedCustomExtension[]): TIssuedCustomEx
   }));
 
 export const parseIssuedCustomExtensions = (
-  certificateDer: Buffer,
+  certificate: TCertificateSource,
   resolved?: TResolvedCustomExtension[]
 ): TIssuedCustomExtension[] => {
   if (!resolved?.length) return [];
   const resolvedOids = new Set(resolved.map((extension) => extension.oid));
 
   return withDisplayValue(
-    parseCustomExtensionsFromCertificate(certificateDer).filter((extension) => resolvedOids.has(extension.oid))
+    parseCustomExtensionsFromCertificate(certificate).filter((extension) => resolvedOids.has(extension.oid))
   );
 };
 
-export const parseImportedCustomExtensions = (certificateDer: Buffer): TIssuedCustomExtension[] =>
-  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer));
+export const parseImportedCustomExtensions = (certificate: TCertificateSource): TIssuedCustomExtension[] =>
+  withDisplayValue(parseCustomExtensionsFromCertificate(certificate));
 
 export const parseExternallyIssuedCustomExtensions = (
-  certificateDer: Buffer,
+  certificate: TCertificateSource,
   requested?: TResolvedCustomExtension[]
 ): TIssuedCustomExtension[] => {
   const requestedByOid = new Map((requested ?? []).map((extension) => [extension.oid, extension]));
 
   return withDisplayValue(
-    parseCustomExtensionsFromCertificate(certificateDer).map((extension) => {
+    parseCustomExtensionsFromCertificate(certificate).map((extension) => {
       const asked = requestedByOid.get(extension.oid);
       const issuedAsAsked = asked && asked.value === extension.value && asked.critical === extension.critical;
 
@@ -354,12 +349,12 @@ export const findCsrCustomExtensionMismatch = (
 };
 
 export const findUnsatisfiedCustomExtensionOids = (
-  certificateDer: Buffer,
+  certificate: Buffer,
   resolved?: TResolvedCustomExtension[]
 ): string[] => {
   if (!resolved?.length) return [];
   const issuedByOid = new Map(
-    parseCustomExtensionsFromCertificate(certificateDer).map((extension) => [extension.oid, extension])
+    parseCustomExtensionsFromCertificate(certificate).map((extension) => [extension.oid, extension])
   );
   return resolved
     .filter((extension) => {
@@ -373,33 +368,23 @@ const readStoredCustomExtensions = (stored: unknown): TResolvedCustomExtension[]
   (stored as TResolvedCustomExtension[] | null) ?? [];
 
 export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
-  readStoredCustomExtensions(stored).flatMap((extension) => {
-    const value = describeCustomExtensionValue(extension.oid, extension.value);
-    if (value === null) {
-      throw new BadRequestError({
-        message: `Custom extension '${extension.oid}' on this certificate cannot be read back into a value a new request can carry, so it cannot be reissued. Issue a new certificate, or renew from a certificate signing request that carries the extension.`
-      });
-    }
-    return [
-      {
-        oid: extension.oid,
-        value,
-        critical: extension.critical
-      }
-    ];
-  });
-
-export const toCarriedCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
   readStoredCustomExtensions(stored)
     .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
     .flatMap((extension) => {
       const value = describeCustomExtensionValue(extension.oid, extension.value);
       if (value === null) {
+        if (extension.critical) {
+          throw new BadRequestError({
+            message: `Critical custom extension '${extension.oid}' on this certificate cannot be read back into a value a new request can carry, so reissuing it would drop a constraint relying parties must enforce. Issue a new certificate, or renew from a certificate signing request that carries the extension.`
+          });
+        }
+
         logger?.warn(
-          `Custom extension '${extension.oid}' cannot be read back into a value a request can carry, so the renewal omits it`
+          `Custom extension '${extension.oid}' cannot be read back into a value a request can carry, so it is omitted`
         );
         return [];
       }
+
       return [{ oid: extension.oid, value, critical: extension.critical }];
     });
 

@@ -6,15 +6,13 @@ import RE2 from "re2";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import {
-  PKI_ALT_NAMES_COLUMN_MAX_LENGTH,
-  SUPPORTED_GENERAL_NAME_TYPES
-} from "@app/services/certificate-common/certificate-constants";
+import { SUPPORTED_GENERAL_NAME_TYPES } from "@app/services/certificate-common/certificate-constants";
 import {
   parseExternallyIssuedCustomExtensions,
   parseIssuedCustomExtensions,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { TCertificateSource, toX509Certificate } from "@app/services/certificate-common/certificate-parse-utils";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
@@ -261,9 +259,9 @@ export const normalizeThumbprint = (thumbprint: string) => {
  * Parse and extract subject, fingerprints, and basicConstraints from a decrypted certificate.
  * Returns empty object on failure (graceful degradation).
  */
-export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCertificateBody => {
+export const parseCertificateBody = (source: TCertificateSource): TParsedCertificateBody => {
   try {
-    const certObj = new x509.X509Certificate(decryptedCertificate);
+    const certObj = toX509Certificate(source);
 
     // Extract subject DN attributes directly from the x509 Name object
     const parsedDn = extractDnParts(certObj.subjectName);
@@ -348,10 +346,10 @@ const ECDSA_SIGNATURE_ALGORITHMS: Record<string, CertSignatureAlgorithm> = {
 // Import accepts certificates the issuance enums do not cover, such as Ed25519 and secp256k1, so an
 // unrecognised algorithm is recorded under its own name rather than rejected. The UI falls back to
 // the raw value when it is not one it has a label for.
-export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
+export const extractCertificateAlgorithms = (source: TCertificateSource) => {
   let certObj: x509.X509Certificate;
   try {
-    certObj = new x509.X509Certificate(decryptedCertificate);
+    certObj = toX509Certificate(source);
   } catch {
     return {};
   }
@@ -374,7 +372,7 @@ export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
   }
 
   let signatureAlgorithm: string = signature.name;
-  if (signature.name.startsWith("RSA")) {
+  if (signature.name === "RSASSA-PKCS1-v1_5") {
     signatureAlgorithm = RSA_SIGNATURE_ALGORITHMS[hashName] ?? `RSA-${hashName || "UNKNOWN"}`;
   } else if (signature.name === "ECDSA") {
     signatureAlgorithm = ECDSA_SIGNATURE_ALGORITHMS[hashName] ?? `ECDSA-${hashName || "UNKNOWN"}`;
@@ -387,10 +385,10 @@ export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
  * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
  * Returns all parsed fields as separate properties.
  */
-export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?: TResolvedCustomExtension[]) => {
-  const parsed = parseCertificateBody(decryptedCertificate);
+export const extractCertificateFields = (source: TCertificateSource, resolved?: TResolvedCustomExtension[]) => {
+  const parsed = parseCertificateBody(source);
 
-  const issuedCustomExtensions = parseIssuedCustomExtensions(decryptedCertificate, resolved);
+  const issuedCustomExtensions = parseIssuedCustomExtensions(source, resolved);
 
   return {
     // Subject attributes
@@ -422,49 +420,35 @@ export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?
   };
 };
 
-const extractIssuedAltNames = (decryptedCertificate: Buffer, serialNumber?: string): string | null => {
+const extractIssuedAltNames = (issued: x509.X509Certificate): string | null => {
   try {
-    const sanExtension = new x509.X509Certificate(decryptedCertificate).getExtension("2.5.29.17");
+    const sanExtension = issued.getExtension("2.5.29.17");
     if (!sanExtension) return null;
 
+    const { items } = new x509.GeneralNames(sanExtension.value);
     const values = [
-      ...new Set(
-        new x509.GeneralNames(sanExtension.value).items
-          .filter((item) => SUPPORTED_GENERAL_NAME_TYPES.has(item.type))
-          .map((item) => item.value)
-      )
+      ...new Set(items.filter((item) => SUPPORTED_GENERAL_NAME_TYPES.has(item.type)).map((item) => item.value))
     ];
 
-    if (!values.length) return null;
-
-    const kept: string[] = [];
-    let length = 0;
-    for (const value of values) {
-      const next = length ? length + 1 + value.length : value.length;
-      if (next > PKI_ALT_NAMES_COLUMN_MAX_LENGTH) break;
-      kept.push(value);
-      length = next;
-    }
-
-    if (kept.length < values.length) {
+    if (items.length > values.length) {
       logger?.warn(
-        `Issued certificate carries ${values.length} subject alternative names, over the ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} characters the column holds, so only the first ${kept.length} were recorded [serialNumber=${serialNumber ?? "unknown"}]`
+        `Issued certificate carries ${items.length - values.length} subject alternative name(s) of a kind this column cannot hold, so they were not recorded [serialNumber=${issued.serialNumber}]`
       );
     }
 
-    return kept.length ? kept.join(",") : null;
+    return values.length ? values.join(",") : null;
   } catch (err) {
     logger?.warn(
       err,
-      `Could not read the subject alternative names off an issued certificate [serialNumber=${serialNumber ?? "unknown"}]`
+      `Could not read the subject alternative names off an issued certificate [serialNumber=${issued.serialNumber}]`
     );
     return null;
   }
 };
 
-const safeExtractCertificateAlgorithms = (decryptedCertificate: Buffer, serialNumber?: string) => {
+const safeExtractCertificateAlgorithms = (issued: x509.X509Certificate) => {
   try {
-    const algorithms = extractCertificateAlgorithms(decryptedCertificate);
+    const algorithms = extractCertificateAlgorithms(issued);
 
     const offEnum = [
       !!algorithms.keyAlgorithm && !KEY_ALGORITHM_VALUES.has(algorithms.keyAlgorithm) && algorithms.keyAlgorithm,
@@ -475,7 +459,7 @@ const safeExtractCertificateAlgorithms = (decryptedCertificate: Buffer, serialNu
 
     if (offEnum.length) {
       logger?.warn(
-        `Issued certificate uses ${offEnum.join(" and ")}, which is outside the algorithms this platform can request, so a renewal cannot ask for it again [serialNumber=${serialNumber ?? "unknown"}]`
+        `Issued certificate uses ${offEnum.join(" and ")}, which is outside the algorithms this platform can request, so a renewal cannot ask for it again [serialNumber=${issued.serialNumber}]`
       );
     }
 
@@ -483,24 +467,26 @@ const safeExtractCertificateAlgorithms = (decryptedCertificate: Buffer, serialNu
   } catch (err) {
     logger?.warn(
       err,
-      `Could not name the algorithms on an issued certificate, so the requested ones stand [serialNumber=${serialNumber ?? "unknown"}]`
+      `Could not name the algorithms on an issued certificate, so the requested ones stand [serialNumber=${issued.serialNumber}]`
     );
     return {};
   }
 };
 
 export const extractExternallyIssuedCertificateFields = (
-  decryptedCertificate: Buffer,
-  requestedCustomExtensions?: TResolvedCustomExtension[],
-  serialNumber?: string
+  issued: x509.X509Certificate,
+  requestedCustomExtensions?: TResolvedCustomExtension[]
 ) => {
-  const issuedCustomExtensions = parseExternallyIssuedCustomExtensions(decryptedCertificate, requestedCustomExtensions);
-  const altNames = extractIssuedAltNames(decryptedCertificate, serialNumber);
+  const issuedCustomExtensions = parseExternallyIssuedCustomExtensions(issued, requestedCustomExtensions);
+  const altNames = extractIssuedAltNames(issued);
 
   return {
-    ...extractCertificateFields(decryptedCertificate),
-    ...safeExtractCertificateAlgorithms(decryptedCertificate, serialNumber),
+    ...extractCertificateFields(issued),
+    ...safeExtractCertificateAlgorithms(issued),
     ...(altNames !== null && { altNames }),
+    serialNumber: issued.serialNumber,
+    notBefore: issued.notBefore,
+    notAfter: issued.notAfter,
     customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null
   };
 };

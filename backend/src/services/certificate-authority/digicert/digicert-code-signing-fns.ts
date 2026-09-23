@@ -325,11 +325,7 @@ export const digiCertCodeSigningFns = ({
 
     const certObj = new x509.X509Certificate(leaf);
     const issued = extractIssuedCertificateFields(certObj);
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(new Uint8Array(certObj.rawData)),
-      undefined,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     const existingCert = await certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber });
     if (existingCert) {
@@ -358,9 +354,6 @@ export const digiCertCodeSigningFns = ({
           status: CertStatus.ACTIVE,
           friendlyName: issued.commonName || "",
           commonName: issued.commonName || "",
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyUsages: issued.keyUsages,
           extendedKeyUsages: issued.extendedKeyUsages,
           keyAlgorithm: keyAlgorithm ?? undefined,

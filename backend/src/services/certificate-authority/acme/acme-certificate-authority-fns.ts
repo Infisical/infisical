@@ -612,7 +612,7 @@ export const executeAcmeOrder = async (
       })
     : { cipherTextBlob: undefined };
 
-  const parsedFields = extractExternallyIssuedCertificateFields(Buffer.from(leafCert), undefined, certObj.serialNumber);
+  const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
@@ -624,9 +624,6 @@ export const executeAcmeOrder = async (
         friendlyName: parsedFields.commonName ?? commonName,
         commonName,
         altNames: altNames?.join(","),
-        serialNumber: certObj.serialNumber,
-        notBefore: certObj.notBefore,
-        notAfter: certObj.notAfter,
         keyUsages,
         extendedKeyUsages,
         keyAlgorithm,

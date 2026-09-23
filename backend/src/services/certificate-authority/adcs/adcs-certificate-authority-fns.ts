@@ -560,11 +560,7 @@ export const ADCSCertificateAuthorityFns = ({
     let certificateId: string;
 
     const unsatisfiedOids = findUnsatisfiedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(cleanedCertificatePem),
-      customExtensions,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj, customExtensions);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -575,9 +571,6 @@ export const ADCSCertificateAuthorityFns = ({
           friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyUsages,
           extendedKeyUsages,
           keyAlgorithm,

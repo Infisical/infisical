@@ -254,7 +254,16 @@ describe("CertificateV3Service", () => {
     vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(null);
     vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
       enrollmentType: null,
-      csr: null
+      csr: null,
+      exists: true,
+      commonName: null,
+      organization: null,
+      organizationalUnit: null,
+      country: null,
+      state: null,
+      locality: null,
+      domainComponents: null,
+      altNames: null
     });
 
     mockCertificateIssuanceQueue.queueCertificateIssuance.mockResolvedValue(undefined);
@@ -2806,7 +2815,16 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue(null as any);
       vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
         enrollmentType: EnrollmentType.API,
-        csr: null
+        csr: null,
+        exists: true,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        domainComponents: null,
+        altNames: null
       });
 
       vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
@@ -2828,7 +2846,16 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
         enrollmentType: EnrollmentType.ACME,
-        csr: null
+        csr: null,
+        exists: true,
+        commonName: null,
+        organization: null,
+        organizationalUnit: null,
+        country: null,
+        state: null,
+        locality: null,
+        domainComponents: null,
+        altNames: null
       });
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 

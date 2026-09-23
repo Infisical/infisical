@@ -669,11 +669,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       plainText: Buffer.from(privateKeyPem)
     });
 
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(certificatePem),
-      undefined,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     const externalMetadata = ExternalMetadataSchema.parse({
       type: CaType.AWS_ACM_PUBLIC_CA,
@@ -696,9 +692,6 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
           friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.map((san) => san.value).join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyAlgorithm,
           projectId: ca.projectId,
           externalMetadata,

@@ -845,11 +845,7 @@ export const VenafiTppCertificateAuthorityFns = ({
 
       let certificateId: string;
 
-      const parsedFields = extractExternallyIssuedCertificateFields(
-        Buffer.from(cleanedCertificatePem),
-        undefined,
-        certObj.serialNumber
-      );
+      const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
       await certificateDAL.transaction(async (tx) => {
         const cert = await certificateDAL.create(
@@ -860,9 +856,6 @@ export const VenafiTppCertificateAuthorityFns = ({
             friendlyName: parsedFields.commonName ?? commonName,
             commonName,
             altNames: altNames.map((san) => san.value).join(","),
-            serialNumber: certObj.serialNumber,
-            notBefore: certObj.notBefore,
-            notAfter: certObj.notAfter,
             keyUsages,
             extendedKeyUsages,
             keyAlgorithm,

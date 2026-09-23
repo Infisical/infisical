@@ -826,11 +826,7 @@ export const AwsPcaCertificateAuthorityFns = ({
 
     let certificateId: string;
 
-    const parsedFields = extractExternallyIssuedCertificateFields(
-      Buffer.from(certificatePem),
-      customExtensions,
-      certObj.serialNumber
-    );
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj, customExtensions);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -841,9 +837,6 @@ export const AwsPcaCertificateAuthorityFns = ({
           friendlyName: parsedFields.commonName ?? commonName,
           commonName,
           altNames: altNames.map((san) => san.value).join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
           keyUsages,
           extendedKeyUsages,
           keyAlgorithm,

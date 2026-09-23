@@ -22,11 +22,7 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
-import {
-  isIssuerGeneratedExtensionOid,
-  toCarriedCustomExtensions,
-  TRequestCustomExtension
-} from "../certificate-common/certificate-extension-fns";
+import { toRequestCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
@@ -87,16 +83,6 @@ type TRenewalAttributeDescriptor<K extends keyof TRenewalAttributes> = {
 };
 
 const text = (value: string | null | undefined) => value ?? "";
-
-const describeStoredCustomExtensions = (stored: unknown): TRequestCustomExtension[] => {
-  try {
-    return toCarriedCustomExtensions(stored);
-  } catch {
-    return ((stored as { oid: string; issuerAdded?: boolean }[] | null) ?? [])
-      .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
-      .map(({ oid }) => ({ oid, value: "" }));
-  }
-};
 
 const customExtensionList = (extensions: TRequestCustomExtension[] | null | undefined) =>
   (extensions ?? [])
@@ -195,7 +181,7 @@ const RENEWAL_ATTRIBUTES: { [K in keyof TRenewalAttributes]-?: TRenewalAttribute
     label: "custom extensions",
     csrEditable: true,
     apply: (value) => ({ customExtensions: value }),
-    current: (original) => customExtensionList(describeStoredCustomExtensions(original.customExtensions)),
+    current: (original) => customExtensionList(toRequestCustomExtensions(original.customExtensions)),
     issued: (request) => customExtensionList(request.customExtensions)
   }
 };
