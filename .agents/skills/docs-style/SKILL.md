@@ -22,8 +22,8 @@ shared between integration pages work.
 ## Before you write
 
 Ask the engineer for the facts before you draft anything. Only the engineer knows how the
-feature works, and a draft written without those facts sounds plausible but tells the reader
-nothing useful.
+feature works. If you write a draft without those facts, the draft sounds plausible but tells
+the reader nothing useful.
 
 A model is useful for a page's structure: grouping and ordering the sections, and noticing a
 missing section. A model isn't good at writing the sentences. A page with a model-written

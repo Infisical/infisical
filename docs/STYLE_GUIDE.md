@@ -37,7 +37,7 @@ Then explain the "how."
 
 **Good:** A short opening paragraph that explains what the feature is and why it matters, followed by the steps.
 
-A reader who opens the page without knowing anything about the feature should understand what the page covers after the first few sentences.
+If a reader opens the page without knowing anything about the feature, the first few sentences should tell them what the page covers.
 
 ### Audience callouts
 
@@ -57,9 +57,9 @@ An audience callout tells readers right away whether the page is meant for them.
 
 ## 2. Write for users, not implementers
 
-A reader who has never seen the Infisical codebase should be able to understand every page.
+Write every page so that readers understand it even if they've never seen the Infisical codebase.
 
-**The test:** Would a user who has never seen the Infisical code understand this sentence? If the answer is no, rewrite the sentence.
+**The test:** If a user had never seen the Infisical code, would they understand this sentence? If the answer is no, rewrite the sentence.
 
 Describe what users can do and what happens when they do it, not how Infisical is built. Leave out implementation details such as internal API endpoints, database schemas, internal service names, and explanations of how a feature works internally.
 
@@ -145,7 +145,7 @@ If a guide has more than one stage, give each stage a heading in the form `## St
 </Steps>
 ```
 
-Take button names, tab names, and the order of screens from the current product, not from an older docs page. Button names, tab names, and the order of screens change between releases, so a guide copied from another guide repeats any mistakes in the older guide.
+Take button names, tab names, and the order of screens from the current product, not from an older docs page. Button names, tab names, and the order of screens change between releases, so if you copy a guide from another guide, the copy repeats any mistakes in the older guide.
 
 ### Alternative approaches
 
@@ -247,7 +247,7 @@ Include a code example only when the example helps the reader understand or comp
 - Use realistic values where possible (actual domain names, plausible configs)
 - Show the expected output when the output helps readers confirm the command worked
 - Keep examples short, showing only what the task needs
-- Check that every endpoint in an example exists, accepts the credential the example sends (an endpoint that only accepts user sessions rejects a machine identity token), and has a reference page with content
+- Check that every endpoint in an example exists, accepts the credential the example sends (if an endpoint only accepts user sessions, it rejects a machine identity token), and has a reference page with content
 - Pick endpoints that work for every reader of the page; a getting-started example shouldn't call an endpoint that only works for one product unless the page is about that product
 
 ```bash
@@ -318,7 +318,7 @@ If a reader has to look back to find out what "it" or "they" refers to, repeat t
 
 ### Give every transitive verb its object
 
-Verbs like request, create, return, send, and apply need an object that says what is requested, created, returned, sent, or applied. Without the object, the reader has to guess, and a missing object often means the writer hadn't decided that detail yet.
+Verbs like request, create, return, send, and apply need an object that says what is requested, created, returned, sent, or applied. Without the object, the reader has to guess. If the object is missing, the writer often hadn't decided that detail yet.
 
 **Instead of:** You create the service in your Infisical dashboard, and the agent requests.
 
@@ -333,6 +333,20 @@ Calling something an exception, a special case, or a caveat warns the reader tha
 **Instead of:** Folder access is the exception.
 
 **Write:** Folder access doesn't inherit. A role on a parent folder gives no access to the folders inside it.
+
+### Write conditions as "if" clauses
+
+If a sentence applies only in some cases, state the case in an "if" clause. Don't put the condition inside a made-up subject, such as "a secret that already exists" or "a reader who opens the page". With a made-up subject, the reader has to work out that the sentence is a condition, and has to read a long noun phrase before reaching the verb.
+
+**Instead of:** A secret that already exists in the schema stays owned by the role that created it.
+
+**Write:** If a secret already exists in the schema, it stays owned by the role that created it.
+
+**Instead of:** An endpoint that only accepts user sessions rejects a machine identity token.
+
+**Write:** If an endpoint only accepts user sessions, it rejects a machine identity token.
+
+A clause like "that already exists" is fine when it says which thing you mean instead of stating a condition, as in "Select the role that owns the secrets."
 
 ### Split mid-sentence detours
 
@@ -400,7 +414,7 @@ If a reader can parse a sentence two ways, it makes the sentence harder to under
 
 1. A noun placed directly before the verb, so the noun and the verb read as one phrase. In "Any endpoint that returns a list of resources paginates", the words "resources paginates" read as one phrase. Don't shorten a sentence so much that its nouns and verbs end up next to each other like this. A clear sentence is better than a short one.
 
-2. A first word that can be either a noun or a verb. A reader who sees "List endpoints" at the start of a sentence reads the words as an instruction to list endpoints until the sentence's real verb appears. A reader who doesn't know the term "list endpoint" has no way to tell sooner.
+2. A first word that can be either a noun or a verb. If a sentence starts with "List endpoints", readers take the words as an instruction to list endpoints until the sentence's real verb appears. If readers don't know the term "list endpoint", they have no way to tell sooner.
 
 **Instead of:** List endpoints in the Infisical API return one page of results per request.
 
@@ -414,7 +428,7 @@ Don't add asides to the reader that make a sentence friendlier without adding in
 
 **Write:** The response includes `totalCount`, which you can use to tell when you've read every page.
 
-Do address the reader when the reader's situation decides whether a sentence applies to them. A condition written about the reader ("If you self-host Infisical") tells readers directly whether the sentence applies to them. The same condition written about an abstract noun ("On a self-hosted instance") leaves readers to work out whether the condition includes them.
+Do address the reader when the reader's situation decides whether a sentence applies to them. If you write the condition about the reader ("If you self-host Infisical"), readers can tell right away whether the sentence applies to them. If you write the same condition about an abstract noun ("On a self-hosted instance"), readers have to work out whether the condition includes them.
 
 **Instead of:** On a self-hosted or dedicated instance, replace the host.
 
@@ -534,7 +548,7 @@ Use a `## Prerequisites` section before the main content, even when the list is 
 
 Don't put page-level prerequisites in `<Info>` or other callouts. Use `<Note>` only for a requirement that applies to one step, not to the whole page.
 
-**Make each prerequisite something the reader can check before they start.** A reader at the top of the page hasn't read the steps yet, so the reader can't check a prerequisite that depends on the steps.
+**Make each prerequisite something the reader can check before they start.** At the top of the page, the reader hasn't read the steps yet. If a prerequisite depends on the steps, the reader can't check it.
 
 **Instead of:** A role with the permissions required by the endpoints called in this guide
 
@@ -578,7 +592,7 @@ Choose a page's structure based on what the page is for. Pages with different pu
 `sidebarTitle` is optional. Add a `sidebarTitle` when the page title is too long for the sidebar or
 doesn't make sense on its own in the sidebar. Without a `sidebarTitle`, the sidebar shows the page title.
 
-**Headings name the topic in words a newcomer recognizes.** Readers often scan the headings before anything else on a page. A heading built around a code or a term the reader doesn't know yet won't help the reader find the section they need.
+**Headings name the topic in words a newcomer recognizes.** Readers often scan the headings before anything else on a page. If a heading is built around a code or a term the reader doesn't know yet, the heading won't help the reader find the section they need.
 
 **Instead of:** `## 429 response`
 
@@ -701,8 +715,8 @@ em dashes in one paragraph, "click" and "tap" where the verb should be "select",
 forms of common contractions. Vale doesn't check the `description` frontmatter field, so check
 the description yourself when you review a page.
 
-Every rule except the em dash rule reports at error level, so a finding from any other rule,
-including "click" and "tap" and the full forms of contractions, fails the run. The em dash rule
+Every rule except the em dash rule reports at error level, so the run fails if any other rule
+reports a problem, including "click" and "tap" and the full forms of contractions. The em dash rule
 reports at warning level and doesn't change the exit code, so read the output Vale prints, not
 just the exit code.
 

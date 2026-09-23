@@ -54,8 +54,8 @@ version.
 
 Both targets call `docs/scripts/lint-docs.sh`, and so does the `Check docs style` GitHub
 workflow, which runs only on pull requests that touch `docs/` and lints the files the pull
-request changed. A branch that edits the configuration itself -- `.vale.ini`, a file under
-`.vale/styles/`, `.vale-version`, or the script -- is linted in full instead, since a rule
+request changed. If a branch edits the configuration itself -- `.vale.ini`, a file under
+`.vale/styles/`, `.vale-version`, or the script -- every page is linted instead, since a rule
 change reaches pages the branch never touched. Local and CI results therefore match. You can
 also run `vale <path>` directly on a subset. A run fails only on errors; warnings and
 suggestions are printed but do not block.
@@ -72,7 +72,7 @@ placeholders like `foo`, em dashes piling up in one paragraph, "click" and "tap"
 verb should be "select", and the full forms of common contractions.
 
 **Every rule except `Infisical.EmDashes` is at error level**, including `Infisical.UIActions`
-and `Infisical.Contractions`, so a finding from either one fails the run. `Infisical.EmDashes`
+and `Infisical.Contractions`, so the run fails if either one reports a finding. `Infisical.EmDashes`
 reports at warning level: it is printed but does not change the exit code. Neither
 `Infisical.UIActions` nor `Infisical.Contractions` is safe to fix with `vale --fix`. "Click" as a
 noun and the deliberately formal phrasing in some reference tables both need a person, so fix
