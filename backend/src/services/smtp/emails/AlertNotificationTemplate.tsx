@@ -119,8 +119,8 @@ AlertNotificationTemplate.PreviewProps = {
       id: "ua-client-secret:1f0c3a5e-1111-4c2a-9f10-8b7d6e5a4c31",
       title: "ci-runner",
       fields: [
-        { label: "Credential Name", value: "ci-secret" },
-        { label: "Credential Type", value: "Universal Auth Client Secret" },
+        { label: "Secret Name", value: "ci-secret" },
+        { label: "Secret Type", value: "Universal Auth Client Secret" },
         { label: "Expires", value: "November 12, 2025, 02:30 PM UTC" }
       ]
     },
@@ -128,8 +128,8 @@ AlertNotificationTemplate.PreviewProps = {
       id: "token-auth-token:2b9d4f7c-2222-4e83-b6a1-5c4e3d2b1a09",
       title: "deploy-bot",
       fields: [
-        { label: "Credential Name", value: "release-token" },
-        { label: "Credential Type", value: "Token Auth Access Token" },
+        { label: "Secret Name", value: "release-token" },
+        { label: "Secret Type", value: "Token Auth Access Token" },
         { label: "Expires", value: "November 10, 2025, 09:00 AM UTC" }
       ]
     }

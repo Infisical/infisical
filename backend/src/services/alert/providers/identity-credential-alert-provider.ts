@@ -381,8 +381,8 @@ export const identityCredentialAlertProviderFactory = ({
         id: targetId(target),
         title: target.identityName,
         fields: [
-          { label: "Credential Name", value: credentialName(target) },
-          { label: "Credential Type", value: CREDENTIAL_TYPE_LABEL[target.credentialType] },
+          { label: "Secret Name", value: credentialName(target) },
+          { label: "Secret Type", value: CREDENTIAL_TYPE_LABEL[target.credentialType] },
           { label: "Expires", value: formatUtcDate(target.expiresAt) }
         ]
       }))

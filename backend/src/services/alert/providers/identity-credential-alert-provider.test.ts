@@ -487,8 +487,8 @@ describe("identity credential alert provider", () => {
     const item = payload.items[0];
     expect(item.title).toBe("ci-runner");
     expect(item.fields?.some((f) => f.label === "Days Until Expiry")).toBe(false);
-    expect(item.fields?.find((f) => f.label === "Credential Name")?.value).toBe("ci-secret");
-    expect(item.fields?.find((f) => f.label === "Credential Type")?.value).toBe("Universal Auth Client Secret");
+    expect(item.fields?.find((f) => f.label === "Secret Name")?.value).toBe("ci-secret");
+    expect(item.fields?.find((f) => f.label === "Secret Type")?.value).toBe("Universal Auth Client Secret");
 
     const expires = item.fields?.find((f) => f.label === "Expires")?.value;
     expect(expires).toContain(String(expiresAt.getUTCFullYear()));
@@ -567,10 +567,10 @@ describe("identity credential alert provider", () => {
 
     expect(payload.severity).toBe("error"); // 10 days out
     expect(payload.summary).toBe("2 machine identity authentication(s) expiring within 30 days");
-    expect(payload.items[0].fields?.find((f) => f.label === "Credential Name")?.value).toBe("release-token");
-    expect(payload.items[0].fields?.find((f) => f.label === "Credential Type")?.value).toBe("Token Auth Access Token");
+    expect(payload.items[0].fields?.find((f) => f.label === "Secret Name")?.value).toBe("release-token");
+    expect(payload.items[0].fields?.find((f) => f.label === "Secret Type")?.value).toBe("Token Auth Access Token");
     expect(payload.items[1].id).toBe("token-auth-token:tok-2");
-    expect(payload.items[1].fields?.find((f) => f.label === "Credential Name")?.value).toBe("tok-2");
+    expect(payload.items[1].fields?.find((f) => f.label === "Secret Name")?.value).toBe("tok-2");
   });
 
   test("buildViewUrl points to the org identities tab for an org-scoped alert", async () => {

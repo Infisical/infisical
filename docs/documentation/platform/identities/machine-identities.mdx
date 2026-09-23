@@ -104,6 +104,8 @@ A client secret is only monitored when its TTL is greater than `0`, since one cr
 
 A Token Auth token is watched until its access token TTL runs out, counted from the moment the token was created. That's when the token stops working unless the workload renews it. Infisical doesn't track renewals, so a token that is renewed still triggers this alert on that first expiry. Revoked tokens are skipped.
 
+Unlike a client secret, a Token Auth token with an access token TTL of `0` still expires. Every access token is capped at a maximum lifetime, 90 days by default, so a token with a TTL of `0` or a TTL longer than the cap triggers this alert as it approaches that cap. Self-hosted instances can change the cap with the `MAX_MACHINE_IDENTITY_TOKEN_AGE` environment variable.
+
 <Note>
   For Universal Auth, the alert watches the client secret, not the access tokens minted by logging
   in with it. Those access tokens are short-lived by design and are renewed programmatically. See
@@ -172,8 +174,8 @@ Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents
         "id": "ua-client-secret:cff39386-bbe5-44eb-aecf-e2445167b497",
         "title": "ci-deploy-bot",
         "fields": [
-          { "label": "Credential Name", "value": "github-actions" },
-          { "label": "Credential Type", "value": "Universal Auth Client Secret" },
+          { "label": "Secret Name", "value": "github-actions" },
+          { "label": "Secret Type", "value": "Universal Auth Client Secret" },
           { "label": "Expires", "value": "August 23, 2026 at 04:15 PM UTC" }
         ]
       },
@@ -181,8 +183,8 @@ Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents
         "id": "token-auth-token:9d4b2e7a-3c1f-4a8e-b5d6-2f7c8e9a1b3d",
         "title": "release-runner",
         "fields": [
-          { "label": "Credential Name", "value": "release-token" },
-          { "label": "Credential Type", "value": "Token Auth Access Token" },
+          { "label": "Secret Name", "value": "release-token" },
+          { "label": "Secret Type", "value": "Token Auth Access Token" },
           { "label": "Expires", "value": "August 21, 2026 at 09:00 AM UTC" }
         ]
       }
