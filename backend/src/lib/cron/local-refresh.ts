@@ -9,10 +9,12 @@ type TStartLocalRefreshDTO = {
   intervalMs: number;
   task: () => Promise<void> | void;
   slowRunThresholdMs?: number;
-  random?: () => number;
 };
 
 const DEFAULT_SLOW_RUN_THRESHOLD_MS = 1000;
+
+// Node clamps any timer delay above this to 1ms, which would turn a long interval into a hot loop.
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 
 // Refreshes state held in this process's memory, so it has to run on every pod; fleet-wide
 // scheduled work belongs on the cron manager in ./cron-job instead. The offset is random per
@@ -21,11 +23,12 @@ export const startLocalRefresh = ({
   name,
   intervalMs,
   task,
-  slowRunThresholdMs = DEFAULT_SLOW_RUN_THRESHOLD_MS,
-  random = Math.random
+  slowRunThresholdMs = DEFAULT_SLOW_RUN_THRESHOLD_MS
 }: TStartLocalRefreshDTO): TLocalRefreshHandle => {
-  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
-    throw new Error(`Local refresh interval must be a positive number of milliseconds [name=${name}]`);
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0 || intervalMs > MAX_TIMER_DELAY_MS) {
+    throw new Error(
+      `Local refresh interval must be a positive number of milliseconds no greater than ${MAX_TIMER_DELAY_MS} [name=${name}]`
+    );
   }
 
   let stopped = false;
@@ -61,7 +64,7 @@ export const startLocalRefresh = ({
     }
   };
 
-  const initialDelayMs = Math.max(0, Math.min(intervalMs - 1, Math.floor(random() * intervalMs)));
+  const initialDelayMs = Math.floor(Math.random() * intervalMs);
 
   timer = setTimeout(() => {
     if (stopped) return;
