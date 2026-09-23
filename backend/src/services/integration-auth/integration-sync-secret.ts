@@ -47,12 +47,6 @@ import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
-import {
-  assertUniqueAzureKeyVaultSecretNames,
-  findInfisicalSecretKeyForAzureKeyVaultName,
-  resolveAzureKeyVaultImportedSecretKey,
-  toAzureKeyVaultSecretName
-} from "@app/services/secret-sync/azure-key-vault/azure-key-vault-secret-name";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { IntegrationMetadataSchema } from "../integration/integration-schema";
@@ -528,8 +522,6 @@ const syncSecretsAzureKeyVault = async ({
     throw new BadRequestError({ message: "Azure Key Vault URI is required" });
   }
 
-  assertUniqueAzureKeyVaultSecretNames(Object.keys(secrets));
-
   await blockLocalAndPrivateIpAddresses(integration.app);
 
   interface GetAzureKeyVaultSecret {
@@ -618,7 +610,7 @@ const syncSecretsAzureKeyVault = async ({
   }[] = [];
 
   Object.keys(secrets).forEach((key) => {
-    const hyphenatedKey = toAzureKeyVaultSecretName(key);
+    const hyphenatedKey = key.replaceAll("_", "-");
     if (!(hyphenatedKey in res)) {
       // case: secret has been created
       setSecrets.push({
@@ -637,7 +629,8 @@ const syncSecretsAzureKeyVault = async ({
   const deleteSecrets: AzureKeyVaultSecret[] = [];
 
   Object.keys(res).forEach((key) => {
-    if (!findInfisicalSecretKeyForAzureKeyVaultName(key, secrets)) {
+    const underscoredKey = key.replaceAll("-", "_");
+    if (!(underscoredKey in secrets)) {
       deleteSecrets.push(res[key]);
     }
   });
@@ -649,20 +642,20 @@ const syncSecretsAzureKeyVault = async ({
   const metadata = IntegrationMetadataSchema.parse(integration.metadata);
   if (!integration.lastUsed) {
     Object.keys(res).forEach((key) => {
-      const infisicalKey = resolveAzureKeyVaultImportedSecretKey(key, secrets);
-      const alreadyImported = Object.hasOwn(secrets, infisicalKey);
+      // first time using integration
+      const underscoredKey = key.replaceAll("-", "_");
 
       // -> apply initial sync behavior
       switch (metadata.initialSyncBehavior) {
         case IntegrationInitialSyncBehavior.PREFER_TARGET: {
-          if (!alreadyImported) {
-            secretsToAdd[infisicalKey] = res[key].value;
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
             setSecrets.push({
               key,
               value: res[key].value
             });
-          } else if (secrets[infisicalKey]?.value !== res[key].value) {
-            secretsToUpdate[infisicalKey] = res[key].value;
+          } else if (secrets[underscoredKey]?.value !== res[key].value) {
+            secretsToUpdate[underscoredKey] = res[key].value;
             const toEditSecretIndex = setSecrets.findIndex((secret) => secret.key === key);
             if (toEditSecretIndex >= 0) {
               setSecrets[toEditSecretIndex].value = res[key].value;
@@ -674,8 +667,8 @@ const syncSecretsAzureKeyVault = async ({
           break;
         }
         case IntegrationInitialSyncBehavior.PREFER_SOURCE: {
-          if (!alreadyImported) {
-            secretsToAdd[infisicalKey] = res[key].value;
+          if (!(underscoredKey in secrets)) {
+            secretsToAdd[underscoredKey] = res[key].value;
             setSecrets.push({
               key,
               value: res[key].value
