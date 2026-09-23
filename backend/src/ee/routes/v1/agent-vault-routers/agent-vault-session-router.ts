@@ -104,6 +104,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     url: "/:sessionId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getAgentVaultSession",
       description:
         "Read one Agent Vault session. Answers 404 both when no such session exists and when the caller may not see it.",

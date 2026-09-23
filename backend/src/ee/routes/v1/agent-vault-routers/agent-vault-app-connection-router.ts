@@ -73,6 +73,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     url: "/aws",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultAwsAppConnections",
       description: "List the AWS Connections scoped to this organization's Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
@@ -109,6 +110,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     url: "/aws",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createAgentVaultAwsAppConnection",
       description:
         "Create an AWS Connection scoped to this organization's Agent Vault. Only Agent Vault can use it; organization-level connections remain available too.",
@@ -166,6 +168,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     url: "/aws/:connectionId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getAgentVaultAwsAppConnection",
       description: "Read an AWS Connection scoped to this organization's Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
@@ -197,6 +200,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     url: "/aws/:connectionId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultAwsAppConnection",
       description: "Update an AWS Connection scoped to this organization's Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],
@@ -251,6 +255,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     url: "/aws/:connectionId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "deleteAgentVaultAwsAppConnection",
       description:
         "Delete an AWS Connection scoped to this organization's Agent Vault. Deleting one that activity logging uses is allowed and stops recording; the bucket and prefix are kept, so selecting another connection resumes it.",
@@ -300,6 +305,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
     url: "/aws/:connectionId/rotate-credentials",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "rotateAgentVaultAwsAppConnectionCredentials",
       description: "Rotate the credentials of an AWS Connection scoped to this organization's Agent Vault",
       tags: [ApiDocsTags.AgentVaultAppConnections],

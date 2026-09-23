@@ -16,6 +16,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
     url: "/:sessionId/activity",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getAgentVaultSessionActivity",
       description:
         "Read a session's activity: a page going back through it, newest first, or with `receivedAfter`, what arrived since an earlier read, to follow the session live. Chunks come back sealed, with a presigned URL to fetch each one and the key to open them: the bytes are fetched and decrypted by the caller, never by Infisical.",

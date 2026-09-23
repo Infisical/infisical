@@ -16,6 +16,7 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
     url: "/config",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getAgentVaultActivityConfig",
       description: "Read where this project's session activity is stored, and whether that storage is full",
       tags: [ApiDocsTags.AgentVaultActivity],
@@ -39,6 +40,7 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
     url: "/config",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultActivityConfig",
       description:
         "Point this project's session activity at an S3 bucket, or turn logging on and off. The bucket is checked for reachability and write access before the change is saved.",
