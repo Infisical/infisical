@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { z } from "zod";
 
 import {
   TAgentVaultActivityChunk,
@@ -49,6 +50,32 @@ const buildAad = async (parts: {
 }) => {
   const source = `${parts.projectId}|${parts.sessionId}|${parts.proxyId}|${parts.chunkId}|${AAD_VERSION}`;
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+};
+
+/**
+ * Checked field by field because the timeline calls string methods on these and formats `ts` as a date, so
+ * one wrong type from a modified proxy would throw during render and take the whole Sessions page down.
+ * `decision` stays a plain string: the table already has a fallback for a value it does not know.
+ */
+const ActivityRecordsSchema = z.array(
+  z.object({
+    ts: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
+    seq: z.number().int().nonnegative(),
+    proxyId: z.string(),
+    method: z.string(),
+    host: z.string(),
+    port: z.string(),
+    path: z.string(),
+    status: z.number().int(),
+    decision: z.string(),
+    service: z.string().nullable(),
+    accessBundle: z.string().nullable()
+  })
+);
+
+export const parseActivityRecords = (json: unknown): TAgentVaultActivityRecord[] | null => {
+  const parsed = ActivityRecordsSchema.safeParse(json);
+  return parsed.success ? (parsed.data as TAgentVaultActivityRecord[]) : null;
 };
 
 const gapFor = (
@@ -147,10 +174,10 @@ const openChunk = async (
   }
 
   try {
-    const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
-    if (!Array.isArray(parsed)) return gapFor(chunk, "json");
+    const records = parseActivityRecords(JSON.parse(new TextDecoder().decode(plaintext)));
+    if (!records) return gapFor(chunk, "json");
     return {
-      records: parsed as TAgentVaultActivityRecord[],
+      records,
       gap: null,
       drop: dropFor(chunk),
       arrivedAt: null
