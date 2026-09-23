@@ -19,6 +19,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  resolveRenewalAltNames,
   resolveRenewalKeySource
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
@@ -42,6 +43,26 @@ const original: TCertificateRequest = {
   keyAlgorithm: "RSA_2048",
   signatureAlgorithm: "RSA-SHA256"
 };
+
+describe("resolveRenewalAltNames", () => {
+  const issued = "ca-added.example.com";
+
+  it("keeps an empty request list, so an authority's own names are not re-requested", () => {
+    expect(resolveRenewalAltNames({ exists: true, altNames: [] }, issued)).toEqual([]);
+  });
+
+  it("uses the names the request asked for when it has any", () => {
+    const asked = [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "mine.example.com" }];
+    expect(resolveRenewalAltNames({ exists: true, altNames: asked }, issued)).toEqual(asked);
+  });
+
+  it("falls back to the certificate only when there is no request behind it", () => {
+    expect(resolveRenewalAltNames({ exists: false, altNames: null }, issued)).toEqual([
+      { type: CertSubjectAlternativeNameType.DNS_NAME, value: issued }
+    ]);
+    expect(resolveRenewalAltNames({ exists: false, altNames: null }, null)).toEqual([]);
+  });
+});
 
 describe("resolveRenewalKeySource", () => {
   it("defaults to a new key pair", () => {

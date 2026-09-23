@@ -16,6 +16,8 @@ import {
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
+import { detectSanType } from "@app/services/certificate-common/certificate-issuance-utils";
 
 import { CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
@@ -243,6 +245,15 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
       message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
+};
+
+export const resolveRenewalAltNames = (
+  requested: { exists: boolean; altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null },
+  certificateAltNames: string | null | undefined
+): { type: CertSubjectAlternativeNameType; value: string }[] => {
+  if (requested.exists) return requested.altNames ?? [];
+
+  return certificateAltNames?.split(",").map((san) => detectSanType(san.trim())) ?? [];
 };
 
 /**

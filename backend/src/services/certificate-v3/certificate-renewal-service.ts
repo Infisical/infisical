@@ -107,6 +107,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  resolveRenewalAltNames,
   resolveRenewalKeySource,
   validateRenewalEligibility
 } from "./certificate-renewal-fns";
@@ -745,9 +746,7 @@ export const certificateRenewalServiceFactory = ({
 
     const requested = issuedFrom.exists ? issuedFrom : null;
 
-    const requestedAltNames = requested?.altNames?.length
-      ? requested.altNames
-      : (originalCert.altNames?.split(",").map((san) => detectSanType(san.trim())) ?? []);
+    const requestedAltNames = resolveRenewalAltNames(issuedFrom, originalCert.altNames);
 
     const originalRequest: TCertificateRequest = {
       commonName: requested?.commonName || originalCert.commonName || undefined,
