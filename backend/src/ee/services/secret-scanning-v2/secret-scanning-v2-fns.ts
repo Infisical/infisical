@@ -324,6 +324,37 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
   }
 }
 
+/**
+ * `details` is plaintext jsonb, so its contents are picked field by field rather than spread from
+ * the scanner's output. The detected secret is not reported in one predictable place: alongside the
+ * top-level `Match`/`Secret` pair, betterleaks repeats it in every component of a multi-part match
+ * and reports `CaptureGroups`, the credential split into named parts. A spread hands each new one
+ * of those straight to the database, and nothing downstream reads the secret anyway.
+ *
+ * `Link` is the one field that moved: betterleaks no longer reports it at the top level, so a full
+ * scan takes the equivalent from `Attributes.url`. Diff scans build their own and keep it.
+ */
+export const toFindingDetails = (finding: SecretMatch): unknown =>
+  titleCaseToCamelCase({
+    Description: finding.Description,
+    StartLine: finding.StartLine,
+    EndLine: finding.EndLine,
+    StartColumn: finding.StartColumn,
+    EndColumn: finding.EndColumn,
+    File: finding.File,
+    Link: finding.Link ?? finding.Attributes?.url ?? "",
+    SymlinkFile: finding.SymlinkFile,
+    Commit: finding.Commit,
+    Entropy: finding.Entropy,
+    Author: finding.Author,
+    Email: finding.Email,
+    Date: finding.Date,
+    Message: finding.Message,
+    Tags: finding.Tags,
+    RuleID: finding.RuleID,
+    Fingerprint: finding.Fingerprint
+  });
+
 export const scanGitRepositoryAndGetFindings = async (
   scanPath: string,
   findingsPath: string,
@@ -335,19 +366,12 @@ export const scanGitRepositoryAndGetFindings = async (
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 
-  return findingsData.map(
-    ({
-      // discard match and secret as we don't want to store
-      Match,
-      Secret,
-      ...finding
-    }) => ({
-      details: titleCaseToCamelCase(finding),
-      fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    })
-  );
+  return findingsData.map((finding) => ({
+    details: toFindingDetails(finding),
+    fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
+    severity: SecretScanningFindingSeverity.High,
+    rule: finding.RuleID
+  }));
 };
 
 export const replaceNonChangesWithNewlines = (patch: string) => {

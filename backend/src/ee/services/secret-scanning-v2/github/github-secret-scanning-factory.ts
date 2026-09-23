@@ -12,7 +12,8 @@ import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines
+  replaceNonChangesWithNewlines,
+  toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -26,7 +27,6 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { titleCaseToCamelCase } from "@app/lib/fn";
 import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
@@ -234,19 +234,12 @@ export const GitHubSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map(
-      ({
-        // discard match and secret as we don't want to store
-        Match,
-        Secret,
-        ...finding
-      }) => ({
-        details: titleCaseToCamelCase(finding),
-        fingerprint: finding.Fingerprint,
-        severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
-      })
-    );
+    return allFindings.map((finding) => ({
+      details: toFindingDetails(finding),
+      fingerprint: finding.Fingerprint,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID
+    }));
   };
 
   return {

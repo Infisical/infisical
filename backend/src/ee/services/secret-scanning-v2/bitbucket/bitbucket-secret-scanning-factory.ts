@@ -11,7 +11,8 @@ import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines
+  replaceNonChangesWithNewlines,
+  toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -25,7 +26,6 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { BasicRepositoryRegex } from "@app/lib/regex";
@@ -319,19 +319,12 @@ export const BitbucketSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map(
-      ({
-        // discard match and secret as we don't want to store
-        Match,
-        Secret,
-        ...finding
-      }) => ({
-        details: titleCaseToCamelCase(finding),
-        fingerprint: finding.Fingerprint,
-        severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
-      })
-    );
+    return allFindings.map((finding) => ({
+      details: toFindingDetails(finding),
+      fingerprint: finding.Fingerprint,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID
+    }));
   };
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<

@@ -9,7 +9,7 @@ export type SecretMatch = {
   Match: string;
   Secret: string;
   File: string;
-  Link: string;
+  Link?: string;
   SymlinkFile: string;
   Commit: string;
   Entropy: number;
@@ -21,6 +21,7 @@ export type SecretMatch = {
   RuleID: string;
   Fingerprint: string;
   FingerPrintWithoutCommitId: string;
+  Attributes?: Record<string, string>;
 };
 
 export type TScanPushEventPayload = {
