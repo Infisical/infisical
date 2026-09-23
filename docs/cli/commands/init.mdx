@@ -15,12 +15,4 @@ Link a local project to your Infisical project. Once connected, you can then acc
   This command creates a `.infisical.json` file containing your Project ID.
 </Info>
 
-The command lists the projects of the organization that your profile uses. To link a project in another organization, change the default with `infisical profile set-org`. You can also create a profile for that organization with `infisical profile new`. See [profile](./profile).
-
-<Warning>
-  Don't pass `--org` to link a project from another organization. Later
-  commands use the organization of the profile and can't find that project.
-  The command stops and names the two options above.
-</Warning>
-
-If you have more than one profile, the command offers to bind this directory to the profile that it used. Commands that run here then select that profile with no flag and no environment variable. Run `infisical profile unbind` to remove the binding.
+The command lists the projects of the organization that your profile uses. To link a project in another organization, change the profile default with `infisical profile set-org`. You can also create a profile for that organization with `infisical profile new`. See [profile](./profile).

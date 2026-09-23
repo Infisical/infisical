@@ -11,7 +11,7 @@ infisical org
 
 This command shows the organizations that your account can use, and sets the organization that the current profile uses by default.
 
-A profile is a single login: an account on the specified Infisical instance, with the organization that it uses by default. See [profile](./profile) for how the CLI selects a profile.
+A profile is a single login: an account on the specified Infisical instance, and the organization you chose for it. See [profile](./profile) for how the CLI selects a profile.
 
 ### Sub-commands
 
@@ -54,7 +54,7 @@ If you omit the organization, the CLI will ask you to pick one.
 Pass `--org` to point a single command at another organization. Name the organization by name, slug, or id.
 
 ```bash
-infisical --org globex-inc secrets
+infisical secrets --org globex-inc
 ```
 
 The default organization of the profile doesn't change. The CLI caches the session for each organization that you use this way.

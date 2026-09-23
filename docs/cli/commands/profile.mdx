@@ -9,7 +9,7 @@ infisical profile
 
 ## Description
 
-A profile is a single login: an account on the specified Infisical instance, with the organization that it uses by default. Each profile keeps its own session, so you can work in several organizations at the same time.
+A profile is a single login: an account on the specified Infisical instance, and the organization you chose for it. Each profile keeps its own session, so you can work in several organizations at the same time.
 
 The organization is a setting on a profile, not part of its identity. To use another organization for a single command, pass `--org`. To change the default organization for a profile, run `infisical profile set-org`.
 
@@ -239,28 +239,12 @@ These flags work on every command, not only on `infisical profile`.
     Use a specific profile for this command.
 
     ```bash
-    infisical --profile globex secrets
+    infisical secrets --profile globex
     ```
 
     <Tip>
       The `profile` flag can be substituted with the `INFISICAL_PROFILE`
       environment variable.
-    </Tip>
-
-  </Accordion>
-
-  <Accordion title="--org">
-    Use a specific organization for this command. Name it by name, slug, or id. The default organization of the profile doesn't change.
-
-    ```bash
-    infisical --org globex-inc secrets
-    ```
-
-    The CLI caches the session for each organization that you use this way.
-
-    <Tip>
-      The `org` flag can be substituted with the `INFISICAL_ORG` environment
-      variable.
     </Tip>
 
   </Accordion>
@@ -292,19 +276,10 @@ These flags work on every command, not only on `infisical profile`.
 
   </Accordion>
 
-  <Accordion title="Run one command against another organization">
-    ```bash
-    infisical --org globex-inc secrets
-    ```
-
-    The default organization of the profile stays as it was.
-
-  </Accordion>
-
   <Accordion title="Log in to a second account">
     ```bash
     infisical login --save-as contractor
-    infisical --profile contractor secrets
+    infisical secrets --profile contractor
     ```
 
   </Accordion>

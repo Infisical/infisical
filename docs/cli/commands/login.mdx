@@ -19,7 +19,9 @@ When authenticated, a token is generated and saved in your system Keyring to all
 
 To change where the login credentials are stored, visit the [vaults command](./vault).
 
-A user login is stored as a profile: an account on the specified Infisical instance, with the organization that it uses by default. A user login without flags becomes the default profile for this machine. To store one under a name you choose, and leave the default alone, pass `--save-as`. See [profile](./profile) for how to select from existing profiles.
+A user login is stored as a profile: an account on the specified Infisical instance, and the organization you chose for it.
+
+Unless you pass `--save-as` or `--profile`, the CLI names the profile after your account and organization, and makes it the default profile that commands use when you don't specify one. Pass `--save-as <name>` to choose the name yourself. See [profile](./profile) for more.
 
 Machine identity logins don't create a profile. They print an access token, which you supply through `INFISICAL_TOKEN` or `--token`.
 
@@ -70,8 +72,9 @@ User authentication is designed for individual developers and supports multiple 
       Output only the JWT token (useful for scripting and CI/CD).
     </ParamField>
     <ParamField query="save-as" type="string" optional>
-      Store this login as the named profile, creating a new profile or replacing
-      an existing one's session. The new profile isn't automatically selected.
+      Store this login as a profile under the specified name. The CLI creates
+      that profile, or replaces the stored session of an existing profile if the
+      name is already taken.
     </ParamField>
     <ParamField query="profile" type="string" optional>
       Sign back in to a profile that already exists, restoring its account,
@@ -508,14 +511,14 @@ The login command supports a number of flags that you can use for different auth
     ```
 
     #### Description
-    Stores this login as the named profile. The CLI creates the profile, or replaces the session of an existing profile that already has that name.
+    Stores this login under the specified name. The CLI creates that profile, or replaces the profile's stored session if the name is already taken.
 
-    A login with `--save-as` does not change the default profile, so other terminals keep the profile that they are already using.
+    If you're already logged in, a login with `--save-as` doesn't change which profile is selected, so other terminals keep the profile that they're already using. Select the new one with `--profile <name>`, or make it the default with `infisical profile use <name>`.
 
     ```bash
     # Sign in to a second account and keep the first.
     infisical login --save-as contractor
-    infisical --profile contractor secrets
+    infisical secrets --profile contractor
     ```
 
   </Accordion>
