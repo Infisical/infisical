@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
@@ -70,11 +71,6 @@ export const SignupSsoPage = () => {
       telemetry.identify(signupEmail, signupEmail);
     }
 
-    if (isInfisicalCloud()) {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ event: "signup_completed" });
-    }
-
     createNotification({
       text: "Successfully verified",
       type: "success"
@@ -94,6 +90,12 @@ export const SignupSsoPage = () => {
       }
       return;
     }
+
+    if (isInfisicalCloud()) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: "signup_completed" });
+    }
+    captureSignupCompleted("sso");
 
     navigate({ to: "/organizations/onboarding" });
   };

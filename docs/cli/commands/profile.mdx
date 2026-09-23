@@ -1,0 +1,286 @@
+---
+title: "infisical profile"
+description: "Keep a login per organization and choose between them"
+---
+
+```bash
+infisical profile
+```
+
+## Description
+
+A profile is a single login: an account on the specified Infisical instance, and the organization you chose for it. Each profile keeps its own session, so you can work in several organizations at the same time.
+
+The organization is a setting on a profile, not part of its identity. To use another organization for a single command, pass `--org`. To change the default organization for a profile, run `infisical profile set-org`.
+
+### How a profile is selected
+
+Every command selects a profile in this order:
+
+1. The `--profile` flag.
+2. The `INFISICAL_PROFILE` environment variable.
+3. A directory that you bound to a profile, with `infisical profile bind` or during `infisical init`.
+4. The default profile for the machine, set with `infisical profile use`.
+
+The first one that applies wins. If an override hides a bound directory, the CLI reports which profile it used and why.
+
+<Info>
+  Your first login creates a profile for you. The name comes from your account
+  and organization, for example `you@example.com--acme`.
+</Info>
+
+### Sub-commands
+
+<Accordion title="infisical profile list" defaultOpen="true">
+  List every profile on this machine, with its account, organization, instance, and session state.
+
+```bash
+infisical profile list
+```
+
+The current profile is marked with an asterisk.
+
+```bash
+CURRENT  NAME                   EMAIL            ORGANIZATION      SESSION  DOMAIN                     DIRECTORY SCOPES
+*        you@example.com--acme  you@example.com  Acme              active   https://app.infisical.com  ~/code/acme
+         globex                 you@example.com  Globex            active   https://app.infisical.com  -
+         research               you@example.com  Acme / Research   active   https://app.infisical.com  -
+```
+
+</Accordion>
+
+<Accordion title="infisical profile current">
+  Show which profile a command run in the current terminal or directory will use, and why it was selected.
+
+```bash
+infisical profile current
+```
+
+```bash
+Profile: globex
+Selected via: INFISICAL_PROFILE environment variable
+Email: you@example.com
+Organization: Globex (9c0f4df6-57fb-4b5f-927b-799dc0121520)
+Organization via: profile default
+Domain: https://app.infisical.com
+```
+
+#### Flags
+
+  <Accordion title="--plain">
+    Print only the profile name. Use this in a shell prompt.
+
+    ```bash
+    infisical profile current --plain
+    ```
+
+  </Accordion>
+
+</Accordion>
+
+<Accordion title="infisical profile new">
+  Create a profile for another organization without logging in again. The new profile reuses the account and instance that you're signed in to.
+
+```bash
+infisical profile new [name]
+```
+
+If you omit `--org`, the CLI will ask you to pick an organization.
+
+```bash
+infisical profile new globex --org globex-inc
+```
+
+#### Flags
+
+  <Accordion title="--use">
+    Also make the new profile the default for this machine.
+
+    ```bash
+    infisical profile new globex --org globex-inc --use
+    ```
+
+  </Accordion>
+
+  <Accordion title="--pin">
+    Also pin this terminal to the new profile. Run the command through `eval`,
+    because a command can't change the environment of the shell that started it.
+
+    ```bash
+    eval "$(infisical profile new globex --org globex-inc --pin)"
+    ```
+
+  </Accordion>
+
+</Accordion>
+
+<Accordion title="infisical profile use">
+  Make a profile the default for this machine. The default applies when no flag, no environment variable, and no bound directory selects a profile.
+
+```bash
+infisical profile use globex
+```
+
+<Tip>
+  To choose a profile for one terminal, use `infisical profile pin`. To choose
+  one for a directory, use `infisical profile bind`.
+</Tip>
+
+</Accordion>
+
+<Accordion title="infisical profile pin">
+  Pin the current terminal to a profile. Other terminals keep the profile that they already use.
+
+The command prints an export statement. Run it through `eval` to apply it to the shell that you're in.
+
+```bash
+eval "$(infisical profile pin globex)"
+```
+
+<Info>
+  In PowerShell, run `infisical profile pin globex | Invoke-Expression`. In
+  `cmd.exe`, or in a script, set `INFISICAL_PROFILE=globex` yourself.
+</Info>
+
+</Accordion>
+
+<Accordion title="infisical profile unpin">
+  Remove the pin from the current terminal. The terminal falls back to a bound directory, or to the default profile.
+
+```bash
+eval "$(infisical profile unpin)"
+```
+
+</Accordion>
+
+<Accordion title="infisical profile bind">
+  Bind a directory, and every directory under it, to a profile. Commands that run inside it select that profile with no flag and no environment variable.
+
+```bash
+infisical profile bind globex ~/code/globex
+```
+
+If you omit the path, the CLI binds the current directory. If bindings overlap, the nearest one wins.
+
+`infisical init` also offers to bind a directory, if you have more than one profile.
+
+<Info>
+  The binding is stored in your own configuration, never in the repository, so
+  it doesn't affect anyone else who clones the project.
+</Info>
+
+</Accordion>
+
+<Accordion title="infisical profile unbind">
+  Remove the profile binding from a directory.
+
+```bash
+infisical profile unbind [path]
+```
+
+If you omit the path, the CLI removes the binding that covers the current directory.
+
+</Accordion>
+
+<Accordion title="infisical profile set-org">
+  Set the organization that a profile uses by default. The change persists for future commands.
+
+```bash
+infisical profile set-org globex-inc
+```
+
+<Tip>
+  To use another organization for a single command, pass `--org`. To keep a
+  second organization available as its own profile, run `infisical profile new`.
+</Tip>
+
+</Accordion>
+
+<Accordion title="infisical profile rename">
+  Rename a profile. The stored session, the default-profile setting, and any directory bindings follow the new name.
+
+```bash
+infisical profile rename old-name new-name
+```
+
+<Warning>
+  Update any terminal that you pinned to the old name. The pin holds the old
+  name, so those terminals no longer find the profile.
+</Warning>
+
+</Accordion>
+
+<Accordion title="infisical profile delete">
+  Delete a profile and remove its stored session. The CLI revokes the session on the server as well.
+
+```bash
+infisical profile delete globex
+```
+
+#### Flags
+
+  <Accordion title="--local-only">
+    Remove the profile without revoking its session on the server.
+
+    ```bash
+    infisical profile delete globex --local-only
+    ```
+
+  </Accordion>
+
+</Accordion>
+
+### Global flags
+
+These flags work on every command, not only on `infisical profile`.
+
+<AccordionGroup>
+  <Accordion title="--profile">
+    Use a specific profile for this command.
+
+    ```bash
+    infisical secrets --profile globex
+    ```
+
+    <Tip>
+      The `profile` flag can be substituted with the `INFISICAL_PROFILE`
+      environment variable.
+    </Tip>
+
+  </Accordion>
+</AccordionGroup>
+
+### Examples
+
+<AccordionGroup>
+  <Accordion title="Work in two organizations at once">
+    ```bash
+    # You are already logged in to Acme.
+    infisical profile new globex --org globex-inc
+
+    # Use Globex in this terminal only.
+    eval "$(infisical profile pin globex)"
+    infisical secrets
+    ```
+
+  </Accordion>
+
+  <Accordion title="Give each repository its own organization">
+    ```bash
+    infisical profile bind acme ~/code/acme
+    infisical profile bind globex ~/code/globex
+
+    cd ~/code/globex
+    infisical profile current   # globex
+    ```
+
+  </Accordion>
+
+  <Accordion title="Log in to a second account">
+    ```bash
+    infisical login --save-as contractor
+    infisical secrets --profile contractor
+    ```
+
+  </Accordion>
+</AccordionGroup>

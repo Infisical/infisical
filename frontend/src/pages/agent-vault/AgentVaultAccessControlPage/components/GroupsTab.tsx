@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
@@ -22,6 +22,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
   Table,
   TableBody,
@@ -32,43 +33,53 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
-  useListAgentVaultProductGroupMembers,
-  useRemoveAgentVaultProductMember
-} from "@app/hooks/api/agentVault";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper, useResetPageOnSearch } from "@app/hooks";
+import { useListAgentVaultMembers, useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultProductMemberOf } from "@app/hooks/api/agentVault/types";
 
 import { AddGroupDialog } from "./AddGroupDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
-type TGroupRow = { id: string; name: string; role: string };
+type TGroupMember = TAgentVaultProductMemberOf<AgentVaultMemberType.Group>;
 
 export const GroupsTab = () => {
-  const { data: groups = [], isPending } = useListAgentVaultProductGroupMembers();
-  const removeMember = useRemoveAgentVaultProductMember();
-
   const [search, setSearch] = useState("");
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [groupToEdit, setGroupToEdit] = useState<TGroupRow | null>(null);
-  const [groupToRemove, setGroupToRemove] = useState<TGroupRow | null>(null);
+  const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
+  );
 
-  const rows = useMemo<TGroupRow[]>(() => {
-    const term = search.trim().toLowerCase();
-    return groups
-      .filter((membership) => membership.groupId)
-      .map((membership) => ({
-        id: membership.groupId as string,
-        name: membership.name,
-        role: membership.role
-      }))
-      .filter((row) => row.name.toLowerCase().includes(term));
-  }, [groups, search]);
+  const { data, isPending } = useListAgentVaultMembers({
+    actorType: AgentVaultMemberType.Group,
+    search: debouncedSearch.trim() || undefined,
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+  const revokeMembers = useRevokeAgentVaultMembers();
+
+  const rows = data?.members ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
+  useResetPageOnSearch({ debouncedSearch, setPage });
+
+  const isFiltered = Boolean(debouncedSearch.trim());
+
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [groupToEdit, setGroupToEdit] = useState<TGroupMember | null>(null);
+  const [groupToRemove, setGroupToRemove] = useState<TGroupMember | null>(null);
 
   const handleRemove = async () => {
     try {
       if (!groupToRemove) return;
-      await removeMember.mutateAsync({ groupId: groupToRemove.id });
+      await revokeMembers.mutateAsync({ groupIds: [groupToRemove.actor.id] });
       createNotification({
-        text: `"${groupToRemove.name}" removed`,
+        text: `"${groupToRemove.actor.name}" removed`,
         type: "success"
       });
       setGroupToRemove(null);
@@ -104,9 +115,11 @@ export const GroupsTab = () => {
         <CardContent>
           <Empty className="border">
             <EmptyHeader>
-              <EmptyTitle>{search ? "No groups match your search" : "No groups yet"}</EmptyTitle>
+              <EmptyTitle>
+                {isFiltered ? "No groups match your search" : "No groups yet"}
+              </EmptyTitle>
               <EmptyDescription>
-                {search
+                {isFiltered
                   ? "Try a different search term."
                   : "Add a group to give everyone in it access."}
               </EmptyDescription>
@@ -140,8 +153,8 @@ export const GroupsTab = () => {
             {!isPending &&
               rows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell isTruncatable className="min-w-32" title={row.name}>
-                    <HighlightText text={row.name} highlight={search} />
+                  <TableCell isTruncatable className="min-w-32" title={row.actor.name}>
+                    <HighlightText text={row.actor.name} highlight={debouncedSearch} />
                   </TableCell>
                   <TableCell>
                     <ProductRoleBadge role={row.role} />
@@ -171,14 +184,32 @@ export const GroupsTab = () => {
         </Table>
       )}
 
+      {totalCount > 0 && (
+        <CardContent className="-mt-5 pt-0">
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={(newPerPage) => {
+              setPerPage(newPerPage);
+              setPage(1);
+              setUserTablePreference(
+                "agentVaultAccessControlTable",
+                PreferenceKey.PerPage,
+                newPerPage
+              );
+            }}
+          />
+        </CardContent>
+      )}
+
       <AddGroupDialog isOpen={isAddOpen} onOpenChange={setIsAddOpen} />
 
       <ProductRoleDialog
-        isOpen={Boolean(groupToEdit)}
+        member={groupToEdit}
         onOpenChange={() => setGroupToEdit(null)}
-        subject={groupToEdit?.name ?? ""}
-        currentRole={groupToEdit?.role ?? ProjectMembershipRole.Member}
-        actor={groupToEdit ? { groupId: groupToEdit.id } : {}}
+        subject={groupToEdit?.actor.name ?? ""}
       />
 
       <DeleteConfirmDialog
@@ -186,11 +217,11 @@ export const GroupsTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);
         }}
-        title={`Remove "${groupToRemove?.name ?? ""}"`}
+        title={`Remove "${groupToRemove?.actor.name ?? ""}"`}
         description="Everyone in the group loses Agent Vault access, along with every access bundle granted to the group."
-        confirmKey={groupToRemove?.name ?? ""}
+        confirmKey={groupToRemove?.actor.name ?? ""}
         confirmLabel="Remove"
-        isPending={removeMember.isPending}
+        isPending={revokeMembers.isPending}
         onConfirm={handleRemove}
       />
     </Card>

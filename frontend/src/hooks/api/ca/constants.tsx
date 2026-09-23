@@ -16,14 +16,16 @@ export const ACME_DNS_PROVIDER_NAME_MAP: Record<AcmeDnsProvider, string> = {
   [AcmeDnsProvider.ROUTE53]: "Route53",
   [AcmeDnsProvider.Cloudflare]: "Cloudflare",
   [AcmeDnsProvider.DNSMadeEasy]: "DNS Made Easy",
-  [AcmeDnsProvider.AzureDNS]: "Azure DNS"
+  [AcmeDnsProvider.AzureDNS]: "Azure DNS",
+  [AcmeDnsProvider.PowerDns]: "PowerDNS"
 };
 
 export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
   [AcmeDnsProvider.ROUTE53]: AppConnection.AWS,
   [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
   [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
-  [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS
+  [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
+  [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns
 };
 
 export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {

@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { toast } from "sonner";
 
+import { useTheme } from "../../platform/ThemeProvider";
 import { Button, type ButtonProps } from "../Button";
 import { Toaster } from "./Toast";
 
@@ -30,14 +31,18 @@ const ToastExample = ({
   variant: ButtonProps["variant"];
   label: string;
   onShow: (toasterId: string) => void;
-}) => (
-  <>
-    <Button variant={variant} onClick={() => onShow(toasterId)}>
-      {label}
-    </Button>
-    {createPortal(<Toaster id={toasterId} />, document.body)}
-  </>
-);
+}) => {
+  const { resolvedTheme } = useTheme();
+
+  return (
+    <>
+      <Button variant={variant} onClick={() => onShow(toasterId)}>
+        {label}
+      </Button>
+      {createPortal(<Toaster id={toasterId} theme={resolvedTheme} />, document.body)}
+    </>
+  );
+};
 
 const meta = {
   title: "Generic/Toast",

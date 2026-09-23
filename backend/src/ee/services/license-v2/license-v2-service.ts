@@ -1,9 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
@@ -12,12 +13,19 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
+import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TMeteredFeature } from "@app/services/license-client/usage/usage-counters";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { TLicenseDALFactory } from "../license/license-dal";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { TLicenseV2BreakdownDALFactory, TScopeOrgRow, TScopeProjectRow } from "./license-v2-breakdown-dal";
 import {
+  BillingV2BreakdownDimension,
+  BillingV2BreakdownProject,
+  BillingV2BreakdownScope,
+  BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
   BillingV2Deprecation,
@@ -29,6 +37,7 @@ import {
   BillingV2Preview,
   BillingV2SubState,
   BillingV2Trial,
+  BillingV2UsageBreakdown,
   TAddBillingV2PaymentMethodDTO,
   TBillingV2SubscriptionLifecycleDTO,
   TBuyBillingV2ProductDTO,
@@ -37,6 +46,8 @@ import {
   TCreateBillingV2PortalSessionDTO,
   TGetBillingV2CatalogDTO,
   TGetBillingV2OverviewDTO,
+  TGetBillingV2UsageBreakdownDTO,
+  TListBillableOrganizationsDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
   TStartBillingV2TrialDTO,
@@ -47,6 +58,16 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors" | "getBillableIdentityOwnershipBreakdown">;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    | "resolveRootOrgId"
+    | "countProjectIdentitiesByKindFor"
+    | "getProjectIdentityBreakdown"
+    | "getInternalCaOrgBreakdown"
+    | "getActiveCertificateOrgBreakdown"
+  >;
+  breakdownDAL: TLicenseV2BreakdownDALFactory;
   // Same metered-feature/count-fn pairs the usage pipeline registers; used to seed a purchase's initial
   // per_resource quantities with the org's present provisioned count so the previewed/charged figure is
   // truthful (identities, active certs, ...).
@@ -349,7 +370,10 @@ export const licenseV2ServiceFactory = ({
   orgDAL,
   permissionService,
   meteredFeatures,
-  licenseClient
+  licenseClient,
+  licenseDAL,
+  usageCounterDAL,
+  breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
   const countByDimensionKey = new Map(meteredFeatures.map(({ feature, count }) => [feature.key, count]));
 
@@ -418,7 +442,17 @@ export const licenseV2ServiceFactory = ({
   // cloud has per-org self-serve subscriptions.
   const isSelfHostedLicense = !envConfig.isCloud;
 
-  const ensureBillingRead = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
+  const canReadAcrossOrgs = (isInstanceAdmin?: boolean) =>
+    Boolean(isInstanceAdmin) && !envConfig.isCloud && !isScopeNarrowedRequest();
+
+  const ensureBillingRead = async (
+    orgId: string,
+    actor: TGetBillingV2OverviewDTO["actor"],
+    isInstanceAdmin?: boolean
+  ) => {
+    if (orgId !== actor.orgId && canReadAcrossOrgs(isInstanceAdmin)) {
+      return;
+    }
     const { permission } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -686,8 +720,8 @@ export const licenseV2ServiceFactory = ({
     return entitlements;
   };
 
-  const getOverview = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
-    await ensureBillingRead(orgId, actor);
+  const getOverview = async ({ orgId, actor, isInstanceAdmin }: TGetBillingV2OverviewDTO) => {
+    await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
     const organization = await orgDAL.findById(orgId);
     if (!organization) {
@@ -827,6 +861,237 @@ export const licenseV2ServiceFactory = ({
     return { overview };
   };
 
+  // Assembles the org/project rows a breakdown query returned into the scope tree. An org is listed
+  // only once it contributes, since an org tree can carry far more sub-orgs than a product uses, and
+  // the instance-wide roster is every org on the instance. keepEmptyOrgId is the one exception: a
+  // tree's root is listed even at zero, so the user can see it holds nothing. It is null for the
+  // instance-wide breakdown, which has no single root and where empty orgs are noise, not an answer.
+  const $buildScopes = (
+    orgs: TScopeOrgRow[],
+    projectsById: Map<string, TScopeProjectRow>,
+    rows: { orgId: string; projectId: string | null; count: number }[],
+    keepEmptyOrgId: string | null
+  ): BillingV2BreakdownScope[] => {
+    type TScopeAccumulator = {
+      name: string;
+      isRoot: boolean;
+      rootOrgId: string | null;
+      orgLevelCount: number;
+      projects: BillingV2BreakdownProject[];
+    };
+    const orgNameById = new Map(orgs.map((org) => [org.id, org.name]));
+    const byOrg = new Map<string, TScopeAccumulator>();
+    orgs.forEach((org) =>
+      byOrg.set(org.id, {
+        name: org.name,
+        isRoot: org.isRoot,
+        rootOrgId: org.rootOrgId,
+        orgLevelCount: 0,
+        projects: []
+      })
+    );
+
+    rows.forEach((row) => {
+      let target = byOrg.get(row.orgId);
+      if (!target) {
+        // An organization that left the tree between the count and this read still holds metered
+        // units. Folding them into the root would inflate the figure the root org's own usage view
+        // shows, so the scope keeps its own row
+        target = { name: "Deleted organization", isRoot: false, rootOrgId: null, orgLevelCount: 0, projects: [] };
+        byOrg.set(row.orgId, target);
+      }
+      if (!row.projectId) {
+        target.orgLevelCount += row.count;
+        return;
+      }
+      const project = projectsById.get(row.projectId);
+      target.projects.push({
+        id: row.projectId,
+        // A project deleted between the count and this read still holds metered units, so it keeps its
+        // row rather than vanishing and leaving the parts short of the total.
+        name: project?.name ?? "Deleted project",
+        count: row.count
+      });
+    });
+
+    return [...byOrg.entries()]
+      .map(([orgId, scope]) => {
+        const projects = scope.projects.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+        const count = scope.orgLevelCount + projects.reduce((sum, project) => sum + project.count, 0);
+        return {
+          orgId,
+          name: scope.name,
+          isRoot: scope.isRoot,
+          parentOrgName: scope.rootOrgId ? (orgNameById.get(scope.rootOrgId) ?? null) : null,
+          count,
+          orgLevelCount: scope.orgLevelCount,
+          projects
+        };
+      })
+      .filter((scope) => scope.count > 0 || scope.orgId === keepEmptyOrgId)
+      .sort((a, b) => Number(b.isRoot) - Number(a.isRoot) || b.count - a.count || a.name.localeCompare(b.name));
+  };
+
+  const getUsageBreakdown = async ({
+    orgId,
+    actor,
+    dimensionKey,
+    isInstanceAdmin,
+    scope: scopeKind = BillingV2BreakdownScopeKind.Organization
+  }: TGetBillingV2UsageBreakdownDTO) => {
+    await ensureBillingRead(orgId, actor, isInstanceAdmin);
+
+    const isInstanceScope = scopeKind === BillingV2BreakdownScopeKind.Instance;
+    if (isInstanceScope && !canReadAcrossOrgs(isInstanceAdmin)) {
+      throw new ForbiddenRequestError({
+        message: "Instance-wide usage can only be read by an instance admin on a self-hosted instance."
+      });
+    }
+
+    const organization = await orgDAL.findById(orgId);
+    if (!organization) {
+      throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    }
+
+    const rootOrgId = isInstanceScope ? null : await usageCounterDAL.resolveRootOrgId(orgId);
+    const scopeOrgId = rootOrgId ?? undefined;
+    const orgs = isInstanceScope
+      ? await breakdownDAL.findAllOrgNames()
+      : await breakdownDAL.findOrgTreeNames(rootOrgId as string);
+
+    const buildIdentityBreakdown = async (
+      counts: { users: number; identities: number },
+      rows: { orgId: string; projectId: string | null; count: number }[],
+      withProjectDetail: boolean,
+      unit: string
+    ): Promise<BillingV2UsageBreakdown> => {
+      const attributed = withProjectDetail
+        ? rows
+        : rows.map((row) => ({ orgId: row.orgId, projectId: null, count: row.count }));
+      const projectIds = withProjectDetail
+        ? [...new Set(rows.map((row) => row.projectId).filter((id): id is string => Boolean(id)))]
+        : [];
+      const projects = await breakdownDAL.findProjectNames(projectIds);
+      const projectsById = new Map(projects.map((project) => [project.id, project]));
+
+      return {
+        dimensionKey,
+        total: counts.users + counts.identities,
+        userCount: counts.users,
+        scopedCount: counts.identities,
+        hasProjectDetail: withProjectDetail,
+        unit,
+        scopes: $buildScopes(orgs, projectsById, attributed, rootOrgId)
+      };
+    };
+
+    const buildOrgOnlyBreakdown = (rows: { orgId: string; count: number }[], unit: string): BillingV2UsageBreakdown => {
+      const scopes = $buildScopes(
+        orgs,
+        new Map(),
+        rows.map((row) => ({ orgId: row.orgId, projectId: null, count: row.count })),
+        rootOrgId
+      );
+      const total = scopes.reduce((sum, scope) => sum + scope.count, 0);
+      return { dimensionKey, total, userCount: 0, scopedCount: total, hasProjectDetail: false, unit, scopes };
+    };
+
+    switch (dimensionKey) {
+      case BillingV2BreakdownDimension.Identities: {
+        const [counts, rows] = await Promise.all([
+          licenseDAL.countBillableOrgActors(rootOrgId),
+          licenseDAL.getBillableIdentityOwnershipBreakdown(rootOrgId)
+        ]);
+        return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
+      }
+      case BillingV2BreakdownDimension.SecretIdentities:
+      case BillingV2BreakdownDimension.PamIdentities: {
+        const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
+        const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
+        const [counts, rows] = await Promise.all([
+          usageCounterDAL.countProjectIdentitiesByKindFor(projectType, scopeOrgId),
+          usageCounterDAL.getProjectIdentityBreakdown(projectType, scopeOrgId)
+        ]);
+        return {
+          breakdown: await buildIdentityBreakdown(
+            counts,
+            rows,
+            isSecretIdentities,
+            isSecretIdentities ? "secret identity" : "PAM identity"
+          )
+        };
+      }
+      case BillingV2BreakdownDimension.UserIdentities: {
+        const { users } = await licenseDAL.countBillableOrgActors(rootOrgId);
+        return {
+          breakdown: {
+            dimensionKey,
+            total: users,
+            userCount: users,
+            scopedCount: 0,
+            hasProjectDetail: false,
+            unit: "user identity",
+            scopes: []
+          }
+        };
+      }
+      case BillingV2BreakdownDimension.InternalCas: {
+        const rows = await usageCounterDAL.getInternalCaOrgBreakdown(scopeOrgId);
+        return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
+      }
+      case BillingV2BreakdownDimension.ActiveCerts:
+      case BillingV2BreakdownDimension.WildcardCerts: {
+        const rows = await usageCounterDAL.getActiveCertificateOrgBreakdown(scopeOrgId);
+        const isWildcard = dimensionKey === BillingV2BreakdownDimension.WildcardCerts;
+        return {
+          breakdown: buildOrgOnlyBreakdown(
+            rows.map((row) => ({ orgId: row.orgId, count: isWildcard ? row.wildcard : row.count })),
+            isWildcard ? "wildcard certificate" : "active certificate"
+          )
+        };
+      }
+      default: {
+        const unhandled: never = dimensionKey;
+        throw new BadRequestError({
+          message: `'${String(unhandled)}' is not a usage dimension that can be broken down by scope.`
+        });
+      }
+    }
+  };
+
+  const getBillableOrganizations = async ({
+    orgId,
+    actor,
+    isInstanceAdmin,
+    search,
+    limit,
+    offset
+  }: TListBillableOrganizationsDTO) => {
+    await ensureBillingRead(orgId, actor, isInstanceAdmin);
+
+    // ensureBillingRead checks with ParentOrganization scope, which refuses a child org, so orgId is
+    // already the root and the list collapses to that single entry.
+    if (!canReadAcrossOrgs(isInstanceAdmin)) {
+      const organization = await orgDAL.findById(orgId);
+      if (!organization) {
+        throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+      }
+
+      const term = search?.toLowerCase();
+      const matches = term
+        ? organization.name.toLowerCase().includes(term) || organization.slug.toLowerCase().includes(term)
+        : true;
+      const organizations = matches ? [{ id: organization.id, name: organization.name, slug: organization.slug }] : [];
+      return {
+        organizations: organizations.slice(offset, offset + limit),
+        totalCount: organizations.length
+      };
+    }
+
+    const { orgs, totalCount } = await breakdownDAL.findAllRootOrgs({ search, limit, offset });
+    return { organizations: orgs, totalCount };
+  };
+
   // Force-refresh entitlements: ask the license server to recompute and drop the local cache, so the
   // next overview read pulls the latest and re-populates the cache. Exposed as a manual refresh button.
   const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
@@ -835,8 +1100,8 @@ export const licenseV2ServiceFactory = ({
     return { success: true as const };
   };
 
-  const getCatalog = async ({ orgId, actor }: TGetBillingV2CatalogDTO) => {
-    await ensureBillingRead(orgId, actor);
+  const getCatalog = async ({ orgId, actor, isInstanceAdmin }: TGetBillingV2CatalogDTO) => {
+    await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
     const catalog = await licenseClient.getCatalog(orgId);
     if (!catalog) {
@@ -1141,6 +1406,8 @@ export const licenseV2ServiceFactory = ({
 
   return {
     getOverview,
+    getUsageBreakdown,
+    getBillableOrganizations,
     refreshEntitlements,
     getCatalog,
     portalSession,

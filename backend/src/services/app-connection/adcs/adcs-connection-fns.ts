@@ -1,10 +1,9 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { AdcsRpcEndpoint, AdcsTemplatesResult, callAdcsEndpoint } from "@app/lib/gateway-v2/adcs-rpc";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ADCSConnectionMethod } from "./adcs-connection-enums";
@@ -177,7 +176,6 @@ export const resolveAdcsCaName = async (
 
 export const validateADCSConnectionCredentials = async (
   config: TADCSConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {

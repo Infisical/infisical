@@ -70,7 +70,12 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
@@ -214,6 +219,29 @@ export const secretV2BridgeServiceFactory = ({
   projectFolderGrantDAL,
   orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
+  // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+  // message is resolved against their permission rather than formatted inside validation.
+  const $validateSecrets = async (
+    dto: TValidateSecretsDTO,
+    permission: MongoAbility<ProjectPermissionSet>,
+    tx?: Knex
+  ) => {
+    try {
+      await secretValidationRuleService.validateSecrets(dto, tx);
+    } catch (error) {
+      if (!(error instanceof SecretValidationError)) throw error;
+
+      throw new BadRequestError({
+        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+          )
+        )
+      });
+    }
+  };
+
   const { getSecretMetadata } = secretMetadataServiceFactory({
     permissionService,
     folderDAL,
@@ -423,13 +451,16 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    await secretValidationRuleService.validateSecrets({
-      projectId,
-      environment,
-      envId: folder.envId,
-      secretPath,
-      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
-    });
+    await $validateSecrets(
+      {
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
+      },
+      permission
+    );
 
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
     const allSecretReferences = nestedReferences.concat(
@@ -712,13 +743,16 @@ export const secretV2BridgeServiceFactory = ({
     // Validate against secret validation rules (key rename and/or value change)
     const finalKey = inputSecret.newSecretName || secretName;
     if (secretValue || inputSecret.newSecretName) {
-      await secretValidationRuleService.validateSecrets({
-        projectId,
-        environment,
-        envId: folder.envId,
-        secretPath,
-        secrets: [{ key: finalKey, value: secretValue, secretId }]
-      });
+      await $validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: [{ key: finalKey, value: secretValue, secretId }]
+        },
+        permission
+      );
     }
 
     if (secretValue) {
@@ -1013,17 +1047,22 @@ export const secretV2BridgeServiceFactory = ({
         }
       );
 
+      // deleting a shared secret cascades to every user's personal override, so the row to return must be
+      // picked by id instead of trusting the order the delete happened to return rows in
+      const deletedSecretRow = deletedSecret.find((el) => el.id === secretToDelete.id);
+      if (!deletedSecretRow) throw new NotFoundError({ message: "Secret not found" });
+
       return reshapeBridgeSecret(
         projectId,
         environment,
         secretPath,
         {
-          ...deletedSecret[0],
-          value: deletedSecret[0].encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedValue }).toString()
+          ...deletedSecretRow,
+          value: deletedSecretRow.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecretRow.encryptedValue }).toString()
             : "",
-          comment: deletedSecret[0].encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
+          comment: deletedSecretRow.encryptedComment
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecretRow.encryptedComment }).toString()
             : ""
         },
         secretValueHidden,
@@ -2216,14 +2255,15 @@ export const secretV2BridgeServiceFactory = ({
       );
     }
 
-    await secretValidationRuleService.validateSecrets(
+    await $validateSecrets(
       {
         projectId,
         environment,
         envId: folder.envId,
         secretPath,
-        secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+        secrets: deduplicatedSecrets.map((el) => ({ key: el.secretKey, value: el.secretValue }))
       },
+      permission,
       providedTx
     );
 
@@ -2634,13 +2674,17 @@ export const secretV2BridgeServiceFactory = ({
         ];
         if (secretsToValidate.length) {
           // eslint-disable-next-line no-await-in-loop
-          await secretValidationRuleService.validateSecrets({
-            projectId,
-            environment,
-            envId: folder.envId,
-            secretPath,
-            secrets: secretsToValidate
-          });
+          await $validateSecrets(
+            {
+              projectId,
+              environment,
+              envId: folder.envId,
+              secretPath,
+              secrets: secretsToValidate
+            },
+            permission,
+            tx
+          );
         }
 
         const secretKeyUpdates: {
@@ -3891,6 +3935,10 @@ export const secretV2BridgeServiceFactory = ({
         secretTags: secret.tags.map((i) => i.slug)
       })
     );
+
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
+    }
 
     if (secretVersion.isRedacted) {
       throw new BadRequestError({ message: `Secret version with ID '${versionId}' is already redacted` });

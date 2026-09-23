@@ -6,6 +6,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TDevinListSecretsResponse, TDevinSecret, TDevinSyncWithCredentials } from "./devin-sync-types";
@@ -118,7 +119,8 @@ const buildSyncNote = (secretSync: TDevinSyncWithCredentials) => {
 };
 
 export const DevinSyncFns = {
-  syncSecrets: async (secretSync: TDevinSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TDevinSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection: {
         credentials: { apiKey }
@@ -157,7 +159,8 @@ export const DevinSyncFns = {
       }
     }
   },
-  removeSecrets: async (secretSync: TDevinSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TDevinSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection: {
         credentials: { apiKey }

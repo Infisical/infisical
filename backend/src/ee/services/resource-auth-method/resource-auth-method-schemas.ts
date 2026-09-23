@@ -11,6 +11,16 @@ export const AwsAuthMethodConfigSchema = z.object({
   updatedAt: z.date()
 });
 
+export const GcpAuthMethodConfigSchema = z.object({
+  id: z.string().uuid(),
+  type: z.string(),
+  allowedServiceAccounts: z.string(),
+  allowedProjects: z.string(),
+  allowedZones: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
 export const KubernetesAuthMethodConfigSchema = z.object({
   id: z.string().uuid(),
   kubernetesHost: z.string(),
@@ -36,6 +46,7 @@ export const IdentityAuthMethodConfigSchema = z.object({
 
 export const AuthMethodViewSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
+  z.object({ method: z.literal(ResourceAuthMethodType.Gcp), config: GcpAuthMethodConfigSchema }),
   z.object({ method: z.literal(ResourceAuthMethodType.Kubernetes), config: KubernetesAuthMethodConfigSchema }),
   z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
   z.object({ method: z.literal(ResourceAuthMethodType.Identity), config: IdentityAuthMethodConfigSchema })
