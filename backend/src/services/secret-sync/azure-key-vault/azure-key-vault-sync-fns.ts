@@ -18,6 +18,7 @@ import {
   assertUniqueAzureKeyVaultSecretNames,
   findInfisicalSecretKeyForAzureKeyVaultName,
   infisicalImportKeyFromAzureKeyVaultName,
+  normalizeAzureKeyVaultSecretName,
   toAzureKeyVaultSecretName
 } from "./azure-key-vault-secret-name";
 import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azure-key-vault-sync-types";
@@ -157,18 +158,23 @@ export const azureKeyVaultSyncFactory = ({
 
     const deleteSecrets: string[] = [];
 
+    const vaultKeysByNormalizedName = new Map(
+      Object.keys(vaultSecrets).map((key) => [normalizeAzureKeyVaultSecretName(key), key])
+    );
+
     Object.keys(secretMap).forEach((infisicalKey) => {
       const hyphenatedKey = toAzureKeyVaultSecretName(infisicalKey);
-      if (!(hyphenatedKey in vaultSecrets)) {
+      const vaultKey = vaultKeysByNormalizedName.get(normalizeAzureKeyVaultSecretName(infisicalKey));
+      if (!vaultKey) {
         // case: secret has been created
         setSecrets.push({
           key: hyphenatedKey,
           value: secretMap[infisicalKey].value
         });
-      } else if (secretMap[infisicalKey].value !== vaultSecrets[hyphenatedKey].value) {
+      } else if (secretMap[infisicalKey].value !== vaultSecrets[vaultKey].value) {
         // case: secret has been updated
         setSecrets.push({
-          key: hyphenatedKey,
+          key: vaultKey,
           value: secretMap[infisicalKey].value
         });
       }
@@ -184,7 +190,8 @@ export const azureKeyVaultSyncFactory = ({
       let isSecretSet = false;
       let syncError: Error | null = null;
       let maxTries = 6;
-      if (disabledAzureKeyVaultSecretKeys.includes(key)) return;
+      if (disabledAzureKeyVaultSecretKeys.some((disabledKey) => disabledKey.toLowerCase() === key.toLowerCase()))
+        return;
 
       while (!isSecretSet && maxTries > 0) {
         // try to set secret
@@ -246,10 +253,18 @@ export const azureKeyVaultSyncFactory = ({
 
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
+    const environmentSlug = secretSync.environment?.slug || "";
+    const { keySchema } = secretSync.syncOptions;
+
+    // The key schema is written with Infisical separators, so compare it against the Infisical form
+    // of the vault name (`dev-FOO` must match `{{environment}}_{{secretKey}}`).
     for await (const deleteSecretKey of deleteSecrets.filter(
       (secret) =>
-        matchesSchema(secret, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
-        !setSecrets.find((setSecret) => setSecret.key === secret)
+        matchesSchema(
+          infisicalImportKeyFromAzureKeyVaultName(secret, environmentSlug, keySchema),
+          environmentSlug,
+          keySchema
+        ) && !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {
       await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
         method: "DELETE",

@@ -139,4 +139,18 @@ describe("Azure Key Vault secret names", () => {
       undefined
     );
   });
+
+  test("matches a vault secret whose name differs only in case", () => {
+    expect(findInfisicalSecretKeyForAzureKeyVaultName("User-Password", { user_password: { value: "a" } })).toBe(
+      "user_password"
+    );
+    expect(resolveAzureKeyVaultImportedSecretKey("API-KEY", { api_key: { value: "a" } })).toBe("api_key");
+  });
+
+  test("fails the sync when Infisical keys differ only in case once written to Azure Key Vault", () => {
+    const sync = () => assertUniqueAzureKeyVaultSecretNames(["API_KEY", "api-key"]);
+
+    expect(sync).toThrow(SecretSyncError);
+    expect(sync).toThrow("'API_KEY' and 'api-key' both become 'API-KEY'");
+  });
 });

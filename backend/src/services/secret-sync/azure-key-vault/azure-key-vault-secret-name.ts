@@ -6,13 +6,13 @@ import { SecretSyncError } from "../secret-sync-errors";
 // either character, so an imported vault name is stored unchanged. Sync still rewrites each
 // underscore to a hyphen on the way out, because that is the only form Key Vault accepts.
 // Two Infisical names that differ only by that substitution refer to the same vault secret,
-// which keeps names imported before this change (hyphens rewritten to underscores) matched.
+// which keeps older underscored imports matched. Key Vault names are also case-insensitive, so
+// `API_KEY` and `api-key` are one vault secret as well.
 
 export const toAzureKeyVaultSecretName = (infisicalKey: string) => infisicalKey.replaceAll("_", "-");
 
-// Key schemas are written with Infisical separators, often underscores. Those separators are
-// hyphens in the vault. Put the separators back so schema stripping removes only the wrapper
-// and leaves hyphens that belong to the secret name.
+export const normalizeAzureKeyVaultSecretName = (name: string) => toAzureKeyVaultSecretName(name).toLowerCase();
+
 export const infisicalImportKeyFromAzureKeyVaultName = (azureKey: string, environment: string, schema?: string) => {
   if (!schema) return azureKey;
 
@@ -43,11 +43,12 @@ export const infisicalImportKeyFromAzureKeyVaultName = (azureKey: string, enviro
 export const findInfisicalSecretKeyForAzureKeyVaultName = (azureKey: string, secretMap: object): string | undefined => {
   if (Object.hasOwn(secretMap, azureKey)) return azureKey;
 
-  return Object.keys(secretMap).find((infisicalKey) => toAzureKeyVaultSecretName(infisicalKey) === azureKey);
+  const normalizedAzureKey = normalizeAzureKeyVaultSecretName(azureKey);
+  return Object.keys(secretMap).find(
+    (infisicalKey) => normalizeAzureKeyVaultSecretName(infisicalKey) === normalizedAzureKey
+  );
 };
 
-// Re-import updates a secret already stored under the older underscored name instead of
-// creating a second secret. A vault name with no match is kept as-is, hyphens included.
 export const resolveAzureKeyVaultImportedSecretKey = (azureKey: string, existingSecrets: object) =>
   findInfisicalSecretKeyForAzureKeyVaultName(azureKey, existingSecrets) ?? azureKey;
 
@@ -66,24 +67,24 @@ export const assertUniqueAzureKeyVaultSecretNames = (infisicalKeys: Iterable<str
   const keysByAzureName = new Map<string, string[]>();
 
   for (const infisicalKey of infisicalKeys) {
-    const azureKey = toAzureKeyVaultSecretName(infisicalKey);
+    const azureKey = normalizeAzureKeyVaultSecretName(infisicalKey);
     const group = keysByAzureName.get(azureKey);
     if (group) group.push(infisicalKey);
     else keysByAzureName.set(azureKey, [infisicalKey]);
   }
 
-  const collisions = [...keysByAzureName.entries()].filter(([, keys]) => keys.length > 1);
+  const collisions = [...keysByAzureName.values()].filter((keys) => keys.length > 1);
   if (collisions.length === 0) return;
 
   const details = collisions
-    .map(([azureKey, keys]) => {
+    .map((keys) => {
       const verb = keys.length === 2 ? "both become" : "all become";
-      return `${formatSecretNameList(keys)} ${verb} '${azureKey}'`;
+      return `${formatSecretNameList(keys)} ${verb} '${toAzureKeyVaultSecretName(keys[0])}'`;
     })
     .join(". ");
 
   throw new SecretSyncError({
-    message: `These Infisical secret names would overwrite each other in Azure Key Vault, because each underscore is written as a hyphen. ${details}. Rename them so each vault name belongs to one secret.`,
+    message: `These Infisical secret names would overwrite each other in Azure Key Vault, because each underscore is written as a hyphen and vault names ignore case. ${details}. Rename them so each vault name belongs to one secret.`,
     shouldRetry: false
   });
 };
