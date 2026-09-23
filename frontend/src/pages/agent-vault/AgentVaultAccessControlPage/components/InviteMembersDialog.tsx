@@ -173,7 +173,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
               onSearchChange={setSearch}
               getOptionValue={(option) => option.value}
               getOptionLabel={(option) => option.label}
-              getOptionKeywords={(option) => [option.email]}
               placeholder="Pick users"
               searchPlaceholder="Search by name or email..."
               searchAriaLabel="Search users"

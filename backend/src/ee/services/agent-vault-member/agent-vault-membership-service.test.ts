@@ -273,6 +273,62 @@ describe("agentVaultMembership guards", () => {
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
+  // The name lookup is not org-scoped, so resolving an outsider would hand back another tenant's email and
+  // tell a real id apart from a made-up one. Only the deactivated, who are in this org, get a name.
+  test("never names an actor from outside the organization", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+    deps.userDAL.find.mockResolvedValue([{ id: OTHER_USER_ID, username: "sam@othercompany.com" }]);
+
+    const refusal = service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      machineIdentityIds: [],
+      groupIds: [],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    await expect(refusal).rejects.toThrow(`'${OTHER_USER_ID}' is not a member of this organization`);
+    await expect(refusal).rejects.not.toThrow("sam@othercompany.com");
+  });
+
+  test("names a deactivated member, who is in this organization", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+    deps.userDAL.find.mockResolvedValue([{ id: OTHER_USER_ID, username: "bob@test.local" }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("'bob@test.local' is deactivated in this organization");
+  });
+
+  test("reads correctly for several outsiders", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID, THIRD_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("are not members of this organization. Invite them to the organization first.");
+  });
+
   // A group whose organization membership was deactivated must not be restorable by adding it again.
   test("refuses a group whose organization membership is deactivated", async () => {
     const { service, deps } = buildService();

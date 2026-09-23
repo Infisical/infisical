@@ -416,28 +416,28 @@ export const agentVaultMembershipServiceFactory = ({
     });
 
     if (deactivated.length || strangers.length) {
-      // Only on the refusal path: the happy path has no use for the names.
-      const nameByKey = await resolveActorNames([...deactivated, ...strangers]);
+      // Names only for the deactivated, who are in this org. The lookup is not org-scoped, so resolving a
+      // stranger would hand back another tenant's email, and tell a real id apart from a made-up one.
+      const nameByKey = await resolveActorNames(deactivated);
       const listOf = (refused: TAgentVaultNamedActor[]) =>
         refused.map((actor) => `'${nameByKey.get(actorKey(actor)) ?? actor.identifier}'`).join(", ");
-      const verb = (refused: TAgentVaultNamedActor[]) => (refused.length === 1 ? "is" : "are");
-      const them = (refused: TAgentVaultNamedActor[]) => (refused.length === 1 ? "them" : "those members");
 
       // Both, when a batch holds both: fixing one and retrying to discover the other is a wasted round
       // trip, and a bulk change is where that hurts.
       const reasons: string[] = [];
       if (deactivated.length) {
+        const one = deactivated.length === 1;
         reasons.push(
-          `${listOf(deactivated)} ${verb(deactivated)} deactivated in this organization. Reactivate ${them(
-            deactivated
-          )} before changing their Agent Vault access.`
+          `${listOf(deactivated)} ${one ? "is" : "are"} deactivated in this organization. Reactivate ${
+            one ? "them" : "those members"
+          } before changing their Agent Vault access.`
         );
       }
       if (strangers.length) {
         reasons.push(
-          `${listOf(strangers)} ${verb(strangers)} not a member of this organization. Invite ${them(
-            strangers
-          )} to the organization first.`
+          `${listOf(strangers)} ${
+            strangers.length === 1 ? "is not a member" : "are not members"
+          } of this organization. Invite them to the organization first.`
         );
       }
 
