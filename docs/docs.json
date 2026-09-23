@@ -4457,6 +4457,7 @@
                     "group": "Access bundle members",
                     "pages": [
                       "api-reference/endpoints/agent-vault-access-bundle-members/list",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/list-available",
                       "api-reference/endpoints/agent-vault-access-bundle-members/add",
                       "api-reference/endpoints/agent-vault-access-bundle-members/revoke"
                     ]

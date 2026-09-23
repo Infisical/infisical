@@ -2559,6 +2559,92 @@ describe("Agent Vault V1 Router", async () => {
       expect(await testDb("membership_roles").where({ membershipId: grant.id })).toHaveLength(0);
     });
 
+    test("available lists the members who could still be granted the bundle, and drops each as it is granted", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`available-grantees-${Date.now()}`);
+      const other = await createAccessBundle(`available-grantees-other-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-grantee-group", ProjectMembershipRole.Member);
+      const availableUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members/available`;
+
+      const listAvailable = async (query = "") => {
+        const res = await inject("GET", `${availableUrl}${query ? `?${query}` : ""}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as {
+          members: { actor: { type: string; id: string } }[];
+          totalCount: number;
+        };
+      };
+
+      try {
+        const idsOf = (members: { actor: { id: string } }[]) => members.map((member) => member.actor.id);
+
+        // Candidates are the product's own members, and the bundle is new, so nobody holds it yet.
+        const before = await listAvailable("limit=100");
+        expect(idsOf(before.members)).toContain(group.id);
+
+        expect(
+          (await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, { groupIds: [group.id] }))
+            .statusCode
+        ).toBe(200);
+
+        const afterGrant = await listAvailable("limit=100");
+        expect(idsOf(afterGrant.members)).not.toContain(group.id);
+        expect(afterGrant.totalCount).toBe(before.totalCount - 1);
+
+        // The grant is per bundle, so holding one leaves the actor a candidate for every other.
+        const otherRes = await inject(
+          "GET",
+          `/api/v1/agent-vault/access-bundles/${other.id}/members/available?limit=100`
+        );
+        expect(otherRes.statusCode).toBe(200);
+        expect(
+          (JSON.parse(otherRes.payload) as { members: { actor: { id: string } }[] }).members.map(
+            (member) => member.actor.id
+          )
+        ).toContain(group.id);
+
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+              groupIds: [group.id]
+            })
+          ).statusCode
+        ).toBe(200);
+        const afterRevoke = await listAvailable("limit=100");
+        expect(idsOf(afterRevoke.members)).toContain(group.id);
+        expect(afterRevoke.totalCount).toBe(before.totalCount);
+
+        // totalCount counts the whole set rather than the page, so a picker can say it is truncated.
+        const firstPage = await listAvailable("limit=1");
+        expect(firstPage.members).toHaveLength(1);
+        expect(firstPage.totalCount).toBe(before.totalCount);
+      } finally {
+        await group.cleanup();
+        await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+        await inject("DELETE", `/api/v1/agent-vault/access-bundles/${other.id}`);
+      }
+    });
+
+    test("available on a bundle rejects the out-of-range query values the member list does", async () => {
+      const bundle = await createAccessBundle(`available-grantees-query-${Date.now()}`);
+      const availableUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members/available`;
+
+      try {
+        expect((await inject("GET", `${availableUrl}?limit=0`)).statusCode).toBe(422);
+        expect((await inject("GET", `${availableUrl}?limit=101`)).statusCode).toBe(422);
+        expect((await inject("GET", `${availableUrl}?offset=10001`)).statusCode).toBe(422);
+
+        // An unreachable bundle is a 404 here as everywhere else, never a 403 confirming it exists.
+        const unknown = await inject(
+          "GET",
+          `/api/v1/agent-vault/access-bundles/${crypto.randomUUID()}/members/available`
+        );
+        expect(unknown.statusCode).toBe(404);
+      } finally {
+        await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+      }
+    });
+
     test("a revoke is confined to the named bundle, actor and actor type", async () => {
       const projectId = await getProjectId();
       const [held, other] = [await createAccessBundle("revoke-held"), await createAccessBundle("revoke-other")];

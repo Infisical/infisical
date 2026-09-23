@@ -4337,6 +4337,11 @@ export const AGENT_VAULT = {
     limit: "The maximum number of candidates to return.",
     offset: "How many candidates to skip."
   },
+  AVAILABLE_GRANTEE: {
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
+  },
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",

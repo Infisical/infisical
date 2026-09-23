@@ -1862,6 +1862,7 @@ export const registerRoutes = async (
     kmsService,
     membershipDAL,
     membershipRoleDAL,
+    agentVaultMemberDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
   });
