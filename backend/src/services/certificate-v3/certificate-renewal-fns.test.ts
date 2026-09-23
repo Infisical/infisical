@@ -165,10 +165,22 @@ describe("resolveRenewalUsages", () => {
     });
   });
 
-  it("drops an extended usage the authority added when the request asked for key usages but no extended ones", () => {
+  it("keeps a request's extended usages when it recorded no key usages, resolving the two independently", () => {
+    expect(resolveRenewalUsages({ exists: true, keyUsages: null, extendedKeyUsages: ["client_auth"] }, issued)).toEqual(
+      {
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+      }
+    );
+  });
+
+  it("keeps a request's key usages when it recorded no extended ones, resolving the two independently", () => {
     expect(
       resolveRenewalUsages({ exists: true, keyUsages: ["digital_signature"], extendedKeyUsages: null }, issued)
-    ).toEqual({ keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE], extendedKeyUsages: [] });
+    ).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
   });
 
   it("falls back to the certificate only when there is no request behind it", () => {

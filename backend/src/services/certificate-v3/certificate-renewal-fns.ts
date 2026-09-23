@@ -260,11 +260,11 @@ export const resolveRenewalUsages = (
   requested: { exists: boolean; keyUsages: string[] | null; extendedKeyUsages: string[] | null },
   certificate: { keyUsages?: unknown; extendedKeyUsages?: unknown }
 ): { keyUsages: CertKeyUsageType[]; extendedKeyUsages: CertExtendedKeyUsageType[] } => {
-  const askedFor = requested.exists && requested.keyUsages?.length ? requested : null;
+  const asked = <T>(recorded: T[] | null): T[] | null => (requested.exists && recorded?.length ? recorded : null);
 
   return {
-    keyUsages: parseKeyUsages(askedFor ? askedFor.keyUsages : certificate.keyUsages),
-    extendedKeyUsages: parseExtendedKeyUsages(askedFor ? askedFor.extendedKeyUsages : certificate.extendedKeyUsages)
+    keyUsages: parseKeyUsages(asked(requested.keyUsages) ?? certificate.keyUsages),
+    extendedKeyUsages: parseExtendedKeyUsages(asked(requested.extendedKeyUsages) ?? certificate.extendedKeyUsages)
   };
 };
 
