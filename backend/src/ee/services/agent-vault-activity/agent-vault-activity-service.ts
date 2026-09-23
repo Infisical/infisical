@@ -471,13 +471,14 @@ export const agentVaultActivityServiceFactory = ({
       next.region !== (current.region ?? null) ||
       normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix) ||
       (next.enabled && !current.enabled);
-    if (next.appConnectionId && usesConnectionAnew) {
-      await appConnectionService.validateAppConnectionUsageById(
-        AppConnection.AWS,
-        { connectionId: next.appConnectionId, projectId },
-        actor
-      );
-    }
+    const validatedConnection =
+      next.appConnectionId && usesConnectionAnew
+        ? await appConnectionService.validateAppConnectionUsageById(
+            AppConnection.AWS,
+            { connectionId: next.appConnectionId, projectId },
+            actor
+          )
+        : null;
 
     if (next.enabled) {
       if (!next.appConnectionId && current.enabled && current.appConnectionId) {
@@ -538,12 +539,22 @@ export const agentVaultActivityServiceFactory = ({
 
     const corsProbeUrl = activityStorage ? await activityStorage.mintCorsProbeUrl() : null;
 
+    // Resolved now for the audit event: once the connection is renamed or deleted, its id alone no longer
+    // tells an admin reading the log which one it was.
+    let appConnectionName: string | null = null;
+    if (validatedConnection) {
+      appConnectionName = validatedConnection.name;
+    } else if (saved.appConnectionId) {
+      appConnectionName = (await appConnectionDAL.findById(saved.appConnectionId))?.name ?? null;
+    }
+
     return {
       config: toConfigView(saved),
       isStorageFull: toCount(saved.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
       lastRecordedAt: saved.lastRecordedAt ?? null,
-      relocated
+      relocated,
+      appConnectionName
     };
   };
 

@@ -96,7 +96,8 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
           metadata: {
             app: AppConnection.AWS,
             count: appConnections.length,
-            connectionIds: appConnections.map((connection) => connection.id)
+            connectionIds: appConnections.map((connection) => connection.id),
+            connectionNames: appConnections.map((connection) => connection.name)
           }
         }
       });
@@ -187,7 +188,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.GET_APP_CONNECTION,
-          metadata: { connectionId: appConnection.id }
+          metadata: { connectionId: appConnection.id, connectionName: appConnection.name }
         }
       });
 
@@ -232,7 +233,8 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
             name,
             description,
             credentialsUpdated: Boolean(credentials),
-            connectionId
+            connectionId,
+            connectionName: appConnection.name
           }
         }
       });
@@ -283,7 +285,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.DELETE_APP_CONNECTION,
-          metadata: { connectionId }
+          metadata: { connectionId, connectionName: appConnection.name }
         }
       });
 
@@ -337,7 +339,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS,
-          metadata: { connectionId }
+          metadata: { connectionId, connectionName: appConnection.name }
         }
       });
 

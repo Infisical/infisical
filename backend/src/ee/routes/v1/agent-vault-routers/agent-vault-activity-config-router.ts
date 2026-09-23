@@ -18,7 +18,8 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
     schema: {
       hide: false,
       operationId: "getAgentVaultActivityConfig",
-      description: "Read where this project's session activity is stored, and whether activity logging has reached its limit",
+      description:
+        "Read where this project's session activity is stored, and whether activity logging has reached its limit",
       tags: [ApiDocsTags.AgentVaultActivity],
       response: { 200: AgentVaultActivityConfigResponseSchema }
     },
@@ -50,7 +51,7 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { relocated, ...result } = await server.services.agentVaultActivity.updateActivityConfig({
+      const updated = await server.services.agentVaultActivity.updateActivityConfig({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,
@@ -68,6 +69,7 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
         },
         ...req.body
       });
+      const { relocated, appConnectionName, ...result } = updated;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -75,7 +77,7 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_ACTIVITY_CONFIG_UPDATE,
-          metadata: { ...result.config, relocated }
+          metadata: { ...result.config, appConnectionName, relocated }
         }
       });
 
