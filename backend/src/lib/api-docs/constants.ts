@@ -106,7 +106,8 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
-  KmipServers = "KMIP Servers"
+  KmipServers = "KMIP Servers",
+  Instance = "Instance"
 }
 
 export const GROUPS = {

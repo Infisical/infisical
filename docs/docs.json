@@ -1352,9 +1352,13 @@
             "pages": [
               "api-reference/overview/introduction",
               {
-                "group": "Overview",
+                "group": "Get started",
                 "pages": [
-                  "api-reference/overview/authentication"
+                  "api-reference/overview/quickstart",
+                  "api-reference/overview/authentication",
+                  "api-reference/overview/pagination",
+                  "api-reference/overview/rate-limits",
+                  "api-reference/overview/errors"
                 ]
               },
               {
@@ -1396,6 +1400,7 @@
                       "api-reference/endpoints/identities/update",
                       "api-reference/endpoints/identities/delete",
                       "api-reference/endpoints/identities/get-by-id",
+                      "api-reference/endpoints/identities/details",
                       "api-reference/endpoints/identities/list",
                       "api-reference/endpoints/identities/search",
                       "api-reference/endpoints/identities/search-count",
@@ -4532,6 +4537,12 @@
                     "group": "Admin",
                     "pages": [
                       "api-reference/endpoints/admin/bootstrap-instance"
+                    ]
+                  },
+                  {
+                    "group": "Instance",
+                    "pages": [
+                      "api-reference/endpoints/instance/status"
                     ]
                   }
                 ]
