@@ -142,9 +142,6 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
                   options={options}
                   value={group}
                   isLoading={isFetching}
-                  // onSearchChange, not onInputValueChange: passing it is what marks the search
-                  // caller-owned, which turns off the local matcher and stops Enter committing a
-                  // highlight from the page the previous query returned while this one is in flight.
                   onSearchChange={setSearch}
                   getOptionValue={(option) => option.value}
                   getOptionLabel={(option) => option.label}
