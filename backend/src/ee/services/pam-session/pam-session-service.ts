@@ -109,7 +109,7 @@ type TPamSessionServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -642,7 +642,13 @@ export const pamSessionServiceFactory = ({
 
       const session = await pamSessionDAL.transaction(async (tx) => {
         if (isUserActor) {
-          await assertUserStillActiveInOrg({ orgId: actor.actorOrgId, userId: actor.actorId, membershipDAL, tx });
+          await assertUserStillActiveInOrg({
+            orgId: actor.actorOrgId,
+            userId: actor.actorId,
+            membershipDAL,
+            orgDAL,
+            tx
+          });
         }
 
         return pamSessionDAL.create(
@@ -705,7 +711,7 @@ export const pamSessionServiceFactory = ({
 
     const session = await pamSessionDAL.transaction(async (tx) => {
       if (isUserActor) {
-        await assertUserStillActiveInOrg({ orgId: actor.actorOrgId, userId: actor.actorId, membershipDAL, tx });
+        await assertUserStillActiveInOrg({ orgId: actor.actorOrgId, userId: actor.actorId, membershipDAL, orgDAL, tx });
       }
 
       return pamSessionDAL.create(

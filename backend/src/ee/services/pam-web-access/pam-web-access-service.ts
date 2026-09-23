@@ -86,7 +86,7 @@ type TPamWebAccessServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -514,7 +514,7 @@ export const pamWebAccessServiceFactory = ({
       const expiresAt = new Date(Date.now() + sessionDurationMs);
 
       session = await pamSessionDAL.transaction(async (tx) => {
-        await assertUserStillActiveInOrg({ orgId, userId, membershipDAL, tx });
+        await assertUserStillActiveInOrg({ orgId, userId, membershipDAL, orgDAL, tx });
 
         return pamSessionDAL.create(
           {

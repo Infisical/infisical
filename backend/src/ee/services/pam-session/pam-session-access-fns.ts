@@ -5,6 +5,7 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamSessionStatus } from "../pam/pam-enums";
@@ -208,17 +209,25 @@ export const assertUserStillActiveInOrg = async ({
   orgId,
   userId,
   membershipDAL,
+  orgDAL,
   tx
 }: {
   orgId: string;
   userId: string;
   membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   tx: Knex;
 }) => {
-  const membership = await membershipDAL.lockOrgMembershipForUser(orgId, userId, tx);
-  if (!membership || !membership.isActive) {
-    throw new ForbiddenRequestError({
-      message: "Your organization membership is no longer active. Contact an organization admin to restore access."
-    });
+  const org = await orgDAL.findById(orgId, tx);
+
+  const orgIds = org?.rootOrgId ? [orgId, org.rootOrgId] : [orgId];
+
+  for await (const id of orgIds) {
+    const membership = await membershipDAL.lockOrgMembershipForUser(id, userId, tx);
+    if (!membership || !membership.isActive) {
+      throw new ForbiddenRequestError({
+        message: "Your organization membership is no longer active. Contact an organization admin to restore access."
+      });
+    }
   }
 };
