@@ -9,6 +9,7 @@ import { seedData1 } from "@app/db/seed-data";
 import { AgentVaultActivityErrorName } from "@app/ee/services/agent-vault-activity/agent-vault-activity-constants";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { initLogger } from "@app/lib/logger";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 initLogger();
 
@@ -318,8 +319,9 @@ describe("Agent Vault activity", async () => {
 
     /**
      * The connection is re-checked whenever a save puts its credentials to a new use, and never when a
-     * save only stops using them. Moving the connection into another project is the simplest way to make
-     * the check refuse it.
+     * save only stops using them. Changing the connection's type is the simplest way to make the check
+     * refuse it. Moving it to another project would not do: its credentials are encrypted under this
+     * project's key, so the check fails to decrypt them and answers 500 before it can refuse.
      */
     test("a save that puts the connection to a new use checks it again; turning recording off does not", async () => {
       await saveConfig({
@@ -330,8 +332,7 @@ describe("Agent Vault activity", async () => {
         keyPrefix: "logs"
       });
 
-      const { projectId: originalProjectId } = await testDb("app_connections").where({ id: connectionId }).first();
-      await testDb("app_connections").where({ id: connectionId }).update({ projectId: seedData1.project.id });
+      await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.GCP });
       try {
         expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
         expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
@@ -340,7 +341,7 @@ describe("Agent Vault activity", async () => {
         expect((await saveConfig({ region: "us-west-2" })).statusCode).toBe(400);
         expect((await saveConfig({ keyPrefix: "elsewhere" })).statusCode).toBe(400);
       } finally {
-        await testDb("app_connections").where({ id: connectionId }).update({ projectId: originalProjectId });
+        await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.AWS });
       }
     });
 
