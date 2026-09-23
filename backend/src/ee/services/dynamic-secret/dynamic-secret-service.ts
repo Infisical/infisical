@@ -244,7 +244,7 @@ export const dynamicSecretServiceFactory = ({
 
     return {
       ...dynamicSecretCfg,
-      inputs,
+      inputs: redactStoredInputs(provider.type, inputs),
       projectId: project.id,
       environment: environmentSlug,
       secretPath: path
@@ -495,7 +495,12 @@ export const dynamicSecretServiceFactory = ({
     );
 
     return {
-      dynamicSecret: { ...updatedDynamicCfg, inputs: canReadRootCredential ? updatedInput : null },
+      dynamicSecret: {
+        ...updatedDynamicCfg,
+        inputs: canReadRootCredential
+          ? redactStoredInputs(dynamicSecretCfg.type as DynamicSecretProviders, updatedInput)
+          : null
+      },
       updatedFields,
       projectId: project.id,
       environment: environmentSlug,
