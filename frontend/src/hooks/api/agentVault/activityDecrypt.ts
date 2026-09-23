@@ -85,6 +85,17 @@ export const parseActivityRecords = (json: unknown): TAgentVaultActivityRecord[]
   return parsed.success ? (parsed.data as TAgentVaultActivityRecord[]) : null;
 };
 
+const dropFor = (chunk: TAgentVaultActivityChunk): TAgentVaultActivityDrop | null =>
+  chunk.droppedCount > 0
+    ? {
+        chunkId: chunk.chunkId,
+        proxyId: chunk.proxyId,
+        proxyName: chunk.proxyName,
+        startedAt: chunk.startedAt,
+        droppedCount: chunk.droppedCount
+      }
+    : null;
+
 const gapFor = (
   chunk: TAgentVaultActivityChunk,
   reason: TAgentVaultActivityGapReason
@@ -98,20 +109,11 @@ const gapFor = (
     reason,
     recordCount: chunk.recordCount
   },
-  drop: null,
+  // From the index row, so it holds whether or not the chunk itself can be read. The proxy relies on this:
+  // once a chunk's row exists, it no longer carries that chunk's drop count forward itself.
+  drop: dropFor(chunk),
   arrivedAt: null
 });
-
-const dropFor = (chunk: TAgentVaultActivityChunk): TAgentVaultActivityDrop | null =>
-  chunk.droppedCount > 0
-    ? {
-        chunkId: chunk.chunkId,
-        proxyId: chunk.proxyId,
-        proxyName: chunk.proxyName,
-        startedAt: chunk.startedAt,
-        droppedCount: chunk.droppedCount
-      }
-    : null;
 
 /** Aborts when the caller's signal does, or after `ms`, whichever comes first. */
 const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
