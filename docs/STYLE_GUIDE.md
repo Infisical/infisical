@@ -8,7 +8,7 @@ This guide defines how to write user-facing documentation for Infisical.
 2. **Write for users** — No implementation details. Users care about outcomes, not internals.
 3. **Cross-reference** — Link concepts that are essential for understanding.
 4. **Use Mintlify components** — Steps, Tabs, Cards, Accordions, callouts, diagrams.
-5. **Write clearly** — Active voice, specific verbs, concise sentences, sparing em dashes.
+5. **Write clearly** — Plain technical English. Say exactly what you mean, with active voice, specific verbs, and sparing em dashes.
 6. **Keep pages focused** — One purpose per page.
 7. **Maintain flow** — New content should connect naturally with existing content.
 8. **State prerequisites** — Tell readers what they need before they start.
@@ -104,6 +104,30 @@ Permissions are set at the folder level.
 [Learn more about Folders →](/documentation/platform/pam/folders/overview)
 ```
 
+### Link instead of pointing
+
+Don't send readers "above" or "below". Link to the section, on this page or another, so they don't have to scroll and guess which part you mean.
+
+**Instead of:** These limits differ from the Infisical Cloud limits above.
+
+**Write:** These limits differ from the [Infisical Cloud limits](#limits-on-infisical-cloud).
+
+### Say how, whenever you say someone can do something
+
+If a sentence tells the reader they can do something, don't leave them to guess how. Link to the instructions. If the steps are short and no page covers them, write them inline.
+
+**Instead of:** An admin can change these limits.
+
+**Write:** A super admin can change these limits in the [Server Console](/documentation/platform/admin-panel/server-admin).
+
+### Refer to endpoints by what they do, and link them
+
+In prose, describe an endpoint in words and link its reference page. Keep the method and path for code blocks. Any endpoint you mention should be linked, including one you only mention in passing.
+
+**Instead of:** Call `POST /api/v1/auth/universal-auth/login` with the client ID and client secret.
+
+**Write:** Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret.
+
 ---
 
 ## 4. Use Mintlify components
@@ -112,18 +136,35 @@ Take full advantage of Mintlify's component library rather than relying on plain
 
 ### Procedures
 
-Use `<Steps>` when readers need to complete a discrete, ordered procedure, especially a sequence of actions in the Infisical UI:
+Use `<Steps>` when readers need to complete a discrete, ordered procedure, especially a sequence of actions in the Infisical UI. Leave out the `title` prop; each step is the action itself:
 
 ```mdx
 <Steps>
-  <Step title="Create a folder">
-    Go to **Settings → Folders** and click **Create**.
+  <Step>
+    Go to **Settings** > **Folders** and select **Create**.
   </Step>
-  <Step title="Configure permissions">Assign roles to users or groups.</Step>
+  <Step>
+    Assign roles to users or groups.
+  </Step>
 </Steps>
 ```
 
-A longer guide should use headings such as `## Step 1: Configure in Infisical` to organize its major stages, with `<Steps>` nested within a stage where numbered actions improve clarity.
+A guide with more than one stage uses a heading per stage, in the form `## Step 1: Configure in Infisical`, with the stage's individual actions in a `<Steps>` block under it:
+
+```mdx
+## Step 1: Create a machine identity
+
+<Steps>
+  <Step>
+    In your organization, go to **Access Control** > **Machine Identities**, then select **Create**.
+  </Step>
+  <Step>
+    Enter a **Name**, pick a **Role**, and select **Create**.
+  </Step>
+</Steps>
+```
+
+Write the steps from the product as it is now, not from an older page that describes it. Button names, tab names, and the order of screens change, and a guide copied from another guide inherits its mistakes.
 
 ### Alternative approaches
 
@@ -225,6 +266,8 @@ Include code examples only when they genuinely help understanding — not to mak
 - Use realistic values where possible (actual domain names, plausible configs)
 - Show expected output when it helps readers verify they did it right
 - Keep examples minimal — show what's needed, not everything possible
+- Check that every endpoint in an example exists, accepts the credential the example sends (an endpoint that only accepts user sessions rejects a machine identity token), and has a reference page with content
+- Pick endpoints that work for every reader of the page. A getting-started example shouldn't call an endpoint that only works for one product unless the page is about that product
 
 ```bash
 # Good: obvious placeholder, minimal, copy-pasteable
@@ -288,6 +331,10 @@ If a reader has to scan backwards to work out what "it" or "they" points at, rep
 
 **Write:** Add the service token to the project, then open the environment settings and confirm the token is active.
 
+**Instead of:** Whether they're passed as query parameters or in the request body depends on the endpoint.
+
+**Write:** Depending on the endpoint, `offset` and `limit` are passed either as query parameters or in the request body.
+
 ### Give every transitive verb its object
 
 A verb like request, create, return, send, or apply has to say what. Drop the object and the reader has to guess, and the gap often marks a detail the writer had not settled yet.
@@ -321,6 +368,76 @@ Replace an abstract construction with the system, the input, and the result. Abs
 **Instead of:** Permissions are evaluated against the resource hierarchy.
 
 **Write:** Infisical checks the exact folder path you asked for, and only that path.
+
+### Say exactly what you mean
+
+This is technical documentation. Write plain, literal English. Metaphors and figurative verbs make the reader translate the sentence before they can use it. Always say exactly what you mean outright.
+
+**Instead of:** Use the API to drive every resource and wire Infisical into your tooling.
+
+**Write:** The API supports every action available in the Infisical dashboard.
+
+**Instead of:** The rest sit between those two: they trade something the caller already has for an access token.
+
+**Write:** OIDC, JWT, LDAP, TLS certificate, and SPIFFE Auth accept a credential from a trusted external system, such as an OIDC identity token or a client certificate.
+
+### Name the exact subject
+
+Refer to the specific thing the sentence is about, not a broader category it belongs to. If you say "a resource" or "an instance" has to work out which one you mean.
+
+**Instead of:** A resource's version is only incremented for breaking changes.
+
+**Write:** Each endpoint path is versioned independently.
+
+### Say what a qualifier refers to
+
+Words like "default", "built-in", "underlying", and "standard" point at something else: a default for what? built into what? If the sentence doesn't name that thing, the reader has to guess. Swapping one of these words for another doesn't fix it. Show the thing itself.
+
+**Instead of:** If you self-host Infisical, the built-in defaults apply.
+
+**Write:** If you self-host Infisical, no rate limits are enforced on the API by default.
+
+### Use common words
+
+Prefer a word any reader knows over one that only people in a particular specialty use. If a technical term is the only accurate one, explain it or link to it.
+
+**Instead of:** Prepend the base URL to the path. Apply throttling at your ingress or reverse proxy.
+
+**Write:** The full URL is the base URL followed by the path. You'll need to configure an external rate limiter.
+
+### Don't invent terms
+
+Use the name the product, the protocol, or everyday English already has for something. A coined phrase like "worked example" or "response envelope" reads as if it's a term the reader should already know.
+
+**Instead of:** This page shows one worked example.
+
+**Write:** This page includes an example of {x}.
+
+### Make sentences unambiguous
+
+If a reader can parse a sentence two ways, it makes the sentence harder to understand and could force the reader to reread the sentence. There are two main causes for this problem:
+
+1. Nouns stacked against the verb. In "Any endpoint that returns a list of resources paginates", "resources paginates" reads as a unit. Don't compress a sentence until its words run into each other. A clear sentence beats a short one.
+
+2. A first word that can be a noun or a verb. A sentence opening with "List endpoints" reads as an instruction to list endpoints until the real verb arrives, and a reader who doesn't know the term "list endpoint" yet can't resolve it early.
+
+**Instead of:** List endpoints in the Infisical API return one page of results per request.
+
+**Write:** Endpoints that return multiple items paginate their responses.
+
+### Address the reader only to add information
+
+Chatty asides aimed at the reader add tone and no information.
+
+**Instead of:** The response includes `totalCount`, so you know when to stop.
+
+**Write:** The response includes `totalCount`, which you can use to tell when you've read every page.
+
+Do address the reader when their situation decides whether a sentence applies. A condition phrased around the reader is concrete. The same condition phrased around an abstract noun leaves them to work out whether it's them.
+
+**Instead of:** On a self-hosted or dedicated instance, replace the host.
+
+**Write:** If you self-host Infisical, replace the host with the address of your instance.
 
 ### Use contractions
 
@@ -411,6 +528,14 @@ When adding or modifying content on an existing page, make sure it fits naturall
 
 If new content doesn't fit the existing flow, consider whether it belongs on this page at all, or whether the page structure needs to be reorganized.
 
+### Order sections the way a reader looks for them
+
+Think about where a reader's eyes will go. Keep sections that cover the same topic from different angles next to each other, and put anything that applies to all of them after the whole group, not between two of its members. A callout goes in the section it applies to.
+
+**Instead of:** Cloud limits, then what happens when a request is rate limited, then self-hosted limits, with a note about Cloud plans at the bottom of the self-hosted section.
+
+**Write:** Cloud limits with the note about Cloud plans, then self-hosted limits, then what happens when a request is rate limited.
+
 ---
 
 ## 8. State prerequisites explicitly
@@ -427,6 +552,22 @@ Use a `## Prerequisites` section before the main content, even when the list is 
 ```
 
 Don't put page-level prerequisites in `<Info>` or other callouts. Reserve `<Note>` for requirement details that apply to a specific step rather than the whole page.
+
+**Make each prerequisite something the reader can check before they start.** A reader at the top of the page hasn't seen the steps yet, so a prerequisite that depends on them is no use.
+
+**Instead of:** A role with the permissions required by the endpoints called in this guide
+
+**Write:** A role that grants read access to secrets, such as **Viewer**
+
+**Ask for the least access that works, and cover the access readers actually have.** Many readers aren't organization admins. If the task also works with project-level access, say so and give that path too.
+
+**Instead of:** An Infisical organization where you have the **Admin** role
+
+**Write:** The [Admin role](/documentation/platform/access-controls/role-based-access-controls) on either your Infisical organization or a project in the organization
+
+**Link each prerequisite** to where the reader can get it or learn what it is.
+
+**Walk readers through setup that a beginner won't have done.** If a quickstart needs a resource most first-time readers don't have yet, such as a machine identity, create it in the steps instead of listing it as a prerequisite.
 
 ---
 
@@ -455,6 +596,18 @@ Structure depends on what the page is for. Don't force every page into the same 
 
 `sidebarTitle` is optional. Add one when the page title is too long for the sidebar or reads
 poorly out of context; otherwise the title is used.
+
+**Headings name the topic in words a newcomer recognizes.** The list of headings is often the first thing a reader scans. A code or term they don't know yet won't catch their eye.
+
+**Instead of:** `## 429 response`
+
+**Write:** `## Exceeding rate limits (429 response)`
+
+**Name groups for what they contain.** When items fall into categories, give each category a real name. "Other" tells the reader nothing, so look for what the remaining items have in common.
+
+**Instead of:** Universal Auth, Cloud providers, Other methods
+
+**Write:** Infisical-issued credentials, Cloud providers, External identity
 
 **How-to / Guide pages:**
 
@@ -535,6 +688,18 @@ Use "select" for any interaction with a control. It covers mouse, touch, and key
 **Instead of:** Click the three dot menu, then tap **Add temporary access**.
 
 **Write:** Select the three dot menu, then select **Add temporary access**.
+
+### No periods at the end of bullet points
+
+End every bullet point without a period. Keep each bullet to one sentence or phrase. If a bullet needs two sentences, combine them with a parenthesis or a semicolon, or turn the list into a paragraph.
+
+**Instead of:**
+
+- `offset`: the number of items to skip. Defaults to `0`.
+
+**Write:**
+
+- `offset`: the number of items to skip (defaults to `0`)
 
 ---
 
