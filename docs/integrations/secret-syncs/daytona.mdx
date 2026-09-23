@@ -7,7 +7,7 @@ description: "Learn how to configure a Daytona sync for Infisical."
 import CreateApiKey from "/snippets/app-connections/daytona/create-api-key.mdx";
 import ConnectionFormFields from "/snippets/app-connections/daytona/form-fields.mdx";
 
-A Daytona Secret Sync pushes secrets from Infisical into a Daytona organization, where sandboxes can read them at runtime. Each Infisical secret becomes a Daytona secret with the same name.
+A Daytona Secret Sync pushes secrets from Infisical into a Daytona organization, where sandboxes can read them at runtime. Each Infisical secret becomes a Daytona secret with the same name, unless you customize key names to add a prefix or suffix.
 
 <Note>
     The Daytona Secret Sync requires a [Daytona app connection](/integrations/app-connections/daytona). This guide walks you through creating a project-scoped app connection.
@@ -95,6 +95,17 @@ Infisical authenticates to Daytona with an API key that can manage secrets in yo
         - **Prevent secret deletion**: When enabled, Infisical adds and updates secrets in Daytona but never deletes them; enable this if you manage some Daytona secrets outside of Infisical
         - **Auto-sync on changes**: When enabled, secrets sync to Daytona automatically as the source changes. Turn off to sync manually only
         - **Customize key names**: Adds a prefix or suffix to every synced name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+
+        <Warning>
+            Daytona secrets belong to the whole organization, so a sync can change secrets that were created outside Infisical. If you don't customize key names, the sync treats every secret in the organization as one it manages:
+
+            - A Daytona secret with the same name as an Infisical secret has its value overwritten
+            - If **Prevent secret deletion** is off, every Daytona secret that isn't in Infisical is deleted
+
+            With customized key names, the sync writes only names with your prefix or suffix, and deletes only Daytona secrets whose names match it.
+
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
 
         ![Configure Sync Options](/images/secret-syncs/daytona/configure-sync-options.png)
 
