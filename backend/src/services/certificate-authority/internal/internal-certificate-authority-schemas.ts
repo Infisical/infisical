@@ -84,11 +84,7 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .optional()
       .default(false)
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
-    isOcspEnabled: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
+    isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
   })
   .refine(
     (data) => {

@@ -56,6 +56,7 @@ const DEFAULT_VALUES: CaWizardForm = {
   keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
   notAfter: getDateTenYearsFromToday(),
   maxPathLength: "-1",
+  isOcspEnabled: false,
   disableManagedCrlDistributionPointUrl: false,
   crlDistributionPointUrls: []
 };
@@ -81,14 +82,19 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
     [hsmConnectors]
   );
 
+  const buildDefaultValues = (): CaWizardForm => ({
+    ...DEFAULT_VALUES,
+    isOcspEnabled: Boolean(subscription?.pkiOcsp)
+  });
+
   const form = useForm<CaWizardForm>({
     resolver: zodResolver(caWizardSchema),
-    defaultValues: DEFAULT_VALUES
+    defaultValues: buildDefaultValues()
   });
 
   const reset = () => {
     setStep(0);
-    form.reset(DEFAULT_VALUES);
+    form.reset(buildDefaultValues());
   };
 
   const handleClose = (open: boolean) => {
@@ -121,7 +127,8 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
           maxPathLength: Number(values.maxPathLength),
           ...(isRoot ? { notAfter: values.notAfter } : {}),
           crlDistributionPointUrls: values.crlDistributionPointUrls.map(({ value }) => value),
-          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl
+          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl,
+          isOcspEnabled: values.isOcspEnabled
         }
       });
 

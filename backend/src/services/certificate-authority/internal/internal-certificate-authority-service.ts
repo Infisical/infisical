@@ -386,14 +386,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
-    if (isOcspEnabled) {
-      if (!(await $isOcspAllowed(projectId))) {
-        throw new BadRequestError({
-          message:
-            "Failed to create certificate authority with OCSP enabled due to plan restriction. Upgrade plan to use OCSP."
-        });
-      }
+    const isOcspAllowed = await $isOcspAllowed(projectId);
+    if (isOcspEnabled && !isOcspAllowed) {
+      throw new BadRequestError({
+        message:
+          "Failed to create certificate authority with OCSP enabled due to plan restriction. Upgrade plan to use OCSP."
+      });
     }
+
+    const resolvedIsOcspEnabled = isOcspEnabled ?? isOcspAllowed;
 
     const dn = createDistinguishedName({
       commonName,
@@ -598,7 +599,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           keyAlgorithm,
           crlDistributionPointUrls: crlDistributionPointUrls ?? [],
           disableManagedCrlDistributionPointUrl: disableManagedCrlDistributionPointUrl ?? false,
-          isOcspEnabled: isOcspEnabled ?? false,
+          isOcspEnabled: resolvedIsOcspEnabled,
           ...(type === InternalCaType.ROOT && {
             maxPathLength,
             ...(notAfter && {

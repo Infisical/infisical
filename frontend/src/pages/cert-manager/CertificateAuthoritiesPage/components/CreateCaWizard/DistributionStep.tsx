@@ -2,6 +2,7 @@ import { Controller, useFieldArray, UseFormReturn } from "react-hook-form";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
+  Badge,
   Button,
   Field,
   FieldContent,
@@ -11,7 +12,10 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Toggle
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "@app/hooks/api/ca";
@@ -28,9 +32,44 @@ export const DistributionStep = ({ form }: Props) => {
   // Creating a CA with any custom URL is refused by the plan gate, so the control is disabled
   // up front rather than failing at the end of the wizard.
   const canAddCrlUrls = subscription.caCrl;
+  const canUseOcsp = Boolean(subscription.pkiOcsp);
 
   return (
     <FieldGroup>
+      <Controller
+        name="isOcspEnabled"
+        control={form.control}
+        render={({ field: { value, onChange } }) => (
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel>
+                Enable OCSP
+                {!canUseOcsp && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="info">Enterprise</Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      OCSP is available on Infisical&apos;s Enterprise plan.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </FieldLabel>
+              <FieldDescription>
+                Certificates issued by this CA carry an OCSP responder URL, and that responder
+                answers revocation status checks for them.
+              </FieldDescription>
+            </FieldContent>
+            <Toggle
+              variant="project"
+              checked={value}
+              onCheckedChange={onChange}
+              disabled={!canUseOcsp}
+            />
+          </Field>
+        )}
+      />
+
       <Controller
         name="disableManagedCrlDistributionPointUrl"
         control={form.control}
