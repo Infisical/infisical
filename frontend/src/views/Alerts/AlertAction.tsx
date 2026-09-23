@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { BellIcon } from "lucide-react";
+import { BellIcon, EllipsisIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,20 +16,23 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Label,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Toggle
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
-  ALERT_EVENT_TYPE_LABELS,
   AlertChannelType,
   AlertEventType,
   AlertResourceType,
-  parseAlertBeforeDays,
   TAlert,
   useDeleteAlert,
   useListAlerts,
@@ -42,24 +45,11 @@ type Props = {
   identityId: string;
   // Org-scoped when omitted.
   projectId?: string;
-  // Renders the alert without any way to create, edit or remove it.
+  // Renders the alerts without any way to create, edit or remove them.
   readOnly?: boolean;
   // Wraps the mutating actions in the caller's permission gate (org- or project-scoped), which is the
   // only thing that differs between the org and project entry points.
   renderPermissionGate: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
-};
-
-// "7 days before credential expiry"; falls back to the event label when the
-// stored condition is missing or malformed.
-const formatConditionSummary = (alert: TAlert): string => {
-  if (alert.eventType === AlertEventType.IdentityAuthMethodChanged) {
-    return "When an auth method changes";
-  }
-  const days = parseAlertBeforeDays(alert.condition?.alertBefore);
-  if (days === null) {
-    return ALERT_EVENT_TYPE_LABELS[alert.eventType as AlertEventType] ?? alert.eventType;
-  }
-  return `${days} day${days === 1 ? "" : "s"} before credential expiry`;
 };
 
 const formatChannelSummary = (alert: TAlert): string =>
@@ -83,19 +73,28 @@ export const AlertAction = ({
   });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["alert", "deleteAlert"] as const);
-  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isListOpen, setIsListOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<TAlert | undefined>();
   const scopeVariant = useScopeVariant();
 
   const updateAlert = useUpdateAlert();
   const deleteAlert = useDeleteAlert();
 
-  const existingAlert = alerts[0] as TAlert | undefined;
+  const enabledCount = alerts.filter((alert) => alert.enabled).length;
+  const usedEventTypes = alerts.map((alert) => alert.eventType as AlertEventType);
+  const canAddAlert = Object.values(AlertEventType).some(
+    (eventType) => !usedEventTypes.includes(eventType)
+  );
 
-  const handleToggleEnabled = async (enabled: boolean) => {
-    if (!existingAlert) return;
+  const openAlertForm = (alert?: TAlert) => {
+    setSelectedAlert(alert);
+    setIsListOpen(false);
+    handlePopUpOpen("alert");
+  };
 
+  const handleToggleEnabled = async (alert: TAlert, enabled: boolean) => {
     try {
-      await updateAlert.mutateAsync({ alertId: existingAlert.id, enabled });
+      await updateAlert.mutateAsync({ alertId: alert.id, enabled });
       createNotification({ text: `Alert ${enabled ? "enabled" : "disabled"}`, type: "success" });
     } catch {
       // MutationCache reports request errors globally.
@@ -103,10 +102,10 @@ export const AlertAction = ({
   };
 
   const handleDeleteAlert = async () => {
-    if (!existingAlert) return;
+    if (!selectedAlert) return;
 
     try {
-      await deleteAlert.mutateAsync({ alertId: existingAlert.id });
+      await deleteAlert.mutateAsync({ alertId: selectedAlert.id });
       createNotification({ text: "Successfully deleted alert", type: "success" });
       handlePopUpToggle("deleteAlert", false);
     } catch {
@@ -114,105 +113,128 @@ export const AlertAction = ({
     }
   };
 
-  if (!existingAlert) {
-    if (readOnly) return null;
-
-    return (
-      <>
-        {renderPermissionGate((isAllowed) => (
-          <Button
-            variant="outline"
-            isDisabled={!isAllowed}
-            onClick={() => handlePopUpOpen("alert")}
-          >
-            <BellIcon />
-            Alert
-          </Button>
-        ))}
-        <AddAlertModal
-          isOpen={popUp.alert.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
-          projectId={projectId}
-          resourceId={identityId}
-        />
-      </>
-    );
-  }
-
-  const channelSummary = formatChannelSummary(existingAlert);
+  if (!alerts.length && readOnly) return null;
 
   return (
     <>
-      <Popover open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline">
-            <BellIcon />
-            Alert
-            <span
-              aria-hidden
-              className={`size-1.5 rounded-full ${existingAlert.enabled ? "bg-success" : "bg-neutral"}`}
-            />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-96 p-0">
-          <div className="flex flex-col gap-1 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-semibold text-foreground">
-                {existingAlert.name}
+      {alerts.length ? (
+        <Popover open={isListOpen} onOpenChange={setIsListOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline">
+              <BellIcon />
+              Alerts
+              <span className="flex items-center gap-1.5 text-muted">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    enabledCount ? "bg-success" : "bg-neutral"
+                  )}
+                />
+                <span aria-label={`${enabledCount} enabled`}>{enabledCount}</span>
               </span>
-              <Badge variant={existingAlert.enabled ? "success" : "neutral"}>
-                {existingAlert.enabled ? "Active" : "Disabled"}
-              </Badge>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-96 p-0">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">Alerts</span>
+              <span className="text-xs text-muted">
+                {enabledCount} of {alerts.length} enabled
+              </span>
             </div>
-            <p className="text-sm text-muted">{formatConditionSummary(existingAlert)}</p>
-            {channelSummary && <p className="text-sm text-muted">Notifies {channelSummary}</p>}
-          </div>
-          {!readOnly &&
-            renderPermissionGate((isAllowed) => (
-              // Single element (not a fragment): the denied-state gate wraps this in a
-              // tooltip trigger via asChild, which needs one ref-accepting child.
-              <div>
-                <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                  <Label htmlFor="alert-quick-enable" className="cursor-pointer font-normal">
-                    Enabled
-                  </Label>
-                  <Toggle
-                    id="alert-quick-enable"
+            <div className="max-h-80 divide-y divide-border overflow-y-auto">
+              {alerts.map((alert) => {
+                const channelSummary = formatChannelSummary(alert);
+                return (
+                  <div key={alert.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className={cn("flex min-w-0 flex-col", !alert.enabled && "opacity-60")}>
+                      <span className="truncate text-sm text-foreground">{alert.name}</span>
+                      {channelSummary && (
+                        <span className="truncate text-xs text-muted">
+                          Notifies {channelSummary}
+                        </span>
+                      )}
+                    </div>
+                    {readOnly ? (
+                      <Badge variant={alert.enabled ? "success" : "neutral"}>
+                        {alert.enabled ? "Active" : "Disabled"}
+                      </Badge>
+                    ) : (
+                      renderPermissionGate((isAllowed) => (
+                        // Single element (not a fragment): the denied-state gate wraps this in a
+                        // tooltip trigger via asChild, which needs one ref-accepting child.
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Toggle
+                            aria-label={`${alert.enabled ? "Disable" : "Enable"} ${alert.name}`}
+                            variant={scopeVariant}
+                            checked={alert.enabled}
+                            disabled={
+                              !isAllowed ||
+                              (updateAlert.isPending && updateAlert.variables?.alertId === alert.id)
+                            }
+                            onCheckedChange={(enabled) => handleToggleEnabled(alert, enabled)}
+                          />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="ghost-muted"
+                                size="xs"
+                                aria-label={`Options for ${alert.name}`}
+                                isDisabled={!isAllowed}
+                              >
+                                <EllipsisIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openAlertForm(alert)}>
+                                <PencilIcon />
+                                Edit Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => {
+                                  setSelectedAlert(alert);
+                                  setIsListOpen(false);
+                                  handlePopUpOpen("deleteAlert");
+                                }}
+                              >
+                                <TrashIcon />
+                                Remove Alert
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {!readOnly &&
+              canAddAlert &&
+              renderPermissionGate((isAllowed) => (
+                <div className="border-t border-border px-4 py-3">
+                  <Button
                     variant={scopeVariant}
-                    checked={existingAlert.enabled}
-                    disabled={!isAllowed || updateAlert.isPending}
-                    onCheckedChange={handleToggleEnabled}
-                  />
-                </div>
-                <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                  <Button
-                    variant="outline"
                     size="sm"
                     isDisabled={!isAllowed}
-                    onClick={() => {
-                      setIsSummaryOpen(false);
-                      handlePopUpOpen("alert");
-                    }}
+                    onClick={() => openAlertForm()}
                   >
-                    Edit Details
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-danger hover:bg-danger/10 hover:text-danger"
-                    isDisabled={!isAllowed}
-                    onClick={() => {
-                      setIsSummaryOpen(false);
-                      handlePopUpOpen("deleteAlert");
-                    }}
-                  >
-                    Remove Alert
+                    <PlusIcon />
+                    Add Alert
                   </Button>
                 </div>
-              </div>
-            ))}
-        </PopoverContent>
-      </Popover>
+              ))}
+          </PopoverContent>
+        </Popover>
+      ) : (
+        renderPermissionGate((isAllowed) => (
+          <Button variant="outline" isDisabled={!isAllowed} onClick={() => openAlertForm()}>
+            <BellIcon />
+            Alerts
+          </Button>
+        ))
+      )}
       {!readOnly && (
         <>
           <AddAlertModal
@@ -220,11 +242,12 @@ export const AlertAction = ({
             onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
             projectId={projectId}
             resourceId={identityId}
-            alert={existingAlert}
+            alert={selectedAlert}
+            unavailableEventTypes={usedEventTypes}
           />
           <AlertDialog
             open={popUp.deleteAlert.isOpen}
-            confirmationValue={existingAlert.name}
+            confirmationValue={selectedAlert?.name}
             onOpenChange={(open) => handlePopUpToggle("deleteAlert", open)}
           >
             <AlertDialogContent>
@@ -234,7 +257,7 @@ export const AlertAction = ({
                   This permanently removes the alert and stops its notifications.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogConfirmationField inputProps={{ placeholder: existingAlert.name }} />
+              <AlertDialogConfirmationField inputProps={{ placeholder: selectedAlert?.name }} />
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Removing this alert cannot be undone.</AlertDescription>
               </Alert>
