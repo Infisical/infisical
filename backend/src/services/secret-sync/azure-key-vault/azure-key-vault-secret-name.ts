@@ -1,5 +1,7 @@
 import handlebars from "handlebars";
 
+import { SecretSyncError } from "../secret-sync-errors";
+
 // Azure Key Vault secret names allow hyphens and reject underscores. Infisical names may use
 // either character, so an imported vault name is stored unchanged. Sync still rewrites each
 // underscore to a hyphen on the way out, because that is the only form Key Vault accepts.
@@ -48,3 +50,40 @@ export const findInfisicalSecretKeyForAzureKeyVaultName = (azureKey: string, sec
 // creating a second secret. A vault name with no match is kept as-is, hyphens included.
 export const resolveAzureKeyVaultImportedSecretKey = (azureKey: string, existingSecrets: object) =>
   findInfisicalSecretKeyForAzureKeyVaultName(azureKey, existingSecrets) ?? azureKey;
+
+const quoteSecretName = (key: string) => `'${key}'`;
+
+const formatSecretNameList = (keys: string[]) => {
+  const quoted = keys.map(quoteSecretName);
+  if (quoted.length < 2) return quoted[0] ?? "";
+  if (quoted.length === 2) return `${quoted[0]} and ${quoted[1]}`;
+  return `${quoted.slice(0, -1).join(", ")}, and ${quoted[quoted.length - 1]}`;
+};
+
+// Distinct Infisical names can collapse to one vault name (`foo_bar` and `foo-bar`). Writing
+// both would silently overwrite whichever value landed last, so the sync reports every group.
+export const assertUniqueAzureKeyVaultSecretNames = (infisicalKeys: Iterable<string>) => {
+  const keysByAzureName = new Map<string, string[]>();
+
+  for (const infisicalKey of infisicalKeys) {
+    const azureKey = toAzureKeyVaultSecretName(infisicalKey);
+    const group = keysByAzureName.get(azureKey);
+    if (group) group.push(infisicalKey);
+    else keysByAzureName.set(azureKey, [infisicalKey]);
+  }
+
+  const collisions = [...keysByAzureName.entries()].filter(([, keys]) => keys.length > 1);
+  if (collisions.length === 0) return;
+
+  const details = collisions
+    .map(([azureKey, keys]) => {
+      const verb = keys.length === 2 ? "both become" : "all become";
+      return `${formatSecretNameList(keys)} ${verb} '${azureKey}'`;
+    })
+    .join(". ");
+
+  throw new SecretSyncError({
+    message: `These Infisical secret names would overwrite each other in Azure Key Vault, because each underscore is written as a hyphen. ${details}. Rename them so each vault name belongs to one secret.`,
+    shouldRetry: false
+  });
+};

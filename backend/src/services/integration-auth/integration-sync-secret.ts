@@ -48,6 +48,7 @@ import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 import {
+  assertUniqueAzureKeyVaultSecretNames,
   findInfisicalSecretKeyForAzureKeyVaultName,
   resolveAzureKeyVaultImportedSecretKey,
   toAzureKeyVaultSecretName
@@ -526,6 +527,8 @@ const syncSecretsAzureKeyVault = async ({
   if (!integration.app) {
     throw new BadRequestError({ message: "Azure Key Vault URI is required" });
   }
+
+  assertUniqueAzureKeyVaultSecretNames(Object.keys(secrets));
 
   await blockLocalAndPrivateIpAddresses(integration.app);
 

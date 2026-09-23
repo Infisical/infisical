@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 
+import { SecretSyncError } from "../secret-sync-errors";
 import {
+  assertUniqueAzureKeyVaultSecretNames,
   findInfisicalSecretKeyForAzureKeyVaultName,
   infisicalImportKeyFromAzureKeyVaultName,
   resolveAzureKeyVaultImportedSecretKey,
@@ -72,6 +74,48 @@ describe("Azure Key Vault secret names", () => {
     expect(infisicalImportKeyFromAzureKeyVaultName("user-password", "dev", "{{environment}}_{{secretKey}}")).toBe(
       "user-password"
     );
+  });
+
+  test("fails the sync when distinct Infisical keys normalize to the same Azure Key Vault name", () => {
+    const secretMap = {
+      foo_bar: { value: "from-underscore" },
+      "foo-bar": { value: "from-hyphen" }
+    };
+
+    const sync = () => assertUniqueAzureKeyVaultSecretNames(Object.keys(secretMap));
+
+    expect(sync).toThrow(SecretSyncError);
+
+    let caught: SecretSyncError | undefined;
+    try {
+      sync();
+    } catch (error) {
+      caught = error as SecretSyncError;
+    }
+
+    expect(caught?.shouldRetry).toBe(false);
+    expect(caught?.message).toContain("'foo_bar' and 'foo-bar' both become 'foo-bar'");
+  });
+
+  test("names every Infisical key in a collision, and every colliding vault name", () => {
+    const sync = () => assertUniqueAzureKeyVaultSecretNames(["a_b", "a-b", "foo_bar", "foo-bar", "foo_bar_baz"]);
+
+    expect(sync).toThrow(SecretSyncError);
+
+    let caught: SecretSyncError | undefined;
+    try {
+      sync();
+    } catch (error) {
+      caught = error as SecretSyncError;
+    }
+
+    expect(caught?.message).toContain("'a_b' and 'a-b' both become 'a-b'");
+    expect(caught?.message).toContain("'foo_bar' and 'foo-bar' both become 'foo-bar'");
+    expect(caught?.message).not.toContain("foo_bar_baz");
+  });
+
+  test("allows Infisical keys that stay distinct in Azure Key Vault", () => {
+    expect(() => assertUniqueAzureKeyVaultSecretNames(["foo_bar", "foo_baz", "other-name"])).not.toThrow();
   });
 
   test("converts underscores to hyphens only when writing to Azure Key Vault", () => {

@@ -15,6 +15,7 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import {
+  assertUniqueAzureKeyVaultSecretNames,
   findInfisicalSecretKeyForAzureKeyVaultName,
   infisicalImportKeyFromAzureKeyVaultName,
   toAzureKeyVaultSecretName
@@ -131,6 +132,7 @@ export const azureKeyVaultSyncFactory = ({
 
   const syncSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
+    assertUniqueAzureKeyVaultSecretNames(Object.keys(secretMap));
     const { connection } = secretSync;
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
