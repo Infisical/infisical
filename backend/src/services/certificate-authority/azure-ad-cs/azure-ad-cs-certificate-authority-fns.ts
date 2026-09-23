@@ -1055,16 +1055,16 @@ export const AzureAdCsCertificateAuthorityFns = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           pkiSubscriberId: subscriber.id,
           status: CertStatus.ACTIVE,
-          friendlyName: parsedFields.commonName ?? subscriber.commonName,
-          commonName: subscriber.commonName,
-          altNames: subscriber.subjectAlternativeNames.join(","),
-          keyUsages: subscriber.keyUsages as CertKeyUsage[],
-          extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
           projectId: ca.projectId,
-          ...parsedFields
+          friendlyName: parsedFields.commonName ?? subscriber.commonName,
+          commonName: parsedFields.commonName ?? subscriber.commonName,
+          altNames: parsedFields.altNames ?? subscriber.subjectAlternativeNames.join(","),
+          keyUsages: parsedFields.keyUsages ?? (subscriber.keyUsages as CertKeyUsage[]),
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? (subscriber.extendedKeyUsages as CertExtendedKeyUsage[])
         },
         tx
       );
@@ -1423,19 +1423,19 @@ export const AzureAdCsCertificateAuthorityFns = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: parsedFields.commonName ?? commonName,
-          commonName,
-          altNames: altNames.join(","),
-          keyUsages,
-          extendedKeyUsages,
-          keyAlgorithm,
-          signatureAlgorithm,
           projectId: ca.projectId,
-          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
-          ...parsedFields
+          friendlyName: parsedFields.commonName ?? commonName,
+          commonName: parsedFields.commonName ?? commonName,
+          altNames: parsedFields.altNames ?? altNames.join(","),
+          keyUsages: parsedFields.keyUsages ?? keyUsages,
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
       );

@@ -20,7 +20,9 @@ import {
   importKeyPairFromPem,
   isCertificateContentEdit,
   resolveRenewalAltNames,
-  resolveRenewalKeySource
+  resolveRenewalKeySource,
+  resolveRenewalSubject,
+  resolveRenewalUsages
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
@@ -61,6 +63,119 @@ describe("resolveRenewalAltNames", () => {
       { type: CertSubjectAlternativeNameType.DNS_NAME, value: issued }
     ]);
     expect(resolveRenewalAltNames({ exists: false, altNames: null }, null)).toEqual([]);
+  });
+});
+
+describe("resolveRenewalSubject", () => {
+  const issuerWritten = {
+    subjectOrganization: "Mock Issuer Corp",
+    subjectOrganizationalUnit: "Issued By CA",
+    subjectCountry: "US",
+    subjectState: "CA",
+    subjectLocality: "San Francisco",
+    subjectDomainComponents: "ca,added"
+  };
+
+  const emptyRequest = {
+    exists: true,
+    organization: null,
+    organizationalUnit: null,
+    country: null,
+    state: null,
+    locality: null,
+    domainComponents: null
+  };
+
+  it("keeps an empty request empty, so an authority's own subject is not re-requested", () => {
+    expect(resolveRenewalSubject(emptyRequest, issuerWritten)).toEqual({
+      organization: undefined,
+      organizationalUnit: undefined,
+      country: undefined,
+      state: undefined,
+      locality: undefined,
+      domainComponents: undefined
+    });
+  });
+
+  it("uses what the request asked for when it asked for anything", () => {
+    expect(resolveRenewalSubject({ ...emptyRequest, organization: "Mine Inc", country: "GB" }, issuerWritten)).toEqual({
+      organization: "Mine Inc",
+      organizationalUnit: undefined,
+      country: "GB",
+      state: undefined,
+      locality: undefined,
+      domainComponents: undefined
+    });
+  });
+
+  it("never mixes the request and the certificate for one renewal", () => {
+    const resolved = resolveRenewalSubject({ ...emptyRequest, organization: "Mine Inc" }, issuerWritten);
+
+    expect(resolved.organizationalUnit).toBeUndefined();
+    expect(resolved.state).toBeUndefined();
+  });
+
+  it("falls back to the certificate only when there is no request behind it", () => {
+    expect(resolveRenewalSubject({ ...emptyRequest, exists: false }, issuerWritten)).toEqual({
+      organization: "Mock Issuer Corp",
+      organizationalUnit: "Issued By CA",
+      country: "US",
+      state: "CA",
+      locality: "San Francisco",
+      domainComponents: ["ca", "added"]
+    });
+  });
+
+  it("returns nothing when neither the request nor the certificate carries a subject", () => {
+    expect(resolveRenewalSubject({ ...emptyRequest, exists: false }, {})).toEqual({
+      organization: undefined,
+      organizationalUnit: undefined,
+      country: undefined,
+      state: undefined,
+      locality: undefined,
+      domainComponents: undefined
+    });
+  });
+});
+
+describe("resolveRenewalUsages", () => {
+  const issued = { keyUsages: ["digitalSignature", "keyEncipherment"], extendedKeyUsages: ["serverAuth"] };
+
+  it("keeps the usages the request asked for, not the ones the authority issued", () => {
+    expect(
+      resolveRenewalUsages(
+        { exists: true, keyUsages: ["digital_signature"], extendedKeyUsages: ["client_auth"] },
+        issued
+      )
+    ).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+    });
+  });
+
+  it("reads the certificate back when the request recorded no usages, because ACME never records them", () => {
+    expect(resolveRenewalUsages({ exists: true, keyUsages: null, extendedKeyUsages: null }, issued)).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+
+    expect(resolveRenewalUsages({ exists: true, keyUsages: [], extendedKeyUsages: [] }, issued)).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+  });
+
+  it("drops an extended usage the authority added when the request asked for key usages but no extended ones", () => {
+    expect(
+      resolveRenewalUsages({ exists: true, keyUsages: ["digital_signature"], extendedKeyUsages: null }, issued)
+    ).toEqual({ keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE], extendedKeyUsages: [] });
+  });
+
+  it("falls back to the certificate only when there is no request behind it", () => {
+    expect(resolveRenewalUsages({ exists: false, keyUsages: null, extendedKeyUsages: null }, issued)).toEqual({
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
   });
 });
 

@@ -30,11 +30,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import {
-  createDistinguishedName,
-  extractIssuedCertificateFields,
-  keyAlgorithmToAlgCfg
-} from "../certificate-authority-fns";
+import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import {
@@ -510,7 +506,6 @@ export const DigiCertCertificateAuthorityFns = ({
     const { leaf, chain } = extractLeafAndChain(pemBundle);
 
     const certObj = new x509.X509Certificate(leaf);
-    const issued = extractIssuedCertificateFields(certObj);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -530,23 +525,23 @@ export const DigiCertCertificateAuthorityFns = ({
     const createdCertificateId = await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           applicationId: applicationId ?? undefined,
           profileId: certificateRequest.profileId ?? undefined,
           status: CertStatus.ACTIVE,
-          friendlyName: issued.commonName || "",
-          commonName: issued.commonName || "",
-          keyUsages: issued.keyUsages,
-          extendedKeyUsages: issued.extendedKeyUsages,
-          keyAlgorithm: certificateRequest.keyAlgorithm ?? undefined,
-          signatureAlgorithm: certificateRequest.signatureAlgorithm ?? undefined,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName || "",
+          commonName: parsedFields.commonName || "",
+          keyUsages: parsedFields.keyUsages ?? [],
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+          keyAlgorithm: parsedFields.keyAlgorithm ?? certificateRequest.keyAlgorithm ?? undefined,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? certificateRequest.signatureAlgorithm ?? undefined,
           externalMetadata: {
             type: CaType.DIGICERT,
             orderId: digicertOrderId
           } satisfies TDigiCertExternalMetadata,
-          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
-          ...parsedFields
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
       );

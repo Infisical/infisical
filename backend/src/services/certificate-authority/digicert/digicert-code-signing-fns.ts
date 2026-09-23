@@ -18,7 +18,6 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractIssuedCertificateFields } from "../certificate-authority-fns";
 import { createDigiCertApiClient } from "./digicert-api-client";
 import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
@@ -324,7 +323,6 @@ export const digiCertCodeSigningFns = ({
     const { leaf, chain } = extractLeafAndChain(pemBundle);
 
     const certObj = new x509.X509Certificate(leaf);
-    const issued = extractIssuedCertificateFields(certObj);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
     const existingCert = await certificateDAL.findOne({ caId: ca.id, serialNumber: certObj.serialNumber });
@@ -348,22 +346,22 @@ export const digiCertCodeSigningFns = ({
     const createdCertificateId = await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           applicationId: applicationId ?? undefined,
           profileId: profileId ?? undefined,
           status: CertStatus.ACTIVE,
-          friendlyName: issued.commonName || "",
-          commonName: issued.commonName || "",
-          keyUsages: issued.keyUsages,
-          extendedKeyUsages: issued.extendedKeyUsages,
-          keyAlgorithm: keyAlgorithm ?? undefined,
-          signatureAlgorithm: signatureAlgorithm ?? undefined,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName || "",
+          commonName: parsedFields.commonName || "",
+          keyUsages: parsedFields.keyUsages ?? [],
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? [],
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
           externalMetadata: {
             type: CaType.DIGICERT,
             orderId
-          } satisfies TDigiCertExternalMetadata,
-          ...parsedFields
+          } satisfies TDigiCertExternalMetadata
         },
         tx
       );

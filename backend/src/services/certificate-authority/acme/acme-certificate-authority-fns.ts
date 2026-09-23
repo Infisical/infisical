@@ -617,20 +617,20 @@ export const executeAcmeOrder = async (
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
       {
+        ...parsedFields,
         caId: ca.id,
         pkiSubscriberId: subscriberId,
         profileId,
         status: CertStatus.ACTIVE,
-        friendlyName: parsedFields.commonName ?? commonName,
-        commonName,
-        altNames: altNames?.join(","),
-        keyUsages,
-        extendedKeyUsages,
-        keyAlgorithm,
-        signatureAlgorithm,
         projectId: ca.projectId,
-        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
-        ...parsedFields
+        friendlyName: parsedFields.commonName ?? commonName,
+        commonName: parsedFields.commonName ?? commonName,
+        altNames: parsedFields.altNames ?? altNames?.join(","),
+        keyUsages: parsedFields.keyUsages ?? keyUsages,
+        extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+        keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+        signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
+        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
       },
       innerTx
     );

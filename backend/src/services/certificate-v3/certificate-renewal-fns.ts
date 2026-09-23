@@ -19,7 +19,7 @@ import { caSupportsCapability } from "@app/services/certificate-authority/certif
 import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { detectSanType } from "@app/services/certificate-common/certificate-issuance-utils";
 
-import { CertKeyUsageType } from "../certificate-common/certificate-constants";
+import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -245,6 +245,67 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
       message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
+};
+
+type TRenewalSubject = {
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  domainComponents?: string[];
+};
+
+export const resolveRenewalUsages = (
+  requested: { exists: boolean; keyUsages: string[] | null; extendedKeyUsages: string[] | null },
+  certificate: { keyUsages?: unknown; extendedKeyUsages?: unknown }
+): { keyUsages: CertKeyUsageType[]; extendedKeyUsages: CertExtendedKeyUsageType[] } => {
+  const askedFor = requested.exists && requested.keyUsages?.length ? requested : null;
+
+  return {
+    keyUsages: parseKeyUsages(askedFor ? askedFor.keyUsages : certificate.keyUsages),
+    extendedKeyUsages: parseExtendedKeyUsages(askedFor ? askedFor.extendedKeyUsages : certificate.extendedKeyUsages)
+  };
+};
+
+export const resolveRenewalSubject = (
+  requested: {
+    exists: boolean;
+    organization: string | null;
+    organizationalUnit: string | null;
+    country: string | null;
+    state: string | null;
+    locality: string | null;
+    domainComponents: string | null;
+  },
+  certificate: {
+    subjectOrganization?: string | null;
+    subjectOrganizationalUnit?: string | null;
+    subjectCountry?: string | null;
+    subjectState?: string | null;
+    subjectLocality?: string | null;
+    subjectDomainComponents?: string | null;
+  }
+): TRenewalSubject => {
+  const source = requested.exists
+    ? requested
+    : {
+        organization: certificate.subjectOrganization ?? null,
+        organizationalUnit: certificate.subjectOrganizationalUnit ?? null,
+        country: certificate.subjectCountry ?? null,
+        state: certificate.subjectState ?? null,
+        locality: certificate.subjectLocality ?? null,
+        domainComponents: certificate.subjectDomainComponents ?? null
+      };
+
+  return {
+    organization: source.organization || undefined,
+    organizationalUnit: source.organizationalUnit || undefined,
+    country: source.country || undefined,
+    state: source.state || undefined,
+    locality: source.locality || undefined,
+    domainComponents: source.domainComponents?.split(",") ?? undefined
+  };
 };
 
 export const resolveRenewalAltNames = (

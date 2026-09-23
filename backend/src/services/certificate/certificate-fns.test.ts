@@ -14,7 +14,7 @@ import {
   parseCertificateBody,
   resolveCertificateDeletionEligibility
 } from "./certificate-fns";
-import { CertificateDeletionEligibility, CertStatus } from "./certificate-types";
+import { CertExtendedKeyUsage, CertificateDeletionEligibility, CertKeyUsage, CertStatus } from "./certificate-types";
 
 describe("normalizeThumbprint", () => {
   const sha1Hex = "a".repeat(40);
@@ -251,7 +251,30 @@ describe("extractExternallyIssuedCertificateFields", () => {
     const fields = extractExternallyIssuedCertificateFields(issued);
 
     expect(fields).not.toHaveProperty("altNames");
-    expect({ altNames: "requested.example.com", ...fields }.altNames).toBe("requested.example.com");
+    expect(fields.altNames ?? "requested.example.com").toBe("requested.example.com");
+  });
+
+  test("omits a field the certificate does not carry rather than carrying it as null", async () => {
+    const issued = await buildIssuedCert([new x509.BasicConstraintsExtension(false)], "O=No Common Name Corp");
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    for (const field of ["commonName", "altNames", "keyUsages", "extendedKeyUsages"]) {
+      expect(fields).not.toHaveProperty(field);
+    }
+
+    expect(fields.commonName ?? "requested.example.com").toBe("requested.example.com");
+    expect(fields.keyUsages ?? [CertKeyUsage.KEY_AGREEMENT]).toEqual([CertKeyUsage.KEY_AGREEMENT]);
+    expect(fields.extendedKeyUsages ?? [CertExtendedKeyUsage.CLIENT_AUTH]).toEqual([CertExtendedKeyUsage.CLIENT_AUTH]);
+  });
+
+  test("always names the algorithms, so a create payload never falls back to the requested ones", async () => {
+    const issued = await buildIssuedCert([new x509.BasicConstraintsExtension(false)]);
+
+    const fields = extractExternallyIssuedCertificateFields(issued);
+
+    expect(fields.keyAlgorithm ?? "RSA_2048").toBe("RSA_3072");
+    expect(fields.signatureAlgorithm ?? "RSA-SHA256").toBe("RSA-SHA384");
   });
 });
 

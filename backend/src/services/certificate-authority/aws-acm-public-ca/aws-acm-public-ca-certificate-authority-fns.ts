@@ -686,17 +686,17 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: parsedFields.commonName ?? commonName,
-          commonName,
-          altNames: altNames.map((san) => san.value).join(","),
-          keyAlgorithm,
           projectId: ca.projectId,
           externalMetadata,
-          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null,
-          ...parsedFields
+          friendlyName: parsedFields.commonName ?? commonName,
+          commonName: parsedFields.commonName ?? commonName,
+          altNames: parsedFields.altNames ?? altNames.map((san) => san.value).join(","),
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
       );

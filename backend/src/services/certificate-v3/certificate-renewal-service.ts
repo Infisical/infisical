@@ -109,10 +109,11 @@ import {
   isCertificateContentEdit,
   resolveRenewalAltNames,
   resolveRenewalKeySource,
+  resolveRenewalSubject,
+  resolveRenewalUsages,
   validateRenewalEligibility
 } from "./certificate-renewal-fns";
 import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
 import {
   CertificateRenewalKeySource,
   TCertificateIssuanceResponse,
@@ -750,14 +751,8 @@ export const certificateRenewalServiceFactory = ({
 
     const originalRequest: TCertificateRequest = {
       commonName: requested?.commonName || originalCert.commonName || undefined,
-      organization: requested?.organization || originalCert.subjectOrganization || undefined,
-      organizationalUnit: requested?.organizationalUnit || originalCert.subjectOrganizationalUnit || undefined,
-      country: requested?.country || originalCert.subjectCountry || undefined,
-      state: requested?.state || originalCert.subjectState || undefined,
-      locality: requested?.locality || originalCert.subjectLocality || undefined,
-      domainComponents: (requested?.domainComponents || originalCert.subjectDomainComponents)?.split(",") ?? undefined,
-      keyUsages: parseKeyUsages(originalCert.keyUsages),
-      extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
+      ...resolveRenewalSubject(issuedFrom, originalCert),
+      ...resolveRenewalUsages(issuedFrom, originalCert),
       subjectAlternativeNames: requestedAltNames,
       validity: { ttl: originalTtl },
       signatureAlgorithm: originalSignatureAlgorithm,
