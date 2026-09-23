@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import { createLocalJWKSet, errors as joseErrors, JSONWebKeySet, jwtVerify } from "jose";
+import { createLocalJWKSet, errors as joseErrors, jwtVerify } from "jose";
 
 import {
   AccessScope,
@@ -51,7 +51,8 @@ import {
   doesSpiffeIdMatchPattern,
   extractTrustDomainFromSpiffeId,
   fetchRemoteBundleJwks,
-  isValidSpiffeId
+  isValidSpiffeId,
+  parseSpiffeBundleJwtAuthorities
 } from "./identity-spiffe-auth-fns";
 import {
   FIPS_APPROVED_JWT_ALGORITHMS,
@@ -87,8 +88,10 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
 
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
 
+const JWT_SVID_NO_MATCHING_KEY_MESSAGE = "No key in the SPIFFE trust bundle matches the JWT-SVID signing key";
+
 const verifyJwtSvid = async (jwtValue: string, jwksJson: string, allowedAudiences: string[]) => {
-  const jwks = createLocalJWKSet(JSON.parse(jwksJson) as JSONWebKeySet);
+  const jwks = createLocalJWKSet(parseSpiffeBundleJwtAuthorities(jwksJson));
 
   try {
     const { payload } = await jwtVerify(jwtValue, jwks, {
@@ -105,6 +108,9 @@ const verifyJwtSvid = async (jwtValue: string, jwksJson: string, allowedAudience
     }
     if (error instanceof joseErrors.JWTClaimValidationFailed) {
       throw new UnauthorizedError({ message: "JWT-SVID audience validation failed" });
+    }
+    if (error instanceof joseErrors.JWKSNoMatchingKey) {
+      throw new UnauthorizedError({ message: JWT_SVID_NO_MATCHING_KEY_MESSAGE });
     }
     throw new UnauthorizedError({ message: "JWT-SVID verification failed" });
   }
@@ -193,17 +199,13 @@ export const identitySpiffeAuthServiceFactory = ({
 
   const $validateSpiffeConfig = async (dist: TSpiffeTrustBundleDistribution) => {
     if (dist.profile === SpiffeTrustBundleProfile.STATIC) {
-      try {
-        createLocalJWKSet(JSON.parse(dist.bundle) as JSONWebKeySet);
-      } catch {
-        throw new BadRequestError({ message: "The provided CA Bundle JWKS is not valid JWKS" });
-      }
+      parseSpiffeBundleJwtAuthorities(dist.bundle);
       return;
     }
 
     try {
       const bundleJwks = await fetchRemoteBundleJwks(dist.endpointUrl, dist.caCert);
-      createLocalJWKSet(JSON.parse(bundleJwks) as JSONWebKeySet);
+      parseSpiffeBundleJwtAuthorities(bundleJwks);
     } catch (error) {
       if (error instanceof BadRequestError) throw error;
       throw new BadRequestError({
@@ -284,6 +286,8 @@ export const identitySpiffeAuthServiceFactory = ({
       throw new BadRequestError({ message: `Failed to fetch SPIFFE trust bundle from remote endpoint: ${msg}` });
     }
 
+    parseSpiffeBundleJwtAuthorities(bundleJson);
+
     const { cipherTextBlob: encryptedCachedBundleJwks } = orgDataKeyEncryptor({
       plainText: Buffer.from(bundleJson)
     });
@@ -336,7 +340,11 @@ export const identitySpiffeAuthServiceFactory = ({
         tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
       } catch (verifyError) {
         // Kid-miss retry: if we used a cached JWKS and the kid wasn't found, force-refresh once
-        if (fromCache && verifyError instanceof Error && verifyError.message.includes("No key found in JWKS")) {
+        if (
+          fromCache &&
+          verifyError instanceof UnauthorizedError &&
+          verifyError.message === JWT_SVID_NO_MATCHING_KEY_MESSAGE
+        ) {
           ({ jwksJson, fromCache } = await $resolveJwks({
             config: identitySpiffeAuth,
             orgId: identity.orgId,

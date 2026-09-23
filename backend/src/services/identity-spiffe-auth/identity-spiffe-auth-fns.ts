@@ -1,8 +1,10 @@
 import https from "https";
+import { JSONWebKeySet, JWK } from "jose";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
 import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
 
 const SPIFFE_ID_REGEX = new RE2("^spiffe:\\/\\/([^/]+)(\\/.*)?");
 
@@ -40,4 +42,41 @@ export const fetchRemoteBundleJwks = async (url: string, caCert?: string): Promi
   });
 
   return response.data;
+};
+
+// SPIFFE bundles (`spire-server bundle show -format spiffe`, bundle endpoints) are JWKS with
+// `use` set to the SVID type. JWT-SVID verification only needs the "jwt-svid" keys, and jose
+// drops any key whose `use` is not "sig", so those keys are re-marked. Keys with `use: "sig"`
+// or no `use` are also kept so hand-converted RFC 7517 JWKS bundles keep working.
+export const parseSpiffeBundleJwtAuthorities = (bundleJson: string): JSONWebKeySet => {
+  let bundle: unknown;
+  try {
+    bundle = JSON.parse(bundleJson);
+  } catch {
+    throw new BadRequestError({ message: "The SPIFFE trust bundle is not valid JSON" });
+  }
+
+  const keys = (bundle as { keys?: unknown } | null)?.keys;
+  if (!Array.isArray(keys)) {
+    throw new BadRequestError({ message: 'The SPIFFE trust bundle must be a JSON object with a "keys" array' });
+  }
+
+  const jwtAuthorities = keys
+    .filter(
+      (key): key is JWK =>
+        typeof key === "object" &&
+        key !== null &&
+        !Array.isArray(key) &&
+        ((key as JWK).use === undefined || (key as JWK).use === "jwt-svid" || (key as JWK).use === "sig")
+    )
+    .map((key) => ({ ...key, use: "sig" }));
+
+  if (!jwtAuthorities.length) {
+    throw new BadRequestError({
+      message:
+        'The SPIFFE trust bundle contains no JWT-SVID signing keys. Expected at least one key with "use": "jwt-svid", as output by `spire-server bundle show -format spiffe`.'
+    });
+  }
+
+  return { keys: jwtAuthorities };
 };
