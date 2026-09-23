@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -48,6 +48,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -112,7 +113,7 @@ export type TPamAccessApprovalResource = TApprovalResource<
   TPamAccessPolicy,
   TPamAccessRequestData
 > & {
-  assertBreakGlassEligible: (args: { request: TApprovalRequests; actor: TApprovalActor }) => Promise<void>;
+  assertBreakGlassEligible: (args: TBreakGlassSubject) => Promise<void>;
   decorateRequests: <T extends { requestData?: unknown }>(requests: T[]) => Promise<(T & TPamRequestDecoration)[]>;
   findActiveFolderMemberships: (
     projectId: string,
@@ -133,11 +134,11 @@ const toActorContext = (actor: TApprovalActor): TActorContext => ({
   actorAuthMethod: actor.authMethod
 });
 
-type TBreakGlassArgs = {
-  request: TApprovalRequests;
-  bypassers: PolicyBypasser[];
+type TBreakGlassSubject = {
+  projectId: string;
+  accountId?: string;
+  folderId?: string;
   actor: TApprovalActor;
-  userGroupIds: Set<string>;
 };
 
 const requestDataOf = (request: { requestData?: unknown }) =>
@@ -509,22 +510,23 @@ export const pamAccessApprovalResourceFactory = ({
   };
 
   const $refuseBreakGlass = async ({
-    request,
+    projectId,
+    accountId,
+    folderId,
     bypassers,
     actor,
     userGroupIds
-  }: TBreakGlassArgs): Promise<Error | null> => {
+  }: TBreakGlassSubject & { bypassers: PolicyBypasser[]; userGroupIds: Set<string> }): Promise<Error | null> => {
     if (actor.type !== ActorType.USER) {
       return new ForbiddenRequestError({ message: "Only users can break glass on an access request" });
     }
 
-    const inputs = requestDataOf(request);
-    if (!inputs?.accountId || !inputs.folderId) {
+    if (!accountId || !folderId) {
       return new BadRequestError({ message: "This request is missing the account it was raised for" });
     }
 
-    const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId);
-    if (!account || account.projectId !== request.projectId || account.folderId !== inputs.folderId) {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId || account.folderId !== folderId) {
       return new BadRequestError({
         message: "This request is no longer valid because the account has moved or been removed"
       });
@@ -540,22 +542,15 @@ export const pamAccessApprovalResourceFactory = ({
       return new ForbiddenRequestError({ message: "You are not a break-glass user for this folder" });
     }
 
-    if (!(await $holdsActiveFolderMembership(request.projectId, inputs.folderId, actor.id, userGroupIds))) {
+    if (!(await $holdsActiveFolderMembership(projectId, folderId, actor.id, userGroupIds))) {
       return new ForbiddenRequestError({ message: "You are not a member of this folder" });
     }
 
     return null;
   };
 
-  const assertBreakGlassEligible = async ({
-    request,
-    actor
-  }: {
-    request: TApprovalRequests;
-    actor: TApprovalActor;
-  }) => {
-    const folderId = requestDataOf(request)?.folderId;
-    const policy = folderId ? await $findFolderPolicy(request.projectId, folderId) : null;
+  const assertBreakGlassEligible = async ({ projectId, accountId, folderId, actor }: TBreakGlassSubject) => {
+    const policy = folderId ? await $findFolderPolicy(projectId, folderId) : null;
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Approval policy no longer exists for this folder" });
     }
@@ -566,7 +561,9 @@ export const pamAccessApprovalResourceFactory = ({
     ]);
 
     const refusal = await $refuseBreakGlass({
-      request,
+      projectId,
+      accountId,
+      folderId,
       actor,
       bypassers,
       userGroupIds: new Set(userGroupMemberships.map((g) => g.groupId))
@@ -574,8 +571,22 @@ export const pamAccessApprovalResourceFactory = ({
     if (refusal) throw refusal;
   };
 
-  const isBreakGlassEligible: NonNullable<TPamAccessApprovalResource["isBreakGlassEligible"]> = async (args) =>
-    !(await $refuseBreakGlass(args));
+  const isBreakGlassEligible: NonNullable<TPamAccessApprovalResource["isBreakGlassEligible"]> = async ({
+    request,
+    bypassers,
+    actor,
+    userGroupIds
+  }) => {
+    const inputs = requestDataOf(request);
+    return !(await $refuseBreakGlass({
+      projectId: request.projectId,
+      accountId: inputs?.accountId,
+      folderId: inputs?.folderId,
+      actor,
+      bypassers,
+      userGroupIds
+    }));
+  };
 
   const assertCanRevokeGrant: NonNullable<TPamAccessApprovalResource["assertCanRevokeGrant"]> = async ({
     grant,
@@ -837,6 +848,38 @@ export const pamAccessApprovalResourceFactory = ({
     });
   };
 
+  const buildTelemetryEvent: NonNullable<TPamAccessApprovalResource["buildTelemetryEvent"]> = async ({
+    action,
+    request,
+    distinctId,
+    decision
+  }) => {
+    const orgId = request.organizationId;
+    const base = { distinctId, organizationId: orgId };
+
+    if (action === ApprovalAuditAction.RequestReviewed) {
+      return {
+        ...base,
+        event: PostHogEventTypes.PamAccessRequestReviewed,
+        properties: { orgId, status: decision ?? "" }
+      };
+    }
+
+    if (action === ApprovalAuditAction.GrantRevoked) {
+      return { ...base, event: PostHogEventTypes.PamAccessGrantRevoked, properties: { orgId } };
+    }
+
+    if (action !== ApprovalAuditAction.RequestBypassed) return null;
+
+    const accountId = requestDataOf(request)?.accountId;
+    const account = accountId ? await pamAccountDAL.findByIdWithDetails(accountId) : null;
+    return {
+      ...base,
+      event: PostHogEventTypes.PamAccessRequestBrokeGlass,
+      properties: { orgId, accountType: account?.accountType ?? "" }
+    };
+  };
+
   const buildAuditEvent: NonNullable<TPamAccessApprovalResource["buildAuditEvent"]> = async ({
     action,
     request,
@@ -846,16 +889,26 @@ export const pamAccessApprovalResourceFactory = ({
     bypassReason
   }) => {
     const inputs = requestDataOf(request);
-    const scope = { accountId: inputs?.accountId, folderId: inputs?.folderId };
+    const account = inputs?.accountId ? await pamAccountDAL.findByIdWithDetails(inputs.accountId) : null;
+    const folder = inputs?.folderId ? await pamFolderDAL.findById(inputs.folderId) : null;
+    const scope = {
+      accountId: inputs?.accountId,
+      accountName: account?.name,
+      folderId: inputs?.folderId,
+      folderName: folder?.name
+    };
 
     if (action === ApprovalAuditAction.RequestCreated) {
       if (!inputs?.accountId || !inputs.folderId) return null;
       return {
         type: EventType.PAM_ACCESS_REQUEST_CREATE,
         metadata: {
-          requestId: request.id,
+          ...scope,
           accountId: inputs.accountId,
           folderId: inputs.folderId,
+          requestId: request.id,
+          requesterName: request.requesterName,
+          requesterEmail: request.requesterEmail,
           duration: inputs.duration,
           accessType: inputs.accessType ?? PamAccessType.Session,
           reason: inputs.reason
@@ -866,21 +919,32 @@ export const pamAccessApprovalResourceFactory = ({
     if (action === ApprovalAuditAction.RequestReviewed) {
       return {
         type: EventType.PAM_ACCESS_REQUEST_REVIEW,
-        metadata: { requestId: request.id, ...scope, status: request.status, comment }
+        metadata: {
+          ...scope,
+          requestId: request.id,
+          requesterName: request.requesterName,
+          requesterEmail: request.requesterEmail,
+          status: request.status,
+          comment
+        }
       };
     }
 
     if (action === ApprovalAuditAction.GrantRevoked && grantId) {
       return {
         type: EventType.PAM_ACCESS_GRANT_REVOKE,
-        metadata: { requestId: request.id, grantId, ...scope }
+        metadata: {
+          ...scope,
+          requestId: request.id,
+          grantId,
+          granteeName: request.requesterName,
+          granteeEmail: request.requesterEmail
+        }
       };
     }
 
     if (action !== ApprovalAuditAction.RequestBypassed || !grantId) return null;
 
-    const account = inputs?.accountId ? await pamAccountDAL.findByIdWithDetails(inputs.accountId) : null;
-    const folder = inputs?.folderId ? await pamFolderDAL.findById(inputs.folderId) : null;
     const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : null;
     const steps = request.policyId ? await approvalPolicyDAL.findStepsByPolicyId(request.policyId) : [];
 
@@ -896,9 +960,7 @@ export const pamAccessApprovalResourceFactory = ({
         granteeName: request.requesterName ?? undefined,
         granteeEmail: request.requesterEmail ?? undefined,
         ...scope,
-        folderName: folder?.name,
         resourceName: folder?.name,
-        accountName: account?.name,
         accessDuration: inputs?.duration ?? "",
         bypassReason: bypassReason ?? "",
         approverCount: new Set(steps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))).size
@@ -943,6 +1005,7 @@ export const pamAccessApprovalResourceFactory = ({
     matchesInputs,
     buildNotification,
     buildAuditEvent,
+    buildTelemetryEvent,
     decorateRequests,
     filterActiveApprovers,
     isLiveApprover,

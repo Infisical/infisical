@@ -27,6 +27,7 @@ import {
   PamAccessRequestSchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerApprovalPolicyEndpoints } from "./approval-policy-endpoints";
 
@@ -44,7 +45,8 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
       requestResponseSchema: PamAccessRequestSchema,
       grantResponseSchema: PamAccessRequestGrantSchema,
       inputsSchema: PamAccessPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: PamAccessCheckPolicyMatchResponseSchema
+      checkPolicyMatchResponseSchema: PamAccessCheckPolicyMatchResponseSchema,
+      requestAuthModes: [AuthMode.JWT, AuthMode.OAUTH]
     });
   },
   [ApprovalPolicyType.CertRequest]: async (server: FastifyZodProvider) => {

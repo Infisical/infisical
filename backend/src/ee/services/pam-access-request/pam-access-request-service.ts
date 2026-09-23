@@ -336,7 +336,12 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    await pamAccessApprovalResource.assertBreakGlassEligible({ request, actor: toApprovalActor(ctx) });
+    await pamAccessApprovalResource.assertBreakGlassEligible({
+      projectId,
+      accountId,
+      folderId,
+      actor: toApprovalActor(ctx)
+    });
 
     const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : null;
 
@@ -404,6 +409,15 @@ export const pamAccessRequestServiceFactory = ({
       throw new BadRequestError({ message: "Account must be in a folder to require approval" });
     }
 
+    if (breakGlass) {
+      await pamAccessApprovalResource.assertBreakGlassEligible({
+        projectId,
+        accountId: account.id,
+        folderId: account.folderId,
+        actor: toApprovalActor(ctx)
+      });
+    }
+
     const requester = await resolveRequesterDisplay(ctx);
 
     const { request } = await approvalPolicyService.createRequest(
@@ -419,6 +433,7 @@ export const pamAccessRequestServiceFactory = ({
           accessType
         },
         justification: trimmedReason,
+        skipApproverNotification: breakGlass,
         machineIdentityId: ctx.actor === ActorType.IDENTITY ? ctx.actorId : undefined,
         requesterName: requester.name,
         requesterEmail: requester.email
@@ -436,7 +451,9 @@ export const pamAccessRequestServiceFactory = ({
       return {
         request: result.request,
         accountId: account.id,
+        accountName: account.name,
         folderId: account.folderId,
+        folderName: account.folderName,
         accountType: account.accountType,
         accessType,
         brokeGlass: true as const,
@@ -447,7 +464,9 @@ export const pamAccessRequestServiceFactory = ({
     return {
       request,
       accountId: account.id,
+      accountName: account.name,
       folderId: account.folderId,
+      folderName: account.folderName,
       accountType: account.accountType,
       accessType,
       brokeGlass: false as const,

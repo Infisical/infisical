@@ -432,7 +432,7 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Request has expired" });
       }
 
-      const requestSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
+      const requestSteps = await approvalRequestDAL.findStepsByRequestId(requestId, tx);
       await Promise.all(
         requestSteps.map((step) =>
           approvalRequestStepsDAL.updateById(
@@ -483,10 +483,11 @@ export const approvalPolicyServiceFactory = ({
       approverCount: bypassedApproverCount
     };
 
+    const livePolicySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
     await $notify({
       event: ApprovalNotificationEvent.Bypassed,
       request: finalRequest,
-      approvers: steps.flatMap((step) => step.approvers),
+      approvers: livePolicySteps.flatMap((step) => step.approvers),
       actorId: actor.id,
       bypassReason: bypassReason.trim()
     });
@@ -930,6 +931,7 @@ export const approvalPolicyServiceFactory = ({
     machineIdentityId,
     requesterName,
     requesterEmail,
+    skipApproverNotification,
     tx
   }: TCreateRequestFromPolicyDTO) => {
     const requestWithSteps = await createApprovalRequestWithSteps(
@@ -957,11 +959,13 @@ export const approvalPolicyServiceFactory = ({
       tx
     );
 
-    await $notify({
-      event: ApprovalNotificationEvent.Requested,
-      request: requestWithSteps,
-      approvers: requestWithSteps.steps[0]?.approvers ?? []
-    });
+    if (!skipApproverNotification) {
+      await $notify({
+        event: ApprovalNotificationEvent.Requested,
+        request: requestWithSteps,
+        approvers: requestWithSteps.steps[0]?.approvers ?? []
+      });
+    }
 
     return {
       request: requestWithSteps
@@ -978,7 +982,8 @@ export const approvalPolicyServiceFactory = ({
       justification,
       requesterName,
       requesterEmail,
-      machineIdentityId
+      machineIdentityId,
+      skipApproverNotification
     }: TCreateRequestDTO & {
       requesterName: string;
       requesterEmail: string;
@@ -1070,7 +1075,8 @@ export const approvalPolicyServiceFactory = ({
       requesterUserId: actor.type === ActorType.IDENTITY ? undefined : actor.id,
       machineIdentityId,
       requesterName,
-      requesterEmail
+      requesterEmail,
+      skipApproverNotification
     });
 
     const decorated = await $decorateRequest(created.request, actor);
@@ -2247,8 +2253,16 @@ export const approvalPolicyServiceFactory = ({
     bypassReason?: string;
   }) => (await $resource(args.request.type as ApprovalPolicyType).buildAuditEvent?.(args)) ?? null;
 
+  const buildTelemetryEvent = async (args: {
+    action: ApprovalAuditAction;
+    request: TApprovalRequests;
+    distinctId: string;
+    decision?: string;
+  }) => (await $resource(args.request.type as ApprovalPolicyType).buildTelemetryEvent?.(args)) ?? null;
+
   return {
     buildAuditEvent,
+    buildTelemetryEvent,
     matchPolicy: (policyType: ApprovalPolicyType, projectId: string, inputs: TApprovalPolicyInputs) =>
       $resource(policyType).matchPolicy(projectId, inputs),
     getActiveGrant,

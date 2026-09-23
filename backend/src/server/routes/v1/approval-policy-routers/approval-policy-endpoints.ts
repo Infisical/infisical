@@ -53,7 +53,8 @@ export const registerApprovalPolicyEndpoints = ({
   grantResponseSchema,
   inputsSchema,
   checkPolicyMatchResponseSchema,
-  allowRequestCreation = true
+  allowRequestCreation = true,
+  requestAuthModes = [AuthMode.JWT]
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
@@ -68,6 +69,9 @@ export const registerApprovalPolicyEndpoints = ({
   // Whether callers may open an approval request directly. Policy types whose requests are
   // only ever created server-side, as part of the flow being gated, must leave this off.
   allowRequestCreation?: boolean;
+  // Auth modes the request actions accept. Policy administration stays JWT-only regardless; a type
+  // whose requests are raised and reviewed by delegated tokens widens this.
+  requestAuthModes?: AuthMode[];
 }) => {
   // Policies
   server.route({
@@ -522,7 +526,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth(requestAuthModes),
     handler: async (req) => {
       const { request, bypassMetadata } = await server.services.approvalPolicy.approveRequest(
         req.params.requestId,
@@ -555,18 +559,13 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
-          event: PostHogEventTypes.PkiApprovalRequestReviewed,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            decision: "approved",
-            orgId: req.permission.orgId,
-            projectId: request.projectId
-          }
-        });
-      }
+      const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+        action: bypassMetadata ? ApprovalAuditAction.RequestBypassed : ApprovalAuditAction.RequestReviewed,
+        request,
+        distinctId: getTelemetryDistinctId(req),
+        decision: "approved"
+      });
+      if (telemetry) await server.services.telemetry.sendPostHogEvents(telemetry);
 
       return { request };
     }
@@ -593,7 +592,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth(requestAuthModes),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.rejectRequest(
         req.params.requestId,
@@ -623,18 +622,13 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
-      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
-        await server.services.telemetry.sendPostHogEvents({
-          event: PostHogEventTypes.PkiApprovalRequestReviewed,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            decision: "rejected",
-            orgId: req.permission.orgId,
-            projectId: request.projectId
-          }
-        });
-      }
+      const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+        action: ApprovalAuditAction.RequestReviewed,
+        request,
+        distinctId: getTelemetryDistinctId(req),
+        decision: "rejected"
+      });
+      if (telemetry) await server.services.telemetry.sendPostHogEvents(telemetry);
 
       return { request };
     }
@@ -789,7 +783,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth(requestAuthModes),
     handler: async (req) => {
       const { grant, request } = await server.services.approvalPolicy.revokeGrant(
         req.params.grantId,
@@ -816,6 +810,15 @@ export const registerApprovalPolicyEndpoints = ({
           }
         }
       });
+
+      if (request) {
+        const telemetry = await server.services.approvalPolicy.buildTelemetryEvent({
+          action: ApprovalAuditAction.GrantRevoked,
+          request,
+          distinctId: getTelemetryDistinctId(req)
+        });
+        if (telemetry) await server.services.telemetry.sendPostHogEvents(telemetry);
+      }
 
       return { grant };
     }

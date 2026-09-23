@@ -2,9 +2,15 @@ import { getConfig } from "@app/lib/config/env";
 import { ms } from "@app/lib/ms";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
-import { ApprovalNotificationEvent, ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
+import {
+  ApprovalAuditAction,
+  ApprovalNotificationEvent,
+  ApprovalPolicyType,
+  ApprovalRequestGrantStatus
+} from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
 import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
 import { normalizeCodeSigningScope } from "./code-signing-policy-fns";
@@ -118,6 +124,16 @@ export const codeSigningApprovalResourceFactory = ({
 
     return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
   },
+
+  buildTelemetryEvent: async ({ action, request, distinctId, decision }) =>
+    action === ApprovalAuditAction.RequestReviewed
+      ? {
+          event: PostHogEventTypes.PkiApprovalRequestReviewed,
+          distinctId,
+          organizationId: request.organizationId,
+          properties: { decision: decision ?? "", orgId: request.organizationId, projectId: request.projectId }
+        }
+      : null,
 
   postApprovalTxRoutine: async (request, tx) => {
     const requestData = request.requestData.requestData as TCodeSigningRequestData & {

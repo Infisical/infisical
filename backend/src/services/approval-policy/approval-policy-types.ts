@@ -7,6 +7,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
+import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 import {
   ApprovalAuditAction,
@@ -127,6 +128,9 @@ export interface TCreateRequestDTO {
   requestData: TApprovalRequest["requestData"]["requestData"];
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;
+  // Set by a caller that decides the request in the same breath (break-glass), so approvers are not
+  // asked to act on something that is already resolved
+  skipApproverNotification?: boolean;
 }
 
 export interface TCreateRequestFromPolicyDTO {
@@ -140,6 +144,7 @@ export interface TCreateRequestFromPolicyDTO {
   machineIdentityId?: string | null;
   requesterName: string;
   requesterEmail: string;
+  skipApproverNotification?: boolean;
   tx?: Knex;
 }
 
@@ -173,6 +178,15 @@ export type TApprovalResource<
   // Whether a stored grant's attributes or a request's payload is for the thing these inputs name.
   // Without it the access-status and reaping helpers have nothing to match on.
   matchesInputs?: (payload: unknown, inputs: TApprovalPolicyInputs) => boolean;
+
+  // The product analytics a lifecycle action owes, so the shared route does not have to know which
+  // products it is serving. Returning nothing records nothing.
+  buildTelemetryEvent?: (args: {
+    action: ApprovalAuditAction;
+    request: TApprovalRequests;
+    distinctId: string;
+    decision?: string;
+  }) => Promise<TPostHogEvent | null>;
 
   // Whether the actor is still an approver for the scope, for a type where the request's creation-time
   // approver snapshot can outlive the membership behind it.

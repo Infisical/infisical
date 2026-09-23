@@ -6586,7 +6586,11 @@ interface PamAccessRequestCreateEvent {
   metadata: {
     requestId: string;
     accountId: string;
+    accountName?: string;
     folderId: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     duration: string;
     accessType: string;
     reason?: string;
@@ -6598,7 +6602,11 @@ interface PamAccessRequestReviewEvent {
   metadata: {
     requestId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     status: string;
     comment?: string;
   };
@@ -6610,7 +6618,11 @@ interface PamAccessGrantRevokeEvent {
     requestId: string;
     grantId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    granteeName?: string;
+    granteeEmail?: string;
   };
 }
 

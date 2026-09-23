@@ -87,7 +87,11 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           metadata: {
             requestId: result.request.id,
             accountId: result.accountId,
+            accountName: result.accountName,
             folderId: result.folderId,
+            folderName: result.folderName ?? undefined,
+            requesterName: result.request.requesterName,
+            requesterEmail: result.request.requesterEmail,
             duration: req.body.duration,
             accessType: result.accessType,
             reason: req.body.reason

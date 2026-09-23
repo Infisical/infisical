@@ -5,9 +5,15 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
-import { ApprovalNotificationEvent, ApprovalPolicyScope, ApprovalPolicyType } from "../approval-policy-enums";
+import {
+  ApprovalAuditAction,
+  ApprovalNotificationEvent,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
 
@@ -75,6 +81,16 @@ export const certRequestApprovalResourceFactory = ({
         : undefined
     };
   },
+
+  buildTelemetryEvent: async ({ action, request, distinctId, decision }) =>
+    action === ApprovalAuditAction.RequestReviewed
+      ? {
+          event: PostHogEventTypes.PkiApprovalRequestReviewed,
+          distinctId,
+          organizationId: request.organizationId,
+          properties: { decision: decision ?? "", orgId: request.organizationId, projectId: request.projectId }
+        }
+      : null,
 
   postApprovalRoutine: async (request) => {
     const certReqId = (request.requestData.requestData as TCertRequestRequestData).certificateRequestId;
