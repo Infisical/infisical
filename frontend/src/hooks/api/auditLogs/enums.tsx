@@ -433,6 +433,8 @@ export enum EventType {
 
   // Gateway
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",

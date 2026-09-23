@@ -36,12 +36,7 @@ type Props = {
 export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
   const updateGateway = useUpdateGateway();
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting }
-  } = useForm<TFormData>({
+  const { control, handleSubmit, reset } = useForm<TFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { name: gateway.name }
   });
@@ -50,20 +45,21 @@ export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
     if (isOpen) reset({ name: gateway.name });
   }, [isOpen, gateway.name, reset]);
 
-  const onFormSubmit = async ({ name }: TFormData) => {
+  const onFormSubmit = ({ name }: TFormData) => {
     if (name === gateway.name) {
       onToggle(false);
       return;
     }
 
-    try {
-      await updateGateway.mutateAsync({ gatewayId: gateway.id, name });
-      createNotification({ type: "success", text: "Gateway renamed" });
-      onToggle(false);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to rename gateway";
-      createNotification({ type: "error", text: message });
-    }
+    updateGateway.mutate(
+      { gatewayId: gateway.id, name },
+      {
+        onSuccess: () => {
+          createNotification({ type: "success", text: "Gateway renamed" });
+          onToggle(false);
+        }
+      }
+    );
   };
 
   return (
@@ -97,7 +93,12 @@ export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
                 Cancel
               </Button>
             </DialogClose>
-            <Button variant="org" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+            <Button
+              variant="org"
+              type="submit"
+              isPending={updateGateway.isPending}
+              isDisabled={updateGateway.isPending}
+            >
               Save Changes
             </Button>
           </DialogFooter>

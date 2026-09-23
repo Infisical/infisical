@@ -385,27 +385,30 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
+      // Held onto for the response: it comes from the primary, and a lagging replica read
+      // would hand back the old name.
+      let renamed;
       if (req.body.name) {
-        // Use the row from the primary; a lagging replica read would hide the rename.
-        const { gateway: renamed, previousName } = await server.services.gatewayV2.renameGateway({
+        const result = await server.services.gatewayV2.renameGateway({
           orgPermission: req.permission,
           gatewayId: req.params.gatewayId,
           name: req.body.name
         });
+        renamed = result.gateway;
 
-        if (previousName !== renamed.name) {
+        if (result.previousName !== renamed.name) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             orgId: req.permission.orgId,
             event: {
               type: EventType.GATEWAY_UPDATE,
-              metadata: { gatewayId: renamed.id, name: renamed.name, previousName }
+              metadata: { gatewayId: renamed.id, name: renamed.name, previousName: result.previousName }
             }
           });
         }
       }
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+      const gateway = renamed ?? (await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId }));
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
