@@ -181,6 +181,16 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
+      {/* A limit only matters while recording is on, so "not recording" takes precedence. No link: the
+          Activity Logs page would only repeat this, and only Infisical support can raise the limit. */}
+      {activityConfig?.isStorageFull && isAgentVaultRecording(activityConfig.config) && (
+        <Alert variant="danger">
+          <AlertDescription>
+            Activity logging has reached its limit for this organization. Contact Infisical support.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Only once the config has loaded, or a healthy org sees this on every cold navigation. */}
       {activityConfig && !isAgentVaultRecording(activityConfig.config) && (
         <Alert variant="warning">

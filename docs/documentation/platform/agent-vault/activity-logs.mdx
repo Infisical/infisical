@@ -131,9 +131,9 @@ Infisical never deletes activity. A session that recorded activity is kept indef
 
 Infisical doesn't delete anything from your bucket either, and the policy above doesn't let it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. A batch the rule has removed shows in the timeline as one that can't be read.
 
-## When storage is full
+## When activity logging reaches its limit
 
-If the **Activity Logs** page says activity storage is full, recording is paused. Contact us.
+If the **Activity Logs** page shows that activity logging has reached its limit for this organization, contact us.
 
 ## Connections
 

@@ -31,6 +31,13 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     { label: "Proxies", icon: Server, pathSuffix: "proxies" }
   ];
 
+  // Only once the config has loaded: an absent config reads as "not recording", so keying the dot on the
+  // negation alone would flash it on every cold load of a healthy org. Not recording comes first, since a
+  // limit only matters while recording is on.
+  let activityDot: NavItem["dotVariant"];
+  if (activityConfig && !isAgentVaultRecording(activityConfig.config)) activityDot = "warning";
+  else if (activityConfig?.isStorageFull) activityDot = "danger";
+
   // The group is already behind isAdmin, so nothing in it needs a guard of its own.
   const administrationItems: NavItem[] = isAdmin
     ? [
@@ -44,10 +51,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           label: "Activity Logs",
           icon: ActivityIcon,
           pathSuffix: "activity-logs",
-          // Only once the config has loaded: an absent config reads as "not recording", so keying
-          // the dot on the negation alone would flash it on every cold load of a healthy org.
-          dotVariant:
-            activityConfig && !isAgentVaultRecording(activityConfig.config) ? "warning" : undefined
+          dotVariant: activityDot
         },
         { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
       ]

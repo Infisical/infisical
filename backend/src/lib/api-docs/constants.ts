@@ -4409,7 +4409,7 @@ export const AGENT_VAULT = {
     corsProbeUrl:
       "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
     isStorageFull:
-      "Whether the organization has reached the amount of activity Infisical will index for it, at which point recording pauses until Infisical support raises it.",
+      "Whether activity logging has reached its limit for this organization. Contact Infisical support to raise it.",
     hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again.",
     lastRecordedAt:
       "When a record last landed in the bucket currently configured. Null when nothing has been recorded there yet, including right after the destination changed."

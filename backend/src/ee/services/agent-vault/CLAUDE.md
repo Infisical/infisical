@@ -221,7 +221,8 @@ only, never bodies or headers, and never the query string (the proxy builds the 
 - **The org ceiling counts chunks, not records** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`, in the
   activity constants): what costs us is one index row per chunk, and a chunk holds 1 to 1000 records.
   It is **not customer-facing**: not an env var, not in the docs, the config response reports only
-  `isStorageFull`, and the refusal the proxy logs names neither the number nor a way to change it.
+  `isStorageFull` (which drives the Activity Logs alert, the red nav dot and the Sessions banner), and
+  every message says only that activity logging "has reached its limit" and to contact support.
   Nothing frees room under it, so an org that reaches it stays there until the constant is raised,
   which is the point at which somebody should ask why it was reached. At the wall the endpoint refuses
   rather than dropping the oldest, because drop-oldest is an evidence-eviction primitive. The counter

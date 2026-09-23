@@ -33,8 +33,7 @@ export const ActivityLoggingAlerts = () => {
       {data?.isStorageFull && (
         <Alert variant="danger">
           <AlertDescription>
-            Activity storage for this organization is full, and nothing new is being recorded.
-            Contact Infisical support.
+            Activity logging has reached its limit for this organization. Contact Infisical support.
           </AlertDescription>
         </Alert>
       )}

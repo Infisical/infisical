@@ -244,7 +244,7 @@ export const agentVaultActivityServiceFactory = ({
         // it belongs in a message that lands in their proxy's logs.
         throw new BadRequestError({
           name: AgentVaultActivityErrorName.CeilingReached,
-          message: "Activity storage for this organization is full and recording is paused. Contact Infisical support"
+          message: "Activity logging has reached its limit for this organization. Contact Infisical support."
         });
       }
       return created;
