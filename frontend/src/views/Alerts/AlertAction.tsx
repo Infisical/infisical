@@ -49,7 +49,7 @@ type Props = {
   renderPermissionGate: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
 };
 
-// "7 days before client secret expiry"; falls back to the event label when the
+// "7 days before credential expiry"; falls back to the event label when the
 // stored condition is missing or malformed.
 const formatConditionSummary = (alert: TAlert): string => {
   if (alert.eventType === AlertEventType.IdentityAuthMethodChanged) {
@@ -59,7 +59,7 @@ const formatConditionSummary = (alert: TAlert): string => {
   if (days === null) {
     return ALERT_EVENT_TYPE_LABELS[alert.eventType as AlertEventType] ?? alert.eventType;
   }
-  return `${days} day${days === 1 ? "" : "s"} before client secret expiry`;
+  return `${days} day${days === 1 ? "" : "s"} before credential expiry`;
 };
 
 const formatChannelSummary = (alert: TAlert): string =>

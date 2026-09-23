@@ -54,11 +54,11 @@ type Props = {
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Secret expiration alert",
+  [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
 const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Client secret expiration alert",
+  [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
 const DEFAULT_EVENT_TYPE = AlertEventType.IdentityAuthenticationExpiry;
@@ -316,7 +316,7 @@ export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }
                   isError={Boolean(errors.alertBeforeDays)}
                   {...register("alertBeforeDays", { valueAsNumber: true })}
                 />
-                <span>days before a client secret expires</span>
+                <span>days before a credential expires</span>
               </div>
               <FieldError errors={[errors.alertBeforeDays]} />
               <Controller

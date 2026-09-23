@@ -1,4 +1,4 @@
-import { TableName } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 
 import { identityCredentialAlertDALFactory } from "./identity-credential-alert-dal";
 
@@ -137,5 +137,47 @@ describe("identity credential alert dal", () => {
     expect(calls.groupedWhereNull).toContainEqual(`${TableName.Identity}.projectId`);
     expect(calls.groupedOrWhere).toContainEqual([`${TableName.Identity}.projectId`, "proj-1"]);
     expect(calls.whereNull).not.toContainEqual(`${TableName.Identity}.projectId`);
+  });
+
+  test("a Token Auth scan only considers live Token Auth tokens with a max TTL", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findExpiringTokenAuthTokens(scanArgs);
+
+    expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.authMethod`, IdentityAuthMethod.TOKEN_AUTH]);
+    expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.isAccessTokenRevoked`, false]);
+    // A max TTL of 0 means the token can be renewed forever, so it has no expiry to alert on.
+    expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.accessTokenMaxTTL`, ">", 0]);
+  });
+
+  test("a Token Auth token expires at its creation time plus its clamped max TTL, not its first JWT's TTL", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findExpiringTokenAuthTokens(scanArgs);
+
+    const expirySql = calls.whereRaw.map(([sql]) => sql as string).filter((sql) => sql.includes("make_interval"));
+    expect(expirySql.length).toBeGreaterThan(0);
+    expirySql.forEach((sql) => {
+      expect(sql).toContain(`${TableName.IdentityAccessToken}."createdAt"`);
+      expect(sql).toContain(`LEAST(GREATEST(${TableName.IdentityAccessToken}."accessTokenMaxTTL", 0), 315360000)`);
+      expect(sql).not.toContain('"accessTokenTTL"');
+      expect(sql).toContain("?::timestamptz");
+    });
+  });
+
+  test("a Token Auth scan applies the same identity visibility rules as the client secret scan", async () => {
+    const orgScan = buildDAL();
+    await orgScan.dal.findExpiringTokenAuthTokens(scanArgs);
+
+    expect(orgScan.calls.where).toContainEqual([`${TableName.Membership}.scopeOrgId`, "org-1"]);
+    expect(orgScan.calls.where).toContainEqual([`${TableName.Identity}.orgId`, "org-1"]);
+    expect(orgScan.calls.whereNull).toContainEqual(`${TableName.Identity}.projectId`);
+
+    const projectScan = buildDAL();
+    await projectScan.dal.findExpiringTokenAuthTokens({ ...scanArgs, projectId: "proj-1", identityId: "ident-1" });
+
+    expect(projectScan.calls.where).toContainEqual(["projectMembership.scopeProjectId", "proj-1"]);
+    expect(projectScan.calls.groupedOrWhere).toContainEqual([`${TableName.Identity}.projectId`, "proj-1"]);
+    expect(projectScan.calls.where).toContainEqual([`${TableName.IdentityAccessToken}.identityId`, "ident-1"]);
   });
 });

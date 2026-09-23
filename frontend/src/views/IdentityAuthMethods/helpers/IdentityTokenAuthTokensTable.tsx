@@ -142,15 +142,15 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                   createdAt,
                   isAccessTokenRevoked,
                   name,
-                  accessTokenTTL,
+                  accessTokenMaxTTL,
                   accessTokenNumUsesLimit,
                   accessTokenNumUses,
                   id
                 } = token;
 
                 let expiresAt: Date | undefined;
-                if (accessTokenTTL > 0) {
-                  expiresAt = new Date(new Date(createdAt).getTime() + accessTokenTTL * 1000);
+                if (accessTokenMaxTTL > 0) {
+                  expiresAt = new Date(new Date(createdAt).getTime() + accessTokenMaxTTL * 1000);
                 }
 
                 return (
@@ -165,7 +165,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                         ? "Revoked"
                         : expiresAt
                           ? format(expiresAt, "yyyy-MM-dd")
-                          : "—"}
+                          : "Renewable indefinitely"}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
