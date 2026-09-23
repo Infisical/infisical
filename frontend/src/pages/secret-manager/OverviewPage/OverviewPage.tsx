@@ -228,7 +228,7 @@ import { type CopySecretsInvocation, CopySecretsSheet } from "./components/CopyS
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersModal } from "./components/InviteMembersModal/InviteMembersModal";
+import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -3966,13 +3966,14 @@ const OverviewPageContent = () => {
           environment={singleEnvSlug}
         />
       )}
-      {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal
-          popUp={invitePopUp}
-          handlePopUpToggle={handleInvitePopUpToggle}
-          experimentVariant={null}
-        />
-      )}
+      <SecretsActivationNudge
+        popUp={invitePopUp}
+        handlePopUpToggle={handleInvitePopUpToggle}
+        isLifted={
+          hasPendingBatchChanges ||
+          Object.values(selectedEntries).some((entries) => Object.keys(entries).length > 0)
+        }
+      />
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
           onCommit={handleCreateCommit}
