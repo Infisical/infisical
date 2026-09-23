@@ -29,6 +29,7 @@ import {
   AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS,
   AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS,
+  AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
   AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
   AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
   AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD,
@@ -325,11 +326,13 @@ export const agentVaultActivityServiceFactory = ({
           sessionId,
           receivedAfter,
           recordBudget: limit,
+          byteBudget: AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
           maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS
         })
       : await agentVaultActivityChunkDAL.findForSessionPage({
           sessionId,
           recordBudget: limit,
+          byteBudget: AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
           maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
           before,
           from,

@@ -50,6 +50,14 @@ export const AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS = 1000;
 export const AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS = 200;
 
 /**
+ * A page also stops at this much ciphertext, because the viewer downloads and decrypts every chunk on it.
+ * Records are small and their agent-controlled fields are capped by the proxy, so 1000 of them stay near
+ * 13 MB at the very worst. Without it a proxy could fill a page with 200 chunks claiming one record each at
+ * 8 MiB apiece, and hand the viewer 1.6 GB to hold at once.
+ */
+export const AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES = 16 * 1024 * 1024;
+
+/**
  * How far behind the moment of a read `nextReceivedAfter` points. A chunk's createdAt is stamped when its
  * insert begins, but the row only becomes visible once that transaction commits, and reads go to a replica
  * that can lag the primary. Either way a chunk can surface after a read that already ran past its

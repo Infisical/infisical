@@ -19,6 +19,13 @@ import {
 export const AGENT_VAULT_ACTIVITY_MAX_RECORDS = 100_000;
 
 /**
+ * Stop, too, once this much opened activity is held, however few records it is. Real records are a few
+ * hundred bytes, so 100,000 of them come to about 20 MB. This only binds on chunks far heavier than their
+ * record count, which the tab would otherwise go on downloading and holding for as long as it was handed.
+ */
+export const AGENT_VAULT_ACTIVITY_MAX_LOADED_BYTES = 64 * 1024 * 1024;
+
+/**
  * Chunks are at most 8 MB, so a download still running after this long is hung rather than slow. It is
  * reported as a chunk that could not be read, which the next poll retries with a fresh URL.
  */
@@ -293,6 +300,8 @@ export type TAgentVaultActivityTimeline = {
   /** When each record arrived, by `activityRecordKey`, for records that came after the first load. */
   arrivals: Map<string, number>;
   isTruncated: boolean;
+  /** Whether the chunks opened so far reach AGENT_VAULT_ACTIVITY_MAX_LOADED_BYTES. Implies isTruncated. */
+  isOverByteBudget: boolean;
 };
 
 /** Merges the proxies' streams across every loaded page into one timeline. */
@@ -303,6 +312,7 @@ export const useAgentVaultActivityTimeline = (
     // Chunks are identified across pages by their own id: the live reads and a page can both hold one,
     // and so can two pages after a refetch moves a boundary.
     const opened = new Map<string, TAgentVaultDecryptedChunk>();
+    const openedBytes = new Map<string, number>();
     (pages ?? []).forEach((page) =>
       page.chunks.forEach((chunk) => {
         const result = page.decrypted[chunk.chunkId];
@@ -311,6 +321,7 @@ export const useAgentVaultActivityTimeline = (
         // A failed download is the one outcome a later fetch can change, so a copy that opened beats it.
         if (known && (known.gap?.reason !== "fetch" || result.gap?.reason === "fetch")) return;
         opened.set(chunk.chunkId, result);
+        openedBytes.set(chunk.chunkId, chunk.ciphertextBytes);
       })
     );
 
@@ -318,9 +329,13 @@ export const useAgentVaultActivityTimeline = (
     const gaps: TAgentVaultActivityGap[] = [];
     const drops: TAgentVaultActivityDrop[] = [];
     const arrivals = new Map<string, number>();
+    // Only chunks that opened: one that failed to download, or sits in a bucket no longer configured, holds
+    // nothing in memory however large it was declared.
+    let loadedBytes = 0;
 
-    opened.forEach((result) => {
+    opened.forEach((result, chunkId) => {
       records.push(...result.records);
+      if (!result.gap) loadedBytes += openedBytes.get(chunkId) ?? 0;
       if (result.arrivedAt !== null) {
         const { arrivedAt } = result;
         result.records.forEach((record) => arrivals.set(activityRecordKey(record), arrivedAt));
@@ -338,11 +353,13 @@ export const useAgentVaultActivityTimeline = (
       return b.seq - a.seq;
     });
 
+    const isOverByteBudget = loadedBytes >= AGENT_VAULT_ACTIVITY_MAX_LOADED_BYTES;
     return {
       records: records.slice(0, AGENT_VAULT_ACTIVITY_MAX_RECORDS),
       gaps,
       drops,
       arrivals,
-      isTruncated: records.length > AGENT_VAULT_ACTIVITY_MAX_RECORDS
+      isTruncated: records.length > AGENT_VAULT_ACTIVITY_MAX_RECORDS || isOverByteBudget,
+      isOverByteBudget
     };
   }, [pages]);

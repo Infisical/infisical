@@ -173,7 +173,16 @@ export const ActivityTab = ({ session }: Props) => {
   }, [range, isRangeOpen]);
 
   const isActive = session.status === AgentVaultSessionStatus.Active;
-  const isLive = isActive && isRangeOpen;
+  // Live polling has to stop at the byte budget too, or arrivals would keep adding to what the tab holds.
+  // The budget is only known once the timeline below has run, so it is latched per view, as the search
+  // allowance is, and a new session or range starts unlatched.
+  const liveScope = [session.id, range?.startDate.getTime(), range?.endDate.getTime()].join("|");
+  const [budgetLatch, setBudgetLatch] = useState({ scope: liveScope, isOver: false });
+  if (budgetLatch.scope !== liveScope) {
+    setBudgetLatch({ scope: liveScope, isOver: false });
+  }
+  const isLivePausedForBudget = budgetLatch.scope === liveScope && budgetLatch.isOver;
+  const isLive = isActive && isRangeOpen && !isLivePausedForBudget;
   const { history, arrived } = useGetAgentVaultSessionActivity(session.id, {
     isLive,
     from: range?.startDate,
@@ -199,7 +208,12 @@ export const ActivityTab = ({ session }: Props) => {
     if (!data) return undefined;
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
-  const { records, gaps, drops, arrivals, isTruncated } = useAgentVaultActivityTimeline(pages);
+  const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget } =
+    useAgentVaultActivityTimeline(pages);
+  // Never on placeholder pages: those are the previous range's, and would latch the new one.
+  if (isOverByteBudget && !isPlaceholderData && !isLivePausedForBudget) {
+    setBudgetLatch({ scope: liveScope, isOver: true });
+  }
   // Only when there is nothing to show at all. A failed poll keeps the last good data on screen.
   const isLoadError = isError && !data;
 
@@ -752,7 +766,9 @@ export const ActivityTab = ({ session }: Props) => {
 
       {isTruncated && (
         <p className="text-xs text-muted">
-          Showing the most recent 100,000 requests. Pick a time range to see further back.
+          Showing the most recent {records.length.toLocaleString()} requests. Pick a time range to
+          see further back.
+          {isActive && isRangeOpen && isLivePausedForBudget && " Live updates are paused."}
         </p>
       )}
     </div>

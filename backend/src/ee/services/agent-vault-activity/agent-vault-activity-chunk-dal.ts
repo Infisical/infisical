@@ -28,6 +28,7 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     {
       sessionId,
       recordBudget,
+      byteBudget,
       maxChunks,
       before,
       from,
@@ -35,6 +36,7 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }: {
       sessionId: string;
       recordBudget: number;
+      byteBudget: number;
       maxChunks: number;
       before?: string;
       from?: Date;
@@ -69,13 +71,16 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       // Take whole chunks until the budget is met, so a page holds about the same number of
       // *records* whatever the agent's pace. Counting chunks instead hands a busy agent 15,000 rows
       // and a quiet one 15, off the same limit. The chunk that crosses the line is kept: dropping
-      // it would leave a page short, and the next page starts after it either way.
+      // it would leave a page short, and the next page starts after it either way. Bytes are a
+      // second budget on the same terms, since the viewer holds every chunk on the page at once.
       let taken = 0;
+      let bytes = 0;
       const page: TAgentVaultActivityChunks[] = [];
       for (const row of rows) {
         page.push(row);
         taken += row.recordCount;
-        if (taken >= recordBudget) break;
+        bytes += row.ciphertextBytes;
+        if (taken >= recordBudget || bytes >= byteBudget) break;
       }
 
       // Whether another page exists is decided here rather than by the caller comparing lengths:
@@ -98,8 +103,9 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       sessionId,
       receivedAfter,
       recordBudget,
+      byteBudget,
       maxChunks
-    }: { sessionId: string; receivedAfter: Date; recordBudget: number; maxChunks: number },
+    }: { sessionId: string; receivedAfter: Date; recordBudget: number; byteBudget: number; maxChunks: number },
     tx?: Knex
   ): Promise<{ chunks: TAgentVaultActivityChunks[]; hasMore: boolean }> => {
     try {
@@ -113,15 +119,19 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
         .limit(maxChunks)) as TAgentVaultActivityChunks[];
 
       let taken = 0;
+      let bytes = 0;
       const page: TAgentVaultActivityChunks[] = [];
       for (const row of rows) {
         page.push(row);
         // A chunk stamped exactly at receivedAfter is the one the previous read ended on, returned again
-        // so a second chunk sharing its millisecond is not skipped. It rides along without spending the
-        // budget: counted, a large one could fill every page on its own and the caller would ask for the
-        // same page forever.
-        if (row.createdAt.getTime() > receivedAfter.getTime()) taken += row.recordCount;
-        if (taken >= recordBudget) break;
+        // so a second chunk sharing its millisecond is not skipped. It rides along without spending
+        // either budget: counted, a large one could fill every page on its own and the caller would ask
+        // for the same page forever.
+        if (row.createdAt.getTime() > receivedAfter.getTime()) {
+          taken += row.recordCount;
+          bytes += row.ciphertextBytes;
+        }
+        if (taken >= recordBudget || bytes >= byteBudget) break;
       }
 
       return { chunks: page, hasMore: page.length < rows.length || rows.length === maxChunks };

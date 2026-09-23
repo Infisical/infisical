@@ -826,6 +826,30 @@ describe("Agent Vault activity", async () => {
       expect(thirdBody.nextCursor).toBeNull();
     });
 
+    test("a page stops at its byte budget as well as its record budget", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`activity-bytes-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`activity-bytes-${Date.now()}`);
+
+      // One record each, but as large as the server accepts. By records alone all three fit the default
+      // page, and the viewer would download them together. Nothing is uploaded: a read only presigns.
+      for (let i = 0; i < 3; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await recordChunk(
+          proxy,
+          session.id,
+          chunkBody({ firstSeq: i, lastSeq: i, recordCount: 1, ciphertextBytes: 8 * 1024 * 1024 })
+        );
+      }
+
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload) as { chunks: unknown[]; hasMore: boolean };
+      expect(body.chunks).toHaveLength(2);
+      expect(body.hasMore).toBe(true);
+    });
+
     /**
      * The page is ordered and cursored on the same column, so no row can fall between two pages. This
      * broke when the query ordered by startedAt and filtered on chunkId: a chunk sealed late but
