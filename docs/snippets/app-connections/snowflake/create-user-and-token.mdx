@@ -32,7 +32,13 @@
         </Warning>
     </Step>
     <Step>
-        Create a role for the user and grant the role the privileges for the integration you'll set up, using the same query editor.
+        Create a role for the user, grant the role the privileges for the integration you'll set up, and make it the user's default role, using the same query editor.
+        
+        <Note>
+        Infisical doesn't choose a role when it signs in, so Snowflake runs every Infisical operation under the user's default role. If you skip the `ALTER USER` statement, the default role stays `PUBLIC`, and syncs and rotations fail even though the grants exist.
+        </Note>
+
+        A connection signs in with one role. If you want one connection for both a [sync](/integrations/secret-syncs/snowflake) and a [rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), grant both sets of privileges to the same role and make that role the user's default.
 
         <Tabs>
             <Tab title="Secret syncs">
@@ -46,6 +52,8 @@
                 GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
                 GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
                 GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS;
+
+                ALTER USER INFISICAL SET DEFAULT_ROLE = INFISICAL_ROLE;
                 ```
 
                 <Note>
@@ -53,7 +61,7 @@
                 </Note>
             </Tab>
             <Tab title="Secret rotations">
-                For [Snowflake user key pair rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), the role needs to be able to change the key pair of the user you're rotating. The following statements grant that to a role and assign the role to the connection's user:
+                For [Snowflake user key pair rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), the role needs to be able to change the key pair of the user you're rotating. The following statements grant that to a role, assign the role to the `INFISICAL` user, and make it the user's default role:
 
                 ```SQL
                 CREATE ROLE IF NOT EXISTS INFISICAL_ROTATION_ROLE;
@@ -63,7 +71,8 @@
                 -- Only needed if Infisical should create the target user
                 GRANT CREATE USER ON ACCOUNT TO ROLE INFISICAL_ROTATION_ROLE;
 
-                GRANT ROLE INFISICAL_ROTATION_ROLE TO USER MY_CONNECTION_USER;
+                GRANT ROLE INFISICAL_ROTATION_ROLE TO USER INFISICAL;
+                ALTER USER INFISICAL SET DEFAULT_ROLE = INFISICAL_ROTATION_ROLE;
                 ```
 
                 If the target user already exists, `OWNERSHIP` on that user is enough. If you want Infisical to create the target user, the role also needs `CREATE USER` on the account. For more about roles and privileges, see Snowflake's [access control documentation](https://docs.snowflake.com/en/user-guide/security-access-control-overview).
@@ -71,7 +80,7 @@
         </Tabs>
     </Step>
     <Step>
-        Go back to **Governance & Security** > **Users & roles** and select the user. Open the **Programmatic access tokens** tab and select **Generate new token**. Give the token a name, such as `infisical`, and set its expiration and role restriction to match your security policy.
+        Go back to **Governance & Security** > **Users & roles** and select the user. Open the **Programmatic access tokens** tab and select **Generate new token**. Give the token a name, such as `infisical`, restrict it to the role you made the user's default, and set its expiration to match your security policy.
 
         ![Programmatic access tokens tab](/images/app-connections/snowflake/step-5.png)
         ![Generate new token](/images/app-connections/snowflake/step-6.png)
