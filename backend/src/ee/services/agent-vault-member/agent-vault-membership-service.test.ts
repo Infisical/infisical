@@ -13,6 +13,7 @@ const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
 const GROUP_ID = "group-1";
 const OTHER_USER_ID = "user-2";
+const THIRD_USER_ID = "user-3";
 
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
@@ -248,6 +249,26 @@ describe("agentVaultMembership guards", () => {
       })
       // Named as deactivated rather than missing, because reactivating is the remedy, not inviting.
     ).rejects.toThrow("is deactivated in this organization");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // A batch holding both kinds names both, so fixing one and retrying is not how you discover the other.
+  test("names the deactivated and the non-member in one refusal", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID, THIRD_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow(/is deactivated in this organization[\s\S]*is not a member of this organization/);
 
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });

@@ -420,24 +420,28 @@ export const agentVaultMembershipServiceFactory = ({
       const nameByKey = await resolveActorNames([...deactivated, ...strangers]);
       const listOf = (refused: TAgentVaultNamedActor[]) =>
         refused.map((actor) => `'${nameByKey.get(actorKey(actor)) ?? actor.identifier}'`).join(", ");
+      const verb = (refused: TAgentVaultNamedActor[]) => (refused.length === 1 ? "is" : "are");
+      const them = (refused: TAgentVaultNamedActor[]) => (refused.length === 1 ? "them" : "those members");
 
+      // Both, when a batch holds both: fixing one and retrying to discover the other is a wasted round
+      // trip, and a bulk change is where that hurts.
+      const reasons: string[] = [];
       if (deactivated.length) {
-        throw new BadRequestError({
-          message: `${listOf(deactivated)} ${
-            deactivated.length === 1 ? "is" : "are"
-          } deactivated in this organization. Reactivate ${
-            deactivated.length === 1 ? "them" : "those members"
-          } before changing their Agent Vault access.`
-        });
+        reasons.push(
+          `${listOf(deactivated)} ${verb(deactivated)} deactivated in this organization. Reactivate ${them(
+            deactivated
+          )} before changing their Agent Vault access.`
+        );
+      }
+      if (strangers.length) {
+        reasons.push(
+          `${listOf(strangers)} ${verb(strangers)} not a member of this organization. Invite ${them(
+            strangers
+          )} to the organization first.`
+        );
       }
 
-      throw new BadRequestError({
-        message: `${listOf(strangers)} ${
-          strangers.length === 1 ? "is" : "are"
-        } not a member of this organization. Invite ${
-          strangers.length === 1 ? "them" : "those members"
-        } to the organization first.`
-      });
+      throw new BadRequestError({ message: reasons.join(" ") });
     }
   };
 
