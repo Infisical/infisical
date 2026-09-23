@@ -6,12 +6,12 @@ import {
   Request,
   Response
 } from "botbuilder";
-import { CronJob } from "cron";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -163,11 +163,11 @@ export const microsoftTeamsServiceFactory = ({
     // initial sync upon startup
     await $syncMicrosoftTeamsIntegrationConfiguration();
 
-    // sync rate limits configuration every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncMicrosoftTeamsIntegrationConfiguration);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "microsoft-teams-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncMicrosoftTeamsIntegrationConfiguration
+    });
   };
 
   const start = async () => {

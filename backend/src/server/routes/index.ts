@@ -2,7 +2,6 @@ import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
-import { CronJob } from "cron";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
@@ -215,6 +214,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
+import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
@@ -4399,7 +4399,7 @@ export const registerRoutes = async (
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
   // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
   // running them would serve stale config rather than shed background work.
-  const cronJobs: CronJob[] = [];
+  const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
     if (rateLimitSyncJob) {

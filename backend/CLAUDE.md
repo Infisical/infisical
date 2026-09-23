@@ -630,6 +630,8 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 
 **Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, rate limits, env overrides), not fleet work.
 
+**Per-process refreshes use `startLocalRefresh` (`src/lib/cron/local-refresh.ts`), never the cron manager and never a raw `new CronJob`.** The cron manager runs a job once per fleet, which would leave every other pod's in-memory state stale; a wall-clock cron pattern makes every pod fire in the same second. The helper starts each process at a random offset within one interval (random per process on purpose, unlike the manager's deterministic hash), skips a tick while the previous run is in flight, logs and swallows errors, and unrefs its timers. Its `stop()` handle is what goes in `cronJobs`.
+
 **Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
 
 **Registering a cron job**:

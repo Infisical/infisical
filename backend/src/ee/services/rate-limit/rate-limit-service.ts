@@ -1,5 +1,4 @@
-import { CronJob } from "cron";
-
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -93,11 +92,11 @@ export const rateLimitServiceFactory = ({
     // initial sync upon startup
     await syncRateLimitConfiguration();
 
-    // sync rate limits configuration every 10 minutes
-    const job = new CronJob("*/10 * * * *", syncRateLimitConfiguration);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "rate-limit-config-sync",
+      intervalMs: 10 * 60 * 1000,
+      task: syncRateLimitConfiguration
+    });
   };
 
   return {
