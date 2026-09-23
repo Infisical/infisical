@@ -55,5 +55,3 @@ export type TRevokeTokenAuthTokenDTO = {
   tokenId: string;
   isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
-
-export const MAX_TOKEN_AUTH_ACCESS_TOKEN_TTL_SECONDS = 315_360_000;

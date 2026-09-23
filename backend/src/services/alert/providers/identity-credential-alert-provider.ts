@@ -250,8 +250,10 @@ export const identityCredentialAlertProviderFactory = ({
       asOf: input.asOf
     };
 
-    const uaSecrets = await identityCredentialAlertDAL.findExpiringUaClientSecrets(scan);
-    const tokenAuthTokens = await identityCredentialAlertDAL.findExpiringTokenAuthTokens(scan);
+    const [uaSecrets, tokenAuthTokens] = await Promise.all([
+      identityCredentialAlertDAL.findExpiringUaClientSecrets(scan),
+      identityCredentialAlertDAL.findExpiringTokenAuthTokens(scan)
+    ]);
 
     const targets: TExpiringCredentialTarget[] = [
       ...uaSecrets.map((secret) => ({

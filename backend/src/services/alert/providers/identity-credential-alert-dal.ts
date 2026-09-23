@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { AccessScope, IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { MAX_TOKEN_AUTH_ACCESS_TOKEN_TTL_SECONDS } from "@app/services/identity-token-auth/identity-token-auth-types";
+import { MAX_IDENTITY_ACCESS_TOKEN_TTL_SECONDS } from "@app/services/identity-access-token/identity-access-token-types";
 import { MAX_UA_CLIENT_SECRET_TTL_SECONDS } from "@app/services/identity-ua/identity-ua-types";
 
 export type TIdentityCredentialAlertDALFactory = ReturnType<typeof identityCredentialAlertDALFactory>;
@@ -111,7 +111,7 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TExpiringTokenAuthToken[]> => {
     try {
-      const expiresAtSql = `${TableName.IdentityAccessToken}."createdAt" + make_interval(secs => LEAST(GREATEST(${TableName.IdentityAccessToken}."accessTokenTTL", 0), ${MAX_TOKEN_AUTH_ACCESS_TOKEN_TTL_SECONDS}))`;
+      const expiresAtSql = `${TableName.IdentityAccessToken}."createdAt" + make_interval(secs => LEAST(GREATEST(${TableName.IdentityAccessToken}."accessTokenTTL", 0), ${MAX_IDENTITY_ACCESS_TOKEN_TTL_SECONDS}))`;
 
       const query = (tx || db.replicaNode())(TableName.IdentityAccessToken)
         .where(`${TableName.IdentityAccessToken}.authMethod`, IdentityAuthMethod.TOKEN_AUTH)
