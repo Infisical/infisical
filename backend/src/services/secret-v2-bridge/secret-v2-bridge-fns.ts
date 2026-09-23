@@ -83,7 +83,6 @@ export const fnSecretBulkInsert = async ({
       reminderNote,
       encryptedValue,
       reminderRepeatDays,
-      secretValueBlindIndex,
       blindIndexes
     }) => ({
       skipMultilineEncoding,
@@ -95,8 +94,8 @@ export const fnSecretBulkInsert = async ({
       reminderNote,
       encryptedValue,
       reminderRepeatDays,
-      secretValueBlindIndex: blindIndexes ? blindIndexes.secretValueBlindIndex : secretValueBlindIndex,
-      secretValueOrgBlindIndex: blindIndexes ? blindIndexes.secretValueOrgBlindIndex : null
+      secretValueBlindIndex: blindIndexes?.secretValueBlindIndex ?? null,
+      secretValueOrgBlindIndex: blindIndexes?.secretValueOrgBlindIndex ?? null
     })
   );
 
@@ -244,16 +243,7 @@ export const fnSecretBulkUpdate = async ({
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
-      data: {
-        skipMultilineEncoding,
-        type,
-        key,
-        encryptedValue,
-        userId,
-        encryptedComment,
-        secretValueBlindIndex,
-        blindIndexes
-      }
+      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, blindIndexes }
     }) => ({
       filter: { ...filter, folderId },
       data: {
@@ -263,8 +253,8 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         encryptedValue,
-        secretValueBlindIndex: blindIndexes ? blindIndexes.secretValueBlindIndex : secretValueBlindIndex,
-        secretValueOrgBlindIndex: blindIndexes ? blindIndexes.secretValueOrgBlindIndex : null
+        secretValueBlindIndex: blindIndexes?.secretValueBlindIndex ?? null,
+        secretValueOrgBlindIndex: blindIndexes?.secretValueOrgBlindIndex ?? null
       }
     })
   );

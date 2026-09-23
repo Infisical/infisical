@@ -193,13 +193,12 @@ export type TFnSecretBulkInsert = {
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
   inputSecrets: Array<
-    Omit<TSecretsV2Insert, "folderId" | "metadata"> & {
+    Omit<TSecretsV2Insert, "folderId" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       tagIds?: string[];
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
       parentSecretVersionId?: string;
-      secretValueBlindIndex?: string | null;
-      blindIndexes?: TSecretValueBlindIndexes | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -215,16 +214,14 @@ export type TFnSecretBulkInsert = {
 };
 
 type TRequireReferenceIfValue =
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
-      secretValueBlindIndex?: string | null;
-      blindIndexes?: TSecretValueBlindIndexes | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     })
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue?: never;
       references?: never;
-      secretValueBlindIndex?: never;
       blindIndexes?: never;
     });
 

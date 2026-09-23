@@ -29,6 +29,7 @@ import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -93,7 +94,7 @@ type TSecretReplicationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -283,6 +284,7 @@ export const secretReplicationServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsService, orgDAL });
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
@@ -511,19 +513,22 @@ export const secretReplicationServiceFactory = ({
                     resourceMetadataDAL,
                     folderCommitService,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
-                    inputSecrets: locallyCreatedSecrets.map((doc) => {
-                      return {
-                        type: doc.type,
-                        metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
-                        key: doc.key,
-                        encryptedValue: doc.encryptedValue,
-                        encryptedComment: doc.encryptedComment,
-                        skipMultilineEncoding: doc.skipMultilineEncoding,
-                        secretMetadata: doc.rawSecretMetadata,
-                        references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
-                        parentSecretVersionId: sourceSecretLatestVersions[doc.id]
-                      };
-                    })
+                    inputSecrets: await Promise.all(
+                      locallyCreatedSecrets.map(async (doc) => {
+                        return {
+                          type: doc.type,
+                          metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
+                          key: doc.key,
+                          encryptedValue: doc.encryptedValue,
+                          encryptedComment: doc.encryptedComment,
+                          skipMultilineEncoding: doc.skipMultilineEncoding,
+                          secretMetadata: doc.rawSecretMetadata,
+                          references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
+                          parentSecretVersionId: sourceSecretLatestVersions[doc.id],
+                          blindIndexes: await blindIndexer.generateOptional(doc.secretValue)
+                        };
+                      })
+                    )
                   });
                 }
                 if (locallyUpdatedSecrets.length) {
@@ -537,25 +542,28 @@ export const secretReplicationServiceFactory = ({
                     resourceMetadataDAL,
                     secretTagDAL,
                     secretVersionTagDAL: secretVersionV2TagBridgeDAL,
-                    inputSecrets: locallyUpdatedSecrets.map((doc) => {
-                      return {
-                        filter: {
-                          folderId: destinationReplicationFolderId,
-                          id: destinationLocalSecretsGroupedByKey[doc.key][0].id
-                        },
-                        data: {
-                          type: doc.type,
-                          metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
-                          key: doc.key,
-                          encryptedValue: doc.encryptedValue as Buffer,
-                          encryptedComment: doc.encryptedComment,
-                          skipMultilineEncoding: doc.skipMultilineEncoding,
-                          secretMetadata: doc.rawSecretMetadata,
-                          references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
-                          parentSecretVersionId: sourceSecretLatestVersions[doc.id]
-                        }
-                      };
-                    })
+                    inputSecrets: await Promise.all(
+                      locallyUpdatedSecrets.map(async (doc) => {
+                        return {
+                          filter: {
+                            folderId: destinationReplicationFolderId,
+                            id: destinationLocalSecretsGroupedByKey[doc.key][0].id
+                          },
+                          data: {
+                            type: doc.type,
+                            metadata: doc.metadata ? JSON.stringify(doc.metadata) : [],
+                            key: doc.key,
+                            encryptedValue: doc.encryptedValue as Buffer,
+                            encryptedComment: doc.encryptedComment,
+                            skipMultilineEncoding: doc.skipMultilineEncoding,
+                            secretMetadata: doc.rawSecretMetadata,
+                            references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
+                            parentSecretVersionId: sourceSecretLatestVersions[doc.id],
+                            blindIndexes: await blindIndexer.generateOptional(doc.secretValue)
+                          }
+                        };
+                      })
+                    )
                   });
                 }
                 if (locallyDeletedSecrets.length) {
