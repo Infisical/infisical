@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAgentVaultActivityChunks } from "@app/db/schemas";
+import { TableName, TAgentVaultActivityChunks, TAgentVaultActivityChunksInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -98,5 +98,26 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForSessionPage, countForSession };
+  /**
+   * Inserts the chunk, or does nothing when this session already holds one with that id, and says which.
+   * A conflicting row still uncommitted in another transaction is waited for, so a caller that gets
+   * nothing back can read the existing row on the same transaction and find it.
+   */
+  const createIfAbsent = async (
+    values: TAgentVaultActivityChunksInsert,
+    tx?: Knex
+  ): Promise<TAgentVaultActivityChunks | undefined> => {
+    try {
+      const [row] = (await (tx || db)(TableName.AgentVaultActivityChunk)
+        .insert(values)
+        .onConflict(["sessionId", "chunkId"])
+        .ignore()
+        .returning("*")) as TAgentVaultActivityChunks[];
+      return row;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create agent vault activity chunk" });
+    }
+  };
+
+  return { ...orm, findForSessionPage, countForSession, createIfAbsent };
 };

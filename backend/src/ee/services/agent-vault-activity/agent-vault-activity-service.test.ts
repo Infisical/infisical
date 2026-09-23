@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError } from "@app/lib/errors";
 
 import { AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
@@ -59,22 +58,23 @@ const validChunk = () => ({
   iv: "qrvM3e7/ABEiM0RV"
 });
 
-const uniqueViolation = () => new DatabaseError({ error: { code: DatabaseErrorCode.UniqueViolation }, name: "create" });
-
 type TOverrides = {
   proxy?: unknown;
   session?: unknown;
   config?: unknown;
   storedAfterIncrement?: number;
   createThrows?: unknown;
+  /** The session already holds a chunk with this id, so the insert does nothing. */
+  isReplay?: boolean;
   existingChunk?: unknown;
 };
 
 const build = (overrides: TOverrides = {}) => {
   const created = { ...validChunk(), objectKey: "logs/proj-1/sess-1/proxy-1/2026-09-16/chunk.json.enc" };
 
-  const create = vi.fn(async (values: Record<string, unknown>) => {
+  const createIfAbsent = vi.fn(async (values: Record<string, unknown>) => {
     if (overrides.createThrows) return Promise.reject(overrides.createThrows);
+    if (overrides.isReplay) return undefined;
     return { ...created, ...values };
   });
   const recordStoredChunk = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
@@ -82,7 +82,7 @@ const build = (overrides: TOverrides = {}) => {
 
   const service = agentVaultActivityServiceFactory({
     agentVaultActivityChunkDAL: {
-      create,
+      createIfAbsent,
       findOne: findChunk,
       // Runs the callback inline and lets a throw propagate, exactly as knex does.
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
@@ -106,7 +106,7 @@ const build = (overrides: TOverrides = {}) => {
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
 
-  return { service, create, recordStoredChunk, findChunk };
+  return { service, createIfAbsent, recordStoredChunk, findChunk };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -118,7 +118,7 @@ beforeEach(() => {
 
 describe("recordChunk: who is allowed to write", () => {
   test("a happy path writes the row, counts the records and returns an upload url", async () => {
-    const { service, create, recordStoredChunk } = build();
+    const { service, createIfAbsent, recordStoredChunk } = build();
     const result = await record(service);
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
@@ -130,7 +130,7 @@ describe("recordChunk: who is allowed to write", () => {
 
     // The proxy names neither of these, so a compromised proxy cannot choose where its bytes land or
     // claim the chunk was written under an older configuration.
-    const values = create.mock.calls[0][0];
+    const values = createIfAbsent.mock.calls[0][0];
     expect(String(values.objectKey)).toMatch(
       /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5ABCDEFGHJKMNPQRSTVWXYZ\.json\.enc$/
     );
@@ -204,9 +204,9 @@ describe("recordChunk: when logging is off", () => {
     { why: "no bucket is set", config: { ...enabledConfig(), bucket: null } },
     { why: "the connection was detached", config: { ...enabledConfig(), appConnectionId: null } }
   ])("refuses with the named error when $why", async ({ config }) => {
-    const { service, create } = build({ config });
+    const { service, createIfAbsent } = build({ config });
     await expect(record(service)).rejects.toMatchObject({ name: AgentVaultActivityErrorName.Disabled });
-    expect(create).not.toHaveBeenCalled();
+    expect(createIfAbsent).not.toHaveBeenCalled();
   });
 });
 
@@ -241,9 +241,9 @@ describe("recordChunk: semantic validation", () => {
       message: "Chunk holds more records than its sequence range allows"
     }
   ])("rejects when $why", async ({ patch, message }) => {
-    const { service, create } = build();
+    const { service, createIfAbsent } = build();
     await expect(record(service, { ...validChunk(), ...patch })).rejects.toMatchObject({ message });
-    expect(create).not.toHaveBeenCalled();
+    expect(createIfAbsent).not.toHaveBeenCalled();
   });
 
   test("a chunk whose range is larger than its count is fine, since the ring drops records", async () => {
@@ -265,11 +265,11 @@ describe("recordChunk: the organization ceiling", () => {
     // recordCount is what moves the ceiling, so a proxy must not be able to claim it independently of
     // the bytes it actually wrote. Unbounded, 600 requests a minute would exhaust a 10M ceiling in
     // under twenty minutes and stop recording for every session in the organization.
-    const { service, create } = build();
+    const { service, createIfAbsent } = build();
     await expect(
       record(service, { ...validChunk(), firstSeq: 0, lastSeq: 999, recordCount: 1000, ciphertextBytes: 64 })
     ).rejects.toMatchObject({ message: "Chunk is too small to hold the number of records it claims" });
-    expect(create).not.toHaveBeenCalled();
+    expect(createIfAbsent).not.toHaveBeenCalled();
   });
 
   test("accepts a chunk whose size is plausible for its record count", async () => {
@@ -285,9 +285,9 @@ describe("recordChunk: the organization ceiling", () => {
   test("the refusal is thrown from inside the transaction, so the row is rolled back with it", async () => {
     // The insert ran, but the throw leaves the transaction to undo it. If this ever threw before the
     // insert, or after the commit, the counter and the rows would drift apart.
-    const { service, create, recordStoredChunk } = build({ storedAfterIncrement: CEILING + 1 });
+    const { service, createIfAbsent, recordStoredChunk } = build({ storedAfterIncrement: CEILING + 1 });
     await expect(record(service)).rejects.toThrow();
-    expect(create).toHaveBeenCalledTimes(1);
+    expect(createIfAbsent).toHaveBeenCalledTimes(1);
     expect(recordStoredChunk).toHaveBeenCalledTimes(1);
   });
 
@@ -310,24 +310,24 @@ describe("recordChunk: re-sending a chunk", () => {
       objectKey: "logs/proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc",
       ciphertextBytes: 4096
     };
-    const { service, recordStoredChunk, findChunk } = build({
-      createThrows: uniqueViolation(),
-      existingChunk: existing
-    });
+    const { service, recordStoredChunk, findChunk } = build({ isReplay: true, existingChunk: existing });
 
     const result = await record(service);
 
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
-    expect(findChunk).toHaveBeenCalledWith({ sessionId: "sess-1", chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" });
-    // The insert raises the unique violation before the increment is reached, so the replay adds
-    // nothing. The first POST is what counted these records.
+    // Read on the transaction, not a replica that may not have caught up with the row it conflicted with.
+    expect(findChunk).toHaveBeenCalledWith(
+      { sessionId: "sess-1", chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" },
+      expect.anything()
+    );
+    // The insert did nothing, so the replay adds nothing. The first POST is what counted these records.
     expect(recordStoredChunk).not.toHaveBeenCalled();
   });
 
   test("presigns against the stored row's size, not the resent body's claim", async () => {
     const { service } = build({
-      createThrows: uniqueViolation(),
+      isReplay: true,
       existingChunk: { ...validChunk(), objectKey: "stored/key.json.enc", ciphertextBytes: 999 }
     });
     await record(service);
@@ -335,13 +335,13 @@ describe("recordChunk: re-sending a chunk", () => {
   });
 
   test("a row that vanished between the insert and the read is a 500, not a silent success", async () => {
-    const { service } = build({ createThrows: uniqueViolation(), existingChunk: null });
+    const { service } = build({ isReplay: true, existingChunk: null });
     await expect(record(service)).rejects.toMatchObject({
       message: "Activity chunk vanished between insert and read"
     });
   });
 
-  test("any other database error propagates rather than being read as a replay", async () => {
+  test("a database error propagates rather than being read as a replay", async () => {
     const other = new DatabaseError({ error: { code: "23503" }, name: "create" });
     const { service, findChunk } = build({ createThrows: other });
     await expect(record(service)).rejects.toThrow();

@@ -19,7 +19,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultProjectAuthority } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
@@ -209,49 +208,49 @@ export const agentVaultActivityServiceFactory = ({
       chunkId: chunk.chunkId
     });
 
-    let row;
-    try {
-      row = await agentVaultActivityChunkDAL.transaction(async (tx) => {
-        const created = await agentVaultActivityChunkDAL.create(
-          {
-            ...chunk,
-            sessionId: session.id,
-            projectId: proxy.projectId,
-            proxyId,
-            proxyName: proxy.name,
-            configVersion: config.configVersion,
-            objectKey
-          },
-          tx
-        );
+    const row = await agentVaultActivityChunkDAL.transaction(async (tx) => {
+      const created = await agentVaultActivityChunkDAL.createIfAbsent(
+        {
+          ...chunk,
+          sessionId: session.id,
+          projectId: proxy.projectId,
+          proxyId,
+          proxyName: proxy.name,
+          configVersion: config.configVersion,
+          objectKey
+        },
+        tx
+      );
 
-        // Takes the config row's lock, so concurrent inserts serialise and each reads its own true total.
-        const stored = await agentVaultActivityConfigDAL.recordStoredChunk(
-          { id: config.id, recordCount: chunk.recordCount, configVersion: config.configVersion },
+      if (!created) {
+        // A re-POST of a chunk whose PUT failed. Already counted, so it must not count again. Read on
+        // the same transaction, which is the primary: a replica can lag the write it conflicted with.
+        const existing = await agentVaultActivityChunkDAL.findOne(
+          { sessionId: session.id, chunkId: chunk.chunkId },
           tx
         );
-        if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS) {
-          // Rolls the insert back with it, so refusing costs nothing and stays refusable next time.
-          // The ceiling is ours rather than the customer's, so neither the number nor a way to change
-          // it belongs in a message that lands in their proxy's logs.
-          throw new BadRequestError({
-            name: AgentVaultActivityErrorName.CeilingReached,
-            message: "Activity storage for this organization is full and recording is paused. Contact Infisical support"
-          });
+        if (!existing) {
+          throw new InternalServerError({ message: "Activity chunk vanished between insert and read" });
         }
-        return created;
-      });
-    } catch (error) {
-      // Outside the transaction callback: Postgres aborts the transaction on a constraint violation, so
-      // the replay read cannot run on tx.
-      if (!isUniqueViolation(error)) throw error;
-
-      // A re-POST of a chunk whose PUT failed. Already counted, so it must not increment again.
-      row = await agentVaultActivityChunkDAL.findOne({ sessionId: session.id, chunkId: chunk.chunkId });
-      if (!row) {
-        throw new InternalServerError({ message: "Activity chunk vanished between insert and read" });
+        return existing;
       }
-    }
+
+      // Takes the config row's lock, so concurrent inserts serialise and each reads its own true total.
+      const stored = await agentVaultActivityConfigDAL.recordStoredChunk(
+        { id: config.id, recordCount: chunk.recordCount, configVersion: config.configVersion },
+        tx
+      );
+      if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS) {
+        // Rolls the insert back with it, so refusing costs nothing and stays refusable next time.
+        // The ceiling is ours rather than the customer's, so neither the number nor a way to change
+        // it belongs in a message that lands in their proxy's logs.
+        throw new BadRequestError({
+          name: AgentVaultActivityErrorName.CeilingReached,
+          message: "Activity storage for this organization is full and recording is paused. Contact Infisical support"
+        });
+      }
+      return created;
+    });
 
     // After commit, deliberately: presigning is a network-shaped operation and must not run under the
     // config row's lock. A failure here is a 500 the proxy retries onto the idempotent path above.
