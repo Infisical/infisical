@@ -2,6 +2,10 @@ export const BillingProduct = {
   SecretsManagement: "secrets_management"
 } as const;
 
+export const BillingPlan = {
+  Advanced: "advanced"
+} as const;
+
 export const UpgradeFeature = {
   DynamicSecrets: "dynamic-secrets"
 } as const;
@@ -13,6 +17,7 @@ export const UpgradeContinuation = {
 export type UpgradeIntent = {
   featureKey: (typeof UpgradeFeature)[keyof typeof UpgradeFeature];
   productKey: (typeof BillingProduct)[keyof typeof BillingProduct];
+  planKey: (typeof BillingPlan)[keyof typeof BillingPlan];
   continuation: (typeof UpgradeContinuation)[keyof typeof UpgradeContinuation];
   title: string;
   description: string;
@@ -21,6 +26,7 @@ export type UpgradeIntent = {
 export const DynamicSecretsUpgradeIntent = {
   featureKey: UpgradeFeature.DynamicSecrets,
   productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Advanced,
   continuation: UpgradeContinuation.CreateDynamicSecret,
   title: "Add Dynamic Secrets",
   description:

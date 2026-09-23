@@ -1,5 +1,6 @@
 export type { UpgradeIntent } from "./upgrade-intents";
 export {
+  BillingPlan,
   BillingProduct,
   buildUpgradeReturnPath,
   DynamicSecretsUpgradeIntent,
