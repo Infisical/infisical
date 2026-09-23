@@ -660,6 +660,22 @@ const OverviewPageContent = () => {
       subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
     )
   );
+  const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: env.slug,
+        secretPath,
+        metadata: ["*"]
+      })
+    )
+  );
+  const userAvailableSecretRotationEnvs = userAvailableEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionSecretRotationActions.Create,
+      subject(ProjectPermissionSub.SecretRotation, { environment: env.slug, secretPath })
+    )
+  );
   const secretSyncSourceEnv = visibleEnvs.find((env) =>
     permission.can(
       ProjectPermissionSecretSyncActions.Create,
@@ -3560,7 +3576,7 @@ const OverviewPageContent = () => {
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environments={visibleDynamicSecretEnvs}
+        environments={userAvailableDynamicSecretEnvs}
         secretPath={secretPath}
       />
       <Dialog
@@ -3757,7 +3773,7 @@ const OverviewPageContent = () => {
       />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
-        environments={visibleSecretRotationEnvs}
+        environments={userAvailableSecretRotationEnvs}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
