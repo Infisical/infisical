@@ -58,18 +58,23 @@ const normalizePrefix = (value: string | null | undefined) => {
   return trimmed ? `${trimmed}/` : "";
 };
 
-const schema = z.object({
-  enabled: z.boolean(),
-  appConnectionId: z.string(),
-  bucket: z.string().trim().max(255),
-  region: z.string(),
-  keyPrefix: z
-    .string()
-    .trim()
-    .max(512)
-    .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "Use only letters, numbers and - _ . / characters")
-    .refine((value) => !value.split("/").includes(".."), "Cannot contain '..'")
-});
+const schema = z
+  .object({
+    enabled: z.boolean(),
+    appConnectionId: z.string(),
+    bucket: z.string().trim().max(255),
+    region: z.string(),
+    keyPrefix: z
+      .string()
+      .trim()
+      .max(512)
+      .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "Use only letters, numbers and - _ . / characters")
+      .refine((value) => !value.split("/").includes(".."), "Cannot contain '..'")
+  })
+  .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
+    message: "Recording needs an AWS connection",
+    path: ["appConnectionId"]
+  });
 
 type FormData = z.infer<typeof schema>;
 
@@ -119,6 +124,9 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
 
   const bucket = watch("bucket") ?? "";
   const keyPrefix = watch("keyPrefix") ?? "";
+  const isEnabled = watch("enabled");
+  const isDetaching =
+    watch("appConnectionId") === NO_CONNECTION && Boolean(data?.config.appConnectionId);
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
@@ -127,8 +135,11 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
 
   // The create entry is a sentinel option rather than a button beside the field, matching every
   // other product's connection picker.
+  // None only while recording is off: detaching is how a connection in use is freed for deletion,
+  // and recording cannot run without one.
   const connectionOptions = [
     ...(canCreateConnection ? [{ id: CREATE_CONNECTION, name: "Create New Connection" }] : []),
+    ...(isEnabled ? [] : [{ id: NO_CONNECTION, name: "None" }]),
     ...(connections ?? [])
   ];
 
@@ -238,7 +249,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                           <span className="flex min-w-0 items-center gap-2">
                             {/* The create entry brings its own plus mark, and a logo beside it
                                 reads as though a connection already exists. */}
-                            {option.id !== CREATE_CONNECTION && (
+                            {option.id !== CREATE_CONNECTION && option.id !== NO_CONNECTION && (
                               <ProviderIcon
                                 alt={`${AWS_CONNECTION.name} connection`}
                                 icon={AWS_CONNECTION.image}
@@ -246,30 +257,38 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                               />
                             )}
                             <span className="min-w-0 flex-1">
-                              <AppConnectionOptionContent
-                                data={option}
-                                isOnlyOption={
-                                  option.id === CREATE_CONNECTION && connectionOptions.length === 1
-                                }
-                              />
+                              {option.id === NO_CONNECTION ? (
+                                option.name
+                              ) : (
+                                <AppConnectionOptionContent
+                                  data={option}
+                                  isOnlyOption={
+                                    option.id === CREATE_CONNECTION &&
+                                    connectionOptions.length === 1
+                                  }
+                                />
+                              )}
                             </span>
                           </span>
                         )}
                         renderValue={(option) => (
                           <span className="flex min-w-0 items-center gap-2">
-                            <ProviderIcon
-                              alt={`${AWS_CONNECTION.name} connection`}
-                              icon={AWS_CONNECTION.image}
-                              className="w-4 shrink-0"
-                            />
+                            {option.id !== NO_CONNECTION && (
+                              <ProviderIcon
+                                alt={`${AWS_CONNECTION.name} connection`}
+                                icon={AWS_CONNECTION.image}
+                                className="w-4 shrink-0"
+                              />
+                            )}
                             <span className="truncate">{option.name}</span>
                           </span>
                         )}
                         modal
                       />
                       <FieldDescription>
-                        Its credentials write the records, and read them back when you open a
-                        session&apos;s activity.
+                        {isDetaching
+                          ? "Without a connection, recorded activity can't be read, and files from sessions that expire stay in your bucket. The bucket is kept, so attaching a connection later brings the history back."
+                          : "Its credentials write the records, and read them back when you open a session's activity."}
                       </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>

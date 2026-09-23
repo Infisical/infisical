@@ -97,7 +97,8 @@ export const buildActivityStorage = async (
   const raw = await appConnectionDAL.findById(config.appConnectionId);
   if (!raw) {
     throw new BadRequestError({
-      message: "The AWS connection used for activity logging no longer exists. Choose another under Settings"
+      message:
+        "The AWS connection used for activity logging no longer exists. Choose another on the Activity Logs page."
     });
   }
   if (raw.orgId !== orgId) {

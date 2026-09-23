@@ -13,10 +13,12 @@ export async function up(knex: Knex): Promise<void> {
 
       t.boolean("enabled").notNullable().defaultTo(false);
 
-      // SET NULL rather than CASCADE: losing the connection must not silently drop the bucket
-      // coordinates, or the sweep would lose the only handle on objects it still has to delete.
+      // Blocks deleting a connection that is in use, as every other product's connection link does:
+      // it is what reads recorded activity back and what lets the sweep delete expired sessions'
+      // objects, so losing it silently strands both. Deferred like theirs, so deleting an org, which
+      // removes its projects and its connections in one statement, is checked only at commit.
       t.uuid("appConnectionId");
-      t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection).onDelete("SET NULL");
+      t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection).deferrable("deferred");
 
       t.string("bucket", 255);
       t.string("region", 32);

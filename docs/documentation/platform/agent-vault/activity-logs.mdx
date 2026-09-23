@@ -193,9 +193,11 @@ To reach an existing connection, add its ID: `GET`, `PATCH` and `DELETE` on
 
 ### Deleting a connection
 
-Nothing blocks you from deleting a connection activity logging is using, and recording stops within one poll interval on every proxy. The bucket and prefix survive, so the credential is the only missing piece: pick another connection under **Activity Logs** and recording resumes.
+A connection activity logging is using can't be deleted, whether from the **Activity Logs** page or from the organization's **Integrations**. Its credentials read recorded activity back and let Infisical delete an expired session's objects from your bucket, so removing it would strand both.
 
-Nothing already written to your bucket is deleted. Those objects stay where they are, and Infisical can't read them until a connection that reaches the bucket is configured again.
+To replace the credential, select another connection under **Configure** and save. The previous connection can then be deleted.
+
+To stop using a connection without replacing it, turn **Enabled** off, set **AWS Connection** to **None**, and save. The bucket and prefix are kept. Until a connection is attached again, recorded activity can't be read in Infisical, and objects from sessions that expire in the meantime stay in your bucket.
 
 ## What this doesn't cover
 

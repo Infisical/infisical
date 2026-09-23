@@ -434,10 +434,21 @@ export const agentVaultActivityServiceFactory = ({
     }
 
     if (next.enabled) {
-      const missing = (["appConnectionId", "bucket", "region"] as const).filter((field) => !next[field]);
+      if (!next.appConnectionId && current.enabled && current.appConnectionId) {
+        throw new BadRequestError({ message: "Turn recording off before removing its AWS connection." });
+      }
+      const missing = (
+        [
+          ["appConnectionId", "an AWS connection"],
+          ["bucket", "a bucket"],
+          ["region", "a region"]
+        ] as const
+      )
+        .filter(([field]) => !next[field])
+        .map(([, label]) => label);
       if (missing.length) {
         throw new BadRequestError({
-          message: `Activity logging needs a complete destination before it can be turned on. Missing: ${missing.join(", ")}`
+          message: `Recording needs ${missing.join(", ").replace(/, ([^,]*)$/, " and $1")}.`
         });
       }
     }

@@ -290,8 +290,41 @@ describe("Agent Vault activity", async () => {
     test("turning logging on without a complete destination names what is missing", async () => {
       const res = await saveConfig({ enabled: true });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("appConnectionId");
-      expect(JSON.parse(res.payload).message).toContain("bucket");
+      expect(JSON.parse(res.payload).message).toContain("an AWS connection");
+      expect(JSON.parse(res.payload).message).toContain("a bucket");
+    });
+
+    test("a connection activity logging uses cannot be deleted, and the refusal says why", async () => {
+      await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" });
+
+      const res = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/app-connections/aws/${connectionId}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toContain("Agent Vault activity logging");
+
+      const config = await testDb("agent_vault_activity_configs").where({ projectId }).first();
+      expect(config.appConnectionId).toBe(connectionId);
+    });
+
+    test("the connection can be detached only with recording off, and the destination is kept", async () => {
+      await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" });
+
+      const whileOn = await saveConfig({ appConnectionId: null });
+      expect(whileOn.statusCode).toBe(400);
+      expect(JSON.parse(whileOn.payload).message).toContain("Turn recording off");
+
+      const whileOff = await saveConfig({ enabled: false, appConnectionId: null });
+      expect(whileOff.statusCode).toBe(200);
+      // Only the credential goes. Re-attaching one that reaches the bucket makes the history readable again.
+      expect(JSON.parse(whileOff.payload).config).toMatchObject({
+        enabled: false,
+        appConnectionId: null,
+        bucket: BUCKET,
+        configVersion: 1
+      });
     });
 
     test("moving the bucket bumps configVersion; changing the region or the connection does not", async () => {

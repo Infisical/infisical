@@ -25,9 +25,6 @@ export const ActivityLoggingAlerts = () => {
     if (!config?.enabled) {
       return "Recording is switched off. Activity already in the bucket is still readable, but nothing new is being stored.";
     }
-    if (!config.appConnectionId) {
-      return "Recording is on, but its AWS connection is gone. Nothing can be written to the bucket until you choose another one.";
-    }
     return "Recording is on, but the destination is incomplete, so nothing is being written to the bucket.";
   })();
 

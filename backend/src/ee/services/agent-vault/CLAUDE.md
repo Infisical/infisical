@@ -194,6 +194,10 @@ only, never bodies or headers, and never the query string (the proxy builds the 
 - **Chunk ids are ULIDs minted by the proxy**, unique per session, not globally. A proxy-side counter
   would reset on every cache eviction and then collide for the rest of the session's life. They sort by
   time, so the read cursor is a plain `chunkId <` comparison.
+- **The config's `appConnectionId` blocks deleting its connection**, deferred like every other product's
+  connection link (`20260603120100_defer-app-connection-fks`) so an org delete is checked at commit. The
+  shared delete names activity logging in its refusal. Freeing the connection means switching it, or
+  detaching it (`appConnectionId: null`, only with recording off), which keeps the bucket and prefix.
 - **`agent_vault_activity_chunks.proxyId` has no foreign key, deliberately.** It is an input to the
   encryption AAD, so `SET NULL` on proxy deletion would make every chunk that proxy wrote permanently
   undecryptable. `proxyName` is denormalised for the same reason.
