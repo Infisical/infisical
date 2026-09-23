@@ -4397,7 +4397,8 @@ export const AGENT_VAULT = {
     appConnectionId: "The AWS connection whose credentials write to and read from the bucket.",
     bucket: "The S3 bucket activity is stored in.",
     region: "The region the bucket lives in.",
-    keyPrefix: "An optional prefix every object key is written under.",
+    keyPrefix:
+      "An optional prefix every object key is written under. `logs`, `/logs` and `logs/` are all saved as `logs/`. Letters, numbers and `! - _ . * ' ( ) /` only, with no `..` segment, up to 512 characters including the trailing slash.",
     corsProbeUrl:
       "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
     isStorageFull:

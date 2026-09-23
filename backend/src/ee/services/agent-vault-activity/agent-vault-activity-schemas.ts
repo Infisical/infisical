@@ -7,9 +7,11 @@ import {
   AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS,
+  AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
   AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES
 } from "./agent-vault-activity-constants";
+import { normalizeKeyPrefix } from "./agent-vault-activity-storage";
 
 /** 12 raw bytes as unpadded base64. Fixed width, so a wrong-sized IV is a 422 rather than a decrypt failure. */
 const IvSchema = z
@@ -113,9 +115,13 @@ export const AgentVaultActivityConfigUpdateSchema = z
     keyPrefix: z
       .string()
       .trim()
-      .max(512)
-      .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "May only contain S3-safe key characters")
+      .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "May only contain letters, numbers and ! - _ . * ' ( ) /")
       .refine((v) => !v.split("/").includes(".."), "May not contain '..'")
+      // Measured as stored: the slash normalisation adds at the end counts, and one already there does not.
+      .refine(
+        (v) => normalizeKeyPrefix(v).length <= AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
+        `May be at most ${AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH} characters, including the trailing slash`
+      )
       .describe(AGENT_VAULT.ACTIVITY.keyPrefix)
   })
   .partial();

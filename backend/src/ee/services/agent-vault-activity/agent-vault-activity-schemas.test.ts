@@ -94,6 +94,16 @@ describe("the settings patch", () => {
     expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
   });
 
+  // Measured as stored, where normalisation adds a trailing slash: the column holds 512 characters.
+  test.each([
+    { value: "a".repeat(511), fits: true, why: "511 characters, 512 once the slash is added" },
+    { value: `${"a".repeat(511)}/`, fits: true, why: "512 characters that already end in the slash" },
+    { value: `/${"a".repeat(511)}/`, fits: true, why: "a leading slash, which is dropped" },
+    { value: "a".repeat(512), fits: false, why: "512 characters, 513 once the slash is added" }
+  ])("a key prefix of $why is accepted: $fits", ({ value, fits }) => {
+    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(fits);
+  });
+
   test("rejects a region that is not an AWS region", () => {
     expect(AgentVaultActivityConfigUpdateSchema.safeParse({ region: "moon-base-1" }).success).toBe(false);
   });

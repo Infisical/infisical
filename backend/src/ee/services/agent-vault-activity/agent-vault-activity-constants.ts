@@ -2,6 +2,9 @@ export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS = 1000;
 
 // "[]" plus a 16-byte GCM tag is the smallest thing the proxy can legitimately seal.
 export const AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES = 18;
+
+/** The stored prefix, trailing slash included, has to fit the config column. */
+export const AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH = 512;
 export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES = 8 * 1024 * 1024;
 
 export const AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS = 300;
