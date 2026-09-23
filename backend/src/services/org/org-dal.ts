@@ -892,53 +892,6 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * The batched form of findEffectiveOrgMembership. A direct row is authoritative, as there: deactivating
-   * someone's own membership suspends them even while a group they belong to stays active. Unlike the
-   * singular helper it applies no status filter, so an invited member counts as active.
-   */
-  const findActiveEffectiveOrgMemberActorIds = async (
-    dto: { actorType: ActorType; actorIds: string[]; orgId: string },
-    tx?: Knex
-  ): Promise<Set<string>> => {
-    if (!dto.actorIds.length) return new Set();
-
-    try {
-      const conn = tx ?? db.replicaNode();
-      const isUser = dto.actorType === ActorType.USER;
-      const groupTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
-      const groupActorColumn = `${groupTable}.${isUser ? "userId" : "identityId"}`;
-      const directColumn = `${TableName.Membership}.${isUser ? "actorUserId" : "actorIdentityId"}`;
-
-      const directRows = (await conn(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
-        .whereIn(directColumn, dto.actorIds)
-        .select(conn.raw(`?? as "actorId"`, [directColumn]), `${TableName.Membership}.isActive`)) as {
-        actorId: string;
-        isActive: boolean;
-      }[];
-
-      const active = new Set(directRows.filter((row) => row.isActive).map((row) => row.actorId));
-      const hasDirectRow = new Set(directRows.map((row) => row.actorId));
-      const withoutDirect = dto.actorIds.filter((id) => !hasDirectRow.has(id));
-      if (!withoutDirect.length) return active;
-
-      const groupRows = (await conn(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
-        .where(`${TableName.Membership}.isActive`, true)
-        .join(groupTable, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
-        .whereIn(groupActorColumn, withoutDirect)
-        .distinct(conn.raw(`?? as "actorId"`, [groupActorColumn]))) as { actorId: string }[];
-
-      groupRows.forEach((row) => active.add(row.actorId));
-      return active;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find active effective org member actor ids" });
-    }
-  };
-
   const findActiveEffectiveOrgMembershipsByUserId = async (userId: string, tx?: Knex): Promise<TMemberships[]> => {
     try {
       const conn = tx ?? db.replicaNode();
@@ -1245,7 +1198,6 @@ export const orgDALFactory = (db: TDbClient) => {
     findMembership,
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
-    findActiveEffectiveOrgMemberActorIds,
     findActiveEffectiveOrgMembershipsByUserId,
     findMembershipWithScimFilter,
     countMembershipWithScimFilter,

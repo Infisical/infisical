@@ -4331,6 +4331,12 @@ export const AGENT_VAULT = {
     limit: "The maximum number of members to return.",
     offset: "How many members to skip."
   },
+  AVAILABLE_MEMBER: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
+  },
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",

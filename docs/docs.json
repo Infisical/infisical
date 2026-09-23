@@ -4465,6 +4465,7 @@
                     "group": "Members",
                     "pages": [
                       "api-reference/endpoints/agent-vault-members/list",
+                      "api-reference/endpoints/agent-vault-members/list-available",
                       "api-reference/endpoints/agent-vault-members/add",
                       "api-reference/endpoints/agent-vault-members/update-role",
                       "api-reference/endpoints/agent-vault-members/revoke"

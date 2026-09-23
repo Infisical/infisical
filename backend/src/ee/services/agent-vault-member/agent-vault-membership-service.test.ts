@@ -11,6 +11,9 @@ const PROJECT_ID = "project-1";
 const OTHER_PROJECT_ID = "project-2";
 const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
+const GROUP_ID = "group-1";
+const OTHER_USER_ID = "user-2";
+const THIRD_USER_ID = "user-3";
 
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
@@ -59,18 +62,18 @@ const buildService = ({
     groupDAL: { find: vi.fn().mockResolvedValue([]) },
     userDAL: { find: vi.fn().mockResolvedValue([]) },
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
-    orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
-      findActiveEffectiveOrgMemberActorIds: vi.fn(({ actorIds }: { actorIds: string[] }) =>
-        Promise.resolve(new Set(actorIds))
-      )
-    },
+    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }) },
     membershipDAL: {
-      find: vi.fn(({ scope }: { scope: string }) =>
+      // The organization read is how an actor is judged to exist here, so it answers for whatever it is
+      // asked about. That is what an org holds for every actor it reaches, including one it does not own
+      // itself and one another product scoped to its own project.
+      find: vi.fn(({ scope, $in }: { scope: string; $in?: Record<string, string[] | undefined> }) =>
         Promise.resolve(
           scope === AccessScope.Project
             ? productMemberships.map((row) => ({ ...row, actorIdentityId: IDENTITY_ID, createdAt: new Date() }))
-            : []
+            : Object.entries($in ?? {}).flatMap(([column, ids]) =>
+                (ids ?? []).map((id) => ({ id: `org-${id}`, [column]: id, isActive: true }))
+              )
         )
       ),
       // assertWillRetainProjectAdmin takes an advisory lock through tx.raw, then counts live admins
@@ -166,6 +169,184 @@ describe("agentVaultMembership guards", () => {
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+  });
+
+  // A sub-organization reaches one of its parent's groups through a membership of its own, and the group
+  // row keeps pointing at the parent. Judging it by that row refused every linked group.
+  test("accepts a group the organization reaches but does not own", async () => {
+    const { service, deps } = buildService();
+
+    const { members } = await service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [],
+      machineIdentityIds: [],
+      groupIds: [GROUP_ID],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    expect(members[0].id).toBe("mem-new");
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: AccessScope.Organization, $in: { actorGroupId: [GROUP_ID] } })
+    );
+  });
+
+  test("refuses a group the organization does not reach at all", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [],
+        machineIdentityIds: [],
+        groupIds: [GROUP_ID],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // Reaching the organization through a group is how a sub-org is given a parent group's members. They
+  // reach Agent Vault the same way, by the group being a member, so neither is individually assignable.
+  // Authentication resolves them through the group and is deliberately untouched by this.
+  test("refuses an actor whose organization access comes only from a group", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("is not a member of this organization");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("refuses an actor whose organization membership is deactivated", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+      // Named as deactivated rather than missing, because reactivating is the remedy, not inviting.
+    ).rejects.toThrow("is deactivated in this organization");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // A batch holding both kinds names both, so fixing one and retrying is not how you discover the other.
+  test("names the deactivated and the non-member in one refusal", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID, THIRD_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow(/is deactivated in this organization[\s\S]*is not a member of this organization/);
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // The name lookup is not org-scoped, so resolving an outsider would hand back another tenant's email and
+  // tell a real id apart from a made-up one. Only the deactivated, who are in this org, get a name.
+  test("never names an actor from outside the organization", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+    deps.userDAL.find.mockResolvedValue([{ id: OTHER_USER_ID, username: "sam@othercompany.com" }]);
+
+    const refusal = service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      machineIdentityIds: [],
+      groupIds: [],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    await expect(refusal).rejects.toThrow(`'${OTHER_USER_ID}' is not a member of this organization`);
+    await expect(refusal).rejects.not.toThrow("sam@othercompany.com");
+  });
+
+  test("names a deactivated member, who is in this organization", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+    deps.userDAL.find.mockResolvedValue([{ id: OTHER_USER_ID, username: "bob@test.local" }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("'bob@test.local' is deactivated in this organization");
+  });
+
+  test("reads correctly for several outsiders", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID, THIRD_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("are not members of this organization. Invite them to the organization first.");
+  });
+
+  // A group whose organization membership was deactivated must not be restorable by adding it again.
+  test("refuses a group whose organization membership is deactivated", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorGroupId: GROUP_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [],
+        machineIdentityIds: [],
+        groupIds: [GROUP_ID],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
   test("refuses to change your own role", async () => {
