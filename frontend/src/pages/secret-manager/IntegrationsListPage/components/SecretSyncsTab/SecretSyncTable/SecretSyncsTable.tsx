@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -31,6 +31,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Skeleton,
   Table,
   TableBody,
@@ -46,7 +47,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useSlashFocusSearch } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretSync,
@@ -135,6 +136,8 @@ export const SecretSyncsTable = ({ secretSyncs, isPending }: Props) => {
   } = usePagination<SecretSyncsOrderBy>(SecretSyncsOrderBy.Name, {
     initPerPage: getUserTablePreference("secretSyncTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -281,6 +284,7 @@ export const SecretSyncsTable = ({ secretSyncs, isPending }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
             placeholder="Search secret syncs..."
           />
         </InputGroup>
@@ -340,9 +344,9 @@ export const SecretSyncsTable = ({ secretSyncs, isPending }: Props) => {
                           }));
                         }}
                       >
-                        <img
+                        <ProviderIcon
                           alt={`${name} integration`}
-                          src={`/images/integrations/${image}`}
+                          icon={image}
                           className="h-4 w-4"
                         />
                         <span>{name}</span>

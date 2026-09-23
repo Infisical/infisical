@@ -42,6 +42,7 @@ export const ConnectionDetailsForm = ({ control, setValue, clearErrors }: Props)
   return (
     <PamSchemaFields
       control={control}
+      setValue={setValue}
       namePrefix="connectionDetails"
       fields={metadata.connectionFields}
       smartPaste={smartPaste}

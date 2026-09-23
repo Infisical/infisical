@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -111,6 +112,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -135,6 +137,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
   appConnectionService,
+  licenseService,
   approvalPolicyDAL,
   certificateProfileDAL,
   certificateAuthorityDAL,
@@ -158,7 +161,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       });
     }
 
-    return { junction };
+    return { junction, application };
   };
 
   const $assertEditEnrollment = async (
@@ -170,7 +173,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod: TProjectPermission["actorAuthMethod"],
     actorOrgId: TProjectPermission["actorOrgId"]
   ) => {
-    const { junction } = await $loadJunction(applicationId, profileId, projectId);
+    const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
     const { permission } = await permissionService.getResourcePermission({
       actor,
       actorId,
@@ -188,7 +191,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       ResourcePermissionApplicationEnrollmentActions.Edit,
       ResourcePermissionSub.ApplicationEnrollment
     );
-    return { junction };
+    return { junction, application };
   };
 
   const getEnrollment = async ({
@@ -200,7 +203,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetEnrollmentDTO) => {
-    const { junction } = await $loadJunction(applicationId, profileId, projectId);
+    const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
 
     const { permission } = await permissionService.getResourcePermission({
       actor,
@@ -234,6 +237,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     return {
       applicationId,
+      applicationName: application.name,
       profileId,
       api: apiConfig
         ? {
@@ -293,7 +297,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TSetApiEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -338,6 +342,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       }
       return {
         applicationId,
+        applicationName: application.name,
         profileId,
         api: {
           id: apiConfig.id,
@@ -357,7 +362,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TClearApiEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -368,7 +373,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     );
 
     if (!junction.apiConfigId) {
-      return { applicationId, profileId };
+      return { applicationId, applicationName: application.name, profileId };
     }
 
     await pkiApplicationProfileDAL.transaction(async (tx) => {
@@ -376,7 +381,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       await apiEnrollmentConfigDAL.deleteById(junction.apiConfigId as string, tx);
     });
 
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const setEstEnrollment = async ({
@@ -389,7 +394,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TSetEstEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -398,6 +403,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
+    // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
+    // an admin can act on it instead of surfacing as a device that silently fails to enroll.
+    const estPlan = await licenseService.getPlan(actorOrgId);
+    if (!estPlan.pkiEst) {
+      throw new BadRequestError({
+        message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
+      });
+    }
 
     if (!config.passphrase || config.passphrase.length < 8) {
       throw new BadRequestError({ message: "EST passphrase must be at least 8 characters." });
@@ -440,6 +454,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       }
       return {
         applicationId,
+        applicationName: application.name,
         profileId,
         est: { id: estConfigId, disableBootstrapCaValidation: config.disableBootstrapCaValidation ?? false }
       };
@@ -455,7 +470,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TClearMethodEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -464,12 +479,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!junction.estConfigId) return { applicationId, profileId };
+    if (!junction.estConfigId) return { applicationId, applicationName: application.name, profileId };
     await pkiApplicationProfileDAL.transaction(async (tx) => {
       await pkiApplicationProfileDAL.update({ applicationId, profileId }, { estConfigId: null }, tx);
       await estEnrollmentConfigDAL.deleteById(junction.estConfigId as string, tx);
     });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const setAcmeEnrollment = async ({
@@ -482,7 +497,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TSetAcmeEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -525,6 +540,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       }
       return {
         applicationId,
+        applicationName: application.name,
         profileId,
         acme: {
           id: acmeConfigId,
@@ -544,7 +560,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TClearMethodEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -553,12 +569,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!junction.acmeConfigId) return { applicationId, profileId };
+    if (!junction.acmeConfigId) return { applicationId, applicationName: application.name, profileId };
     await pkiApplicationProfileDAL.transaction(async (tx) => {
       await pkiApplicationProfileDAL.update({ applicationId, profileId }, { acmeConfigId: null }, tx);
       await acmeEnrollmentConfigDAL.deleteById(junction.acmeConfigId as string, tx);
     });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const revealAcmeEabSecret = async ({
@@ -570,7 +586,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevealEabSecretDTO) => {
-    const { junction } = await $loadJunction(applicationId, profileId, projectId);
+    const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
     const { permission } = await permissionService.getResourcePermission({
       actor,
       actorId,
@@ -603,6 +619,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     return {
       applicationId,
+      applicationName: application.name,
       profileId,
       eabKid: acmeConfig.id,
       eabSecret: eabSecret.toString("base64url")
@@ -618,7 +635,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevealEabSecretDTO) => {
-    const { junction } = await $loadJunction(applicationId, profileId, projectId);
+    const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
     const { permission } = await permissionService.getResourcePermission({
       actor,
       actorId,
@@ -642,7 +659,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     }
     const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
     await acmeEnrollmentConfigDAL.updateById(junction.acmeConfigId, { encryptedEabSecret });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const setScepEnrollment = async ({
@@ -657,7 +674,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorRootOrgId,
     actorParentOrgId
   }: TSetScepEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -666,6 +683,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
+
+    const scepPlan = await licenseService.getPlan(actorOrgId);
+    if (!scepPlan.pkiScep) {
+      throw new BadRequestError({
+        message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."
+      });
+    }
 
     const challengeType = config.challengeType ?? ScepChallengeType.STATIC;
     const isIntune = challengeType === ScepChallengeType.MICROSOFT_INTUNE;
@@ -842,6 +866,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       }
       return {
         applicationId,
+        applicationName: application.name,
         profileId,
         scep: { id: scepConfigId, challengeType },
         signRaWithCa,
@@ -861,7 +886,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TClearMethodEnrollmentDTO) => {
-    const { junction } = await $assertEditEnrollment(
+    const { junction, application } = await $assertEditEnrollment(
       applicationId,
       profileId,
       projectId,
@@ -870,12 +895,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (!junction.scepConfigId) return { applicationId, profileId };
+    if (!junction.scepConfigId) return { applicationId, applicationName: application.name, profileId };
     await pkiApplicationProfileDAL.transaction(async (tx) => {
       await pkiApplicationProfileDAL.update({ applicationId, profileId }, { scepConfigId: null }, tx);
       await scepEnrollmentConfigDAL.deleteById(junction.scepConfigId as string, tx);
     });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   return {

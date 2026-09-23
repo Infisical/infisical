@@ -4,7 +4,6 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -69,6 +68,7 @@ import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/key
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { takeRowScanWindow } from "@app/lib/fn";
 import { recordSecretRotationOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -95,9 +95,9 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
 import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
@@ -170,7 +170,6 @@ export type TSecretRotationV2ServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -239,7 +238,6 @@ export const secretRotationV2ServiceFactory = ({
   queueService,
   folderCommitService,
   appConnectionDAL,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
@@ -266,7 +264,7 @@ export const secretRotationV2ServiceFactory = ({
       type: SecretValidationRuleType.SecretRotations,
       provider
     });
-    if (!matched.constraints.length) return undefined;
+    if (!matched.ruleNames.length) return undefined;
     return matched;
   };
 
@@ -619,7 +617,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       passwordValidationContext
@@ -995,7 +992,6 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
         passwordValidationContext
@@ -1339,7 +1335,6 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
         passwordValidationContext
@@ -1665,7 +1660,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService
     );
@@ -1900,7 +1894,7 @@ export const secretRotationV2ServiceFactory = ({
   };
 
   const getQuickSearchSecretRotations = async (
-    { folderMappings, filters: { search, ...options }, projectId }: TQuickSearchSecretRotationsV2,
+    { folderMappings, filters: { search, limit, offset, orderDirection }, projectId }: TQuickSearchSecretRotationsV2,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -1919,9 +1913,12 @@ export const secretRotationV2ServiceFactory = ({
       )
     );
 
-    if (!permissiveFolderMappings.length) return [];
+    if (!permissiveFolderMappings.length) return { secretRotations: [], isLimitReached: false };
 
-    const secretRotations = await secretRotationV2DAL.find(
+    // this result is paged by offset across separate requests, so the query needs a total order
+    // (name alone ties across environments); scan one row past the limit to tell a full window
+    // from a truncated one
+    const scannedSecretRotations = await secretRotationV2DAL.find(
       {
         projectId,
         $search: {
@@ -1931,13 +1928,26 @@ export const secretRotationV2ServiceFactory = ({
           folderId: permissiveFolderMappings.map(({ folderId }) => folderId)
         }
       },
-      options
+      {
+        offset,
+        limit: limit ? limit + 1 : undefined,
+        sort: [
+          ["name", orderDirection === OrderByDirection.DESC ? "desc" : "asc"],
+          ["id", "asc"]
+        ]
+      }
     );
 
+    // measure window saturation before the per-rotation permission filter, or a truncated scan
+    // reads as complete whenever the filter drops rows
+    const { items: windowedSecretRotations, isLimitReached } = takeRowScanWindow(scannedSecretRotations, limit);
+
     // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
-    return secretRotations.filter((rotation) =>
+    const secretRotations = windowedSecretRotations.filter((rotation) =>
       permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
     ) as TSecretRotationV2[];
+
+    return { secretRotations, isLimitReached };
   };
 
   const reconcileLocalAccountRotation = async (
@@ -2029,6 +2039,13 @@ export const secretRotationV2ServiceFactory = ({
     ] as TLocalAccountRotationGeneratedCredentials[number];
     const appConnection = await decryptAppConnection(connection, kmsService);
 
+    const passwordValidationContext = await $resolvePasswordValidationContext({
+      projectId,
+      envId: environment.id,
+      secretPath: folder.path,
+      type
+    });
+
     // Use the rotation factory to perform a rotation using the app connection credentials
     const rotationFactory = SECRET_ROTATION_FACTORY_MAP[type](
       {
@@ -2042,9 +2059,9 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      passwordValidationContext
     );
 
     // Issue new credentials using login-as-root mode (app connection credentials)

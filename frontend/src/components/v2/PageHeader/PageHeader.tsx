@@ -21,6 +21,7 @@ const SCOPE_BADGE: Record<NonNullable<Props["scope"]>, { icon: LucideIcon; class
   [ProjectType.CertificateManager]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.KMS]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.PAM]: { className: "text-product-pam", icon: ProjectIcon },
+  [ProjectType.AgentVault]: { className: "text-product-av", icon: ProjectIcon },
   [ProjectType.SecretScanning]: { className: "text-project", icon: ProjectIcon },
   namespace: { className: "text-sub-org", icon: SubOrgIcon },
   instance: { className: "text-neutral", icon: InstanceIcon }
@@ -35,12 +36,14 @@ export const PageHeader = ({ title, description, children, className, scope, ico
         <div className="mr-4 flex min-w-0 flex-1 items-center">
           <h1
             className={twMerge(
-              "truncate text-2xl font-medium text-white underline underline-offset-4",
+              "truncate text-2xl font-medium text-foreground-inverse underline underline-offset-4",
               scope === "org" && "decoration-org/90",
               scope === "instance" && "decoration-neutral/90",
               scope === "namespace" && "decoration-sub-org/90",
               scope === ProjectType.PAM && "decoration-product-pam/90",
+              scope === ProjectType.AgentVault && "decoration-product-av/90",
               scope !== ProjectType.PAM &&
+                scope !== ProjectType.AgentVault &&
                 Object.values(ProjectType).includes((scope as ProjectType) ?? "") &&
                 "decoration-project/90",
               !scope && "no-underline"
@@ -56,7 +59,7 @@ export const PageHeader = ({ title, description, children, className, scope, ico
         </div>
         <div className="flex items-center gap-2">{children}</div>
       </div>
-      <div className="mt-1.5 text-mineshaft-300">{description}</div>
+      <div className="mt-1.5 text-label">{description}</div>
     </div>
   );
 };

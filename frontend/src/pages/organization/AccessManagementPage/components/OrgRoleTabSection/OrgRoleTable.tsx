@@ -291,7 +291,7 @@ export const OrgRoleTable = () => {
                           )}
                         />
                       </TableHead>
-                      <TableHead className="w-5" />
+                      <TableHead variant="action" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -307,7 +307,7 @@ export const OrgRoleTable = () => {
                           <TableCell>
                             <Skeleton className="h-4 w-full" />
                           </TableCell>
-                          <TableCell>
+                          <TableCell variant="action">
                             <Skeleton className="h-4 w-4" />
                           </TableCell>
                         </TableRow>
@@ -366,7 +366,7 @@ export const OrgRoleTable = () => {
                               )}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell variant="action">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton
@@ -514,6 +514,7 @@ export const OrgRoleTable = () => {
         onDeleteApproved={handleRoleDelete}
       />
       <UpgradePlanModal
+        paywallKey="organization.org-role"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan?.data?.text}

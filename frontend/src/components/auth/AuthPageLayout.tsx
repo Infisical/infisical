@@ -38,7 +38,7 @@ export const AuthPageLayout = ({
   return (
     <div
       className={cn(
-        "min-h-screen bg-linear-to-r from-card to-bunker-900 to-75%",
+        "min-h-screen bg-linear-to-r from-card to-page-deep to-75%",
         isSplit &&
           "lg:grid lg:grid-cols-[minmax(440px,44%)_minmax(0,1fr)] xl:grid-cols-[minmax(520px,40%)_minmax(0,1fr)]"
       )}
@@ -54,7 +54,7 @@ export const AuthPageLayout = ({
         <AuthPageHeader>{headerAction}</AuthPageHeader>
         <main
           className={cn(
-            "flex flex-1 px-5 py-10 sm:px-8 lg:px-10 xl:px-14",
+            "flex flex-1 px-5 pt-10 pb-26 sm:px-8 lg:px-10 xl:px-14",
             anchorBottomContent
               ? "min-h-0 thin-scrollbar overflow-x-hidden overflow-y-auto"
               : "items-center justify-center"

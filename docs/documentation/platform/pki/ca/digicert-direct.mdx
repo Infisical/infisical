@@ -10,10 +10,14 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 - **SSL/TLS** — issues OV and EV TLS server certificates under an SSL product entitlement on your account (for example `ssl_plus`).
 - **Code Signing** — issues OV (`code_signing`) and EV (`code_signing_ev`) code-signing certificates against a CSR. The signing key must live on an HSM.
 
+<Note>
+  The product is fixed on the CA and applies to every certificate that CA issues. Each product allows a different range of subject values, and DigiCert checks those values when the order is placed, not when you create the request. For example, `ssl_wildcard` takes only a wildcard common name such as `*.example.com`.
+</Note>
+
 ## Prerequisites
 
 - A [DigiCert App Connection](/integrations/app-connections/digicert) with a validated CertCentral API key.
-- A CertCentral **Organization**. For code signing, DigiCert validates the organization the first time it is used for a code-signing order, which can take up to 3 business days.
+- A CertCentral **Organization**. For code signing, DigiCert validates the organization the first time it's used for a code-signing order, which can take up to 3 business days.
 - Entitlement to the product you intend to use (`ssl_plus`, `code_signing`, `code_signing_ev`, ...) on your CertCentral account.
 
 <Note>
@@ -29,7 +33,7 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
         Follow the [DigiCert App Connection guide](/integrations/app-connections/digicert) to store your CertCentral API key in Infisical.
       </Step>
       <Step title="Create the External CA">
-        In **Certificate Manager**, go to **Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **DigiCert CertCentral** as the type, and fill out the form:
+        In **Certificate Manager**, go to **Certificate Authorities**, select **Create CA** in the External Certificate Authorities section, choose **DigiCert CertCentral** as the type, and fill out the form:
 
         - **App Connection** — the DigiCert connection you created
         - **Organization** — the CertCentral organization that should appear on issued certificates
@@ -87,7 +91,7 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 
 A CA configured for code signing is used from the **Code Signing** product, not the TLS issuance flow. For creating signers, reusing orders, HSM requirements, reissue, renewal, and deletion behavior, see the dedicated guide:
 
-<Card title="Code Signing with DigiCert" icon="signature" href="/documentation/platform/pki/guides/code-signing/digicert-code-signing">
+<Card title="Code Signing with DigiCert" icon="pen-tool" href="/documentation/platform/pki/guides/code-signing/digicert-code-signing">
   Issue code-signing certificates from this CA with an HSM-backed key.
 </Card>
 
@@ -98,8 +102,8 @@ When you request a certificate through a DigiCert CertCentral CA, the request mo
 | State | Description |
 |-------|-------------|
 | **Pending Validation** | DigiCert has accepted the order. Complete domain control validation in DigiCert CertCentral. |
-| **Issued** | Infisical polls DigiCert and downloads the certificate once validation completes. Click **Trigger Validation** to force an immediate check. |
-| **Failed** | If DigiCert does not issue within 24 hours. Complete validation on CertCentral and submit a new request. |
+| **Issued** | Infisical polls DigiCert and downloads the certificate once validation completes. Select **Trigger Validation** to force an immediate check. |
+| **Failed** | If DigiCert doesn't issue within 24 hours. Complete validation on CertCentral and submit a new request. |
 
 <Note>
   OV and EV certificates require manual domain validation on the DigiCert CertCentral side before issuance.
@@ -121,13 +125,13 @@ When you request a certificate through a DigiCert CertCentral CA, the request mo
 Now that your DigiCert CA is configured, set up the infrastructure to issue certificates:
 
 <CardGroup cols={2}>
-  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+  <Card title="Certificate Profiles" icon="file-badge" href="/documentation/platform/pki/settings/profiles">
     Create a profile that references your DigiCert CA.
   </Card>
-  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+  <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
     Create an Application, attach a profile, and configure enrollment.
   </Card>
-  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Choose how certificates are requested — API, ACME, EST, or SCEP.
   </Card>
   <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">

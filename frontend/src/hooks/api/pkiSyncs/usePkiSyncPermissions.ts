@@ -8,28 +8,51 @@ import {
 } from "../pkiApplications";
 import { TPkiSync } from "./types";
 
-export const useCanSetPostSyncCommand = (applicationId?: string | null) => {
+const useCanPerformSyncAction = (
+  action: PkiApplicationResourceActions,
+  projectAction: ProjectPermissionPkiSyncActions,
+  applicationId?: string | null
+) => {
+  const { permission: projectPermission } = useProjectPermission();
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
 
-  return Boolean(
-    appPermissionData?.permission?.can(
-      PkiApplicationResourceActions.SetPostSyncCommand,
-      PkiApplicationResourceSub.PkiSyncs
-    )
-  );
+  if (!applicationId) {
+    return projectPermission.can(projectAction, ProjectPermissionSub.PkiSyncs);
+  }
+
+  return Boolean(appPermissionData?.permission?.can(action, PkiApplicationResourceSub.PkiSyncs));
 };
+
+export const useCanSetPostSyncCommand = (applicationId?: string | null) =>
+  useCanPerformSyncAction(
+    PkiApplicationResourceActions.SetPostSyncCommand,
+    ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+    applicationId
+  );
+
+export const useCanSetTargetHost = (applicationId?: string | null) =>
+  useCanPerformSyncAction(
+    PkiApplicationResourceActions.SetTargetHost,
+    ProjectPermissionPkiSyncActions.SetTargetHost,
+    applicationId
+  );
+
+export const useCanSetHealthCheckCommand = (applicationId?: string | null) =>
+  useCanPerformSyncAction(
+    PkiApplicationResourceActions.SetHealthCheckCommand,
+    ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+    applicationId
+  );
 
 export const usePkiSyncPermissions = (pkiSync: TPkiSync) => {
   const { permission: projectPermission } = useProjectPermission();
   const { data: appPermissionData } = useGetPkiApplicationPermissions(pkiSync.applicationId ?? "");
   const appPermission = appPermissionData?.permission;
-  const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
 
   const checkApp = (action: PkiApplicationResourceActions) =>
     Boolean(appPermission?.can(action, PkiApplicationResourceSub.PkiSyncs));
 
   return {
-    canSetPostSyncCommand,
     canRead:
       projectPermission.can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs) ||
       checkApp(PkiApplicationResourceActions.Read),

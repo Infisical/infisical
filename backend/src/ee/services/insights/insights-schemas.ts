@@ -10,7 +10,7 @@ export const SecretsSummarySchema = z.object({
 });
 
 export const SecretsProjectWarningSchema = z.object({
-  projectId: z.string().uuid().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectId),
+  projectId: z.string().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectId),
   projectName: z.string().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectName),
   projectSlug: z.string().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectSlug),
   totalSecrets: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.totalSecrets),

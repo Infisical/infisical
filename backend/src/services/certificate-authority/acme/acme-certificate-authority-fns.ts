@@ -6,6 +6,9 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { delay } from "@app/lib/delay";
@@ -23,9 +26,10 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
+import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -59,6 +63,7 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
@@ -138,7 +143,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -150,13 +155,16 @@ type TAcmeCertificateAuthorityFnsDeps = {
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 type TOrderCertificateDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -165,6 +173,9 @@ type TOrderCertificateDeps = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 type DBConfigurationColumn = {
@@ -344,8 +355,13 @@ export const executeAcmeOrder = async (
     certificateSecretDAL,
     kmsService,
     projectDAL,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   } = deps;
+
+  const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
 
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
   if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
@@ -482,6 +498,16 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.PowerDns: {
+          await powerDnsInsertTxtRecord(
+            connection as TPowerDnsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            powerDnsDeps
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -539,6 +565,16 @@ export const executeAcmeOrder = async (
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.PowerDns: {
+          await powerDnsDeleteTxtRecord(
+            connection as TPowerDnsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            powerDnsDeps
           );
           break;
         }
@@ -600,7 +636,7 @@ export const executeAcmeOrder = async (
     );
 
     if (isRenewal && originalCertificateId) {
-      await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, innerTx);
+      await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, innerTx);
     }
 
     await certificateBodyDAL.create(
@@ -659,7 +695,10 @@ export const AcmeCertificateAuthorityFns = ({
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  certificateProfileDAL
+  certificateProfileDAL,
+  gatewayV2Service,
+  gatewayPoolService,
+  keyStore
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -709,6 +748,12 @@ export const AcmeCertificateAuthorityFns = ({
     if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
       throw new BadRequestError({
         message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
+      });
+    }
+
+    if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDns && appConnection.app !== AppConnection.PowerDns) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
       });
     }
 
@@ -823,6 +868,12 @@ export const AcmeCertificateAuthorityFns = ({
         if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.PowerDns && appConnection.app !== AppConnection.PowerDns) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a PowerDNS connection`
           });
         }
 
@@ -951,7 +1002,10 @@ export const AcmeCertificateAuthorityFns = ({
         certificateBodyDAL,
         certificateSecretDAL,
         kmsService,
-        projectDAL
+        projectDAL,
+        gatewayV2Service,
+        gatewayPoolService,
+        keyStore
       }
     );
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
@@ -1021,7 +1075,10 @@ export const AcmeCertificateAuthorityFns = ({
         certificateSecretDAL,
         kmsService,
         projectDAL,
-        certificateProfileDAL
+        certificateProfileDAL,
+        gatewayV2Service,
+        gatewayPoolService,
+        keyStore
       }
     );
   };

@@ -7,7 +7,9 @@ export enum WebhookType {
 export enum WebhookEvent {
   SecretModified = "secrets.modified",
   SecretRotationFailed = "secrets.rotation-failed",
-  HoneyTokenTriggered = "honey-token.triggered"
+  HoneyTokenTriggered = "honey-token.triggered",
+  ChangeRequestModified = "secrets.change-request.modified",
+  AccessRequestModified = "secrets.access-request.modified"
 }
 
 export type TWebhookEventMetadata = {
@@ -16,6 +18,10 @@ export type TWebhookEventMetadata = {
 };
 
 export const WEBHOOK_EVENTS = Object.values(WebhookEvent) as WebhookEvent[];
+
+export const DEFAULT_ENABLED_EVENTS = Object.fromEntries(
+  WEBHOOK_EVENTS.map((event) => [event, true])
+) as Record<WebhookEvent, boolean>;
 
 export const WEBHOOK_EVENT_METADATA: Record<WebhookEvent, TWebhookEventMetadata> = {
   [WebhookEvent.SecretRotationFailed]: {
@@ -29,6 +35,15 @@ export const WEBHOOK_EVENT_METADATA: Record<WebhookEvent, TWebhookEventMetadata>
   [WebhookEvent.HoneyTokenTriggered]: {
     label: "Honey Token Triggered",
     description: "Triggered when a honey token is activated"
+  },
+  [WebhookEvent.ChangeRequestModified]: {
+    label: "Change Request Modified",
+    description:
+      "Triggered when a secret change request is created, reviewed, closed, reopened, or merged"
+  },
+  [WebhookEvent.AccessRequestModified]: {
+    label: "Access Request Modified",
+    description: "Triggered when an access request is created, edited, reviewed, or revoked"
   }
 };
 

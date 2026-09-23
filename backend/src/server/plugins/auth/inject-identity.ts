@@ -7,7 +7,7 @@ import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
   ActorType,
@@ -16,11 +16,13 @@ import {
   AuthModeJwtTokenPayload,
   AuthTokenType,
   MfaMethod,
+  TAgentVaultProxyAccessTokenJwtPayload,
   TGatewayAccessTokenJwtPayload,
   TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
@@ -111,7 +113,25 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TKmipServerAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN;
+      actor: ActorType.AGENT_VAULT_PROXY;
+      agentVaultProxyId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TAgentVaultProxyAccessTokenJwtPayload;
     };
+
+// A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
+// needs the acting user (name, email, session id) should take both rather than narrow on AuthMode.JWT,
+// which silently costs the OAuth caller its audit trail or actor metadata.
+export const isUserSessionAuth = (
+  auth: TAuthMode
+): auth is Extract<TAuthMode, { authMode: AuthMode.JWT | AuthMode.OAUTH }> =>
+  auth.authMode === AuthMode.JWT || auth.authMode === AuthMode.OAUTH;
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
@@ -190,6 +210,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
         token: decodedToken as TKmipServerAccessTokenJwtPayload,
         actor: ActorType.KMIP_SERVER
+      } as const;
+    case AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+        token: decodedToken as TAgentVaultProxyAccessTokenJwtPayload,
+        actor: ActorType.AGENT_VAULT_PROXY
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -302,13 +328,22 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.OAUTH: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token);
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } = await server.services.authToken
+            .fnValidateJwtIdentity(token)
+            .catch((err) => {
+              if (err instanceof NotFoundError) {
+                throw new UnauthorizedError({
+                  name: "InvalidToken",
+                  message: "Access token is no longer valid. Obtain a new one."
+                });
+              }
+              throw err;
+            });
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
-          // Always set (even as []) so permission-service can distinguish a delegated OAuth request
-          // that must be scope-narrowed from a first-party session that must not be.
-          requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          if (token.delegation !== OauthDelegationMode.Full) {
+            requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          }
           requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.OAUTH,
@@ -478,6 +513,38 @@ export const injectIdentity = fp(
             authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
             actor,
             kmipServerId: token.kmipServerId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN: {
+          const proxy = await server.services.agentVaultProxy.getProxyForAuth(token.agentVaultProxyId);
+
+          // The tokenVersion check is the only kill switch for an issued proxy token, so no proxy route may skip it.
+          if (!proxy || proxy.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({
+              name: "ProxyTokenRejected",
+              message: "Agent Vault proxy token has been revoked"
+            });
+          }
+
+          if (proxy.orgId !== token.orgId) {
+            throw new UnauthorizedError({
+              name: "ProxyTokenRejected",
+              message: "Agent Vault proxy token org mismatch"
+            });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
+            actor,
+            agentVaultProxyId: token.agentVaultProxyId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

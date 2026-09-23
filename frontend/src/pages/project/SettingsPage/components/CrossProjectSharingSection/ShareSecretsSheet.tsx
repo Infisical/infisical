@@ -61,9 +61,10 @@ type PathAdderProps = {
   environment: string;
   existingPaths: string[];
   onAdd: (path: string) => void;
+  canCreateGrant: (environment: string, secretPath: string) => boolean;
 };
 
-const PathAdder = ({ environment, existingPaths, onAdd }: PathAdderProps) => {
+const PathAdder = ({ environment, existingPaths, onAdd, canCreateGrant }: PathAdderProps) => {
   const { currentProject } = useProject();
   const [value, setValue] = useState("/");
 
@@ -80,7 +81,11 @@ const PathAdder = ({ environment, existingPaths, onAdd }: PathAdderProps) => {
   });
 
   const pathExists = isRoot || folders.some((f) => f.name === folderName);
-  const canAdd = value.trim().length > 0 && !existingPaths.includes(normalized) && pathExists;
+  const canAdd =
+    value.trim().length > 0 &&
+    !existingPaths.includes(normalized) &&
+    pathExists &&
+    canCreateGrant(environment, normalized);
 
   const handleAdd = () => {
     if (!canAdd) return;
@@ -121,6 +126,8 @@ type EnvironmentGroupRowProps = {
   onAddPath: (index: number, path: string) => void;
   onRemovePath: (index: number, pathIndex: number) => void;
   onRemoveGroup: (index: number) => void;
+  canCreateGrant: (environment: string, secretPath: string) => boolean;
+  canRevokeGrant: (environment: string, secretPath: string) => boolean;
 };
 
 const EnvironmentGroupRow = ({
@@ -131,7 +138,9 @@ const EnvironmentGroupRow = ({
   onChangeEnvironment,
   onAddPath,
   onRemovePath,
-  onRemoveGroup
+  onRemoveGroup,
+  canCreateGrant,
+  canRevokeGrant
 }: EnvironmentGroupRowProps) => {
   const envName = environments.find((e) => e.slug === group.environment)?.name;
 
@@ -169,7 +178,12 @@ const EnvironmentGroupRow = ({
             </Select>
           </div>
         )}
-        <IconButton variant="ghost-muted" size="xs" onClick={() => onRemoveGroup(index)}>
+        <IconButton
+          variant="ghost-muted"
+          size="xs"
+          onClick={() => onRemoveGroup(index)}
+          isDisabled={group.secretPaths.some((path) => !canRevokeGrant(group.environment, path))}
+        >
           <Trash2 />
         </IconButton>
       </div>
@@ -182,6 +196,7 @@ const EnvironmentGroupRow = ({
             type="button"
             className="text-muted transition-colors hover:text-foreground"
             onClick={() => onRemovePath(index, pathIndex)}
+            disabled={!canRevokeGrant(group.environment, sp)}
           >
             <X className="size-3.5" />
           </button>
@@ -194,6 +209,7 @@ const EnvironmentGroupRow = ({
             environment={group.environment}
             existingPaths={group.secretPaths}
             onAdd={(path) => onAddPath(index, path)}
+            canCreateGrant={canCreateGrant}
           />
         </div>
       )}
@@ -206,13 +222,17 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   editData?: ShareSecretsEditData | null;
   existingGrants?: TProjectFolderGrant[];
+  canCreateGrant?: (environment: string, secretPath: string) => boolean;
+  canRevokeGrant?: (environment: string, secretPath: string) => boolean;
 };
 
 export const ShareSecretsSheet = ({
   isOpen,
   onOpenChange,
   editData,
-  existingGrants = []
+  existingGrants = [],
+  canCreateGrant = () => true,
+  canRevokeGrant = () => true
 }: Props) => {
   const { currentProject } = useProject();
   const [groups, setGroups] = useState<EnvironmentGroup[]>([{ environment: "", secretPaths: [] }]);
@@ -318,7 +338,7 @@ export const ShareSecretsSheet = ({
 
         editData.grants.forEach((g) => {
           const key = entryKey(g.environmentSlug, g.secretPath);
-          if (!currentKeys.has(key)) {
+          if (!currentKeys.has(key) && canRevokeGrant(g.environmentSlug, g.secretPath)) {
             operations.push(
               deleteGrant.mutateAsync({ grantId: g.id, sourceProjectId: currentProject.id })
             );
@@ -326,7 +346,10 @@ export const ShareSecretsSheet = ({
         });
 
         validEntries.forEach((entry) => {
-          if (!originalKeys.has(entryKey(entry.environment, entry.secretPath))) {
+          if (
+            !originalKeys.has(entryKey(entry.environment, entry.secretPath)) &&
+            canCreateGrant(entry.environment, entry.secretPath)
+          ) {
             operations.push(
               createGrant.mutateAsync({
                 sourceProjectId: currentProject.id,
@@ -341,7 +364,12 @@ export const ShareSecretsSheet = ({
         validEntries.forEach((entry) => {
           targetProjects.forEach((project) => {
             const grantKey = `${project.id}:${entry.environment}:${entry.secretPath}`;
-            if (existingGrantKeys.has(grantKey)) return;
+            if (
+              existingGrantKeys.has(grantKey) ||
+              !canCreateGrant(entry.environment, entry.secretPath)
+            ) {
+              return;
+            }
 
             operations.push(
               createGrant.mutateAsync({
@@ -405,6 +433,8 @@ export const ShareSecretsSheet = ({
                   onAddPath={handleAddPath}
                   onRemovePath={handleRemovePath}
                   onRemoveGroup={handleRemoveGroup}
+                  canCreateGrant={canCreateGrant}
+                  canRevokeGrant={canRevokeGrant}
                 />
               ))}
             </div>

@@ -2,7 +2,7 @@ apiVersion: v2
 name: infisical-nkp
 description: Infisical, the open-source secrets management platform, packaged for the Nutanix NKP partner catalog.
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: "v0.162.11"
 home: https://infisical.com
 sources:

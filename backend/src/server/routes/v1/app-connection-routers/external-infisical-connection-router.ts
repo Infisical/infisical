@@ -55,7 +55,7 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const projects = await server.services.appConnection.externalInfisical.listProjects(connectionId, req.permission);
@@ -73,13 +73,13 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
       operationId: "getExternalInfisicalEnvironmentFolderTree",
       params: z.object({
         connectionId: z.string().uuid(),
-        projectId: z.string().uuid()
+        projectId: z.string()
       }),
       response: {
         200: RemoteEnvironmentFolderTreeSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, projectId } = req.params;
       return server.services.appConnection.externalInfisical.getEnvironmentFolderTree(

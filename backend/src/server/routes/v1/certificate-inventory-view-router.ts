@@ -97,7 +97,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.certificateInventoryView.listViews({
         projectId: req.internalCertManagerProjectId,
@@ -135,7 +135,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.createView({
         projectId: req.internalCertManagerProjectId,
@@ -149,6 +149,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -160,7 +161,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             filters: req.body.filters,
             columns: req.body.columns,
             isShared: req.body.isShared,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -195,7 +197,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.updateView({
         viewId: req.params.viewId,
@@ -209,6 +211,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -220,7 +223,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             filters: req.body.filters,
             columns: req.body.columns,
             isShared: req.body.isShared,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -248,7 +252,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const view = await server.services.certificateInventoryView.deleteView({
         viewId: req.params.viewId,
@@ -258,6 +262,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -266,7 +271,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
           metadata: {
             viewId: req.params.viewId,
             name: view.name,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });

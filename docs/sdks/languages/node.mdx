@@ -1,6 +1,7 @@
 ---
 title: "Infisical Node.js SDK"
 sidebarTitle: "Node.js"
+description: "Fetch and manage secrets in a Node.js application with the official Infisical Node.js SDK."
 icon: "/images/sdks/languages/node.svg"
 ---
 
@@ -135,7 +136,7 @@ const allSecrets = await client.secrets().listSecrets({
   viewSecretValue: true,
   includeImports: false,
   recursive: false,
-  secretPath: "/foo/bar",
+  secretPath: "/prod/backend",
 });
 ```
 
@@ -163,7 +164,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
   expandSecretReferences: true,
   viewSecretValue: true,
   recursive: false,
-  secretPath: "/foo/bar"
+  secretPath: "/prod/backend"
 });
 ```
 
@@ -189,7 +190,7 @@ const allSecrets = await client.secrets().listSecretsWithImports({
 		projectId: "<your-project-id>",
 		secretValue: "SECRET_VALUE",
 		secretComment: "This is a new secret",          // Optional
-		secretPath: "/foo/bar",                         // Optional
+		secretPath: "/prod/backend",                         // Optional
 		secretReminderNote: "This is a reminder note",  // Optional
 		secretReminderRepeatDays: 7,                    // Optional
 		skipMultilineEncoding: false,                   // Optional
@@ -224,7 +225,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
   secretValue: "UPDATED_SECRET_VALUE",                    
   newSecretName: "NEW_SECRET_NAME2",                      // Optional
   secretComment: "This is an updated secret",             // Optional
-  secretPath: "/foo/bar",                                 // Optional
+  secretPath: "/prod/backend",                                 // Optional
   secretReminderNote: "This is an updated reminder note", // Optional
   secretReminderRepeatDays: 14,                           // Optional
   skipMultilineEncoding: false,                           // Optional
@@ -265,7 +266,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 		expandSecretReferences: true, // Optional
     viewSecretValue: true,        // Optional
 		includeImports: true,         // Optional
-		secretPath: "/foo/bar",       // Optional
+		secretPath: "/prod/backend",       // Optional
 		type: "shared",               // Optional
 		version: 1                    // Optional
 	});
@@ -292,7 +293,7 @@ const updatedSecret = await client.secrets().updateSecret("SECRET_TO_UPDATE", {
 const deletedSecret = await client.secrets().deleteSecret("SECRET_TO_DELETE", {
   environment: "dev",
   projectId: "<your-project-id>",
-  secretPath: "/foo/bar", // Optional
+  secretPath: "/prod/backend", // Optional
   type: "personal"        // Optional
 });
 ```
@@ -390,7 +391,7 @@ const lease = await client.dynamicSecrets().leases.create({
   dynamicSecretName: "dynamic-secret-name",
   environmentSlug: "dev",
   projectSlug: "your-project-slug",
-  path: "/foo/bar",
+  path: "/prod/backend",
   ttl: "5m" // Optional
 });
 
@@ -415,7 +416,7 @@ console.log(lease);
 const deletedLease = await client.dynamicSecrets().leases.delete(newLease.lease.id, {
   environmentSlug: "dev",
   projectSlug: "test-zb-3a",
-  path: "/foo/bar",
+  path: "/prod/backend",
   isForced: false // Whether or not to forcefully delete the lease. This can't guarantee that the lease will be deleted from the external provider.
 });
 ```
@@ -439,7 +440,7 @@ Please note that renewals must happen **before** the lease has fully expired. Af
 const renewedLease = await client.dynamicSecrets().leases.renew(newLease.lease.id, {
 		environmentSlug: "dev",
 		projectSlug: "project-slug",
-		path: "/foo/bar", // Optional
+		path: "/prod/backend", // Optional
 		ttl: "10m" // Optional
 	});
 ```
@@ -554,7 +555,7 @@ const folder = await client.folders().create({
 const folders = await client.folders().listFolders({
   environment: "dev",
   projectId: "<your-project-id>",
-  path: "/foo/bar", // Optional
+  path: "/prod/backend", // Optional
   recursive: false // Optional
 });
 ```

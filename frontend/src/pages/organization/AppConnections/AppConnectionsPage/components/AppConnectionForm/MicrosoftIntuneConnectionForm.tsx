@@ -27,7 +27,7 @@ import {
   TMicrosoftIntuneConnection
 } from "@app/hooks/api/appConnections/types/microsoft-intune-connection";
 
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -84,6 +84,8 @@ export const MicrosoftIntuneConnectionForm = ({ appConnection, onSubmit }: Props
     control,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const scopeVariant = useScopeVariant();
 

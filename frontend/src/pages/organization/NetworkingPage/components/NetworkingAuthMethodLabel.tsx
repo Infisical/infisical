@@ -5,7 +5,9 @@ import {
 } from "react-select";
 import { CheckIcon, KeyIcon } from "lucide-react";
 
-export type NetworkingAuthMethod = "aws" | "token";
+import { ProviderIcon } from "@app/components/v3";
+
+export type NetworkingAuthMethod = "aws" | "gcp" | "kubernetes" | "token";
 
 export type NetworkingAuthMethodOption = {
   value: NetworkingAuthMethod;
@@ -14,20 +16,44 @@ export type NetworkingAuthMethodOption = {
 
 export const NETWORKING_AUTH_METHOD_OPTIONS: NetworkingAuthMethodOption[] = [
   { value: "token", label: "Token Auth" },
-  { value: "aws", label: "AWS Auth" }
+  { value: "aws", label: "AWS Auth" },
+  { value: "gcp", label: "GCP Auth" },
+  { value: "kubernetes", label: "Kubernetes Auth" }
 ];
 
-const NetworkingAuthMethodIcon = ({ method }: { method: NetworkingAuthMethod }) =>
-  method === "aws" ? (
-    <img
-      src="/images/integrations/Amazon Web Services.png"
-      alt=""
-      aria-hidden
-      className="size-4 object-contain"
-    />
-  ) : (
-    <KeyIcon className="size-4 text-accent" />
-  );
+const NetworkingAuthMethodIcon = ({ method }: { method: NetworkingAuthMethod }) => {
+  if (method === "aws") {
+    return (
+      <ProviderIcon
+        icon="Amazon Web Services.png"
+        alt=""
+        aria-hidden
+        className="size-4 object-contain"
+      />
+    );
+  }
+  if (method === "gcp") {
+    return (
+      <img
+        src="/images/integrations/Google Cloud Platform.png"
+        alt=""
+        aria-hidden
+        className="size-4 object-contain"
+      />
+    );
+  }
+  if (method === "kubernetes") {
+    return (
+      <img
+        src="/images/integrations/Kubernetes.png"
+        alt=""
+        aria-hidden
+        className="size-4 object-contain"
+      />
+    );
+  }
+  return <KeyIcon className="size-4 text-accent" />;
+};
 
 export const NetworkingAuthMethodLabel = ({
   method,

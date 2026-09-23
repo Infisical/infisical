@@ -65,13 +65,13 @@ should be synced. Follow these steps to start syncing:
     For step-by-step guides on syncing to a particular third-party service, refer to the Secret Syncs section in the Navigation Bar.
 </Note>
 
-1. <strong>Create App Connection:</strong> If you have not already done so, create an [App Connection](/integrations/app-connections/overview)
+1. <strong>Create App Connection:</strong> If you haven't already done so, create an [App Connection](/integrations/app-connections/overview)
 via the UI or API for the third-party service you intend to sync secrets to.
 
 2. <strong>Create Secret Sync:</strong> Configure a Secret Sync in the desired project by specifying the following parameters via the UI or API:
     - <strong>Source:</strong> The project environment and folder path you wish to retrieve secrets from.
     - <strong>Destination:</strong> The App Connection to utilize and the destination endpoint to deploy secrets to. These can vary between services.
-    - <strong>Options:</strong> Customize how secrets should be synced, such as whether or not secrets should be imported from the destination on the initial sync.
+    - <strong>Options:</strong> Customize how secrets should be synced, such as whether secrets should be imported from the destination on the initial sync, or whether the sync should [include all subfolders](#include-all-subfolders) beneath the source path.
 
 <Note>
     Secret Syncs are the source of truth for connected third-party services. Any secret,
@@ -81,7 +81,7 @@ via the UI or API for the third-party service you intend to sync secrets to.
 </Note>
 
 <Info>
-    Some third-party services do not support importing secrets.
+    Some third-party services don't support importing secrets.
 </Info>
 
 3. <strong>Utilize Sync:</strong> Any changes to the source location will now automatically be propagated to the destination endpoint.
@@ -91,11 +91,32 @@ via the UI or API for the third-party service you intend to sync secrets to.
     you can contact us at support@infisical.com to make a request.
 </Note>
 
+## Include all subfolders
+
+A Secret Sync covers only the secrets in its source folder by default. Turn on **Include secrets from all subfolders** on the source step and the sync covers every folder beneath that path as well, however deep. Adding or changing a secret in any of those folders syncs it to the destination, the same as a change in the source folder itself.
+
+Destinations store secrets in one flat list, so the folder structure isn't carried over. A secret named `DB_URL` in `/backend` and a secret named `DB_URL` in `/backend/api` both map to the same destination key, and the sync fails with an error naming both folders rather than picking one. Infisical checks for these collisions while you configure the sync, so you can rename or move one of the two before you save.
+
+<div align="center">
+    ```mermaid
+    graph LR
+      A[Infisical: **/backend**] --> C[Destination]
+      B[Infisical: **/backend/api**] --> C
+      style A fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+      style B fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+      style C fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
+    ```
+</div>
+
+<Note>
+    A sync that includes subfolders can't import secrets from the destination into Infisical, because there's no single folder to import them into. Its initial sync behavior is always overwrite destination.
+</Note>
+
 ## Key schemas
 
 Key Schemas transform your secret keys by applying a prefix, suffix, or format pattern during sync to external destinations. This makes it clear which secrets are managed by Infisical and prevents accidental changes to unrelated secrets.
 
-Any destination secrets which do not match the schema will not get deleted or updated by Infisical.
+Any destination secrets which don't match the schema won't get deleted or updated by Infisical.
 
 Key Schemas use handlebars syntax to define dynamic values. Here's a full list of available variables:
 - `{{secretKey}}` - The key of the secret

@@ -149,7 +149,7 @@ export const SecretApprovalRequestAction = ({
             )}
           </div>
         )}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 @2xl:flex-row @2xl:items-center @2xl:justify-between">
           <div className="flex items-center gap-2">
             {isMergable ? (
               <CheckIcon className="size-4 shrink-0 text-success" />

@@ -5,7 +5,7 @@ description: "Learn how to connect Infisical to an ACME-compatible CA to issue c
 
 ## Concept
 
-Infisical can connect to any upstream ACME-compatible CA (e.g. Lets's Encrypt, DigiCert, etc.) supporting the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) to issue certificates back to your end-entities. This integration uses the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method as part of the ACME domain validation challenge workflow for a requested certificate.
+Infisical can connect to any upstream ACME-compatible CA (e.g. Let's Encrypt, DigiCert, etc.) supporting the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) to issue certificates back to your end-entities. This integration uses the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method as part of the ACME domain validation challenge workflow for a requested certificate.
 
 The upstream ACME-compatible CA integration lets you connect Infisical to providers by specifying
 their **ACME Directory URL** such as:
@@ -17,7 +17,7 @@ their **ACME Directory URL** such as:
 - ZeroSSL: `https://acme.zerossl.com/v2/DV90`.
 - SSL.com: `https://acme.ssl.com/sslcom-dv-rsa`.
 
-When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
+When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, Azure DNS, DNS Made Easy, PowerDNS, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
 The ACME provider checks for the existence of this TXT record to verify domain control before issuing the certificate back to Infisical.
 
 After validation completes successfully, Infisical automatically removes the TXT record from your DNS provider.
@@ -132,6 +132,13 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
                 For detailed instructions on setting up a DNS Made Easy connection, see the [DNS Made Easy Connection](/integrations/app-connections/dns-made-easy) documentation.
             </Tab>
+            <Tab title="PowerDNS">
+                1. In **Certificate Manager**, go to **Settings → App Connections** and create a new PowerDNS connection.
+
+                2. Enable the HTTP API on your PowerDNS Authoritative Server and set an `api-key`. If the server is not reachable from the internet, attach a Gateway to the connection.
+
+                For detailed instructions on setting up a PowerDNS connection, see the [PowerDNS Connection](/integrations/app-connections/powerdns) documentation.
+            </Tab>
         </Tabs>
     </Step>
     <Step title="Register an ACME-compatible CA">
@@ -215,7 +222,7 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 
 <AccordionGroup>
   <Accordion title="What DNS validation methods are supported?">
-    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, and DNS Made Easy. The DNS-01 challenge method is preferred for ACME integrations because it:
+    Currently, Infisical supports DNS-01 validation through AWS Route53, Cloudflare, Azure DNS, DNS Made Easy, and PowerDNS. The DNS-01 challenge method is preferred for ACME integrations because it:
 
     - Works with wildcard certificates
     - Doesn't require your servers to be publicly accessible
@@ -274,13 +281,13 @@ In the following steps, we explore how to connect Infisical to an ACME-compatibl
 Now that your ACME-compatible CA is configured, set up the infrastructure to issue certificates:
 
 <CardGroup cols={2}>
-  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+  <Card title="Certificate Profiles" icon="file-badge" href="/documentation/platform/pki/settings/profiles">
     Create a profile that references your ACME CA.
   </Card>
-  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+  <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
     Create an Application, attach a profile, and configure enrollment.
   </Card>
-  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Choose how certificates are requested — API, ACME, EST, or SCEP.
   </Card>
   <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">

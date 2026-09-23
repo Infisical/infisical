@@ -1,23 +1,37 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  CircleAlertIcon,
+  EllipsisIcon,
+  InfoIcon,
+  RefreshCwIcon,
+  ShieldIcon
+} from "lucide-react";
 
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  PageHeader,
+  PageLoader,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -28,13 +42,16 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
+  useSubscription,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
+import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberPermissionAuditSheet } from "./components/MemberPermissionAuditSheet";
@@ -50,14 +67,19 @@ export const Page = () => {
   });
   const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
+  const { subscription } = useSubscription();
   const {
     user: { id: currentUserId }
   } = useUser();
 
-  const { data: membershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetWorkspaceUserDetails(projectId, membershipId, currentProject?.type);
+  const {
+    data: membershipDetails,
+    isPending: isMembershipDetailsLoading,
+    isError: isMembershipDetailsError,
+    refetch: refetchMembershipDetails
+  } = useGetWorkspaceUserDetails(projectId, membershipId, currentProject?.type);
 
-  const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
+  const removeUserMutation = useDeleteUserFromWorkspace();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeMember",
@@ -70,7 +92,7 @@ export const Page = () => {
   const handleRemoveUser = async () => {
     if (!currentOrg?.id || !currentProject?.id || !membershipDetails?.user?.username) return;
 
-    await removeUserFromWorkspace({
+    await removeUserMutation.mutateAsync({
       projectId,
       projectType: currentProject?.type,
       usernames: [membershipDetails?.user?.username],
@@ -92,47 +114,74 @@ export const Page = () => {
 
   if (isMembershipDetailsLoading) {
     return (
-      <div className="flex w-full items-center justify-center p-24">
-        <Spinner />
+      <div className="h-96 w-full">
+        <PageLoader />
+      </div>
+    );
+  }
+
+  if (isMembershipDetailsError) {
+    return (
+      <div className="mx-auto flex max-w-8xl flex-col">
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>Could not load user membership</AlertTitle>
+          <AlertDescription>
+            <span>Retry to load this user and their access details.</span>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={() => refetchMembershipDetails().catch(() => undefined)}
+            >
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isSecretManager = currentProject.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
+  const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
+  let memberDisplayName = "Unnamed User";
+  if (membershipDetails) {
+    const { firstName, lastName, email, username } = membershipDetails.user;
+    memberDisplayName =
+      firstName || lastName
+        ? `${firstName ?? ""} ${lastName ?? ""}`.trim()
+        : email || username || membershipDetails.inviteEmail || "Unnamed User";
+  }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {membershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId: currentProject.id,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Member
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            {isCertManager ? "Users" : "Project Users"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
-            title={
-              membershipDetails.user.firstName || membershipDetails.user.lastName
-                ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`
-                : membershipDetails.user.email ||
-                  membershipDetails.user.username ||
-                  membershipDetails.inviteEmail ||
-                  "Unnamed User"
-            }
+            title={memberDisplayName}
             description={
               isCertManager
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId: currentProject.id,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Member
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Users" : "Project Users"}
+              </Link>
             }
           >
             <div className="flex items-center gap-2">
@@ -175,7 +224,7 @@ export const Page = () => {
                     >
                       Copy User ID
                     </DropdownMenuItem>
-                    {!isCertManager && (
+                    {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
                         a={ProjectPermissionSub.Member}
@@ -226,9 +275,9 @@ export const Page = () => {
               )}
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectMemberDetailsSection membership={membershipDetails} />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <MemberRoleDetailsSection
                 membershipDetails={membershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
@@ -239,17 +288,47 @@ export const Page = () => {
                   })
                 }
               />
-              {!isCertManager && (
+              {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+              )}
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
+                )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "user",
+                    id: membershipDetails.user.id,
+                    membershipId: membershipDetails.id,
+                    username: membershipDetails.user.username,
+                    email: membershipDetails.user.email,
+                    firstName: membershipDetails.user.firstName,
+                    lastName: membershipDetails.user.lastName
+                  }}
+                  hideActions={isOwnProjectMembershipDetails}
+                />
               )}
             </div>
           </div>
-          <DeleteActionModal
+          <DeleteConfirmDialog
             isOpen={popUp.removeMember.isOpen}
-            deleteKey="remove"
-            title="Do you want to remove this user from the project?"
-            onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
-            onDeleteApproved={handleRemoveUser}
+            onOpenChange={(isOpen) => {
+              handlePopUpToggle("removeMember", isOpen);
+            }}
+            title={`Remove ${memberDisplayName} from the ${isCertManager ? "certificate manager" : "project"}?`}
+            description={
+              <Alert variant="danger" appearance="borderless">
+                <AlertDescription>
+                  This user will lose access granted by this membership. This cannot be undone.
+                </AlertDescription>
+              </Alert>
+            }
+            confirmKey="remove"
+            confirmLabel="Remove User"
+            isPending={removeUserMutation.isPending}
+            onConfirm={handleRemoveUser}
           />
           <AssumePrivilegesDialog
             isOpen={popUp.assumePrivileges.isOpen}
@@ -258,6 +337,7 @@ export const Page = () => {
             actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
           <UpgradePlanModal
+            paywallKey="project.member-details-by-id"
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text={popUp.upgradePlan?.data?.text}
@@ -268,19 +348,19 @@ export const Page = () => {
               open={isPermissionAuditOpen}
               onOpenChange={setIsPermissionAuditOpen}
               membershipId={membershipId}
-              targetName={
-                membershipDetails.user.firstName || membershipDetails.user.lastName
-                  ? `${membershipDetails.user.firstName ?? ""} ${membershipDetails.user.lastName ?? ""}`.trim()
-                  : membershipDetails.user.email ||
-                    membershipDetails.user.username ||
-                    membershipDetails.inviteEmail ||
-                    "Unnamed User"
-              }
+              targetName={memberDisplayName}
             />
           )}
         </>
       ) : (
-        <EmptyState title="Error: Unable to find the user." className="py-12" />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>User not found</EmptyTitle>
+            <EmptyDescription>
+              This membership may have been removed or is no longer available.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
     </div>
   );

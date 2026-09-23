@@ -4,10 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   CardContent,
@@ -52,6 +54,8 @@ export const SignupSsoPage = () => {
   }, [token]);
 
   const handleSubmit = async () => {
+    const telemetry = new Telemetry().getInstance();
+
     const { token: accessToken } = await completeAccountSignup.mutateAsync({
       type: "alias",
       code,
@@ -62,9 +66,9 @@ export const SignupSsoPage = () => {
     SecurityClient.setToken(accessToken);
     const { organizationId } = jwtDecode(accessToken) as { organizationId?: string };
 
-    if (isInfisicalCloud()) {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ event: "signup_completed" });
+    if (decoded.email) {
+      const signupEmail = decoded.email.toLowerCase();
+      telemetry.identify(signupEmail, signupEmail);
     }
 
     createNotification({
@@ -86,6 +90,12 @@ export const SignupSsoPage = () => {
       }
       return;
     }
+
+    if (isInfisicalCloud()) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: "signup_completed" });
+    }
+    captureSignupCompleted("sso");
 
     navigate({ to: "/organizations/onboarding" });
   };

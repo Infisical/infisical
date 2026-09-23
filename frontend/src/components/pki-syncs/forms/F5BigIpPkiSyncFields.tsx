@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -180,7 +180,7 @@ export const F5BigIpPkiSyncFields = () => {
                       </Tooltip>
                     </Label>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     id="f5-create-profile-if-missing"
                     variant="project"
                     checked={value ?? false}

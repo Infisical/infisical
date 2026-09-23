@@ -1,6 +1,6 @@
 ---
 title: "Infisical"
-sidebarTitle: "Infisical"
+sidebarTitle: "Deploy with Helm"
 description: "Learn how to deploy Infisical on Kubernetes using our official Helm chart."
 ---
 
@@ -214,8 +214,8 @@ infisical:
       # -- Name of the bootstrap secret to create in the Kubernetes cluster which will store the formatted root identity credentials
       name: "infisical-bootstrap-secret"
 
-      # -- Namespace to create the bootstrap secret in. If not provided, the secret will be created in the same namespace as the release.
-      namespace: "default"
+      # -- Namespace to create the bootstrap secret in. Leave empty to use the release namespace.
+      namespace: ""
 
     # -- Infisical organization to create in the Infisical instance during auto-bootstrap
     organization: "default-org"

@@ -37,7 +37,7 @@ const projectGroupMembershipRoleSchema = z.object({
 const projectGroupMembershipSchema = z.object({
   id: z.string().uuid(),
   groupId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   group: GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
     orgId: z.string().uuid().optional()
   }),
@@ -53,7 +53,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listProjectGroupMemberships",
@@ -198,7 +198,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getProjectGroupMembership",

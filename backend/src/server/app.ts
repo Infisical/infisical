@@ -2,8 +2,6 @@
 import path from "node:path";
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import type { FastifyCookieOptions } from "@fastify/cookie";
-import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
@@ -72,10 +70,17 @@ export const main = async ({
 }: TMain) => {
   const appCfg = getConfig();
 
+  // Infisical Cloud request IDs carry a region segment (req-us-, req-eu-) so an ID's
+  // origin is identifiable at a glance; self-hosted and dedicated stay bare req-.
+  let requestIdOrigin = "";
+  if (appCfg.INFISICAL_CLOUD) {
+    requestIdOrigin = appCfg.INTERNAL_REGION === "eu" ? "eu-" : "us-";
+  }
+
   const server = fastify({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(appCfg.NODE_ENV === "test" ? { logger: false } : { loggerInstance: logger }),
-    genReqId: () => `req-${alphaNumericNanoId(14)}`,
+    genReqId: () => `req-${requestIdOrigin}${alphaNumericNanoId(14)}`,
     // When TRUSTED_PROXY_CIDRS is configured, only requests from those sources have their
     // forwarded-IP headers honored. Unset preserves legacy behavior (trust all) for backcompat.
     trustProxy: appCfg.TRUSTED_PROXY_CIDRS ?? true,
@@ -106,10 +111,6 @@ export const main = async ({
   });
 
   try {
-    await server.register<FastifyCookieOptions>(cookie, {
-      secret: appCfg.COOKIE_SECRET_SIGN_KEY
-    });
-
     await server.register(fastifyEtag);
 
     await server.register<FastifyCorsOptions>(cors, {
@@ -174,10 +175,12 @@ export const main = async ({
       kmsRootConfigDAL
     });
 
-    await server.register(registerServeUI, {
-      standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
-    });
+    if (appCfg.isApiRunModeEnabled) {
+      await server.register(registerServeUI, {
+        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+      });
+    }
 
     await server.ready();
     server.swagger();

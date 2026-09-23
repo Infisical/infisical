@@ -16,10 +16,11 @@ PAM logs every action — who accessed what, who changed what, and when. This au
 | **Templates** | Template created, updated, deleted |
 | **Memberships** | Membership added, updated, removed |
 | **Product Access** | Product member added, removed, role changed |
+| **[Access requests](/documentation/platform/pam/access-requests/overview)** | Request filed, reviewed, revoked, approval policy bypassed |
 
 Each event includes:
 - **Timestamp** — when it happened
-- **Actor** — who did it: a user (name, email, IP address) or a [machine identity](/documentation/platform/identities/machine-identities), named as it is named in your organization
+- **Actor** — who did it: a user (name, email, IP address) or a [machine identity](/documentation/platform/identities/machine-identities), named as it's named in your organization
 - **Action** — what was done
 - **Target** — what was affected
 - **Details** — relevant context (e.g., what changed)
@@ -55,13 +56,15 @@ Audit logs are retained according to your organization's policy. Events are immu
 
 **Activity reports** — Filter by actor to see everything a specific user or machine identity did.
 
+**Break-glass review**: Filter for **PAM Access Policy Bypassed** to see every grant that skipped an approver, with the reason given. Each entry names the account, the folder, and how many approvers were skipped.
+
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
     View session recordings for detailed activity.
   </Card>
-  <Card title="Architecture" icon="sitemap" href="/documentation/platform/pam/architecture">
+  <Card title="Architecture" icon="network" href="/documentation/platform/pam/architecture">
     Understand how PAM works under the hood.
   </Card>
 </CardGroup>

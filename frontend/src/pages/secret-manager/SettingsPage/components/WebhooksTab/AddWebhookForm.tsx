@@ -31,6 +31,7 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import {
+  DEFAULT_ENABLED_EVENTS,
   WEBHOOK_EVENT_METADATA,
   WEBHOOK_EVENTS,
   WebhookEvent,
@@ -72,11 +73,7 @@ const formSchema = z
     webhookSecretKey: z.string().trim().optional().describe("Secret Key"),
     secretPath: z.string().trim().describe("Secret Path"),
     type: z.nativeEnum(WebhookType).describe("Type").default(WebhookType.GENERAL),
-    enabledEvents: z.record(z.nativeEnum(WebhookEvent), z.boolean()).default({
-      [WebhookEvent.SecretModified]: true,
-      [WebhookEvent.SecretRotationFailed]: true,
-      [WebhookEvent.HoneyTokenTriggered]: true
-    })
+    enabledEvents: z.record(z.nativeEnum(WebhookEvent), z.boolean()).default(DEFAULT_ENABLED_EVENTS)
   })
   .superRefine((data, ctx) => {
     if (data.type === WebhookType.SLACK && !data.webhookUrl.includes("hooks.slack.com")) {
@@ -114,11 +111,7 @@ export const AddWebhookForm = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: WebhookType.GENERAL,
-      enabledEvents: {
-        [WebhookEvent.SecretModified]: true,
-        [WebhookEvent.SecretRotationFailed]: true,
-        [WebhookEvent.HoneyTokenTriggered]: true
-      }
+      enabledEvents: DEFAULT_ENABLED_EVENTS
     }
   });
 
@@ -188,11 +181,7 @@ export const AddWebhookForm = ({
     if (!isOpen) {
       reset({
         type: WebhookType.GENERAL,
-        enabledEvents: {
-          [WebhookEvent.SecretModified]: true,
-          [WebhookEvent.SecretRotationFailed]: true,
-          [WebhookEvent.HoneyTokenTriggered]: true
-        },
+        enabledEvents: DEFAULT_ENABLED_EVENTS,
         environment: environments?.[0]?.slug,
         secretPath: ""
       });

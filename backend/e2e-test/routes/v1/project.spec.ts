@@ -39,6 +39,17 @@ const getProject = async (projectId: string) => {
   });
 };
 
+const updateProject = async (projectId: string, body: Record<string, unknown>) => {
+  return testServer.inject({
+    method: "PATCH",
+    url: `/api/v1/projects/${projectId}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body
+  });
+};
+
 const listProjects = async (): Promise<TProject[]> => {
   const res = await testServer.inject({
     method: "GET",
@@ -89,5 +100,31 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
 
     // second delete resolves the project via the soft-delete-filtered read → not found
     expect((await deleteProject(project.id)).statusCode).toBe(404);
+  });
+});
+
+describe("Project update (audit logs retention)", async () => {
+  test("rejects a retention period the plan does not allow", async () => {
+    const project = await createProject("e2e-retention-plan-limit");
+
+    const res = await updateProject(project.id, { auditLogsRetentionDays: 30 });
+
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.payload).message).toContain("audit logs");
+
+    expect(JSON.parse((await getProject(project.id)).payload).project.auditLogsRetentionDays).toBeNull();
+
+    await deleteProject(project.id);
+  });
+
+  test("leaves other fields updatable", async () => {
+    const project = await createProject("e2e-retention-other-fields");
+
+    const res = await updateProject(project.id, { name: "e2e-retention-renamed" });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload).project.name).toBe("e2e-retention-renamed");
+
+    await deleteProject(project.id);
   });
 });

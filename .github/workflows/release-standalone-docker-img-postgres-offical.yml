@@ -6,6 +6,11 @@ on:
             - "v0.*.*-nightly-*"
             - "v0.*.*-nightly-*.*"
 
+env:
+    # Pinned separately from the action, which carries its own older default.
+    # Named out of Trivy's own TRIVY_* env namespace, which it would otherwise sit in.
+    TRIVY_CLI_VERSION: v0.74.0
+
 jobs:
     infisical-tests:
         name: Run tests before deployment
@@ -54,7 +59,11 @@ jobs:
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+            - name: Read pinned versions
+              run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
+
             - name: 📦 Build backend and push to Docker Hub
+              id: build
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -68,6 +77,7 @@ jobs:
                   platforms: linux/amd64,linux/arm64
                   file: Dockerfile.standalone-infisical
                   build-args: |
+                      INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                       DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
@@ -116,11 +126,29 @@ jobs:
                 image: infisical/infisical:${{ steps.extract_version.outputs.version }}
                 command: monitor
                 args: --file=Dockerfile.standalone-infisical --project-name="infisical-core-docker-image"
+            # Reports into the run's artifacts, never through the job status: the
+            # image is already published by the time this runs.
+            - name: 🔍 Scan infisical/infisical with Trivy
+              id: trivy_infisical_core
+              continue-on-error: true
+              uses: ./.github/actions/trivy-image-scan
+              with:
+                  image: infisical/infisical
+                  digest: ${{ steps.build.outputs.digest }}
+                  artifact-name: trivy-infisical-core-${{ steps.extract_version.outputs.version }}
+                  trivy-version: ${{ env.TRIVY_CLI_VERSION }}
+            # Any failure inside the action, whether the scan, the upload or the summary,
+            # surfaces as this step's outcome, so a broken scan cannot read as a clean one.
+            - name: Flag an incomplete Trivy scan of infisical/infisical
+              if: steps.trivy_infisical_core.outcome == 'failure'
+              run: echo "::warning::Trivy did not report on infisical/infisical for this release. No report does not mean no findings."
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres
         runs-on: ubuntu-latest
         needs: [infisical-tests]
+        permissions:
+            contents: read
         steps:
             - name: Extract version from tag
               id: extract_version
@@ -152,7 +180,11 @@ jobs:
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
             - name: Set up Depot CLI
               uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+            - name: Read pinned versions
+              run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
+
             - name: 📦 Build backend and export to Docker
+              id: build_fips
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -166,12 +198,38 @@ jobs:
                   platforms: linux/amd64,linux/arm64
                   file: Dockerfile.fips.standalone-infisical
                   build-args: |
+                      INFISICAL_CLI_VERSION=${{ env.INFISICAL_CLI_VERSION }}
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                   secrets: |
                       contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}
                       contentful_delivery_token=${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}
                       contentful_environment=${{ vars.CONTENTFUL_ENVIRONMENT }}
+            - name: Snyk to check Docker image for vulnerabilities
+              continue-on-error: true
+              uses: snyk/actions/docker@9cf6ca713d71123d2d229cc3d7f145b96ea3c518 # master @ 2026-05-05
+              env:
+                SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+              with:
+                image: infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
+                command: monitor
+                args: --file=Dockerfile.fips.standalone-infisical --project-name="infisical-fips-docker-image"
+            # Reports into the run's artifacts, never through the job status: the
+            # image is already published by the time this runs.
+            - name: 🔍 Scan infisical/infisical-fips with Trivy
+              id: trivy_infisical_fips
+              continue-on-error: true
+              uses: ./.github/actions/trivy-image-scan
+              with:
+                  image: infisical/infisical-fips
+                  digest: ${{ steps.build_fips.outputs.digest }}
+                  artifact-name: trivy-infisical-fips-${{ steps.extract_version.outputs.version }}
+                  trivy-version: ${{ env.TRIVY_CLI_VERSION }}
+            # Any failure inside the action, whether the scan, the upload or the summary,
+            # surfaces as this step's outcome, so a broken scan cannot read as a clean one.
+            - name: Flag an incomplete Trivy scan of infisical/infisical-fips
+              if: steps.trivy_infisical_fips.outcome == 'failure'
+              run: echo "::warning::Trivy did not report on infisical/infisical-fips for this release. No report does not mean no findings."
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-tests]

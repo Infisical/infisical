@@ -23,7 +23,7 @@ import {
 } from "@app/services/app-connection/venafi-tpp/venafi-tpp-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { splitPemChain } from "@app/services/certificate/certificate-fns";
+import { linkRenewedCertificate, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -344,7 +344,7 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
@@ -866,7 +866,7 @@ export const VenafiTppCertificateAuthorityFns = ({
         certificateId = cert.id;
 
         if (isRenewal && originalCertificateId) {
-          await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+          await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
         }
 
         await certificateBodyDAL.create(

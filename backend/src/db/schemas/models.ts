@@ -51,6 +51,7 @@ export enum TableName {
   AlertChannelMembership = "alert_channel_memberships",
   AlertHistory = "alert_history",
   AlertHistoryTarget = "alert_history_target",
+  EventOutbox = "event_outbox",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
@@ -167,7 +168,9 @@ export enum TableName {
   ProjectSplitBackfillIds = "project_split_backfill_ids",
   UserNotifications = "user_notifications",
   ScimEvents = "scim_events",
-  // Gateway
+  // Gateway v1. Retired: nothing reads or writes these tables, or the gatewayId columns on
+  // dynamic_secrets / identity_kubernetes_auths / identity_auth_templates that point at them.
+  // They are kept populated so the removal can be reverted without data loss.
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
   ProjectGateway = "project_gateways",
@@ -178,6 +181,8 @@ export enum TableName {
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
+  KmsLegacyEncryptionKey = "kms_legacy_encryption_keys",
+  KmsKekHistory = "kms_kek_history",
   KmsKey = "kms_keys",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
@@ -240,6 +245,8 @@ export enum TableName {
   GatewayV2 = "gateways_v2",
   ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
+  ResourceGcpAuth = "resource_gcp_auths",
+  ResourceKubernetesAuth = "resource_kubernetes_auths",
   ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
@@ -267,6 +274,13 @@ export enum TableName {
   PamResourceFavorite = "pam_resource_favorites",
   PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
+  AgentVaultAccessBundle = "agent_vault_access_bundles",
+  AgentVaultService = "agent_vault_services",
+  AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",
+  AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
+  AgentVaultSession = "agent_vault_sessions",
+  AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
+  AgentVaultProxy = "agent_vault_proxies",
 
   VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
@@ -391,11 +405,22 @@ export enum ResourceMembershipRole {
   Custom = "custom"
 }
 
+// Stored in additional_privileges.role for folder-scoped grants. The tiers are cumulative: each is
+// a superset of the one above it.
+export enum SecretFolderRole {
+  List = "list",
+  Read = "read",
+  Edit = "edit",
+  Manage = "manage",
+  FullAccess = "full-access"
+}
+
 export enum ResourceType {
   CertificateApplication = "certificate-application",
   Signer = "pki-signer",
   PamFolder = "pam-folder",
-  PamAccount = "pam-account"
+  PamAccount = "pam-account",
+  AgentVaultAccessBundle = "agent-vault-access-bundle"
 }
 
 export enum SecretEncryptionAlgo {
@@ -446,8 +471,21 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AgentVault = "agent-vault"
 }
+
+// These products resolve every non-admin slug to their member rule set, so a viewer, no-access or
+// custom role would promise less access than it grants. Write paths reject those roles outright;
+// rows written before a product joined this list are not re-validated.
+const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
+};
+
+export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
+  projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
 
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
@@ -455,6 +493,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  AgentVault = ProjectType.AgentVault,
   // project operations that happen on all types
   Any = "any"
 }

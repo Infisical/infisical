@@ -19,7 +19,7 @@ import {
   IconButton,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
@@ -156,7 +156,14 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Field>
               <FieldLabel>Name</FieldLabel>
               <FieldContent>
-                <Input {...field} autoFocus placeholder="Machine 1" isError={Boolean(error)} />
+                <Input
+                  {...field}
+                  autoFocus
+                  placeholder="Machine 1"
+                  isError={Boolean(error)}
+                  autoComplete="off"
+                  name="machine-identity-name"
+                />
               </FieldContent>
               {error && <FieldError>{error.message}</FieldError>}
             </Field>
@@ -191,7 +198,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           name="hasDeleteProtection"
           render={({ field: { onChange, value } }) => (
             <Field orientation="horizontal">
-              <Switch
+              <Toggle
                 id="delete-protection-enabled"
                 variant={isSubOrganization ? "sub-org" : "org"}
                 checked={value}
@@ -297,6 +304,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         </Button>
       </div>
       <UpgradePlanModal
+        paywallKey="organization.org-identity"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."

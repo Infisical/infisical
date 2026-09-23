@@ -29,10 +29,10 @@ export const ProjectTemplatesSection = () => {
         <EditProjectTemplateSection template={editTemplate} onBack={() => setEditTemplate(null)} />
       ) : (
         <div>
-          <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-x-2">
-                <p className="text-xl font-medium text-mineshaft-100">Project Templates</p>
+                <p className="text-xl font-medium text-foreground">Project Templates</p>
                 <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/project-templates" />
               </div>
               <OrgPermissionCan
@@ -69,6 +69,7 @@ export const ProjectTemplatesSection = () => {
               onOpenChange={(isOpen) => handlePopUpToggle("addTemplate", isOpen)}
             />
             <UpgradePlanModal
+              paywallKey="organization.project-templates"
               isOpen={popUp.upgradePlan.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
               text="Your current plan does not include access to project templates. To unlock this feature, please upgrade to Infisical Enterprise plan."

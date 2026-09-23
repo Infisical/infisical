@@ -24,6 +24,7 @@ import { registerCloudflareConnectionRouter } from "./cloudflare-connection-rout
 import { registerConvexConnectionRouter } from "./convex-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
+import { registerDaytonaConnectionRouter } from "./daytona-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
 import { registerDevinConnectionRouter } from "./devin-connection-router";
 import { registerDigiCertConnectionRouter } from "./digicert-connection-router";
@@ -62,6 +63,7 @@ import { registerOpenRouterConnectionRouter } from "./open-router-connection-rou
 import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
+import { registerPowerDnsConnectionRouter } from "./powerdns-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
@@ -104,6 +106,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
     [AppConnection.Vercel]: registerVercelConnectionRouter,
     [AppConnection.Postgres]: registerPostgresConnectionRouter,
+    [AppConnection.PowerDns]: registerPowerDnsConnectionRouter,
     [AppConnection.MsSql]: registerMsSqlConnectionRouter,
     [AppConnection.MySql]: registerMySqlConnectionRouter,
     [AppConnection.Camunda]: registerCamundaConnectionRouter,
@@ -170,5 +173,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
     [AppConnection.Fireworks]: registerFireworksConnectionRouter,
     [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
-    [AppConnection.Spacelift]: registerSpaceliftConnectionRouter
+    [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
+    [AppConnection.Daytona]: registerDaytonaConnectionRouter
   };

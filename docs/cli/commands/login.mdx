@@ -19,7 +19,11 @@ When authenticated, a token is generated and saved in your system Keyring to all
 
 To change where the login credentials are stored, visit the [vaults command](./vault).
 
-If you have added multiple users, you can switch between the users by using the [user command](./user).
+A user login is stored as a profile: an account on the specified Infisical instance, and the organization you chose for it.
+
+Unless you pass `--save-as` or `--profile`, the CLI names the profile after your account and organization, and makes it the default profile that commands use when you don't specify one. Pass `--save-as <name>` to choose the name yourself. See [profile](./profile) for more.
+
+Machine identity logins don't create a profile. They print an access token, which you supply through `INFISICAL_TOKEN` or `--token`.
 
     <Info>
       **JWT Token Output:**
@@ -66,6 +70,15 @@ User authentication is designed for individual developers and supports multiple 
     </ParamField>
     <ParamField query="plain" type="boolean" optional>
       Output only the JWT token (useful for scripting and CI/CD).
+    </ParamField>
+    <ParamField query="save-as" type="string" optional>
+      Store this login as a profile under the specified name. The CLI creates
+      that profile, or replaces the stored session of an existing profile if the
+      name is already taken.
+    </ParamField>
+    <ParamField query="profile" type="string" optional>
+      Sign back in to a profile that already exists, restoring its account,
+      instance, and organization.
     </ParamField>
   </Expandable>
 </ParamField>
@@ -492,6 +505,36 @@ The login command supports a number of flags that you can use for different auth
     Forces interactive CLI login where you'll be prompted to enter your email, password, and select your organization in the terminal, instead of opening a browser.
 
   </Accordion>
+  <Accordion title="--save-as">
+    ```bash
+    infisical login --save-as <name>
+    ```
+
+    #### Description
+    Stores this login under the specified name. The CLI creates that profile, or replaces the profile's stored session if the name is already taken.
+
+    If you're already logged in, a login with `--save-as` doesn't change which profile is selected, so other terminals keep the profile that they're already using. Select the new one with `--profile <name>`, or make it the default with `infisical profile use <name>`.
+
+    ```bash
+    # Sign in to a second account and keep the first.
+    infisical login --save-as contractor
+    infisical secrets --profile contractor
+    ```
+
+  </Accordion>
+  <Accordion title="--profile">
+    ```bash
+    infisical login --profile <name>
+    ```
+
+    #### Description
+    Signs back in to a profile that already exists. The profile keeps its account, its instance, and its organization, so you do not have to pass `--organization-id`.
+
+    ```bash
+    infisical login --profile globex
+    ```
+
+  </Accordion>
   <Accordion title="--plain">
     ```bash
     infisical login --email=<email> --password=<password> --organization-id=<organization-id> --plain
@@ -567,7 +610,7 @@ The following examples demonstrate different ways to authenticate as a user with
   </Accordion>
 
   <Accordion title="Direct Login (Non-Interactive)">
-    Direct login is ideal for CI/CD pipelines and automation scripts where browser-based authentication is not possible.
+    Direct login is ideal for CI/CD pipelines and automation scripts where browser-based authentication isn't possible.
 
     #### Using command-line flags
 
@@ -633,24 +676,24 @@ The following examples demonstrate different ways to authenticate as a user with
 <Accordion title="infisical login status" defaultOpen="true">
   Reports whether the CLI is currently authenticated to Infisical and, when available, the organization the active session is scoped to. The command checks the user session stored in your vault, machine identity tokens exported as environment variables, and a token passed via the `--token` flag.
 
-  ```bash
-  infisical login status
-  ```
+```bash
+infisical login status
+```
 
-  In addition to local checks (token presence, local expiration), `status` calls the Infisical backend to verify that each credential is still valid — so revoked or rejected tokens are surfaced even when they look fine locally.
+In addition to local checks (token presence, local expiration), `status` calls the Infisical backend to verify that each credential is still valid — so revoked or rejected tokens are surfaced even when they look fine locally.
 
-  #### Sources checked
+#### Sources checked
 
-  - **User session**: the active login stored in your system keyring (or the configured [vault](./vault)).
-  - **Machine identity environment variable**: `INFISICAL_TOKEN`.
-  - **`--token` flag**: a specific machine identity access token passed explicitly.
+- **User session**: the active login stored in your system keyring (or the configured [vault](./vault)). The report names the profile that the session belongs to, and how the CLI selected it.
+- **Machine identity environment variable**: `INFISICAL_TOKEN`.
+- **`--token` flag**: a specific machine identity access token passed explicitly.
 
-  #### Exit codes
+#### Exit codes
 
-  - `0`: at least one session was reported and none are expired or rejected.
-  - `1`: no active session was found, or a reported session is expired or rejected by the backend.
+- `0`: at least one session was reported and none are expired or rejected.
+- `1`: no active session was found, or a reported session is expired or rejected by the backend.
 
-  #### Flags
+#### Flags
 
   <Accordion title="--json">
     Output the login status as JSON instead of the default human-readable format. Useful for scripting and CI/CD pipelines.
@@ -670,7 +713,7 @@ The following examples demonstrate different ways to authenticate as a user with
 
   </Accordion>
 
-  #### Examples
+#### Examples
 
   <AccordionGroup>
     <Accordion title="Check the active user session">
@@ -683,10 +726,12 @@ The following examples demonstrate different ways to authenticate as a user with
       ```bash
       ✓ Authenticated as user@example.com
         - Domain: https://app.infisical.com
-        - Auth method: login
+        - Profile: user@example.com--acme (via default profile)
+        - Auth method: email
         - Token source: infisical login (keyring)
         - Token expiration: 6h 12m
-        - Organization: org-id-123
+        - User ID: 4377366c-e6b4-437f-865c-bbf90ace32f9
+        - Organization: Acme (9c0f4df6-57fb-4b5f-927b-799dc0121520)
       ```
 
     </Accordion>
@@ -712,6 +757,7 @@ The following examples demonstrate different ways to authenticate as a user with
       ```
 
     </Accordion>
+
   </AccordionGroup>
 
 </Accordion>

@@ -279,7 +279,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   />
                 </TableHead>
                 {isSubOrganization && <TableHead>Managed By</TableHead>}
-                <TableHead className="w-5" />
+                <TableHead variant="action" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -300,7 +300,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
                     )}
-                    <TableCell>
+                    <TableCell variant="action">
                       <Skeleton className="h-4 w-4" />
                     </TableCell>
                   </TableRow>
@@ -376,7 +376,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                           </Badge>
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton

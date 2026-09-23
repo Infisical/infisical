@@ -1,4 +1,5 @@
 import { AssumeRoleCommand, Credentials, STSClient, STSClientConfig } from "@aws-sdk/client-sts";
+import { Signer } from "@aws-sdk/rds-signer";
 import axios from "axios";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
@@ -102,6 +103,42 @@ export const generateAwsIamSessionCredentials = async ({
     sessionToken: SessionToken,
     expiresAt: Expiration ?? new Date(Date.now() + sessionDuration * 1000)
   };
+};
+
+// An RDS or Aurora IAM login takes a signed token as its password, valid for 15 minutes and only for
+// the endpoint and user it was signed for
+export const generateRdsAuthToken = async ({
+  roleArn,
+  externalId,
+  roleSessionName,
+  region,
+  host,
+  port,
+  username
+}: {
+  roleArn: string;
+  externalId: string;
+  roleSessionName: string;
+  region: string;
+  host: string;
+  port: number;
+  username: string;
+}): Promise<string> => {
+  const credentials = await generateAwsIamSessionCredentials({
+    roleArn,
+    externalId,
+    roleSessionName,
+    sessionDuration: AWS_STS_MIN_DURATION_SECONDS
+  });
+
+  return new Signer({
+    hostname: host,
+    port,
+    region,
+    username,
+    credentials,
+    sha256: CustomAWSHasher
+  }).getAuthToken();
 };
 
 export const exchangeCredentialsForConsoleUrl = async (

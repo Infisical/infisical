@@ -11,6 +11,7 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { useSubscription } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp } from "@app/hooks";
@@ -29,15 +30,11 @@ const SyncCard = ({ destination, onClick }: { destination: PkiSync; onClick: () 
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
-          <img
-            src={`/images/integrations/${image}`}
-            alt={`${name} logo`}
-            className="h-6 w-6 object-contain"
-          />
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+          <ProviderIcon icon={image} alt={`${name} logo`} className="h-6 w-6 object-contain" />
         </div>
         <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
           {category}
@@ -57,11 +54,11 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
-  const handleSelect = (destination: PkiSync, enterprise?: boolean) => {
-    if (enterprise && !subscription.enterpriseCertificateSyncs) {
+  const handleSelect = (destination: PkiSync) => {
+    if (!subscription.pkiSyncs) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
-        text: "All Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
+        text: "Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
       });
       return;
     }
@@ -106,11 +103,11 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
 
       {filteredOptions.length ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {filteredOptions.map(({ destination, enterprise }) => (
+          {filteredOptions.map(({ destination }) => (
             <SyncCard
               key={destination}
               destination={destination}
-              onClick={() => handleSelect(destination, enterprise)}
+              onClick={() => handleSelect(destination)}
             />
           ))}
         </div>
@@ -149,6 +146,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
       </p>
 
       <UpgradePlanModal
+        paywallKey="pki.sync-provider"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}

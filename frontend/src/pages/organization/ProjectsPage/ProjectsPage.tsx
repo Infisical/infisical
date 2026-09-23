@@ -7,7 +7,7 @@ import { InfoIcon } from "lucide-react";
 import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
 import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
 import { PageHeader } from "@app/components/v2";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import { AlertDescription, AlertTitle, DismissableAlert } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 
@@ -45,17 +45,22 @@ export const ProjectsPage = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col justify-start px-6">
+    <div className="mx-auto flex max-w-8xl flex-col justify-start px-0 md:px-6">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <PageHeader
+        className="mb-6 md:mb-10"
         scope={isSubOrganization ? "namespace" : "org"}
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit — organized and ready when you need them."
       />
-      <Alert variant="info" className="mb-6">
+      <DismissableAlert
+        variant="info"
+        className="mb-4 md:mb-6"
+        actionKey="secret_sharing_moved_banner_dismissed"
+      >
         <InfoIcon />
         <AlertTitle>Secret Sharing Has Moved</AlertTitle>
         <AlertDescription>
@@ -71,7 +76,7 @@ export const ProjectsPage = () => {
             .
           </p>
         </AlertDescription>
-      </Alert>
+      </DismissableAlert>
       <ProjectCategoryOverview />
       {announcements && announcements.length > 0 && (
         <AnnouncementModal

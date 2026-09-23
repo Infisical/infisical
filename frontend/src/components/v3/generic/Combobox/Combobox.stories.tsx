@@ -1,5 +1,8 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
+
+import { useDebounce } from "@app/hooks";
 
 import { Button } from "../Button";
 import {
@@ -48,6 +51,12 @@ const PROJECTS = Array.from({ length: 18 }, (_, index) => ({
   name:
     index % 4 === 0 ? `Project ${index + 1} with a long descriptive name` : `Project ${index + 1}`
 }));
+
+const VAULTS = [
+  { id: "engineering", name: "Engineering", items: 42 },
+  { id: "infrastructure", name: "Infrastructure", items: 18 },
+  { id: "security", name: "Security", items: 7 }
+] as const;
 
 const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
 
@@ -140,6 +149,92 @@ export const Default: Story = {
   render: () => <DefaultRender />
 };
 
+const ALL_ORGANIZATIONS = Array.from({ length: 2_000 }, (_, index) => ({
+  id: `org-${index + 1}`,
+  name: `Organization ${index + 1}`
+}));
+
+const PAGE_SIZE = 25;
+
+// Stands in for a paginated list endpoint: matches server-side and returns only the first page.
+const fetchOrganizations = (search: string) =>
+  new Promise<{ organizations: typeof ALL_ORGANIZATIONS; totalCount: number }>((resolve) => {
+    setTimeout(() => {
+      const query = search.trim().toLocaleLowerCase();
+      const matches = ALL_ORGANIZATIONS.filter((org) =>
+        org.name.toLocaleLowerCase().includes(query)
+      );
+      resolve({ organizations: matches.slice(0, PAGE_SIZE), totalCount: matches.length });
+    }, 400);
+  });
+
+const ServerSearchRender = () => {
+  const [value, setValue] = useState<(typeof ALL_ORGANIZATIONS)[number] | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const [organizations, setOrganizations] = useState<typeof ALL_ORGANIZATIONS>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCurrent = true;
+    setIsLoading(true);
+    fetchOrganizations(debouncedSearch).then((page) => {
+      if (!isCurrent) return;
+      setOrganizations(page.organizations);
+      setTotalCount(page.totalCount);
+      setIsLoading(false);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [debouncedSearch]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-server-search">Organization</FieldLabel>
+      <StoryCombobox
+        id="combobox-server-search"
+        options={organizations}
+        value={value}
+        onValueChange={setValue}
+        onClear={() => setValue(null)}
+        onSearchChange={setSearch}
+        isLoading={isLoading || search !== debouncedSearch}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select organization..."
+        searchPlaceholder="Search organizations..."
+        searchAriaLabel="Search organizations"
+        emptyMessage="No organizations match that search."
+        listFooter={
+          totalCount > organizations.length
+            ? `Showing ${organizations.length} of ${totalCount.toLocaleString()} — type to search the rest`
+            : null
+        }
+      />
+    </Field>
+  );
+};
+
+/**
+ * Passing `onSearchChange` hands filtering to the caller: the internal matcher is switched off
+ * and `options` renders exactly as given. Use it when the option set is too large to send in
+ * full, so the popup shows one page of server results and typing fetches the next one. Debounce
+ * the query on your side, and pair it with `isLoading` so the popup says it is still working —
+ * cover the debounce window as well as the request, or the stale page reads as the answer.
+ *
+ * It also turns off the auto-highlight that local filtering uses: the list arrives after a debounce
+ * and a round trip, so highlighting the top match would put it on a row the user has not seen yet and
+ * Enter would commit it. Pair the prop with `listFooter` to say that the list is only one page.
+ *
+ * This story searches 2,000 organizations through a fake endpoint that returns 25 at a time.
+ * Without `onSearchChange` the component would only ever match within those 25.
+ */
+export const ServerSearch: Story = {
+  render: () => <ServerSearchRender />
+};
+
 const RichOptionsRender = () => {
   const [value, setValue] = useState<(typeof ORGANIZATION_ROLES)[number] | null>(
     ORGANIZATION_ROLES[1]
@@ -185,14 +280,58 @@ export const RichOptions: Story = {
   render: () => <RichOptionsRender />
 };
 
+const OpaqueOptionFieldsRender = () => {
+  const [value, setValue] = useState<(typeof VAULTS)[number] | null>(VAULTS[0]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-vault">Vault</FieldLabel>
+      <StoryCombobox
+        id="combobox-vault"
+        options={VAULTS}
+        value={value}
+        onValueChange={setValue}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        getOptionKeywords={(option) => [`${option.items} items`]}
+        placeholder="Select vault..."
+        searchPlaceholder="Search vaults..."
+        searchAriaLabel="Search vaults"
+        renderOption={(option) => (
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <span className="truncate">{option.name}</span>
+            <span className="shrink-0 text-xs text-muted">{option.items} items</span>
+          </div>
+        )}
+      />
+    </Field>
+  );
+};
+
+export const OpaqueOptionFields: Story = {
+  name: "Example: Opaque Option Fields",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Consumer option objects are opaque to the underlying primitive. Fields such as a numeric `items` count cannot be mistaken for the combobox's internal grouped-item structure."
+      }
+    }
+  },
+  render: () => <OpaqueOptionFieldsRender />
+};
+
 const MultipleRender = () => {
   const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 2));
 
   return (
     <Field>
-      <FieldLabel htmlFor="combobox-projects">Projects</FieldLabel>
+      <FieldLabel id="combobox-projects-label" htmlFor="combobox-projects">
+        Projects
+      </FieldLabel>
       <StoryCombobox
         id="combobox-projects"
+        aria-labelledby="combobox-projects-label"
         multiple
         options={PROJECTS}
         value={value}
@@ -215,7 +354,49 @@ const MultipleRender = () => {
  */
 export const Multiple: Story = {
   name: "Multiple: Chips",
-  render: () => <MultipleRender />
+  render: () => <MultipleRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const combobox = canvas.getByRole("combobox", { name: "Projects" });
+
+    await userEvent.click(canvas.getByText("Projects"));
+    await userEvent.type(combobox, "Project 3");
+    await expect(combobox).toHaveFocus();
+    await expect(combobox).toHaveAccessibleName("Projects");
+  }
+};
+
+const SelectAllRender = () => {
+  const [value, setValue] = useState<(typeof PROJECTS)[number][]>([]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-select-all-projects">Projects</FieldLabel>
+      <StoryCombobox
+        id="combobox-select-all-projects"
+        multiple
+        isSelectAll
+        options={PROJECTS}
+        value={value}
+        onValueChange={(options) => setValue(options)}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select projects..."
+        searchPlaceholder="Search projects..."
+        searchAriaLabel="Search projects"
+        clearAriaLabel="Clear all projects"
+      />
+    </Field>
+  );
+};
+
+/**
+ * `isSelectAll` adds a toggle above the option list that selects every option
+ * matching the current search, then clears that same set once all are selected.
+ */
+export const SelectAll: Story = {
+  name: "Multiple: Select All",
+  render: () => <SelectAllRender />
 };
 
 const SingleLineRender = () => {
@@ -379,6 +560,22 @@ export const States: Story = {
           isDisabled
         />
       </Field>
+      <Field data-disabled="true">
+        <FieldLabel id="combobox-disabled-projects-label" htmlFor="combobox-disabled-projects">
+          Projects
+        </FieldLabel>
+        <StoryCombobox
+          id="combobox-disabled-projects"
+          aria-labelledby="combobox-disabled-projects-label"
+          multiple
+          options={PROJECTS}
+          value={PROJECTS.slice(0, 2)}
+          onValueChange={() => undefined}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          isDisabled
+        />
+      </Field>
       <Field>
         <FieldLabel htmlFor="combobox-loading">Environment</FieldLabel>
         <StoryCombobox
@@ -455,4 +652,30 @@ export const ViewportEdges: Story = {
     }
   },
   render: () => <ViewportEdgesRender />
+};
+
+/** Saved IDs remain visible even when a server search returns a different page. */
+export const ServerFilteredSelection: Story = {
+  name: "Example: Server-filtered Saved Selection",
+  render: () => {
+    const [value, setValue] = useState<string | null>("saved-workspace");
+    const [query, setQuery] = useState("");
+    const options = ["first-page-workspace", "another-workspace"].filter((id) =>
+      id.includes(query)
+    );
+    return (
+      <Combobox
+        aria-label="Workspace"
+        options={options}
+        value={value}
+        onValueChange={setValue}
+        onClear={() => setValue(null)}
+        getOptionValue={(id) => id}
+        getOptionLabel={(id) => id}
+        shouldFilter={false}
+        includeMissingSelectedOptions={!query}
+        onInputValueChange={setQuery}
+      />
+    );
+  }
 };

@@ -216,6 +216,10 @@ export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDNS;
 };
 
+export type TPowerDnsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PowerDns;
+};
+
 export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
@@ -345,6 +349,10 @@ export type TSpaceliftConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Spacelift;
 };
 
+export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Daytona;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -396,6 +404,7 @@ export type TAppConnectionOption =
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
   | TAzureDNSConnectionOption
+  | TPowerDnsConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
@@ -428,7 +437,8 @@ export type TAppConnectionOption =
   | TLiteLLMConnectionOption
   | TFireworksConnectionOption
   | TNutanixPrismCentralConnectionOption
-  | TSpaceliftConnectionOption;
+  | TSpaceliftConnectionOption
+  | TDaytonaConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -479,6 +489,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.AzureDNS]: TAzureDNSConnectionOption;
+  [AppConnection.PowerDns]: TPowerDnsConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;
@@ -514,4 +525,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Fireworks]: TFireworksConnectionOption;
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
+  [AppConnection.Daytona]: TDaytonaConnectionOption;
 };

@@ -6,7 +6,7 @@ import { cn } from "../../utils";
 const alertVariants = cva(
   // min-h-9 replaces a flex item's automatic minimum size, so without shrink-0 a multi-line alert
   // in a height-constrained flex column collapses to 36px and its text paints over the next sibling.
-  "relative grid min-h-9 w-full shrink-0 grid-cols-[0_1fr] items-center gap-y-1 rounded-md border px-3 py-2.5 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:text-current",
+  "@container/alert relative grid min-h-9 w-full shrink-0 grid-cols-[0_1fr] items-center gap-y-1 rounded-md border px-3 py-2.5 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:text-current",
   {
     variants: {
       variant: {
@@ -67,10 +67,17 @@ function AlertDescription({ className, ...props }: React.ComponentProps<"div">) 
   return (
     <div
       data-slot="alert-description"
-      className={cn("col-start-2 grid justify-items-start gap-1 text-sm", className)}
+      className={cn(
+        "col-start-2 grid justify-items-start gap-1 text-sm has-[>[data-slot=alert-action]]:flex has-[>[data-slot=alert-action]]:flex-col has-[>[data-slot=alert-action]]:gap-3 has-[>[data-slot=alert-action]]:@sm/alert:flex-row has-[>[data-slot=alert-action]]:@sm/alert:items-center has-[>[data-slot=alert-action]]:@sm/alert:justify-between",
+        className
+      )}
       {...props}
     />
   );
 }
 
-export { Alert, AlertDescription, AlertTitle };
+function AlertAction({ className, ...props }: React.ComponentProps<"div">) {
+  return <div data-slot="alert-action" className={cn("shrink-0", className)} {...props} />;
+}
+
+export { Alert, AlertAction, AlertDescription, AlertTitle };

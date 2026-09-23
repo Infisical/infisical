@@ -38,6 +38,46 @@ export const writeLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
+// landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
+// rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT
+// address would exhaust a 200/min quota on load reports alone, start getting 429s, and their
+// entries would go stale.
+export const gatewayMetricsReportLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 10,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `gateway-metrics:${actorId}` : req.realIp;
+  }
+};
+
+// Keyed on the proxy identity, not the source IP, so many proxies behind one NAT do not share a bucket.
+// One resolve per live session per poll, so this covers 4,200 sessions at the default 60s poll and 700 at
+// the 10s floor. Deliberate: a proxy serving that many agents is far past what we expect, and a runaway
+// one blows through any budget. A throttled proxy reads a 429 as "Infisical unreachable" and drops its
+// sessions after five polls, so raise this rather than the poll floor if a real deployment ever nears it.
+export const agentVaultResolveLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 4200,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-resolve:${actorId}` : req.realIp;
+  }
+};
+
+export const agentVaultHeartbeatLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 30,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-heartbeat:${actorId}` : req.realIp;
+  }
+};
+
 // special endpoints
 export const secretsLimit: RateLimitOptions = {
   // secrets, folders, secret imports

@@ -8,6 +8,7 @@ import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TPreSaveTransformDestinationConfigFn, TSecretMap } from "../secret-sync-types";
 import {
   GCPLatestSecretVersionAccess,
@@ -123,7 +124,8 @@ const getGcpSecrets = async (accessToken: string, secretSync: TGcpSyncWithCreden
 };
 
 export const GcpSyncFns = {
-  syncSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 
@@ -236,7 +238,8 @@ export const GcpSyncFns = {
     return Object.fromEntries(Object.entries(gcpSecrets).map(([key, value]) => [key, { value: value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TGcpSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TGcpSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection } = secretSync;
     const accessToken = await getGcpConnectionAuthToken(connection);
 

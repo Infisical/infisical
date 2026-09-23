@@ -1,5 +1,10 @@
 # Build stage
-FROM node:22.22.0-trixie-slim AS build
+ARG INFISICAL_CLI_VERSION=0.43.129
+
+FROM node:22.23.2-trixie-slim AS build
+
+# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
+RUN npm install -g npm@10.9.9
 
 WORKDIR /app
 
@@ -44,7 +49,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm "$ORACLE_ZIP"
 
 # Production dependencies (runs in parallel with build)
-FROM node:22.22.0-trixie-slim AS prod-deps
+FROM node:22.23.2-trixie-slim AS prod-deps
+
+# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
+RUN npm install -g npm@10.9.9
 
 WORKDIR /app
 
@@ -64,12 +72,17 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 # Production stage
-FROM node:22.22.0-trixie-slim
+FROM node:22.23.2-trixie-slim
+
+# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
+RUN npm install -g npm@10.9.9
+
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
 
 # Only runtime dependencies — no compilation happens here
+ARG INFISICAL_CLI_VERSION
 RUN apt-get update && apt-get install -y \
     unixodbc \
     freetds-bin \
@@ -79,7 +92,8 @@ RUN apt-get update && apt-get install -y \
     bash \
     git \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.79 \
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini

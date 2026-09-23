@@ -36,14 +36,14 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 }
 ```
 
-3. Create an access key ID and secret access key for the user you created in the previous step. You will need these to configure the Infisical dynamic secret.
+3. Create an access key ID and secret access key for the user you created in the previous step. You'll need these to configure the Infisical dynamic secret.
 
 <Note>
   New leases may take up-to a couple of minutes before ElastiCache has the chance to complete their configuration.
-  It is recommended to use a retry strategy when establishing new ElastiCache connections.
+  It's recommended to use a retry strategy when establishing new ElastiCache connections.
   This may prevent errors when trying to use a password that isn't yet live on the targeted ElastiCache cluster.
 
-  While a leasing is being created, you will be unable to create new leases for the same dynamic secret.
+  While a leasing is being created, you'll be unable to create new leases for the same dynamic secret.
 </Note>
 
 <Note>
@@ -103,7 +103,7 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 	</ParamField>
   </Step>
   <Step title="Click `Submit`">
-  	After submitting the form, you will see a dynamic secret created in the dashboard.
+  	After submitting the form, you'll see a dynamic secret created in the dashboard.
 
 	<Note>
 		If this step fails, you may have to add the CA certificate.
@@ -112,7 +112,7 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
   </Step>
   <Step title="Generate dynamic secrets">
 	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
 	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -134,15 +134,15 @@ The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCa
 </Steps>
 
 ## Audit or revoke leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew leases
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-	Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret
+	Lease renewals can't exceed the maximum TTL set when configuring the dynamic secret
 </Warning>

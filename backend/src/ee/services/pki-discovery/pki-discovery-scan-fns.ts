@@ -6,8 +6,8 @@ import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -205,9 +205,7 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
                 return scanEndpoint("localhost", proxyPort, DEFAULT_SCAN_TIMEOUT, sniHostname);
               },
               {
-                relayHost: targetGatewayDetails.relayHost,
-                gateway: targetGatewayDetails.gateway,
-                relay: targetGatewayDetails.relay,
+                ...targetGatewayDetails,
                 protocol: GatewayProxyProtocol.Tcp
               }
             );
@@ -706,7 +704,10 @@ const processDiscoveredCertificate = async (
 
     const serialNumber = certResult.serialNumber || certResult.fingerprint.substring(0, 40);
 
-    const certData: TCertificatesInsert = {
+    // Deliberately not gated on the certificate quota: this is a background scan, and every PKI
+    // license gate blocks creation only. A scan can push an org past its cap, after which new
+    // issuance is refused until it upgrades or cleans up.
+    const certData: Omit<TCertificatesInsert, "quotaKey"> = {
       projectId,
       status: CertStatus.ACTIVE,
       serialNumber: truncateString(serialNumber, DB_SHORT_VARCHAR_LIMIT) || "unknown",

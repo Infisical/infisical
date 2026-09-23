@@ -91,7 +91,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "getSecretsSummary",
       description: "Get secrets management usage counts for the requesting organization.",
@@ -130,7 +130,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "getSecretsProjects",
       description: "List the organization's secret management projects, ordered by severity.",
@@ -180,7 +180,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "getSecretsAccessVolume",
       description:
@@ -211,7 +211,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "getSecretsUsageAuthMethods",
       description:
@@ -253,7 +253,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       operationId: "getStaticSecretsUsage",
       description:
@@ -292,7 +292,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: OrgAuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const report = await server.services.auditReport.generateOrgReport(req.body, req.permission);
       await server.services.auditLog.createAuditLog({
@@ -325,7 +325,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: z.object({ reports: z.array(OrgAuditReportSchema), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { offset, limit } = req.query;
       const { reports, totalCount } = await server.services.auditReport.listOrgReports(
@@ -355,7 +355,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: OrgAuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const report = await server.services.auditReport.deleteOrgReport(req.params.reportId, req.permission);
       await server.services.auditLog.createAuditLog({
@@ -416,7 +416,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
       const { month, year } = req.query;
@@ -453,7 +453,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
       const result = await server.services.insights.getAccessVolume({ projectId }, req.permission);
@@ -486,7 +486,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
       const { days } = req.query;
@@ -531,7 +531,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
       const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
@@ -611,7 +611,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
       const { staleSecretsOffset, staleSecretsLimit } = req.query;
@@ -649,7 +649,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
       const result = await server.services.insights.getCounts({ projectId }, req.permission);
@@ -679,7 +679,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const report = await server.services.auditReport.generateReport(
         { projectId: req.params.projectId, ...req.body },
@@ -719,7 +719,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: z.object({ reports: z.array(AuditReportSchema), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
       const { offset, limit } = req.query;
@@ -747,7 +747,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const report = await server.services.auditReport.getReportById(
         req.params.reportId,
@@ -777,7 +777,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const report = await server.services.auditReport.deleteReport(
         req.params.reportId,

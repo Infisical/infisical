@@ -51,7 +51,7 @@ Each arrangement stands on its own: `run` is complete by itself, and a deployed 
 <Accordion title="infisical secrets agent-proxy run" defaultOpen="true">
   Launch an agent on your own computer, sandboxed, with credentials brokered on the wire. Everything after `--` is the agent's own start command. `run` starts a proxy alongside the agent, authenticating as your logged-in user, and stops it when the agent exits. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) for the full picture.
 
-  Because the proxy and the agent share a machine, the sandbox is the boundary: the agent cannot read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
+  Because the proxy and the agent share a machine, the sandbox is the boundary: the agent can't read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
 
   Requires macOS, or Linux with `bubblewrap` installed; see [Requirements](/documentation/platform/agent-proxy/local-agent-proxy#requirements) for the per-distribution command. Where no OS sandbox is available, `run` refuses to start unless you pass `--no-sandbox`.
 
@@ -60,13 +60,13 @@ Each arrangement stands on its own: `run` is complete by itself, and a deployed 
   </Note>
 
 ```bash
-$ infisical secrets agent-proxy run --projectId=<project-id> --env=<env-slug> --path=<secret-path> -- [agent start command]
+infisical secrets agent-proxy run --projectId=<project-id> --env=<env-slug> --path=<secret-path> -- [agent start command]
 
 # Example
-$ infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 
 # Example (project, environment, and path from .infisical.json)
-$ infisical secrets agent-proxy run -- claude
+infisical secrets agent-proxy run -- claude
 ```
 
 ### Environment variables
@@ -83,7 +83,7 @@ $ infisical secrets agent-proxy run -- claude
   </Accordion>
 
   <Accordion title="INFISICAL_AGENT_PROXY_SANDBOX">
-    Set to `0`, `false`, or `off` to disable the OS sandbox, the same as `--no-sandbox`. Deliberately cannot be set from `.infisical.json`, so a committed file cannot silently disable the boundary.
+    Set to `0`, `false`, or `off` to disable the OS sandbox, the same as `--no-sandbox`. Deliberately can't be set from `.infisical.json`, so a committed file can't silently disable the boundary.
 
     ```bash
       # Example
@@ -238,10 +238,10 @@ These two are used together, on different hosts: `start` on the proxy host, `con
   Agents reach HTTPS services through standard `CONNECT` tunnels and plain-HTTP services through regular forward-proxy requests; credentials are brokered on both. Requests for `https://` URLs sent as plain forward-proxy requests (rather than `CONNECT`) are rejected so the proxy can never be used to downgrade TLS.
 
 ```bash
-$ infisical secrets agent-proxy start
+infisical secrets agent-proxy start
 
 # Example
-$ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
+infisical secrets agent-proxy start --port 17322 --unmatched-host=block
 ```
 
 ### Environment variables
@@ -361,13 +361,13 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   </Note>
 
 ```bash
-$ infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
+infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
 
 # With flags
-$ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
 
 # With configuration from environment variables (see below) or .infisical.json
-$ infisical secrets agent-proxy connect -- claude
+infisical secrets agent-proxy connect -- claude
 ```
 
 ### Environment variables

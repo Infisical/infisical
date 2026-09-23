@@ -11,7 +11,11 @@ image:
 
 # Non-secret application configuration (rendered into a ConfigMap).
 config:
-  siteUrl: "https://infisical.example.com"
+  # REQUIRED. External origin users reach Infisical at, e.g. https://infisical.example.com
+  # (scheme + hostname only; Infisical cannot be served under a path prefix).
+  # Used for CORS, invite/reset/verification links, SSO/OAuth redirect URIs and
+  # WebAuthn. The install fails with a clear error if this is left empty.
+  siteUrl: ""
   port: 8080
   telemetryEnabled: false
 

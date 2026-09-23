@@ -7,7 +7,13 @@ import {
   WindowsFileAccess
 } from "@app/hooks/api/pkiSyncs";
 
-import { BasePkiSyncSchema, PostSyncCommandSchema } from "./base-pki-sync-schema";
+import {
+  BasePkiSyncSchema,
+  HostCommandSchema,
+  PkiSyncConnectionSchema,
+  PkiSyncTargetHostSchema,
+  PkiSyncTargetPortSchema
+} from "./base-pki-sync-schema";
 
 const compileNameSchema = (val: string) =>
   val
@@ -41,7 +47,8 @@ const WindowsServerSyncOptionsSchema = z.object({
     .max(20)
     .optional(),
   includePrivateKey: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -73,7 +80,12 @@ export const WindowsServerPkiSyncDestinationSchema = BasePkiSyncSchema(
   z.object({
     destination: z.literal(PkiSync.WindowsServer),
     destinationConfig: z.object({
-      destinationPath: WindowsDestinationPathSchema
+      destinationPath: WindowsDestinationPathSchema,
+      host: PkiSyncTargetHostSchema,
+      port: PkiSyncTargetPortSchema,
+      sslEnabled: z.boolean().optional(),
+      sslRejectUnauthorized: z.boolean().optional(),
+      sslCertificate: z.string().trim().max(8192).optional()
     }),
     credentials: z
       .object({
@@ -92,12 +104,6 @@ export const UpdateWindowsServerPkiSyncDestinationSchema =
         .min(1, "Name is required")
         .max(255, "Name must be less than 255 characters"),
       destination: z.literal(PkiSync.WindowsServer),
-      connection: z.object({
-        id: z.string().uuid("Invalid connection ID format"),
-        name: z
-          .string()
-          .min(1, "Connection name is required")
-          .max(255, "Connection name must be less than 255 characters")
-      })
+      connection: PkiSyncConnectionSchema
     })
   );

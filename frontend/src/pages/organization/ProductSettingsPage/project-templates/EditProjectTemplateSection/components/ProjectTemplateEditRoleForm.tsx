@@ -153,7 +153,7 @@ export const ProjectTemplateEditRoleForm = ({
             {isDisabled ? (
               <div className="flex flex-col">
                 <span className="text-lg font-medium">{role?.name}</span>
-                <span className="text-mineshaft-400">{role?.slug}</span>
+                <span className="text-muted">{role?.slug}</span>
               </div>
             ) : (
               <div className="flex w-full gap-2">
@@ -163,7 +163,13 @@ export const ProjectTemplateEditRoleForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <Field className="mb-0 flex-1">
                       <FieldLabel>Name</FieldLabel>
-                      <Input {...field} autoFocus placeholder="Role name..." />
+                      <Input
+                        {...field}
+                        autoFocus
+                        placeholder="Role name..."
+                        autoComplete="off"
+                        name="project-template-role-name"
+                      />
                       {error?.message && <FieldError>{error.message}</FieldError>}
                     </Field>
                   )}
@@ -203,6 +209,11 @@ export const ProjectTemplateEditRoleForm = ({
                       key={`project-permission-${subject}`}
                       isDisabled={isDisabled}
                       isOpen={openPolicies.includes(subject)}
+                      onPolicyAdded={() =>
+                        setOpenPolicies((prev) =>
+                          prev.includes(subject) ? prev : [...prev, subject]
+                        )
+                      }
                       isConditional={isConditionalSubjects(subject)}
                     >
                       {renderConditionalComponents(subject, isDisabled)}

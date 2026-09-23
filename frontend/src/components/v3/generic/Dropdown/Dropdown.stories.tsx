@@ -17,6 +17,7 @@ import {
 
 import { Button } from "../Button";
 import { IconButton } from "../IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -37,7 +38,8 @@ import {
  * DropdownMenu renders a contextual menu that opens from a trigger — use it for
  * row / card actions, segmented triggers, and any grouped list of actions that
  * don't warrant a dedicated panel. Composable subcomponents cover labels,
- * separators, shortcuts, checkbox / radio items, and nested submenus.
+ * separators, shortcuts, checkbox / radio items, and nested submenus. Menu
+ * content and nested submenus preserve an 8px viewport gutter by default.
  */
 const meta = {
   title: "Generic/Dropdown",
@@ -90,6 +92,94 @@ export const Default: Story = {
           Delete
           <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
         </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+};
+
+export const WithDescriptions: Story = {
+  name: "Example: Items with descriptions",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Dropdown items grow to fit supporting text while preserving the standard padding around each option."
+      }
+    }
+  },
+  render: () => (
+    <DropdownMenu defaultOpen>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Add enrollment method</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-96">
+        <DropdownMenuItem>
+          <div className="flex flex-col">
+            <span className="font-medium">API</span>
+            <span className="text-xs text-accent">
+              Issue certificates manually via the UI or programmatically through the API.
+            </span>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuCheckboxItem checked>
+          <div className="flex flex-col">
+            <span className="font-medium">Certificate renewal</span>
+            <span className="text-xs text-accent">
+              Renew certificates automatically before they expire.
+            </span>
+          </div>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuRadioGroup value="acme">
+          <DropdownMenuRadioItem value="acme">
+            <div className="flex flex-col">
+              <span className="font-medium">ACME</span>
+              <span className="text-xs text-accent">
+                Automate certificate lifecycle with ACME clients like Certbot or Caddy.
+              </span>
+            </div>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <div className="flex flex-col">
+              <span className="font-medium">Advanced methods</span>
+              <span className="text-xs text-accent">Configure an external enrollment method.</span>
+            </div>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem>SCEP</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+};
+
+export const DisabledItems: Story = {
+  name: "Example: Disabled Items",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `isDisabled` for unavailable actions. Add `isDisabledFocusable` when keyboard and pointer users need to reach a tooltip explaining why the action is unavailable."
+      }
+    }
+  },
+  render: () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Open menu</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem isDisabled>Unavailable action</DropdownMenuItem>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuItem isDisabled isDisabledFocusable>
+              Restricted action
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          <TooltipContent side="left">Access restricted</TooltipContent>
+        </Tooltip>
       </DropdownMenuContent>
     </DropdownMenu>
   )

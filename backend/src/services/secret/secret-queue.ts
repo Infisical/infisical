@@ -24,7 +24,7 @@ import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/li
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
+import { highCardinalityMeter, recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
@@ -401,7 +401,6 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -454,7 +453,6 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       kmsService
     });
 
@@ -703,7 +701,6 @@ export const secretQueueFactory = ({
         }
       },
       {
-        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
@@ -711,6 +708,14 @@ export const secretQueueFactory = ({
         backoff: {
           type: "exponential",
           delay: 3000
+        },
+        // A plain jobId dedupes only while the previous job is queued/delayed: BullMQ silently drops an
+        // add() that collides with an *active* job, so a secret change merged mid-webhook-call never fired.
+        // keepLastIfActive stores that add and replays it once the active job finishes instead of dropping it.
+        deduplication: {
+          id: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+          keepLastIfActive: true,
+          replace: true
         }
       }
     );
@@ -1332,6 +1337,8 @@ export const secretQueueFactory = ({
           },
           tx
         );
+        recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_ghost_user" });
+        logger.info(`Legacy root key used to create a project ghost user [projectId=${project.id}]`);
         const { iv, tag, ciphertext, encoding, algorithm } = crypto
           .encryption()
           .symmetric()

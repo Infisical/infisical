@@ -231,7 +231,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
               <span className="my-4 text-sm text-danger">{errors.groups.message}</span>
             )}
             {groups.length > 0 ? (
-              <Table className="table-fixed">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Group</TableHead>
@@ -248,7 +248,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
                           name={`groups.${pos}.groupSlug`}
                           render={({ field }) => (
                             <p className="truncate">
-                              <span className="text-sm font-medium text-mineshaft-100">
+                              <span className="text-sm font-medium text-foreground">
                                 {getGroupName(field.value)}
                               </span>
                             </p>

@@ -9,6 +9,7 @@ import {
   TApprovalRequests
 } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
@@ -95,6 +96,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -120,6 +122,7 @@ export const approvalPolicyServiceFactory = ({
   userGroupMembershipDAL,
   notificationService,
   permissionService,
+  licenseService,
   projectMembershipDAL,
   membershipDAL,
   pkiApplicationDAL,
@@ -149,6 +152,20 @@ export const approvalPolicyServiceFactory = ({
         return cached;
       }
     };
+  };
+
+  // A request attributes its requester to exactly one column: a user or a machine identity.
+  // Actor ids are unique across orgs but an actor can hold tokens for several, and a requester
+  // match skips the permission check, so the token's org has to match too.
+  const $isRequester = (
+    request: { organizationId: string; requesterId?: string | null; machineIdentityId?: string | null },
+    actor: OrgServiceActor
+  ) => {
+    if (request.organizationId !== actor.orgId) return false;
+
+    return actor.type === ActorType.IDENTITY
+      ? request.machineIdentityId === actor.id
+      : request.requesterId === actor.id;
   };
 
   const $decorateRequest = async <
@@ -471,14 +488,12 @@ export const approvalPolicyServiceFactory = ({
           recipients: emailRecipients,
           subjectLine: "Infisical PAM Access Policy Bypassed",
           substitutions: {
-            projectName: project?.name ?? "Unknown project",
             requesterFullName,
             requesterEmail,
             resourceName: inputs.resourceName,
             accountName: inputs.accountName,
             accessDuration: inputs.accessDuration,
-            bypassReason: bypassReason.trim(),
-            approvalUrl: `${cfg.SITE_URL}${approvalPath}`
+            bypassReason: bypassReason.trim()
           },
           template: SmtpTemplates.AccessPamRequestBypassed
         });
@@ -553,6 +568,17 @@ export const approvalPolicyServiceFactory = ({
       actor,
       ResourcePermissionApprovalPolicyActions.Create
     );
+
+    // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
+    if (policyType === ApprovalPolicyType.CertRequest) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.pkiApprovals) {
+        throw new BadRequestError({
+          message:
+            "Failed to create certificate approval policy due to plan restriction. Upgrade plan to use certificate approvals."
+        });
+      }
+    }
 
     // Bypass-related fields are PAM-only at the moment. The schema accepts them on every policy
     // type for forward-compat, but the service rejects non-PAM use so admins can't silently store
@@ -1022,7 +1048,7 @@ export const approvalPolicyServiceFactory = ({
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 
-    const isRequester = request.requesterId === actor.id;
+    const isRequester = $isRequester(request, actor);
 
     // Check if user is an eligible approver for any step
     const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
@@ -1403,7 +1429,7 @@ export const approvalPolicyServiceFactory = ({
       const userGroupIds = await ctx.getUserGroupIds();
 
       return requests.filter((request) => {
-        if (request.requesterId === actor.id) return true;
+        if ($isRequester(request, actor)) return true;
         return request.steps.some((step) =>
           step.approvers.some(
             (approver) =>
@@ -1457,7 +1483,7 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Request is not pending" });
     }
 
-    if (request.requesterId !== actor.id) {
+    if (!$isRequester(request, actor)) {
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
     }
 

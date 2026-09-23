@@ -144,7 +144,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       response: {
         200: z.object({
@@ -182,7 +182,8 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const result = await server.services.githubOrgSync.syncAllTeams({
-        orgPermission: req.permission
+        orgPermission: req.permission,
+        auditLogInfo: req.auditLogInfo
       });
 
       void server.services.telemetry

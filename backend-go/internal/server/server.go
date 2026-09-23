@@ -53,7 +53,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 	handler = middlewares.CORS(s.buildCORSConfig())(handler)
 	handler = middlewares.SecurityHeaders(handler)
 	handler = middlewares.Recoverer(s.logger)(handler)
-	handler = requestid.Middleware(handler)
+	handler = requestid.Middleware(requestid.OriginPrefix(s.config.InfisicalCloud, s.config.InternalRegion))(handler)
 
 	srv := &http.Server{
 		Addr:              addr,

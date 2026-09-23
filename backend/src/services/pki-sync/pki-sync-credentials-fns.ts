@@ -1,5 +1,10 @@
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+
+import { TPkiSyncRaw, TPkiSyncWithCredentials } from "./pki-sync-types";
 
 export type TPkiSyncCredentials = {
   exportPassword?: string;
@@ -26,7 +31,7 @@ export const encryptPkiSyncCredentials = async ({
   return cipherTextBlob;
 };
 
-export const decryptPkiSyncCredentials = async ({
+const decryptPkiSyncCredentials = async ({
   orgId,
   projectId,
   encryptedCredentials,
@@ -43,4 +48,53 @@ export const decryptPkiSyncCredentials = async ({
 
   const decrypted = decryptor({ cipherTextBlob: encryptedCredentials });
   return JSON.parse(decrypted.toString()) as TPkiSyncCredentials;
+};
+
+export const hydratePkiSyncCredentials = async ({
+  pkiSync,
+  appConnectionDAL,
+  projectDAL,
+  kmsService
+}: {
+  pkiSync: TPkiSyncRaw;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+}): Promise<TPkiSyncWithCredentials> => {
+  const {
+    connection: { id: connectionId, orgId, projectId: appConnectionProjectId }
+  } = pkiSync;
+
+  const appConnection = await appConnectionDAL.findById(connectionId);
+  if (!appConnection) {
+    throw new Error(`App connection not found: ${connectionId}`);
+  }
+
+  const project = appConnectionProjectId ? await projectDAL.findById(appConnectionProjectId) : null;
+
+  const credentials = await decryptAppConnectionCredentials({
+    orgId,
+    encryptedCredentials: appConnection.encryptedCredentials,
+    kmsService,
+    projectId: appConnectionProjectId
+  });
+
+  const syncCredentials = pkiSync.encryptedCredentials
+    ? await decryptPkiSyncCredentials({
+        orgId,
+        projectId: pkiSync.projectId,
+        encryptedCredentials: pkiSync.encryptedCredentials,
+        kmsService
+      })
+    : undefined;
+
+  return {
+    ...pkiSync,
+    connection: {
+      ...pkiSync.connection,
+      credentials,
+      projectType: project?.type
+    },
+    syncCredentials
+  } as TPkiSyncWithCredentials;
 };

@@ -20,7 +20,7 @@ The right pattern depends on your organization. Folder-level permissions are the
 
 <Steps>
   <Step title="Navigate to Accounts">
-    Go to **Privileged Access Management → Accounts**, click the arrow next to **Add Account**, and select **Add Folder**. Only [Product Admins](/documentation/platform/pam/concepts/access-control#product-membership) can create folders.
+    Go to **Privileged Access Management → Accounts**, select the arrow next to **Add Account**, and select **Add Folder**. Only [Product Admins](/documentation/platform/pam/concepts/access-control#product-membership) can create folders.
   </Step>
   <Step title="Configure the folder">
     | Field | Description |
@@ -42,13 +42,13 @@ Access to a folder is controlled through **[memberships](/documentation/platform
 
 <Steps>
   <Step title="Open the folder">
-    Click on the folder to open its detail page.
+    Select the folder to open its detail page.
   </Step>
   <Step title="Go to Permissions">
-    Click the **Permissions** tab.
+    Open the folder's actions menu and select **Permissions**.
   </Step>
   <Step title="Add a member">
-    Click **Assign Access** and configure:
+    Select **Assign Access** and configure:
     
     | Field | Description |
     |-------|-------------|
@@ -81,14 +81,14 @@ You can grant folder access to any of the three:
 - **Groups** — access follows group membership; when someone joins or leaves the group, their folder access updates automatically
 - **Machine identities** — for unattended workloads, such as an [AI agent](/documentation/platform/pam/ai-agents/overview) on a schedule. **Connector** is the usual role, and time-bound access works here too.
 
-Groups are managed at the organization level and can sync from identity providers like Okta or Azure AD.
+Groups are managed at the organization level and can sync from identity providers like Okta or Entra ID.
 
 ## Next steps
 
 Now that you have a folder, you'll want to add accounts to it. But before that, you might want to set up [templates](/documentation/platform/pam/templates/overview) to define what rules apply to those accounts.
 
 <CardGroup cols={2}>
-  <Card title="Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+  <Card title="Templates" icon="layers" href="/documentation/platform/pam/templates/overview">
     Define session rules before adding accounts.
   </Card>
   <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">

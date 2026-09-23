@@ -336,7 +336,9 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   secretSharing: true,
   showSnapshotsLegacy: true,
   secretDetectionIgnoreValues: true,
-  enforceEncryptedSecretManagerSecretMetadata: true
+  enforceEncryptedSecretManagerSecretMetadata: true,
+  secretBlindIndexEnabled: true,
+  isLegacyAdditionalPrivilegesEnabled: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({

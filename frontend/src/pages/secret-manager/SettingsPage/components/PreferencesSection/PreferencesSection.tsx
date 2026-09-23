@@ -14,7 +14,7 @@ import {
   FieldDescription,
   FieldGroup,
   FieldTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
@@ -92,7 +92,7 @@ export const PreferencesSection = () => {
               a={ProjectPermissionSub.Settings}
             >
               {(isAllowed) => (
-                <Switch
+                <Toggle
                   id="autoCapitalization"
                   variant="project"
                   checked={currentProject?.autoCapitalization ?? false}
@@ -115,7 +115,7 @@ export const PreferencesSection = () => {
               a={ProjectPermissionSub.Settings}
             >
               {(isAllowed) => (
-                <Switch
+                <Toggle
                   id="enforceEncryptedMetadata"
                   variant="project"
                   checked={currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false}
@@ -137,7 +137,7 @@ export const PreferencesSection = () => {
               a={ProjectPermissionSub.Settings}
             >
               {(isAllowed) => (
-                <Switch
+                <Toggle
                   id="secretSharing"
                   variant="project"
                   checked={currentProject?.secretSharing ?? true}

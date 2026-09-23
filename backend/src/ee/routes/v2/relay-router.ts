@@ -3,7 +3,9 @@ import z from "zod";
 import { RelaysSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
+import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -23,28 +25,6 @@ const SanitizedRelaySchema = RelaysSchema.pick({
 }).extend({
   canRevoke: z.boolean()
 });
-
-const AwsAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
-  stsEndpoint: z.string(),
-  allowedPrincipalArns: z.string(),
-  allowedAccountIds: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
-
-const TokenAuthMethodConfigSchema = z.object({});
-
-const IdentityAuthMethodConfigSchema = z.object({
-  identityId: z.string(),
-  identityName: z.string().nullable()
-});
-
-const AuthMethodViewSchema = z.discriminatedUnion("method", [
-  z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Identity), config: IdentityAuthMethodConfigSchema })
-]);
 
 const RelayWithAuthMethodSchema = SanitizedRelaySchema.extend({
   authMethod: AuthMethodViewSchema
@@ -126,6 +106,20 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_CREATE,
+          metadata: resourceAuthMethodAuditMetadata({
+            resourceType: "relay",
+            resourceId: relay.id,
+            resourceName: relay.name,
+            view
+          })
+        }
+      });
+
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(relay, "relay");
 
       return { ...relay, canRevoke, authMethod: view };
@@ -143,7 +137,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: RelayWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const relay = await server.services.relay.getOrgRelay({
         relayId: req.params.relayId,
@@ -179,7 +173,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.relay.getConnectedGateways({
         relayId: req.params.relayId,
@@ -252,12 +246,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: {
+            metadata: resourceAuthMethodAuditMetadata({
               resourceType: "relay",
               resourceId: req.params.relayId,
-              method: view.method as "aws" | "token",
-              methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.relayId
-            }
+              resourceName: relay.name,
+              view
+            })
           }
         });
 

@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { format } from "date-fns";
 import {
   AlertTriangleIcon,
@@ -17,6 +16,7 @@ import {
   HoverCardTrigger,
   TBadgeProps
 } from "@app/components/v3";
+import { getPkiSyncFailureMessage } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
@@ -54,19 +54,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
       break;
   }
 
-  const failureMessage = useMemo(() => {
-    if (status === PkiSyncStatus.Failed) {
-      if (lastSyncMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-        } catch {
-          return lastSyncMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [status, lastSyncMessage]);
+  const failureMessage = getPkiSyncFailureMessage(status, lastSyncMessage);
 
   const badge = (
     <Badge variant={variant}>
@@ -95,7 +83,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
                 <CalendarCheckIcon className="size-3" />
                 <div className="text-xs">Last Synced</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
+              <div className="rounded-sm bg-surface-active p-2 text-xs">
                 {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
               </div>
             </div>
@@ -106,7 +94,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
                 <XIcon className="size-3" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
                 {failureMessage}
               </div>
             </div>

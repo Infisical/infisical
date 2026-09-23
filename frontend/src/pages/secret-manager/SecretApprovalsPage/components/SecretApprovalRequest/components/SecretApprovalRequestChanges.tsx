@@ -9,7 +9,6 @@ import {
   GitPullRequestClosedIcon,
   GitPullRequestIcon,
   HourglassIcon,
-  InfoIcon,
   KeyRoundIcon,
   MessageSquareIcon,
   ShieldAlertIcon,
@@ -72,11 +71,16 @@ import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/st
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
 
-export const generateCommitText = (commits: { op: CommitType }[] = [], isReplicated = false) => {
+export const generateCommitText = (
+  commits: { op: CommitType }[] = [],
+  isReplicated = false,
+  showChangeRequestIcon = false
+) => {
   if (isReplicated) {
     return (
       <span className="flex items-center">
-        <Badge variant="info">
+        <Badge variant="info" iconPosition={showChangeRequestIcon ? "left" : undefined}>
+          {showChangeRequestIcon && <GitPullRequestIcon />}
           {commits.length} Secret{commits.length > 1 ? "s" : ""} Pending Import
         </Badge>
       </span>
@@ -98,9 +102,14 @@ export const generateCommitText = (commits: { op: CommitType }[] = [], isReplica
 
   return (
     <span className="flex items-center gap-1.5">
-      {changeBadges.map(({ label, count, variant }) => (
-        <Badge key={label} variant={variant}>
-          {count} {label}
+      {changeBadges.map(({ label, count, variant }, index) => (
+        <Badge
+          key={label}
+          variant={variant}
+          iconPosition={showChangeRequestIcon && index === 0 ? "left" : undefined}
+        >
+          {showChangeRequestIcon && index === 0 && <GitPullRequestIcon />}
+          {label} {count}
         </Badge>
       ))}
     </span>
@@ -339,17 +348,12 @@ export const SecretApprovalRequestChanges = ({
       };
     }
 
-    return {
-      variant: "info" as const,
-      icon: <InfoIcon />,
-      title: isReplicated
-        ? `A secret import in this environment has pending changes from its source at ${importSource}. Approving will add them to that import.`
-        : "These secret changes are pending approval. Approving will apply them to the target environment and path."
-    };
+    return null;
   };
   const changesStatusAlert = getChangesStatusAlert();
 
   const committerUser = secretApprovalRequestDetails?.committerUser;
+  const committerIdentity = secretApprovalRequestDetails?.committerIdentity;
   const environmentName = secretApprovalRequestDetails
     ? (currentProject?.environments.find(
         (env) => env.slug === secretApprovalRequestDetails.environment
@@ -510,7 +514,7 @@ export const SecretApprovalRequestChanges = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
+      <SheetContent className="@container flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2 pr-8">
             Change Request
@@ -532,6 +536,8 @@ export const SecretApprovalRequestChanges = ({
                   <>
                     {committerUser.firstName} ({committerUser.email})
                   </>
+                ) : committerIdentity ? (
+                  <>{committerIdentity.name} (Machine Identity)</>
                 ) : (
                   "Deleted User"
                 )}
@@ -556,8 +562,8 @@ export const SecretApprovalRequestChanges = ({
             </Empty>
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="flex w-96 shrink-0 flex-col gap-6 overflow-hidden border-r border-border p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @4xl:flex-row @4xl:overflow-hidden">
+            <div className="flex w-full shrink-0 flex-col gap-6 border-b border-border p-4 @4xl:w-96 @4xl:overflow-hidden @4xl:border-r @4xl:border-b-0">
               <DetailGroup className="shrink-0">
                 <Detail>
                   <DetailLabel>Status</DetailLabel>
@@ -689,11 +695,13 @@ export const SecretApprovalRequestChanges = ({
               {reviewControls}
             </div>
 
-            <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-              <Alert variant={changesStatusAlert.variant}>
-                {changesStatusAlert.icon}
-                <AlertTitle>{changesStatusAlert.title}</AlertTitle>
-              </Alert>
+            <div className="flex thin-scrollbar flex-none flex-col gap-4 overflow-visible p-4 @4xl:min-h-0 @4xl:flex-1 @4xl:overflow-y-auto">
+              {changesStatusAlert && (
+                <Alert variant={changesStatusAlert.variant}>
+                  {changesStatusAlert.icon}
+                  <AlertTitle>{changesStatusAlert.title}</AlertTitle>
+                </Alert>
+              )}
               <div>
                 <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
                   <KeyRoundIcon className="size-4 text-accent" />

@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { PageLoader } from "@app/components/v3";
+import { PageHeader, PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -59,12 +58,12 @@ export const DashboardPage = () => {
     return <PageLoader />;
   }
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-page">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
       </Helmet>
-      <div className="mx-auto flex flex-col text-white">
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto flex flex-col text-foreground-inverse">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
@@ -81,7 +80,7 @@ export const DashboardPage = () => {
               ) : (
                 <div className="flex flex-col gap-6">
                   <KpiCards stats={stats} onNavigate={navigateToInventory} />
-                  <div className="flex flex-wrap gap-4">
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                     <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
                     <ExpirationTimeline
                       buckets={stats.expirationBuckets}

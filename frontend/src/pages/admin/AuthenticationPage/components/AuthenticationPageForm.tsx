@@ -16,7 +16,7 @@ import {
   FieldError,
   FieldGroup,
   FieldTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useUpdateServerConfig } from "@app/hooks/api";
@@ -152,7 +152,7 @@ export const AuthenticationPageForm = () => {
                       <FieldDescription>Allow users to authenticate with {label}.</FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id={id}
                       aria-label={label}
                       variant="neutral"

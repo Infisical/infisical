@@ -29,7 +29,7 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
+import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -42,6 +42,11 @@ import {
   getSanOtherNameOid,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
+import {
+  appendCustomExtensions,
+  assertAwsPcaCustomExtensionLimit,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 import { buildIdempotencyToken } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -176,7 +181,7 @@ type TAwsPcaCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -574,6 +579,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     state,
     locality,
     basicConstraints,
+    customExtensions,
     isCancelled
   }: {
     caId: string;
@@ -598,6 +604,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     state?: string;
     locality?: string;
     basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
+    customExtensions?: TResolvedCustomExtension[];
     isCancelled?: () => Promise<boolean>;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -676,6 +683,8 @@ export const AwsPcaCertificateAuthorityFns = ({
         );
       }
 
+      appendCustomExtensions(extensions, customExtensions);
+
       // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
       // special characters in the attributes cannot inject additional RDNs.
       const subjectDn =
@@ -752,6 +761,18 @@ export const AwsPcaCertificateAuthorityFns = ({
         SubjectAlternativeNames: altNames.map(sanToGeneralName)
       };
     }
+    if (customExtensions?.length) {
+      assertAwsPcaCustomExtensionLimit(customExtensions.length);
+
+      apiPassthrough.Extensions = {
+        ...apiPassthrough.Extensions,
+        CustomExtensions: customExtensions.map((extension) => ({
+          ObjectIdentifier: extension.oid,
+          Value: extension.value,
+          Critical: extension.critical
+        }))
+      };
+    }
 
     const issueResult = await pcaClient.send(
       new IssueCertificateCommand({
@@ -802,7 +823,7 @@ export const AwsPcaCertificateAuthorityFns = ({
 
     let certificateId: string;
 
-    const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+    const parsedFields = extractCertificateFields(Buffer.from(certificatePem), customExtensions);
 
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
@@ -830,7 +851,7 @@ export const AwsPcaCertificateAuthorityFns = ({
       certificateId = cert.id;
 
       if (isRenewal && originalCertificateId) {
-        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+        await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
       }
 
       await certificateBodyDAL.create(

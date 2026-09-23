@@ -1,0 +1,58 @@
+---
+title: "Access bundles"
+description: "Lists of services that AI agents can access during a session."
+---
+
+An access bundle defines the list of [services](/documentation/platform/agent-vault/services) (external APIs) that an AI agent can access during a [session](/documentation/platform/agent-vault/sessions).
+
+You can reuse access bundles across as many sessions as you like. This makes them useful for scoping what services an agent can access depending on its task. For example, you might have:
+
+- A **code-review** bundle that grants access to GitHub and Slack
+- A **customer-feedback** bundle that grants access to Discord, Resend, and Slack
+- A **marketing** bundle that grants access to Twilio and Google Docs
+
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
+</Frame>
+
+## Create an access bundle
+
+To create a new access bundle:
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles** and select **Create Access Bundle**.
+  </Step>
+  <Step>
+    Give the bundle a name that says what job it's for, like **code-review** or **marketing**.
+  </Step>
+  <Step>
+    Select **Create**. The access bundle will appear in the list.
+  </Step>
+</Steps>
+
+Now you can [add services](/documentation/platform/agent-vault/services#add-a-service) to the access bundle so agents using it can make authenticated requests.
+
+## Manage access to access bundles
+
+Since access bundles provide authentication to external APIs, members of your organization can't create sessions with them by default. They need explicit access for each bundle.
+
+### Grant access
+
+To allow a user, group, or machine identity to create sessions for a given access bundle:
+
+<Steps>
+  <Step>
+    Make sure the user, group, or machine identity is a member of Agent Vault. If not, [add them under Access Control](/documentation/platform/agent-vault/access-control#adding-members).
+  </Step>
+  <Step>
+    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**. Then, select **Grant Access**.
+  </Step>
+  <Step>
+    Select the user, group, or machine identity you want to grant access to. Then, select **Grant Access**.
+  </Step>
+</Steps>
+
+### Revoke access
+
+To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, open their actions menu, and select **Revoke Access**. Any of their running agents lose the bundle's credentials within one poll interval of the proxy.

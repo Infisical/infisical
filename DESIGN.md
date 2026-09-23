@@ -127,7 +127,7 @@ font or substitute one role for another:
 | Role                    | Class                                                                     | Notes                                                              |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
-| Page description        | `text-label`                                                              | Sits under the title, `mt-1.5`                                     |
+| Page description        | `text-label`                                                              | Sits under the title, separated by the header's `gap-2`            |
 | Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
@@ -195,7 +195,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
 | [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select with chips, rich rows, and viewport-aware positioning.                   |
 | [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Sunsetting compatibility path for creatable, grouped, or advanced custom-rendering behavior.                |
-| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
+| [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                               | Date-range filter with presets — for filter bars.                                                           |
 | [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                           | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
@@ -234,20 +234,31 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 
 #### Feedback & loading
 
-| Component                                                                    | Reach for this when…                                             |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [`Alert`](frontend/src/components/v3/generic/Alert/Alert.tsx)                | Inline message banner inside a page or Card.                     |
-| [`Toast`](frontend/src/components/v3/generic/Toast/Toast.tsx)                | Transient post-action feedback. Replaces `alert()`.              |
-| [`Empty`](frontend/src/components/v3/generic/Empty/Empty.tsx)                | Zero-state placeholder — pair with Table, list, or empty filter. |
-| [`Skeleton`](frontend/src/components/v3/generic/Skeleton/Skeleton.tsx)       | Shimmer placeholder while data is loading.                       |
-| [`PageLoader`](frontend/src/components/v3/generic/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading.                   |
+| Component                                                                     | Reach for this when…                                             |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`Alert`](frontend/src/components/v3/generic/Alert/Alert.tsx)                 | Inline message banner inside a page or Card.                     |
+| [`Toast`](frontend/src/components/v3/generic/Toast/Toast.tsx)                 | Transient post-action feedback. Replaces `alert()`.              |
+| [`Empty`](frontend/src/components/v3/generic/Empty/Empty.tsx)                 | Zero-state placeholder — pair with Table, list, or empty filter. |
+| [`Skeleton`](frontend/src/components/v3/generic/Skeleton/Skeleton.tsx)        | Shimmer placeholder while data is loading.                       |
+| [`Spinner`](frontend/src/components/v3/generic/Spinner/Spinner.tsx)           | Neutral circle for compact inline refreshes.                     |
+| [`Loader`](frontend/src/components/v3/generic/Loader/Loader.tsx)              | Branded loading animation — pending controls and page waits.     |
+| [`PageLoader`](frontend/src/components/v3/platform/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading.                   |
+
+**Reduced motion.** When the operating system requests reduced motion, `Loader`
+and `PageLoader` hold the animation on its first frame instead of looping. The
+mark stays fully visible either way, because these Lotties animate only a
+trim-path offset over an always-drawn mark. `role="status"` is present in both
+states, so the wait is still announced.
 
 #### Atoms & domain
 
-| Component                                                                                                         | Reach for this when…                                                                   |
-| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                           |
-| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope.  |
+| Component                                                                                                         | Reach for this when…                                                                  |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
+| [`AccessRestrictedBanner`](frontend/src/components/v3/platform/AccessRestrictedBanner.tsx)                       | Dedicated full-surface state for content blocked by the user's current permissions.  |
+| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
+| [`SecretManagerResources`](frontend/src/components/v3/platform/SecretManagerResources/SecretManagerResources.ts) | Canonical Secret Manager resource catalog (icon, color classes, name, slug, permission subject). |
+| [`ProjectPermissionSubjects`](frontend/src/components/v3/platform/ProjectPermissionSubjects/ProjectPermissionSubjects.ts) | Icon and tile color for every project policy subject (`ProjectPermissionSub`). |
 | [`PageHeader`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx)                                     | Canonical full-width page heading with scope semantics, description, and page actions. |
 | [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                      |
 
@@ -267,16 +278,17 @@ host component; don't override unless necessary.
 ## 6. Depth & Elevation
 
 Depth is conveyed by layered surface tones and borders. Shadows are reserved
-for elements that float (Popover, DropdownMenu, Sheet).
+for elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 
-| Layer           | Surface                                  | Border                        |
-| --------------- | ---------------------------------------- | ----------------------------- |
-| Page            | `bg-page`                                | —                             |
-| Card            | `bg-card`                                | `border-border`               |
-| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg` |
-| Row hover       | `bg-container-hover`                     | —                             |
-| Focus           | —                                        | 3px ring, `--color-ring`      |
-| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                             |
+| Layer           | Surface                                  | Border                              |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| Page            | `bg-background`                          | —                                   |
+| Card            | `bg-card`                                | `border-border`                     |
+| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg`       |
+| Floating bar    | `bg-popover`                             | `border-border` + `shadow-floating` |
+| Row hover       | `bg-container-hover`                     | —                                   |
+| Focus           | —                                        | 3px ring, `--color-ring`            |
+| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                                   |
 
 Never add a box-shadow to a Card, Table row, standalone Badge, or `ButtonBadge`;
 it breaks the border-defined system. An overlapping `ButtonBadge` uses its
@@ -298,7 +310,7 @@ legible across the control edge.
 - **DON'T** use v2 components when a v3 equivalent exists unless the existing scope is v2.
 - **DON'T** add box-shadows as a depth cue — borders and surface tones do
   that work. The exception is elements that genuinely float (Popover,
-  DropdownMenu, Sheet), which already include it.
+  DropdownMenu, Sheet, SelectedActionBar), which already include it.
 - **DON'T** invent new colors. If it isn't in `index.css` `@theme`, it
   doesn't belong.
 - **DON'T** use `project` yellow, `org` blue, or `sub-org` green as generic
@@ -400,6 +412,13 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > Use `AlertDialog`. Title: "Delete `<resource-name>`". Description: one
 > sentence naming the consequence, ending with "This cannot be undone."
 > Confirm button is variant `danger`. Cancel button is variant `outline`.
+
+**Unsaved changes:**
+
+> Use `DiscardChangesAlertDialog` with `useDiscardChangesGuard`. Title:
+> "Discard Changes?". Description names what will be lost. Confirm is
+> Discard (`danger`); cancel is Keep Editing. Overlay editors intercept
+> close with `requestDiscard`. Do not use `window.confirm`.
 
 **A documentation link in a section:**
 

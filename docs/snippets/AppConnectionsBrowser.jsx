@@ -268,6 +268,13 @@ export const AppConnectionsBrowser = () => {
       category: "Networking & DNS",
     },
     {
+      name: "PowerDNS",
+      slug: "powerdns",
+      path: "/integrations/app-connections/powerdns",
+      description: "Learn how to connect Infisical to PowerDNS for ACME DNS validation.",
+      category: "Networking & DNS",
+    },
+    {
       name: "Windmill",
       slug: "windmill",
       path: "/integrations/app-connections/windmill",
@@ -509,6 +516,14 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/convex",
       description:
         "Learn how to connect Convex to manage and rotate access keys with Infisical.",
+      category: "SaaS",
+    },
+    {
+      name: "Daytona",
+      slug: "daytona",
+      path: "/integrations/app-connections/daytona",
+      description:
+        "Learn how to connect Daytona to push secrets from Infisical into a Daytona organization.",
       category: "SaaS",
     },
     {

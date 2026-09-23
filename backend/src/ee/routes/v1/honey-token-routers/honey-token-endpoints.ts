@@ -48,7 +48,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       body: upsertBodySchema,
       response: {
@@ -77,7 +77,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       response: {
         200: routeTestConnectionResponseSchema
@@ -98,7 +98,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       response: {
         200: z.object({

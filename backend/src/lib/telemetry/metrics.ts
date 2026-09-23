@@ -10,6 +10,7 @@ import type { Knex } from "knex";
 
 import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { getAgentPoolStats } from "@app/lib/validator/agent-pool";
 
 import { getConfig } from "../config/env";
 
@@ -417,43 +418,104 @@ export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: bo
   }
 };
 
+// -- safeRequest HTTPS agent pool (InfisicalCore meter) ----------------------------------------
+// The pool is bounded, so a 201st distinct TLS signature costs the least recently used entry its
+// connection. Non-zero for a sustained window means the cap is too low and should be raised.
+export const safeRequestAgentEvictionCounter = infisicalCoreMeter.createCounter(
+  "infisical.safe_request.agent_eviction.count",
+  {
+    description:
+      "Agents evicted from the safeRequest connection pool because it was at capacity. Non-zero for a sustained window means raise AGENT_CACHE_MAX.",
+    unit: "{eviction}"
+  }
+);
+
+export const recordSafeRequestAgentEvictionMetric = () => {
+  if (!isTelemetryEnabled()) return;
+  safeRequestAgentEvictionCounter.add(1);
+};
+
 export const coreHttpErrorCounter = infisicalCoreMeter.createCounter("infisical.core.http.error.count", {
   description: "API errors with bounded error classification. Labels limited to InfisicalCore View allowlist.",
   unit: "{error}"
 });
+
+// Denominator for coreHttpErrorCounter so error rate per route survives OTEL_DROP_HIGH_CARDINALITY_METERS.
+// normalizeHttpMethod mirrors @opentelemetry/instrumentation-http KNOWN_METHODS (_OTHER for the rest) for joinable labels.
+const KNOWN_HTTP_METHODS = new Set([
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "DELETE",
+  "CONNECT",
+  "OPTIONS",
+  "TRACE",
+  "PATCH",
+  "QUERY"
+]);
+
+export const normalizeHttpMethod = (method?: string): string => {
+  if (!method) return "GET";
+  const upper = method.toUpperCase();
+  return KNOWN_HTTP_METHODS.has(upper) ? upper : "_OTHER";
+};
+
+export const coreHttpRequestCounter = infisicalCoreMeter.createCounter("infisical.core.http.request.count", {
+  description: "API requests with bounded labels. Labels limited to InfisicalCore View allowlist.",
+  unit: "{request}"
+});
+
+// -- Signup abuse (InfisicalCore meter) -------------------------------------------------------------
+
+export enum EmailDispatchPurpose {
+  SIGNUP = "signup",
+  ACCOUNT_RECOVERY = "account-recovery"
+}
+
+export enum EmailDispatchMailboxProvider {
+  GOOGLE = "google",
+  OTHER = "other"
+}
+
+export enum EmailDispatchAddressForm {
+  CANONICAL = "canonical",
+  ALIASED = "aliased"
+}
+
+export enum EmailDispatchOutcome {
+  SENT = "sent",
+  EXISTING_ACCOUNT = "existing-account",
+  NO_RECIPIENT = "no-recipient",
+  MAILBOX_CAPPED = "mailbox-capped",
+  CAPTCHA_REJECTED = "captcha-rejected"
+}
+
+export enum EmailDispatchDimension {
+  SOURCE = "source",
+  MAILBOX = "mailbox"
+}
+
+export const emailDispatchRequestCounter = infisicalCoreMeter.createCounter("infisical.email_dispatch.request.count", {
+  description:
+    "Requests to the unauthenticated endpoints that mail a caller-chosen address, by purpose, mailbox provider, address form, and outcome.",
+  unit: "{request}"
+});
+
+export const emailDispatchDistinctCounter = infisicalCoreMeter.createCounter(
+  "infisical.email_dispatch.distinct.count",
+  {
+    description:
+      "First sighting of a source host or target mailbox within the current abuse window. Compare against the request count to separate a broad campaign from a burst against a few targets.",
+    unit: "{entity}"
+  }
+);
 
 // Rate limit metric. Wired in error-handler.ts on RateLimitError.
 export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisical.rate_limit.exceeded.count", {
   description: "HTTP 429 responses (rate limit exceeded).",
   unit: "{request}"
 });
-
-// -- License Server v2 dual-read (InfisicalCore meter) ----------------------------------------------
-export const licenseDualReadDiffCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.diff.count", {
-  description:
-    "v1 vs License Server v2 entitlement comparison results, by feature and kind (mismatch/v2_missing/v1_absent/indeterminate). Match results are not counted.",
-  unit: "{result}"
-});
-
-export const licenseDualReadErrorCounter = infisicalCoreMeter.createCounter("infisical.license.dual_read.error.count", {
-  description: "Failures resolving the v2 entitlement set during dual-read comparison, by error type.",
-  unit: "{error}"
-});
-
-export const recordLicenseDualReadDiff = (params: { feature: string; kind: string }) => {
-  if (!isTelemetryEnabled()) return;
-  licenseDualReadDiffCounter.add(1, {
-    "license.feature": params.feature,
-    "license.dual_read.kind": params.kind
-  });
-};
-
-export const recordLicenseDualReadError = (params: { error?: unknown }) => {
-  if (!isTelemetryEnabled()) return;
-  const attributes: Record<string, string> = {};
-  if (params.error !== undefined) attributes["error.type"] = classifyError(params.error);
-  licenseDualReadErrorCounter.add(1, attributes);
-};
 
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
@@ -662,7 +724,7 @@ export enum AlertDispatchOutcome {
   AlertDisabled = "alert_disabled",
   // No provider registered for the alert's resource type (misconfiguration).
   NoProvider = "no_provider",
-  // Nothing matched the alert condition in this run.
+  // Nothing to alert on: nothing matched the condition, or the targets an event named are gone.
   NoDueTargets = "no_due_targets",
   // The alert has no enabled channels, so the run is skipped before scanning for targets.
   NoChannels = "no_channels",
@@ -671,7 +733,9 @@ export enum AlertDispatchOutcome {
   // is kept out of delivery_failed and must not alarm.
   NoRecipients = "no_recipients",
   // Targets matched, but every one had already been alerted inside the dedup window.
-  AllDeduped = "all_deduped"
+  AllDeduped = "all_deduped",
+  // Event path only: no alert configured for the event. Normal in steady state.
+  NoMatchingAlert = "no_matching_alert"
 }
 
 export const alertDispatchOutcomeCounter = infisicalCoreMeter.createCounter("infisical.alert.dispatch.outcome.count", {
@@ -687,6 +751,37 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
     outcome: params.outcome
   });
 };
+
+// -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
+// Outbox health, not what consumers do with events. The main canary is the oldest-pending-age gauge
+// in event-outbox-queue.ts, fed by the relay tick.
+
+export const eventOutboxLagHistogram = infisicalCoreMeter.createHistogram("infisical.event_outbox.lag", {
+  description:
+    "Seconds from an event occurring to the outbox reaching a terminal result for it. Tracks the relay interval plus delivery time; a p99 far above the interval means delivery, not discovery, is the bottleneck.",
+  unit: "s"
+});
+
+export const recordEventOutboxLagMetric = (params: { consumer: string; status: string; seconds: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxLagHistogram.record(params.seconds, {
+      "event_outbox.consumer": params.consumer,
+      "event_outbox.status": params.status
+    });
+  });
+
+export const eventOutboxExhaustedCounter = infisicalCoreMeter.createCounter("infisical.event_outbox.exhausted.count", {
+  description:
+    "Outbox events abandoned after exhausting their attempts. Every one of these is a notification the customer configured and did not receive, so alarm on any sustained rate.",
+  unit: "{event}"
+});
+
+export const recordEventOutboxExhaustedMetric = (params: { consumer: string; count: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxExhaustedCounter.add(params.count, { "event_outbox.consumer": params.consumer });
+  });
 
 export enum ProductAnalyticsDropReason {
   Retention = "retention",
@@ -789,5 +884,48 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     result.observe(pool.numUsed?.() ?? 0, { "db.pool.state": "used" });
     result.observe(pool.numFree?.() ?? 0, { "db.pool.state": "free" });
     result.observe(pool.numPendingAcquires?.() ?? 0, { "db.pool.state": "pending" });
+  });
+
+  // safeRequest agent pool: an in-memory Map size, so it's cheap to observe on every export.
+  // Read alongside infisical.safe_request.agent_eviction.count — size pinned at max with a
+  // non-zero eviction rate is the signal that the cap is too low.
+  const agentPoolGauge = meter.createObservableGauge("infisical.safe_request.agent_pool.size", {
+    description: "Agents currently held in the safeRequest connection pool.",
+    unit: "{agent}"
+  });
+
+  agentPoolGauge.addCallback((result) => {
+    if (!isTelemetryEnabled()) return;
+    const { size, max } = getAgentPoolStats();
+    result.observe(size, { "pool.max": String(max) });
+  });
+};
+
+// -- Legacy root-key usage (InfisicalCore meter) -----------------------------------------------------
+// The pre-KMS tier pins the instance root encryption key, so it can never be rotated while anything
+// still uses it. This counter is the evidence for when that tier can be deleted.
+export const legacyRootKeyUsageCounter = infisicalCoreMeter.createCounter("infisical.legacy_root_key.usage", {
+  description:
+    "Reads and writes that still use the instance root encryption key directly instead of the KMS envelope, by surface."
+});
+
+export type LegacyRootKeySurface =
+  | "project_bot"
+  | "user_private_key"
+  | "blind_index"
+  | "external_migration"
+  | "org_bot"
+  | "project_ghost_user";
+
+export const recordLegacyRootKeyUsageMetric = (params: {
+  operation: "encrypt" | "decrypt";
+  surface: LegacyRootKeySurface;
+}) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    legacyRootKeyUsageCounter.add(1, {
+      "legacy_key.operation": params.operation,
+      "legacy_key.surface": params.surface
+    });
   });
 };

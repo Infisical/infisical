@@ -4,6 +4,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
@@ -12,6 +13,7 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
@@ -80,7 +82,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.create(
         policyType,
@@ -137,7 +139,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policies, projectId } = await server.services.approvalPolicy.list(
         policyType,
@@ -181,7 +183,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 
@@ -222,7 +224,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.updateById(
         req.params.policyId,
@@ -279,7 +281,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { policyId, projectId } = await server.services.approvalPolicy.deleteById(
         req.params.policyId,
@@ -336,7 +338,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { requests, projectId } = await server.services.approvalPolicy.listRequests(
         policyType,
@@ -389,7 +391,7 @@ export const registerApprovalPolicyEndpoints = ({
         let requesterEmail: string;
         let machineIdentityId: string | undefined;
 
-        if (req.auth.authMode === AuthMode.JWT) {
+        if (isUserSessionAuth(req.auth)) {
           requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
           requesterEmail = req.auth.user.email ?? "";
         } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
@@ -418,9 +420,13 @@ export const registerApprovalPolicyEndpoints = ({
           event: {
             type: EventType.APPROVAL_REQUEST_CREATE,
             metadata: {
-              policyType,
+              policyType: request.type,
+              approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
               justification: req.body.justification || undefined,
-              requestDuration: req.body.requestDuration || "infinite"
+              requestDuration: req.body.requestDuration || "infinite",
+              ...getApprovalRequestSubjectMetadata(request)
             }
           }
         });
@@ -461,7 +467,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
@@ -472,9 +478,12 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_GET,
           metadata: {
-            policyType,
-            requestId: request.id,
-            status: request.status
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            status: request.status,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -538,9 +547,12 @@ export const registerApprovalPolicyEndpoints = ({
           event: {
             type: EventType.APPROVAL_REQUEST_APPROVE,
             metadata: {
-              policyType,
-              requestId: req.params.requestId,
-              comment: req.body.comment
+              policyType: request.type,
+              approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
+              comment: req.body.comment,
+              ...getApprovalRequestSubjectMetadata(request)
             }
           }
         });
@@ -599,9 +611,12 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_REJECT,
           metadata: {
-            policyType,
-            requestId: req.params.requestId,
-            comment: req.body.comment
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            comment: req.body.comment,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -641,7 +656,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.cancelRequest(req.params.requestId, req.permission);
 
@@ -652,8 +667,11 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_CANCEL,
           metadata: {
-            policyType,
-            requestId: req.params.requestId
+            policyType: request.type,
+            approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -682,7 +700,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grants, projectId } = await server.services.approvalPolicy.listGrants(
         policyType,
@@ -726,7 +744,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
 
@@ -808,7 +826,7 @@ export const registerApprovalPolicyEndpoints = ({
         200: checkPolicyMatchResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.approvalPolicy.checkPolicyMatch(policyType, req.body, req.permission);
 

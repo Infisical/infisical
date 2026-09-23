@@ -1,5 +1,6 @@
 ---
 title: "Backend development guide"
+description: "Step-by-step guide to adding a new feature to the Infisical backend."
 ---
 
 Suppose you're interested in implementing a new feature in Infisical's backend, let's call it "feature-x." Here are the general steps you should follow.
@@ -10,7 +11,7 @@ If your feature involves a change in the database, you need to first address thi
 1. If you're adding a new table, update the `TableName` enum in `/src/db/schemas/models.ts` to include the new table name.
 2. Create a new migration file by going to the `/backend` folder and running `npm run migration:new` and give it a relevant name, such as `feature-x`.
 3. Navigate to `/src/db/migrations/<timestamp>_<feature-x>.ts`.
-4. Modify both the `up` and `down` functions to create or alter Postgres fields on migration up and to revert these changes on migration down, ensuring idempotency as outlined [here](https://github.com/graphile/migrate/blob/main/docs/idempotent-examples.md).
+4. Modify both the `up` and `down` functions to create or alter PostgreSQL fields on migration up and to revert these changes on migration down, ensuring idempotency as outlined [here](https://github.com/graphile/migrate/blob/main/docs/idempotent-examples.md).
 
 ### Generating TS schemas
 

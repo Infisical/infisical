@@ -10,7 +10,6 @@ import {
   validateOCIConnectionCredentials
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
@@ -120,6 +119,7 @@ import {
   validateDatabricksConnectionCredentials
 } from "./databricks/databricks-connection-fns";
 import { DatadogConnectionMethod, getDatadogConnectionListItem, validateDatadogConnectionCredentials } from "./datadog";
+import { DaytonaConnectionMethod, getDaytonaConnectionListItem, validateDaytonaConnectionCredentials } from "./daytona";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
 import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
@@ -239,6 +239,11 @@ import {
 import { getOpenAIConnectionListItem, OpenAIConnectionMethod, validateOpenAIConnectionCredentials } from "./openai";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
+import {
+  getPowerDnsConnectionListItem,
+  PowerDnsConnectionMethod,
+  validatePowerDnsConnectionCredentials
+} from "./powerdns";
 import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
@@ -319,6 +324,7 @@ const SECRET_SCANNING_APP_CONNECTION_MAP = Object.fromEntries(
 // scott: ideally this would be derived from a utilized map like the above
 const PKI_APP_CONNECTIONS = [
   AppConnection.AWS,
+  AppConnection.GCP,
   AppConnection.Cloudflare,
   AppConnection.AzureADCS,
   AppConnection.ADCS,
@@ -326,6 +332,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
   AppConnection.AzureDNS,
+  AppConnection.PowerDns,
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
@@ -335,6 +342,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.GoDaddy,
   AppConnection.SSH,
   AppConnection.WinRM,
+  AppConnection.LDAP,
   AppConnection.NutanixPrismCentral,
   AppConnection.MicrosoftIntune
 ];
@@ -423,7 +431,9 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
     getNutanixPrismCentralConnectionListItem(),
-    getSpaceliftConnectionListItem()
+    getPowerDnsConnectionListItem(),
+    getSpaceliftConnectionListItem(),
+    getDaytonaConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -440,6 +450,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.KMS:
           return false;
         case ProjectType.PAM:
+          return false;
+        case ProjectType.AgentVault:
           return false;
         default:
           return true;
@@ -568,7 +580,6 @@ export const decryptAppConnectionConfiguration = async ({
 
 export const validateAppConnectionCredentials = async (
   appConnection: TAppConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   deps: {
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
@@ -581,8 +592,8 @@ export const validateAppConnectionCredentials = async (
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
     [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw, gw2) =>
-      validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, gw2, {
+    [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw) =>
+      validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, {
         gitHubAppDAL: deps.gitHubAppDAL,
         kmsService: deps.kmsService
       })) as TAppConnectionCredentialsValidator,
@@ -676,10 +687,12 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NutanixPrismCentral]:
       validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
-  return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
+  return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
 };
 
 export const getAppConnectionMethodName = (method: TAppConnection["method"]) => {
@@ -785,6 +798,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case NutanixPrismCentralConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
+    case DaytonaConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -946,7 +961,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
   [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
-  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported
+  [AppConnection.PowerDns]: platformManagedCredentialsNotSupported,
+  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
+  [AppConnection.Daytona]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

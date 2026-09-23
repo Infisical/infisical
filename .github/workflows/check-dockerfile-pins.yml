@@ -1,0 +1,44 @@
+name: "Check Dockerfile pins"
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+        paths:
+            - "**/Dockerfile*"
+            - "build-versions.env"
+
+jobs:
+    cli-pin:
+        name: CLI pin matches build-versions.env
+        runs-on: ubuntu-latest
+        steps:
+            - name: ☁️ Checkout source
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            # Five Dockerfiles install the CLI. They keep an ARG default so external
+            # builders (Northflank, Render, anyone running docker build) work without
+            # passing anything; CI and compose override it from build-versions.env.
+            # This asserts the defaults have not drifted from that file.
+            - name: Defaults match build-versions.env
+              run: |
+                  set -euo pipefail
+                  want="$(grep -oE '^INFISICAL_CLI_VERSION=.+' build-versions.env | cut -d= -f2)"
+                  echo "build-versions.env: $want"
+                  bad=0
+                  files="$(grep -rl 'ARG INFISICAL_CLI_VERSION=' --include='Dockerfile*' . || true)"
+                  n="$(printf '%s\n' "$files" | grep -c . || true)"
+                  if [ "$n" -lt 5 ]; then
+                    echo "::error::Expected 5 Dockerfiles declaring the ARG, found $n. A rename would make this check pass while asserting nothing."
+                    bad=1
+                  fi
+                  for f in $files; do
+                    got="$(grep -oE '^ARG INFISICAL_CLI_VERSION=.+' "$f" | cut -d= -f2)"
+                    if [ "$got" != "$want" ]; then
+                      echo "::error file=$f::ARG default is $got, build-versions.env says $want"
+                      bad=1
+                    fi
+                  done
+                  if grep -rnE 'install -y infisical=[0-9]' --include='Dockerfile*' .; then
+                    echo "::error::Version hardcoded into the install. Use the ARG."
+                    bad=1
+                  fi
+                  exit $bad

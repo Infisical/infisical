@@ -86,7 +86,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnections: sanitizedResponseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.query;
       const appConnections = (await server.services.appConnection.listAppConnections(
@@ -141,7 +141,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.query;
       const appConnections = await server.services.appConnection.listAvailableAppConnectionsForUser(
@@ -186,7 +186,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -237,7 +237,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionName } = req.params;
       const { projectId } = req.query;
@@ -283,7 +283,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         name,
@@ -369,7 +369,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         name,
@@ -447,7 +447,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -503,7 +503,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -583,7 +583,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
   //       })
   //     }
   //   },
-  //   onRequest: verifyAuth([AuthMode.JWT]),
+  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
   //   handler: async (req) => {
   //     const { connectionId } = req.params;
   //

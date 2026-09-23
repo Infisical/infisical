@@ -15,6 +15,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
   DatabaseError,
+  ForbiddenRequestError,
   NotFoundError,
   PermissionBoundaryError,
   UnauthorizedError
@@ -23,13 +24,15 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -40,7 +43,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
+import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
 import {
@@ -49,6 +56,11 @@ import {
   removeIdentitiesFromGroup,
   removeUsersFromGroupByUserIds
 } from "./group-fns";
+import {
+  collectProjectIdsByActor,
+  reapDeletedGroupFolderGrants,
+  reapOrphanedFolderGrants
+} from "./group-folder-grant-fns";
 import {
   TAddMachineIdentityToGroupDTO,
   TAddUserToGroupDTO,
@@ -69,7 +81,10 @@ import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
-  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete" | "insertMany">;
+  identityGroupMembershipDAL: Pick<
+    TIdentityGroupMembershipDALFactory,
+    "find" | "delete" | "insertMany" | "filterProjectsByIdentityMembership"
+  >;
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
@@ -100,6 +115,7 @@ type TGroupServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
@@ -120,6 +136,7 @@ export const groupServiceFactory = ({
   projectDAL,
   projectBotDAL,
   projectKeyDAL,
+  additionalPrivilegeDAL,
   permissionService,
   licenseService,
   oidcConfigDAL,
@@ -275,6 +292,20 @@ export const groupServiceFactory = ({
       );
       const isCustomRole = Boolean(rolePermissionDetails?.role);
 
+      const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+        ignoreUnresolvedRoles: true
+      });
+
+      assertRoleSetBoundary({
+        shouldUseNewPrivilegeSystem,
+        opActions: OrgPermissionGroupActions.GrantPrivileges,
+        opSubject: OrgPermissionSubjects.Groups,
+        actorPermission: permission,
+        targetPermissions,
+        baseMessage: "Failed to change the roles of a more privileged group"
+      });
+
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.GrantPrivileges,
@@ -353,7 +384,9 @@ export const groupServiceFactory = ({
 
   /**
    * After removing users/identities from a group, clean up their direct project memberships
-   * in any sub-orgs where the group is linked and the actor no longer has effective access.
+   * in any sub-orgs where the group is linked and the actor no longer has effective access,
+   * and reap folder grants on the projects the group carried there — including for actors
+   * who only reached those projects through the group and have no direct membership row.
    */
   const cleanUpSubOrgProjectMemberships = async ({
     groupId,
@@ -370,7 +403,7 @@ export const groupServiceFactory = ({
     if (referencingSubOrgs.length === 0) return;
 
     await groupDAL.transaction(async (tx) => {
-      const collectIdsForSubOrg = async (subOrgId: string): Promise<string[]> => {
+      const collectMembershipsForSubOrg = async (subOrgId: string) => {
         // Find remaining linked groups in this sub-org (excluding the one the user was removed from)
         const remainingOrgGroupMemberships = await membershipGroupDAL.find(
           { scopeOrgId: subOrgId, scope: AccessScope.Organization },
@@ -433,11 +466,43 @@ export const groupServiceFactory = ({
             : []
         ]);
 
-        return [...userProjectMemberships.map((pm) => pm.id), ...identityProjectMemberships.map((pm) => pm.id)];
+        return [...userProjectMemberships, ...identityProjectMemberships];
       };
 
-      const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
-      await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+      const [membershipsToDelete, groupProjectMemberships] = await Promise.all([
+        Promise.all(referencingSubOrgs.map((subOrg) => collectMembershipsForSubOrg(subOrg.orgId))).then((rows) =>
+          rows.flat()
+        ),
+        membershipGroupDAL.find(
+          {
+            actorGroupId: groupId,
+            scope: AccessScope.Project,
+            $in: { scopeOrgId: referencingSubOrgs.map((subOrg) => subOrg.orgId) }
+          },
+          { tx }
+        )
+      ]);
+
+      // every removed actor loses the projects the linked group carried; actors whose last
+      // org access is gone additionally lose the ones their own direct membership covered
+      const groupProjectIds = Array.from(
+        new Set(groupProjectMemberships.map((pm) => pm.scopeProjectId).filter(Boolean) as string[])
+      );
+      const { projectIdsByUserId, projectIdsByIdentityId } = collectProjectIdsByActor(membershipsToDelete, {
+        projectIdsByUserId: new Map(userIds.map((userId) => [userId, [...groupProjectIds]])),
+        projectIdsByIdentityId: new Map(identityIds.map((identityId) => [identityId, [...groupProjectIds]]))
+      });
+
+      await deleteMembershipsInBatch(
+        membershipsToDelete.map((pm) => pm.id),
+        tx
+      );
+
+      await reapOrphanedFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
+        { groupId, projectIdsByUserId, projectIdsByIdentityId },
+        tx
+      );
 
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds }, tx);
     });
@@ -526,40 +591,60 @@ export const groupServiceFactory = ({
       const usersToCleanUp = groupUserIds.filter((id) => !userIdsWithOtherMemberships.has(id));
       const identitiesToCleanUp = groupIdentityIds.filter((id) => !identityIdsWithOtherMemberships.has(id));
 
-      const [userProjectIdsToDelete, identityProjectIdsToDelete] = await Promise.all([
+      const [userProjectMembershipsToDelete, identityProjectMembershipsToDelete] = await Promise.all([
         usersToCleanUp.length > 0
-          ? membershipGroupDAL
-              .find(
-                {
-                  ...(usersToCleanUp.length === 1
-                    ? { actorUserId: usersToCleanUp[0] }
-                    : { $in: { actorUserId: usersToCleanUp } }),
-                  scopeOrgId: actorOrgId,
-                  scope: AccessScope.Project
-                },
-                { tx }
-              )
-              .then((rows) => rows.map((r) => r.id))
+          ? membershipGroupDAL.find(
+              {
+                ...(usersToCleanUp.length === 1
+                  ? { actorUserId: usersToCleanUp[0] }
+                  : { $in: { actorUserId: usersToCleanUp } }),
+                scopeOrgId: actorOrgId,
+                scope: AccessScope.Project
+              },
+              { tx }
+            )
           : [],
         identitiesToCleanUp.length > 0
-          ? membershipGroupDAL
-              .find(
-                {
-                  ...(identitiesToCleanUp.length === 1
-                    ? { actorIdentityId: identitiesToCleanUp[0] }
-                    : { $in: { actorIdentityId: identitiesToCleanUp } }),
-                  scopeOrgId: actorOrgId,
-                  scope: AccessScope.Project
-                },
-                { tx }
-              )
-              .then((rows) => rows.map((r) => r.id))
+          ? membershipGroupDAL.find(
+              {
+                ...(identitiesToCleanUp.length === 1
+                  ? { actorIdentityId: identitiesToCleanUp[0] }
+                  : { $in: { actorIdentityId: identitiesToCleanUp } }),
+                scopeOrgId: actorOrgId,
+                scope: AccessScope.Project
+              },
+              { tx }
+            )
           : []
       ]);
 
-      membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
+      membershipIdsToDelete.push(
+        ...userProjectMembershipsToDelete.map((pm) => pm.id),
+        ...identityProjectMembershipsToDelete.map((pm) => pm.id)
+      );
+
+      // every member loses the projects the group carried; the cleaned-up actors additionally lose
+      // the ones their own direct membership covered
+      const groupProjectIds = Array.from(
+        new Set(groupProjectMemberships.map((pm) => pm.scopeProjectId).filter(Boolean) as string[])
+      );
+      const { projectIdsByUserId, projectIdsByIdentityId } = collectProjectIdsByActor(
+        [...userProjectMembershipsToDelete, ...identityProjectMembershipsToDelete],
+        {
+          projectIdsByUserId: new Map(groupUserIds.map((userId) => [userId, [...groupProjectIds]])),
+          projectIdsByIdentityId: new Map(groupIdentityIds.map((identityId) => [identityId, [...groupProjectIds]]))
+        }
+      );
 
       await deleteMembershipsInBatch(membershipIdsToDelete, tx);
+
+      // must follow the delete: the actors' own direct memberships are among the rows removed, and
+      // one still present reads as "still reaches"
+      await reapOrphanedFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
+        { groupId, projectIdsByUserId, projectIdsByIdentityId },
+        tx
+      );
 
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
     });
@@ -583,6 +668,13 @@ export const groupServiceFactory = ({
     return groupDAL.transaction(async (tx) => {
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
+
+      // must precede the delete: it cascades away the memberships the reap reads
+      await reapDeletedGroupFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
         groupId,
         tx
       );
@@ -630,6 +722,23 @@ export const groupServiceFactory = ({
     }
     const { group } = groupMembership;
 
+    const targetRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
+      orgDAL.findById(actorOrgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: OrgPermissionGroupActions.Delete,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to delete a more privileged group"
+    });
+
     const isLinkedGroup = group.orgId !== actorOrgId;
 
     if (isLinkedGroup) {
@@ -641,6 +750,7 @@ export const groupServiceFactory = ({
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, SecretIdentities.key);
       usageMeteringService.emit(actorOrgId, PamIdentities.key);
+      usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
@@ -648,6 +758,7 @@ export const groupServiceFactory = ({
     // Deleting the group drops its members from any project it was on.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -935,8 +1046,14 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
+
     const oidcConfig = await oidcConfigDAL.findOne({
-      orgId: actorOrgId,
+      orgId: groupMembership.group.orgId,
       isActive: true
     });
 
@@ -947,31 +1064,22 @@ export const groupServiceFactory = ({
       });
     }
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.AddMembers,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to add user to more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.AddMembers,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.AddMembers,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to add user to more privileged group"
+    });
 
     const user = await userDAL.findOne({
       username
@@ -994,6 +1102,7 @@ export const groupServiceFactory = ({
     // The user may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1053,31 +1162,28 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
+
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.AddIdentities,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to add identity to more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.AddIdentities,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.AddIdentities,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to add identity to more privileged group"
+    });
 
     const identityMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,
@@ -1107,6 +1213,7 @@ export const groupServiceFactory = ({
     // The identity may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1144,6 +1251,12 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
+
     const oidcConfig = await oidcConfigDAL.findOne({
       orgId: groupMembership.group.orgId,
       isActive: true
@@ -1156,30 +1269,22 @@ export const groupServiceFactory = ({
       });
     }
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.RemoveMembers,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to delete user from more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.RemoveMembers,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.RemoveMembers,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to delete user from more privileged group"
+    });
 
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
@@ -1191,6 +1296,7 @@ export const groupServiceFactory = ({
       userGroupMembershipDAL,
       membershipGroupDAL,
       projectKeyDAL,
+      additionalPrivilegeDAL,
       alertChannelRecipientDAL
     });
 
@@ -1203,6 +1309,7 @@ export const groupServiceFactory = ({
     // The user may have left a secret-manager or PAM project it only reached through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1239,30 +1346,28 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const groupRoles = groupMembership.roles.map((el) => el.customRoleSlug || el.role);
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId);
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
+
+    const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
+    const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
+      ignoreUnresolvedRoles: true
+    });
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
       orgDAL.findById(actorOrgId)
     );
 
-    // check if user has broader or equal to privileges than group
-    const permissionBoundary = validatePrivilegeChangeOperation(
+    assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
-      OrgPermissionGroupActions.RemoveIdentities,
-      OrgPermissionSubjects.Groups,
-      permission,
-      rolePermissionDetails.permission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to remove identity from more privileged group",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionGroupActions.RemoveIdentities,
-          OrgPermissionSubjects.Groups
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
-      });
+      opActions: OrgPermissionGroupActions.RemoveIdentities,
+      opSubject: OrgPermissionSubjects.Groups,
+      actorPermission: permission,
+      targetPermissions: rolePermissionDetails,
+      baseMessage: "Failed to remove identity from more privileged group"
+    });
 
     const identityMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,
@@ -1280,7 +1385,7 @@ export const groupServiceFactory = ({
       identityDAL,
       membershipDAL,
       identityGroupMembershipDAL,
-      membershipGroupDAL
+      additionalPrivilegeDAL
     });
 
     await cleanUpSubOrgProjectMemberships({
@@ -1298,6 +1403,7 @@ export const groupServiceFactory = ({
     // The identity may have left a secret-manager or PAM project it only reached through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

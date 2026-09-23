@@ -83,6 +83,13 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
         return Array.from(next);
       });
     }
+
+    const fieldError = Object.entries(formErrors).find(
+      ([field, error]) => field !== "permissions" && error?.message
+    );
+    if (fieldError) {
+      createNotification({ type: "error", text: `${fieldError[0]}: ${fieldError[1]?.message}` });
+    }
   });
 
   const isCustomRole = !["admin", "member", "no-access"].includes(role?.slug ?? "");
@@ -166,6 +173,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                     isDisabled={!isCustomRole}
                     isConditional={false}
                     isOpen={openPolicies.includes(subject)}
+                    onPolicyAdded={() =>
+                      setOpenPolicies((prev) =>
+                        prev.includes(subject) ? prev : [...prev, subject]
+                      )
+                    }
                     onRemoveLastRule={
                       isCustomRole
                         ? () => {

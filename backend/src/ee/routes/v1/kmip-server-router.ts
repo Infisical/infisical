@@ -4,7 +4,9 @@ import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
+import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-method/resource-auth-method-audit-fns";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -50,28 +52,6 @@ const hostnamesOrIpsField = validateAltNamesField.refine(
   (val) => val.length <= 4096,
   "Hostnames or IPs must be at most 4096 characters"
 );
-
-const AwsAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
-  stsEndpoint: z.string(),
-  allowedPrincipalArns: z.string(),
-  allowedAccountIds: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
-
-const TokenAuthMethodConfigSchema = z.object({});
-
-const IdentityAuthMethodConfigSchema = z.object({
-  identityId: z.string(),
-  identityName: z.string().nullable()
-});
-
-const AuthMethodViewSchema = z.discriminatedUnion("method", [
-  z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Identity), config: IdentityAuthMethodConfigSchema })
-]);
 
 const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
   authMethod: AuthMethodViewSchema
@@ -173,6 +153,20 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_CREATE,
+          metadata: resourceAuthMethodAuditMetadata({
+            resourceType: "kmip",
+            resourceId: kmipServer.id,
+            resourceName: kmipServer.name,
+            view
+          })
+        }
+      });
+
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(kmipServer, "kmip");
 
       return { ...kmipServer, canRevoke, authMethod: view };
@@ -192,7 +186,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: KmipServerWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const kmipServer = await server.services.kmipServer.getOrgKmipServer({
         kmipServerId: req.params.kmipServerId,
@@ -222,7 +216,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: z.array(SanitizedKmipServerSchema.omit({ canRevoke: true }))
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.kmipServer.listKmipServers({ actor: req.permission });
     }
@@ -303,12 +297,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: {
+            metadata: resourceAuthMethodAuditMetadata({
               resourceType: "kmip",
               resourceId: req.params.kmipServerId,
-              method: view.method as "aws" | "token",
-              methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.kmipServerId
-            }
+              resourceName: kmipServer.name,
+              view
+            })
           }
         });
 

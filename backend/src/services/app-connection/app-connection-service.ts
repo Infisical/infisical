@@ -7,8 +7,6 @@ import { chefConnectionService } from "@app/ee/services/app-connections/chef/che
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -27,6 +25,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   decryptAppConnection,
@@ -96,6 +95,7 @@ import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDatadogConnectionCredentialsSchema } from "./datadog";
 import { datadogConnectionService } from "./datadog/datadog-connection-service";
+import { ValidateDaytonaConnectionCredentialsSchema } from "./daytona";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
@@ -136,6 +136,7 @@ import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmast
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
+import { ldapConnectionService } from "./ldap/ldap-connection-service";
 import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
 import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
 import { ValidateMicrosoftIntuneConnectionCredentialsSchema } from "./microsoft-intune";
@@ -162,6 +163,7 @@ import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
+import { powerDnsConnectionService, ValidatePowerDnsConnectionCredentialsSchema } from "./powerdns";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
 import { qoveryConnectionService } from "./qovery/qovery-connection-service";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
@@ -205,19 +207,17 @@ export type TAppConnectionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "pickRandomHealthyGateway" | "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -305,7 +305,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
-  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema
+  [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
+  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
+  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -313,10 +315,8 @@ export const appConnectionServiceFactory = ({
   permissionService,
   kmsService,
   licenseService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
-  gatewayDAL,
   gatewayV2DAL,
   projectDAL,
   appConnectionCredentialRotationService,
@@ -564,12 +564,9 @@ export const appConnectionServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
       const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-      if (!gateway && !gatewayV2) {
-        throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
-        });
+      if (!gatewayV2) {
+        throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
     }
 
@@ -579,12 +576,6 @@ export const appConnectionServiceFactory = ({
         orgId: actor.orgId,
         actor
       });
-    }
-
-    let validationGatewayId: string | null | undefined = gatewayId;
-    if (gatewayPoolId) {
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
-      validationGatewayId = picked.id;
     }
 
     await enterpriseAppCheck(
@@ -601,21 +592,32 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    const validatedCredentials = await validateAppConnectionCredentials(
-      {
-        app,
-        credentials,
-        method,
-        orgId: actor.orgId,
-        projectId,
-        version: 2,
-        gatewayId: validationGatewayId,
-        projectType: project?.type
-      } as TAppConnectionConfig,
-      gatewayService,
-      gatewayV2Service,
-      { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
-    );
+    const runValidation = (validationGatewayId: string | null | undefined) =>
+      validateAppConnectionCredentials(
+        {
+          app,
+          credentials,
+          method,
+          orgId: actor.orgId,
+          projectId,
+          version: 2,
+          gatewayId: validationGatewayId,
+          projectType: project?.type
+        } as TAppConnectionConfig,
+        gatewayV2Service,
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+      );
+
+    // Validation only dials the target and reads back, so retrying it on another member is safe.
+    let validationGatewayId: string | null | undefined = gatewayId;
+    let validatedCredentials: Awaited<ReturnType<typeof runValidation>>;
+    if (gatewayPoolId) {
+      const outcome = await gatewayPoolService.runWithPoolFailover({ poolId: gatewayPoolId }, runValidation);
+      validatedCredentials = outcome.result;
+      validationGatewayId = outcome.gatewayId;
+    } else {
+      validatedCredentials = await runValidation(gatewayId);
+    }
 
     try {
       const createConnection = async (connectionCredentials: TAppConnection["credentials"]) => {
@@ -690,7 +692,6 @@ export const appConnectionServiceFactory = ({
             gatewayId: validationGatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
-          gatewayService,
           gatewayV2Service
         );
       } else {
@@ -785,12 +786,9 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
-        const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-        if (!gateway && !gatewayV2) {
-          throw new NotFoundError({
-            message: `Gateway with ID ${gatewayId} not found for org`
-          });
+        if (!gatewayV2) {
+          throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
       }
     }
@@ -833,17 +831,11 @@ export const appConnectionServiceFactory = ({
     }
 
     let updatedCredentials: undefined | TAppConnection["credentials"];
-    let validationGatewayId: string | null | undefined;
 
     const { app, method } = appConnection as DiscriminativePick<TAppConnectionConfig, "app" | "method">;
+    let validationGatewayIdForUpdate: string | null | undefined = effectiveGatewayIdForUpdate;
 
     if (credentials) {
-      validationGatewayId = effectiveGatewayIdForUpdate;
-      if (effectiveGatewayPoolIdForUpdate) {
-        const picked = await gatewayPoolService.pickRandomHealthyGateway(effectiveGatewayPoolIdForUpdate);
-        validationGatewayId = picked.id;
-      }
-
       // Only checked when the caller explicitly selects an app — merged-in existing credentials
       // (gitHubAppId undefined) keep already-configured connections editable.
       if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && appConnection.projectId) {
@@ -886,21 +878,33 @@ export const appConnectionServiceFactory = ({
 
       const updateProject = appConnection.projectId ? await projectDAL.findProjectById(appConnection.projectId) : null;
 
-      updatedCredentials = await validateAppConnectionCredentials(
-        {
-          app,
-          orgId: actor.orgId,
-          projectId: appConnection.projectId,
-          version: appConnection.version,
-          credentials: credentialsToValidate,
-          method,
-          gatewayId: validationGatewayId,
-          projectType: updateProject?.type
-        } as TAppConnectionConfig,
-        gatewayService,
-        gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
-      );
+      const runUpdateValidation = (validationGatewayId: string | null | undefined) =>
+        validateAppConnectionCredentials(
+          {
+            app,
+            orgId: actor.orgId,
+            projectId: appConnection.projectId,
+            version: appConnection.version,
+            credentials: credentialsToValidate,
+            method,
+            gatewayId: validationGatewayId,
+            projectType: updateProject?.type
+          } as TAppConnectionConfig,
+          gatewayV2Service,
+          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+        );
+
+      // Validation only dials the target and reads back, so retrying it on another member is safe.
+      if (effectiveGatewayPoolIdForUpdate) {
+        const outcome = await gatewayPoolService.runWithPoolFailover(
+          { poolId: effectiveGatewayPoolIdForUpdate },
+          runUpdateValidation
+        );
+        updatedCredentials = outcome.result;
+        validationGatewayIdForUpdate = outcome.gatewayId;
+      } else {
+        updatedCredentials = await runUpdateValidation(effectiveGatewayIdForUpdate);
+      }
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
@@ -967,10 +971,9 @@ export const appConnectionServiceFactory = ({
               orgId: actor.orgId,
               credentials: updatedCredentials,
               method,
-              gatewayId: validationGatewayId
+              gatewayId: validationGatewayIdForUpdate
             } as TAppConnectionConfig,
             (platformCredentials) => updateConnection(platformCredentials, tx),
-            gatewayService,
             gatewayV2Service
           );
         } else {
@@ -1131,20 +1134,16 @@ export const appConnectionServiceFactory = ({
   };
 
   const connectAppConnectionById = async <T extends TAppConnection>(
-    app: AppConnection,
+    app: AppConnection | AppConnection[],
     connectionId: string,
     actor: OrgServiceActor
   ) => {
+    const allowedApps = Array.isArray(app) ? app : [app];
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    await enterpriseAppCheck(
-      licenseService,
-      app,
-      actor.orgId,
-      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
-    );
+    const connectionApp = appConnection.app as AppConnection;
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -1176,12 +1175,21 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    if (appConnection.app !== app)
+    if (!allowedApps.includes(connectionApp))
       throw new BadRequestError({
         message: `${
-          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+          APP_CONNECTION_NAME_MAP[connectionApp]
+        } Connection with ID ${connectionId} cannot be used to connect to ${allowedApps
+          .map((allowedApp) => APP_CONNECTION_NAME_MAP[allowedApp])
+          .join(" or ")}`
       });
+
+    await enterpriseAppCheck(
+      licenseService,
+      connectionApp,
+      actor.orgId,
+      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
+    );
 
     const connectionProject = appConnection.projectId
       ? await projectDAL.findProjectById(appConnection.projectId)
@@ -1193,7 +1201,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const validateAppConnectionUsageById = async (
-    app: AppConnection,
+    app: AppConnection | AppConnection[],
     { connectionId, projectId }: TValidateAppConnectionUsageByIdDTO,
     actor: OrgServiceActor
   ) => {
@@ -1347,7 +1355,7 @@ export const appConnectionServiceFactory = ({
     listAvailableAppConnectionsForUser,
     findAppConnectionUsageById,
     triggerCredentialRotation,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService, {
+    github: githubConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, {
       gitHubAppDAL,
       kmsService
     }),
@@ -1366,7 +1374,7 @@ export const appConnectionServiceFactory = ({
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
-    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service, gatewayPoolService),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
@@ -1381,6 +1389,7 @@ export const appConnectionServiceFactory = ({
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
@@ -1414,6 +1423,7 @@ export const appConnectionServiceFactory = ({
       gatewayV2Service,
       gatewayPoolService
     ),
+    powerDns: powerDnsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     spacelift: spaceliftConnectionService(connectAppConnectionById)
   };
 };

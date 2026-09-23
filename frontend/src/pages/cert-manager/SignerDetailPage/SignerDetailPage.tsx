@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +38,7 @@ import {
   Empty,
   EmptyHeader,
   EmptyTitle,
+  PageHeader,
   PageLoader,
   Tabs,
   TabsContent,
@@ -74,9 +74,8 @@ import {
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { EditSignerModal } from "./components/EditSignerModal";
 import { ExportSignerCertModal } from "./components/ExportSignerCertModal";
-import { SignerApprovalPolicyTab } from "./components/SignerApprovalPolicyTab";
+import { SignerApprovalsSection } from "./components/SignerApprovalsSection";
 import { SignerMembersTab } from "./components/SignerMembersTab";
-import { SignerRequestsTab } from "./components/SignerRequestsTab";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
 type Tab = "activity" | "approvals" | "members";
@@ -142,21 +141,19 @@ export const SignerDetailPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: `Signer: ${signer.name}` })}</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
-            <div className="mb-4">
-              <Link
-                to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
-                params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-                className="flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-              >
-                <ChevronLeftIcon size={16} />
-                Back to Signers
-              </Link>
-            </div>
-
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
             <PageHeader
+              backLink={
+                <Link
+                  to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
+                  params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+                >
+                  <ChevronLeftIcon size={16} />
+                  Back to Signers
+                </Link>
+              }
               scope={ProjectType.CertificateManager}
               icon={PenTool}
               title={
@@ -299,21 +296,15 @@ export const SignerDetailPage = () => {
                 />
               </TabsContent>
               <TabsContent value="approvals" className="pt-2">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]">
-                  <SignerApprovalPolicyTab signerId={signerId} />
-                  <SignerRequestsTab
-                    signerId={signerId}
-                    canPreApprove={Boolean(
-                      permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
-                    )}
-                    canRequestSign={Boolean(
-                      permission.can(
-                        SignerPermissionActions.RequestSign,
-                        SignerPermissionSub.Signer
-                      )
-                    )}
-                  />
-                </div>
+                <SignerApprovalsSection
+                  signerId={signerId}
+                  canPreApprove={Boolean(
+                    permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
+                  )}
+                  canRequestSign={Boolean(
+                    permission.can(SignerPermissionActions.RequestSign, SignerPermissionSub.Signer)
+                  )}
+                />
               </TabsContent>
               <TabsContent value="members" className="pt-2">
                 <SignerMembersTab signerId={signerId} />

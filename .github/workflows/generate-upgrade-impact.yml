@@ -35,8 +35,23 @@ jobs:
           echo "stable=true" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout main
+      - name: Look for an existing upgrade impact PR
+        id: existing
         if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+        run: |
+          PR_NUMBER="$(gh pr list --base main --head "chore/upgrade-impact-${TAG_NAME}" --state open --json number --jq '.[0].number // empty')"
+
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Pull request #${PR_NUMBER} already covers ${TAG_NAME}; leaving its data untouched."
+            echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout main
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
         with:
           ref: main
@@ -44,7 +59,7 @@ jobs:
           fetch-tags: true
 
       - name: Setup Node
-        if: steps.release.outputs.stable == 'true'
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -52,22 +67,22 @@ jobs:
           cache-dependency-path: upgrade-impact/package-lock.json
 
       - name: Install dependencies
-        if: steps.release.outputs.stable == 'true'
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         run: npm ci
         working-directory: upgrade-impact
 
       - name: Type check
-        if: steps.release.outputs.stable == 'true'
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         run: npm run type:check
         working-directory: upgrade-impact
 
       - name: Test upgrade impact tooling
-        if: steps.release.outputs.stable == 'true'
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         run: npm test
         working-directory: upgrade-impact
 
       - name: Generate upgrade impact data
-        if: steps.release.outputs.stable == 'true'
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
         working-directory: upgrade-impact
         env:
@@ -75,12 +90,13 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Validate upgrade impact data
-        if: steps.release.outputs.stable == 'true'
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         run: npm run validate
         working-directory: upgrade-impact
 
       - name: Open upgrade impact PR
-        if: steps.release.outputs.stable == 'true'
+        id: pr
+        if: steps.release.outputs.stable == 'true' && steps.existing.outputs.pr == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.release.outputs.tag }}
@@ -100,25 +116,102 @@ jobs:
           fi
 
           git commit -m "$PR_TITLE"
-          git push --set-upstream origin "$BRANCH_NAME"
 
-          # Request review from whoever cut this GitHub release so a real
-          # human with context on the changes gets pinged rather than only the
-          # github-actions bot.
-          REVIEWER_FLAG=()
-          RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
-          if [ -n "$RELEASE_AUTHOR" ]; then
-            REVIEWER_FLAG=(--reviewer "$RELEASE_AUTHOR")
-            echo "Requesting review from release author: $RELEASE_AUTHOR"
+          REMOTE_SHA="$(git ls-remote --heads origin "$BRANCH_NAME" | cut -f1)"
+          if [ -z "$REMOTE_SHA" ]; then
+            git push origin "$BRANCH_NAME"
           else
-            echo "Skipping reviewer assignment (could not resolve release author)."
+            git push --force-with-lease="refs/heads/${BRANCH_NAME}:${REMOTE_SHA}" origin "$BRANCH_NAME"
           fi
 
-          gh pr create \
+          PR_URL="$(gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
             --title "$PR_TITLE" \
-            "${REVIEWER_FLAG[@]}" \
             --body "Generated self-hosted upgrade impact data for \`${TAG_NAME}\`.
 
-          Review the generated YAML for self-hosted upgrade accuracy before merging."
+          Review the generated YAML for self-hosted upgrade accuracy before merging.
+
+          ## Type
+
+          - [ ] Fix
+          - [ ] Feature
+          - [ ] Improvement
+          - [ ] Breaking
+          - [ ] Docs
+          - [x] Chore")"
+
+          echo "Opened $PR_URL"
+          echo "number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Request review from the release author
+        if: steps.release.outputs.stable == 'true' && (steps.existing.outputs.pr != '' || steps.pr.outputs.number != '')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          PR_NUMBER: ${{ steps.existing.outputs.pr || steps.pr.outputs.number }}
+        run: |
+          RELEASE_AUTHOR="$(gh release view "$TAG_NAME" --json author --jq .author.login 2>/dev/null || true)"
+
+          if [ -z "$RELEASE_AUTHOR" ]; then
+            echo "::error::Could not resolve the author of release ${TAG_NAME}. Pull request #${PR_NUMBER} is open with nobody assigned to review it."
+            exit 1
+          fi
+
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+            --method POST \
+            --raw-field "reviewers[]=${RELEASE_AUTHOR}" \
+            --silent; then
+            echo "::error::Could not request review from ${RELEASE_AUTHOR}. Pull request #${PR_NUMBER} is open with nobody assigned to review it."
+            exit 1
+          fi
+
+          echo "Requested review from release author: $RELEASE_AUTHOR"
+
+  notify:
+    name: Notify incident.io if the upgrade impact PR is blocked
+    runs-on: ubuntu-latest
+    needs: [generate]
+    if: always() && needs.generate.result == 'failure'
+    steps:
+      - name: Send blocked alert to incident.io
+        env:
+          ALERT_URL: ${{ secrets.INCIDENT_IO_DEPLOY_ALERT_URL }}
+          ALERT_TOKEN: ${{ secrets.INCIDENT_IO_DEPLOY_ALERT_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          # Guard against a misconfigured/rotated secret redirecting the POST (and the
+          # bearer token) to an unintended host: only allow the incident.io API origin.
+          case "$ALERT_URL" in
+            https://api.incident.io/*) ;;
+            *)
+              echo "::error::ALERT_URL does not point at https://api.incident.io/ — refusing to send alert."
+              exit 1
+              ;;
+          esac
+
+          jq -n \
+            --arg title "[${REPO}] Upgrade impact PR blocked for ${RELEASE_TAG}" \
+            --arg description "Self-hosted upgrade impact data for ${RELEASE_TAG} was not published, or its pull request has no reviewer." \
+            --arg dedup "upgrade-impact-${RELEASE_TAG}" \
+            --arg url "$RUN_URL" \
+            --arg tag "${RELEASE_TAG:-unknown}" \
+            --arg actor "$ACTOR" \
+            '{
+              title: $title,
+              description: $description,
+              deduplication_key: $dedup,
+              status: "firing",
+              source_url: $url,
+              metadata: { release_tag: $tag, actor: $actor }
+            }' \
+          | curl -sS --fail-with-body --connect-timeout 10 --max-time 30 -X POST "$ALERT_URL" \
+              -H "Authorization: Bearer $ALERT_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @-

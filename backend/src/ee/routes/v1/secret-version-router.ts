@@ -30,7 +30,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretVersions = await server.services.secret.getSecretVersions({
         actor: req.permission.type,

@@ -10,7 +10,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -40,7 +40,7 @@ export const CloudflareWorkersSyncOptionsFields = () => {
                   bindings on Cloudflare Workers, not create new ones.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="sync-non-secret-bindings"
                 variant="project"
                 checked={value}
@@ -56,9 +56,10 @@ export const CloudflareWorkersSyncOptionsFields = () => {
           <TriangleAlert />
           <AlertTitle>Plaintext and JSON variables may be deleted</AlertTitle>
           <AlertDescription>
-            With secret deletion enabled and non-secret binding sync turned on, any plaintext or
-            JSON variables in Cloudflare Workers that are not present in Infisical will be removed
-            during a sync. Toggle &quot;Disable secret deletion&quot; above to prevent this.
+            With &quot;Prevent secret deletion&quot; turned off and non-secret binding sync turned
+            on, any plaintext or JSON variables in Cloudflare Workers that are not present in
+            Infisical will be removed during a sync. Turn on &quot;Prevent secret deletion&quot;
+            above to keep them.
           </AlertDescription>
         </Alert>
       )}

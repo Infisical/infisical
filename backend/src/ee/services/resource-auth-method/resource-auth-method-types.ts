@@ -1,6 +1,11 @@
 import { OrgServiceActor } from "@app/lib/types";
 
-import { ResourceAuthMethodType, ResourceRef } from "./resource-auth-method-fns";
+import {
+  ResourceAuthMethodType,
+  ResourceRef,
+  TGcpAuthType,
+  TKubernetesTokenReviewMode
+} from "./resource-auth-method-fns";
 
 export type TAwsAuthMethodConfig = {
   stsEndpoint: string;
@@ -8,8 +13,55 @@ export type TAwsAuthMethodConfig = {
   allowedAccountIds: string;
 };
 
+export type TGcpAuthMethodConfig = {
+  type: TGcpAuthType;
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
+};
+
+export type TKubernetesAuthMethodConfig = {
+  // Omitted only in gateway review mode, where the gateway calls its own API server.
+  kubernetesHost?: string | null;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  verifyTlsCertificate: boolean;
+  caCertificate?: string;
+  tokenReviewerJwt?: string;
+  tokenReviewMode?: TKubernetesTokenReviewMode;
+  gatewayV2Id?: string | null;
+  gatewayPoolId?: string | null;
+};
+
+// A missing key means "keep the stored value"; null means "clear it".
+export type TEncryptedKubernetesSecrets = {
+  encryptedKubernetesCaCertificate?: Buffer | null;
+  encryptedKubernetesTokenReviewerJwt?: Buffer | null;
+};
+
+// The CA certificate round-trips because it is public key material. The reviewer JWT is a live
+// cluster credential, so only its presence is reported.
+export type TKubernetesAuthMethodConfigView = Omit<
+  TKubernetesAuthMethodConfig,
+  "caCertificate" | "tokenReviewerJwt" | "kubernetesHost" | "tokenReviewMode" | "gatewayV2Id" | "gatewayPoolId"
+> & {
+  id: string;
+  // Always present on read, empty when the review runs through a gateway's own service account.
+  kubernetesHost: string;
+  tokenReviewMode: string;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  caCertificate: string;
+  hasTokenReviewerJwt: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type TSetAuthMethodInput =
   | ({ method: typeof ResourceAuthMethodType.Aws } & TAwsAuthMethodConfig)
+  | ({ method: typeof ResourceAuthMethodType.Gcp } & TGcpAuthMethodConfig)
+  | ({ method: typeof ResourceAuthMethodType.Kubernetes } & TKubernetesAuthMethodConfig)
   | { method: typeof ResourceAuthMethodType.Token };
 
 export type TSetAuthMethodDTO = {
@@ -23,7 +75,9 @@ export type TGetAuthMethodDTO = {
   actor: OrgServiceActor;
 };
 
-export type TMintTokenDTO = TGetAuthMethodDTO;
+// Minting happens both when a resource is created and when its token is replaced later. Those are
+// different permissions on a product that separates them, so the caller says which one it is.
+export type TMintTokenDTO = TGetAuthMethodDTO & { intent?: "create" | "issue" };
 export type TRevokeTokenDTO = TGetAuthMethodDTO;
 
 export type TLoginWithAwsDTO = {
@@ -33,15 +87,33 @@ export type TLoginWithAwsDTO = {
   iamRequestHeaders: string;
 };
 
+export type TLoginWithGcpDTO = {
+  resource: ResourceRef;
+  jwt: string;
+};
+
+export type TLoginWithKubernetesDTO = {
+  resource: ResourceRef;
+  jwt: string;
+};
+
 export type TLoginWithTokenDTO = {
   token: string;
-  expectedResourceType: "gateway" | "relay" | "kmip";
+  expectedResourceType: "gateway" | "relay" | "kmip" | "agentVaultProxy";
 };
 
 export type TAuthMethodView =
   | {
       method: typeof ResourceAuthMethodType.Aws;
       config: TAwsAuthMethodConfig & { id: string; createdAt: Date; updatedAt: Date };
+    }
+  | {
+      method: typeof ResourceAuthMethodType.Gcp;
+      config: TGcpAuthMethodConfig & { id: string; createdAt: Date; updatedAt: Date };
+    }
+  | {
+      method: typeof ResourceAuthMethodType.Kubernetes;
+      config: TKubernetesAuthMethodConfigView;
     }
   | {
       method: typeof ResourceAuthMethodType.Token;

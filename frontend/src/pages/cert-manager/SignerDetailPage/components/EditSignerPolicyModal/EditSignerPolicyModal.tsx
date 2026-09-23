@@ -223,6 +223,7 @@ export const EditSignerPolicyModal = ({
 
   const isLast = safeStep === WIZARD_STEPS.length - 1;
   const showLimitsTab = safeStep === 1;
+  const isCreating = !existingPolicy?.hasSteps;
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -234,11 +235,11 @@ export const EditSignerPolicyModal = ({
                 <ShieldIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">
-                  Edit approval policy
+                <div className="flex items-center gap-x-2 text-label">
+                  {isCreating ? "Add approval policy" : "Edit approval policy"}
                   <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.policy} />
                 </div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <p className="text-sm leading-4 text-muted">
                   Choose who approves, and how much each approval gives.
                 </p>
               </div>

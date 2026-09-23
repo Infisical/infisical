@@ -2,8 +2,15 @@ import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/abil
 import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
+import { ActorType } from "@app/services/auth/auth-type";
 
-import { expandLegacyForbidActions, throwIfMissingSecretReadValueOrDescribePermission } from "./permission-fns";
+import {
+  expandLegacyForbidActions,
+  getProjectPermissionFingerprint,
+  handlebarsClient,
+  interpolatePermissionRules,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "./permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -249,5 +256,140 @@ describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
         secretPath: "/"
       })
     ).toThrow();
+  });
+});
+
+describe("trimSuffix handlebars helper", () => {
+  const render = (template: string, value: string) =>
+    handlebarsClient.compile(template)({ identity: { auth: { kubernetes: { namespace: value } } } });
+
+  const trim = (value: string, pattern: string) =>
+    render(`{{ trimSuffix identity.auth.kubernetes.namespace '${pattern}' }}`, value);
+
+  test("trims a matching glob suffix", () => {
+    expect(trim("myapp-pr-1", "-pr-*")).toBe("myapp");
+    expect(trim("myapp-pr-42", "-pr-*")).toBe("myapp");
+  });
+
+  test("returns the value unchanged when nothing matches the pattern", () => {
+    expect(trim("myapp", "-pr-*")).toBe("myapp");
+    expect(trim("myapp-mr-1", "-pr-*")).toBe("myapp-mr-1");
+  });
+
+  test("removes the shortest matching suffix, not the longest", () => {
+    expect(trim("app-pr-1", "-*")).toBe("app-pr");
+  });
+
+  test("trims a literal suffix when the pattern has no glob syntax", () => {
+    expect(trim("myapp-prod", "-prod")).toBe("myapp");
+    expect(trim("myapp", "-prod")).toBe("myapp");
+  });
+
+  test("supports the wider glob syntax used by permission conditions", () => {
+    expect(trim("myapp-pr-1", "-{pr,mr}-*")).toBe("myapp");
+    expect(trim("myapp-pr-1", "-pr-?")).toBe("myapp");
+  });
+
+  test("leaves an unresolved attribute literal intact so the condition fails closed", () => {
+    expect(trim("{{identity.auth.kubernetes.namespace}}", "-pr-*")).toBe("{{identity.auth.kubernetes.namespace}}");
+  });
+
+  test("returns an empty string for an empty value", () => {
+    expect(trim("", "-pr-*")).toBe("");
+  });
+
+  test("returns the value unchanged for a malformed pattern instead of throwing", () => {
+    expect(trim("myapp-pr-1", "-pr-+(")).toBe("myapp-pr-1");
+  });
+
+  test("returns the value unchanged when no pattern is supplied", () => {
+    expect(render("{{ trimSuffix identity.auth.kubernetes.namespace }}", "myapp-pr-1")).toBe("myapp-pr-1");
+  });
+
+  test("trims a pattern carrying the maximum number of wildcards", () => {
+    expect(trim("myapp-1-2-3-4-5", "-*-*-*-*-*")).toBe("myapp");
+    expect(trim("myapp-1-2-3-4-5", "-?-?-?-?-?")).toBe("myapp");
+  });
+
+  test("returns the value unchanged for a pattern with more wildcards than the limit", () => {
+    expect(trim("myapp-1-2-3-4-5-6", "-*-*-*-*-*-*")).toBe("myapp-1-2-3-4-5-6");
+    expect(trim("myapp-1-2-3-4-5-6", "-?-?-?-?-?-?")).toBe("myapp-1-2-3-4-5-6");
+  });
+
+  test("counts each character of a globstar toward the wildcard limit", () => {
+    expect(trim("myapp-a-b", "-**-**")).toBe("myapp");
+    expect(trim("myapp-a-b-c", "-**-**-**")).toBe("myapp-a-b-c");
+  });
+
+  test("does not count brace expansion toward the wildcard limit", () => {
+    expect(trim("myapp-pr-1-2-3-4-5", "-{pr,mr}-*-*-*-*-*")).toBe("myapp");
+  });
+
+  test("counts wildcards in the pattern, not in the value", () => {
+    expect(trim("my*app*x*y*z*w-pr-1", "-pr-*")).toBe("my*app*x*y*z*w");
+  });
+});
+describe("getProjectPermissionFingerprint", () => {
+  const dto = {
+    projectId: "project-1",
+    orgId: "org-1",
+    actorId: "user-1",
+    actorType: ActorType.USER as ActorType.USER
+  };
+
+  const deps = (folderVersion?: number) =>
+    ({
+      permissionDAL: { getPermissionFingerprint: async () => "membership-hash" },
+      keyStore: { pgGetIntItem: async () => folderVersion }
+    }) as unknown as Parameters<typeof getProjectPermissionFingerprint>[1];
+
+  test("appends the project's folder permission version to the membership fingerprint", async () => {
+    expect(await getProjectPermissionFingerprint(dto, deps(7))).toBe("membership-hash:7");
+  });
+
+  test("changes when the folder permission version is bumped", async () => {
+    const [before, after] = await Promise.all([
+      getProjectPermissionFingerprint(dto, deps(7)),
+      getProjectPermissionFingerprint(dto, deps(8))
+    ]);
+    expect(before).not.toBe(after);
+  });
+
+  test("treats a missing version row as zero", async () => {
+    expect(await getProjectPermissionFingerprint(dto, deps(undefined))).toBe("membership-hash:0");
+  });
+});
+
+describe("interpolatePermissionRules", () => {
+  const templatedRule = (value: string): Rule =>
+    ({
+      action: [ProjectPermissionSecretActions.DescribeSecret],
+      subject: ProjectPermissionSub.Secrets,
+      conditions: { environment: value }
+    }) as Rule;
+
+  test("interpolates identity context when the rules carry a template", () => {
+    const [rule] = interpolatePermissionRules([templatedRule("{{ identity.metadata.env }}")], {
+      identity: { metadata: { env: "prod" } }
+    });
+
+    expect(rule.conditions).toEqual({ environment: "prod" });
+  });
+
+  // Untemplated rules are returned as-is rather than copied, so callers share the module-level built-in
+  // rule sets. This is what makes mutating a rule in place unsafe.
+  test("returns untemplated rules as-is, without copying", () => {
+    const rules = [templatedRule("prod"), templatedRule("staging")];
+
+    expect(interpolatePermissionRules(rules, { identity: { metadata: {} } })).toBe(rules);
+  });
+
+  test("still templates block helpers and comments, which are not bare expressions", () => {
+    const [rule] = interpolatePermissionRules(
+      [templatedRule("{{#if identity.metadata.env}}{{ identity.metadata.env }}{{else}}dev{{/if}}")],
+      { identity: { metadata: {} } }
+    );
+
+    expect(rule.conditions).toEqual({ environment: "dev" });
   });
 });

@@ -1,19 +1,28 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
+import {
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities,
+  UserIdentities
+} from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -64,7 +73,14 @@ type TUserServiceFactoryDep = {
     | "findAllMyAccounts"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "find" | "findEffectiveOrgMembership" | "findEffectiveOrgMemberships">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    | "findById"
+    | "find"
+    | "findEffectiveOrgMembership"
+    | "findEffectiveOrgMemberships"
+    | "findActiveEffectiveOrgMembershipsByUserId"
+  >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -75,6 +91,7 @@ type TUserServiceFactoryDep = {
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -92,7 +109,8 @@ export const userServiceFactory = ({
   webAuthnCredentialDAL,
   mfaRecoveryCodeService,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  emailDomainDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -129,6 +147,25 @@ export const userServiceFactory = ({
         code: userToken
       }
     });
+  };
+
+  const isMfaMethodConfigured = async (user: { id: string; email?: string | null }, method: MfaMethod) => {
+    if (method === MfaMethod.EMAIL) {
+      return Boolean(user.email) && getConfig().isSmtpConfigured;
+    }
+    if (method === MfaMethod.TOTP) {
+      return Boolean(await totpConfigDAL.findOne({ userId: user.id, isVerified: true }));
+    }
+    const credentials = await webAuthnCredentialDAL.find({ userId: user.id });
+    return credentials.length > 0;
+  };
+
+  const findReplacementMfaMethod = async (user: { id: string; email?: string | null }, excludeMethod: MfaMethod) => {
+    const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
+      (method) => method !== excludeMethod
+    );
+    const configured = await Promise.all(fallbackOrder.map((method) => isMfaMethodConfigured(user, method)));
+    return fallbackOrder.find((_, index) => configured[index]) ?? null;
   };
 
   // A method can only be selected/activated once the user has actually configured
@@ -191,6 +228,20 @@ export const userServiceFactory = ({
     return { user: updatedUser, recoveryCodes };
   };
 
+  const findMfaEnforcingOrgs = async (userId: string) => {
+    const memberships = await orgDAL.findActiveEffectiveOrgMembershipsByUserId(userId);
+    if (!memberships.length) return [];
+
+    const memberOrgs = await orgDAL.find({
+      $in: { id: unique(memberships.map((membership) => membership.scopeOrgId)) }
+    });
+    const rootOrgIds = unique(memberOrgs.map((org) => org.rootOrgId ?? org.id));
+    const rootOrgs = await orgDAL.find({ $in: { id: rootOrgIds } });
+    return rootOrgs.filter((org) => org.enforceMfa);
+  };
+
+  const hasMfaEnforcingOrg = async (userId: string) => (await findMfaEnforcingOrgs(userId)).length > 0;
+
   // MFA cannot be turned off while any organization the user belongs to enforces it,
   // since doing so would lock them out of that org on the next login. This is the
   // authoritative backend rule (the UI only greys out the button as a hint) and is
@@ -198,19 +249,41 @@ export const userServiceFactory = ({
   // step-up challenge only to be rejected — and again here in deactivateMfa as the
   // single source of truth that actually gates the state change.
   const assertMfaDisableAllowed = async (userId: string) => {
-    const userOrgMemberships = await membershipUserDAL.find({
-      actorUserId: userId,
-      scope: AccessScope.Organization
-    });
-    if (!userOrgMemberships.length) return;
-
-    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
-    const organizations = await orgDAL.find({ $in: { id: orgIds } });
-    if (organizations.some((org) => org.enforceMfa)) {
+    if (await hasMfaEnforcingOrg(userId)) {
       throw new ForbiddenRequestError({
         message: "Two-factor authentication is required by your organization and cannot be disabled"
       });
     }
+  };
+
+  // If nothing requires MFA, login is password-only and a step-up here protects nothing:
+  // the same session could just enrol and enable its own factor. Every org counts, not
+  // just the current one, so switching to a non-enforcing org can't strip a factor
+  // another org relies on.
+  const isStepUpMfaRequired = async (userId: string) => {
+    const user = await userDAL.findById(userId);
+    if (user?.isMfaEnabled) return true;
+    return hasMfaEnforcingOrg(userId);
+  };
+
+  const resolveMfaMethodAfterRemoval = async (userId: string, removedMethod: MfaMethod): Promise<MfaMethod | null> => {
+    const user = await userDAL.findById(userId);
+    if (!user || user.selectedMfaMethod !== removedMethod) return null;
+
+    const replacement = await findReplacementMfaMethod(user, removedMethod);
+    if (replacement) return replacement;
+
+    if (user.isMfaEnabled) {
+      throw new BadRequestError({
+        message:
+          "Cannot remove your only usable two-factor method while two-factor authentication is enabled. Set up a passkey or authenticator app first, or disable two-factor authentication."
+      });
+    }
+    return MfaMethod.EMAIL;
+  };
+
+  const assertMfaFactorRemovable = async (userId: string, method: MfaMethod) => {
+    await resolveMfaMethodAfterRemoval(userId, method);
   };
 
   // Disables MFA. Enrolled factors are preserved so re-enabling does not require
@@ -268,23 +341,60 @@ export const userServiceFactory = ({
     return updatedUser;
   };
 
-  const checkUserScimRestriction = async (userId: string, tx?: Knex) => {
+  /**
+   * Returns why this account's email is managed elsewhere, or null when the user owns it. SCIM
+   * provisions the address from the directory; SSO enforcement makes the IdP authoritative for it
+   * and overwrites whatever is set here on the next login, so offering the change would be a lie.
+   *
+   * Enforcement only reaches an address on a domain the enforcing org has verified, since
+   * syncSsoUserProfile refuses to rename anything else. The user row is global, so membership in an
+   * enforced org is not on its own a claim over the address: someone whose mailbox sits outside that
+   * org's domains still owns it and keeps the change.
+   */
+  const $getManagedEmailReason = async (user: Pick<TUsers, "id" | "username">, tx?: Knex) => {
     const userOrgs = await membershipUserDAL.find(
       {
-        actorUserId: userId,
+        actorUserId: user.id,
         scope: AccessScope.Organization
       },
       { tx }
     );
 
     if (userOrgs.length === 0) {
-      return false;
+      return null;
     }
 
     const orgIds = userOrgs.map((membership) => membership.scopeOrgId);
     const organizations = await orgDAL.find({ $in: { id: orgIds } }, { tx });
 
-    return organizations.some((org) => org.scimEnabled);
+    if (organizations.some((org) => org.scimEnabled)) {
+      return "Email changes are disabled because SCIM is enabled for one or more of your organizations";
+    }
+
+    const authEnforcedOrgIds = organizations.filter((org) => org.authEnforced).map((org) => org.id);
+    if (!authEnforcedOrgIds.length) {
+      return null;
+    }
+
+    const emailDomain = user.username.split("@")[1]?.toLowerCase().trim();
+    if (!emailDomain) {
+      return null;
+    }
+
+    const [managedDomain] = await emailDomainDAL.find(
+      {
+        domain: emailDomain,
+        status: EmailDomainStatus.Verified,
+        $in: { orgId: authEnforcedOrgIds }
+      },
+      { tx, limit: 1 }
+    );
+
+    if (managedDomain) {
+      return "Email changes are disabled because your address is on a domain belonging to an organization that enforces SSO. Your email address is managed by your identity provider.";
+    }
+
+    return null;
   };
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
@@ -314,12 +424,9 @@ export const userServiceFactory = ({
         });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
-          name: "RequestEmailChangeOTP"
-        });
+      const managedEmailReason = await $getManagedEmailReason(user, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "RequestEmailChangeOTP" });
       }
 
       // Availability of the requested address is deliberately NOT checked here: step 1
@@ -363,12 +470,9 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "VerifyCurrentEmailOTP" });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
-          name: "VerifyCurrentEmailOTP"
-        });
+      const managedEmailReason = await $getManagedEmailReason(user, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "VerifyCurrentEmailOTP" });
       }
 
       let tokenData;
@@ -443,12 +547,9 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
       }
 
-      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
-      if (hasScimRestriction) {
-        throw new BadRequestError({
-          message: "You are part of an organization that has SCIM enabled, and email changes are not allowed",
-          name: "UpdateUserEmail"
-        });
+      const managedEmailReason = await $getManagedEmailReason(user, tx);
+      if (managedEmailReason) {
+        throw new BadRequestError({ message: managedEmailReason, name: "UpdateUserEmail" });
       }
 
       // Validate OTP and get the new email from token aliasId field
@@ -542,13 +643,43 @@ export const userServiceFactory = ({
   // context. Recovery codes bypass the org-required method at login, so the step-up
   // that gates them must challenge that same method rather than the user's personal
   // preference (which could be weaker, e.g. email while the org enforces passkeys).
-  // Mirrors login via the shared getRequiredMfaMethod: an org enforcing MFA dictates
+  // Mirrors login via the shared getRequiredMfaMethod: the root org enforcing MFA dictates
   // the method, otherwise the user's own preference applies. Reaching a step-up-gated
   // route already proves membership of this org, so no permission check is needed.
-  const getStepUpMfaMethod = async (userId: string, orgId: string): Promise<MfaMethod> => {
-    const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+  //
+  // Removing a factor never challenges that same factor, it's usually the lost one.
+  // Another configured factor stands in, or the required method if there's nothing else
+  // (e.g. no SMTP on self-hosted). Exception: a factor one of the user's orgs enforces is
+  // still challenged, that org already ruled the alternatives out, and a lost device goes
+  // through recovery-code login instead. All orgs are checked so org switching can't
+  // bypass it.
+  //
+  // `accepted` is every factor a prior proof may carry for this action: the required
+  // method, plus the substitute when one is challenged. Other actions never accept the
+  // substitute.
+  const getStepUpMfaMethod = async (
+    userId: string,
+    orgId: string,
+    excludeMethod?: MfaMethod
+  ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] }> => {
+    const [user, sessionOrg] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const org =
+      sessionOrg?.rootOrgId && sessionOrg.rootOrgId !== sessionOrg.id
+        ? await orgDAL.findById(sessionOrg.rootOrgId)
+        : sessionOrg;
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
-    return requiredMfaMethod;
+    const asRequired = { challenge: requiredMfaMethod, accepted: [requiredMfaMethod] };
+    if (!user || !excludeMethod) return asRequired;
+
+    const enforcingOrgs = await findMfaEnforcingOrgs(userId);
+    if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
+      return { challenge: excludeMethod, accepted: [excludeMethod] };
+    }
+    if (requiredMfaMethod !== excludeMethod) return asRequired;
+
+    const replacement = await findReplacementMfaMethod(user, excludeMethod);
+    if (!replacement) return asRequired;
+    return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
   };
 
   const deleteUser = async (userId: string) => {
@@ -597,6 +728,7 @@ export const userServiceFactory = ({
       usageMeteringService.emit(orgId, UserIdentities.key);
       usageMeteringService.emit(orgId, SecretIdentities.key);
       usageMeteringService.emit(orgId, PamIdentities.key);
+      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     });
 
     try {
@@ -722,7 +854,7 @@ export const userServiceFactory = ({
         actorOrgId,
         scope: OrganizationActionScope.Any
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
     }
 
     const memberships = await groupProjectDAL.findByUserId(user.id, actorOrgId);
@@ -743,6 +875,9 @@ export const userServiceFactory = ({
     deleteUser,
     getMe,
     getStepUpMfaMethod,
+    isStepUpMfaRequired,
+    resolveMfaMethodAfterRemoval,
+    assertMfaFactorRemovable,
     createUserAction,
     listUserGroups,
     getUserAction,

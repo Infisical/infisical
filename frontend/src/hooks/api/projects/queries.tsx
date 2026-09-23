@@ -33,6 +33,7 @@ import {
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
   TMyPendingProjectAccessRequestsResponse,
+  TProjectNavigation,
   TSearchProjectsDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
@@ -140,6 +141,19 @@ export const useGetUserProjectsByType = (type: ProjectType) =>
     queryKey: [...projectKeys.getAllUserProjects(), type],
     queryFn: () => fetchUserWorkspaces(false, type),
     select: (projects) => projects.slice(0, 100)
+  });
+
+export const useGetAccessibleProjectsWithSubOrgs = (orgId: string) =>
+  useQuery({
+    queryKey: projectKeys.getAccessibleProjectsWithSubOrgs(orgId),
+    queryFn: async ({ signal }) => {
+      const { data } = await apiRequest.get<{ projects: TProjectNavigation[] }>(
+        "/api/v1/projects/accessible-with-sub-orgs",
+        { signal }
+      );
+      return data.projects;
+    },
+    enabled: Boolean(orgId)
   });
 
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
@@ -377,7 +391,8 @@ export const useRestoreEnvironment = () => {
 export const useGetWorkspaceUsers = (
   projectId: string,
   includeGroupMembers?: boolean,
-  roles?: string[]
+  roles?: string[],
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: projectKeys.getProjectUsers(projectId, includeGroupMembers, roles),
@@ -395,7 +410,7 @@ export const useGetWorkspaceUsers = (
       });
       return users;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -418,28 +433,48 @@ export const useGetWorkspaceUserDetails = (
   });
 };
 
-export const useGetMembershipPermissionAudit = (projectId: string, membershipId: string) =>
+export const useGetMembershipPermissionAudit = (
+  projectId: string,
+  membershipId: string,
+  options?: { enabled?: boolean; retry?: number | boolean; includeFolderPermissions?: boolean }
+) =>
   useQuery({
-    queryKey: projectKeys.getMembershipPermissionAudit(projectId, membershipId),
+    queryKey: projectKeys.getMembershipPermissionAudit(
+      projectId,
+      membershipId,
+      options?.includeFolderPermissions
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetMembershipPermissionAuditResponse>(
-        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`
+        `/api/v1/projects/${projectId}/memberships/${membershipId}/permissions/audit`,
+        { params: { includeFolderPermissions: options?.includeFolderPermissions } }
       );
       return data;
     },
-    enabled: Boolean(projectId && membershipId)
+    enabled: Boolean(projectId && membershipId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
-export const useGetIdentityPermissionAudit = (projectId: string, identityId: string) =>
+export const useGetIdentityPermissionAudit = (
+  projectId: string,
+  identityId: string,
+  options?: { enabled?: boolean; retry?: number | boolean; includeFolderPermissions?: boolean }
+) =>
   useQuery({
-    queryKey: projectKeys.getIdentityPermissionAudit(projectId, identityId),
+    queryKey: projectKeys.getIdentityPermissionAudit(
+      projectId,
+      identityId,
+      options?.includeFolderPermissions
+    ),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetIdentityPermissionAuditResponse>(
-        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/permissions/audit`
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/permissions/audit`,
+        { params: { includeFolderPermissions: options?.includeFolderPermissions } }
       );
       return data;
     },
-    enabled: Boolean(projectId && identityId)
+    enabled: Boolean(projectId && identityId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
 export const useDeleteUserFromWorkspace = () => {
@@ -523,7 +558,11 @@ export const useGetWorkspaceGroupMembershipDetails = (
   });
 };
 
-export const useListWorkspaceGroups = (projectId: string, projectType?: string) => {
+export const useListWorkspaceGroups = (
+  projectId: string,
+  projectType?: string,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: projectKeys.getProjectGroupMemberships(projectId),
     queryFn: async () => {
@@ -534,7 +573,7 @@ export const useListWorkspaceGroups = (projectId: string, projectType?: string) 
       );
       return groupMemberships;
     },
-    enabled: true
+    enabled: options?.enabled ?? true
   });
 };
 

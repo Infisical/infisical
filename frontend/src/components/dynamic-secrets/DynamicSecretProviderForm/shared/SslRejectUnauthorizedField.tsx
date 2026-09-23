@@ -7,7 +7,7 @@ import {
   FieldError,
   FieldLabel,
   FieldTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 
 type Props<TValues extends FieldValues> = {
@@ -50,7 +50,7 @@ export const SslRejectUnauthorizedField = <TValues extends FieldValues>({
               {error?.message && <FieldError id={errorId}>{error.message}</FieldError>}
             </FieldContent>
           )}
-          <Switch
+          <Toggle
             ref={field.ref}
             id={id}
             variant="project"

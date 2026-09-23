@@ -16,7 +16,7 @@ import {
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -96,7 +96,7 @@ const Page = withPermission(
     };
 
     return (
-      <div className="mx-auto flex max-w-8xl flex-col">
+      <div className="@container mx-auto flex max-w-8xl flex-col">
         {membership && (
           <>
             <Link
@@ -105,7 +105,7 @@ const Page = withPermission(
               search={{
                 selectedTab: OrgAccessControlTabSections.Member
               }}
-              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+              className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
             >
               <ChevronLeftIcon size={16} />
               {isSubOrganization ? "Sub-" : ""}Organization Users
@@ -143,7 +143,7 @@ const Page = withPermission(
                       Copy User ID
                     </DropdownMenuItem>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Edit}
+                      I={OrgPermissionMemberActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -163,7 +163,7 @@ const Page = withPermission(
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionMemberActions.Edit}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -193,7 +193,7 @@ const Page = withPermission(
                       )}
                     </OrgPermissionCan>
                     <OrgPermissionCan
-                      I={OrgPermissionActions.Delete}
+                      I={OrgPermissionMemberActions.Delete}
                       a={OrgPermissionSubjects.Member}
                     >
                       {(isAllowed) => (
@@ -215,9 +215,9 @@ const Page = withPermission(
                 </DropdownMenu>
               )}
             </PageHeader>
-            <div className="flex flex-col gap-5 lg:flex-row">
+            <div className="flex flex-col gap-5 @4xl:flex-row">
               <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
-              <div className="flex flex-1 flex-col gap-y-5">
+              <div className="flex min-w-0 flex-1 flex-col gap-y-5">
                 <UserProjectsSection membershipId={membershipId} />
                 <UserGroupsSection orgMembership={membership} />
                 <UserAuditLogsSection orgMembership={membership} />
@@ -254,6 +254,7 @@ const Page = withPermission(
         />
 
         <UpgradePlanModal
+          paywallKey="organization.user-details-by-id"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text={popUp.upgradePlan?.data?.text}
@@ -268,7 +269,7 @@ const Page = withPermission(
     );
   },
   {
-    action: OrgPermissionActions.Read,
+    action: OrgPermissionMemberActions.Read,
     subject: OrgPermissionSubjects.Member,
     accessRestrictedMode: "dialog"
   }

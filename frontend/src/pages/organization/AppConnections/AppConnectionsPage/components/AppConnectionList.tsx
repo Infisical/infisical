@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader2Icon, Search } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -13,6 +12,7 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { useSubscription } from "@app/context";
 import { APP_CONNECTION_MAP, POPULAR_APP_CONNECTIONS } from "@app/helpers/appConnections";
 import { usePopUp } from "@app/hooks";
@@ -27,28 +27,18 @@ type Props = {
 };
 
 const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => void }) => {
-  const { name, image, category, description, icon } = APP_CONNECTION_MAP[app];
+  const { name, image, category, description, icon: AppIcon } = APP_CONNECTION_MAP[app];
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
-          <img
-            src={`/images/integrations/${image}`}
-            alt={`${name} logo`}
-            className="h-6 w-6 object-contain"
-          />
-          {icon && (
-            <FontAwesomeIcon
-              icon={icon}
-              className="absolute -right-1 -bottom-1 text-primary-700"
-              size="sm"
-            />
-          )}
+        <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+          <ProviderIcon icon={image} alt={`${name} logo`} className="h-6 w-6 object-contain" />
+          {AppIcon && <AppIcon className="absolute -right-1 -bottom-1 size-3.5 text-project" />}
         </div>
         <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
           {category}
@@ -217,6 +207,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
       </p>
 
       <UpgradePlanModal
+        paywallKey="organization.app-connection-list"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="All App Connections can be unlocked if you switch to Infisical Enterprise plan."

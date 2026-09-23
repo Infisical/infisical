@@ -26,7 +26,7 @@ For complete details, see the official [cert-manager documentation](https://cert
 
 <Steps>
   <Step title="Get ACME Credentials from Infisical">
-    In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile with ACME enrollment, then click **Reveal ACME EAB** to get:
+    In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Select **Configure** on the profile with ACME enrollment, then select **Reveal ACME EAB** to get:
     
     - **ACME Directory URL**
     - **EAB Key ID (KID)**
@@ -251,7 +251,7 @@ For complete details, see the official [cert-manager documentation](https://cert
 
 <AccordionGroup>
 <Accordion title="How do I inject the CA certificate into secrets (ca.crt field)?">
-By default, cert-manager's ACME issuer does not populate the `ca.crt` field in the generated Kubernetes Secret ([see GitHub issue](https://github.com/cert-manager/cert-manager/issues/1571)). The secret will only contain `tls.crt` and `tls.key`.
+By default, cert-manager's ACME issuer doesn't populate the `ca.crt` field in the generated Kubernetes Secret ([see GitHub issue](https://github.com/cert-manager/cert-manager/issues/1571)). The secret will only contain `tls.crt` and `tls.key`.
 
 If your application requires `ca.crt` (e.g., for mTLS), use [trust-manager](https://cert-manager.io/docs/trust/trust-manager/) to inject it automatically.
 
@@ -343,16 +343,16 @@ You should now see `ca.crt`, `tls.crt`, and `tls.key` in the secret data.
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx with Certbot" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up ACME for Nginx web servers.
+  <Card title="NGINX with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up ACME for NGINX web servers.
   </Card>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to AWS, Azure, and more.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
     Get notified when certificates are about to expire.
   </Card>
-  <Card title="ACME Enrollment" icon="robot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
+  <Card title="ACME Enrollment" icon="bot" href="/documentation/platform/pki/applications/enrollment-methods/acme">
     Learn more about ACME enrollment configuration.
   </Card>
 </CardGroup>

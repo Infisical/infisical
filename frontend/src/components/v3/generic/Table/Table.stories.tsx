@@ -98,17 +98,21 @@ const identities: Identity[] = [
  * For datasets that don't fit on a single screen, pair the `Table` with the
  * `Pagination` component as a sibling below it — see *Example: With
  * Pagination*.
+ *
+ * Anchor the table on the start edge. Extra column width grows toward the end
+ * and scrolls inside the bordered container; do not center the table so it
+ * grows both ways. Stories use `layout: "padded"` for that reason.
  */
 const meta = {
   title: "Generic/Table",
   component: Table,
   parameters: {
-    layout: "centered"
+    layout: "padded"
   },
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <div className="w-[760px]">
+      <div className="ms-0 w-full max-w-3xl min-w-0">
         <Story />
       </div>
     )
@@ -412,7 +416,7 @@ export const WithActions: Story = {
     docs: {
       description: {
         story:
-          "Trailing `DropdownMenu` triggered by an `IconButton` is the canonical row-action pattern. Place the action cell at the right of the row (header empty, cell right-aligned) so the kebab sits on the trailing edge regardless of column widths."
+          "Trailing `DropdownMenu` triggered by an `IconButton` is the canonical row-action pattern. Mark the empty header and each trailing action cell with `variant=action`; the shared table primitives preserve flexible column sizing and align the controls to the trailing edge."
       }
     }
   },
@@ -422,7 +426,7 @@ export const WithActions: Story = {
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Role</TableHead>
-          <TableHead className="w-12 text-right" />
+          <TableHead variant="action" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -430,7 +434,7 @@ export const WithActions: Story = {
           <TableRow key={id.name}>
             <TableCell className="font-medium">{id.name}</TableCell>
             <TableCell>{id.role}</TableCell>
-            <TableCell className="text-right">
+            <TableCell variant="action">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton variant="ghost" size="xs" aria-label={`${id.name} actions`}>
@@ -539,7 +543,7 @@ export const KitchenSink: Story = {
           <TableHead className="w-1/3">Name</TableHead>
           <TableHead className="w-1/3">Role</TableHead>
           <TableHead className="w-1/3">Managed By</TableHead>
-          <TableHead className="text-right" />
+          <TableHead variant="action" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -553,7 +557,7 @@ export const KitchenSink: Story = {
                 Project
               </Badge>
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell variant="action">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton variant="ghost" size="xs" aria-label={`${id.name} actions`}>

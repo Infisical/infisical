@@ -6,11 +6,12 @@ import {
   AccessRestrictedDialog,
   AccessRestrictedNotice,
   TAccessRestrictedRequirement,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   toPermissionRequirement
 } from "@app/components/v3";
 import { ProjectPermissionSet, useProjectPermission } from "@app/context/ProjectPermissionContext";
-
-import { Tooltip } from "../v2/Tooltip";
 
 export const ProjectPermissionGuardBanner = ({
   requirement,
@@ -69,11 +70,21 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
         }
 
         if (!isAllowed && passThrough) {
-          return <Tooltip content={label}>{finalChild}</Tooltip>;
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>{finalChild}</TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          );
         }
 
         if (isAllowed && renderTooltip && allowedLabel) {
-          return <Tooltip content={allowedLabel}>{finalChild}</Tooltip>;
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>{finalChild}</TooltipTrigger>
+              <TooltipContent>{allowedLabel}</TooltipContent>
+            </Tooltip>
+          );
         }
 
         if (!isAllowed) return null;

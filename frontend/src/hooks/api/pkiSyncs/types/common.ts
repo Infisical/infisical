@@ -19,6 +19,14 @@ export type RootPkiSyncOptions = {
   preserveItemOnRenewal?: boolean;
   updateExistingCertificates?: boolean;
   fieldMappings?: TChefFieldMappings;
+  healthCheckCommand?: string | null;
+  postSyncCommand?: string | null;
+};
+
+export type TPkiSyncFilters = {
+  profileIds?: string[];
+  certificateOrderIds?: string[];
+  metadata?: { key: string; value?: string }[];
 };
 
 export type TRootPkiSync = {
@@ -36,6 +44,9 @@ export type TRootPkiSync = {
   lastSyncJobId: string | null;
   lastSyncedAt: string | null;
   lastSyncMessage: string | null;
+  lastHealthCheckRanAt: string | null;
+  lastHealthCheckStatus: PkiSyncStatus | null;
+  lastHealthCheckMessage: string | null;
   importStatus: PkiSyncStatus | null;
   lastImportJobId: string | null;
   lastImportedAt: string | null;
@@ -57,6 +68,7 @@ export type TRootPkiSync = {
   appConnectionName?: string;
   appConnectionApp?: string;
   hasCertificate?: boolean;
+  filters?: TPkiSyncFilters | null;
 };
 
 export type TPkiSyncCertificate = {
@@ -70,6 +82,7 @@ export type TPkiSyncCertificate = {
   updatedAt: string;
   certificateSerialNumber?: string;
   certificateCommonName?: string;
+  certificateOrderId?: string;
   certificateAltNames?: string;
   certificateStatus?: string;
   certificateNotBefore?: Date;
@@ -83,4 +96,37 @@ export type TPkiSyncCertificate = {
     isDefault?: boolean;
     [key: string]: unknown;
   } | null;
+};
+
+export type TPkiSyncHealthCheckResult = {
+  status: PkiSyncStatus;
+  exitCode?: number;
+  timedOut?: boolean;
+  durationMs: number;
+  output?: string;
+  failureDetail?: string;
+  message?: string;
+};
+
+export type TPkiSyncPreviewCertificate = {
+  id: string;
+  commonName: string;
+  altNames?: string | null;
+  serialNumber?: string;
+  notAfter?: string;
+  orderId?: string;
+  profileName?: string | null;
+};
+
+export type TPkiSyncCertificateOrder = {
+  certificateOrderId: string;
+  commonName: string;
+  altNames?: string | null;
+};
+
+export type TPkiSyncFilterPreview = {
+  matchedCount: number;
+  certificates: TPkiSyncPreviewCertificate[];
+  toUnlink: { id: string; commonName: string; altNames?: string | null }[];
+  willRemoveFromDestination: boolean;
 };

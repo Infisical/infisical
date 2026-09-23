@@ -2,13 +2,15 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SecretSyncs } from "@app/lib/api-docs";
-import { startsWithVowel } from "@app/lib/fn";
+import { removeTrailingSlash, startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { KeySchemaSchema } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSecretSync, TSecretSyncInput } from "@app/services/secret-sync/secret-sync-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -76,7 +78,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSyncs: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -122,7 +124,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -172,7 +174,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncName } = req.params;
       const { projectId } = req.query;
@@ -216,7 +218,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretSync = (await server.services.secretSync.createSecretSync(
         { ...req.body, destination },
@@ -276,7 +278,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -344,7 +346,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
       const { removeSecrets } = req.query;
@@ -406,7 +408,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -446,7 +448,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
       const { importBehavior } = req.query;
@@ -483,7 +485,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         200: z.object({ secretSync: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { syncId } = req.params;
 
@@ -514,16 +516,16 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         connectionId: z.string().uuid().optional(),
         syncOptions: z.record(z.unknown()).optional(),
         excludeSyncId: z.string().uuid().optional(),
-        projectId: z.string().uuid()
+        projectId: z.string()
       }),
       response: {
         200: z.object({
           hasDuplicate: z.boolean(),
-          duplicateProjectId: z.string().uuid().optional()
+          duplicateProjectId: z.string().optional()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { destinationConfig, connectionId, excludeSyncId, projectId } = req.body;
 
@@ -535,6 +537,52 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           excludeSyncId,
           projectId
         },
+        req.permission
+      );
+
+      return result;
+    }
+  });
+
+  // Destination-agnostic: flatten() never uses the destination or source folder path to build a
+  // key, so this is safe to call from the Source step before a destination is even chosen.
+  server.route({
+    method: "POST",
+    url: "/recursive-conflicts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: `check${destinationNameForOpId}SecretSyncRecursiveConflicts`,
+      tags: [ApiDocsTags.SecretSyncs],
+      body: z.object({
+        projectId: z.string(),
+        environment: slugSchema({ field: "environment", max: 64 }),
+        secretPath: z
+          .string()
+          .trim()
+          .min(1, "Secret path required")
+          .transform(removeTrailingSlash)
+          .describe(SecretSyncs.CREATE(destination).secretPath),
+        keySchema: KeySchemaSchema
+      }),
+      response: {
+        200: z.object({
+          conflicts: z.array(
+            z.object({
+              key: z.string(),
+              paths: z.array(z.string())
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { projectId, environment, secretPath, keySchema } = req.body;
+
+      const result = await server.services.secretSync.findRecursiveConflicts(
+        { projectId, environment, secretPath, keySchema },
         req.permission
       );
 

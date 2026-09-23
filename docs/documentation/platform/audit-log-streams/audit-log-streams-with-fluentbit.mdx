@@ -10,8 +10,8 @@ description: "How to stream Infisical Audit Logs to Non-HTTP log providers"
     then you should contact sales@infisical.com to purchase an enterprise license to use it.
 </Info>
 
-This guide will demonstrate how you can send Infisical Audit log streams to storage solutions that do not support direct HTTP-based ingestion, such as AWS S3.
-To achieve this, you will learn how you can use a log collector like Fluent Bit to capture and forward logs from Infisical to non-HTTP storage options. 
+This guide will demonstrate how you can send Infisical Audit log streams to storage solutions that don't support direct HTTP-based ingestion, such as AWS S3.
+To achieve this, you'll learn how you can use a log collector like Fluent Bit to capture and forward logs from Infisical to non-HTTP storage options. 
 In this pattern, Fluent Bit acts as an intermediary, accepting HTTP log streams from Infisical and transforming them into a format that can be sent to your desired storage provider.
 
 ## Overview
@@ -58,7 +58,7 @@ The following Fluent Bit configuration sets up an HTTP listener on port `8888` a
 ### Connecting Infisical audit log stream
 
 Once Fluent Bit is set up and configured, you can point the Infisical [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to Fluent Bit's HTTP listener, which will then forward the logs to your chosen provider. 
-Using this pattern, you are able to send Infisical Audit logs to various providers that do not support HTTP based log ingestion by default. 
+Using this pattern, you're able to send Infisical Audit logs to various providers that don't support HTTP based log ingestion by default. 
 
 <Info>
     Infisical delivers events to Custom endpoints (including Fluent Bit) as a [JSON array of events](/documentation/platform/audit-log-streams/audit-log-streams#delivery-format) per request. Fluent Bit's `http` input accepts JSON arrays and emits each element as a separate record, so no extra configuration is required.

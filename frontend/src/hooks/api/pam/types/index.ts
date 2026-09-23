@@ -2,12 +2,14 @@ import { OrderByDirection } from "../../generic/types";
 import {
   PamAccessRequestDecision,
   PamAccessStatus,
+  PamAccessType,
   PamAccountOrderBy,
   PamAccountType,
   PamAccountView,
   PamApproverType,
   PamDiscoverySchedule,
   PamDiscoveryType,
+  PamHeartbeatStatus,
   PamNotificationEvent,
   PamPolicyType,
   PamResourcePermissionActions,
@@ -143,6 +145,8 @@ export enum PamFieldWidget {
   Password = "password"
 }
 
+export type TPamFieldCondition = { field: string; equals: string | boolean };
+
 export type TPamFieldDescriptor = {
   key: string;
   label: string;
@@ -150,9 +154,10 @@ export type TPamFieldDescriptor = {
   required: boolean;
   secret: boolean;
   optional?: boolean;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; docsUrl?: string }[];
   defaultValue?: string | number | boolean;
-  showWhen?: { field: string; equals: string | boolean };
+  showWhen?: TPamFieldCondition;
+  forceWhen?: { when: TPamFieldCondition; value: string | number | boolean; reason: string }[];
   tooltip?: string;
 };
 
@@ -219,8 +224,20 @@ export type TPamAccount = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  heartbeatStatus?: PamHeartbeatStatus | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TPamAccountCredentials = {
+  accountType: PamAccountType;
+  credentials: Record<string, unknown>;
+};
+
+export type TGetPamAccountCredentialsDTO = {
+  accountId: string;
+  reason?: string;
+  mfaSessionId?: string;
 };
 
 export type TPamFolder = {
@@ -259,6 +276,8 @@ export type TSessionEvent = {
   eventType: "input" | "output" | "resize" | "error";
   channelType?: SessionChannelType;
   data: string;
+  // set by gateways that render the terminal before recording. absent on older recordings, whose data is raw terminal bytes
+  rendered?: boolean;
   elapsedTime: number;
 };
 
@@ -334,6 +353,12 @@ export type TAccessiblePamAccount = {
   requireReason?: boolean;
   accessStatus?: PamAccessStatus;
   grantExpiresAt?: string | null;
+  // Required, unlike the fields above: every endpoint returning this shape sets them, and a mapping
+  // site that quietly omitted them is what stopped the break-glass action from ever rendering.
+  pendingRequestId: string | null;
+  canBreakGlass: boolean;
+  credentialAccessStatus?: PamAccessStatus;
+  credentialPendingRequestId?: string | null;
   disabledReason?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -631,6 +656,17 @@ export type TPamPasswordRequirements = {
   allowedSymbols?: string;
 };
 
+export type TPamAccountHeartbeat = {
+  enabled: boolean;
+  intervalSeconds: number | null;
+  status: PamHeartbeatStatus | null;
+  lastCheckedAt: string | null;
+  lastHealthyAt: string | null;
+  nextCheckAt: string | null;
+  templateName: string;
+  lastMessage: string | null;
+};
+
 export type TPamAccountRotation = {
   enabled: boolean;
   intervalSeconds: number | null;
@@ -681,6 +717,7 @@ export type TPamAccessRequest = {
       folderId: string;
       reason?: string;
       duration: string;
+      accessType?: PamAccessType;
     };
   } | null;
   expiresAt: string | null;
@@ -693,8 +730,11 @@ export type TPamAccessRequest = {
   accountType?: PamAccountType;
   folderName?: string;
   host?: string;
+  accessType?: PamAccessType;
   grantExpiresAt?: string | null;
   grantStatus?: string | null;
+  isBreakGlass?: boolean;
+  bypassReason?: string | null;
 };
 
 export type TPamNotificationConfig = {
@@ -712,6 +752,7 @@ export type TPamApprovalConfig = {
     integration: string;
     integrationSlug: string;
   })[];
+  breakGlassUsers: { type: PamApproverType; id: string }[];
 };
 
 export type TPamAccessGrant = {
@@ -729,9 +770,11 @@ export type TPamAccessGrant = {
 };
 
 export type TCreatePamAccessRequestDTO = {
+  breakGlass?: boolean;
   accountId: string;
   reason?: string;
   duration: string;
+  accessType?: PamAccessType;
 };
 
 export type TReviewPamAccessRequestDTO = {
@@ -744,10 +787,16 @@ export type TRevokePamAccessRequestDTO = {
   requestId: string;
 };
 
+export type TBreakGlassPamAccessRequestDTO = {
+  requestId: string;
+  bypassReason: string;
+};
+
 export type TSetPamApprovalConfigDTO = {
   folderId: string;
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
   notificationConfigs?: TPamNotificationConfig[];
+  breakGlassUsers?: { type: PamApproverType; id: string }[];
 };

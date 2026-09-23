@@ -9,11 +9,13 @@ import {
   TriangleAlertIcon
 } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "./Alert";
+import { Button } from "../Button";
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "./Alert";
 
 /**
  * Alerts surface short, scannable messages that communicate state or call attention to contextual information.
- * Compose an alert from an optional leading icon, `AlertTitle`, and `AlertDescription`.
+ * Compose an alert from an optional leading icon, `AlertTitle`, `AlertDescription`, and
+ * `AlertAction` for a related action.
  * The `variant` determines the semantic tone of the message.
  */
 const meta = {
@@ -272,6 +274,34 @@ export const TitleOnly: Story = {
     <Alert {...args}>
       <InfoIcon />
       <AlertTitle>Sync completed successfully.</AlertTitle>
+    </Alert>
+  )
+};
+
+export const WithAction: Story = {
+  name: "Example: With Action",
+  args: {
+    variant: "info"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Place AlertAction inside AlertDescription when a persistent message has a related action. The action stacks below the message in narrow containers."
+      }
+    }
+  },
+  render: (args) => (
+    <Alert {...args}>
+      <InfoIcon />
+      <AlertDescription>
+        <span>Deploy a gateway to keep traffic inside the target network.</span>
+        <AlertAction>
+          <Button variant="info" size="sm">
+            Deploy Gateway
+          </Button>
+        </AlertAction>
+      </AlertDescription>
     </Alert>
   )
 };

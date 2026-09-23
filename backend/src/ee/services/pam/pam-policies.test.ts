@@ -1,12 +1,20 @@
 import { describe, expect, test } from "vitest";
 
-import { PamAccountType } from "./pam-enums";
-import { getApplicablePolicies, PamPolicyType, resolveAccessControls, validatePolicyValues } from "./pam-policies";
+import { accountTypeSupportsSessionLogMasking, PamAccountType } from "./pam-enums";
+import {
+  buildPamPolicyRules,
+  getApplicablePolicies,
+  PamPolicyType,
+  PamSettingType,
+  resolveAccessControls,
+  validatePolicyValues
+} from "./pam-policies";
 
 describe("getApplicablePolicies", () => {
   test("returns the universal policies for any account type", () => {
     const keys = getApplicablePolicies(PamAccountType.Postgres).map((p) => p.key);
     expect(keys).toContain(PamPolicyType.RequireMfa);
+    expect(keys).toContain(PamPolicyType.AllowBreakGlass);
     expect(keys).toContain(PamPolicyType.RequireReason);
     expect(keys).toContain(PamPolicyType.MaxSessionDuration);
   });
@@ -88,6 +96,7 @@ describe("validatePolicyValues", () => {
 describe("resolveAccessControls", () => {
   const DEFAULTS = {
     requiresApproval: false,
+    allowBreakGlass: false,
     requireReason: false,
     requireMfa: false,
     maxSessionDurationSeconds: null
@@ -111,7 +120,7 @@ describe("resolveAccessControls", () => {
         [PamPolicyType.RequireMfa]: true,
         [PamPolicyType.MaxSessionDuration]: 3600
       })
-    ).toEqual({ requiresApproval: false, requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
+    ).toEqual({ ...DEFAULTS, requireReason: true, requireMfa: true, maxSessionDurationSeconds: 3600 });
   });
 
   test("resolves each policy independently of the others", () => {
@@ -123,6 +132,22 @@ describe("resolveAccessControls", () => {
       ...DEFAULTS,
       maxSessionDurationSeconds: 60
     });
+  });
+
+  test("break-glass only resolves alongside the approval it exists to skip", () => {
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.AllowBreakGlass]: true
+      }).allowBreakGlass
+    ).toBe(true);
+    expect(resolveAccessControls({ [PamPolicyType.AllowBreakGlass]: true }).allowBreakGlass).toBe(false);
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.AllowBreakGlass]: "true"
+      }).allowBreakGlass
+    ).toBe(false);
   });
 
   test("treats the boolean gates as strict: only literal true enables them", () => {
@@ -147,5 +172,60 @@ describe("resolveAccessControls", () => {
       ...DEFAULTS,
       requireMfa: true
     });
+  });
+});
+
+describe("buildPamPolicyRules", () => {
+  const empty = { commandBlockingPatterns: [], maskingPatterns: [], maskingBuiltInDetection: false };
+
+  test("returns null when nothing is configured", () => {
+    expect(buildPamPolicyRules(empty)).toBeNull();
+  });
+
+  test("emits command blocking on its own", () => {
+    expect(buildPamPolicyRules({ ...empty, commandBlockingPatterns: ["rm\\s+-rf"] })).toEqual({
+      [PamPolicyType.CommandBlocking]: { patterns: ["rm\\s+-rf"] }
+    });
+  });
+
+  // Must serialize exactly as it did before built-in detection existed.
+  test("emits custom masking patterns with detection off", () => {
+    expect(buildPamPolicyRules({ ...empty, maskingPatterns: ["password=\\S+"] })).toEqual({
+      [PamSettingType.SessionLogMasking]: { patterns: ["password=\\S+"], builtInDetection: false }
+    });
+  });
+
+  // The case the old shape could not express.
+  test("emits the masking rule for detection alone", () => {
+    expect(buildPamPolicyRules({ ...empty, maskingBuiltInDetection: true })).toEqual({
+      [PamSettingType.SessionLogMasking]: { patterns: [], builtInDetection: true }
+    });
+  });
+
+  test("emits both arms together", () => {
+    expect(
+      buildPamPolicyRules({
+        commandBlockingPatterns: ["shutdown"],
+        maskingPatterns: ["token=\\S+"],
+        maskingBuiltInDetection: true
+      })
+    ).toEqual({
+      [PamPolicyType.CommandBlocking]: { patterns: ["shutdown"] },
+      [PamSettingType.SessionLogMasking]: { patterns: ["token=\\S+"], builtInDetection: true }
+    });
+  });
+});
+
+describe("accountTypeSupportsSessionLogMasking", () => {
+  // RDP recordings are base64 frames, and AWS IAM is gateway-less so it has no session log.
+  const unmaskable = [PamAccountType.Windows, PamAccountType.WindowsAd, PamAccountType.AwsIam];
+
+  test("is false for types with no maskable session log", () => {
+    expect(unmaskable.every((type) => !accountTypeSupportsSessionLogMasking(type))).toBe(true);
+  });
+
+  test("is true for everything else", () => {
+    const rest = Object.values(PamAccountType).filter((type) => !unmaskable.includes(type));
+    expect(rest.every(accountTypeSupportsSessionLogMasking)).toBe(true);
   });
 });

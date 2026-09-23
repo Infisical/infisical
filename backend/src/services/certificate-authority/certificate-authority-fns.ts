@@ -16,7 +16,7 @@ import {
   CertStatus,
   TAltNameType
 } from "../certificate/certificate-types";
-import { DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -34,6 +34,12 @@ export const createSerialNumber = () => {
   randomBytes[0] &= 0x7f; // ensure the first bit is 0
   return randomBytes.toString("hex");
 };
+
+// on anything short-lived these belong together: backdating the start without pushing out the
+// expiry leaves the certificate rejected as expired by a host whose clock runs ahead of ours
+export const getNotBeforeWithClockSkew = (issuedAt: Date) => new Date(issuedAt.getTime() - CERT_CLOCK_SKEW_MS);
+
+export const getNotAfterWithClockSkew = (expiresAt: Date) => new Date(expiresAt.getTime() + CERT_CLOCK_SKEW_MS);
 
 export const assertCaInProfileProject = (ca: { projectId: string }, profile: { projectId: string }) => {
   if (ca.projectId !== profile.projectId) {

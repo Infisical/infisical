@@ -36,7 +36,10 @@ export const PasswordRequirementsFields = ({
                 max={250}
                 {...field}
                 isError={Boolean(error)}
-                onChange={(event) => field.onChange(Number(event.target.value))}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  field.onChange(value === "" ? value : Number(value));
+                }}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -56,7 +59,10 @@ export const PasswordRequirementsFields = ({
                 min={0}
                 {...field}
                 isError={Boolean(error)}
-                onChange={(event) => field.onChange(Number(event.target.value))}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  field.onChange(value === "" ? value : Number(value));
+                }}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -76,7 +82,10 @@ export const PasswordRequirementsFields = ({
                 min={0}
                 {...field}
                 isError={Boolean(error)}
-                onChange={(event) => field.onChange(Number(event.target.value))}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  field.onChange(value === "" ? value : Number(value));
+                }}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -96,7 +105,10 @@ export const PasswordRequirementsFields = ({
                 min={0}
                 {...field}
                 isError={Boolean(error)}
-                onChange={(event) => field.onChange(Number(event.target.value))}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  field.onChange(value === "" ? value : Number(value));
+                }}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -116,7 +128,10 @@ export const PasswordRequirementsFields = ({
                 min={0}
                 {...field}
                 isError={Boolean(error)}
-                onChange={(event) => field.onChange(Number(event.target.value))}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  field.onChange(value === "" ? value : Number(value));
+                }}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>

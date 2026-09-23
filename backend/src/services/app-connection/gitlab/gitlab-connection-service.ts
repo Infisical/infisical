@@ -1,3 +1,4 @@
+import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -31,6 +32,7 @@ export const gitlabConnectionService = (
       return projects;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
+      if (error instanceof RateLimitError) throw error;
       return [];
     }
   };
@@ -48,6 +50,7 @@ export const gitlabConnectionService = (
       return groups;
     } catch (error) {
       logger.error(error, `Failed to establish connection with GitLab for app ${connectionId}`);
+      if (error instanceof RateLimitError) throw error;
       return [];
     }
   };

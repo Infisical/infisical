@@ -16,6 +16,7 @@ import { Cloud66SyncDestinationCol } from "./Cloud66SyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
+import { DaytonaSyncDestinationCol } from "./DaytonaSyncDestinationCol";
 import { DevinSyncDestinationCol } from "./DevinSyncDestinationCol";
 import { DigitalOceanAppPlatformSyncDestinationCol } from "./DigitalOceanAppPlatformSyncDestinationCol";
 import { ExternalInfisicalSyncDestinationCol } from "./ExternalInfisicalSyncDestinationCol";
@@ -149,6 +150,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <QoverySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Cloud66:
       return <Cloud66SyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Daytona:
+      return <DaytonaSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
     default:

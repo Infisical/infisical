@@ -8,10 +8,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
+import { CERT_CLOCK_SKEW_MS } from "@app/services/certificate-common/certificate-constants";
 
 const execFileAsync = promisify(execFile);
 
 const EXEC_TIMEOUT_MS = 10000; // 10 seconds
+
+const DEFAULT_CLOCK_SKEW_SECONDS = CERT_CLOCK_SKEW_MS / 1000;
 
 export enum SshCertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
@@ -20,6 +23,20 @@ export enum SshCertKeyAlgorithm {
   ECDSA_P384 = "EC_secp384r1",
   ED25519 = "ED25519"
 }
+
+export const SSH_CERT_KEY_ALGORITHMS = Object.values(SshCertKeyAlgorithm) as [
+  SshCertKeyAlgorithm,
+  ...SshCertKeyAlgorithm[]
+];
+
+export enum SshPublicKeyType {
+  RSA = "ssh-rsa",
+  ED25519 = "ssh-ed25519",
+  ECDSA_P256 = "ecdsa-sha2-nistp256",
+  ECDSA_P384 = "ecdsa-sha2-nistp384"
+}
+
+const SUPPORTED_SSH_PUBLIC_KEY_TYPES = new Set<string>(Object.values(SshPublicKeyType));
 
 export enum SshCertType {
   USER = "user",
@@ -33,6 +50,13 @@ export type TCreateSshCertDTO = {
   principals: string[];
   requestedTtl?: string;
   certType: SshCertType;
+  // Widens the validity window by this many seconds at both ends, so a verifying host whose clock
+  // runs behind or ahead of ours rejects the certificate as neither not-yet-valid nor expired.
+  clockSkewSeconds?: number;
+  // Set when the requested TTL is the only thing enforcing an access boundary, in which case the
+  // expiry has to stay at issuance + ttl. The start is still backdated, since moving that end
+  // cannot extend access past the boundary.
+  enforceExactExpiry?: boolean;
 };
 
 /* eslint-disable no-bitwise */
@@ -106,6 +130,18 @@ export const createSshKeyPair = async (keyAlgorithm: SshCertKeyAlgorithm) => {
   }
 };
 
+export const inferSshCertKeyAlgorithm = (publicKey: string): SshPublicKeyType => {
+  const space = publicKey.indexOf(" ");
+  const type = space === -1 ? publicKey : publicKey.slice(0, space);
+  if (!SUPPORTED_SSH_PUBLIC_KEY_TYPES.has(type)) {
+    throw new BadRequestError({
+      message: `Unsupported SSH key type '${type}'. Allowed types are RSA 2048, RSA 4096, ECDSA P256, ECDSA P384, and ED25519.`
+    });
+  }
+
+  return type as SshPublicKeyType;
+};
+
 /**
  * Return the SSH public key for the given SSH private key.
  */
@@ -156,11 +192,7 @@ const validateSshCertificateKeyId = (keyId: string) => {
  * Validate the format of the SSH public key
  */
 const validateSshPublicKey = async (publicKey: string) => {
-  const validPrefixes = ["ssh-rsa", "ssh-ed25519", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384"];
-  const startsWithValidPrefix = validPrefixes.some((prefix) => publicKey.startsWith(`${prefix} `));
-  if (!startsWithValidPrefix) {
-    throw new BadRequestError({ message: "Failed to validate SSH public key format: unsupported key type." });
-  }
+  inferSshCertKeyAlgorithm(publicKey);
 
   // write the key to a temp file and run `ssh-keygen -l -f`
   // check to see if OpenSSH can read/interpret the public key
@@ -188,7 +220,9 @@ export const createSshCert = async ({
   keyId,
   principals,
   requestedTtl, // in ms lib format
-  certType
+  certType,
+  clockSkewSeconds = DEFAULT_CLOCK_SKEW_SECONDS,
+  enforceExactExpiry = false
 }: TCreateSshCertDTO) => {
   let ttl: number | undefined;
 
@@ -203,6 +237,14 @@ export const createSshCert = async ({
     });
   }
 
+  // the skew is interpolated into ssh-keygen's -V argument, where a negative value reads as another
+  // flag and a fractional one is rejected outright, both surfacing as an opaque non-zero exit
+  if (!Number.isInteger(clockSkewSeconds) || clockSkewSeconds <= 0) {
+    throw new BadRequestError({
+      message: "Failed to create SSH certificate due to a clock skew that is not a whole number of seconds above zero"
+    });
+  }
+
   validateSshCertificateKeyId(keyId);
   await validateSshPublicKey(clientPublicKey);
 
@@ -213,6 +255,7 @@ export const createSshCert = async ({
   const signedPublicKeyFile = path.join(tempDir, "user_key-cert.pub");
 
   const serialNumber = createSshCertSerialNumber();
+  const validitySeconds = enforceExactExpiry ? ttl : ttl + clockSkewSeconds;
 
   // Build `ssh-keygen` arguments for signing
   // Using an array avoids shell injection issues
@@ -225,7 +268,7 @@ export const createSshCert = async ({
     "-n",
     principals.join(","), // principals
     "-V",
-    `+${ttl}s`, // validity (TTL in seconds)
+    `-${clockSkewSeconds}s:+${validitySeconds}s`, // validity, widened for clock skew at both ends
     "-z",
     serialNumber, // serial number
     publicKeyFile // public key file to sign

@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ButtonBadge,
@@ -17,6 +19,7 @@ import {
   FieldSeparator,
   Input
 } from "@app/components/v3";
+import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
@@ -42,7 +45,11 @@ export default function InitialSignupStep({
   const { t } = useTranslation();
   const { config } = useServerConfig();
   const { mutateAsync, isPending } = useSendVerificationEmail();
+  const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
   const [emailError, setEmailError] = useState(false);
+  const [isCaptchaReady, setIsCaptchaReady] = useState(!requiresCaptcha);
+  const [isCaptchaPending, setIsCaptchaPending] = useState(false);
+  const captchaRef = useRef<HCaptcha>(null);
   const isEmailValid = z.string().email().safeParse(email).success;
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
@@ -70,8 +77,39 @@ export default function InitialSignupStep({
       return;
     }
 
-    const { cooldownSeconds } = await mutateAsync({ email: normalizedEmail });
-    incrementStep(normalizedEmail, cooldownSeconds);
+    let captchaToken: string | undefined;
+
+    if (requiresCaptcha) {
+      setIsCaptchaPending(true);
+      try {
+        captchaToken = (await captchaRef.current?.execute({ async: true }))?.response;
+        if (!captchaToken) {
+          throw new Error("hCaptcha did not return a token");
+        }
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Captcha verification failed. Please try again."
+        });
+        captchaRef.current?.resetCaptcha();
+        return;
+      } finally {
+        setIsCaptchaPending(false);
+      }
+    }
+
+    try {
+      const { cooldownSeconds } = await mutateAsync({
+        email: normalizedEmail,
+        captchaToken
+      });
+      incrementStep(normalizedEmail, cooldownSeconds);
+    } finally {
+      // hCaptcha tokens are single-use, so a retry with a stale one is rejected server-side.
+      if (requiresCaptcha) {
+        captchaRef.current?.resetCaptcha();
+      }
+    }
   };
 
   const handleSocialSignup = (method: LoginMethod) => {
@@ -86,7 +124,7 @@ export default function InitialSignupStep({
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Sign up
           </CardTitle>
           <CardDescription className="ml-0.5 text-base">
@@ -155,14 +193,23 @@ export default function InitialSignupStep({
                 className="h-10"
                 isError={emailError}
               />
+              {envConfig.CAPTCHA_SITE_KEY && (
+                <HCaptcha
+                  size="invisible"
+                  theme="dark"
+                  sitekey={envConfig.CAPTCHA_SITE_KEY}
+                  onLoad={() => setIsCaptchaReady(true)}
+                  ref={captchaRef}
+                />
+              )}
               <Button
                 type="submit"
                 onClick={handleEmailSignup}
                 variant="project"
                 size="lg"
                 isFullWidth
-                isDisabled={!isEmailValid || isPending}
-                isPending={isPending}
+                isDisabled={!isEmailValid || isPending || isCaptchaPending || !isCaptchaReady}
+                isPending={isPending || isCaptchaPending}
               >
                 Continue with Email
               </Button>

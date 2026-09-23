@@ -4,8 +4,8 @@ import { format } from "date-fns";
 import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Button,
   Card,
@@ -28,6 +28,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -165,7 +166,7 @@ export const PamDiscoveryPage = () => {
                   <TableHead className="w-32">Status</TableHead>
                   <TableHead className="w-32">Schedule</TableHead>
                   <TableHead className="w-48">Last Run</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -180,8 +181,8 @@ export const PamDiscoveryPage = () => {
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           {meta?.icon && (
-                            <img
-                              src={`/images/integrations/${meta.icon}`}
+                            <ProviderIcon
+                              icon={meta.icon}
                               alt={meta.name}
                               className="size-5 rounded-sm"
                             />
@@ -206,7 +207,7 @@ export const PamDiscoveryPage = () => {
                           ? format(new Date(source.lastRunAt), "MMM d, yyyy h:mm a")
                           : "Never"}
                       </TableCell>
-                      <TableCell className="w-12">
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton

@@ -19,6 +19,7 @@ import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
+import { TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
 import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-types";
 
 export type TAuditLogStreamServiceFactoryDep = {
@@ -173,6 +174,18 @@ export const auditLogStreamServiceFactory = ({
       })) as TSumoLogicProviderCredentials;
 
       (finalCredentials as TSumoLogicProviderCredentials).token = decryptedOldCredentials.token;
+    }
+
+    // Splunk's port is optional, so an update that leaves it out has to keep the port the stream was
+    // configured with rather than silently falling back to the default HEC port.
+    if (provider === LogProvider.Splunk && (finalCredentials as TSplunkProviderCredentials).port === undefined) {
+      const decryptedOldCredentials = (await decryptLogStreamCredentials({
+        encryptedCredentials: logStream.encryptedCredentials,
+        orgId: logStream.orgId,
+        kmsService
+      })) as TSplunkProviderCredentials;
+
+      (finalCredentials as TSplunkProviderCredentials).port = decryptedOldCredentials.port;
     }
 
     const factory = LOG_STREAM_FACTORY_MAP[provider]();

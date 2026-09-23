@@ -3,6 +3,8 @@ import { describe, expect, type Mocked, test, vi } from "vitest";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
+import { RECOVERY_CODE_MFA_ASSURANCE } from "./auth-fns";
+import { MfaMethod } from "./auth-type";
 import { mfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 vi.mock("@app/lib/config/env", () => ({
@@ -90,27 +92,51 @@ describe("mfaLockoutService.enforceStepUpMfaLockStatus", () => {
 });
 
 describe("mfaLockoutService recent-auth is bound to the session, not the user", () => {
-  test("records under a key namespaced by both userId and tokenVersionId", async () => {
+  test("records the proven factor under a key namespaced by both userId and tokenVersionId", async () => {
     const keyStore = makeKeyStore();
     const service = makeService(keyStore);
 
-    await service.recordRecentMfaAuth(USER_ID, "session-a");
+    await service.recordRecentMfaAuth(USER_ID, "session-a", MfaMethod.TOTP);
 
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       KeyStorePrefixes.RecentMfaAuth(USER_ID, "session-a"),
       expect.any(Number),
-      "1"
+      MfaMethod.TOTP
     );
   });
 
   test("a different session does not see another session's recent auth", async () => {
     const keyStore = makeKeyStore({
-      getItem: vi.fn(async (key: string) => (key === KeyStorePrefixes.RecentMfaAuth(USER_ID, "session-a") ? "1" : null))
+      getItem: vi.fn(async (key: string) =>
+        key === KeyStorePrefixes.RecentMfaAuth(USER_ID, "session-a") ? MfaMethod.TOTP : null
+      )
     });
     const service = makeService(keyStore);
 
-    await expect(service.hasRecentMfaAuth(USER_ID, "session-a")).resolves.toBe(true);
-    await expect(service.hasRecentMfaAuth(USER_ID, "session-b")).resolves.toBe(false);
+    await expect(service.hasRecentMfaAuth(USER_ID, "session-a", [MfaMethod.TOTP])).resolves.toBe(true);
+    await expect(service.hasRecentMfaAuth(USER_ID, "session-b", [MfaMethod.TOTP])).resolves.toBe(false);
+  });
+
+  test("a proven factor only covers actions that would challenge it", async () => {
+    const keyStore = makeKeyStore({ getItem: vi.fn().mockResolvedValue(MfaMethod.EMAIL) });
+    const service = makeService(keyStore);
+
+    await expect(service.hasRecentMfaAuth(USER_ID, "session-a", [MfaMethod.TOTP, MfaMethod.EMAIL])).resolves.toBe(true);
+    await expect(service.hasRecentMfaAuth(USER_ID, "session-a", [MfaMethod.TOTP])).resolves.toBe(false);
+  });
+
+  test("a recovery-code login covers every action", async () => {
+    const keyStore = makeKeyStore({ getItem: vi.fn().mockResolvedValue(RECOVERY_CODE_MFA_ASSURANCE) });
+    const service = makeService(keyStore);
+
+    await expect(service.hasRecentMfaAuth(USER_ID, "session-a", [MfaMethod.WEBAUTHN])).resolves.toBe(true);
+  });
+
+  test("a legacy marker that carries no factor is not honoured", async () => {
+    const keyStore = makeKeyStore({ getItem: vi.fn().mockResolvedValue("1") });
+    const service = makeService(keyStore);
+
+    await expect(service.hasRecentMfaAuth(USER_ID, "session-a", [MfaMethod.EMAIL])).resolves.toBe(false);
   });
 });
 

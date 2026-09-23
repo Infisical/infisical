@@ -17,6 +17,7 @@ export enum NotificationType {
   PROJECT_ACCESS_REQUEST = "project-access-request",
   PROJECT_INVITATION = "project-invitation",
   SECRET_SYNC_FAILED = "secret-sync-failed",
+  PKI_SYNC_FAILED = "pki-sync-failed",
   GATEWAY_HEALTH_ALERT = "gateway-health-alert",
   RELAY_HEALTH_ALERT = "relay-health-alert",
   APPROVAL_REQUIRED = "approval-required",

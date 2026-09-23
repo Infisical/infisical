@@ -1,14 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  Input,
-  TextArea
-} from "@app/components/v3";
+import { Field, FieldContent, FieldError, FieldLabel, Input, TextArea } from "@app/components/v3";
 
 import { THoneyTokenForm } from "./schemas";
 
@@ -17,9 +9,6 @@ export const HoneyTokenDetailsFields = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-bunker-300">
-        Provide a name and description for this honey token.
-      </p>
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
@@ -31,12 +20,10 @@ export const HoneyTokenDetailsFields = () => {
                 onChange={onChange}
                 placeholder="aws-canary-prod-key"
                 isError={Boolean(error)}
+                autoComplete="off"
+                name="honey-token-name"
               />
-              {error ? (
-                <FieldError>{error.message}</FieldError>
-              ) : (
-                <FieldDescription>Must be slug-friendly</FieldDescription>
-              )}
+              {error && <FieldError>{error.message}</FieldError>}
             </FieldContent>
           </Field>
         )}

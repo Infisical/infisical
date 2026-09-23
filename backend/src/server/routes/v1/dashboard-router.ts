@@ -37,36 +37,12 @@ import {
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
+import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
-
-const parseSecretPathSearch = (search?: string) => {
-  if (!search)
-    return {
-      searchName: "",
-      searchPath: ""
-    };
-
-  if (!search.includes("/"))
-    return {
-      searchName: search,
-      searchPath: ""
-    };
-
-  if (search === "/")
-    return {
-      searchName: "",
-      searchPath: "/"
-    };
-
-  const [searchName, ...searchPathSegments] = search.split("/").reverse();
-  let searchPath = removeTrailingSlash(searchPathSegments.reverse().join("/").toLowerCase());
-  if (!searchPath.startsWith("/")) searchPath = `/${searchPath}`;
-
-  return {
-    searchName,
-    searchPath
-  };
-};
+const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
+const DEEP_SEARCH_MAX_PAGE_LIMIT = 100;
 
 const SECRET_METADATA_SEARCH_MAX_FILTERS = 20;
 
@@ -84,6 +60,28 @@ const SecretMetadataSearchQuerySchema = z.object({
 });
 
 export const registerDashboardRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/accessible-secrets/metadata",
+    config: { rateLimit: secretsLimit },
+    schema: {
+      operationId: "getAccessibleSecretMetadata",
+      description: "List shared secret metadata recursively without reading secret values.",
+      security: [{ bearerAuth: [] }],
+      querystring: SecretMetadataQuerySchema,
+      response: { 200: SecretMetadataResponseSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.secret.getSecretMetadata({
+        ...req.query,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
   server.route({
     method: "GET",
     url: "/secrets-by-metadata",
@@ -127,7 +125,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const rawQueryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
       const { filters, operator } = SecretMetadataSearchQuerySchema.parse(qs.parse(rawQueryString));
@@ -327,7 +325,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         secretPath,
@@ -1003,7 +1001,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         secretPath,
@@ -1520,7 +1518,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environments: z.string().trim().transform(decodeURIComponent),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         search: z.string().trim().optional(),
-        tags: z.string().trim().transform(decodeURIComponent).optional()
+        tags: z.string().trim().transform(decodeURIComponent).optional(),
+        limit: z.coerce
+          .number({ invalid_type_error: "Limit must be a number" })
+          .int({ message: "Limit must be a whole number" })
+          .min(1, { message: "Limit must be at least 1" })
+          .max(DEEP_SEARCH_MAX_PAGE_LIMIT, {
+            message: `Limit cannot be greater than ${DEEP_SEARCH_MAX_PAGE_LIMIT}`
+          })
+          .default(DEEP_SEARCH_DEFAULT_PAGE_LIMIT)
+          .describe(DASHBOARD.SECRET_DEEP_SEARCH.limit),
+        offset: z.coerce
+          .number({ invalid_type_error: "Offset must be a number" })
+          .int({ message: "Offset must be a whole number" })
+          .min(0, { message: "Offset cannot be negative" })
+          .max(MAX_DEEP_SEARCH_LIMIT, {
+            message: `Offset cannot be greater than ${MAX_DEEP_SEARCH_LIMIT}. Narrow your search to reach more results`
+          })
+          .default(0)
+          .describe(DASHBOARD.SECRET_DEEP_SEARCH.offset)
       }),
       response: {
         200: z.object({
@@ -1539,13 +1555,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional(),
-          secretRotations: SecretRotationV2Schema.array().optional()
+          secretRotations: SecretRotationV2Schema.array().optional(),
+          totalFolderCount: z.number(),
+          totalDynamicSecretCount: z.number(),
+          totalSecretCount: z.number(),
+          totalSecretRotationCount: z.number(),
+          totalCount: z.number(),
+          searchLimit: z.number(),
+          isSearchLimitReached: z.boolean()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { secretPath, projectId, search } = req.query;
+      const { secretPath, projectId, search, limit, offset } = req.query;
 
       const environments = req.query.environments.split(",").filter((env) => Boolean(env.trim()));
       if (!environments.length) throw new BadRequestError({ message: "One or more environments required" });
@@ -1562,7 +1585,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
-      const { searchName, searchPath } = parseSecretPathSearch(search);
+      const { searchName, searchPath } = resolveSecretDeepSearch(
+        search,
+        allFolders.map((folder) => folder.path)
+      );
 
       const folderMappings = allFolders.map((folder) => ({
         folderId: folder.id,
@@ -1576,38 +1602,41 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         orderBy: SecretsOrderBy.Name
       };
 
-      const secrets = await server.services.secret.getSecretsRawByFolderMappings(
-        {
-          filterByAction: ProjectPermissionSecretActions.DescribeSecret,
-          projectId,
-          folderMappings,
-          filters: {
-            ...sharedFilters,
-            tagSlugs: tags,
-            includeTagsInSearch: true,
-            includeMetadataInSearch: true
-          }
-        },
-        req.permission
-      );
+      const { secrets, isLimitReached: isSecretLimitReached } =
+        await server.services.secret.getSecretsRawByFolderMappings(
+          {
+            filterByAction: ProjectPermissionSecretActions.DescribeSecret,
+            projectId,
+            folderMappings,
+            filters: {
+              ...sharedFilters,
+              tagSlugs: tags,
+              includeTagsInSearch: true,
+              includeMetadataInSearch: true
+            }
+          },
+          req.permission
+        );
 
-      const dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
-        {
-          projectId,
-          folderMappings,
-          filters: sharedFilters
-        },
-        req.permission
-      );
+      const { dynamicSecrets, isLimitReached: isDynamicSecretLimitReached } =
+        await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
+          {
+            projectId,
+            folderMappings,
+            filters: sharedFilters
+          },
+          req.permission
+        );
 
-      const secretRotations = await server.services.secretRotationV2.getQuickSearchSecretRotations(
-        {
-          projectId,
-          folderMappings,
-          filters: sharedFilters
-        },
-        req.permission
-      );
+      const { secretRotations, isLimitReached: isSecretRotationLimitReached } =
+        await server.services.secretRotationV2.getQuickSearchSecretRotations(
+          {
+            projectId,
+            folderMappings,
+            filters: sharedFilters
+          },
+          req.permission
+        );
 
       for await (const environment of environments) {
         const envSecrets = secrets.filter((secret) => secret.environment === environment);
@@ -1664,23 +1693,71 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      const sliceQuickSearch = <T>(array: T[]) => array.slice(0, 25);
+      const matchedSecrets = searchPath
+        ? secrets.filter((secret) => isSecretPathMatch(secret.secretPath, searchPath))
+        : secrets;
 
-      const filteredDynamicSecrets = sliceQuickSearch(
-        searchPath ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath)) : dynamicSecrets
-      );
+      // page secrets by rendered entry (env + path + key): a shared secret and its personal override
+      // are two adjacent rows the client merges into one, so slicing raw rows would split the pair
+      // across a page boundary and over-count what actually renders
+      const secretUnitsByEntry = new Map<string, typeof matchedSecrets>();
+      for (const secret of matchedSecrets) {
+        const entryKey = `${secret.environment}\0${secret.secretPath}\0${secret.secretKey}`;
+        const unit = secretUnitsByEntry.get(entryKey);
+        if (unit) {
+          unit.push(secret);
+        } else {
+          secretUnitsByEntry.set(entryKey, [secret]);
+        }
+      }
+      const secretUnits = [...secretUnitsByEntry.values()];
 
-      if (filteredDynamicSecrets?.length) {
+      const matchedDynamicSecrets = searchPath
+        ? dynamicSecrets.filter((dynamicSecret) => isSecretPathMatch(dynamicSecret.path, searchPath))
+        : dynamicSecrets;
+
+      const matchedSecretRotations = searchPath
+        ? secretRotations.filter((rotation) => isSecretPathMatch(rotation.folder.path, searchPath))
+        : secretRotations;
+
+      const matchedFolders = allFolders.filter((folder) => {
+        const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
+        const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
+
+        if (searchPath) {
+          if (searchPath === "/") {
+            // only show root folders if no folder name search
+            if (!searchName) return folderPath === searchPath;
+
+            // start partial match on root folders
+            return folderName.toLowerCase().startsWith(searchName.toLowerCase());
+          }
+
+          // support ending partial path match
+          return (
+            isSecretPathMatch(folderPath, searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
+          );
+        }
+
+        // no search path, "fuzzy" match all folders
+        return folderName.toLowerCase().includes(searchName.toLowerCase());
+      });
+
+      const paginate = <T>(array: T[]) => array.slice(offset, offset + limit);
+
+      const paginatedDynamicSecrets = paginate(matchedDynamicSecrets);
+
+      if (paginatedDynamicSecrets.length) {
         await server.services.auditLog.createAuditLog({
           projectId,
           ...req.auditLogInfo,
           event: {
             type: EventType.LIST_DYNAMIC_SECRETS,
             metadata: {
-              environment: [...new Set(filteredDynamicSecrets.map((dynamicSecret) => dynamicSecret.environment))].join(
+              environment: [...new Set(paginatedDynamicSecrets.map((dynamicSecret) => dynamicSecret.environment))].join(
                 ","
               ),
-              secretPath: [...new Set(filteredDynamicSecrets.map((dynamicSecret) => dynamicSecret.path))].join(","),
+              secretPath: [...new Set(paginatedDynamicSecrets.map((dynamicSecret) => dynamicSecret.path))].join(","),
               projectId
             }
           }
@@ -1688,39 +1765,19 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return {
-        secrets: sliceQuickSearch(
-          searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets
-        ),
-        dynamicSecrets: sliceQuickSearch(
-          searchPath
-            ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
-            : dynamicSecrets
-        ),
-        secretRotations: sliceQuickSearch(
-          searchPath ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath)) : secretRotations
-        ),
-        folders: sliceQuickSearch(
-          allFolders.filter((folder) => {
-            const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
-            const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
-
-            if (searchPath) {
-              if (searchPath === "/") {
-                // only show root folders if no folder name search
-                if (!searchName) return folderPath === searchPath;
-
-                // start partial match on root folders
-                return folderName.toLowerCase().startsWith(searchName.toLowerCase());
-              }
-
-              // support ending partial path match
-              return folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase());
-            }
-
-            // no search path, "fuzzy" match all folders
-            return folderName.toLowerCase().includes(searchName.toLowerCase());
-          })
-        )
+        secrets: paginate(secretUnits).flat(),
+        dynamicSecrets: paginatedDynamicSecrets,
+        secretRotations: paginate(matchedSecretRotations),
+        folders: paginate(matchedFolders),
+        totalFolderCount: matchedFolders.length,
+        totalDynamicSecretCount: matchedDynamicSecrets.length,
+        totalSecretCount: secretUnits.length,
+        totalSecretRotationCount: matchedSecretRotations.length,
+        totalCount:
+          matchedFolders.length + matchedDynamicSecrets.length + secretUnits.length + matchedSecretRotations.length,
+        searchLimit: MAX_DEEP_SEARCH_LIMIT,
+        // counts only cover what the search window scanned, so flag when it filled up
+        isSearchLimitReached: isSecretLimitReached || isDynamicSecretLimitReached || isSecretRotationLimitReached
       };
     }
   });
@@ -1755,7 +1812,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, environment, secretPath, filterByAction, recursive } = req.query;
 
@@ -1810,7 +1867,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretPath, projectId, environment, viewSecretValue } = req.query;
 
@@ -1896,7 +1953,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
@@ -1970,7 +2027,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
@@ -2043,7 +2100,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretVersions = await server.services.secret.getSecretVersions({
         actor: req.permission.type,
@@ -2078,7 +2135,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { version, secretId } = req.params;
 
@@ -2143,11 +2200,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           blockingPath: z.string().optional(),
           destinationBlocked: z.boolean().optional(),
           destinationBlockingPath: z.string().optional(),
-          destinationPolicyName: z.string().optional()
+          destinationPolicyName: z.string().optional(),
+          hasRbacPolicies: z.boolean().optional()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.folder.getFolderMoveEligibility({
         actor: req.permission.type,

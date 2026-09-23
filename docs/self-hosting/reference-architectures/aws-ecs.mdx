@@ -1,5 +1,6 @@
 ---
 title: "AWS ECS (HA)"
+sidebarTitle: "High availability"
 description: "Reference architecture for self-hosting Infisical on AWS ECS"
 ---
 
@@ -17,7 +18,7 @@ The architecture utilizes Amazon Relational Database Service (RDS) for persisten
 
 - **ECS Fargate:** In this architecture, Infisical is deployed on ECS using Fargate launch type. The ECS services are deployed across multiple Availability Zones to ensure high availability.
 
-- **Amazon RDS:** Infisical uses Postgres as it's persistent layer. As such, RDS for PostgreSQL is used as the database engine. The setup includes a primary instance in one AZ and a read replica in another AZ. 
+- **Amazon RDS:** Infisical uses PostgreSQL as it's persistent layer. As such, RDS for PostgreSQL is used as the database engine. The setup includes a primary instance in one AZ and a read replica in another AZ. 
 This ensures that if there is a failure in one availability zone, the working replica will become the primary and continue  processing workloads.
 
 - **Amazon ElastiCache for Redis:** To enhance performance, Infisical requires Redis. In this architecture, Redis is set up with a primary and standby replication group across two AZs to increase availability.

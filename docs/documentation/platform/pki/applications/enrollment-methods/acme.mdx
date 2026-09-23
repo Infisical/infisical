@@ -18,15 +18,15 @@ Use the ACME enrollment method to request and renew certificates automatically u
 
 <CardGroup cols={2}>
   <Card title="Web Servers" icon="server">
-    Nginx, Apache, Tomcat, and other web servers with Certbot.
+    NGINX, Apache, Tomcat, and other web servers with Certbot.
   </Card>
-  <Card title="Kubernetes" icon="dharmachakra">
+  <Card title="Kubernetes" icon="settings">
     Use cert-manager to issue certificates for workloads.
   </Card>
-  <Card title="Load Balancers" icon="scale-balanced">
+  <Card title="Load Balancers" icon="scale">
     Automate certificate provisioning for HAProxy, Traefik, and others.
   </Card>
-  <Card title="Automated Renewal" icon="arrows-spin">
+  <Card title="Automated Renewal" icon="rotate-cw">
     Let ACME clients handle renewal automatically before expiration.
   </Card>
 </CardGroup>
@@ -42,14 +42,14 @@ Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your s
     Go to **Certificate Manager → Applications** and select your Application.
   </Step>
   <Step title="Configure enrollment on an attached profile">
-    Go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile you want to enable ACME enrollment for.
+    Go to the **Settings** tab and find the **Certificate Profiles** section. Select **Configure** on the profile you want to enable ACME enrollment for.
     
     <Note>
       Profiles are attached by Product Admins. If you don't see any profiles, ask your Product Admin to attach one.
     </Note>
   </Step>
   <Step title="Add ACME enrollment">
-    In the modal, click **Add enrollment method** and select **ACME**.
+    In the modal, select **Add enrollment method** and select **ACME**.
   </Step>
   <Step title="Configure domain validation">
     By default, Infisical verifies domain ownership using the [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/#http-01-challenge).
@@ -68,7 +68,7 @@ Install an [ACME client](https://letsencrypt.org/docs/client-options/) on your s
     </Note>
   </Step>
   <Step title="Get ACME credentials">
-    After saving, click **Reveal ACME EAB** to get the credentials your ACME client needs:
+    After saving, select **Reveal ACME EAB** to get the credentials your ACME client needs:
     
     | Credential | Purpose |
     |------------|---------|
@@ -109,7 +109,7 @@ Configure your ACME client with the credentials from the previous step.
     - `chain.pem` — CA chain only
     
     For web server integration, see the guides:
-    - [Nginx with Certbot](/documentation/platform/pki/guides/applications/nginx-certbot)
+    - [NGINX with Certbot](/documentation/platform/pki/guides/applications/nginx-certbot)
     - [Apache with Certbot](/documentation/platform/pki/guides/applications/apache-certbot)
     - [Tomcat with Certbot](/documentation/platform/pki/guides/applications/tomcat-certbot)
   </Tab>
@@ -176,13 +176,13 @@ For Kubernetes, cert-manager monitors Certificate resources and renews them auto
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx Guide" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up HTTPS on Nginx with Certbot.
+  <Card title="NGINX Guide" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up HTTPS on NGINX with Certbot.
   </Card>
-  <Card title="Kubernetes Guide" icon="dharmachakra" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
+  <Card title="Kubernetes Guide" icon="settings" href="/documentation/platform/pki/guides/applications/k8s-cert-manager-acme">
     Issue certificates for Kubernetes workloads.
   </Card>
-  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to cloud destinations.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">

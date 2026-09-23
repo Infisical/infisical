@@ -12,8 +12,11 @@ import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
   PamAccessStatus,
+  PamAccessType,
   PamAccountType,
+  PamAccountWarning,
   PamApproverType,
+  PamHeartbeatStatus,
   PamResourcePermissionActions,
   PamResourcePermissionSub
 } from "./enums";
@@ -25,6 +28,7 @@ import {
   TPamAccessRequest,
   TPamAccount,
   TPamAccountDependency,
+  TPamAccountHeartbeat,
   TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
@@ -102,6 +106,7 @@ export const pamKeys = {
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "stale", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  accountHeartbeat: (accountId: string) => [...pamKeys.account(), "heartbeat", accountId] as const,
   accountDependencies: (accountId: string) =>
     [...pamKeys.account(), "dependencies", accountId] as const,
   rotationCandidates: (accountId: string) =>
@@ -110,8 +115,8 @@ export const pamKeys = {
   pendingMyApproval: (params?: { folderId?: string }) =>
     [...pamKeys.accessRequest(), "pending-my-approval", params] as const,
   accessRequestCount: () => [...pamKeys.accessRequest(), "count"] as const,
-  accountApprovers: (accountId: string) =>
-    [...pamKeys.accessRequest(), "account-approvers", accountId] as const,
+  accountApprovers: (accountId: string, accessType: PamAccessType) =>
+    [...pamKeys.accessRequest(), "account-approvers", accountId, accessType] as const,
   listAccessRequests: (params?: {
     folderId?: string;
     status?: string;
@@ -209,10 +214,18 @@ export type TPamAccountListItem = {
   accessibilityIssues: PamAccountAccessibilityIssue[];
   // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
   isStale: boolean;
+  warnings: PamAccountWarning[];
+  heartbeatStatus?: PamHeartbeatStatus | null;
+  heartbeatEnabled?: boolean;
   requiresApproval: boolean;
+  supportsCredentialReveal: boolean;
   requireReason: boolean;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
+  pendingRequestId: string | null;
+  canBreakGlass: boolean;
+  credentialAccessStatus: PamAccessStatus;
+  credentialPendingRequestId: string | null;
   permissions: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"];
   createdAt: string;
   updatedAt: string;
@@ -237,9 +250,10 @@ export const useListPamAccounts = (
     // poll while any are on screen so rows don't stay stuck as pending or still show Launch until a
     // manual refresh; a fully static list costs nothing. Mirrors useListAccessiblePamAccounts.
     refetchInterval: (query) => {
-      const hasLiveAccessState = query.state.data?.some(
-        (a) =>
-          a.accessStatus === PamAccessStatus.Granted || a.accessStatus === PamAccessStatus.Pending
+      const hasLiveAccessState = query.state.data?.some((a) =>
+        [a.accessStatus, a.credentialAccessStatus].some(
+          (status) => status === PamAccessStatus.Granted || status === PamAccessStatus.Pending
+        )
       );
       return hasLiveAccessState ? 60_000 : false;
     }
@@ -307,6 +321,19 @@ export const useGetPamAccountById = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useGetPamAccountHeartbeat = (accountId?: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: pamKeys.accountHeartbeat(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ heartbeat: TPamAccountHeartbeat }>(
+        `/api/v1/pam/accounts/${accountId}/health`
+      );
+      return data.heartbeat;
+    },
+    enabled: !!accountId && (options?.enabled ?? true)
   });
 };
 
@@ -531,7 +558,9 @@ export const useListPamDiscoverySources = (params?: { search?: string }) => {
       );
       return data.sources;
     },
-    placeholderData: (prev) => prev
+    placeholderData: (prev) => prev,
+    refetchInterval: (query) =>
+      query.state.data?.some((source) => source.lastRunStatus === "running") ? 5000 : false
   });
 };
 
@@ -608,13 +637,17 @@ export type TPamApprovalWorkflowStep = {
   approvers: { type: PamApproverType; name: string; memberCount?: number }[];
 };
 
-export const useGetPamAccountApprovers = (accountId?: string) => {
+export const useGetPamAccountApprovers = (
+  accountId?: string,
+  accessType: PamAccessType = PamAccessType.Session
+) => {
   return useQuery({
-    queryKey: pamKeys.accountApprovers(accountId ?? ""),
+    queryKey: pamKeys.accountApprovers(accountId ?? "", accessType),
     enabled: Boolean(accountId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ steps: TPamApprovalWorkflowStep[] }>(
-        `/api/v1/pam/access-requests/accounts/${accountId}/approvers`
+        `/api/v1/pam/access-requests/accounts/${accountId}/approvers`,
+        { params: { accessType } }
       );
       return data.steps;
     }

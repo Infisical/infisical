@@ -1,4 +1,5 @@
 import { ChefPkiSyncSchema, CreateChefPkiSyncSchema, UpdateChefPkiSyncSchema } from "@app/services/pki-sync/chef";
+import { CHEF_PKI_SYNC_LIST_OPTION } from "@app/services/pki-sync/chef/chef-pki-sync-list-constants";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
 import { registerSyncPkiEndpoints } from "./pki-sync-endpoints";
@@ -11,8 +12,9 @@ export const registerChefPkiSyncRouter = async (server: FastifyZodProvider, enab
     createSchema: CreateChefPkiSyncSchema,
     updateSchema: UpdateChefPkiSyncSchema,
     syncOptions: {
-      canImportCertificates: false,
-      canRemoveCertificates: true
+      canImportCertificates: CHEF_PKI_SYNC_LIST_OPTION.canImportCertificates,
+      canRemoveCertificates: CHEF_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: CHEF_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

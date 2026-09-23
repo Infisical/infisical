@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangleIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
   DocumentationLinkBadge,
   Field,
@@ -13,33 +23,50 @@ import {
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getCertificateDisplayName, PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   PkiSync,
   TPkiSync,
+  useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
   usePkiSyncOption,
+  usePreviewPkiSyncFilters,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { TPkiSyncFilterPreview } from "@app/hooks/api/pkiSyncs/types";
 
 import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
+import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
   pkiSync: TPkiSync;
   onDirtyChange?: (isDirty: boolean) => void;
   onCancel?: () => void;
+  initialStepKey?: TPkiSyncEditStepKey;
 };
 
+export type TPkiSyncEditStepKey =
+  | "destination"
+  | "targetHost"
+  | "options"
+  | "mappings"
+  | "hostCommands"
+  | "certificates"
+  | "details";
+
 type FormStep = {
-  key: string;
+  key: TPkiSyncEditStepKey;
   name: string;
   description: string;
   title: string;
@@ -48,7 +75,11 @@ type FormStep = {
   rightDescription: string;
 };
 
-const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): FormStep[] => {
+const getFormSteps = (
+  destination: PkiSync,
+  canRunHostCommands: boolean,
+  needsTargetHost: boolean
+): FormStep[] => {
   const steps: FormStep[] = [
     {
       key: "destination",
@@ -60,6 +91,20 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
       rightDescription:
         "Choose the connection and the destination where certificates will be pushed. The available fields depend on the selected service."
     },
+    ...(needsTargetHost
+      ? ([
+          {
+            key: "targetHost",
+            name: "Target Host",
+            description: "Which machine to reach",
+            title: "Target Host",
+            subtitle: "Name the machine this sync delivers to and how to reach it.",
+            rightLabel: "TARGET HOST",
+            rightDescription:
+              "An LDAP Connection supplies the credential for a whole domain rather than one machine, so each sync names its own host.\n\nMachines found in the directory are offered as suggestions, and you can enter one that is not listed."
+          }
+        ] as FormStep[])
+      : []),
     {
       key: "options",
       name: "Sync Options",
@@ -85,18 +130,29 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
     });
   }
 
-  if (canRunPostSyncCommand) {
+  if (canRunHostCommands) {
     steps.push({
-      key: "postSyncCommand",
-      name: "Post-Sync Command",
-      description: "Command after sync",
-      title: "Post-Sync Command",
-      subtitle: "Optionally run a command on the host after certificates are written.",
-      rightLabel: "POST-SYNC COMMAND",
+      key: "hostCommands",
+      name: "Commands",
+      description: "Commands on the host",
+      title: "Commands",
+      subtitle: "Optionally check the host before the sync, and act on it afterward.",
+      rightLabel: "COMMANDS",
       rightDescription:
-        "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+        "The health check runs first. If the host is not ready, the sync stops and no certificate is delivered.\n\nThe post-sync command runs after the certificates are written, so a service can reload and pick up the new one. It only runs when the sync delivers a file. If either command fails, the sync is marked failed."
     });
   }
+
+  steps.push({
+    key: "certificates",
+    name: "Certificates",
+    description: "Filters and certificates",
+    title: "Certificates",
+    subtitle: "Describe the certificates this sync holds.",
+    rightLabel: "CERTIFICATES",
+    rightDescription:
+      "Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save."
+  });
 
   steps.push({
     key: "details",
@@ -112,14 +168,35 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
   return steps;
 };
 
-export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }: Props) => {
+const LDAP_TARGET_DEFAULTS = {
+  host: undefined,
+  port: undefined,
+  sslEnabled: undefined,
+  sslRejectUnauthorized: undefined,
+  sslCertificate: undefined
+};
+
+export const EditPkiSyncForm = ({
+  pkiSync,
+  onComplete,
+  onDirtyChange,
+  onCancel,
+  initialStepKey
+}: Props) => {
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
-  const steps = getFormSteps(pkiSync.destination, Boolean(syncOption?.canRunPostSyncCommand));
-
-  const [selectedStepIndex, setSelectedStepIndex] = useState(0);
+  const canSetHealthCheckCommand = useCanSetHealthCheckCommand(pkiSync.applicationId);
+  const [selectedStepIndex, setSelectedStepIndex] = useState(() => {
+    const initialSteps = getFormSteps(
+      pkiSync.destination,
+      Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand),
+      pkiSync.connection.app === AppConnection.LDAP
+    );
+    const initialIndex = initialSteps.findIndex((step) => step.key === initialStepKey);
+    return initialIndex === -1 ? 0 : initialIndex;
+  });
 
   const formMethods = useForm<TUpdatePkiSyncForm>({
     resolver: zodResolver(UpdatePkiSyncFormSchema),
@@ -129,14 +206,25 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       description: pkiSync.description ?? "",
       connection: {
         id: pkiSync.connectionId,
-        name: pkiSync.appConnectionName
+        name: pkiSync.appConnectionName,
+        app: pkiSync.connection.app
       },
       syncOptions: pkiSync.syncOptions,
-      destinationConfig: pkiSync.destinationConfig,
-      isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
+      destinationConfig: { ...LDAP_TARGET_DEFAULTS, ...pkiSync.destinationConfig },
+      isAutoSyncEnabled: pkiSync.isAutoSyncEnabled,
+      filters: pkiSync.filters ?? null
     } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
+
+  const selectedConnectionApp = (
+    formMethods.watch("connection") as { app?: AppConnection } | undefined
+  )?.app;
+  const steps = getFormSteps(
+    pkiSync.destination,
+    Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand),
+    selectedConnectionApp === AppConnection.LDAP
+  );
 
   const {
     handleSubmit,
@@ -144,11 +232,17 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
     formState: { isSubmitting, isDirty }
   } = formMethods;
 
+  const previewFilters = usePreviewPkiSyncFilters();
+  const [pendingUnlink, setPendingUnlink] = useState<{
+    preview: TPkiSyncFilterPreview;
+    formData: TUpdatePkiSyncForm;
+  } | null>(null);
+
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  const onSubmit = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
+  const applyUpdate = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
     try {
       const updatedPkiSync = await updatePkiSync.mutateAsync({
         syncId: pkiSync.id,
@@ -168,12 +262,37 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
     }
   };
 
+  const onSubmit = async (formData: TUpdatePkiSyncForm) => {
+    const haveFiltersChanged =
+      JSON.stringify(formData.filters ?? null) !== JSON.stringify(pkiSync.filters ?? null);
+
+    if (haveFiltersChanged) {
+      try {
+        const preview = await previewFilters.mutateAsync({
+          pkiSyncId: pkiSync.id,
+          filters: formData.filters
+        });
+
+        if (preview.toUnlink.length > 0) {
+          setPendingUnlink({ preview, formData });
+          return;
+        }
+      } catch {
+        return;
+      }
+    }
+
+    await applyUpdate(formData);
+  };
+
   const currentStep = steps[selectedStepIndex];
 
   const renderStep = () => {
     switch (currentStep.key) {
       case "destination":
-        return <PkiSyncDestinationFields />;
+        return <PkiSyncDestinationFields isUpdate />;
+      case "targetHost":
+        return <PkiSyncTargetHostField applicationId={pkiSync.applicationId} />;
       case "options":
         return (
           <>
@@ -191,7 +310,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
                         to only sync manually.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="auto-sync-enabled"
                       variant="project"
                       checked={value}
@@ -205,11 +324,26 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
         );
       case "mappings":
         return <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;
-      case "postSyncCommand":
+      case "hostCommands":
         return (
-          <PkiSyncPostSyncCommandFields
-            destination={pkiSync.destination}
-            canEditCommand={canSetPostSyncCommand}
+          <div className="flex flex-col gap-8">
+            <PkiSyncHealthCheckCommandFields
+              destination={pkiSync.destination}
+              applicationId={pkiSync.applicationId}
+              syncId={pkiSync.id}
+              canEditCommand={canSetHealthCheckCommand}
+            />
+            <PkiSyncPostSyncCommandFields
+              destination={pkiSync.destination}
+              canEditCommand={canSetPostSyncCommand}
+            />
+          </div>
+        );
+      case "certificates":
+        return (
+          <PkiSyncCertificatesFields
+            applicationId={pkiSync.applicationId ?? undefined}
+            pkiSyncId={pkiSync.id}
           />
         );
       case "details":
@@ -265,9 +399,11 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {currentStep.rightDescription}
-              </p>
+              {currentStep.rightDescription.split("\n\n").map((paragraph) => (
+                <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </aside>
         </div>
@@ -314,6 +450,61 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
           </div>
         </div>
       </form>
+
+      <AlertDialog
+        open={Boolean(pendingUnlink)}
+        onOpenChange={(open) => {
+          if (!open && !isSubmitting) setPendingUnlink(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangleIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {pendingUnlink?.preview.toUnlink.length} certificate
+              {pendingUnlink?.preview.toUnlink.length === 1 ? "" : "s"} will no longer be synced
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-2">
+                <p>
+                  These certificates no longer match the filters, so this sync will stop holding
+                  them:
+                </p>
+                <ul className="max-h-40 overflow-y-auto font-mono text-xs">
+                  {pendingUnlink?.preview.toUnlink.map((certificate) => (
+                    <li key={certificate.id}>
+                      {getCertificateDisplayName(certificate).originalDisplayName}
+                    </li>
+                  ))}
+                </ul>
+                {pendingUnlink?.preview.willRemoveFromDestination && (
+                  <p>
+                    Removal is enabled on this sync, so they will also be deleted from{" "}
+                    {destinationName}.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isSubmitting}
+              onClick={(event) => {
+                event.preventDefault();
+                const pending = pendingUnlink;
+                setPendingUnlink(null);
+                if (pending) applyUpdate(pending.formData).catch(() => {});
+              }}
+            >
+              Save changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FormProvider>
   );
 };

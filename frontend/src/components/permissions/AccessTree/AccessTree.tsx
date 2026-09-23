@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import {
-  faAnglesUp,
-  faUpRightAndDownLeftFromCenter,
-  faWindowRestore,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
   Background,
   BackgroundVariant,
   ConnectionLineType,
@@ -20,9 +13,28 @@ import {
   ReactFlowProvider,
   useReactFlow
 } from "@xyflow/react";
+import {
+  ChevronsUpIcon,
+  LoaderCircleIcon,
+  Maximize2Icon,
+  PanelsTopLeftIcon,
+  XIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Button, IconButton, Select, SelectItem, Spinner, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  ButtonGroup,
+  IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSet, ProjectPermissionSub } from "@app/context/ProjectPermissionContext";
 
 import { AccessTreeSecretPathInput } from "./nodes/FolderNode/components/AccessTreeSecretPathInput";
@@ -112,40 +124,26 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
     >
       <div
         className={twMerge(
-          "mb-4 h-full w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 transition-transform duration-500",
+          "mb-4 h-full w-full rounded-lg border border-border bg-card transition-transform duration-300 motion-reduce:transition-none",
           viewMode === ViewMode.Docked ? "relative p-4" : "relative p-0"
         )}
       >
         {viewMode === ViewMode.Docked && (
-          <div className="mb-4 flex items-start justify-between border-b border-mineshaft-400 pb-4">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
             <div>
-              <h3 className="text-lg font-medium text-mineshaft-100">Access Tree</h3>
-              <p className="text-sm leading-3 text-mineshaft-400">
-                Visual access policies for the configured role.
-              </p>
+              <h3 className="text-lg font-semibold text-foreground">Access Tree</h3>
+              <p className="text-sm text-muted">Visual access policies for the configured role.</p>
             </div>
-            <div className="whitespace-nowrap">
-              <Button
-                variant="outline_bg"
-                colorSchema="secondary"
-                type="submit"
-                className="h-10 rounded-r-none bg-mineshaft-700"
-                leftIcon={<FontAwesomeIcon icon={faWindowRestore} />}
-                onClick={handleToggleView}
-              >
+            <ButtonGroup aria-label="Access tree layout">
+              <Button variant="outline" type="button" onClick={handleToggleView}>
+                <PanelsTopLeftIcon />
                 Undock
               </Button>
-              <Button
-                variant="outline_bg"
-                colorSchema="secondary"
-                type="submit"
-                className="h-10 rounded-l-none bg-mineshaft-600"
-                leftIcon={<FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} />}
-                onClick={handleToggleModalView}
-              >
+              <Button variant="outline" type="button" onClick={handleToggleModalView}>
+                <Maximize2Icon />
                 Expand
               </Button>
-            </div>
+            </ButtonGroup>
           </div>
         )}
         <div
@@ -156,7 +154,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
         >
           <div className="h-full w-full">
             <ReactFlow
-              className="rounded-md border border-mineshaft"
+              className="rounded-md border border-border"
               nodes={nodes}
               edges={edges}
               edgeTypes={EdgeTypes}
@@ -174,28 +172,25 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
             >
               {isLoading && (
                 <Panel className="flex h-full w-full items-center justify-center">
-                  <Spinner />
+                  <LoaderCircleIcon
+                    className="size-8 animate-spin text-accent"
+                    aria-label="Loading access tree"
+                  />
                 </Panel>
               )}
               {viewMode !== ViewMode.Undocked && (
                 <Panel position="top-left" className="flex gap-2">
-                  <Select
-                    value={environment}
-                    onValueChange={accessTreeData.setEnvironment}
-                    className="w-60"
-                    position="popper"
-                    dropdownContainerClassName="max-w-none"
-                    aria-label="Environment"
-                  >
-                    {Object.values(accessTreeData.environments).map((env) => (
-                      <SelectItem
-                        key={env.slug}
-                        value={env.slug}
-                        className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
-                      >
-                        <div className="ml-3 truncate font-medium">{env.name}</div>
-                      </SelectItem>
-                    ))}
+                  <Select value={environment} onValueChange={accessTreeData.setEnvironment}>
+                    <SelectTrigger className="w-60" aria-label="Environment">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {Object.values(accessTreeData.environments).map((env) => (
+                        <SelectItem key={env.slug} value={env.slug}>
+                          {env.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                   <AccessTreeSecretPathInput
                     placeholder="Provide a path, default is /"
@@ -207,33 +202,27 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
               )}
               {viewMode !== ViewMode.Docked && (
                 <Panel position="top-right" className="flex gap-2">
-                  <Tooltip position="bottom" align="center" content={expandButtonLabel}>
-                    <IconButton
-                      className="rounded-sm p-2"
-                      colorSchema="secondary"
-                      variant="plain"
-                      onClick={handleToggleView}
-                      ariaLabel={expandButtonLabel}
-                    >
-                      <FontAwesomeIcon
-                        icon={
-                          viewMode === ViewMode.Undocked
-                            ? faUpRightAndDownLeftFromCenter
-                            : faWindowRestore
-                        }
-                      />
-                    </IconButton>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        variant="outline"
+                        onClick={handleToggleView}
+                        aria-label={expandButtonLabel}
+                      >
+                        {viewMode === ViewMode.Undocked ? <Maximize2Icon /> : <PanelsTopLeftIcon />}
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{expandButtonLabel}</TooltipContent>
                   </Tooltip>
-                  <Tooltip align="end" position="bottom" content={hideButtonLabel}>
-                    <IconButton
-                      className="rounded-sm p-2"
-                      colorSchema="secondary"
-                      variant="plain"
-                      onClick={onClose}
-                      ariaLabel={hideButtonLabel}
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </IconButton>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton variant="outline" onClick={onClose} aria-label={hideButtonLabel}>
+                        <XIcon />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="end">
+                      {hideButtonLabel}
+                    </TooltipContent>
                   </Tooltip>
                 </Panel>
               )}
@@ -247,17 +236,24 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                   />
                 </Panel>
               )}
-              <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
+              <Background
+                color="var(--color-border)"
+                bgColor="var(--color-card)"
+                variant={BackgroundVariant.Dots}
+              />
               <Controls
                 position="bottom-left"
                 showInteractive={false}
                 onFitView={() => fitView({ duration: 800 })}
               >
-                <ControlButton onClick={goToRootNode}>
-                  <Tooltip position="right" content="Go to root folder">
-                    <FontAwesomeIcon icon={faAnglesUp} />
-                  </Tooltip>
-                </ControlButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <ControlButton onClick={goToRootNode} aria-label="Go to root folder">
+                      <ChevronsUpIcon />
+                    </ControlButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Go to root folder</TooltipContent>
+                </Tooltip>
               </Controls>
             </ReactFlow>
           </div>

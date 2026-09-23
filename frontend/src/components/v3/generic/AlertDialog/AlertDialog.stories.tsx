@@ -1,8 +1,11 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
+import { expect, userEvent, within } from "storybook/test";
 
+import { Alert, AlertDescription } from "../Alert";
 import { Button } from "../Button";
+import { Input } from "../Input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,7 +77,101 @@ export const Default: Story = {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+
+    await expect(body.getByRole("button", { name: "Cancel" })).toHaveFocus();
+  }
+};
+
+export const OpenFocusOverride: Story = {
+  name: "Example: Open Focus Override",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Prevent `onOpenAutoFocus` and move focus explicitly when a workflow needs a control other than the first input or Cancel to receive focus."
+      }
+    }
+  },
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline">Open with custom focus</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)
+            ?.querySelector<HTMLElement>("[data-slot='alert-dialog-action']")
+            ?.focus();
+        }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle>Continue with custom focus?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This example moves focus directly to the Continue action when the dialog opens.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Open with custom focus" }));
+
+    await expect(body.getByRole("button", { name: "Continue" })).toHaveFocus();
+  }
+};
+
+export const InputFocus: Story = {
+  name: "Example: Input Focus",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "When an alert dialog contains inputs, the first enabled, visible input receives focus when the dialog opens."
+      }
+    }
+  },
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline">Open input dialog</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm account name?</AlertDialogTitle>
+          <AlertDialogDescription>Enter the account name before continuing.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <Input hidden aria-label="Hidden input" />
+        <Input disabled aria-label="Disabled input" />
+        <Input aria-label="Account name" />
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Open input dialog" }));
+
+    await expect(body.getByRole("textbox", { name: "Account name" })).toHaveFocus();
+  }
 };
 
 export const DestructiveAction: Story = {
@@ -106,6 +203,44 @@ export const DestructiveAction: Story = {
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction variant="danger">Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+};
+
+export const WithAlertDescription: Story = {
+  name: "Example: Alert as Description",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `AlertDialogDescription asChild` to present the dialog description as an Alert while keeping it programmatically associated with the dialog. This is useful when the consequence needs stronger visual emphasis than supporting text alone."
+      }
+    }
+  },
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="danger">
+          <TrashIcon />
+          Remove privilege
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove additional privilege?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This policy will no longer grant additional access to this user.
+              </AlertDescription>
+            </Alert>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="danger">Remove privilege</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -254,7 +389,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
+          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Pressing Enter activates the dialog action by default; pass `onConfirm` to the field only when it needs custom keyboard behavior. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
       }
     }
   },

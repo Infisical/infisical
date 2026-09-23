@@ -20,7 +20,7 @@ Discovery is available to **Product Admins**. See [Access Control](/documentatio
     Scanning a source enumerates the privileged accounts it can find. Scans run asynchronously and can be triggered manually or on a schedule.
   </Step>
   <Step title="Review staged accounts">
-    Accounts found by a scan are held as **staged accounts**. They are not yet managed by PAM. You review them before deciding which to bring in.
+    Accounts found by a scan are held as **staged accounts**. They're not yet managed by PAM. You review them before deciding which to bring in.
   </Step>
   <Step title="Import into a folder">
     Select the staged accounts you want and import them into a [folder](/documentation/platform/pam/folders/overview) using an [account template](/documentation/platform/pam/templates/overview). Imported accounts become regular PAM accounts.
@@ -30,11 +30,14 @@ Discovery is available to **Product Admins**. See [Access Control](/documentatio
 ## Discovery sources
 
 <CardGroup cols={2}>
-  <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
+  <Card title="Active Directory" icon="windows" iconType="brands" href="/documentation/platform/pam/discovery/active-directory">
     Scan an Active Directory environment for domain accounts and local Windows accounts.
   </Card>
   <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
     Scan Linux and Unix hosts over SSH for local accounts.
+  </Card>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/discovery/postgres">
+    Scan PostgreSQL instances for login roles.
   </Card>
 </CardGroup>
 
@@ -44,9 +47,9 @@ Discovery is available to **Product Admins**. See [Access Control](/documentatio
 
 ## Staged accounts
 
-A staged account is an account that a scan found but that has not been imported yet. Each staged account records its name and type but does not become usable until you import it.
+A staged account is an account that a scan found but that hasn't been imported yet. Each staged account records its name and type but doesn't become usable until you import it.
 
-Discovery deduplicates accounts by a stable fingerprint per source. Re-running a scan updates existing staged accounts rather than creating duplicates, and accounts you have already imported are left untouched so they cannot be imported twice.
+Discovery deduplicates accounts by a stable fingerprint per source. Re-running a scan updates existing staged accounts rather than creating duplicates, and accounts you have already imported are left untouched so they can't be imported twice.
 
 ## Importing accounts
 
@@ -88,19 +91,22 @@ Scheduled scans are evaluated once a day, so a source runs on its next scheduled
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
+  <Card title="Active Directory" icon="windows" iconType="brands" href="/documentation/platform/pam/discovery/active-directory">
     Configure an Active Directory discovery source.
   </Card>
   <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
     Configure a Linux/Unix discovery source.
   </Card>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/discovery/postgres">
+    Configure a PostgreSQL discovery source.
+  </Card>
   <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
     Manage the accounts you import.
   </Card>
-  <Card title="Account Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+  <Card title="Account Templates" icon="layers" href="/documentation/platform/pam/templates/overview">
     Define the rules imported accounts inherit.
   </Card>
-  <Card title="Folders" icon="folder" href="/documentation/platform/pam/folders/overview">
+  <Card title="Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
     Organize imported accounts and control access.
   </Card>
 </CardGroup>
