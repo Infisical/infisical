@@ -98,28 +98,5 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * When a record last landed in the project's *current* destination.
-   *
-   * Scoped to configVersion, not just the project: chunks written before a repoint live in a bucket
-   * Infisical no longer reads, so counting them would report a fresh timestamp for a destination
-   * that has recorded nothing. The read path scopes reachability the same way.
-   */
-  const lastRecordedAtForProject = async (
-    projectId: string,
-    configVersion: number,
-    tx?: Knex
-  ): Promise<Date | null> => {
-    try {
-      const row = await (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
-        .where({ projectId, configVersion })
-        .max<{ lastRecordedAt: Date | null }[]>("createdAt as lastRecordedAt")
-        .first();
-      return row?.lastRecordedAt ?? null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find last agent vault activity chunk time" });
-    }
-  };
-
-  return { ...orm, findForSessionPage, countForSession, lastRecordedAtForProject };
+  return { ...orm, findForSessionPage, countForSession };
 };

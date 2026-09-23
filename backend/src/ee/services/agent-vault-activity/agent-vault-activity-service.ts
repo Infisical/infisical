@@ -226,7 +226,10 @@ export const agentVaultActivityServiceFactory = ({
         );
 
         // Takes the config row's lock, so concurrent inserts serialise and each reads its own true total.
-        const stored = await agentVaultActivityConfigDAL.incrementStoredRecordCount(config.id, chunk.recordCount, tx);
+        const stored = await agentVaultActivityConfigDAL.recordStoredChunk(
+          { id: config.id, recordCount: chunk.recordCount, configVersion: config.configVersion },
+          tx
+        );
         if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS) {
           // Rolls the insert back with it, so refusing costs nothing and stays refusable next time.
           // The ceiling is ours rather than the customer's, so neither the number nor a way to change
@@ -391,7 +394,7 @@ export const agentVaultActivityServiceFactory = ({
       config: toConfigView(config),
       isStorageFull: toCount(config.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
       corsProbeUrl,
-      lastRecordedAt: await agentVaultActivityChunkDAL.lastRecordedAtForProject(projectId, config.configVersion)
+      lastRecordedAt: config.lastRecordedAt ?? null
     };
   };
 
@@ -464,7 +467,9 @@ export const agentVaultActivityServiceFactory = ({
     const values = {
       ...next,
       projectId,
-      configVersion: (existing?.configVersion ?? 1) + (relocated ? 1 : 0)
+      configVersion: (existing?.configVersion ?? 1) + (relocated ? 1 : 0),
+      // A new destination has recorded nothing yet, whatever the previous one had.
+      ...(relocated ? { lastRecordedAt: null } : {})
     };
 
     const saved = existing
@@ -480,8 +485,7 @@ export const agentVaultActivityServiceFactory = ({
       config: toConfigView(saved),
       isStorageFull: toCount(saved.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
       corsProbeUrl,
-      // Against the saved generation, so a relocating save reports the destination it just moved to.
-      lastRecordedAt: await agentVaultActivityChunkDAL.lastRecordedAtForProject(projectId, saved.configVersion),
+      lastRecordedAt: saved.lastRecordedAt ?? null,
       relocated
     };
   };

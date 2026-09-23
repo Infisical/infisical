@@ -25,6 +25,7 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("configVersion").notNullable().defaultTo(1);
 
       t.bigint("storedRecordCount").notNullable().defaultTo(0);
+      t.timestamp("lastRecordedAt", { useTz: true });
 
       t.timestamps(true, true, true);
     });

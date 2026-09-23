@@ -220,11 +220,11 @@ only, never bodies or headers, and never the query string (the proxy builds the 
   not bump: those leave every object exactly where it is.
 - The Activity Logs surface (storage config plus the product's app connections) is admin-only by
   `hasRole(Admin)`, as everything else here is. No new CASL subject.
-- **`lastRecordedAt` on the config response is scoped to `configVersion`, not just the project.** It
-  exists to show that records are genuinely landing, and chunks written before a repoint sit in a
-  bucket nothing can read, so counting them would report a fresh timestamp for a destination that has
-  recorded nothing. Both the GET and the PATCH answer with the same schema, so every return site in
-  `getActivityConfig` and `updateActivityConfig` carries it, the never-configured literal included.
+- **`lastRecordedAt` is a column on the config row, stamped by `recordStoredChunk`** in the same locked
+  UPDATE that counts the records, and only when the chunk's `configVersion` is still current. A
+  relocating save clears it, so it never reports a destination as working on the strength of chunks
+  written to the previous one. Stored rather than derived: a `MAX(createdAt)` over chunk rows scanned
+  the project's whole history on every sidebar load, and fell back to "never" once the sweep ran.
 - **App connections are the one CASL subject the admin role carries.** Agent Vault holds its own
   AWS connections alongside the org's, and the shared `AppConnectionsTable` reads
   `ProjectPermissionSub.AppConnections` off CASL rather than the role, so the grant is what keeps

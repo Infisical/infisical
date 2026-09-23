@@ -77,7 +77,7 @@ const build = (overrides: TOverrides = {}) => {
     if (overrides.createThrows) return Promise.reject(overrides.createThrows);
     return { ...created, ...values };
   });
-  const incrementStoredRecordCount = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
+  const recordStoredChunk = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
   const findChunk = vi.fn(async () => overrides.existingChunk ?? null);
 
   const service = agentVaultActivityServiceFactory({
@@ -91,7 +91,7 @@ const build = (overrides: TOverrides = {}) => {
     } as never,
     agentVaultActivityConfigDAL: {
       findOne: vi.fn(async () => ("config" in overrides ? overrides.config : enabledConfig())),
-      incrementStoredRecordCount,
+      recordStoredChunk,
       decrementStoredRecordCount: vi.fn(async () => 0)
     } as never,
     agentVaultSessionDAL: {
@@ -106,7 +106,7 @@ const build = (overrides: TOverrides = {}) => {
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
 
-  return { service, create, incrementStoredRecordCount, findChunk };
+  return { service, create, recordStoredChunk, findChunk };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -118,12 +118,15 @@ beforeEach(() => {
 
 describe("recordChunk: who is allowed to write", () => {
   test("a happy path writes the row, counts the records and returns an upload url", async () => {
-    const { service, create, incrementStoredRecordCount } = build();
+    const { service, create, recordStoredChunk } = build();
     const result = await record(service);
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
-    expect(incrementStoredRecordCount).toHaveBeenCalledWith("cfg-1", 42, expect.anything());
+    expect(recordStoredChunk).toHaveBeenCalledWith(
+      { id: "cfg-1", recordCount: 42, configVersion: 3 },
+      expect.anything()
+    );
 
     // The proxy names neither of these, so a compromised proxy cannot choose where its bytes land or
     // claim the chunk was written under an older configuration.
@@ -282,10 +285,10 @@ describe("recordChunk: the organization ceiling", () => {
   test("the refusal is thrown from inside the transaction, so the row is rolled back with it", async () => {
     // The insert ran, but the throw leaves the transaction to undo it. If this ever threw before the
     // insert, or after the commit, the counter and the rows would drift apart.
-    const { service, create, incrementStoredRecordCount } = build({ storedAfterIncrement: CEILING + 1 });
+    const { service, create, recordStoredChunk } = build({ storedAfterIncrement: CEILING + 1 });
     await expect(record(service)).rejects.toThrow();
     expect(create).toHaveBeenCalledTimes(1);
-    expect(incrementStoredRecordCount).toHaveBeenCalledTimes(1);
+    expect(recordStoredChunk).toHaveBeenCalledTimes(1);
   });
 
   test("landing exactly on the ceiling is allowed", async () => {
@@ -307,7 +310,7 @@ describe("recordChunk: re-sending a chunk", () => {
       objectKey: "logs/proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc",
       ciphertextBytes: 4096
     };
-    const { service, incrementStoredRecordCount, findChunk } = build({
+    const { service, recordStoredChunk, findChunk } = build({
       createThrows: uniqueViolation(),
       existingChunk: existing
     });
@@ -319,7 +322,7 @@ describe("recordChunk: re-sending a chunk", () => {
     expect(findChunk).toHaveBeenCalledWith({ sessionId: "sess-1", chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" });
     // The insert raises the unique violation before the increment is reached, so the replay adds
     // nothing. The first POST is what counted these records.
-    expect(incrementStoredRecordCount).not.toHaveBeenCalled();
+    expect(recordStoredChunk).not.toHaveBeenCalled();
   });
 
   test("presigns against the stored row's size, not the resent body's claim", async () => {
