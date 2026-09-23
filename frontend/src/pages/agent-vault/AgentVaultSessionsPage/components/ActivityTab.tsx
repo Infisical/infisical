@@ -1,9 +1,9 @@
 import {
   ReactNode,
-  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState
 } from "react";
@@ -61,32 +61,25 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const ALL_PROXIES = "all";
 
-/** How long a new row holds its tint before fading back, in ms. Long enough to catch the eye. */
+/**
+ * How long a new row stays tinted, in ms, counted from when it arrived rather than from when it is first
+ * on screen. The tint always means "just arrived": a row scrolled to after this shows none.
+ */
 const ARRIVAL_HOLD_MS = 1200;
 
 /**
- * Mounts tinted and drops the tint after a hold, so what animates is the fade back to normal. Done
- * per row rather than on one timer for the batch: rows are virtualised, so most of a new page is not
- * mounted when it arrives, and a batch timer would have expired before the viewer scrolled to them.
+ * Tinted until its arrival window closes, then fades back. Rows are virtualised, so one that only
+ * mounts partway through its window tints for whatever is left of it.
  */
-const ArrivingRow = ({
-  arrivalKey,
-  isArriving,
-  onShown,
-  children
-}: {
-  arrivalKey: string;
-  isArriving: boolean;
-  onShown: (key: string) => void;
-  children: ReactNode;
-}) => {
-  // `onShown` has to be a stable reference: an inline closure would change on every parent render,
-  // and each row settling re-renders the parent, so the timers would keep resetting one another.
+const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: ReactNode }) => {
+  const [, expire] = useReducer((tick: number) => tick + 1, 0);
+  const isArriving = arrivedAt !== undefined && Date.now() - arrivedAt < ARRIVAL_HOLD_MS;
+
   useEffect(() => {
-    if (!isArriving) return undefined;
-    const timer = setTimeout(() => onShown(arrivalKey), ARRIVAL_HOLD_MS);
+    if (!isArriving || arrivedAt === undefined) return undefined;
+    const timer = setTimeout(expire, arrivedAt + ARRIVAL_HOLD_MS - Date.now());
     return () => clearTimeout(timer);
-  }, [isArriving, arrivalKey, onShown]);
+  }, [isArriving, arrivedAt]);
 
   return (
     <TableRow
@@ -238,15 +231,7 @@ export const ActivityTab = ({ session }: Props) => {
     hasSettled.current = false;
   }
 
-  const [arrivedKeys, setArrivedKeys] = useState<Set<string>>(new Set());
-  const markArrivalShown = useCallback((key: string) => {
-    setArrivedKeys((prev) => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  }, []);
+  const [arrivedAt, setArrivedAt] = useState<Map<string, number>>(new Map());
 
   // Scrolling keeps appending pages, so a long session ends up with thousands of rows in memory. The
   // v3 Table has no virtualiser of its own, so the rows are windowed here: spacer rows above and below
@@ -314,7 +299,14 @@ export const ActivityTab = ({ session }: Props) => {
 
     if (!fresh.length) return undefined;
 
-    setArrivedKeys(new Set(fresh));
+    // Merged rather than replaced, so a page landing right after another does not cut the first one's
+    // window short. Expired entries are dropped on the way.
+    const now = Date.now();
+    setArrivedAt((prev) => {
+      const next = new Map([...prev].filter(([, at]) => now - at < ARRIVAL_HOLD_MS));
+      fresh.forEach((key) => next.set(key, now));
+      return next;
+    });
     return undefined;
   }, [records, isPending, isPlaceholderData]);
 
@@ -566,12 +558,7 @@ export const ActivityTab = ({ session }: Props) => {
               const record = visible[virtualRow.index] as TAgentVaultActivityRecord;
               const presentation = decisionPresentation(record.decision);
               return (
-                <ArrivingRow
-                  key={recordKey(record)}
-                  arrivalKey={recordKey(record)}
-                  isArriving={arrivedKeys.has(recordKey(record))}
-                  onShown={markArrivalShown}
-                >
+                <ArrivingRow key={recordKey(record)} arrivedAt={arrivedAt.get(recordKey(record))}>
                   <TableCell>
                     <Tooltip>
                       <TooltipTrigger asChild>
