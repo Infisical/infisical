@@ -139,18 +139,17 @@ describe("identity credential alert dal", () => {
     expect(calls.whereNull).not.toContainEqual(`${TableName.Identity}.projectId`);
   });
 
-  test("a Token Auth scan only considers live Token Auth tokens with a max TTL", async () => {
+  test("a Token Auth scan only considers live Token Auth tokens", async () => {
     const { dal, calls } = buildDAL();
 
     await dal.findExpiringTokenAuthTokens(scanArgs);
 
     expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.authMethod`, IdentityAuthMethod.TOKEN_AUTH]);
     expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.isAccessTokenRevoked`, false]);
-    // A max TTL of 0 means the token can be renewed forever, so it has no expiry to alert on.
-    expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.accessTokenMaxTTL`, ">", 0]);
+    expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.accessTokenTTL`, ">", 0]);
   });
 
-  test("a Token Auth token expires at its creation time plus its clamped max TTL, not its first JWT's TTL", async () => {
+  test("a Token Auth token expires at its creation time plus its clamped stored TTL, not its max TTL", async () => {
     const { dal, calls } = buildDAL();
 
     await dal.findExpiringTokenAuthTokens(scanArgs);
@@ -159,8 +158,8 @@ describe("identity credential alert dal", () => {
     expect(expirySql.length).toBeGreaterThan(0);
     expirySql.forEach((sql) => {
       expect(sql).toContain(`${TableName.IdentityAccessToken}."createdAt"`);
-      expect(sql).toContain(`LEAST(GREATEST(${TableName.IdentityAccessToken}."accessTokenMaxTTL", 0), 315360000)`);
-      expect(sql).not.toContain('"accessTokenTTL"');
+      expect(sql).toContain(`LEAST(GREATEST(${TableName.IdentityAccessToken}."accessTokenTTL", 0), 315360000)`);
+      expect(sql).not.toContain('"accessTokenMaxTTL"');
       expect(sql).toContain("?::timestamptz");
     });
   });

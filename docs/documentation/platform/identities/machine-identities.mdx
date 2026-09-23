@@ -102,7 +102,7 @@ A machine identity whose credential expires unnoticed takes your workload down w
 
 A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
 
-A Token Auth token expires when its max TTL runs out, counted from the moment the token was created. Renewing the token extends the current session but can't push it past that point. A token with a max TTL of `0` can be renewed indefinitely, so it has no expiry to alert on and isn't monitored. Revoked tokens are skipped.
+A Token Auth token is watched until its access token TTL runs out, counted from the moment the token was created. That's when the token stops working unless the workload renews it. Infisical doesn't track renewals, so a token that is renewed still triggers this alert on that first expiry. Revoked tokens are skipped.
 
 <Note>
   For Universal Auth, the alert watches the client secret, not the access tokens minted by logging
