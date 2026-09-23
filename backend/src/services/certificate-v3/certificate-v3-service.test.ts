@@ -225,7 +225,8 @@ describe("CertificateV3Service", () => {
   };
 
   const mockApprovalPolicyService = {
-    createRequestFromPolicy: vi.fn()
+    createRequestFromPolicy: vi.fn(),
+    matchPolicy: vi.fn()
   };
 
   const mockActor = {
@@ -266,6 +267,7 @@ describe("CertificateV3Service", () => {
     mockCertificateRequestDAL.create.mockResolvedValue({ id: "cert-req-123", createdAt: new Date() });
     mockCertificateRequestDAL.transitionFromPending.mockResolvedValue({ id: "cert-req-123" });
     mockCertificateRequestDAL.attachCertificate.mockResolvedValue({ id: "cert-req-123" });
+    mockApprovalPolicyService.matchPolicy.mockResolvedValue(null);
     mockApprovalPolicyService.createRequestFromPolicy.mockResolvedValue({
       request: { id: "approval-req-123", steps: [{ id: "step-1", stepNumber: 1, approvers: [] }] }
     });

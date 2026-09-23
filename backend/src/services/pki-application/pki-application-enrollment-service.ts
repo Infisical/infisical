@@ -20,9 +20,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -113,7 +112,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
@@ -138,7 +137,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   scepEnrollmentConfigDAL,
   appConnectionService,
   licenseService,
-  approvalPolicyDAL,
+  approvalPolicyService,
   certificateProfileDAL,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
@@ -751,13 +750,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     }
 
     if (isIntune && profile) {
-      const certRequestApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-        ApprovalPolicyType.CertRequest
-      );
-      const matchedApprovalPolicy = (await certRequestApprovalFactory.matchPolicy(
-        approvalPolicyDAL as TApprovalPolicyDALFactory,
+      const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+        ApprovalPolicyType.CertRequest,
         projectId,
-        { profileName: profile.slug, applicationId }
+        {
+          profileName: profile.slug,
+          applicationId
+        }
       )) as TCertRequestPolicy | null;
 
       if (matchedApprovalPolicy) {

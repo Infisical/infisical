@@ -1,69 +1,83 @@
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { ApprovalPolicyScope } from "../approval-policy-enums";
-import {
-  TApprovalRequestFactoryCanAccess,
-  TApprovalRequestFactoryMatchPolicy,
-  TApprovalRequestFactoryPostApprovalRoutine,
-  TApprovalRequestFactoryPostRejectionRoutine,
-  TApprovalRequestFactoryValidateConstraints,
-  TApprovalResourceFactory
-} from "../approval-policy-types";
-import {
-  TCertRequestApprovalContext,
-  TCertRequestPolicy,
+import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
+import { ApprovalNotificationEvent, ApprovalPolicyScope, ApprovalPolicyType } from "../approval-policy-enums";
+import { TApprovalResource } from "../approval-policy-types";
+import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
+
+type TCertRequestApprovalResourceDep = {
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  certificateApprovalService: TCertificateApprovalService;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
+};
+
+export const certRequestApprovalResourceFactory = ({
+  approvalPolicyDAL,
+  certificateApprovalService,
+  certificateRequestDAL
+}: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
+  TCertRequestPolicy,
   TCertRequestRequestData
-} from "./cert-request-policy-types";
-
-export const certRequestPolicyFactory: TApprovalResourceFactory<
-  TCertRequestPolicyInputs,
-  TCertRequestPolicy,
-  TCertRequestRequestData,
-  TCertRequestApprovalContext
-> = (policyType) => {
-  const matchPolicy: TApprovalRequestFactoryMatchPolicy<TCertRequestPolicyInputs, TCertRequestPolicy> = async (
-    approvalPolicyDAL,
-    projectId,
-    inputs
-  ) => {
-    const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId);
+> => ({
+  matchPolicy: async (projectId, inputs) => {
+    const policies = await approvalPolicyDAL.findByProjectId(ApprovalPolicyType.CertRequest, projectId);
 
     const inputAppId = inputs.applicationId ?? null;
     const expectedScopeType = inputAppId ? ApprovalPolicyScope.PkiApplication : null;
-    const expectedScopeId = inputAppId ?? null;
     const candidates = (policies as TCertRequestPolicy[]).filter(
-      (p) => p.isActive && (p.scopeType ?? null) === expectedScopeType && (p.scopeId ?? null) === expectedScopeId
+      (p) => p.isActive && (p.scopeType ?? null) === expectedScopeType && (p.scopeId ?? null) === inputAppId
     );
 
-    const matched = candidates.find((p) =>
-      p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))
+    return (
+      candidates.find((p) => p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))) ?? null
     );
+  },
 
-    return matched ?? null;
-  };
+  // Certificate approvals issue a certificate rather than leaving a standing grant behind.
+  canAccess: async () => null,
 
-  const canAccess: TApprovalRequestFactoryCanAccess<TCertRequestPolicyInputs> = async () => {
-    return null;
-  };
+  validateConstraints: () => ({ valid: true }),
 
-  const validateConstraints: TApprovalRequestFactoryValidateConstraints<
-    TCertRequestPolicy,
-    TCertRequestRequestData
-  > = () => {
-    return { valid: true };
-  };
+  // Cert approvals notify approvers when raised; the decision shows up on the certificate itself.
+  buildNotification: async ({ event, request }) => {
+    if (event !== ApprovalNotificationEvent.Requested) return null;
 
-  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine<TCertRequestApprovalContext> = async (
-    _approvalRequestGrantsDAL,
-    request,
-    context
-  ) => {
-    const { certificateApprovalService, certificateRequestDAL } = context;
+    const cfg = getConfig();
+    const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/projects/cert-manager/${request.projectId}/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
 
-    const certRequestData = request.requestData.requestData as TCertRequestRequestData;
-    const certReqId = certRequestData.certificateRequestId;
+    return {
+      inApp: {
+        type: NotificationType.APPROVAL_REQUIRED,
+        title: "Approval Required",
+        body: `You have a new approval request for ${request.type} from ${request.requesterName}.`,
+        link: approvalUrl
+      },
+      email: cfg.SITE_URL
+        ? {
+            subjectLine: "Certificate Approval Request",
+            template: SmtpTemplates.PkiApprovalRequestNeedsReview,
+            substitutions: {
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail || undefined,
+              title: "Certificate Approval Request",
+              requestType: "certificate request",
+              justification: request.justification || undefined,
+              approvalUrl
+            }
+          }
+        : undefined
+    };
+  },
+
+  postApprovalRoutine: async (request) => {
+    const certReqId = (request.requestData.requestData as TCertRequestRequestData).certificateRequestId;
 
     await certificateRequestDAL.updateById(certReqId, {
       status: CertificateRequestStatus.PENDING,
@@ -74,7 +88,7 @@ export const certRequestPolicyFactory: TApprovalResourceFactory<
       await certificateApprovalService.issueCertificate(certReqId);
       logger.info(
         { certificateRequestId: certReqId, approvalRequestId: request.id },
-        "Certificate issued after approval"
+        `Certificate issued after approval [certificateRequestId=${certReqId}]`
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -83,34 +97,17 @@ export const certRequestPolicyFactory: TApprovalResourceFactory<
         errorMessage
       });
       logger.error(
-        {
-          error,
-          errorMessage,
-          errorStack: error instanceof Error ? error.stack : undefined,
-          certificateRequestId: certReqId,
-          approvalRequestId: request.id
-        },
-        "Failed to issue certificate after approval"
+        { error, certificateRequestId: certReqId, approvalRequestId: request.id },
+        `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`
       );
     }
-  };
+  },
 
-  const postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine<TCertRequestApprovalContext> = async (
-    request,
-    context
-  ) => {
-    const certRequestData = request.requestData.requestData as TCertRequestRequestData;
-    await context.certificateRequestDAL.updateById(certRequestData.certificateRequestId, {
+  postRejectionRoutine: async (request) => {
+    const certReqId = (request.requestData.requestData as TCertRequestRequestData).certificateRequestId;
+    await certificateRequestDAL.updateById(certReqId, {
       status: CertificateRequestStatus.REJECTED,
       approvalRequestId: request.id
     });
-  };
-
-  return {
-    matchPolicy,
-    canAccess,
-    validateConstraints,
-    postApprovalRoutine,
-    postRejectionRoutine
-  };
-};
+  }
+});

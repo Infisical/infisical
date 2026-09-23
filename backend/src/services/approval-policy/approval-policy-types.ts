@@ -1,13 +1,22 @@
 import { Knex } from "knex";
 
-import { TApprovalPolicies, TApprovalRequestGrants } from "@app/db/schemas";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
-import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
+import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
+import { Event } from "@app/ee/services/audit-log/audit-log-types";
+import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
+import { OrgServiceActor } from "@app/lib/types";
+import { TNotification } from "@app/lib/workflow-integrations/types";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType, EnforcementLevel } from "./approval-policy-enums";
+import {
+  ApprovalAuditAction,
+  ApprovalNotificationEvent,
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApprovalRequestApprovalDecision,
+  ApproverType,
+  EnforcementLevel
+} from "./approval-policy-enums";
 import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
@@ -33,6 +42,10 @@ import {
   TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
 
+export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
+
+export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
+
 export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy;
 export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs | TCodeSigningPolicyInputs;
 export type TApprovalPolicyConditions =
@@ -56,9 +69,6 @@ export type TBypassAffordances = {
 
 export type BreakGlassBypassMetadata = {
   grantId: string;
-  resourceName?: string;
-  accountName?: string;
-  accessDuration: string;
   bypassReason: string;
   approverCount: number;
 };
@@ -133,57 +143,138 @@ export interface TCreateRequestFromPolicyDTO {
   tx?: Knex;
 }
 
-// Factory
-export type TApprovalRequestFactoryMatchPolicy<I extends TApprovalPolicyInputs, P extends TApprovalPolicy> = (
-  approvalPolicyDAL: TApprovalPolicyDALFactory,
-  projectId: string,
-  inputs: I
-) => Promise<P | null>;
-export type TApprovalRequestFactoryCanAccess<I extends TApprovalPolicyInputs> = (
-  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory,
-  projectId: string,
-  userId: string,
-  inputs: I
-) => Promise<TApprovalRequestGrants | null>;
-export type TApprovalRequestFactoryValidateConstraints<P extends TApprovalPolicy, R extends TApprovalRequestData> = (
-  policy: P,
-  inputs: R
-) => { valid: boolean; errors?: string[] };
-
-export type TPostApprovalContext = {
-  actor?: {
-    type: ActorType;
-    id: string;
-    authMethod: ActorAuthMethod;
-    orgId: string;
-  };
-  certificateApprovalService?: TCertificateApprovalService;
-  certificateRequestDAL?: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
+export type TApprovalNotification = {
+  inApp?: { type: NotificationType; title: string; body: string; link?: string };
+  email?: { subjectLine: string; template: SmtpTemplates; substitutions: Record<string, unknown> };
+  chat?: { workflowIntegrationId: string; channelIds: string[]; notification: TNotification }[];
 };
 
-export type TApprovalRequestFactoryPostApprovalRoutine<C extends TPostApprovalContext = TPostApprovalContext> = (
-  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory,
-  request: TApprovalRequest,
-  context: C
-) => Promise<void>;
+// The one extension point: a policy type implements this and registers it at wiring time. Only the
+// first three members are required; everything else falls back to shared behaviour.
+export type TApprovalResource<
+  I extends TApprovalPolicyInputs = TApprovalPolicyInputs,
+  P extends TApprovalPolicy = TApprovalPolicy,
+  R extends TApprovalRequestData = TApprovalRequestData
+> = {
+  matchPolicy: (projectId: string, inputs: I) => Promise<P | null>;
+  canAccess: (projectId: string, actorId: string, inputs: I) => Promise<TApprovalRequestGrants | null>;
+  validateConstraints: (policy: P, requestData: R) => { valid: boolean; errors?: string[] };
 
-export type TApprovalRequestFactoryPostRejectionRoutine<C extends TPostApprovalContext = TPostApprovalContext> = (
-  request: TApprovalRequest,
-  context: C
-) => Promise<void>;
+  // Whatever the approval entitles the requester to goes in the Tx variant, which commits with the
+  // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit.
+  postApprovalTxRoutine?: (
+    request: TApprovalRequest,
+    tx: Knex,
+    breakGlass?: { bypassReason: string }
+  ) => Promise<{ grantId: string } | void>;
+  postApprovalRoutine?: (request: TApprovalRequest, actor?: TApprovalActor) => Promise<void>;
+  postRejectionRoutine?: (request: TApprovalRequest) => Promise<void>;
 
-export type TApprovalResourceFactory<
-  I extends TApprovalPolicyInputs,
-  P extends TApprovalPolicy,
-  R extends TApprovalRequestData,
-  C extends TPostApprovalContext = TPostApprovalContext
-> = (policyType: ApprovalPolicyType) => {
-  matchPolicy: TApprovalRequestFactoryMatchPolicy<I, P>;
-  canAccess: TApprovalRequestFactoryCanAccess<I>;
-  validateConstraints: TApprovalRequestFactoryValidateConstraints<P, R>;
-  postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine<C>;
-  postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine<C>;
+  // Whether a stored grant's attributes or a request's payload is for the thing these inputs name.
+  // Without it the access-status and reaping helpers have nothing to match on.
+  matchesInputs?: (payload: unknown, inputs: TApprovalPolicyInputs) => boolean;
+
+  // Whether the actor is still an approver for the scope, for a type where the request's creation-time
+  // approver snapshot can outlive the membership behind it.
+  isLiveApprover?: (args: {
+    projectId: string;
+    scopeId: string;
+    actor: TApprovalActor;
+    userGroupIds: Set<string>;
+  }) => Promise<boolean>;
+
+  // The audit event a lifecycle action owes. A type whose auditors filter on resource ids contributes
+  // its own event here; returning nothing leaves the generic approval event in place.
+  buildAuditEvent?: (args: {
+    action: ApprovalAuditAction;
+    request: TApprovalRequests;
+    grantId?: string;
+    actorId: string;
+    comment?: string;
+    bypassReason?: string;
+  }) => Promise<Event | null>;
+
+  // Copy and chat routing for a lifecycle event. Returning nothing sends nothing.
+  buildNotification?: (args: {
+    event: ApprovalNotificationEvent;
+    request: TApprovalRequests;
+    comment?: string;
+    bypassReason?: string;
+  }) => Promise<TApprovalNotification | null>;
+  // Narrows the notified approvers to those still eligible, for a type where an approver row can
+  // outlive the membership behind it.
+  filterActiveApprovers?: (
+    request: TApprovalRequests,
+    approvers: { type: ApproverType; id: string }[]
+  ) => Promise<{ type: ApproverType; id: string }[]>;
+
+  // Scope and authorization the service cannot work out on its own. Without these it resolves project
+  // and application scopes itself, authorizes policy CRUD against project admin, and requires
+  // approvers to be project members.
+  resolveScope?: (scopeId: string) => Promise<{ projectId: string }>;
+  // The default reads as an invitation to go ahead, which is wrong where an unconfigured scope is a
+  // misconfiguration to report.
+  noMatchingPolicyMessage?: string;
+  assertCanManagePolicy?: (args: {
+    projectId: string;
+    scopeId: string | null;
+    actor: TApprovalActor;
+    action: ResourcePermissionApprovalPolicyActions;
+  }) => Promise<void>;
+  verifyPolicyActors?: (args: {
+    projectId: string;
+    scopeId: string | null;
+    approvers: PolicyBypasser[];
+    bypassers: PolicyBypasser[];
+  }) => Promise<void>;
+  assertCanCreateRequest?: (args: {
+    projectId: string;
+    policy: TApprovalPolicy;
+    requestData: TApprovalRequestData;
+    actor: TApprovalActor;
+  }) => Promise<void>;
+  assertCanReview?: (args: {
+    request: TApprovalRequests;
+    decision: ApprovalRequestApprovalDecision;
+    actor: TApprovalActor;
+    userGroupIds: Set<string>;
+  }) => Promise<void>;
+  // The default treats an empty bypasser list as everybody; a type reading it the other way says so here.
+  isBreakGlassEligible?: (args: {
+    request: TApprovalRequests;
+    policy: TApprovalPolicies;
+    bypassers: PolicyBypasser[];
+    actor: TApprovalActor;
+    userGroupIds: Set<string>;
+  }) => Promise<boolean>;
+  assertCanRevokeGrant?: (args: {
+    grant: TApprovalRequestGrants;
+    request: TApprovalRequests | null;
+    actor: TApprovalActor;
+  }) => Promise<void>;
+  // Returns the side effects to fire once the revocation is durable, so a caller inside a transaction
+  // that can still roll back cuts nothing early.
+  onGrantRevoked?: (args: { grant: TApprovalRequestGrants; actorId: string; tx?: Knex }) => Promise<() => void>;
 };
+
+export enum ApprovalAccessStatus {
+  None = "none",
+  Pending = "pending",
+  Granted = "granted"
+}
+
+export type TApprovalAccessStatus = {
+  accessStatus: ApprovalAccessStatus;
+  grantExpiresAt: Date | null;
+  pendingRequestId: string | null;
+};
+
+export type TApprovalScopeConfiguration = {
+  steps: { requiredApprovals: number; approvers: PolicyBypasser[] }[];
+  bypassers: PolicyBypasser[];
+};
+
+export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TApprovalResource>>;
 
 export type TApprovalRequestSubjectMetadata = {
   certificateRequestId?: string;

@@ -78,13 +78,6 @@ export enum PamAccessType {
   Credential = "credential"
 }
 
-// The caller's just-in-time approval state for an account gated behind an access request flow
-export enum PamAccessStatus {
-  None = "none",
-  Pending = "pending",
-  Granted = "granted"
-}
-
 export enum PamMemberKind {
   User = "user",
   Group = "group",

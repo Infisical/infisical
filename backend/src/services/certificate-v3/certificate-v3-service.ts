@@ -22,7 +22,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import {
   TCertRequestPolicy,
@@ -177,7 +176,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   pkiApplicationProfileDAL: Pick<
@@ -574,14 +573,10 @@ export const certificateV3ServiceFactory = ({
     );
     const applicationName = await $resolveApplicationName(applicationId);
 
-    const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
-    const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
-      approvalPolicyDAL as TApprovalPolicyDALFactory,
+    const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+      ApprovalPolicyType.CertRequest,
       profile.projectId,
-      {
-        profileName: profile.slug,
-        applicationId
-      }
+      { profileName: profile.slug, applicationId }
     )) as TCertRequestPolicy | null;
 
     const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
@@ -1398,16 +1393,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const csrApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-      ApprovalPolicyType.CertRequest
-    );
-    const csrMatchedApprovalPolicy = (await csrApprovalFactory.matchPolicy(
-      approvalPolicyDAL as TApprovalPolicyDALFactory,
+    const csrMatchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+      ApprovalPolicyType.CertRequest,
       profile.projectId,
-      {
-        profileName: profile.slug,
-        applicationId
-      }
+      { profileName: profile.slug, applicationId }
     )) as TCertRequestPolicy | null;
 
     if (csrMatchedApprovalPolicy && !shouldBypassApproval(actor, csrMatchedApprovalPolicy)) {
@@ -1897,16 +1886,10 @@ export const certificateV3ServiceFactory = ({
       validateAwsPcaCaIssuanceInputs({ basicConstraints: certificateRequest.basicConstraints });
     }
 
-    const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-      ApprovalPolicyType.CertRequest
-    );
-    const orderMatchedApprovalPolicy = (await orderApprovalFactory.matchPolicy(
-      approvalPolicyDAL as TApprovalPolicyDALFactory,
+    const orderMatchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+      ApprovalPolicyType.CertRequest,
       profile.projectId,
-      {
-        profileName: profile.slug,
-        applicationId
-      }
+      { profileName: profile.slug, applicationId }
     )) as TCertRequestPolicy | null;
 
     if (orderMatchedApprovalPolicy && !shouldBypassApproval(actor, orderMatchedApprovalPolicy)) {

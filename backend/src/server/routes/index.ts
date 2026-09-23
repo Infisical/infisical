@@ -108,6 +108,7 @@ import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
+import { pamAccessApprovalResourceFactory } from "@app/ee/services/pam-access-request/pam-access-approval-resource";
 import { pamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { pamFolderNotificationConfigDALFactory } from "@app/ee/services/pam-access-request/pam-folder-notification-config-dal";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -254,7 +255,9 @@ import {
   approvalPolicyStepApproversDALFactory,
   approvalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import { TApprovalResourceRegistry } from "@app/services/approval-policy/approval-policy-types";
 import {
   approvalRequestApprovalsDALFactory,
   approvalRequestDALFactory,
@@ -262,6 +265,8 @@ import {
   approvalRequestStepEligibleApproversDALFactory,
   approvalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
+import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -2055,157 +2060,6 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
-  const pamAccessRequestService = pamAccessRequestServiceFactory({
-    approvalPolicyDAL,
-    approvalPolicyStepsDAL,
-    approvalPolicyStepApproversDAL,
-    approvalPolicyBypassersDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestApprovalsDAL,
-    approvalRequestGrantsDAL,
-    pamAccountDAL,
-    pamAccountTemplateDAL,
-    pamFolderDAL,
-    pamSessionDAL,
-    gatewayV2Service,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService,
-    notificationService,
-    smtpService,
-    groupDAL,
-    userGroupMembershipDAL,
-    userDAL,
-    identityDAL,
-    pamFolderNotificationConfigDAL,
-    workflowIntegrationDAL,
-    slackIntegrationDAL,
-    kmsService,
-    licenseService
-  });
-
-  const pamFolderService = pamFolderServiceFactory({
-    pamFolderDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService,
-    pamAccessRequestService
-  });
-
-  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
-
-  const pamAccountService = pamAccountServiceFactory({
-    pamAccountDAL,
-    pamFolderDAL,
-    pamAccountTemplateDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    pamSessionDAL,
-    pamDiscoverySourceDAL,
-    userDAL,
-    orgDAL,
-    mfaSessionService,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    appConnectionDAL,
-    pamAccessRequestService,
-    licenseService
-  });
-
-  const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
-  const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
-  const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
-
-  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
-    pamDiscoverySourceDAL,
-    pamDiscoverySourceRunDAL,
-    pamDiscoveredAccountDAL,
-    pamAccountDependencyDAL,
-    pamAccountDAL,
-    pamAccountService,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    queueService,
-    cronJob,
-    auditLogService
-  });
-
-  const pamAccountRotationService = pamAccountRotationServiceFactory({
-    pamAccountDAL,
-    permissionService,
-    membershipDAL,
-    membershipRoleDAL,
-    kmsService,
-    keyStore,
-    gatewayService,
-    gatewayV2Service,
-    gatewayPoolService,
-    pamAccountDependencyDAL,
-    pamDiscoverySourceDAL,
-    projectDAL
-  });
-
-  const pamAccountHeartbeatService = pamAccountHeartbeatServiceFactory({
-    pamAccountDAL,
-    gatewayService,
-    gatewayV2Service,
-    gatewayPoolService,
-    kmsService,
-    permissionService,
-    projectDAL
-  });
-
-  const pamSessionService = pamSessionServiceFactory({
-    pamSessionDAL,
-    pamAccountDAL,
-    pamFolderDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService,
-    kmsService,
-    gatewayV2Service,
-    gatewayPoolService,
-    userDAL,
-    pamSessionExpirationService,
-    pamAccessRequestService,
-    mfaSessionService,
-    orgDAL,
-    telemetryService
-  });
-
-  const pamSessionChunkService = pamSessionChunkServiceFactory({
-    pamSessionDAL,
-    pamSessionEventChunkDAL,
-    pamAccountDAL,
-    permissionService,
-    kmsService,
-    appConnectionDAL
-  });
-
-  const pamWebAccessService = pamWebAccessServiceFactory({
-    pamAccountDAL,
-    pamAccessRequestService,
-    permissionService,
-    auditLogService,
-    tokenService,
-    pamSessionDAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    kmsService,
-    userDAL,
-    mfaSessionService,
-    orgDAL,
-    telemetryService
-  });
-
   const gitHubAppService = gitHubAppServiceFactory({
     gitHubAppDAL,
     permissionService,
@@ -3171,26 +3025,6 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL
   });
 
-  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
-    pkiApplicationDAL,
-    pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL,
-    estEnrollmentConfigDAL,
-    acmeEnrollmentConfigDAL,
-    scepEnrollmentConfigDAL,
-    appConnectionService,
-    licenseService,
-    approvalPolicyDAL,
-    certificateProfileDAL,
-    certificateAuthorityDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCertDAL,
-    hsmConnectorService,
-    kmsService,
-    projectDAL,
-    permissionService
-  });
-
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
     permissionService,
@@ -3679,6 +3513,38 @@ export const registerRoutes = async (
     pkiSyncQueue
   });
 
+  const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
+    licenseService,
+    pamFolderNotificationConfigDAL,
+    approvalPolicyDAL,
+    userGroupMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL,
+    pamAccountDAL,
+    pamAccountTemplateDAL,
+    pamFolderDAL,
+    pamSessionDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    userDAL,
+    gatewayV2Service,
+    kmsService
+  });
+
+  const approvalResources: TApprovalResourceRegistry = {
+    [ApprovalPolicyType.PamAccess]: pamAccessApprovalResource as TApprovalResourceRegistry[ApprovalPolicyType],
+    [ApprovalPolicyType.CertRequest]: certRequestApprovalResourceFactory({
+      approvalPolicyDAL,
+      certificateApprovalService,
+      certificateRequestDAL
+    }) as TApprovalResourceRegistry[ApprovalPolicyType],
+    [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
+      approvalPolicyDAL,
+      approvalRequestGrantsDAL
+    }) as TApprovalResourceRegistry[ApprovalPolicyType]
+  };
+
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
@@ -3696,11 +3562,167 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     notificationService,
     approvalRequestGrantsDAL,
-    certificateApprovalService,
-    certificateRequestDAL,
     smtpService,
     userDAL,
+    groupDAL,
+    slackIntegrationDAL,
+    kmsService,
+    resources: approvalResources
+  });
+
+  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
+    pkiApplicationDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
+    appConnectionService,
+    licenseService,
+    approvalPolicyService,
+    certificateProfileDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCertDAL,
+    hsmConnectorService,
+    kmsService,
+    projectDAL,
+    permissionService
+  });
+
+  const pamAccessRequestService = pamAccessRequestServiceFactory({
+    approvalPolicyDAL,
+    approvalRequestDAL,
+    pamAccountDAL,
+    pamFolderDAL,
+    permissionService,
+    userDAL,
+    identityDAL,
+    pamFolderNotificationConfigDAL,
+    workflowIntegrationDAL,
+    licenseService,
+    approvalPolicyService,
+    pamAccessApprovalResource
+  });
+
+  const pamFolderService = pamFolderServiceFactory({
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    pamAccessRequestService
+  });
+
+  const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
+
+  const pamAccountService = pamAccountServiceFactory({
+    pamAccountDAL,
+    pamFolderDAL,
+    pamAccountTemplateDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    pamSessionDAL,
+    pamDiscoverySourceDAL,
+    userDAL,
+    orgDAL,
+    mfaSessionService,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    appConnectionDAL,
+    pamAccessRequestService,
+    licenseService
+  });
+
+  const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
+  const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
+  const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
+
+  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    pamDiscoverySourceDAL,
+    pamDiscoverySourceRunDAL,
+    pamDiscoveredAccountDAL,
+    pamAccountDependencyDAL,
+    pamAccountDAL,
+    pamAccountService,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    queueService,
+    cronJob,
+    auditLogService
+  });
+
+  const pamAccountRotationService = pamAccountRotationServiceFactory({
+    pamAccountDAL,
+    permissionService,
+    membershipDAL,
+    membershipRoleDAL,
+    kmsService,
+    keyStore,
+    gatewayService,
+    gatewayV2Service,
+    gatewayPoolService,
+    pamAccountDependencyDAL,
+    pamDiscoverySourceDAL,
     projectDAL
+  });
+
+  const pamAccountHeartbeatService = pamAccountHeartbeatServiceFactory({
+    pamAccountDAL,
+    gatewayService,
+    gatewayV2Service,
+    gatewayPoolService,
+    kmsService,
+    permissionService,
+    projectDAL
+  });
+
+  const pamSessionService = pamSessionServiceFactory({
+    pamSessionDAL,
+    pamAccountDAL,
+    pamFolderDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    userDAL,
+    pamSessionExpirationService,
+    pamAccessRequestService,
+    mfaSessionService,
+    orgDAL,
+    telemetryService
+  });
+
+  const pamSessionChunkService = pamSessionChunkServiceFactory({
+    pamSessionDAL,
+    pamSessionEventChunkDAL,
+    pamAccountDAL,
+    permissionService,
+    kmsService,
+    appConnectionDAL
+  });
+
+  const pamWebAccessService = pamWebAccessServiceFactory({
+    pamAccountDAL,
+    pamAccessRequestService,
+    permissionService,
+    auditLogService,
+    tokenService,
+    pamSessionDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    kmsService,
+    userDAL,
+    mfaSessionService,
+    orgDAL,
+    telemetryService
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
@@ -3991,7 +4013,10 @@ export const registerRoutes = async (
     identityDAL,
     permissionService,
     notificationService,
-    smtpService
+    smtpService,
+    slackIntegrationDAL,
+    kmsService,
+    approvalResources
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({
