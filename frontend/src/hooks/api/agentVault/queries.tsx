@@ -1,8 +1,14 @@
+import { useRef } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
+import {
+  createActivityChunkCache,
+  decryptActivityPage,
+  TAgentVaultActivityChunkCache
+} from "./activityDecrypt";
 import { AgentVaultMemberType } from "./enums";
 import {
   TAgentVaultAccessBundleDetails,
@@ -243,7 +249,8 @@ export const useGetAgentVaultSession = (sessionId: string | undefined, enabled =
 };
 
 /**
- * Cursor pagination, newest first.
+ * Cursor pagination, newest first. Each page is decrypted inside its own fetch, so loading, cancelling
+ * and retrying are React Query's state rather than something the sheet has to track alongside it.
  *
  * Polling continues however many pages the viewer has scrolled through. An interval refetch on an
  * infinite query re-runs every page it holds, so the cost grows with each page opened; pages are small
@@ -265,11 +272,18 @@ export const useGetAgentVaultSessionActivity = (
   // to the pages fetched for the previous one.
   const range = { from: from?.toISOString(), to: to?.toISOString() };
 
+  // Swapped during render, so the query below never fetches a new session into the old one's cache.
+  const chunkCache = useRef<TAgentVaultActivityChunkCache | null>(null);
+  if (!chunkCache.current || chunkCache.current.sessionId !== sessionId) {
+    chunkCache.current = createActivityChunkCache(sessionId ?? "");
+  }
+
   return useInfiniteQuery({
     queryKey: agentVaultKeys.sessionActivity(currentOrg.id, sessionId ?? "", range),
     enabled: enabled && Boolean(sessionId),
     initialPageParam: undefined as string | undefined,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam, signal }) => {
+      const cache = chunkCache.current as TAgentVaultActivityChunkCache;
       const { data } = await apiRequest.get<TAgentVaultActivityPage>(
         `/api/v1/agent-vault/sessions/${sessionId}/activity`,
         {
@@ -278,21 +292,27 @@ export const useGetAgentVaultSessionActivity = (
             ...(pageParam ? { before: pageParam } : {}),
             ...(range.from ? { from: range.from } : {}),
             ...(range.to ? { to: range.to } : {})
-          }
+          },
+          signal
         }
       );
-      return data;
+      return decryptActivityPage(data, cache, signal);
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     // Narrowing the time range changes the key, and without this the query drops to `pending` with
     // no data. The tab's loading branch then unmounts the whole filter row, so the date picker loses
-    // the range it is displaying and remounts on its own default.
-    placeholderData: (prev) => prev,
+    // the range it is displaying and remounts on its own default. Only within one session: another
+    // session's rows shown under this one's header would be wrong in a way no loading state covers.
+    placeholderData: (prev, prevQuery) =>
+      sessionId && prevQuery?.queryKey.includes(sessionId) ? prev : undefined,
     // 15s, not PAM's 5s. PAM tails a live terminal, where something new lands between any two ticks.
     // Here the proxy buffers for about a minute before it ships, so a chunk arrives every minute or
     // two and a faster poll mostly re-fetches a response the browser already holds — at the cost of
     // an index read, a key unwrap and a presigned URL per chunk, for every page the viewer has open.
     refetchInterval: isActive ? 15_000 : false,
-    staleTime: 0
+    staleTime: 0,
+    // Pages carry decrypted plaintext, so they go the moment nothing shows them rather than after
+    // the default five minutes.
+    gcTime: 0
   });
 };

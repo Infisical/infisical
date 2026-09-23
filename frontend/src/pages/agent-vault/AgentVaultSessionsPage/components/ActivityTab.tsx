@@ -160,7 +160,7 @@ export const ActivityTab = ({ session }: Props) => {
   const seenProxiesSessionId = useRef(session.id);
 
   const isActive = session.status === AgentVaultSessionStatus.Active;
-  const { data, isPending, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, isPending, isPlaceholderData, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useGetAgentVaultSessionActivity(session.id, {
       isActive,
       from: range?.startDate,
@@ -168,10 +168,7 @@ export const ActivityTab = ({ session }: Props) => {
     });
 
   const pages = data?.pages;
-  const { records, gaps, drops, isDecrypting, isTruncated } = useDecryptedAgentVaultActivity(
-    pages,
-    session.id
-  );
+  const { records, gaps, drops, isTruncated } = useDecryptedAgentVaultActivity(pages);
 
   const isEnabled = pages?.[0]?.enabled ?? false;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
@@ -232,8 +229,6 @@ export const ActivityTab = ({ session }: Props) => {
   // rather than silently reflowing the table.
   const seenRecords = useRef(new Set<string>());
   const hasSettled = useRef(false);
-  const hasDecrypted = useRef(false);
-  const hasResolvedOnce = useRef(false);
   const animatedSessionId = useRef(session.id);
   // Reset during render rather than in an effect: an effect keyed on session.id runs *after* the
   // seeding effect below, so on mount it would wipe the seed and animate the whole table.
@@ -241,8 +236,6 @@ export const ActivityTab = ({ session }: Props) => {
     animatedSessionId.current = session.id;
     seenRecords.current = new Set();
     hasSettled.current = false;
-    hasDecrypted.current = false;
-    hasResolvedOnce.current = false;
   }
 
   const [arrivedKeys, setArrivedKeys] = useState<Set<string>>(new Set());
@@ -269,10 +262,8 @@ export const ActivityTab = ({ session }: Props) => {
 
   const lastVisibleIndex = virtualRows.length ? virtualRows[virtualRows.length - 1].index : 0;
   useEffect(() => {
-    // `isDecrypting` is the load-bearing guard. A page's records appear chunk by chunk, so partway
-    // through the first one `visible` is briefly a handful of rows, the test below reads as "the
-    // viewer is at the end", and every page of the session's history gets pulled in a cascade.
-    if (!hasNextPage || isFetchingNextPage || isDecrypting || isTruncated) return;
+    // Not while showing the previous range's rows: paging on from them would fetch the wrong window.
+    if (!hasNextPage || isFetchingNextPage || isPlaceholderData || isTruncated) return;
     // One screen of slack, so the next page is already in flight by the time the viewer arrives.
     if (visible.length > 0 && lastVisibleIndex >= visible.length - 30)
       fetchNextPage().catch(() => {});
@@ -281,7 +272,7 @@ export const ActivityTab = ({ session }: Props) => {
     visible.length,
     hasNextPage,
     isFetchingNextPage,
-    isDecrypting,
+    isPlaceholderData,
     isTruncated,
     fetchNextPage
   ]);
@@ -310,16 +301,10 @@ export const ActivityTab = ({ session }: Props) => {
     ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
     : 0;
 
-  // `isDecrypting` is false *before* decryption begins as well as after, so settling on it alone
-  // settles on the empty first render and then treats every decrypted batch as new activity.
-  if (isDecrypting) hasDecrypted.current = true;
-
   useEffect(() => {
-    // Settled means: decryption ran and finished, or there was nothing to decrypt. The second half
-    // matters — a session with no records yet must settle immediately, or the first requests to
-    // arrive are exactly the ones that never get marked. Gated on isPending because before the
-    // first response there are no chunks either, and settling there calls the whole load new.
-    if (isPending || isDecrypting || !(hasDecrypted.current || !hasChunks)) return undefined;
+    // Pages arrive already decrypted, so the first real data is the whole initial load and is seeded
+    // rather than animated. Placeholder rows belong to the previous range and settle nothing.
+    if (isPending || isPlaceholderData) return undefined;
 
     const fresh = hasSettled.current
       ? records.map(recordKey).filter((key) => !seenRecords.current.has(key))
@@ -331,24 +316,11 @@ export const ActivityTab = ({ session }: Props) => {
 
     setArrivedKeys(new Set(fresh));
     return undefined;
-  }, [records, isPending, isDecrypting, hasChunks]);
+  }, [records, isPending, isPlaceholderData]);
 
-  // The chunk index arrives long before the records do: the browser still has to fetch every object
-  // from S3 and decrypt it. Until that finishes there is nothing in `records`, and saying "nothing
-  // to show" then is a confident claim made before anything has been read.
-  //
-  // Only the first pass, though. Chunks that failed are retried on every poll, so a session whose
-  // activity cannot be read would otherwise alternate between this and the failure every few
-  // seconds, advertising a retry the viewer can do nothing with.
-  // The same test the arrival effect uses, and for the same reason: `isDecrypting` is false before
-  // decryption begins as well as after, so settling on it alone marks the load done on the render
-  // that carried the index, while every chunk is still being fetched.
-  if (!isPending && !isDecrypting && (hasDecrypted.current || !hasChunks))
-    hasResolvedOnce.current = true;
-  const isOpening =
-    !hasResolvedOnce.current &&
-    (isDecrypting || (isFetching && !isFetchingNextPage)) &&
-    visible.length === 0;
+  // Loading covers only the first load and a change of range. A poll retrying a chunk it could not read
+  // keeps the previous result on screen, so the failure it is retrying stays put instead of flickering.
+  const isOpening = (isPending || isPlaceholderData) && visible.length === 0;
 
   let noRecordsTitle: string;
   let noRecordsDescription: string;
@@ -386,7 +358,7 @@ export const ActivityTab = ({ session }: Props) => {
   // Never while pending: there are no chunks before the first response either, and this branch would
   // call logging off. Never with a window set: returning a different tree unmounts the date picker,
   // which both shifts the layout and resets the picker's own label back to its default.
-  if (!isPending && !isEnabled && !hasChunks && !range) {
+  if (!isPending && !isPlaceholderData && !isEnabled && !hasChunks && !range) {
     // An admin can fix this themselves; a member can only be told who to ask. The old copy told
     // everyone that "an administrator can turn it on", which reads as a shrug to the very person
     // holding the switch.

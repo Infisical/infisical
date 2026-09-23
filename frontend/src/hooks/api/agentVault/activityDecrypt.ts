@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
 import {
   TAgentVaultActivityChunk,
@@ -6,7 +6,9 @@ import {
   TAgentVaultActivityGap,
   TAgentVaultActivityGapReason,
   TAgentVaultActivityPage,
-  TAgentVaultActivityRecord
+  TAgentVaultActivityRecord,
+  TAgentVaultDecryptedActivityPage,
+  TAgentVaultDecryptedChunk
 } from "./types";
 
 /**
@@ -14,6 +16,12 @@ import {
  * viewer who has paged this far is looking for a filter rather than more rows.
  */
 export const AGENT_VAULT_ACTIVITY_MAX_RECORDS = 100_000;
+
+/**
+ * Chunks are at most 8 MB, so a download still running after this long is hung rather than slow. It is
+ * reported as a chunk that could not be read, which the next poll retries with a fresh URL.
+ */
+const CHUNK_DOWNLOAD_TIMEOUT_MS = 60_000;
 
 const AAD_VERSION = "v1";
 
@@ -39,16 +47,10 @@ const buildAad = async (parts: {
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
 };
 
-type TDecryptedChunk = {
-  records: TAgentVaultActivityRecord[];
-  gap: TAgentVaultActivityGap | null;
-  drop: TAgentVaultActivityDrop | null;
-};
-
 const gapFor = (
   chunk: TAgentVaultActivityChunk,
   reason: TAgentVaultActivityGapReason
-): TDecryptedChunk => ({
+): TAgentVaultDecryptedChunk => ({
   records: [],
   gap: {
     chunkId: chunk.chunkId,
@@ -72,21 +74,47 @@ const dropFor = (chunk: TAgentVaultActivityChunk): TAgentVaultActivityDrop | nul
       }
     : null;
 
+/** Aborts when the caller's signal does, or after `ms`, whichever comes first. */
+const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timer = setTimeout(abort, ms);
+  if (signal?.aborted) abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  return {
+    signal: controller.signal,
+    clear: () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+  };
+};
+
 const openChunk = async (
   chunk: TAgentVaultActivityChunk,
   key: CryptoKey,
-  context: { projectId: string; sessionId: string }
-): Promise<TDecryptedChunk> => {
+  context: { projectId: string; sessionId: string },
+  signal?: AbortSignal
+): Promise<TAgentVaultDecryptedChunk> => {
   if (!chunk.presignedGetUrl) return gapFor(chunk, "repointed");
 
+  const download = withTimeout(signal, CHUNK_DOWNLOAD_TIMEOUT_MS);
   let body: ArrayBuffer;
   try {
     // credentials omitted: S3 rejects a request that carries cookies against a presigned signature.
-    const res = await fetch(chunk.presignedGetUrl, { credentials: "omit" });
+    const res = await fetch(chunk.presignedGetUrl, {
+      credentials: "omit",
+      signal: download.signal
+    });
     if (!res.ok) return gapFor(chunk, "fetch");
     body = await res.arrayBuffer();
-  } catch {
+  } catch (error) {
+    // A cancelled query is not a chunk that failed to download. Rethrown so React Query sees the
+    // cancellation, rather than a gap that would read as an unreachable bucket.
+    if (signal?.aborted) throw error;
     return gapFor(chunk, "fetch");
+  } finally {
+    download.clear();
   }
 
   // Checked before the tag so a truncated object is reported as a size problem rather than a bad key.
@@ -122,123 +150,93 @@ const openChunk = async (
   }
 };
 
+/**
+ * What this sheet has already opened for one session, so a poll, a further page or a change of range
+ * downloads only what is new. Plaintext, so it belongs to the hook instance that made it and is never
+ * module-level.
+ */
+export type TAgentVaultActivityChunkCache = {
+  sessionId: string;
+  keys: Map<string, Promise<CryptoKey>>;
+  chunks: Map<string, TAgentVaultDecryptedChunk>;
+};
+
+export const createActivityChunkCache = (sessionId: string): TAgentVaultActivityChunkCache => ({
+  sessionId,
+  keys: new Map(),
+  chunks: new Map()
+});
+
+/**
+ * Opens every chunk on one page. A failed download is the one result left out of the cache: the object
+ * and the key were fine, the link was not, and the next fetch brings a freshly presigned one. Every
+ * other gap is a property of the object or the key and would fail the same way again.
+ */
+export const decryptActivityPage = async (
+  page: TAgentVaultActivityPage,
+  cache: TAgentVaultActivityChunkCache,
+  signal?: AbortSignal
+): Promise<TAgentVaultDecryptedActivityPage> => {
+  const decrypted: Record<string, TAgentVaultDecryptedChunk> = {};
+  const { sessionKey } = page;
+  if (!sessionKey || !page.chunks.length) return { ...page, decrypted };
+
+  let keyPromise = cache.keys.get(sessionKey);
+  if (!keyPromise) {
+    // Async so a malformed key rejects rather than throwing out of the query function.
+    keyPromise = (async () =>
+      crypto.subtle.importKey("raw", base64ToBytes(sessionKey), "AES-GCM", false, ["decrypt"]))();
+    cache.keys.set(sessionKey, keyPromise);
+  }
+  // An unusable key fails every chunk the same way, so they are all marked rather than tried.
+  const key = await keyPromise.catch(() => null);
+  const context = { projectId: page.projectId, sessionId: cache.sessionId };
+
+  await Promise.all(
+    page.chunks.map(async (chunk) => {
+      const known = cache.chunks.get(chunk.chunkId);
+      if (known) {
+        decrypted[chunk.chunkId] = known;
+        return;
+      }
+      const result = key ? await openChunk(chunk, key, context, signal) : gapFor(chunk, "gcm");
+      if (result.gap?.reason !== "fetch") cache.chunks.set(chunk.chunkId, result);
+      decrypted[chunk.chunkId] = result;
+    })
+  );
+
+  return { ...page, decrypted };
+};
+
 export type TAgentVaultActivityTimeline = {
   records: TAgentVaultActivityRecord[];
   gaps: TAgentVaultActivityGap[];
   drops: TAgentVaultActivityDrop[];
-  isDecrypting: boolean;
   isTruncated: boolean;
 };
 
-/**
- * Fetches and opens every chunk in the loaded pages, then merges the proxies' streams into one timeline.
- *
- * A chunk is opened once and remembered: paging or a poll adds chunks, it does not re-decrypt what is
- * already on screen. The key is imported once into a ref for the same reason.
- */
+/** Merges the proxies' streams across every loaded page into one timeline. */
 export const useDecryptedAgentVaultActivity = (
-  pages: TAgentVaultActivityPage[] | undefined,
-  sessionId: string | undefined
-): TAgentVaultActivityTimeline => {
-  const [opened, setOpened] = useState<Record<string, TDecryptedChunk>>({});
-  const [isDecrypting, setIsDecrypting] = useState(false);
-  const keyRef = useRef<{ raw: string; key: Promise<CryptoKey> } | null>(null);
-  // The url a download last failed on, per chunk. Retrying the same url would just fail the same way,
-  // so a retry waits for the poll to hand back a freshly presigned one.
-  const failedUrlRef = useRef<Record<string, string>>({});
-
-  const sessionKey = pages?.find((page) => page.sessionKey)?.sessionKey ?? null;
-  const projectId = pages?.[0]?.projectId;
-
-  // Chunks are identified across pages by their own id, which is unique per session.
-  const chunks = useMemo(() => {
-    const byId = new Map<string, TAgentVaultActivityChunk>();
-    (pages ?? []).forEach((page) => page.chunks.forEach((chunk) => byId.set(chunk.chunkId, chunk)));
-    return [...byId.values()];
-  }, [pages]);
-
-  useEffect(() => {
-    // A different session, or a key that changed, invalidates everything already opened.
-    setOpened({});
-    keyRef.current = null;
-    failedUrlRef.current = {};
-  }, [sessionId, sessionKey]);
-
-  useEffect(() => {
-    if (!sessionKey || !projectId || !sessionId) return undefined;
-
-    // A download that failed is worth another go, because a presigned url expires while a long
-    // timeline is open and the poll hands back a fresh one: the bytes were fine, the link was not.
-    // Only when the url has actually changed, so this waits for new data rather than hammering the
-    // same dead link, and only for a fetch failure. The other reasons are properties of the stored
-    // object or the key, and would fail identically however many times they were tried.
-    const isWorthRetrying = (chunk: TAgentVaultActivityChunk) =>
-      opened[chunk.chunkId]?.gap?.reason === "fetch" &&
-      Boolean(chunk.presignedGetUrl) &&
-      chunk.presignedGetUrl !== failedUrlRef.current[chunk.chunkId];
-
-    const pending = chunks.filter((chunk) => !(chunk.chunkId in opened) || isWorthRetrying(chunk));
-    if (!pending.length) return undefined;
-
-    let cancelled = false;
-    setIsDecrypting(true);
-
-    if (!keyRef.current || keyRef.current.raw !== sessionKey) {
-      keyRef.current = {
-        raw: sessionKey,
-        key: crypto.subtle.importKey("raw", base64ToBytes(sessionKey), "AES-GCM", false, [
-          "decrypt"
-        ])
-      };
-    }
-
-    const run = async () => {
-      try {
-        const key = await keyRef.current!.key;
-        const results = await Promise.all(
-          pending.map(
-            async (chunk) =>
-              [chunk.chunkId, await openChunk(chunk, key, { projectId, sessionId })] as const
-          )
-        );
-        if (cancelled) return;
-        pending.forEach((chunk) => {
-          const result = results.find(([chunkId]) => chunkId === chunk.chunkId)?.[1];
-          if (result?.gap?.reason === "fetch" && chunk.presignedGetUrl) {
-            failedUrlRef.current[chunk.chunkId] = chunk.presignedGetUrl;
-          }
-        });
-        setOpened((prev) => ({ ...prev, ...Object.fromEntries(results) }));
-      } catch {
-        if (cancelled) return;
-        // An unusable key fails every chunk the same way, so they are all marked rather than retried.
-        setOpened((prev) => ({
-          ...prev,
-          ...Object.fromEntries(pending.map((chunk) => [chunk.chunkId, gapFor(chunk, "gcm")]))
-        }));
-      } finally {
-        if (!cancelled) setIsDecrypting(false);
-      }
-    };
-
-    run().catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [chunks, opened, sessionKey, projectId, sessionId]);
-
-  return useMemo(() => {
+  pages: TAgentVaultDecryptedActivityPage[] | undefined
+): TAgentVaultActivityTimeline =>
+  useMemo(() => {
+    // Chunks are identified across pages by their own id: a page boundary that moved between two
+    // fetches can list the same chunk on both.
+    const seen = new Set<string>();
     const records: TAgentVaultActivityRecord[] = [];
     const gaps: TAgentVaultActivityGap[] = [];
     const drops: TAgentVaultActivityDrop[] = [];
 
-    chunks.forEach((chunk) => {
-      const result = opened[chunk.chunkId];
-      if (!result) return;
-      records.push(...result.records);
-      if (result.gap) gaps.push(result.gap);
-      if (result.drop) drops.push(result.drop);
-    });
+    (pages ?? []).forEach((page) =>
+      page.chunks.forEach((chunk) => {
+        const result = page.decrypted[chunk.chunkId];
+        if (!result || seen.has(chunk.chunkId)) return;
+        seen.add(chunk.chunkId);
+        records.push(...result.records);
+        if (result.gap) gaps.push(result.gap);
+        if (result.drop) drops.push(result.drop);
+      })
+    );
 
     // Newest first. Sequence numbers are per proxy, so they settle ties only within one proxy; across
     // proxies this is wall-clock order and adjacent lines can be a second out of order.
@@ -253,8 +251,6 @@ export const useDecryptedAgentVaultActivity = (
       records: records.slice(0, AGENT_VAULT_ACTIVITY_MAX_RECORDS),
       gaps,
       drops,
-      isDecrypting,
       isTruncated: records.length > AGENT_VAULT_ACTIVITY_MAX_RECORDS
     };
-  }, [chunks, opened, isDecrypting]);
-};
+  }, [pages]);

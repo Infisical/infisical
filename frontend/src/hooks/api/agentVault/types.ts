@@ -382,3 +382,15 @@ export type TAgentVaultActivityDrop = {
   startedAt: string;
   droppedCount: number;
 };
+
+/** What opening one chunk produced: its records, or why it cannot be shown. */
+export type TAgentVaultDecryptedChunk = {
+  records: TAgentVaultActivityRecord[];
+  gap: TAgentVaultActivityGap | null;
+  drop: TAgentVaultActivityDrop | null;
+};
+
+/** A page as the sheet holds it: the index the server sent, plus every chunk opened in the browser. */
+export type TAgentVaultDecryptedActivityPage = TAgentVaultActivityPage & {
+  decrypted: Record<string, TAgentVaultDecryptedChunk>;
+};
