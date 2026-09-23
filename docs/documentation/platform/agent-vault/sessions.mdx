@@ -58,7 +58,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops applying credentials for it on its next poll.
 
-The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can audit what an agent had access to during the session:
+The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions so you can audit what an agent had access to during the session. A session with [activity logs](/documentation/platform/agent-vault/activity-logs) is kept indefinitely, and one without is removed 30 days after it ends:
 
 <Frame>
   <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />

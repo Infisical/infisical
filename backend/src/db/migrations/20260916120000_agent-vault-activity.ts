@@ -14,9 +14,9 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("enabled").notNullable().defaultTo(false);
 
       // Blocks deleting a connection that is in use, as every other product's connection link does:
-      // it is what reads recorded activity back and what lets the sweep delete expired sessions'
-      // objects, so losing it silently strands both. Deferred like theirs, so deleting an org, which
-      // removes its projects and its connections in one statement, is checked only at commit.
+      // it is what reads recorded activity back, so losing it silently makes that history unreadable.
+      // Deferred like theirs, so deleting an org, which removes its projects and its connections in
+      // one statement, is checked only at commit.
       t.uuid("appConnectionId");
       t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection).deferrable("deferred");
 
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.integer("configVersion").notNullable().defaultTo(1);
 
-      t.bigint("storedRecordCount").notNullable().defaultTo(0);
+      t.bigint("storedChunkCount").notNullable().defaultTo(0);
       t.timestamp("lastRecordedAt", { useTz: true });
 
       t.timestamps(true, true, true);

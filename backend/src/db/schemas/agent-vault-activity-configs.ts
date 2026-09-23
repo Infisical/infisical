@@ -16,7 +16,7 @@ export const AgentVaultActivityConfigsSchema = z.object({
   region: z.string().nullable().optional(),
   keyPrefix: z.string().nullable().optional(),
   configVersion: z.number().default(1),
-  storedRecordCount: z.coerce.number().default(0),
+  storedChunkCount: z.coerce.number().default(0),
   lastRecordedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

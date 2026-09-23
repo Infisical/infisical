@@ -313,7 +313,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                       />
                       <FieldDescription>
                         {isDetaching
-                          ? "Without a connection, recorded activity can't be read, and files from sessions that expire stay in your bucket. The bucket is kept, so attaching a connection later brings the history back."
+                          ? "Without a connection, recorded activity can't be read. The bucket is kept, so attaching a connection later brings the history back."
                           : "Its credentials write the records, and read them back when you open a session's activity."}
                       </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>

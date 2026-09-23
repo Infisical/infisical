@@ -30,7 +30,7 @@ import {
   AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS,
   AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
-  AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
+  AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
   AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS,
@@ -149,8 +149,6 @@ export const agentVaultActivityServiceFactory = ({
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId: proxy.projectId });
     if (!session) throw sessionNotFound();
 
-    // The three retirement classes match the sweep's exactly, or a chunk could land for a session the
-    // sweep has already decided to delete.
     if (!session.userId && !session.identityId) {
       // Resolve already refuses these, and the actor's deletion time is unknown, so no grace is computable.
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
@@ -163,7 +161,7 @@ export const agentVaultActivityServiceFactory = ({
       revokedAt !== null && expiredAt !== null ? Math.min(revokedAt, expiredAt) : (revokedAt ?? expiredAt);
 
     // A chunk recorded during a revoked session's grace window is legitimate, and a day of slack covers a
-    // proxy retrying through an outage. Past that the session is on its way to being swept.
+    // proxy retrying through an outage.
     if (retiredAt !== null && now.getTime() - retiredAt > AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS) {
       throw new UnauthorizedError({ message: "Session retired too long ago to accept activity" });
     }
@@ -194,8 +192,7 @@ export const agentVaultActivityServiceFactory = ({
     if (chunk.lastSeq - chunk.firstSeq + 1 < chunk.recordCount) {
       throw new BadRequestError({ message: "Chunk holds more records than its sequence range allows" });
     }
-    // recordCount is what moves the organization's ceiling, so it cannot be claimed independently of the
-    // bytes actually written.
+    // recordCount cannot be claimed independently of the bytes actually written. See the constant.
     if (chunk.ciphertextBytes < chunk.recordCount * AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD) {
       throw new BadRequestError({ message: "Chunk is too small to hold the number of records it claims" });
     }
@@ -238,10 +235,10 @@ export const agentVaultActivityServiceFactory = ({
 
       // Takes the config row's lock, so concurrent inserts serialise and each reads its own true total.
       const stored = await agentVaultActivityConfigDAL.recordStoredChunk(
-        { id: config.id, recordCount: chunk.recordCount, configVersion: config.configVersion },
+        { id: config.id, configVersion: config.configVersion },
         tx
       );
-      if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS) {
+      if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS) {
         // Rolls the insert back with it, so refusing costs nothing and stays refusable next time.
         // The ceiling is ours rather than the customer's, so neither the number nor a way to change
         // it belongs in a message that lands in their proxy's logs.
@@ -431,7 +428,7 @@ export const agentVaultActivityServiceFactory = ({
 
     return {
       config: toConfigView(config),
-      isStorageFull: toCount(config.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
+      isStorageFull: toCount(config.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
       lastRecordedAt: config.lastRecordedAt ?? null
     };
@@ -533,7 +530,7 @@ export const agentVaultActivityServiceFactory = ({
 
     return {
       config: toConfigView(saved),
-      isStorageFull: toCount(saved.storedRecordCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS,
+      isStorageFull: toCount(saved.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
       lastRecordedAt: saved.lastRecordedAt ?? null,
       relocated

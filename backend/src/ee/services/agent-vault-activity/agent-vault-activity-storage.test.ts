@@ -2,12 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import {
-  buildActivityObjectKey,
-  buildSessionPrefix,
-  normalizeKeyPrefix,
-  resolveStorageConfig
-} from "./agent-vault-activity-storage";
+import { buildActivityObjectKey, normalizeKeyPrefix, resolveStorageConfig } from "./agent-vault-activity-storage";
 
 describe("normalizeKeyPrefix", () => {
   test.each([
@@ -49,12 +44,6 @@ describe("buildActivityObjectKey", () => {
   test("dates by UTC, so a chunk near midnight does not land in the reader's day", () => {
     const key = buildActivityObjectKey({ ...base, startedAt: new Date("2026-09-16T23:59:59.999Z") });
     expect(key).toContain("/2026-09-16/");
-  });
-
-  test("shares its first three segments with the session prefix the sweep deletes", () => {
-    const key = buildActivityObjectKey({ ...base, keyPrefix: "logs" });
-    const prefix = buildSessionPrefix({ keyPrefix: "logs", projectId: base.projectId, sessionId: base.sessionId });
-    expect(key.startsWith(prefix)).toBe(true);
   });
 });
 

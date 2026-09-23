@@ -3,7 +3,6 @@ import { BadRequestError } from "@app/lib/errors";
 import type * as RealStorage from "../../src/ee/services/agent-vault-activity/agent-vault-activity-storage";
 import {
   buildActivityObjectKey,
-  buildSessionPrefix,
   normalizeKeyPrefix,
   resolveStorageConfig
 } from "../../src/ee/services/agent-vault-activity/agent-vault-activity-storage";
@@ -11,13 +10,13 @@ import type { TResolvedActivityStorageConfig } from "../../src/ee/services/agent
 
 /**
  * An in-memory S3 for the activity specs. Wired up by test.alias in vitest.e2e.config.mts on the
- * specifier "./agent-vault-activity-storage", which only the activity service and its sweep use, so the
- * proxy service keeps the real (pure) resolveStorageConfig. Nothing under src/ references this file.
+ * specifier "./agent-vault-activity-storage", which only the activity service uses, so the proxy service
+ * keeps the real (pure) resolveStorageConfig. Nothing under src/ references this file.
  *
  * The pure exports are re-exported from the real module by a path that is not itself aliased, so key
  * layout, prefix normalisation and config resolution stay under test rather than reimplemented here.
  */
-export { buildActivityObjectKey, buildSessionPrefix, normalizeKeyPrefix, resolveStorageConfig };
+export { buildActivityObjectKey, normalizeKeyPrefix, resolveStorageConfig };
 
 type TFakeState = {
   // Keyed by `${bucket}/${objectKey}`, so repointing at a second bucket makes the first one's objects
@@ -25,7 +24,6 @@ type TFakeState = {
   objects: Map<string, Buffer>;
   validateError: string | null;
   presignError: string | null;
-  deleteError: string | null;
   presignedPuts: Map<string, { bucket: string; objectKey: string; ciphertextBytes: number }>;
   presignedGets: Map<string, { bucket: string; objectKey: string }>;
   nextUrlId: number;
@@ -35,7 +33,6 @@ const freshState = (): TFakeState => ({
   objects: new Map(),
   validateError: null,
   presignError: null,
-  deleteError: null,
   presignedPuts: new Map(),
   presignedGets: new Map(),
   nextUrlId: 0
@@ -63,11 +60,6 @@ export const fakeActivityStorage = {
   /** Make minting a presigned URL throw, which is the AWS failure the write path reports as a 500. */
   failsPresignWith: (message: string | null) => {
     state.presignError = message;
-  },
-
-  /** Make the sweep's object deletion throw, so a spec can assert the rows survive. */
-  failsDeleteWith: (message: string | null) => {
-    state.deleteError = message;
   },
 
   /** The upload a proxy performs against a presigned PUT url. */
@@ -133,18 +125,6 @@ export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _or
         throw new BadRequestError({ message: state.validateError });
       }
       return Promise.resolve();
-    },
-
-    deletePrefix: (prefix: string) => {
-      if (state.deleteError) throw new Error(state.deleteError);
-      let deleted = 0;
-      for (const id of [...state.objects.keys()]) {
-        if (id.startsWith(objectId(bucket, prefix))) {
-          state.objects.delete(id);
-          deleted += 1;
-        }
-      }
-      return Promise.resolve(deleted);
     }
   });
 };
@@ -157,10 +137,9 @@ export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _or
  */
 export const assertFakeMatchesRealStorage: Pick<
   typeof RealStorage,
-  "buildActivityObjectKey" | "buildSessionPrefix" | "normalizeKeyPrefix" | "resolveStorageConfig"
+  "buildActivityObjectKey" | "normalizeKeyPrefix" | "resolveStorageConfig"
 > = {
   buildActivityObjectKey,
-  buildSessionPrefix,
   normalizeKeyPrefix,
   resolveStorageConfig
 };
@@ -171,6 +150,5 @@ export const assertFakeStorageShapeMatches: {
   presignPut: null,
   presignGet: null,
   mintCorsProbeUrl: null,
-  validate: null,
-  deletePrefix: null
+  validate: null
 };

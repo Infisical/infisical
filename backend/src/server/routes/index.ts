@@ -33,7 +33,6 @@ import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-
 import { agentVaultActivityChunkDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-chunk-dal";
 import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
 import { agentVaultActivityServiceFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-service";
-import { agentVaultActivitySweepServiceFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-sweep-service";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
@@ -1995,15 +1994,6 @@ export const registerRoutes = async (
     resourceAuthMethodService
   });
 
-  const agentVaultActivitySweepService = agentVaultActivitySweepServiceFactory({
-    agentVaultSessionDAL,
-    agentVaultActivityConfigDAL,
-    appConnectionDAL,
-    kmsService,
-    cronJob
-  });
-  agentVaultActivitySweepService.init();
-
   const relayService = relayServiceFactory({
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
@@ -3052,7 +3042,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL
+    scepTransactionDAL,
+    agentVaultSessionService
   });
 
   const healthAlert = healthAlertServiceFactory({

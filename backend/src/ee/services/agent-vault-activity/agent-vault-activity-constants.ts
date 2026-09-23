@@ -11,20 +11,24 @@ export const AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS = 300;
 
 /**
  * A floor on how much ciphertext a chunk must carry per record it claims. The record's JSON keys alone
- * run past 120 bytes before any value, so this is very slack; it exists because recordCount is what moves
- * the organization's ceiling, and without it a modified proxy could claim 1000 records per 18-byte chunk
- * and exhaust the ceiling for every session in the org in minutes.
+ * run past 120 bytes before any value, so this is very slack. recordCount sizes the pages a viewer scrolls
+ * through and is what they are told when a chunk cannot be read, so a proxy cannot claim records its bytes
+ * could not hold.
  */
 export const AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD = 60;
 
 /**
- * Ceiling on activity records indexed per organization. What it bounds is our row count and our
- * presign calls, not the customer's bucket, so it is ours to pick and not a customer-facing setting:
- * neither the API nor the UI reports it, and an organization that reaches it is told to contact us
- * rather than given a number to argue with. Raising it is a code change, which is the point at which
- * somebody should look at why it was reached.
+ * Ceiling on activity chunks indexed per organization. Chunks, not records: what costs us is one index row
+ * per chunk, and a chunk holds anywhere from 1 to 1000 records, so a record count would cut off a busy
+ * agent long before a quiet one for the same number of rows.
+ *
+ * Nothing frees room under it. A session that recorded activity is kept for good, since its row holds the
+ * key that decrypts it, so an organization that reaches the ceiling stays there until it is raised. It is
+ * ours to pick and not a customer-facing setting: neither the API, the UI nor the docs report it, and an
+ * organization that reaches it is told to contact us. Raising it is a code change, which is the point at
+ * which somebody should look at why it was reached.
  */
-export const AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS = 10_000_000;
+export const AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS = 100_000;
 
 /** A storage client is reused for this long rather than rebuilt per request. See the write path. */
 export const AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS = 5 * 60_000;
@@ -33,7 +37,6 @@ export const AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS = 5 * 60_000;
 export const AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS = 24 * 60 * 60_000;
 export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000;
 
-export const AGENT_VAULT_ACTIVITY_SWEEP_BATCH = 500;
 /**
  * A page is measured in records, not chunks. A chunk holds anywhere from 1 to 1000 of them depending
  * on how busy the agent was, so paging by chunk hands a busy session thousands of rows and a quiet one

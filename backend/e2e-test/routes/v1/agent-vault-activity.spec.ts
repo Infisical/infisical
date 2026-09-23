@@ -6,9 +6,7 @@ import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
 import { AgentVaultActivityErrorName } from "@app/ee/services/agent-vault-activity/agent-vault-activity-constants";
-import { agentVaultActivitySweepServiceFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-sweep-service";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { initLogger } from "@app/lib/logger";
 
@@ -170,15 +168,6 @@ const recordChunk = async (
   expect(res.statusCode, res.payload).toBe(200);
   return JSON.parse(res.payload) as { chunkId: string; uploadUrl: string; expiresInSeconds: number };
 };
-
-const buildSweepService = () =>
-  agentVaultActivitySweepServiceFactory({
-    agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-    agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
-    appConnectionDAL: { findById: () => Promise.resolve({ orgId: seedData1.organization.id, app: "aws" }) } as never,
-    kmsService: {} as never,
-    cronJob: { register: () => {} } as never
-  });
 
 const BUCKET = "activity-bucket";
 
@@ -440,7 +429,7 @@ describe("Agent Vault activity", async () => {
       expect(await readLastRecordedAt()).toBeNull();
     });
 
-    test("counts the records against the org, and the sweep gives them back", async () => {
+    test("counts each chunk once against the org, whatever it holds", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-count-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -449,7 +438,7 @@ describe("Agent Vault activity", async () => {
       await recordChunk(proxy, session.id, chunkBody({ firstSeq: 10, lastSeq: 19 }));
 
       const config = await testDb("agent_vault_activity_configs").where({ projectId }).first();
-      expect(Number(config.storedRecordCount)).toBe(20);
+      expect(Number(config.storedChunkCount)).toBe(2);
     });
 
     test("re-sending a chunk replays the same row and counts nothing twice", async () => {
@@ -466,9 +455,9 @@ describe("Agent Vault activity", async () => {
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id }).count()).toEqual([
         { count: "1" }
       ]);
-      expect(
-        Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedRecordCount)
-      ).toBe(10);
+      expect(Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedChunkCount)).toBe(
+        1
+      );
     });
 
     test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
@@ -996,7 +985,7 @@ describe("Agent Vault activity", async () => {
     });
   });
 
-  describe("the retention sweep", () => {
+  describe("retention", () => {
     const configure = async () =>
       saveConfig({
         enabled: true,
@@ -1011,55 +1000,19 @@ describe("Agent Vault activity", async () => {
         .where({ id: sessionId })
         .update({ revokedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000) });
 
-    test("deletes the objects, gives back the count and removes the rows", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`activity-sweep-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`activity-sweep-${Date.now()}`);
-      const { uploadUrl } = await recordChunk(proxy, session.id);
-      fakeActivityStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      expect(fakeActivityStorage.objectKeys(BUCKET)).toHaveLength(1);
-
-      await retire(session.id, 31);
-      await buildSweepService().sweepRetiredSessions();
-
-      expect(fakeActivityStorage.objectKeys(BUCKET)).toEqual([]);
-      expect(await testDb("agent_vault_sessions").where({ id: session.id }).first()).toBeUndefined();
-      expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id })).toHaveLength(0);
-      expect(
-        Number((await testDb("agent_vault_activity_configs").where({ projectId }).first()).storedRecordCount)
-      ).toBe(0);
-    });
-
-    test("leaves a session that is still inside the retention window alone", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`activity-sweep-recent-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`activity-sweep-recent-${Date.now()}`);
-
-      const { uploadUrl } = await recordChunk(proxy, session.id);
-      fakeActivityStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
-
-      await retire(session.id, 2);
-      await buildSweepService().sweepRetiredSessions();
-
-      expect(await testDb("agent_vault_sessions").where({ id: session.id }).first()).toBeTruthy();
-      expect(fakeActivityStorage.objectKeys(BUCKET)).toHaveLength(1);
-    });
-
     /**
-     * The bulk prune and the activity sweep have to agree about which sessions hold chunks. If the prune
-     * ever deletes one that does, the chunk rows cascade away with it and their objectKeys go with them,
-     * stranding the objects in the customer's bucket and leaving storedRecordCount permanently high.
+     * A session's row holds the key that decrypts its activity, and its chunk rows cascade with it. The
+     * daily prune deleting one that recorded activity would leave every object it wrote unreadable.
      */
-    test("a retired session holding chunks is never taken by the bulk prune", async () => {
+    test("the daily prune keeps a retired session that recorded activity, and removes one that did not", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-prune-${Date.now()}`);
       const withChunks = await mintSession(bundle.name);
       const withoutChunks = await mintSession(bundle.name);
       const proxy = await createProxy(`activity-prune-${Date.now()}`);
 
-      await recordChunk(proxy, withChunks.id);
+      const { uploadUrl } = await recordChunk(proxy, withChunks.id);
+      fakeActivityStorage.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
       await retire(withChunks.id, 31);
       await retire(withoutChunks.id, 31);
@@ -1071,22 +1024,8 @@ describe("Agent Vault activity", async () => {
       expect(pruned).toBeGreaterThanOrEqual(1);
       expect(await testDb("agent_vault_sessions").where({ id: withoutChunks.id }).first()).toBeUndefined();
       expect(await testDb("agent_vault_sessions").where({ id: withChunks.id }).first()).toBeTruthy();
-    });
-
-    test("a bucket that refuses the delete keeps the rows, so tomorrow's run tries again", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`activity-sweep-fail-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`activity-sweep-fail-${Date.now()}`);
-
-      await recordChunk(proxy, session.id);
-      await retire(session.id, 31);
-
-      fakeActivityStorage.failsDeleteWith("AccessDenied");
-      await buildSweepService().sweepRetiredSessions();
-
-      expect(await testDb("agent_vault_sessions").where({ id: session.id }).first()).toBeTruthy();
-      expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id })).toHaveLength(1);
+      expect(await testDb("agent_vault_activity_chunks").where({ sessionId: withChunks.id })).toHaveLength(1);
+      expect(fakeActivityStorage.objectKeys(BUCKET)).toHaveLength(1);
     });
   });
 });

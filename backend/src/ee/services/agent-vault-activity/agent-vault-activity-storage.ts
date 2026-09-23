@@ -1,11 +1,4 @@
-import {
-  DeleteObjectsCommand,
-  GetObjectCommand,
-  HeadBucketCommand,
-  ListObjectsV2Command,
-  PutObjectCommand,
-  S3Client
-} from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { TAgentVaultActivityConfigs } from "@app/db/schemas";
@@ -30,8 +23,8 @@ export const normalizeKeyPrefix = (keyPrefix?: string | null) => {
 };
 
 /**
- * The date segment exists so a customer can attach their own S3 lifecycle rule. Infisical adds none: a
- * session's activity lives exactly as long as the session row does.
+ * The date segment exists so a customer can attach their own S3 lifecycle rule. Infisical adds none, and
+ * never deletes an object itself.
  */
 export const buildActivityObjectKey = ({
   keyPrefix,
@@ -51,16 +44,6 @@ export const buildActivityObjectKey = ({
   const day = startedAt.toISOString().slice(0, 10);
   return `${normalizeKeyPrefix(keyPrefix)}${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`;
 };
-
-export const buildSessionPrefix = ({
-  keyPrefix,
-  projectId,
-  sessionId
-}: {
-  keyPrefix?: string | null;
-  projectId: string;
-  sessionId: string;
-}) => `${normalizeKeyPrefix(keyPrefix)}${projectId}/${sessionId}/`;
 
 /** Null when the row is not pointed at a bucket yet. Callers treat that as "activity is off". */
 export const resolveStorageConfig = (
@@ -159,7 +142,9 @@ export const buildActivityStorage = async (
       });
     }
 
-    const testKey = `${normalizeKeyPrefix(keyPrefix)}.test/${crypto.nativeCrypto.randomUUID()}`;
+    // One fixed key, overwritten on every save and never deleted: Infisical holds no delete permission on
+    // the bucket, so a key per save would leave one behind each time.
+    const testKey = `${normalizeKeyPrefix(keyPrefix)}.test/write-check`;
     try {
       await client.send(
         new PutObjectCommand({
@@ -175,38 +160,7 @@ export const buildActivityStorage = async (
         message: `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
       });
     }
-
-    try {
-      await client.send(
-        new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: [{ Key: testKey }], Quiet: true } })
-      );
-    } catch (err) {
-      // Not fatal: the config is usable. The stray object is one zero-value key under .test/.
-      logger.warn({ err, bucket, testKey }, `Agent Vault activity test object cleanup failed [testKey=${testKey}]`);
-    }
   };
 
-  /** Paginated: a session that ran for months can hold far more than one ListObjectsV2 page. */
-  const deletePrefix = async (prefix: string) => {
-    let continuationToken: string | undefined;
-    let deleted = 0;
-    do {
-      // eslint-disable-next-line no-await-in-loop
-      const listed = await client.send(
-        new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: continuationToken })
-      );
-      const keys = (listed.Contents ?? []).map((o) => o.Key).filter((k): k is string => Boolean(k));
-      if (keys.length) {
-        // eslint-disable-next-line no-await-in-loop
-        await client.send(
-          new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true } })
-        );
-        deleted += keys.length;
-      }
-      continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
-    } while (continuationToken);
-    return deleted;
-  };
-
-  return { presignPut, presignGet, mintCorsProbeUrl, validate, deletePrefix };
+  return { presignPut, presignGet, mintCorsProbeUrl, validate };
 };

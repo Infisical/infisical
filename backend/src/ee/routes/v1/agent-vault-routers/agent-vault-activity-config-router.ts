@@ -17,7 +17,7 @@ export const registerAgentVaultActivityConfigRouter = async (server: FastifyZodP
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getAgentVaultActivityConfig",
-      description: "Read where this project's session activity is stored, and how much of the limit it uses",
+      description: "Read where this project's session activity is stored, and whether that storage is full",
       tags: [ApiDocsTags.AgentVaultActivity],
       response: { 200: AgentVaultActivityConfigResponseSchema }
     },

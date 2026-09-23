@@ -19,10 +19,10 @@ never in anything the agent holds.
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
-agent-vault-session/         mint, revoke, list
+agent-vault-session/         mint, revoke, list, retention sweep
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
-agent-vault-activity/        storage settings, chunk ingest, playback, the retention sweep
+agent-vault-activity/        storage settings, chunk ingest, playback
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -95,9 +95,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
-  it. Expiry is enforced against the clock on every resolve. The 30 day hard delete lives in
-  `agent-vault-activity/`'s sweep, since it has to delete the session's activity objects first; there is
-  no expiry audit event, matching every other product.
+  it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30
+  day hard delete, which skips any session that recorded activity; there is no expiry audit event, matching
+  every other product.
 
 ## Proxies
 
@@ -214,27 +214,29 @@ only, never bodies or headers, and never the query string (the proxy builds the 
 - **The write endpoint inserts the row, then returns a presigned PUT.** Row before object, so a failed
   upload is a visible gap rather than a silent one; re-POSTing the same chunk id replays idempotently.
   The presign runs after commit: no network under the config row's lock.
-- **The org ceiling is a backend constant** (`AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS`, in the
-  activity constants) and is **not customer-facing**: it is not an env var, the config response
-  reports only `isStorageFull`, the UI shows no count, and the refusal the proxy logs names neither
-  the number nor a way to change it. Raising it is a code change, which is the point at which
-  somebody should ask why it was reached. At the wall the endpoint refuses rather than dropping the
-  oldest, because drop-oldest is an evidence-eviction primitive. The counter is moved with
-  `UPDATE ... SET x = x + ?`, never read-modify-write.
-- **Cleanup happens only when a session is hard-deleted**, 30 days after it retires. There is no
-  retention concept of its own, so a live session (including `never`) keeps everything. The sweep has
-  its own cron, not the shared daily cleanup, because its S3 pass is network-bound and would time the
-  whole run out. `pruneRetiredBefore` skips sessions holding chunks for exactly that reason.
+- **The org ceiling counts chunks, not records** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`, in the
+  activity constants): what costs us is one index row per chunk, and a chunk holds 1 to 1000 records.
+  It is **not customer-facing**: not an env var, not in the docs, the config response reports only
+  `isStorageFull`, and the refusal the proxy logs names neither the number nor a way to change it.
+  Nothing frees room under it, so an org that reaches it stays there until the constant is raised,
+  which is the point at which somebody should ask why it was reached. At the wall the endpoint refuses
+  rather than dropping the oldest, because drop-oldest is an evidence-eviction primitive. The counter
+  is moved with `UPDATE ... SET x = x + 1`, never read-modify-write.
+- **Infisical never deletes activity.** A session that recorded any is kept for good, because its row
+  holds the key that decrypts it and its chunk rows cascade with it; `pruneRetiredBefore` skips it.
+  Nothing deletes from the customer's bucket either, so the policy asks for no `s3:DeleteObject`, and
+  the save-time write check overwrites one fixed key rather than cleaning up after itself. A customer
+  who wants shorter retention adds an S3 lifecycle rule; the date is in the object key for that.
 - **Changing the bucket or prefix bumps `configVersion` and orphans prior history**, which the UI
   detects and reports rather than presigning URLs that 404. Swapping the connection or the region does
   not bump: those leave every object exactly where it is.
 - The Activity Logs surface (storage config plus the product's app connections) is admin-only by
   `hasRole(Admin)`, as everything else here is. No new CASL subject.
 - **`lastRecordedAt` is a column on the config row, stamped by `recordStoredChunk`** in the same locked
-  UPDATE that counts the records, and only when the chunk's `configVersion` is still current. A
+  UPDATE that counts the chunk, and only when the chunk's `configVersion` is still current. A
   relocating save clears it, so it never reports a destination as working on the strength of chunks
   written to the previous one. Stored rather than derived: a `MAX(createdAt)` over chunk rows scanned
-  the project's whole history on every sidebar load, and fell back to "never" once the sweep ran.
+  the project's whole history on every sidebar load.
 - **App connections are the one CASL subject the admin role carries.** Agent Vault holds its own
   AWS connections alongside the org's, and the shared `AppConnectionsTable` reads
   `ProjectPermissionSub.AppConnections` off CASL rather than the role, so the grant is what keeps

@@ -28,7 +28,7 @@ export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
       Statement: [
         {
           Effect: "Allow",
-          Action: ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+          Action: ["s3:PutObject", "s3:GetObject"],
           Resource: objects
         },
         {

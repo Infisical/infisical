@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { DatabaseError } from "@app/lib/errors";
 
-import { AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
+import { AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
 import { agentVaultActivityServiceFactory } from "./agent-vault-activity-service";
 
-const CEILING = AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS;
+const CEILING = AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS;
 
 const presignPut = vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-put");
 vi.mock("./agent-vault-activity-storage", async (importOriginal) => {
@@ -16,8 +16,7 @@ vi.mock("./agent-vault-activity-storage", async (importOriginal) => {
       presignPut,
       presignGet: vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-get"),
       mintCorsProbeUrl: vi.fn(async () => "https://bucket.s3.amazonaws.com/probe"),
-      validate: vi.fn(async () => {}),
-      deletePrefix: vi.fn(async () => 0)
+      validate: vi.fn(async () => {})
     }))
   };
 });
@@ -43,7 +42,7 @@ const enabledConfig = () => ({
   region: "us-east-1",
   keyPrefix: "logs",
   configVersion: 3,
-  storedRecordCount: 0
+  storedChunkCount: 0
 });
 
 const validChunk = () => ({
@@ -91,8 +90,7 @@ const build = (overrides: TOverrides = {}) => {
     } as never,
     agentVaultActivityConfigDAL: {
       findOne: vi.fn(async () => ("config" in overrides ? overrides.config : enabledConfig())),
-      recordStoredChunk,
-      decrementStoredRecordCount: vi.fn(async () => 0)
+      recordStoredChunk
     } as never,
     agentVaultSessionDAL: {
       findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
@@ -117,16 +115,13 @@ beforeEach(() => {
 });
 
 describe("recordChunk: who is allowed to write", () => {
-  test("a happy path writes the row, counts the records and returns an upload url", async () => {
+  test("a happy path writes the row, counts the chunk and returns an upload url", async () => {
     const { service, createIfAbsent, recordStoredChunk } = build();
     const result = await record(service);
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
-    expect(recordStoredChunk).toHaveBeenCalledWith(
-      { id: "cfg-1", recordCount: 42, configVersion: 3 },
-      expect.anything()
-    );
+    expect(recordStoredChunk).toHaveBeenCalledWith({ id: "cfg-1", configVersion: 3 }, expect.anything());
 
     // The proxy names neither of these, so a compromised proxy cannot choose where its bytes land or
     // claim the chunk was written under an older configuration.
@@ -258,13 +253,10 @@ describe("recordChunk: semantic validation", () => {
     const soon = new Date(Date.now() + 60_000);
     await expect(record(service, { ...validChunk(), startedAt: soon, endedAt: soon })).resolves.toBeTruthy();
   });
-});
 
-describe("recordChunk: the organization ceiling", () => {
   test("refuses a chunk claiming more records than its bytes could hold", async () => {
-    // recordCount is what moves the ceiling, so a proxy must not be able to claim it independently of
-    // the bytes it actually wrote. Unbounded, 600 requests a minute would exhaust a 10M ceiling in
-    // under twenty minutes and stop recording for every session in the organization.
+    // recordCount sizes a viewer's pages and is what a gap reports, so a proxy must not be able to claim
+    // it independently of the bytes it actually wrote.
     const { service, createIfAbsent } = build();
     await expect(
       record(service, { ...validChunk(), firstSeq: 0, lastSeq: 999, recordCount: 1000, ciphertextBytes: 64 })
@@ -276,7 +268,9 @@ describe("recordChunk: the organization ceiling", () => {
     const { service } = build();
     await expect(record(service, { ...validChunk(), recordCount: 10, ciphertextBytes: 4096 })).resolves.toBeTruthy();
   });
+});
 
+describe("recordChunk: the organization ceiling", () => {
   test("refuses with the named error once the increment carries the org past the limit", async () => {
     const { service } = build({ storedAfterIncrement: CEILING + 1 });
     await expect(record(service)).rejects.toMatchObject({ name: AgentVaultActivityErrorName.CeilingReached });

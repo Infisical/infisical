@@ -55,7 +55,7 @@ Go to **Activity Logs** under Agent Vault and select **Set Up Logging** on the *
 4. Optionally set a **Key Prefix**, so activity objects sit under one path in a bucket you use for other things.
 5. Select **Save**.
 
-Saving checks the bucket before it stores anything: Infisical confirms the bucket exists, writes a test object under your prefix, and deletes it again. A failure names which step failed and what to grant.
+Saving checks the bucket before it stores anything: Infisical confirms the bucket exists and writes a small test object, `.test/write-check`, under your prefix. The object stays, and each save overwrites it. A failure names which step failed and what to grant.
 
 Select **View AWS Setup** for both policies below, with your bucket and prefix already filled in. Both are needed, and the dialog opens on its own after a successful save. You can reopen it at any time from the **Activity Logging** card.
 
@@ -67,7 +67,7 @@ Attach this as an IAM policy to the user or role the connection authenticates as
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Action": ["s3:PutObject", "s3:GetObject"],
       "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
     },
     {
@@ -117,27 +117,23 @@ A record that couldn't be kept is still counted, so a gap is visible rather than
 
 - **Records not kept.** A proxy buffers records in memory and ships them every 60 seconds. If it's cut off from Infisical or from your bucket for long enough, the oldest buffered records are dropped and the tab reports how many.
 - **A batch that can't be read.** If a batch is missing from the bucket, the wrong size, or fails decryption, the tab marks it and shows the rest. If the download failed, select **Retry** to fetch it again.
-- **A batch stored somewhere else.** Changing the bucket or the prefix leaves everything recorded before the change where it was, and Infisical stops being able to read it. Those batches are marked as stored in a bucket the project no longer uses.
+- **A batch stored somewhere else.** Changing the bucket or the prefix leaves everything recorded before the change where it was, and Infisical stops being able to read it. Those batches are marked as stored in a bucket or prefix the project no longer uses.
 
 ## Changing where activity is stored
 
 Rotating the AWS connection's credentials, or correcting the region, leaves every object where it's stored and keeps it readable. Rotate the connection rather than moving the bucket.
 
-Changing the bucket or the key prefix is a hard cut. Nothing is copied, and everything recorded before the change becomes unreadable from Infisical. The objects stay in the old bucket, so you can still reach them with your own tooling.
+Changing the bucket or the key prefix is a hard cut. Nothing is copied, and everything recorded before the change becomes unreadable from Infisical. The objects stay where they were, so you can still reach them with your own tooling.
 
 ## Retention
 
-Activity is kept as long as the session is. Infisical deletes a session 30 days after it's revoked or expires, and deletes its activity objects from your bucket at the same time. A session that's still live keeps everything, including one created with a TTL of `never`.
+Infisical never deletes activity. A session that recorded activity is kept indefinitely, along with its records. A session that recorded nothing is removed 30 days after it's revoked or expires.
 
-Infisical adds no S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`, so you can add your own rule if you want a shorter retention than the session's.
+Infisical doesn't delete anything from your bucket either, and the policy above doesn't let it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. A batch the rule has removed shows in the timeline as one that can't be read.
 
-## Storage limits
+## When storage is full
 
-What costs Infisical is the index, not the bytes in your bucket, so there's a limit on how many records an organization can have indexed at once. It's set high enough that reaching it is unusual, and the **Activity Logs** page says so if you do.
-
-At the limit, proxies stop recording. Each one pauses for 15 minutes and tries again, so recording resumes on its own once there's room, without restarting anything. Letting old sessions age out frees space, since deleting a session deletes its records. Nothing already recorded is deleted to make room: dropping the oldest records would turn a flood of requests into a way of erasing evidence.
-
-If you reach it, contact us.
+If the **Activity Logs** page says activity storage is full, recording is paused. Contact us.
 
 ## Connections
 
@@ -193,11 +189,11 @@ To reach an existing connection, add its ID: `GET`, `PATCH` and `DELETE` on
 
 ### Deleting a connection
 
-A connection activity logging is using can't be deleted, whether from the **Activity Logs** page or from the organization's **Integrations**. Its credentials read recorded activity back and let Infisical delete an expired session's objects from your bucket, so removing it would strand both.
+A connection activity logging is using can't be deleted, whether from the **Activity Logs** page or from the organization's **Integrations**. Its credentials are what read recorded activity back, so removing it would make that history unreadable.
 
 To replace the credential, select another connection under **Configure** and save. The previous connection can then be deleted.
 
-To stop using a connection without replacing it, turn **Enabled** off, set **AWS Connection** to **None**, and save. The bucket and prefix are kept. Until a connection is attached again, recorded activity can't be read in Infisical, and objects from sessions that expire in the meantime stay in your bucket.
+To stop using a connection without replacing it, turn **Enabled** off, set **AWS Connection** to **None**, and save. The bucket and prefix are kept. Until a connection is attached again, recorded activity can't be read in Infisical.
 
 ## What this doesn't cover
 

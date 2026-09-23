@@ -293,7 +293,7 @@ export type TAgentVaultActivityConfig = {
 
 export type TAgentVaultActivityConfigResponse = {
   config: TAgentVaultActivityConfig;
-  /** The record ceiling itself is internal, so only the fact that it has been reached is reported. */
+  /** The storage limit itself is internal, so only the fact that it has been reached is reported. */
   isStorageFull: boolean;
   /**
    * A presigned GET the browser fetches to prove the bucket allows cross-origin reads. Server-side

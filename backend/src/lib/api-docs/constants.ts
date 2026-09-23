@@ -4375,7 +4375,7 @@ export const AGENT_VAULT = {
     droppedCount:
       "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused. A gap in the sequence numbers.",
     configVersion:
-      "The version of the project's storage configuration the chunk was written under. A chunk written under an earlier version lives in a bucket that is no longer configured.",
+      "The version of the project's storage configuration the chunk was written under. A chunk written under an earlier version lives in a bucket or under a prefix that is no longer configured.",
     ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialisation vector, base64 encoded.",
     objectKey: "Where the encrypted chunk lives in the configured bucket.",
@@ -4409,7 +4409,7 @@ export const AGENT_VAULT = {
     corsProbeUrl:
       "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
     isStorageFull:
-      "Whether the organization has reached the number of activity records Infisical will index for it, at which point recording pauses. The limit itself is internal.",
+      "Whether the organization has reached the amount of activity Infisical will index for it, at which point recording pauses until Infisical support raises it.",
     hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again.",
     lastRecordedAt:
       "When a record last landed in the bucket currently configured. Null when nothing has been recorded there yet, including right after the destination changed."
