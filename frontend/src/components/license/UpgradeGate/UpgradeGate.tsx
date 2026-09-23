@@ -110,7 +110,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
               Close
             </Button>
             <Button variant="org" onClick={openRootBilling}>
-              Continue to root billing
+              Continue to Root Billing
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -138,7 +138,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
               Close
             </Button>
             <Button variant="org" onClick={openRootBilling}>
-              Continue to billing
+              Continue to Billing
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -226,8 +226,9 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
     overview.data.mode !== "managed" && overview.data.selfServe && !overview.data.checkoutFrozen;
   const price = monthlyPrice(plan);
   const trialLength = plan.trialDays > 0 ? `${plan.trialDays}-day` : "free";
+  const trialBadgeLabel = plan.trialDays > 0 ? `${plan.trialDays}-Day Trial` : "Free Trial";
   const trialButtonLabel =
-    plan.trialDays > 0 ? `Start ${plan.trialDays}-day free trial` : "Start free trial";
+    plan.trialDays > 0 ? `Start ${plan.trialDays}-Day Free Trial` : "Start Free Trial";
 
   const handleStartTrial = async () => {
     try {
@@ -260,7 +261,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
 
   let primaryAction = (
     <Button variant="org" onClick={openRootBilling}>
-      View billing options
+      View Billing Options
     </Button>
   );
   if (!selfServe) {
@@ -269,7 +270,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
         variant="org"
         onClick={() => window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer")}
       >
-        Contact sales
+        Contact Sales
       </Button>
     );
   } else if (trialAvailable) {
@@ -296,7 +297,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-base font-medium text-foreground">{plan.name}</span>
-                      {trialAvailable && <Badge variant="success">{trialLength} trial</Badge>}
+                      {trialAvailable && <Badge variant="success">{trialBadgeLabel}</Badge>}
                     </div>
                     <p className="mt-1 text-sm text-muted">{plan.feature}</p>
                   </div>
@@ -387,7 +388,7 @@ export const UpgradeGate = ({ intent, isOpen, onOpenChange, onGranted }: Props) 
                 isDisabled={startTrial.isPending}
                 onClick={handleStartTrial}
               >
-                Start free trial
+                Start Free Trial
               </Button>
             </DialogFooter>
           </>
