@@ -184,8 +184,9 @@ only, never bodies or headers, and never the query string (the proxy builds the 
   object and one row. Per-request rows would be millions.
 - **Size is bounded at every hop, because the agent controls its own records.** The proxy caps method,
   port and path, and seals at 4 MiB against the server's 8 MiB limit; a chunk the server refuses anyway
-  counts as dropped, so the gap stays visible. A read page stops at 16 MiB as well as its record budget,
-  and the viewer stops loading, live polling included, at 64 MiB opened.
+  counts as dropped on the session's next chunk. A read page stops at about 16 MiB (one chunk over at
+  most) as well as its record budget, and the viewer stops loading, live polling included, at about
+  64 MiB opened. These are loose bounds by design: each is checked as data lands, not before a request.
 - **Two keys, do not confuse them.** The project data key (`KmsDataKey.SecretManager`, the same one
   protecting service credentials) wraps a per-session 32-byte activity key stored on the session row.
   Only the session key leaves the backend: to the proxy at resolve, to the browser at playback.

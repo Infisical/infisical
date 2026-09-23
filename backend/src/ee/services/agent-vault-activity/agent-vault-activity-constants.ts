@@ -50,10 +50,11 @@ export const AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS = 1000;
 export const AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS = 200;
 
 /**
- * A page also stops at this much ciphertext, because the viewer downloads and decrypts every chunk on it.
- * Records are small and their agent-controlled fields are capped by the proxy, so 1000 of them stay near
- * 13 MB at the very worst. Without it a proxy could fill a page with 200 chunks claiming one record each at
- * 8 MiB apiece, and hand the viewer 1.6 GB to hold at once.
+ * A page also stops once its chunks reach this much ciphertext, because the viewer downloads and decrypts
+ * every chunk on it. Like the record budget it keeps the chunk that crosses the line, so a page can run one
+ * chunk, at most 8 MiB, over. Records are small and their agent-controlled fields are capped by the proxy,
+ * so 1000 of them stay near 13 MB at the very worst. Without it a proxy could fill a page with 200 chunks
+ * claiming one record each at 8 MiB apiece, and hand the viewer 1.6 GB to hold at once.
  */
 export const AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES = 16 * 1024 * 1024;
 

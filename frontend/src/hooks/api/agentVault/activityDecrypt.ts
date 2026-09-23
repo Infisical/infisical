@@ -22,6 +22,8 @@ export const AGENT_VAULT_ACTIVITY_MAX_RECORDS = 100_000;
  * Stop, too, once this much opened activity is held, however few records it is. Real records are a few
  * hundred bytes, so 100,000 of them come to about 20 MB. This only binds on chunks far heavier than their
  * record count, which the tab would otherwise go on downloading and holding for as long as it was handed.
+ * It is checked as pages and polls land rather than before each request, so a live poll that chains reads
+ * to catch up on a backlog can carry the tab past it before live updates pause.
  */
 export const AGENT_VAULT_ACTIVITY_MAX_LOADED_BYTES = 64 * 1024 * 1024;
 
