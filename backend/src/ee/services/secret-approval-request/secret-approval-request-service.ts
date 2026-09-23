@@ -35,6 +35,7 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -57,6 +58,7 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { getAllSecretReferences as getAllSecretReferencesV2Bridge } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -147,6 +149,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     "checkProjectUpgradeStatus" | "findById" | "findProjectById" | "findProjectWithOrg"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -198,6 +201,7 @@ export const secretApprovalRequestServiceFactory = ({
   projectEnvDAL,
   secretApprovalPolicyDAL,
   kmsService,
+  orgDAL,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -884,14 +888,12 @@ export const secretApprovalRequestServiceFactory = ({
         throw new NotFoundError({ message: `No secrets found in secret change request with ID '${approvalId}'` });
       }
 
-      const {
-        decryptor: secretManagerDecryptor,
-        generateSecretBlindIndex,
-        encryptor: secretManagerEncryptor
-      } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, orgDAL });
 
       const conflicts: Array<{ secretId: string; op: SecretOperations }> = [];
       let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Create);
@@ -972,8 +974,8 @@ export const secretApprovalRequestServiceFactory = ({
         const creationBlindIndexes = await Promise.all(
           secretCreationCommits.map((el) =>
             el.encryptedValue
-              ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
-              : Promise.resolve(undefined)
+              ? blindIndexer.generate(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
+              : Promise.resolve(null)
           )
         );
 
@@ -992,7 +994,7 @@ export const secretApprovalRequestServiceFactory = ({
                   version: 1,
                   encryptedComment: el.encryptedComment,
                   encryptedValue: el.encryptedValue,
-                  secretValueBlindIndex: creationBlindIndexes[idx],
+                  blindIndexes: creationBlindIndexes[idx],
                   skipMultilineEncoding: el.skipMultilineEncoding,
                   key: el.key,
                   secretMetadata: (Array.isArray(el.secretMetadata)
@@ -1065,7 +1067,7 @@ export const secretApprovalRequestServiceFactory = ({
               folderDAL,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-              generateSecretBlindIndex,
+              blindIndexer,
               tx
             });
           }
@@ -1094,8 +1096,8 @@ export const secretApprovalRequestServiceFactory = ({
             const shouldComputeBlindIndex =
               !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined;
             return shouldComputeBlindIndex
-              ? generateSecretBlindIndex(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
-              : Promise.resolve(undefined);
+              ? blindIndexer.generate(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
+              : Promise.resolve(null);
           })
         );
 
@@ -1113,7 +1115,7 @@ export const secretApprovalRequestServiceFactory = ({
                   !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined
                     ? {
                         encryptedValue: el.encryptedValue,
-                        secretValueBlindIndex: updationBlindIndexes[idx],
+                        blindIndexes: updationBlindIndexes[idx],
                         references: el.encryptedValue
                           ? getAllSecretReferencesV2Bridge(
                               secretManagerDecryptor({
@@ -1182,7 +1184,7 @@ export const secretApprovalRequestServiceFactory = ({
               folderDAL,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-              generateSecretBlindIndex,
+              blindIndexer,
               tx
             });
           }

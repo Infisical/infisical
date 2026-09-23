@@ -26,6 +26,7 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
@@ -90,7 +91,7 @@ export type THoneyTokenServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   folderDAL: Pick<
@@ -321,10 +322,11 @@ export const honeyTokenServiceFactory = ({
       plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
     }).cipherTextBlob;
 
-    const { encryptor: secretEncryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService, orgDAL });
 
     const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
       const credentialValue = honeyTokenCredentials[credentialField];
@@ -378,7 +380,7 @@ export const honeyTokenServiceFactory = ({
           encryptedValue: secretEncryptor({
             plainText: Buffer.from(value)
           }).cipherTextBlob,
-          secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+          blindIndexes: await blindIndexer.generate(Buffer.from(value)),
           references: []
         }))
       );
@@ -525,11 +527,11 @@ export const honeyTokenServiceFactory = ({
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      const { encryptor: secretEncryptor, generateSecretBlindIndex: generateBlindIndex } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+      const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService, orgDAL });
 
       const secretEntries = Object.entries(nextSecretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = decryptedCredentials[credentialField];
@@ -562,7 +564,7 @@ export const honeyTokenServiceFactory = ({
             encryptedValue: secretEncryptor({
               plainText: Buffer.from(value)
             }).cipherTextBlob,
-            secretValueBlindIndex: await generateBlindIndex(Buffer.from(value)),
+            blindIndexes: await blindIndexer.generate(Buffer.from(value)),
             references: []
           }))
         );
