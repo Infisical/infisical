@@ -50,7 +50,7 @@ export const assumePrivilegeServiceFactory = ({
     if (targetActorType === ActorType.USER) {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionMemberActions.AssumePrivileges,
-        await $getMemberSubject(targetActorId)
+        ProjectPermissionSub.Member
       );
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
@@ -68,6 +68,13 @@ export const assumePrivilegeServiceFactory = ({
       actorOrgId: actorPermissionDetails.orgId,
       actionProjectType: ActionProjectType.Any
     });
+
+    if (targetActorType === ActorType.USER) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionMemberActions.AssumePrivileges,
+        await $getMemberSubject(targetActorId)
+      );
+    }
 
     const appCfg = getConfig();
     const assumePrivilegesToken = crypto.jwt().sign(

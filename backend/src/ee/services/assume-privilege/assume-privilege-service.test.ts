@@ -72,6 +72,27 @@ describe("assume member privileges", () => {
     await expect(assume(service, "junior-user")).resolves.toMatchObject({ actorId: "junior-user" });
   });
 
+  test("the target's email is not looked up when the target is not in the project", async () => {
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      [{ action: ProjectPermissionMemberActions.AssumePrivileges, subject: ProjectPermissionSub.Member }],
+      { conditionsMatcher }
+    );
+    const findById = vi.fn();
+    const service = assumePrivilegeServiceFactory({
+      permissionService: {
+        getProjectPermission: vi
+          .fn()
+          .mockImplementation(({ actorId }: { actorId: string }) =>
+            actorId === "requester" ? Promise.resolve({ permission }) : Promise.reject(new Error("not a member"))
+          )
+      },
+      userDAL: { findById }
+    } as never);
+
+    await expect(assume(service, "outsider")).rejects.toThrow("not a member");
+    expect(findById).not.toHaveBeenCalled();
+  });
+
   test("the forbid is also enforced when the session token is verified", async () => {
     const allowAll: Rule = {
       action: ProjectPermissionMemberActions.AssumePrivileges,
