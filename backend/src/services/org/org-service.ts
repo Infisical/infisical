@@ -459,6 +459,7 @@ export const orgServiceFactory = ({
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
+      secretValueOrgBlindIndexEnabled,
       secretShareBrandConfig
     }
   }: TUpdateOrgDTO) => {
@@ -664,6 +665,7 @@ export const orgServiceFactory = ({
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
+      secretValueOrgBlindIndexEnabled,
       secretShareBrandConfig
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
