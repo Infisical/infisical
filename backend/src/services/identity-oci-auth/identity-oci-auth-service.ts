@@ -40,7 +40,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOciAuthDALFactory } from "./identity-oci-auth-dal";
-import { getOciSignerUserOcid } from "./identity-oci-auth-fns";
+import { getOciErrorForLog, getOciSignerUserOcid } from "./identity-oci-auth-fns";
 import {
   TAttachOciAuthDTO,
   TGetOciAuthDTO,
@@ -141,7 +141,7 @@ export const identityOciAuthServiceFactory = ({
         })
         .catch((err: AxiosError) => {
           logger.error(
-            { status: err.response?.status, code: err.code, message: err.message, responseData: err.response?.data },
+            getOciErrorForLog(err),
             `OciIdentityLogin: Failed to authenticate with Oracle Cloud [identityId=${identity.id}] [status=${err.response?.status}]`
           );
           throw err;
