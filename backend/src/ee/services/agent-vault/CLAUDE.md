@@ -182,6 +182,10 @@ only, never bodies or headers, and never the query string (the proxy builds the 
   index row per chunk; the bytes go straight from proxy to bucket and back to the browser.
 - **Records are batched into chunks**, 1000 records or 60s, whichever comes first. One chunk is one S3
   object and one row. Per-request rows would be millions.
+- **Size is bounded at every hop, because the agent controls its own records.** The proxy caps method,
+  port and path, and seals at 4 MiB against the server's 8 MiB limit; a chunk the server refuses anyway
+  counts as dropped, so the gap stays visible. A read page stops at 16 MiB as well as its record budget,
+  and the viewer stops loading, live polling included, at 64 MiB opened.
 - **Two keys, do not confuse them.** The project data key (`KmsDataKey.SecretManager`, the same one
   protecting service credentials) wraps a per-session 32-byte activity key stored on the session row.
   Only the session key leaves the backend: to the proxy at resolve, to the browser at playback.
