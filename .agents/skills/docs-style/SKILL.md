@@ -13,6 +13,12 @@ Don't work from a summary, a diff, or your memory of the guide. Each rule in the
 with an "Instead of" and "Write" example, and the examples show what the rule means better
 than any summary can.
 
+## Templates
+
+To check if the page you're documenting has a template to follow, start from the matching file in
+[templates/](templates/README.md). The README says which template fits and how the snippets
+shared between integration pages work.
+
 ## Before you write
 
 Ask the engineer for the facts before you draft anything. Only the engineer knows how the
