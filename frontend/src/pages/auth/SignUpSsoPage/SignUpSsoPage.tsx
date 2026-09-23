@@ -71,12 +71,6 @@ export const SignupSsoPage = () => {
       telemetry.identify(signupEmail, signupEmail);
     }
 
-    if (isInfisicalCloud()) {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ event: "signup_completed" });
-    }
-    captureSignupCompleted("sso");
-
     createNotification({
       text: "Successfully verified",
       type: "success"
@@ -96,6 +90,12 @@ export const SignupSsoPage = () => {
       }
       return;
     }
+
+    if (isInfisicalCloud()) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: "signup_completed" });
+    }
+    captureSignupCompleted("sso");
 
     navigate({ to: "/organizations/onboarding" });
   };
