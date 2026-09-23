@@ -12,6 +12,7 @@ import { seedData1 } from "@app/db/seed-data";
 //   auth-idp-attacks.spec.ts                scimEnabled
 //   privilege-boundary-removal.spec.ts      shouldUseNewPrivilegeSystem
 //   membership-downgrade-boundary.spec.ts   shouldUseNewPrivilegeSystem
+//   secret-value-org-blind-index.spec.ts    secretValueOrgBlindIndexEnabled
 //
 // Those afterAll hooks don't run when a file dies hard — a worker OOM or a
 // file-level timeout — and a leaked flag then breaks every later spec that logs
@@ -32,6 +33,7 @@ beforeAll(async () => {
     enforceMfa: false,
     authEnforced: false,
     scimEnabled: false,
-    shouldUseNewPrivilegeSystem: true
+    shouldUseNewPrivilegeSystem: true,
+    secretValueOrgBlindIndexEnabled: true
   });
 });

@@ -90,7 +90,11 @@ describe("createSecretBlindIndexer", () => {
     await expect(indexer.generateOptional(null)).resolves.toBeNull();
   });
 
-  it("indexes the empty string when it is an actual value", async () => {
+  // The call sites this replaced all gated on truthiness (`el.secretValue ? generate(...) : null`),
+  // and encryptedValue is still gated that way, so an empty value must produce no digest. Hashing it
+  // would collide every empty secret in the org on one digest and leave a row with a digest but no
+  // encrypted value.
+  it("treats an empty value as no value", async () => {
     const indexer = await createSecretBlindIndexer({
       projectId: PROJECT_ID,
       orgId: ORG_ID,
@@ -98,10 +102,7 @@ describe("createSecretBlindIndexer", () => {
       orgDAL: makeOrgDAL(true) as never
     });
 
-    await expect(indexer.generateOptional("")).resolves.toEqual({
-      secretValueBlindIndex: "project:",
-      secretValueOrgBlindIndex: "org:"
-    });
+    await expect(indexer.generateOptional("")).resolves.toBeNull();
   });
 
   it("threads the transaction into both the org lookup and the key resolution", async () => {

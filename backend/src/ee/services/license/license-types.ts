@@ -87,7 +87,7 @@ export type TFeatureSet = {
   gateway: false;
   gatewayPool: false;
   pamSlackNotifications: boolean;
-  secretScanning: false;
+  secretScanning: true;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;

@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -37,7 +38,9 @@ export const createSecretBlindIndexer = async ({
     orgDAL.findById(orgId, tx)
   ]);
 
-  const orgCipher = org?.secretValueOrgBlindIndexEnabled
+  if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+
+  const orgCipher = org.secretValueOrgBlindIndexEnabled
     ? await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, tx)
     : null;
 
@@ -52,7 +55,8 @@ export const createSecretBlindIndexer = async ({
 
   return {
     generate,
-    generateOptional: async (secretValue?: string | null) =>
-      secretValue === undefined || secretValue === null ? null : generate(Buffer.from(secretValue))
+    // Falsy rather than nullish on purpose: encryptedValue is gated the same way at every call site,
+    // so an empty value must not get a digest the encrypted column has no counterpart for.
+    generateOptional: async (secretValue?: string | null) => (secretValue ? generate(Buffer.from(secretValue)) : null)
   };
 };

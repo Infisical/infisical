@@ -253,8 +253,14 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         encryptedValue,
-        secretValueBlindIndex: blindIndexes?.secretValueBlindIndex ?? null,
-        secretValueOrgBlindIndex: blindIndexes?.secretValueOrgBlindIndex ?? null
+        // undefined means this update carries no value, so the columns are left out of the UPDATE
+        // entirely. Writing null here instead would wipe the digests on a rename or comment edit.
+        ...(blindIndexes === undefined
+          ? {}
+          : {
+              secretValueBlindIndex: blindIndexes?.secretValueBlindIndex ?? null,
+              secretValueOrgBlindIndex: blindIndexes?.secretValueOrgBlindIndex ?? null
+            })
       }
     })
   );

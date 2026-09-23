@@ -157,6 +157,37 @@ describe("secret value org blind index", () => {
     expect(after.secretValueOrgBlindIndex).toEqual(expect.any(String));
   });
 
+  // A rename or comment edit carries no value, so knex must leave both digest columns alone rather
+  // than writing NULL over them. Nulling them silently removes the secret from duplicate detection.
+  test("an update that carries no value leaves both digests intact", async () => {
+    const name = key("novalue");
+    const created = await createSecret({ key: name, value: "keep-me" });
+    const before = await readSecretRow(created.id);
+    expect(before.secretValueOrgBlindIndex).toEqual(expect.any(String));
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v3/secrets/raw/${name}`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: {
+        workspaceId: seedData1.projectV3.id,
+        environment: seedData1.environment.slug,
+        type: SecretType.Shared,
+        secretPath: "/",
+        secretComment: "comment only, no value"
+      }
+    });
+    expect(res.statusCode).toBe(200);
+
+    const after = await readSecretRow(created.id);
+    expect(after.secretValueBlindIndex).toBe(before.secretValueBlindIndex);
+    expect(after.secretValueOrgBlindIndex).toBe(before.secretValueOrgBlindIndex);
+
+    const version = await readLatestVersionRow(created.id);
+    expect(version.secretValueBlindIndex).toBe(before.secretValueBlindIndex);
+    expect(version.secretValueOrgBlindIndex).toBe(before.secretValueOrgBlindIndex);
+  });
+
   test("an org that has opted out gets no org digest on the secret or its version", async () => {
     await setOrgBlindIndexEnabled(false);
 

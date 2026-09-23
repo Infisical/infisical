@@ -2463,7 +2463,13 @@ export const secretV2BridgeServiceFactory = ({
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, orgDAL });
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      orgDAL,
+      tx: providedTx
+    });
 
     // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
