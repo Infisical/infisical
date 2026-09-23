@@ -15,6 +15,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  Spinner,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -57,6 +58,13 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
         // otherwise take the caret and put a focus ring on the first thing the viewer sees.
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
+        {!session && isPending && (
+          <Empty className="m-4 border">
+            <EmptyHeader>
+              <Spinner size="sm" />
+            </EmptyHeader>
+          </Empty>
+        )}
         {/* A link to a session nobody can resolve says the same thing whether it never existed or
             belongs to someone else, which is what the endpoint does too. */}
         {!session && !isPending && (

@@ -136,16 +136,17 @@ export const AgentVaultSessionsPage = () => {
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
 
-  // A link to a session is worth nothing if it only opens for someone whose current page, scope and
-  // filter happen to contain it, so anything not already loaded is fetched by id.
+  // The open session is always fetched by id, so it never depends on what the list is showing: a link
+  // opens whatever the viewer's page, scope and filter, and a refresh that moves the session off the page
+  // cannot unmount the sheet and throw away its search and filters. The list's copy fills in while that
+  // loads, and stays if the fetch fails.
   const loadedOpenSession = sessions.find((session) => session.id === openSessionId);
   const { data: fetchedOpenSession, isPending: isFetchingOpenSession } = useGetAgentVaultSession(
     openSessionId,
-    Boolean(openSessionId) && !isPending && !loadedOpenSession
+    Boolean(openSessionId)
   );
-  const openSession = loadedOpenSession ?? fetchedOpenSession;
-  const isOpenSessionPending =
-    Boolean(openSessionId) && !openSession && (isPending || isFetchingOpenSession);
+  const openSession = fetchedOpenSession ?? loadedOpenSession;
+  const isOpenSessionPending = Boolean(openSessionId) && !openSession && isFetchingOpenSession;
 
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 

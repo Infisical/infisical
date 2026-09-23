@@ -248,8 +248,10 @@ export const useGetAgentVaultActivityConfig = (enabled = true) => {
 /**
  * One session by id, so a link to a timeline opens whatever page, scope or filter the viewer is on.
  *
- * Only runs when the session is not already in the loaded list. The endpoint answers the same 404 for
- * a session that does not exist and one the viewer may not see, so there is nothing to tell apart here.
+ * Fetched whenever a sheet is open, even for a session the list already holds: the list refreshes, and a
+ * session that moves off the current page must not take the open sheet with it. The endpoint answers the
+ * same 404 for a session that does not exist and one the viewer may not see, so there is nothing to tell
+ * apart here.
  */
 export const useGetAgentVaultSession = (sessionId: string | undefined, enabled = true) => {
   const { currentOrg } = useOrganization();
