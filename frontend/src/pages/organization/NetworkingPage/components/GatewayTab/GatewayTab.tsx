@@ -82,7 +82,9 @@ import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
+import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
+import { RenameGatewayModal } from "../RenameGatewayModal";
 import { CreateGatewayPoolModal } from "./components/CreateGatewayPoolModal";
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
@@ -126,6 +128,7 @@ export const GatewayTab = withPermission(
       "deployGateway",
       "deleteGateway",
       "editDetails",
+      "renameGateway",
       "createPool",
       "upgradePlan"
     ] as const);
@@ -421,22 +424,25 @@ export const GatewayTab = withPermission(
                                       Trigger Health Check
                                     </DropdownMenuItem>
                                   )}
-                                {el.isV1 && (
-                                  <OrgPermissionCan
-                                    I={OrgGatewayPermissionActions.EditGateways}
-                                    a={OrgPermissionSubjects.Gateway}
-                                  >
-                                    {(isAllowed: boolean) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        onClick={() => handlePopUpOpen("editDetails", el)}
-                                      >
-                                        <PencilIcon />
-                                        Edit Details
-                                      </DropdownMenuItem>
-                                    )}
-                                  </OrgPermissionCan>
-                                )}
+                                <OrgPermissionCan
+                                  I={OrgGatewayPermissionActions.EditGateways}
+                                  a={OrgPermissionSubjects.Gateway}
+                                >
+                                  {(isAllowed: boolean) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() =>
+                                        handlePopUpOpen(
+                                          el.isV1 ? "editDetails" : "renameGateway",
+                                          el
+                                        )
+                                      }
+                                    >
+                                      <PencilIcon />
+                                      {el.isV1 ? "Edit Details" : "Rename Gateway"}
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
                                 <OrgPermissionCan
                                   I={OrgGatewayPermissionActions.DeleteGateways}
                                   a={OrgPermissionSubjects.Gateway}
@@ -475,6 +481,13 @@ export const GatewayTab = withPermission(
                   />
                 </DialogContent>
               </Dialog>
+              {Boolean(popUp.renameGateway.data) && (
+                <RenameGatewayModal
+                  isOpen={popUp.renameGateway.isOpen}
+                  onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
+                  gateway={popUp.renameGateway.data as TGatewayV2}
+                />
+              )}
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
                 confirmationValue={

@@ -7,13 +7,12 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
-  FieldContent,
   FieldError,
   FieldLabel,
   Input
@@ -70,31 +69,35 @@ export const RenameGatewayModal = ({ isOpen, onToggle, gateway }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onToggle}>
       <DialogContent>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <DialogHeader>
-            <DialogTitle>Rename Gateway</DialogTitle>
-            <DialogDescription>
-              The gateway keeps its ID, so anything already pointing at it carries on working.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Rename Gateway</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
           <Controller
             control={control}
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Name</FieldLabel>
-                <FieldContent>
-                  <Input {...field} isError={Boolean(error)} placeholder="prod-us-east" />
-                </FieldContent>
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="gateway-name">Name</FieldLabel>
+                <Input
+                  {...field}
+                  id="gateway-name"
+                  placeholder="prod-us-east"
+                  isError={Boolean(error)}
+                  autoFocus
+                  autoComplete="off"
+                />
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}
           />
           <DialogFooter>
-            <Button variant="ghost" type="button" onClick={() => onToggle(false)}>
-              Cancel
-            </Button>
-            <Button variant="org" type="submit" isPending={isSubmitting}>
+            <DialogClose asChild>
+              <Button variant="ghost" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button variant="org" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
               Save Changes
             </Button>
           </DialogFooter>

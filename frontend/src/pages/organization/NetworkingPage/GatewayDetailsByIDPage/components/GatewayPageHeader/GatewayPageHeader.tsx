@@ -41,7 +41,7 @@ import {
 } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
-import { RenameGatewayModal } from "./RenameGatewayModal";
+import { RenameGatewayModal } from "../../../components/RenameGatewayModal";
 
 export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; orgId: string }) => {
   const navigate = useNavigate();
