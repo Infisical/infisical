@@ -104,4 +104,50 @@ describe("project additional privilege grant validation", () => {
       ])
     ).resolves.toBeUndefined();
   });
+
+  test("an allow on the legacy grant-privileges action does not override a forbid on the new action", async () => {
+    const factory = createFactory([
+      grantAnything,
+      { action: ProjectPermissionMemberActions.GrantPrivileges, subject: ProjectPermissionSub.Member },
+      {
+        inverted: true,
+        action: ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+        subject: ProjectPermissionSub.Member,
+        conditions: { assignableSubject: ProjectPermissionSub.Secrets }
+      }
+    ]);
+
+    await expect(createPrivilege(factory, readSecrets)).rejects.toThrow(PermissionBoundaryError);
+    await expect(createPrivilege(factory, readEnvironments)).resolves.toBeUndefined();
+  });
+
+  test("an allow on the legacy grant-privileges action does not override a forbid on the target's email", async () => {
+    const factory = createFactory([
+      grantAnything,
+      { action: ProjectPermissionMemberActions.GrantPrivileges, subject: ProjectPermissionSub.Member },
+      {
+        inverted: true,
+        action: ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+        subject: ProjectPermissionSub.Member,
+        conditions: { userEmail: "target@example.com" }
+      }
+    ]);
+
+    await expect(createPrivilege(factory, readEnvironments)).rejects.toThrow(PermissionBoundaryError);
+  });
+
+  test("a forbid on the legacy action is enforced when the new action is allowed", async () => {
+    const factory = createFactory([
+      grantAnything,
+      {
+        inverted: true,
+        action: ProjectPermissionMemberActions.GrantPrivileges,
+        subject: ProjectPermissionSub.Member,
+        conditions: { assignableSubject: ProjectPermissionSub.Secrets }
+      }
+    ]);
+
+    await expect(createPrivilege(factory, readSecrets)).rejects.toThrow(PermissionBoundaryError);
+    await expect(createPrivilege(factory, readEnvironments)).resolves.toBeUndefined();
+  });
 });

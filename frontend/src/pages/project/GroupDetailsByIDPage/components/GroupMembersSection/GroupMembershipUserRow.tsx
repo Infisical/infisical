@@ -1,4 +1,3 @@
-import { subject } from "@casl/ability";
 import { EllipsisIcon, UserIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -49,7 +48,7 @@ export const GroupMembershipUserRow = ({
             <DropdownMenuContent align="end">
               <ProjectPermissionCan
                 I={ProjectPermissionMemberActions.AssumePrivileges}
-                a={subject(ProjectPermissionSub.Member, { userEmail: email })}
+                a={ProjectPermissionSub.Member}
               >
                 {(isAllowed) => {
                   return (

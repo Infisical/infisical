@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -228,9 +227,7 @@ export const Page = () => {
                     {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
-                        a={subject(ProjectPermissionSub.Member, {
-                          userEmail: membershipDetails.user.email
-                        })}
+                        a={ProjectPermissionSub.Member}
                       >
                         {(isAllowed) => (
                           <Tooltip>
