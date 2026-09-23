@@ -418,7 +418,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
     [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"],
-    [ProjectPermissionMemberActions.AssumePrivileges]: []
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: ["identityId"],

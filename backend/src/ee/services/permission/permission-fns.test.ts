@@ -396,7 +396,7 @@ describe("interpolatePermissionRules", () => {
 });
 
 describe("checkForInvalidPermissionCombination", () => {
-  test("rejects conditions on member assume-privileges, which are not evaluated", () => {
+  test("accepts a userEmail condition on member assume-privileges", () => {
     expect(() =>
       checkForInvalidPermissionCombination([
         {
@@ -405,7 +405,19 @@ describe("checkForInvalidPermissionCombination", () => {
           conditions: { userEmail: "admin@example.com" }
         }
       ] as never)
-    ).toThrow('Condition "userEmail" is not allowed for action "assume-privileges" on subject "member"');
+    ).not.toThrow();
+  });
+
+  test("rejects conditions on member assume-privileges other than userEmail", () => {
+    expect(() =>
+      checkForInvalidPermissionCombination([
+        {
+          subject: ProjectPermissionSub.Member,
+          action: [ProjectPermissionMemberActions.AssumePrivileges],
+          conditions: { assignableRole: "admin" }
+        }
+      ] as never)
+    ).toThrow('Condition "assignableRole" is not allowed for action "assume-privileges" on subject "member"');
   });
 
   test("rejects conditions when assume-privileges shares a rule with an action that allows them", () => {
@@ -414,10 +426,10 @@ describe("checkForInvalidPermissionCombination", () => {
         {
           subject: ProjectPermissionSub.Member,
           action: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.AssumePrivileges],
-          conditions: { userEmail: "admin@example.com" }
+          conditions: { userEmail: "admin@example.com", assignableRole: "admin" }
         }
       ] as never)
-    ).toThrow('Condition "userEmail" is not allowed for action "assume-privileges" on subject "member"');
+    ).toThrow('Condition "assignableRole" is not allowed for action "assume-privileges" on subject "member"');
   });
 
   test("accepts member assume-privileges without conditions", () => {
