@@ -19,7 +19,6 @@ export const importDataIntoInfisicalFn = async ({
   projectDAL,
   secretDAL,
   kmsService,
-  orgDAL,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -306,7 +305,6 @@ export const importDataIntoInfisicalFn = async ({
           projectId: selectedProjectId,
           orgId: actorOrgId,
           kmsService,
-          orgDAL,
           tx
         });
 
@@ -335,7 +333,9 @@ export const importDataIntoInfisicalFn = async ({
                 encryptedValue: el.secretValue
                   ? secretManagerEncrypt({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob
                   : undefined,
-                blindIndexes: await blindIndexer.generateOptional(el.secretValue),
+                blindIndexes: await (el.secretValue
+                  ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+                  : null),
                 key: el.secretKey,
                 references,
                 type: SecretType.Shared

@@ -35,7 +35,6 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -149,7 +148,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
     "checkProjectUpgradeStatus" | "findById" | "findProjectById" | "findProjectWithOrg"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
@@ -201,7 +199,6 @@ export const secretApprovalRequestServiceFactory = ({
   projectEnvDAL,
   secretApprovalPolicyDAL,
   kmsService,
-  orgDAL,
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
@@ -893,7 +890,7 @@ export const secretApprovalRequestServiceFactory = ({
           type: KmsDataKey.SecretManager,
           projectId
         });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, orgDAL });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
 
       const conflicts: Array<{ secretId: string; op: SecretOperations }> = [];
       let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Create);
@@ -974,7 +971,7 @@ export const secretApprovalRequestServiceFactory = ({
         const creationBlindIndexes = await Promise.all(
           secretCreationCommits.map((el) =>
             el.encryptedValue
-              ? blindIndexer.generate(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
+              ? blindIndexer.generateBlindIndexes(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }))
               : Promise.resolve(null)
           )
         );
@@ -1096,7 +1093,9 @@ export const secretApprovalRequestServiceFactory = ({
             const shouldComputeBlindIndex =
               !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined;
             return shouldComputeBlindIndex
-              ? blindIndexer.generate(secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer }))
+              ? blindIndexer.generateBlindIndexes(
+                  secretManagerDecryptor({ cipherTextBlob: el.encryptedValue as Buffer })
+                )
               : Promise.resolve(null);
           })
         );

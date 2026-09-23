@@ -94,7 +94,7 @@ type TSecretReplicationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -284,7 +284,7 @@ export const secretReplicationServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsService, orgDAL });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsService });
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
@@ -525,7 +525,9 @@ export const secretReplicationServiceFactory = ({
                           secretMetadata: doc.rawSecretMetadata,
                           references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
                           parentSecretVersionId: sourceSecretLatestVersions[doc.id],
-                          blindIndexes: await blindIndexer.generateOptional(doc.secretValue)
+                          blindIndexes: await (doc.secretValue
+                            ? blindIndexer.generateBlindIndexes(Buffer.from(doc.secretValue))
+                            : null)
                         };
                       })
                     )
@@ -559,7 +561,9 @@ export const secretReplicationServiceFactory = ({
                             secretMetadata: doc.rawSecretMetadata,
                             references: doc.secretValue ? getAllSecretReferences(doc.secretValue).nestedReferences : [],
                             parentSecretVersionId: sourceSecretLatestVersions[doc.id],
-                            blindIndexes: await blindIndexer.generateOptional(doc.secretValue)
+                            blindIndexes: await (doc.secretValue
+                              ? blindIndexer.generateBlindIndexes(Buffer.from(doc.secretValue))
+                              : null)
                           }
                         };
                       })

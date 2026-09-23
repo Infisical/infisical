@@ -136,7 +136,7 @@ type TSecretSyncQueueFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 type SecretSyncActionJob = Job<
@@ -218,7 +218,6 @@ export const secretSyncQueueFactory = ({
     secretVersionTagDAL,
     folderDAL,
     kmsService,
-    orgDAL,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -236,7 +235,6 @@ export const secretSyncQueueFactory = ({
     secretVersionTagDAL,
     folderDAL,
     kmsService,
-    orgDAL,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,

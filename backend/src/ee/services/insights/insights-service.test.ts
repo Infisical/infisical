@@ -53,6 +53,7 @@ const projectScopedDepStubs: Pick<
     findStaleByProject: unreachable("secretV2BridgeDAL.findStaleByProject"),
     countStaleByProject: unreachable("secretV2BridgeDAL.countStaleByProject"),
     findDuplicatedSecretValues: unreachable("secretV2BridgeDAL.findDuplicatedSecretValues"),
+    findSecretsByOrgBlindIndex: unreachable("secretV2BridgeDAL.findSecretsByOrgBlindIndex"),
     countByProject: unreachable("secretV2BridgeDAL.countByProject")
   },
   dynamicSecretDAL: {
@@ -65,7 +66,8 @@ const projectScopedDepStubs: Pick<
     getBotKey: unreachable("projectBotService.getBotKey")
   },
   projectDAL: {
-    findById: unreachable("projectDAL.findById")
+    findById: unreachable("projectDAL.findById"),
+    find: unreachable("projectDAL.find")
   },
   userDAL: {
     find: unreachable("userDAL.find")

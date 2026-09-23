@@ -1500,6 +1500,33 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  // Finds every secret in the org whose value hashes to the given org-scoped digest. The caller is
+  // responsible for dropping the projects the actor cannot read before returning anything.
+  const findSecretsByOrgBlindIndex = async (orgId: string, secretValueOrgBlindIndex: string, tx?: Knex) => {
+    try {
+      return await (tx || db.replicaNode())(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueOrgBlindIndex)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .whereNull(`${TableName.SecretV2}.userId`)
+        .select(
+          db.ref("id").withSchema(TableName.SecretV2),
+          db.ref("key").withSchema(TableName.SecretV2),
+          db.ref("folderId").withSchema(TableName.SecretV2),
+          db.ref("slug").withSchema(TableName.Environment).as("environment"),
+          db.ref("name").withSchema(TableName.Environment).as("environmentName"),
+          db.ref("id").withSchema(TableName.Project).as("projectId"),
+          db.ref("name").withSchema(TableName.Project).as("projectName")
+        );
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findSecretsByOrgBlindIndex" });
+    }
+  };
+
   const findDuplicatedSecretValues = async (projectId: string, tx?: Knex) => {
     try {
       const duplicateBlindIndexes = (tx || db.replicaNode())(TableName.SecretV2)
@@ -1699,6 +1726,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByProject,
     findValueValidationCandidatesByProject,
     findDuplicatedSecretValues,
+    findSecretsByOrgBlindIndex,
     findExistingSecretsByBlindIndexes,
     findOne,
     find,

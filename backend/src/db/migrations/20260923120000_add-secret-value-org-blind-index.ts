@@ -22,20 +22,13 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  if (await knex.schema.hasTable(TableName.Organization)) {
-    const hasColumn = await knex.schema.hasColumn(TableName.Organization, "secretValueOrgBlindIndexEnabled");
-    if (!hasColumn) {
-      await knex.schema.alterTable(TableName.Organization, (t) => {
-        t.boolean("secretValueOrgBlindIndexEnabled").defaultTo(true).notNullable();
-      });
-    }
-  }
-
-  await knex.raw(`
+  if (await knex.schema.hasTable(TableName.SecretV2)) {
+    await knex.raw(`
     CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_secrets_v2_secret_value_org_blind_index
     ON ${TableName.SecretV2} ("secretValueOrgBlindIndex")
     WHERE "secretValueOrgBlindIndex" IS NOT NULL
   `);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -55,15 +48,6 @@ export async function down(knex: Knex): Promise<void> {
     if (hasColumn) {
       await knex.schema.alterTable(TableName.SecretVersionV2, (t) => {
         t.dropColumn("secretValueOrgBlindIndex");
-      });
-    }
-  }
-
-  if (await knex.schema.hasTable(TableName.Organization)) {
-    const hasColumn = await knex.schema.hasColumn(TableName.Organization, "secretValueOrgBlindIndexEnabled");
-    if (hasColumn) {
-      await knex.schema.alterTable(TableName.Organization, (t) => {
-        t.dropColumn("secretValueOrgBlindIndexEnabled");
       });
     }
   }

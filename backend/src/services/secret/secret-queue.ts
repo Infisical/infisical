@@ -129,7 +129,7 @@ type TSecretQueueFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TGetSecrets = {
@@ -348,7 +348,6 @@ export const secretQueueFactory = ({
     secretVersionTagDAL,
     folderDAL,
     kmsService,
-    orgDAL,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
@@ -366,7 +365,6 @@ export const secretQueueFactory = ({
     secretVersionTagDAL,
     folderDAL,
     kmsService,
-    orgDAL,
     secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,

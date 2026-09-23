@@ -14,111 +14,69 @@ const makeKmsService = () => ({
   }))
 });
 
-const makeOrgDAL = (secretValueOrgBlindIndexEnabled: boolean) => ({
-  findById: vi.fn(async () => ({ id: ORG_ID, secretValueOrgBlindIndexEnabled }))
-});
+const makeIndexer = (kmsService = makeKmsService()) =>
+  createSecretBlindIndexer({ projectId: PROJECT_ID, orgId: ORG_ID, kmsService: kmsService as never });
 
 describe("createSecretBlindIndexer", () => {
-  it("returns both digests when the org has the index enabled", async () => {
-    const indexer = await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: makeKmsService() as never,
-      orgDAL: makeOrgDAL(true) as never
-    });
+  it("derives the project index from the project data key and the org index from the org data key", async () => {
+    const indexer = await makeIndexer();
 
-    await expect(indexer.generate(Buffer.from("hunter2"))).resolves.toEqual({
+    await expect(indexer.generateBlindIndexes(Buffer.from("hunter2"))).resolves.toEqual({
       secretValueBlindIndex: "project:hunter2",
       secretValueOrgBlindIndex: "org:hunter2"
     });
   });
 
-  it("returns a null org digest when the org has opted out", async () => {
-    const indexer = await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: makeKmsService() as never,
-      orgDAL: makeOrgDAL(false) as never
-    });
+  it("gives the same value a different digest at each scope", async () => {
+    const indexer = await makeIndexer();
 
-    await expect(indexer.generate(Buffer.from("hunter2"))).resolves.toEqual({
-      secretValueBlindIndex: "project:hunter2",
-      secretValueOrgBlindIndex: null
-    });
+    const projectIndex = await indexer.generateProjectLevelBlindIndex(Buffer.from("hunter2"));
+    const orgIndex = await indexer.generateOrgLevelBlindIndex(Buffer.from("hunter2"));
+
+    expect(projectIndex).not.toBe(orgIndex);
   });
 
-  it("does not resolve the org data key at all when the org has opted out", async () => {
-    const kmsService = makeKmsService();
+  it("gives the same value the same digest every time, so two secrets sharing a value match", async () => {
+    const indexer = await makeIndexer();
 
-    await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: kmsService as never,
-      orgDAL: makeOrgDAL(false) as never
-    });
+    const first = await indexer.generateOrgLevelBlindIndex(Buffer.from("shared"));
+    const second = await indexer.generateOrgLevelBlindIndex(Buffer.from("shared"));
 
-    expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
-    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: KmsDataKey.Organization }),
-      expect.anything()
-    );
+    expect(first).toBe(second);
   });
 
-  it("builds each cipher pair once no matter how many values it indexes", async () => {
-    const kmsService = makeKmsService();
-    const indexer = await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: kmsService as never,
-      orgDAL: makeOrgDAL(true) as never
-    });
+  it("gives different values different digests", async () => {
+    const indexer = await makeIndexer();
 
-    await Promise.all(["a", "b", "c", "d"].map((value) => indexer.generate(Buffer.from(value))));
+    const first = await indexer.generateOrgLevelBlindIndex(Buffer.from("one"));
+    const second = await indexer.generateOrgLevelBlindIndex(Buffer.from("two"));
+
+    expect(first).not.toBe(second);
+  });
+
+  // A bulk write can carry thousands of values, and each data key resolution can be a round trip to an
+  // external KMS, so the pairs are built once for the request rather than once per value.
+  it("resolves each data key once no matter how many values it indexes", async () => {
+    const kmsService = makeKmsService();
+    const indexer = await makeIndexer(kmsService);
+
+    await Promise.all(["a", "b", "c", "d"].map((value) => indexer.generateBlindIndexes(Buffer.from(value))));
 
     expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
   });
 
-  it("returns null for a secret with no value rather than hashing an empty buffer", async () => {
-    const indexer = await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: makeKmsService() as never,
-      orgDAL: makeOrgDAL(true) as never
-    });
-
-    await expect(indexer.generateOptional(undefined)).resolves.toBeNull();
-    await expect(indexer.generateOptional(null)).resolves.toBeNull();
-  });
-
-  // The call sites this replaced all gated on truthiness (`el.secretValue ? generate(...) : null`),
-  // and encryptedValue is still gated that way, so an empty value must produce no digest. Hashing it
-  // would collide every empty secret in the org on one digest and leave a row with a digest but no
-  // encrypted value.
-  it("treats an empty value as no value", async () => {
-    const indexer = await createSecretBlindIndexer({
-      projectId: PROJECT_ID,
-      orgId: ORG_ID,
-      kmsService: makeKmsService() as never,
-      orgDAL: makeOrgDAL(true) as never
-    });
-
-    await expect(indexer.generateOptional("")).resolves.toBeNull();
-  });
-
-  it("threads the transaction into both the org lookup and the key resolution", async () => {
+  it("threads the transaction into both key resolutions", async () => {
     const kmsService = makeKmsService();
-    const orgDAL = makeOrgDAL(true);
     const tx = { marker: "tx" };
 
     await createSecretBlindIndexer({
       projectId: PROJECT_ID,
       orgId: ORG_ID,
       kmsService: kmsService as never,
-      orgDAL: orgDAL as never,
       tx: tx as never
     });
 
-    expect(orgDAL.findById).toHaveBeenCalledWith(ORG_ID, tx);
     expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledWith(expect.anything(), tx);
+    expect(kmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
   });
 });

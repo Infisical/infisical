@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
@@ -16,6 +16,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionInsightsActions,
+  ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
@@ -33,6 +34,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -51,6 +53,7 @@ import {
   VALUE_EVENT_TYPES
 } from "./insights-fns";
 import {
+  TFindSecretsByValueDTO,
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
@@ -79,12 +82,16 @@ export type TInsightsServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "countByProject">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
-    "findStaleByProject" | "countStaleByProject" | "findDuplicatedSecretValues" | "countByProject"
+    | "findStaleByProject"
+    | "countStaleByProject"
+    | "findDuplicatedSecretValues"
+    | "findSecretsByOrgBlindIndex"
+    | "countByProject"
   >;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "find">;
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
@@ -479,6 +486,79 @@ export const insightsServiceFactory = ({
     });
   };
 
+  // Answers "is this value in use anywhere in my organization", the question someone asks when they
+  // learn a value is compromised. The caller supplies the value, so nothing here reveals a value that
+  // was not already known; what it reveals is the locations, which is why each hit is filtered against
+  // the actor's permission on the project holding it.
+  //
+  // Deliberately not gated on the insights entitlement. It only reads, and CODE_QUALITY.md's license
+  // rule is that reads are never gated; a customer answering "where else is this leaked credential"
+  // should not be blocked on their plan.
+  const findSecretsByValue = async (dto: TFindSecretsByValueDTO, actorDto: OrgServiceActor) => {
+    const projects = await projectDAL.find({ orgId: actorDto.orgId, type: ProjectType.SecretManager });
+    if (!projects.length) return { secrets: [] };
+
+    // Every project in an org shares the org data key, so one indexer answers for all of them.
+    const { generateOrgLevelBlindIndex } = await createSecretBlindIndexer({
+      projectId: projects[0].id,
+      orgId: actorDto.orgId,
+      kmsService
+    });
+    const secretValueOrgBlindIndex = await generateOrgLevelBlindIndex(Buffer.from(dto.secretValue));
+
+    const matches = await secretV2BridgeDAL.findSecretsByOrgBlindIndex(actorDto.orgId, secretValueOrgBlindIndex);
+    if (!matches.length) return { secrets: [] };
+
+    const readableProjectIds = new Set<string>();
+    await Promise.all(
+      [...new Set(matches.map((match) => match.projectId))].map(async (projectId) => {
+        try {
+          const { permission } = await permissionService.getProjectPermission({
+            actor: actorDto.type,
+            actorId: actorDto.id,
+            projectId,
+            actorAuthMethod: actorDto.authMethod,
+            actorOrgId: actorDto.orgId,
+            actionProjectType: ActionProjectType.SecretManager
+          });
+          // DescribeSecret, not a read of the value: this answers where a value the caller already has
+          // is used, so the permission that matters is whether they may know the secret exists.
+          if (permission.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets)) {
+            readableProjectIds.add(projectId);
+          }
+        } catch {
+          // No membership in that project. A value the actor cannot see the location of is simply absent
+          // from their results rather than an error, so one inaccessible project does not fail the search.
+        }
+      })
+    );
+
+    const visible = matches.filter((match) => readableProjectIds.has(match.projectId));
+    if (!visible.length) return { secrets: [] };
+
+    const pathsByProject = await Promise.all(
+      [...new Set(visible.map((match) => match.projectId))].map(async (projectId) => {
+        const folderIds = [...new Set(visible.filter((m) => m.projectId === projectId).map((m) => m.folderId))];
+        const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+        return folders;
+      })
+    );
+    const pathByFolderId = new Map<string, string>();
+    pathsByProject.flat().forEach((folder) => {
+      if (folder) pathByFolderId.set(folder.id, folder.path);
+    });
+
+    return {
+      secrets: visible.map((match) => ({
+        key: match.key,
+        projectId: match.projectId,
+        projectName: match.projectName,
+        environment: { name: match.environmentName, slug: match.environment },
+        secretPath: pathByFolderId.get(match.folderId) ?? "/"
+      }))
+    };
+  };
+
   const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
@@ -773,6 +853,7 @@ export const insightsServiceFactory = ({
     getAuthMethodDistribution,
     getSummary,
     getSecretsDuplication,
+    findSecretsByValue,
     getCounts,
     getSecretsUsageInsights,
     getSecretsProjects,

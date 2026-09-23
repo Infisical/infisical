@@ -10,7 +10,6 @@ import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import {
@@ -286,7 +285,6 @@ export type TFnSecretMove = {
   permission: MongoAbility<ProjectPermissionSet>;
   tx: Knex;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: Pick<
     TSecretV2BridgeDALFactory,

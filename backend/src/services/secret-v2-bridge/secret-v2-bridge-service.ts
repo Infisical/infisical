@@ -188,7 +188,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -474,8 +474,10 @@ export const secretV2BridgeServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, orgDAL });
-    const blindIndexes = await blindIndexer.generateOptional(inputSecretData.secretValue);
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const blindIndexes = await (inputSecretData.secretValue
+      ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
+      : null);
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
@@ -767,13 +769,13 @@ export const secretV2BridgeServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, orgDAL });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
     const encryptedValue =
       typeof secretValue === "string"
         ? {
             encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
             references: getAllSecretReferences(secretValue).nestedReferences,
-            blindIndexes: await blindIndexer.generate(Buffer.from(secretValue))
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(secretValue))
           }
         : {};
 
@@ -2301,7 +2303,6 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       orgId: actorOrgId,
       kmsService,
-      orgDAL,
       tx: providedTx
     });
 
@@ -2309,7 +2310,9 @@ export const secretV2BridgeServiceFactory = ({
       const inputSecretsWithBlindIndex = await Promise.all(
         deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-          const blindIndexes = await blindIndexer.generateOptional(el.secretValue);
+          const blindIndexes = await (el.secretValue
+            ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+            : null);
 
           return {
             version: 1,
@@ -2467,7 +2470,6 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       orgId: actorOrgId,
       kmsService,
-      orgDAL,
       tx: providedTx
     });
 
@@ -2710,7 +2712,7 @@ export const secretV2BridgeServiceFactory = ({
                 ? {
                     encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
                     references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences,
-                    blindIndexes: await blindIndexer.generate(Buffer.from(el.secretValue))
+                    blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
                   }
                 : {};
 
@@ -2790,7 +2792,9 @@ export const secretV2BridgeServiceFactory = ({
           const inputSecretsForCreate = await Promise.all(
             secretsToCreate.map(async (el) => {
               const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-              const blindIndexes = await blindIndexer.generateOptional(el.secretValue);
+              const blindIndexes = await (el.secretValue
+                ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+                : null);
 
               return {
                 version: 1,
@@ -3267,7 +3271,6 @@ export const secretV2BridgeServiceFactory = ({
         tx,
         permissionService,
         kmsService,
-        orgDAL,
         folderDAL,
         secretDAL,
         secretVersionDAL,

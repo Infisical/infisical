@@ -811,7 +811,7 @@ export const fnUpdateSecretLinkedReferences = async ({
     if (newValue !== originalValue) {
       const newValueBuffer = Buffer.from(newValue);
       const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-      const newBlindIndexes = await blindIndexer.generate(newValueBuffer);
+      const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
       // Update secret with version increment
       const updatedSecret = await secretDAL.updateById(
@@ -1010,7 +1010,7 @@ export const fnUpdateMovedSecretReferences = async ({
     if (newValue !== originalValue) {
       const newValueBuffer = Buffer.from(newValue);
       const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-      const newBlindIndexes = await blindIndexer.generate(newValueBuffer);
+      const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
       // Update secret with version increment - use $incr to properly increment version
       const updatedSecret = await secretDAL.updateById(
@@ -1078,7 +1078,7 @@ export const fnUpdateMovedSecretReferences = async ({
         if (newValue !== originalValue) {
           const newValueBuffer = Buffer.from(newValue);
           const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-          const newBlindIndexes = await blindIndexer.generate(newValueBuffer);
+          const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
           // Update secret with version increment
           const updatedSecret = await secretDAL.updateById(
@@ -1132,7 +1132,7 @@ export const fnUpdateMovedSecretReferences = async ({
         if (newValue !== originalValue) {
           const newValueBuffer = Buffer.from(newValue);
           const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-          const newBlindIndexes = await blindIndexer.generate(newValueBuffer);
+          const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
           // Update secret with version increment
           const updatedSecret = await secretDAL.updateById(
@@ -1213,7 +1213,7 @@ export const fnUpdateMovedSecretReferences = async ({
     if (valueChanged) {
       const newValueBuffer = Buffer.from(updatedValue);
       const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-      const newBlindIndexes = await blindIndexer.generate(newValueBuffer);
+      const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
       // Update secret with version increment
       const updatedSecret = await secretDAL.updateById(
@@ -1523,7 +1523,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     permission,
     tx,
     kmsService,
-    orgDAL,
     folderDAL,
     secretDAL,
     secretVersionDAL,
@@ -1620,7 +1619,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       type: KmsDataKey.SecretManager,
       projectId
     });
-  const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, orgDAL, tx });
+  const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, tx });
   const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
     ...secret,
     value: secret.encryptedValue
@@ -1813,7 +1812,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
           })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
           references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
           tagIds: doc.tags.map((tag) => tag.id),
-          blindIndexes: await blindIndexer.generateOptional(doc.value)
+          blindIndexes: await (doc.value ? blindIndexer.generateBlindIndexes(Buffer.from(doc.value)) : null)
         }))
       );
 
@@ -1856,7 +1855,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
               ? {
                   encryptedValue: doc.encryptedValue,
                   references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
-                  blindIndexes: await blindIndexer.generateOptional(doc.value)
+                  blindIndexes: await (doc.value ? blindIndexer.generateBlindIndexes(Buffer.from(doc.value)) : null)
                 }
               : {
                   encryptedValue: undefined,

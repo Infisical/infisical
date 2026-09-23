@@ -788,7 +788,6 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   folderCommitService,
   kmsService,
-  orgDAL,
   resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -812,12 +811,7 @@ export const createManySecretsRawFnFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({
-        projectId,
-        orgId: project.orgId,
-        kmsService,
-        orgDAL
-      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -832,7 +826,7 @@ export const createManySecretsRawFnFactory = ({
         });
 
       const blindIndexes = await Promise.all(
-        secrets.map((secret) => blindIndexer.generate(Buffer.from(secret.secretValue)))
+        secrets.map((secret) => blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue)))
       );
 
       const inputSecrets = secrets.map((secret, idx) => {
@@ -984,8 +978,7 @@ export const updateManySecretsRawFnFactory = ({
   secretV2BridgeDAL,
   resourceMetadataDAL,
   folderCommitService,
-  kmsService,
-  orgDAL
+  kmsService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -1009,12 +1002,7 @@ export const updateManySecretsRawFnFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({
-        projectId,
-        orgId: project.orgId,
-        kmsService,
-        orgDAL
-      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1046,7 +1034,7 @@ export const updateManySecretsRawFnFactory = ({
       const secretsToUpdateInDBGroupedByKey = groupBy(secretsToUpdate, (i) => i.key);
 
       const blindIndexes = await Promise.all(
-        secrets.map((secret) => blindIndexer.generate(Buffer.from(secret.secretValue)))
+        secrets.map((secret) => blindIndexer.generateBlindIndexes(Buffer.from(secret.secretValue)))
       );
 
       const inputSecrets = secrets.map((secret, idx) => {

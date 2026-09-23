@@ -21,7 +21,6 @@ import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import {
@@ -101,7 +100,6 @@ type TSecretFolderServiceFactoryDep = {
     | "invalidateSecretCacheByProjectId"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "findLatestVersionMany">;
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
@@ -136,7 +134,6 @@ export const secretFolderServiceFactory = ({
   secretApprovalPolicyService,
   secretV2BridgeDAL,
   kmsService,
-  orgDAL,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
@@ -1983,7 +1980,6 @@ export const secretFolderServiceFactory = ({
             tx,
             permissionService,
             kmsService,
-            orgDAL,
             folderDAL,
             secretDAL: secretV2BridgeDAL,
             secretVersionDAL,

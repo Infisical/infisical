@@ -431,12 +431,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .boolean()
           .optional()
           .describe("Allow secret imports and references to target secrets in other projects within the organization"),
-        secretValueOrgBlindIndexEnabled: z
-          .boolean()
-          .optional()
-          .describe(
-            "Fingerprint secret values with an organization-scoped key so identical values can be matched across projects"
-          ),
         secretShareBrandConfig: z
           .object({
             primaryColor: z

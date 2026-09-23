@@ -76,7 +76,7 @@ type TProjectQueueFactoryDep = {
     TProjectDALFactory,
     "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find" | "findById"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
 };
@@ -701,7 +701,7 @@ export const projectQueueFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, orgDAL });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
 
     let totalProcessed = 0;
 
@@ -715,7 +715,7 @@ export const projectQueueFactory = ({
       for (const secret of secrets) {
         if (secret.encryptedValue) {
           const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
-          const blindIndexes = await blindIndexer.generate(decryptedValue);
+          const blindIndexes = await blindIndexer.generateBlindIndexes(decryptedValue);
           updates.push({ id: secret.id, ...blindIndexes });
         }
       }

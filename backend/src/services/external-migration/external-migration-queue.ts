@@ -8,7 +8,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -43,7 +42,6 @@ export type TExternalMigrationQueueFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "transaction">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findLastEnvPosition" | "create" | "findOne">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 
   secretDAL: Pick<TSecretV2BridgeDALFactory, "insertMany" | "upsertSecretReferences" | "findBySecretKeys" | "find">;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "insertMany" | "create">;
@@ -73,7 +71,6 @@ export const externalMigrationQueueFactory = ({
   projectEnvService,
   secretV2BridgeService,
   kmsService,
-  orgDAL,
   projectEnvDAL,
   secretDAL,
   secretVersionDAL,
@@ -155,7 +152,6 @@ export const externalMigrationQueueFactory = ({
         secretVersionTagDAL,
         folderDAL,
         kmsService,
-        orgDAL,
         projectService,
         projectEnvService,
         secretV2BridgeService,

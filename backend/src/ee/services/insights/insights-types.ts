@@ -34,6 +34,10 @@ export type TGetInsightsSummaryDTO = {
   staleSecretsLimit?: number;
 };
 
+export type TFindSecretsByValueDTO = {
+  secretValue: string;
+};
+
 export type TGetSecretsDuplicationDTO = {
   projectId: string;
 };

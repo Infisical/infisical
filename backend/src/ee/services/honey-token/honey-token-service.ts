@@ -91,7 +91,7 @@ export type THoneyTokenServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   folderDAL: Pick<
@@ -326,7 +326,7 @@ export const honeyTokenServiceFactory = ({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService, orgDAL });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
     const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
       const credentialValue = honeyTokenCredentials[credentialField];
@@ -380,7 +380,7 @@ export const honeyTokenServiceFactory = ({
           encryptedValue: secretEncryptor({
             plainText: Buffer.from(value)
           }).cipherTextBlob,
-          blindIndexes: await blindIndexer.generate(Buffer.from(value)),
+          blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
           references: []
         }))
       );
@@ -531,7 +531,7 @@ export const honeyTokenServiceFactory = ({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService, orgDAL });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
       const secretEntries = Object.entries(nextSecretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = decryptedCredentials[credentialField];
@@ -564,7 +564,7 @@ export const honeyTokenServiceFactory = ({
             encryptedValue: secretEncryptor({
               plainText: Buffer.from(value)
             }).cipherTextBlob,
-            blindIndexes: await blindIndexer.generate(Buffer.from(value)),
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
             references: []
           }))
         );
