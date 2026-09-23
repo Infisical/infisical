@@ -72,6 +72,22 @@ describe("assume member privileges", () => {
     await expect(assume(service, "junior-user")).resolves.toMatchObject({ actorId: "junior-user" });
   });
 
+  test("an allow on a member's email only allows assuming that member", async () => {
+    const service = createService([
+      {
+        action: ProjectPermissionMemberActions.AssumePrivileges,
+        subject: ProjectPermissionSub.Member,
+        conditions: { userEmail: { $eq: "junior@example.com" } }
+      }
+    ]);
+
+    const { assumePrivilegesToken } = await assume(service, "junior-user");
+    await expect(assume(service, "admin-user")).rejects.toThrow(ForbiddenError);
+    await expect(
+      service.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", null, "org-1")
+    ).resolves.toMatchObject({ actorId: "junior-user" });
+  });
+
   test("the target's email is not looked up when the target is not in the project", async () => {
     const permission = createMongoAbility<ProjectPermissionSet>(
       [{ action: ProjectPermissionMemberActions.AssumePrivileges, subject: ProjectPermissionSub.Member }],
