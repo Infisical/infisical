@@ -6,6 +6,11 @@ on:
             - "v0.*.*-nightly-*"
             - "v0.*.*-nightly-*.*"
 
+env:
+    # Pinned separately from the action, which carries its own older default.
+    # Named out of Trivy's own TRIVY_* env namespace, which it would otherwise sit in.
+    TRIVY_CLI_VERSION: v0.74.0
+
 jobs:
     infisical-tests:
         name: Run tests before deployment
@@ -58,6 +63,7 @@ jobs:
               run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
 
             - name: 📦 Build backend and push to Docker Hub
+              id: build
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -120,11 +126,29 @@ jobs:
                 image: infisical/infisical:${{ steps.extract_version.outputs.version }}
                 command: monitor
                 args: --file=Dockerfile.standalone-infisical --project-name="infisical-core-docker-image"
+            # Reports into the run's artifacts, never through the job status: the
+            # image is already published by the time this runs.
+            - name: 🔍 Scan infisical/infisical with Trivy
+              id: trivy_infisical_core
+              continue-on-error: true
+              uses: ./.github/actions/trivy-image-scan
+              with:
+                  image: infisical/infisical
+                  digest: ${{ steps.build.outputs.digest }}
+                  artifact-name: trivy-infisical-core-${{ steps.extract_version.outputs.version }}
+                  trivy-version: ${{ env.TRIVY_CLI_VERSION }}
+            # Any failure inside the action, whether the scan, the upload or the summary,
+            # surfaces as this step's outcome, so a broken scan cannot read as a clean one.
+            - name: Flag an incomplete Trivy scan of infisical/infisical
+              if: steps.trivy_infisical_core.outcome == 'failure'
+              run: echo "::warning::Trivy did not report on infisical/infisical for this release. No report does not mean no findings."
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres
         runs-on: ubuntu-latest
         needs: [infisical-tests]
+        permissions:
+            contents: read
         steps:
             - name: Extract version from tag
               id: extract_version
@@ -160,6 +184,7 @@ jobs:
               run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
 
             - name: 📦 Build backend and export to Docker
+              id: build_fips
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -189,6 +214,22 @@ jobs:
                 image: infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
                 command: monitor
                 args: --file=Dockerfile.fips.standalone-infisical --project-name="infisical-fips-docker-image"
+            # Reports into the run's artifacts, never through the job status: the
+            # image is already published by the time this runs.
+            - name: 🔍 Scan infisical/infisical-fips with Trivy
+              id: trivy_infisical_fips
+              continue-on-error: true
+              uses: ./.github/actions/trivy-image-scan
+              with:
+                  image: infisical/infisical-fips
+                  digest: ${{ steps.build_fips.outputs.digest }}
+                  artifact-name: trivy-infisical-fips-${{ steps.extract_version.outputs.version }}
+                  trivy-version: ${{ env.TRIVY_CLI_VERSION }}
+            # Any failure inside the action, whether the scan, the upload or the summary,
+            # surfaces as this step's outcome, so a broken scan cannot read as a clean one.
+            - name: Flag an incomplete Trivy scan of infisical/infisical-fips
+              if: steps.trivy_infisical_fips.outcome == 'failure'
+              run: echo "::warning::Trivy did not report on infisical/infisical-fips for this release. No report does not mean no findings."
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-tests]

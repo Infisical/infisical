@@ -1,8 +1,6 @@
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
-import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
+import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -12,187 +10,134 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
-  actorId: req.permission.id,
-  actor: req.permission.type,
-  actorOrgId: req.permission.orgId,
-  actorAuthMethod: req.permission.authMethod
-});
+import { actorContext, auditActorFields } from "./agent-vault-router-fns";
+import {
+  agentVaultListQuery,
+  AgentVaultProductMemberAddSchema,
+  AgentVaultProductMemberIdsSchema,
+  AgentVaultProductMemberRefSchema,
+  AgentVaultProductMemberSchema,
+  AgentVaultProductRoleSchema,
+  AgentVaultSkippedActorSchema
+} from "./agent-vault-schemas";
 
-const ProductRoleSchema = z
-  .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
-  .describe(AGENT_VAULT.MEMBERSHIP.role);
+const ACTOR_TYPE_SEGMENTS = ["users", "groups", "machine-identities"] as const;
 
-const MemberSchema = z.object({
-  membershipId: z.string().uuid(),
-  userId: z.string().uuid().nullable(),
-  groupId: z.string().uuid().nullable(),
-  identityId: z.string().uuid().nullable(),
-  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
-  isActive: z.boolean(),
-  createdAt: z.date()
-});
+const ACTOR_TYPE_OF: Record<(typeof ACTOR_TYPE_SEGMENTS)[number], AgentVaultMemberType> = {
+  users: AgentVaultMemberType.User,
+  groups: AgentVaultMemberType.Group,
+  "machine-identities": AgentVaultMemberType.MachineIdentity
+};
 
-// Mirrors PAM's MemberResultSchema so every membership write reports the row it touched.
-const MemberResultSchema = z.object({
-  membershipId: z.string().uuid(),
-  userId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.userId),
-  identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId),
-  groupId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.groupId),
-  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
-  createdAt: z.date()
+const auditActorNameFields = (actor: { type: AgentVaultMemberType }, actorName?: string) => ({
+  ...(actor.type === AgentVaultMemberType.User && { userName: actorName }),
+  ...(actor.type === AgentVaultMemberType.MachineIdentity && { machineIdentityName: actorName }),
+  ...(actor.type === AgentVaultMemberType.Group && { groupName: actorName })
 });
 
 export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/users",
+    url: "/",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "listAgentVaultProductUserMembers",
-      description: "List the users that are members of Agent Vault",
-      tags: [ApiDocsTags.AgentVaultMemberships],
+      hide: false,
+      operationId: "listAgentVaultMembers",
+      description: "List the users, groups and machine identities that are members of Agent Vault",
+      tags: [ApiDocsTags.AgentVaultMembers],
+      querystring: z.object({
+        actorType: z.nativeEnum(AgentVaultMemberType).optional().describe(AGENT_VAULT.MEMBERSHIP.actorTypeFilter),
+        ...agentVaultListQuery(AGENT_VAULT.MEMBERSHIP)
+      }),
       response: {
-        200: z.object({
-          members: MemberSchema.extend({
-            email: z.string().nullable(),
-            username: z.string(),
-            firstName: z.string().nullable(),
-            lastName: z.string().nullable(),
-            isOrgMembershipPending: z.boolean()
-          }).array()
-        })
+        200: z.object({ members: AgentVaultProductMemberSchema.array(), totalCount: z.number() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => ({
-      members: await server.services.agentVaultMembership.listProductUserMembers({
+    handler: async (req) =>
+      server.services.agentVaultMembership.listProductMembers({
         projectId: req.internalAgentVaultProjectId,
+        ...req.query,
         ctx: actorContext(req)
       })
-    })
   });
-  server.route({
-    method: "GET",
-    url: "/groups",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "listAgentVaultProductGroupMembers",
-      description: "List the groups that are members of Agent Vault",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      response: { 200: z.object({ members: MemberSchema.extend({ name: z.string() }).array() }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => ({
-      members: await server.services.agentVaultMembership.listProductGroupMembers({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      })
-    })
-  });
-  server.route({
-    method: "GET",
-    url: "/identities",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "listAgentVaultProductIdentityMembers",
-      description: "List the machine identities that are members of Agent Vault",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      response: {
-        200: z.object({
-          members: MemberSchema.extend({
-            name: z.string(),
-            identityProjectId: z.string().nullable(),
-            identityOrgId: z.string().nullable()
-          }).array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => ({
-      members: await server.services.agentVaultMembership.listProductIdentityMembers({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      })
-    })
-  });
+
   server.route({
     method: "POST",
-    url: "/users",
+    url: "/",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "addAgentVaultProductUserMembers",
-      description: "Give one or more users access to Agent Vault, by id or by email",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      body: z
-        .object({
-          userIds: z.string().uuid().array().max(100).default([]),
-          // Usernames are stored lowercase and the lookup is an exact match, so a mixed-case address
-          // would come back as "not a member" rather than resolving.
-          emails: z
-            .string()
-            .email()
-            .array()
-            .max(100)
-            .default([])
-            .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
-          role: ProductRoleSchema
+      hide: false,
+      operationId: "addAgentVaultMembers",
+      description: "Give users, groups and machine identities access to Agent Vault, by id or by email",
+      tags: [ApiDocsTags.AgentVaultMembers],
+      body: AgentVaultProductMemberAddSchema,
+      response: {
+        200: z.object({
+          members: AgentVaultProductMemberRefSchema.array(),
+          skipped: AgentVaultSkippedActorSchema.array().describe(AGENT_VAULT.MEMBERSHIP.addSkipped)
         })
-        .refine((val) => val.userIds.length + val.emails.length > 0, {
-          message: "Provide at least one userId or email."
-        }),
-      response: { 200: z.object({ members: MemberResultSchema.array(), skipped: z.string().array() }) }
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { memberships, skipped } = await server.services.agentVaultMembership.addProductUserMembers({
+      const { members, skipped } = await server.services.agentVaultMembership.addProductMembers({
         projectId: req.internalAgentVaultProjectId,
         ...req.body,
         ctx: actorContext(req)
       });
 
       await Promise.all(
-        memberships.map((membership) =>
+        members.map((member) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             orgId: req.permission.orgId,
             projectId: req.internalAgentVaultProjectId,
             event: {
               type: EventType.AGENT_VAULT_MEMBER_ADD,
-              metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
+              metadata: {
+                ...auditActorFields(member.actor),
+                ...auditActorNameFields(member.actor, member.actorName),
+                role: member.role
+              }
             }
           })
         )
       );
 
-      memberships.forEach((membership) =>
+      members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultProductMemberAdded,
-          properties: { memberType: "user", role: membership.role }
+          properties: { memberType: member.actor.type, role: member.role }
         })
       );
 
-      return { members: memberships, skipped };
+      return { members, skipped };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/users/:userId",
+    url: "/:actorType/:actorId",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "updateAgentVaultProductUserMemberRole",
-      description: "Change a user's Agent Vault role",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ userId: z.string().uuid().describe(AGENT_VAULT.MEMBER.userId) }),
-      body: z.object({ role: ProductRoleSchema }),
-      response: { 200: MemberResultSchema.omit({ createdAt: true }) }
+      hide: false,
+      operationId: "updateAgentVaultMemberRole",
+      description: "Change a member's Agent Vault role",
+      tags: [ApiDocsTags.AgentVaultMembers],
+      params: z.object({
+        actorType: z.enum(ACTOR_TYPE_SEGMENTS).describe(AGENT_VAULT.MEMBER.actorType),
+        actorId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
+      }),
+      body: z.object({ role: AgentVaultProductRoleSchema }),
+      response: { 200: z.object({ member: AgentVaultProductMemberRefSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const member = await server.services.agentVaultMembership.updateProductMemberRole({
+      const actor = { type: ACTOR_TYPE_OF[req.params.actorType], id: req.params.actorId };
+      const { member } = await server.services.agentVaultMembership.updateProductMemberRole({
         projectId: req.internalAgentVaultProjectId,
-        userId: req.params.userId,
+        actor,
         role: req.body.role,
         ctx: actorContext(req)
       });
@@ -204,309 +149,73 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         event: {
           type: EventType.AGENT_VAULT_MEMBER_UPDATE,
           metadata: {
-            userId: req.params.userId,
-            userName: member.userName,
-            role: req.body.role
+            ...auditActorFields(member.actor),
+            ...auditActorNameFields(member.actor, member.actorName),
+            role: member.role
           }
         }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: "user", role: req.body.role }
+        properties: { memberType: member.actor.type, role: member.role }
       });
 
-      return member;
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/users/:userId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "removeAgentVaultProductUserMember",
-      description: "Remove a user from Agent Vault, and with it every bundle they hold",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ userId: z.string().uuid().describe(AGENT_VAULT.MEMBER.userId) }),
-      response: { 200: MemberResultSchema.pick({ membershipId: true, userId: true }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const removed = await server.services.agentVaultMembership.removeProductMember({
-        projectId: req.internalAgentVaultProjectId,
-        userId: req.params.userId,
-        ctx: actorContext(req)
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_REMOVE,
-          metadata: { userId: req.params.userId, userName: removed.userName }
-        }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: "user" }
-      });
-
-      return { membershipId: removed.membershipId, userId: req.params.userId };
+      return { member };
     }
   });
 
   server.route({
     method: "POST",
-    url: "/groups/:groupId",
+    url: "/revoke",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "addAgentVaultProductGroupMember",
-      description: "Give a group access to Agent Vault",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.groupId) }),
-      body: z.object({ role: ProductRoleSchema }),
-      response: { 200: MemberResultSchema }
+      hide: false,
+      operationId: "revokeAgentVaultMembers",
+      // A deliberate REST deviation: DELETE cannot carry a body reliably, so bulk removal is a named action.
+      description: "Remove members from Agent Vault, and with them every bundle they hold",
+      tags: [ApiDocsTags.AgentVaultMembers],
+      body: AgentVaultProductMemberIdsSchema,
+      response: {
+        200: z.object({
+          members: AgentVaultProductMemberRefSchema.omit({ role: true }).array(),
+          skipped: AgentVaultSkippedActorSchema.array().describe(AGENT_VAULT.MEMBERSHIP.revokeSkipped)
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const member = await server.services.agentVaultMembership.addProductMember({
+      const { members, skipped } = await server.services.agentVaultMembership.revokeProductMembers({
         projectId: req.internalAgentVaultProjectId,
-        groupId: req.params.groupId,
-        role: req.body.role,
+        ...req.body,
         ctx: actorContext(req)
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_ADD,
-          metadata: {
-            groupId: req.params.groupId,
-            groupName: member.groupName,
-            role: req.body.role
-          }
-        }
-      });
+      await Promise.all(
+        members.map((member) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: req.internalAgentVaultProjectId,
+            event: {
+              type: EventType.AGENT_VAULT_MEMBER_REMOVE,
+              metadata: {
+                ...auditActorFields(member.actor),
+                ...auditActorNameFields(member.actor, member.actorName)
+              }
+            }
+          })
+        )
+      );
 
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberAdded,
-        properties: { memberType: "group", role: req.body.role }
-      });
+      members.forEach((member) =>
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultProductMemberRemoved,
+          properties: { memberType: member.actor.type }
+        })
+      );
 
-      return member;
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: "/groups/:groupId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "updateAgentVaultProductGroupMemberRole",
-      description: "Change a group's Agent Vault role",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.groupId) }),
-      body: z.object({ role: ProductRoleSchema }),
-      response: { 200: MemberResultSchema.omit({ createdAt: true }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const member = await server.services.agentVaultMembership.updateProductMemberRole({
-        projectId: req.internalAgentVaultProjectId,
-        groupId: req.params.groupId,
-        role: req.body.role,
-        ctx: actorContext(req)
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_UPDATE,
-          metadata: {
-            groupId: req.params.groupId,
-            groupName: member.groupName,
-            role: req.body.role
-          }
-        }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: "group", role: req.body.role }
-      });
-
-      return member;
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/groups/:groupId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "removeAgentVaultProductGroupMember",
-      description: "Remove a group from Agent Vault, and with it every bundle they hold",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.groupId) }),
-      response: { 200: MemberResultSchema.pick({ membershipId: true, groupId: true }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const removed = await server.services.agentVaultMembership.removeProductMember({
-        projectId: req.internalAgentVaultProjectId,
-        groupId: req.params.groupId,
-        ctx: actorContext(req)
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_REMOVE,
-          metadata: { groupId: req.params.groupId, groupName: removed.groupName }
-        }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: "group" }
-      });
-
-      return { membershipId: removed.membershipId, groupId: req.params.groupId };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/identities/:identityId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "addAgentVaultProductIdentityMember",
-      description: "Give a machine identity access to Agent Vault",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId) }),
-      body: z.object({ role: ProductRoleSchema }),
-      response: { 200: MemberResultSchema }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const member = await server.services.agentVaultMembership.addProductMember({
-        projectId: req.internalAgentVaultProjectId,
-        identityId: req.params.identityId,
-        role: req.body.role,
-        ctx: actorContext(req)
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_ADD,
-          metadata: {
-            identityId: req.params.identityId,
-            identityName: member.identityName,
-            role: req.body.role
-          }
-        }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberAdded,
-        properties: { memberType: "identity", role: req.body.role }
-      });
-
-      return member;
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: "/identities/:identityId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "updateAgentVaultProductIdentityMemberRole",
-      description: "Change a machine identity's Agent Vault role",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId) }),
-      body: z.object({ role: ProductRoleSchema }),
-      response: { 200: MemberResultSchema.omit({ createdAt: true }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const member = await server.services.agentVaultMembership.updateProductMemberRole({
-        projectId: req.internalAgentVaultProjectId,
-        identityId: req.params.identityId,
-        role: req.body.role,
-        ctx: actorContext(req)
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_UPDATE,
-          metadata: {
-            identityId: req.params.identityId,
-            identityName: member.identityName,
-            role: req.body.role
-          }
-        }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: "identity", role: req.body.role }
-      });
-
-      return member;
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/identities/:identityId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      operationId: "removeAgentVaultProductIdentityMember",
-      description: "Remove a machine identity from Agent Vault, and with it every bundle they hold",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      params: z.object({ identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId) }),
-      response: { 200: MemberResultSchema.pick({ membershipId: true, identityId: true }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const removed = await server.services.agentVaultMembership.removeProductMember({
-        projectId: req.internalAgentVaultProjectId,
-        identityId: req.params.identityId,
-        ctx: actorContext(req)
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_REMOVE,
-          metadata: { identityId: req.params.identityId, identityName: removed.identityName }
-        }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: "identity" }
-      });
-
-      return { membershipId: removed.membershipId, identityId: req.params.identityId };
+      return { members, skipped };
     }
   });
 };

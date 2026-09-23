@@ -4,8 +4,8 @@ import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lu
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { DeleteActionModal } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Badge,
   Button,

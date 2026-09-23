@@ -27,7 +27,7 @@ import {
   TFindOpt,
   withTransaction
 } from "@app/lib/knex";
-import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
+import { applyScimComparison, generateKnexQueryFromScim, TScimAttributeResolver } from "@app/lib/knex/scim";
 import { OrderByDirection } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
@@ -38,6 +38,8 @@ export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 interface CountResult {
   count: string;
 }
+
+const SCIM_USER_ALIAS = "scim_user_alias";
 
 export const orgDALFactory = (db: TDbClient) => {
   const orgOrm = ormify(db, TableName.Organization);
@@ -864,6 +866,81 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   /**
+   * The batched form of findEffectiveOrgMembership. A direct row is authoritative, as there: deactivating
+   * someone's own membership suspends them even while a group they belong to stays active. Unlike the
+   * singular helper it applies no status filter, so an invited member counts as active.
+   */
+  const findActiveEffectiveOrgMemberActorIds = async (
+    dto: { actorType: ActorType; actorIds: string[]; orgId: string },
+    tx?: Knex
+  ): Promise<Set<string>> => {
+    if (!dto.actorIds.length) return new Set();
+
+    try {
+      const conn = tx ?? db.replicaNode();
+      const isUser = dto.actorType === ActorType.USER;
+      const groupTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupActorColumn = `${groupTable}.${isUser ? "userId" : "identityId"}`;
+      const directColumn = `${TableName.Membership}.${isUser ? "actorUserId" : "actorIdentityId"}`;
+
+      const directRows = (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .whereIn(directColumn, dto.actorIds)
+        .select(conn.raw(`?? as "actorId"`, [directColumn]), `${TableName.Membership}.isActive`)) as {
+        actorId: string;
+        isActive: boolean;
+      }[];
+
+      const active = new Set(directRows.filter((row) => row.isActive).map((row) => row.actorId));
+      const hasDirectRow = new Set(directRows.map((row) => row.actorId));
+      const withoutDirect = dto.actorIds.filter((id) => !hasDirectRow.has(id));
+      if (!withoutDirect.length) return active;
+
+      const groupRows = (await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .join(groupTable, `${groupTable}.groupId`, `${TableName.Membership}.actorGroupId`)
+        .whereIn(groupActorColumn, withoutDirect)
+        .distinct(conn.raw(`?? as "actorId"`, [groupActorColumn]))) as { actorId: string }[];
+
+      groupRows.forEach((row) => active.add(row.actorId));
+      return active;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active effective org member actor ids" });
+    }
+  };
+
+  const findActiveEffectiveOrgMembershipsByUserId = async (userId: string, tx?: Knex): Promise<TMemberships[]> => {
+    try {
+      const conn = tx ?? db.replicaNode();
+
+      const userGroupIdsSubquery = conn(TableName.UserGroupMembership)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .select(db.ref("groupId").withSchema(TableName.UserGroupMembership));
+
+      const rows = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+        })
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
+            .orWhereNull(`${TableName.Membership}.status`);
+        })
+        .select(selectAllTableCols(TableName.Membership));
+      return rows as TMemberships[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active effective org memberships by user id" });
+    }
+  };
+
+  /**
    * Returns the first effective org membership for an actor (user or identity): direct or via group.
    * Use for access checks and to get a single membership id/role. For all memberships use findEffectiveOrgMemberships.
    */
@@ -911,6 +988,88 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const $buildScimMembershipQuery = (
+    orgId: string,
+    scimFilter: string | undefined,
+    orgAuthMethod: string | undefined,
+    { tx, membershipId }: { tx?: Knex; membershipId?: string } = {}
+  ) => {
+    const conn = tx || db.replicaNode();
+    // Determine alias type from org auth method (default to saml for backwards compatibility)
+    const aliasType = orgAuthMethod === OrgAuthMethod.OIDC ? OrgAuthMethod.OIDC : OrgAuthMethod.SAML;
+
+    const resolveColumn = (attrPath: string) => {
+      switch (attrPath) {
+        case "id":
+          return `${TableName.Membership}.id`;
+        case "active":
+          return `${TableName.Membership}.isActive`;
+        case "name.givenName":
+          return `${TableName.Users}.firstName`;
+        case "name.familyName":
+          return `${TableName.Users}.lastName`;
+        case "email.value":
+          return `${TableName.Users}.email`;
+        default:
+          return null;
+      }
+    };
+
+    const resolveFilterAttribute: TScimAttributeResolver = (attrPath) => {
+      if (attrPath !== "userName") return resolveColumn(attrPath);
+      return (qb, op, value) => {
+        const matchingAliases = conn(TableName.UserAliases)
+          .select(conn.raw("1"))
+          .whereRaw("?? = ??", [`${TableName.UserAliases}.userId`, `${TableName.Membership}.actorUserId`])
+          .where(`${TableName.UserAliases}.orgId`, orgId)
+          .where(`${TableName.UserAliases}.aliasType`, aliasType);
+        if (op === "ne") {
+          applyScimComparison(matchingAliases, `${TableName.UserAliases}.externalId`, "eq", value);
+          void qb.whereNotExists(matchingAliases);
+        } else {
+          applyScimComparison(matchingAliases, `${TableName.UserAliases}.externalId`, op, value);
+          void qb.whereExists(matchingAliases);
+        }
+      };
+    };
+
+    const resolveDisplayAttribute: TScimAttributeResolver = (attrPath) =>
+      attrPath === "userName" ? `${SCIM_USER_ALIAS}.externalId` : resolveColumn(attrPath);
+
+    const query = conn(TableName.Membership)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
+      .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+      .whereNotNull(`${TableName.Membership}.actorUserId`)
+      .where((qb) => {
+        if (membershipId) {
+          void qb.where(`${TableName.Membership}.id`, membershipId);
+        }
+        if (scimFilter) {
+          void generateKnexQueryFromScim(qb, scimFilter, resolveFilterAttribute);
+        }
+      })
+      .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+      .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
+      .whereNull(`${TableName.Organization}.rootOrgId`)
+      .leftJoin(`${TableName.UserAliases} as ${SCIM_USER_ALIAS}`, function joinScimUserAlias() {
+        this.on(`${SCIM_USER_ALIAS}.userId`, "=", `${TableName.Membership}.actorUserId`)
+          .andOn(`${SCIM_USER_ALIAS}.orgId`, "=", conn.raw("?", [orgId]))
+          .andOn(`${SCIM_USER_ALIAS}.aliasType`, "=", conn.raw("?", [aliasType]));
+      })
+      .where({ isGhost: false });
+
+    const aliasRowMatchesFilter = scimFilter
+      ? conn
+          .queryBuilder()
+          .select(conn.raw("1"))
+          .where((qb) => {
+            void generateKnexQueryFromScim(qb, scimFilter, resolveDisplayAttribute);
+          })
+      : undefined;
+
+    return { query, aliasRowMatchesFilter };
+  };
+
   const findMembershipWithScimFilter = async (
     orgId: string,
     scimFilter: string | undefined,
@@ -929,64 +1088,19 @@ export const orgDALFactory = (db: TDbClient) => {
     })[]
   > => {
     try {
-      // Determine alias type from org auth method (default to saml for backwards compatibility)
-      const aliasType = orgAuthMethod === OrgAuthMethod.OIDC ? OrgAuthMethod.OIDC : OrgAuthMethod.SAML;
+      const conn = tx || db.replicaNode();
+      const { query: memberships, aliasRowMatchesFilter } = $buildScimMembershipQuery(
+        orgId,
+        scimFilter,
+        orgAuthMethod,
+        {
+          tx,
+          membershipId
+        }
+      );
 
-      // Subquery to get only the latest alias per user for the org's auth method
-      const latestAliasSubquery = (tx || db.replicaNode())(TableName.UserAliases)
-        .select(
-          `${TableName.UserAliases}.userId`,
-          `${TableName.UserAliases}.externalId`,
-          db.raw(
-            `ROW_NUMBER() OVER (PARTITION BY "${TableName.UserAliases}"."userId" ORDER BY "${TableName.UserAliases}"."createdAt" DESC) as rn`
-          )
-        )
-        .where(`${TableName.UserAliases}.orgId`, orgId)
-        .where(`${TableName.UserAliases}.aliasType`, aliasType)
-        .as("latest_alias");
-
-      const query = (tx || db.replicaNode())(TableName.Membership)
-        // eslint-disable-next-line
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
-        .where((qb) => {
-          // Direct membership ID filter (safe, parameterized)
-          if (membershipId) {
-            void qb.where(`${TableName.Membership}.id`, membershipId);
-          }
-          // SCIM filter parsing (for list queries from external IdPs)
-          if (scimFilter) {
-            void generateKnexQueryFromScim(qb, scimFilter, (attrPath) => {
-              switch (attrPath) {
-                case "id":
-                  return `${TableName.Membership}.id`;
-                case "active":
-                  return `${TableName.Membership}.isActive`;
-                case "userName":
-                  return "latest_alias.externalId";
-                case "name.givenName":
-                  return `${TableName.Users}.firstName`;
-                case "name.familyName":
-                  return `${TableName.Users}.lastName`;
-                case "email.value":
-                  return `${TableName.Users}.email`;
-                default:
-                  return null;
-              }
-            });
-          }
-        })
-        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
-        .whereNull(`${TableName.Organization}.rootOrgId`)
-        .leftJoin(latestAliasSubquery, function joinLatestAlias() {
-          this.on("latest_alias.userId", "=", `${TableName.Membership}.actorUserId`).andOn(
-            "latest_alias.rn",
-            "=",
-            db.raw("1")
-          );
-        })
+      const dedupedMemberships = memberships
+        .distinctOn(`${TableName.Membership}.id`)
         .select(
           selectAllTableCols(TableName.Membership),
           db.ref("email").withSchema(TableName.Users),
@@ -996,21 +1110,49 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("scimEnabled").withSchema(TableName.Organization),
           db.ref("defaultMembershipRole").withSchema(TableName.Organization),
-          db.ref("externalId").withSchema("latest_alias")
+          db.ref("externalId").withSchema(SCIM_USER_ALIAS)
         )
-        .where({ isGhost: false });
+        .orderBy(`${TableName.Membership}.id`);
 
-      if (limit) void query.limit(limit);
-      if (offset) void query.offset(offset);
+      if (aliasRowMatchesFilter) {
+        void dedupedMemberships.orderByRaw("CASE WHEN EXISTS (?) THEN 0 ELSE 1 END", [aliasRowMatchesFilter]);
+      }
+
+      void dedupedMemberships.orderBy(`${SCIM_USER_ALIAS}.createdAt`, "desc", "last").as("scim_membership");
+
+      const query = conn.select("*").from(dedupedMemberships);
+
       if (sort) {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
+      } else {
+        void query.orderBy("id");
       }
+      if (limit) void query.limit(limit);
+      if (offset) void query.offset(offset);
+
       const res = await query;
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return res;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find one" });
+      throw new DatabaseError({ error, name: "Find membership with scim filter" });
+    }
+  };
+
+  const countMembershipWithScimFilter = async (
+    orgId: string,
+    scimFilter: string | undefined,
+    orgAuthMethod: string | undefined,
+    tx?: Knex
+  ): Promise<number> => {
+    try {
+      const doc = await $buildScimMembershipQuery(orgId, scimFilter, orgAuthMethod, { tx })
+        .query.countDistinct(`${TableName.Membership}.id as count`)
+        .first();
+
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count membership with scim filter" });
     }
   };
 
@@ -1075,7 +1217,10 @@ export const orgDALFactory = (db: TDbClient) => {
     findMembership,
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
+    findActiveEffectiveOrgMemberActorIds,
+    findActiveEffectiveOrgMembershipsByUserId,
     findMembershipWithScimFilter,
+    countMembershipWithScimFilter,
     createMembership,
     bulkCreateMemberships,
     updateMembershipById,

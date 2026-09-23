@@ -181,6 +181,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
         </Button>
       </SheetFooter>
       <UpgradePlanModal
+        paywallKey="organization.create-org-identity-sheet"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."

@@ -10,9 +10,11 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
@@ -152,6 +154,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
     "findById" | "updateById" | "transitionFromPending" | "attachCertificate" | "setPendingMessage"
@@ -159,6 +162,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
@@ -185,9 +189,11 @@ export const certificateAuthorityServiceFactory = ({
   pkiSyncQueue,
   certificateProfileDAL,
   certificateRequestDAL,
+  pkiApplicationDAL,
   resourceMetadataDAL,
   gatewayV2Service,
   gatewayPoolService,
+  keyStore,
   usageMeteringService,
   hsmConnectorService,
   certificateAuthoritySecretDAL,
@@ -206,7 +212,10 @@ export const certificateAuthorityServiceFactory = ({
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -1483,7 +1492,14 @@ export const certificateAuthorityServiceFactory = ({
             certificateRequest
           );
 
-    return { ...result, projectId: certificateRequest.projectId };
+    return {
+      ...result,
+      projectId: certificateRequest.projectId,
+      applicationId: certificateRequest.applicationId ?? null,
+      applicationName: certificateRequest.applicationId
+        ? ((await pkiApplicationDAL.findById(certificateRequest.applicationId))?.name ?? null)
+        : null
+    };
   };
 
   return {

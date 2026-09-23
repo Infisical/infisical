@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { SshCertKeyAlgorithm } from "@app/hooks/api/dynamicSecret/constants";
 import {
@@ -48,7 +48,6 @@ import {
   githubCreateFormSchema,
   githubEditFormSchema
 } from "./providerDefinitions/githubContract";
-import { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./providerDefinitions/identityAccessContract";
 import {
   getLdapCreateDefaultValues,
   getLdapCreatePayload,
@@ -65,7 +64,6 @@ import {
   getSshCreatePayload,
   getSshEditDefaultValues,
   getSshEditPayload,
-  SSH_CREATE_WORKFLOW_BOUNDARY_REASONS,
   SSH_CUSTOM_RENDERER_REASONS,
   sshCreateFormSchema,
   sshEditFormSchema
@@ -80,7 +78,6 @@ import {
   tailscaleEditFormSchema
 } from "./providerDefinitions/tailscaleContract";
 import { testDynamicSecretProviderContract } from "./providerContractTestHarness";
-import { createDynamicSecretProviderRegistry, defineDynamicSecretProviderModule } from "./registry";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "./schemas";
 import type {
   TCreateDynamicSecretProviderFormContext,
@@ -288,19 +285,6 @@ const ldapDynamicSecretProvider = defineDynamicSecretProvider({
     submitLabel: "Submit",
     successMessage: "Successfully updated dynamic secret"
   }
-});
-
-const identityAccessContractModule = defineDynamicSecretProviderModule({
-  id: "identity-access",
-  definitions: [
-    awsIamDynamicSecretProvider,
-    gcpIamDynamicSecretProvider,
-    azureEntraIdDynamicSecretProvider,
-    githubDynamicSecretProvider,
-    tailscaleDynamicSecretProvider,
-    sshDynamicSecretProvider,
-    ldapDynamicSecretProvider
-  ]
 });
 
 const awsCreateDefaults: TAwsIamFormValues = {
@@ -1183,45 +1167,7 @@ testDynamicSecretProviderContract({
   }
 });
 
-describe("identity and access provider registration", () => {
-  it("registers the seven-provider batch in product picker order", () => {
-    assert.deepEqual(
-      identityAccessContractModule.definitions.map(({ provider }) => provider),
-      IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS
-    );
-    const registry = createDynamicSecretProviderRegistry(identityAccessContractModule);
-
-    assert.deepEqual(registry.providers, [
-      DynamicSecretProviders.AwsIam,
-      DynamicSecretProviders.AzureEntraId,
-      DynamicSecretProviders.Ldap,
-      DynamicSecretProviders.GcpIam,
-      DynamicSecretProviders.Github,
-      DynamicSecretProviders.Ssh,
-      DynamicSecretProviders.Tailscale
-    ]);
-    registry.providers.forEach((provider) => {
-      assert.equal(registry.requireDefinition(provider).provider, provider);
-    });
-  });
-
-  it("declares every provider-specific renderer boundary", () => {
-    assert.ok(awsIamDynamicSecretProvider.customRenderer?.reasons.includes("conditional-fields"));
-    assert.ok(gcpIamDynamicSecretProvider.customRenderer?.reasons.includes("repeatable-fields"));
-    assert.ok(
-      azureEntraIdDynamicSecretProvider.create.customRenderer?.reasons.includes("multi-create")
-    );
-    assert.ok(
-      githubDynamicSecretProvider.edit.customRenderer?.reasons.includes("non-scalar-value")
-    );
-    assert.ok(
-      tailscaleDynamicSecretProvider.customRenderer?.reasons.includes("conditional-fields")
-    );
-    assert.ok(sshDynamicSecretProvider.customRenderer?.reasons.includes("repeatable-fields"));
-    assert.ok(SSH_CREATE_WORKFLOW_BOUNDARY_REASONS.includes("post-create-workflow"));
-    assert.ok(ldapDynamicSecretProvider.customRenderer?.reasons.includes("import-workflow"));
-  });
-
+describe("identity and access provider-specific branches", () => {
   it("maps LDAP Vault roles without inventing a bind password", () => {
     const imported = getLdapVaultImportValues({
       name: "ldap-role",

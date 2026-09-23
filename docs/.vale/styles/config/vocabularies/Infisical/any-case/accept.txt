@@ -287,6 +287,7 @@ I
 (?i)Certificate Management
 (?i)Key Management
 (?i)Privileged Access Management
+(?i)Privileged Access Manager
 (?i)Honey Token
 (?i)Honey Tokens
 (?i)Product Admin

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { cloneElement, type ReactElement, useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
 import {
   CheckIcon,
@@ -112,8 +112,11 @@ const describeConstraints = (constraints: TValueConstraints) => {
   add("minLength", "Min length", constraints.minLength);
   add("maxLength", "Max length", constraints.maxLength);
 
-  if (constraints.reusePrevention?.previousVersions !== undefined) {
-    chips.push({ key: "reusePrevention", label: "Prevent reuse of previous secret values" });
+  if (constraints.uniqueAcrossLastVersions !== undefined) {
+    chips.push({
+      key: "uniqueAcrossLastVersions",
+      label: "Prevent reuse of previous secret values"
+    });
   }
 
   return chips;
@@ -151,6 +154,7 @@ export type PasswordGeneratorProps = {
   projectId?: string;
   secretPath?: string;
   selectedEnvironments?: { slug: string }[];
+  trigger?: ReactElement<{ disabled?: boolean }>;
 };
 
 export const PasswordGenerator = ({
@@ -160,7 +164,8 @@ export const PasswordGenerator = ({
   maxLength = 64,
   projectId,
   secretPath,
-  selectedEnvironments
+  selectedEnvironments,
+  trigger
 }: PasswordGeneratorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [, isCopying, setCopyText] = useTimedReset<string>({
@@ -297,9 +302,13 @@ export const PasswordGenerator = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <IconButton variant="outline" size="md" isDisabled={isDisabled}>
-          <KeyRoundIcon />
-        </IconButton>
+        {trigger ? (
+          cloneElement(trigger, { disabled: isDisabled })
+        ) : (
+          <IconButton variant="outline" size="md" isDisabled={isDisabled}>
+            <KeyRoundIcon />
+          </IconButton>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[30rem]" align="end">
         <div className="flex flex-col gap-4">

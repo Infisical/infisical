@@ -149,7 +149,7 @@ const ProjectSelectInner = () => {
             projectId: currentWorkspace.id,
             orgId: currentWorkspace.orgId
           }}
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
@@ -218,9 +218,7 @@ const ProjectSelectInner = () => {
                     >
                       <Star
                         className={
-                          workspace.isFavorite
-                            ? "fill-yellow-600 text-yellow-600"
-                            : "text-yellow-600"
+                          workspace.isFavorite ? "fill-warning text-warning" : "text-warning"
                         }
                       />
                     </IconButton>
@@ -257,6 +255,7 @@ const ProjectSelectInner = () => {
         </NavbarSwitcherContent>
       </NavbarSwitcher>
       <UpgradePlanModal
+        paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You've reached the maximum number of projects available on the Free plan. Upgrade to the Infisical Pro plan to create more projects."

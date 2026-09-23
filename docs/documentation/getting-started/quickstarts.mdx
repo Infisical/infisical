@@ -19,6 +19,7 @@ mode: "frame"
     <a href="#certificate-management" className="qs-index__jump-chip qs-index__jump-chip--certificates">Certificates</a>
     <a href="#key-management" className="qs-index__jump-chip qs-index__jump-chip--kms">Key Management</a>
     <a href="#privileged-access-management" className="qs-index__jump-chip qs-index__jump-chip--pam">Privileged Access</a>
+    <a href="#agent-vault" className="qs-index__jump-chip qs-index__jump-chip--agent-vault">Agent Vault</a>
   </div>
   <div className="qs-index__jump-links">
     <a href="#identity-and-access" className="qs-index__jump-chip qs-index__jump-chip--identity">Identity</a>
@@ -99,6 +100,20 @@ mode: "frame"
 | [Access a database or server through Infisical](/documentation/platform/pam/quick-starts/launch-first-session) | Open a session to a database or server without exposing the credential. |
 | [Open an SSH session through Infisical](/documentation/platform/pam/accounts/ssh) | Reach a server over SSH without handing out the credential. |
 | [Access a PostgreSQL database through Infisical](/documentation/platform/pam/accounts/postgresql) | Open a session to a PostgreSQL database without exposing the credential. |
+
+</section>
+
+<section className="qs-index__section qs-index__section--agent-vault">
+
+<h2 id="agent-vault"><a href="/documentation/platform/agent-vault/overview" className="qs-index__section-link">Agent Vault<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+
+<p className="qs-index__section-desc">Let AI agents call third-party APIs through a proxy that attaches stored credentials on the way out, so the agent never sees them.</p>
+
+| Quickstart | Description |
+| --- | --- |
+| [Launch an agent through Agent Vault](/documentation/platform/agent-vault/quickstart) | Run an AI agent that reaches external APIs without holding real credentials. |
+| [Build an access bundle](/documentation/platform/agent-vault/access-bundles) | Define the set of services an agent session can reach. |
+| [Add a service to an access bundle](/documentation/platform/agent-vault/services) | Store credentials for an external API the proxy will call on the agent's behalf. |
 
 </section>
 

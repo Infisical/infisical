@@ -137,12 +137,13 @@ export const ProjectNav = () => {
       ) : (
         <motion.div
           key="main"
+          className="flex flex-1 flex-col"
           initial={{ x: -30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -30, opacity: 0 }}
           transition={{ duration: 0.11, ease: "easeOut" }}
         >
-          <SidebarGroup>
+          <SidebarGroup className="flex-1">
             <SidebarGroupLabel asChild>
               <button
                 className="cursor-pointer hover:bg-foreground/[0.025]"

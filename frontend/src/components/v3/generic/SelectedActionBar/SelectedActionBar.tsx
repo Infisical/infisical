@@ -1,9 +1,12 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
 import { Button } from "../Button";
+import { IconButton } from "../IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 const OVERLAY_SELECTOR = [
   '[role="dialog"]',
@@ -21,6 +24,9 @@ type SelectedActionBarProps = Omit<React.ComponentProps<"div">, "children"> & {
   children: React.ReactNode;
   selectionLabel?: React.ReactNode;
   clearLabel?: string;
+  iconOnlyClear?: boolean;
+  portalContainer?: Element | DocumentFragment | null;
+  positionerClassName?: string;
 };
 
 function SelectedActionBar({
@@ -29,6 +35,9 @@ function SelectedActionBar({
   children,
   selectionLabel,
   clearLabel = "Unselect All",
+  iconOnlyClear = false,
+  portalContainer,
+  positionerClassName,
   className,
   "aria-label": ariaLabel = "Selection actions",
   ...props
@@ -77,7 +86,8 @@ function SelectedActionBar({
         "transition-[opacity,translate,filter,scale] ease-out motion-reduce:transition-none",
         isVisible
           ? "translate-y-0 scale-100 opacity-100 blur-none duration-200"
-          : "translate-y-3 scale-98 opacity-0 blur-[4px] duration-100"
+          : "translate-y-3 scale-98 opacity-0 blur-[4px] duration-100",
+        positionerClassName
       )}
       aria-hidden={!isVisible}
       // React 18 does not type the inert attribute yet.
@@ -91,7 +101,7 @@ function SelectedActionBar({
         data-slot="selected-action-bar"
         data-state={isVisible ? "open" : "closed"}
         className={cn(
-          "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-wrap items-center gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pl-4 text-foreground shadow-floating",
+          "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-wrap items-center gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pl-4 text-foreground shadow-floating in-data-[theme=light]:shadow-floating-light",
           className
         )}
       >
@@ -104,22 +114,39 @@ function SelectedActionBar({
           <span className="shrink-0 text-sm">
             {displayedContent.selectionLabel ?? `${displayedContent.selectedCount} Selected`}
           </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="mr-auto text-accent underline-offset-2 hover:underline"
-            onClick={onClearSelection}
-          >
-            {clearLabel}
-          </Button>
+          {iconOnlyClear ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  className="mr-auto text-muted"
+                  aria-label={clearLabel}
+                  onClick={onClearSelection}
+                >
+                  <X />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>{clearLabel}</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="mr-auto text-accent underline-offset-2 hover:underline"
+              onClick={onClearSelection}
+            >
+              {clearLabel}
+            </Button>
+          )}
           <div className="flex flex-wrap items-center justify-end gap-2">
             {displayedContent.children}
           </div>
         </div>
       </div>
     </div>,
-    document.body
+    portalContainer ?? document.body
   );
 }
 

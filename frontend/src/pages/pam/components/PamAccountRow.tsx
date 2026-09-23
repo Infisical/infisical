@@ -1,7 +1,7 @@
 import { ReactNode, useSyncExternalStore } from "react";
 import { Clock, KeyRound, Rocket } from "lucide-react";
 
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   IconButton,
