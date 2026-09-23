@@ -4534,6 +4534,12 @@
                     "pages": [
                       "api-reference/endpoints/admin/bootstrap-instance"
                     ]
+                  },
+                  {
+                    "group": "Instance",
+                    "pages": [
+                      "api-reference/endpoints/instance/status"
+                    ]
                   }
                 ]
               }

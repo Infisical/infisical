@@ -221,6 +221,7 @@ import { Redlock } from "@app/lib/red-lock";
 import { RunMode } from "@app/lib/types";
 import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
@@ -4480,6 +4481,11 @@ export const registerRoutes = async (
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      operationId: "getInstanceStatus",
+      tags: [ApiDocsTags.Instance],
+      description:
+        "Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.",
       response: {
         200: z.object({
           date: z.date(),
