@@ -216,7 +216,8 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
       const { name, credentials, description } = req.body;
       const { connectionId } = req.params;
 
-      await $findAgentVaultConnection(req);
+      // Read before the update so a rename records the name it had, which is what the log is searched by.
+      const existing = await $findAgentVaultConnection(req);
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
         { name, credentials, connectionId, description },
@@ -234,7 +235,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
             description,
             credentialsUpdated: Boolean(credentials),
             connectionId,
-            connectionName: appConnection.name
+            connectionName: existing.name
           }
         }
       });
