@@ -6,6 +6,9 @@ import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
+import { z } from "zod";
+
+import { ApiDocsTags } from "@app/lib/api-docs";
 
 import { jsonSchemaTransform } from "./fastify-zod";
 
@@ -29,6 +32,31 @@ type SpecPayload = {
 const SPEC_FORMAT_BY_ROUTE: Record<string, SpecFormat> = {
   [`${DOCS_ROUTE_PREFIX}/json`]: "json",
   [`${DOCS_ROUTE_PREFIX}/yaml`]: "yaml"
+};
+
+// the tags are matched by slug ("secret-tags" for "Secret Tags") so agents can pass them without encoding
+const TAG_BY_SLUG: Record<string, ApiDocsTags> = Object.fromEntries(
+  Object.values(ApiDocsTags).map((tag) => [tag.toLowerCase().replace(/[^a-z0-9]+/g, "-"), tag])
+);
+
+const SpecQuerySchema = z.object({
+  tag: z
+    .enum(Object.keys(TAG_BY_SLUG) as [string, ...string[]])
+    .transform((slug) => TAG_BY_SLUG[slug])
+    .optional()
+});
+
+type OpenApiDocument = {
+  paths?: Record<string, Record<string, { tags?: string[] }>>;
+};
+
+const filterSpecByTag = (spec: OpenApiDocument, tag: ApiDocsTags): OpenApiDocument => {
+  const paths: NonNullable<OpenApiDocument["paths"]> = {};
+  for (const [url, operations] of Object.entries(spec.paths ?? {})) {
+    const kept = Object.entries(operations).filter(([, operation]) => operation.tags?.includes(tag));
+    if (kept.length) paths[url] = Object.fromEntries(kept);
+  }
+  return { ...spec, paths };
 };
 
 const buildSpecPayload = async (fastify: FastifyInstance, format: SpecFormat): Promise<SpecPayload> => {
@@ -151,6 +179,12 @@ export const fastifySwagger = fp(async (fastify) => {
   };
 
   const serveSpec = async (req: FastifyRequest, reply: FastifyReply, format: SpecFormat) => {
+    const { tag } = SpecQuerySchema.parse(req.query);
+    if (format === "json" && tag) {
+      await reply.send(filterSpecByTag(fastify.swagger() as unknown as OpenApiDocument, tag));
+      return;
+    }
+
     const payload = await getSpecPayload(format);
     const encoding = pickSpecEncoding(req.headers["accept-encoding"]);
 

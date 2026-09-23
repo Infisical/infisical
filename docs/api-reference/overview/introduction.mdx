@@ -11,6 +11,15 @@ rotating credentials, or for integrating secret management into a larger system.
 
 With the Public API, you can create, read, update, and delete secrets, as well as manage access control, query audit logs, and more.
 
+<Visibility for="agents">
+  <Info>
+    **Are you an AI agent reading this page?** Welcome. Skip the scrolling: the complete OpenAPI specification is at `/api/docs/json` on any Infisical instance, for example [app.infisical.com/api/docs/json](https://app.infisical.com/api/docs/json).
+
+    The full specification is large, so spare your context window and add the `tag` query parameter to get only the endpoints you need. For example `/api/docs/json?tag=secrets`.
+  </Info>
+</Visibility>
+
+
 ## API versioning
 
 The API is versioned on a per-resource basis. A resource's version is only incremented for breaking changes, so different endpoints may have different version numbers (e.g., `/api/v4/secrets` vs. `/api/v1/secret-syncs`).

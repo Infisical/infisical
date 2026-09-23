@@ -95,6 +95,19 @@ export const main = async ({
 
   // @ts-expect-error akhilmhdh: even on setting it fastify as Redis | Cluster it's throwing error
   server.decorate("redis", redis);
+
+  // ensures that we return proper zod errors instead of a 500 "something went wrong" error when someone sends a request with empty json body
+  const defaultJsonParser = server.getDefaultJsonParser("error", "error");
+  server.removeContentTypeParser("application/json");
+  server.addContentTypeParser("application/json", { parseAs: "string" }, (req, body: string | Buffer, done) => {
+    const strBody = body instanceof Buffer ? body.toString() : body;
+    if (strBody?.length === 0) {
+      done(null, {});
+      return;
+    }
+    void defaultJsonParser(req, strBody, done);
+  });
+
   server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body: string | Buffer, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
@@ -135,12 +148,12 @@ export const main = async ({
       await server.register(apiMetrics);
     }
 
+    await server.register(fastifyErrHandler);
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
     await server.register(websocket, {
       options: { maxPayload: 64 * 1024 } // 64 KB
     });
-    await server.register(fastifyErrHandler);
 
     // Rate limiters and security headers
     if (appCfg.isProductionMode && appCfg.isCloud) {
