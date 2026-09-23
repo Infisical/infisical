@@ -3,7 +3,7 @@ title: "Rate limiting"
 description: "Learn how Infisical Cloud enforces rate limits on API requests."
 ---
 
-Infisical Cloud enforces per-minute rate limits on API requests. Limits are grouped into categories, and each category is tracked separately per client IP address. Requests in one category don't count against the limit for another.
+Infisical Cloud enforces per-minute rate limits on API requests. A global cap of 600 requests per minute per client IP applies to every endpoint. On top of that, category-specific limits are tracked separately per client IP address.
 
 ## Categories
 
@@ -17,7 +17,9 @@ Each API request is counted against one of the following categories:
 
 ## Limits on Infisical Cloud
 
-The per-minute limits by plan on Infisical Cloud are:
+ A global cap of 600 requests per minute per client IP applies to every endpoint.  On top of that, category-specific limits are tracked separately per client IP address.
+ 
+ The per-category limits by plan on Infisical Cloud are:
 
 <Tabs>
   <Tab title="Free">
