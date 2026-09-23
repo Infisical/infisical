@@ -101,11 +101,11 @@ Recording starts within one poll interval on every proxy, and covers sessions th
 
 Go to **Sessions** and select a row. The **Activity** tab shows the merged timeline, newest first. A host that no access bundle covers is marked, which is how a request to somewhere unexpected stands out.
 
-Filter by outcome to see only what was blocked or only what failed, and search by host, path, method, or service. Both work over the records already loaded, so they narrow what's on screen rather than fetching again. Scroll down to load older requests.
+Filter by outcome to see only what was blocked or only what failed, by proxy, or search by host, path, method, or service. These run in your browser over the records loaded so far. When they find too little, the tab searches back through older requests on its own, 5,000 at a time, and then says how far back it got, with **Search older requests** to go further. Scroll down to load older requests.
 
 While a session is active, the tab checks for new requests every 15 seconds, so a running agent's requests appear without a reload. Proxies ship records every 60 seconds, so a new request can take a minute or so to arrive. Batches that reach Infisical late still show up in their place in the timeline, for example from a proxy that was offline or whose clock runs behind. Setting a time range that has already ended stops the checks.
 
-Search covers the pages you've loaded, not the whole session, and there's no view that spans sessions. Each session's records are encrypted under a key of their own, so a question like "which agent reached this host" is one you answer per session.
+A time range is applied by Infisical rather than in your browser, so it's the way to reach far back in a long session. There's no view that spans sessions. Each session's records are encrypted under a key of their own, so a question like "which agent reached this host" is one you answer per session.
 
 ### When several proxies serve one session
 

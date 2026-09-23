@@ -16,3 +16,14 @@ export const findRowShift = (
   const moved = after.findIndex((record) => activityRecordKey(record) === key);
   return moved < 0 ? null : moved - index;
 };
+
+const CROCKFORD_BASE32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** When a chunk was sealed. A chunk id is a ULID, whose first ten characters are that time in ms, base32. */
+export const chunkIdTime = (chunkId: string) =>
+  new Date(
+    [...chunkId.slice(0, 10).toUpperCase()].reduce(
+      (ms, char) => ms * 32 + CROCKFORD_BASE32.indexOf(char),
+      0
+    )
+  );

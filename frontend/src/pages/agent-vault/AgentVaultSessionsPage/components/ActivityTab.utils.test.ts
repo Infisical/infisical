@@ -4,7 +4,7 @@ import { describe, it } from "vitest";
 import { AgentVaultActivityDecision } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultActivityRecord } from "@app/hooks/api/agentVault/types";
 
-import { findRowShift } from "./ActivityTab.utils";
+import { chunkIdTime, findRowShift } from "./ActivityTab.utils";
 
 const record = (seq: number): TAgentVaultActivityRecord => ({
   ts: new Date(Date.UTC(2026, 8, 23, 10, 0, 0, seq)).toISOString(),
@@ -46,5 +46,18 @@ describe("findRowShift", () => {
 
   it("has nothing to hold past the end of what was shown", () => {
     assert.equal(findRowShift(rows(9, 8), rows(10, 9, 8), 5), null);
+  });
+});
+
+describe("chunkIdTime", () => {
+  it("reads the time from the example id in the ULID spec", () => {
+    assert.equal(
+      chunkIdTime("01ARZ3NDEKTSV4RRFFQ69G5FAV").toISOString(),
+      "2016-07-30T23:54:10.259Z"
+    );
+  });
+
+  it("reads a lowercase id the same way", () => {
+    assert.equal(chunkIdTime("01arz3ndektsv4rrffq69g5fav").getTime(), 1469922850259);
   });
 });

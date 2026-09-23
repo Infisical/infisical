@@ -52,7 +52,7 @@ import {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { findRowShift } from "./ActivityTab.utils";
+import { chunkIdTime, findRowShift } from "./ActivityTab.utils";
 
 const ALL_PROXIES = "all";
 
@@ -86,6 +86,13 @@ const ArrivingRow = ({ arrivedAt, children }: { arrivedAt?: number; children: Re
     </TableRow>
   );
 };
+
+/**
+ * How many requests a filter searches back through on its own, and again each time the viewer asks for
+ * older ones. Search, outcome and proxy run in the browser over what is loaded, so without a step one rare
+ * match would read the whole session to fill a screen.
+ */
+const FILTER_SEARCH_STEP = 5000;
 
 /**
  * Single-line rows, so a fixed estimate is exact: the virtualiser never has to remeasure, and holding the
@@ -182,7 +189,8 @@ export const ActivityTab = ({ session }: Props) => {
     refetch,
     fetchNextPage,
     hasNextPage,
-    isFetchingNextPage
+    isFetchingNextPage,
+    isFetchNextPageError
   } = history;
 
   // What arrived while the sheet was open goes first, so the proxy list, the enabled flag and every
@@ -198,8 +206,8 @@ export const ActivityTab = ({ session }: Props) => {
   const isEnabled = pages?.[0]?.enabled ?? false;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
 
-  // Every filter and every count below is computed from records already decrypted in this browser, so
-  // none of it costs an extra request.
+  // Every count below is computed from records already decrypted in this browser, so none of it costs
+  // an extra request.
   const seenProxies = useRef(new Map<string, string>());
   if (seenProxiesSessionId.current !== session.id) {
     seenProxies.current = new Map();
@@ -242,11 +250,44 @@ export const ActivityTab = ({ session }: Props) => {
     });
   }, [records, search, decisionFilter, proxyFilter, range]);
 
-  const isFiltered =
-    Boolean(search.trim()) ||
-    decisionFilter !== "all" ||
-    proxyFilter !== ALL_PROXIES ||
-    Boolean(range);
+  // Search, outcome and proxy narrow what is already loaded, in the browser. A time range is applied by
+  // the server, so every page it returns is inside the range and needs no allowance.
+  const hasBrowserFilter =
+    Boolean(search.trim()) || decisionFilter !== "all" || proxyFilter !== ALL_PROXIES;
+  const isFiltered = hasBrowserFilter || Boolean(range);
+
+  // Requests read from older pages, which is how much a filter has searched. What arrives live is not
+  // counted: it is searched as it lands.
+  const searched = useMemo(
+    () =>
+      (data?.pages ?? []).reduce(
+        (total, page) => total + page.chunks.reduce((sum, chunk) => sum + chunk.recordCount, 0),
+        0
+      ),
+    [data]
+  );
+
+  // Changing a filter or the range starts a fresh allowance. Reset during render rather than in an
+  // effect, so no frame pages on under the previous filter's allowance.
+  const filterKey = [
+    search.trim(),
+    decisionFilter,
+    proxyFilter,
+    range?.startDate.getTime(),
+    range?.endDate.getTime()
+  ].join("|");
+  const [allowance, setAllowance] = useState({ filterKey, until: searched + FILTER_SEARCH_STEP });
+  if (allowance.filterKey !== filterKey) {
+    setAllowance({ filterKey, until: searched + FILTER_SEARCH_STEP });
+  }
+  const searchOlder = () => setAllowance({ filterKey, until: searched + FILTER_SEARCH_STEP });
+  const isSearchPaused =
+    hasBrowserFilter && Boolean(hasNextPage) && !isTruncated && searched >= allowance.until;
+
+  // Everything recorded after the last chunk read has been searched: pages run newest first by when each
+  // chunk was sealed, and a request is always recorded before the chunk holding it is sealed.
+  const lastPage = data?.pages[data.pages.length - 1];
+  const searchedBackTo = lastPage?.nextCursor ? chunkIdTime(lastPage.nextCursor) : null;
 
   // Scrolling keeps appending pages, so a long session ends up with thousands of rows in memory. The
   // v3 Table has no virtualiser of its own, so the rows are windowed here: spacer rows above and below
@@ -263,17 +304,22 @@ export const ActivityTab = ({ session }: Props) => {
   const lastVisibleIndex = virtualRows.length ? virtualRows[virtualRows.length - 1].index : 0;
   useEffect(() => {
     // Not while showing the previous range's rows: paging on from them would fetch the wrong window.
-    if (!hasNextPage || isFetchingNextPage || isPlaceholderData || isTruncated) return;
-    // One screen of slack, so the next page is already in flight by the time the viewer arrives.
-    if (visible.length > 0 && lastVisibleIndex >= visible.length - 30)
+    if (!hasNextPage || isFetchingNextPage || isPlaceholderData || isTruncated || isSearchPaused)
+      return;
+    // One screen of slack, so the next page is already in flight by the time the viewer arrives. A filter
+    // that hides every loaded row still pages on; rows missing because their chunks could not be read do
+    // not, or a bucket without its CORS rule would have every page in the session requested.
+    if (records.length > 0 && lastVisibleIndex >= visible.length - 30)
       fetchNextPage().catch(() => {});
   }, [
     lastVisibleIndex,
     visible.length,
+    records.length,
     hasNextPage,
     isFetchingNextPage,
     isPlaceholderData,
     isTruncated,
+    isSearchPaused,
     fetchNextPage
   ]);
   // Time, Method, Host, Path, Status, Outcome, Service and the live indicator, plus Proxy when the
@@ -304,6 +350,16 @@ export const ActivityTab = ({ session }: Props) => {
   // Loading covers only the first load and a change of range. A poll retrying a chunk it could not read
   // keeps the previous result on screen, so the failure it is retrying stays put instead of flickering.
   const isOpening = (isPending || isPlaceholderData) && visible.length === 0;
+  // Still paging back for a filter that has matched nothing yet, so "no matches" would be premature.
+  // A page that failed to load ends the search rather than leaving it spinning.
+  const isSearchFailed = isFiltered && isFetchNextPageError;
+  const isStillSearching =
+    isFiltered &&
+    records.length > 0 &&
+    Boolean(hasNextPage) &&
+    !isSearchPaused &&
+    !isTruncated &&
+    !isSearchFailed;
 
   let noRecordsTitle: string;
   let noRecordsDescription: string;
@@ -313,7 +369,20 @@ export const ActivityTab = ({ session }: Props) => {
   } else if (isLoadError) {
     noRecordsTitle = "Failed to load activity";
     noRecordsDescription = "Something went wrong while loading this session's requests.";
-  } else if (range && !hasChunks) {
+  } else if (isSearchFailed) {
+    noRecordsTitle = "Failed to search older requests";
+    noRecordsDescription = "Something went wrong while loading older requests.";
+  } else if (isStillSearching) {
+    noRecordsTitle = "Searching older requests";
+    noRecordsDescription = "";
+  } else if (hasChunks && records.length === 0) {
+    // Ahead of every filter message: nothing could be searched, so "no matches" would not be true either.
+    noRecordsTitle = "Activity unavailable";
+    noRecordsDescription = "None of this session's activity could be loaded.";
+  } else if (isSearchPaused && searchedBackTo) {
+    noRecordsTitle = `No matching requests since ${format(searchedBackTo, "MMM d, h:mm a")}`;
+    noRecordsDescription = "Older requests have not been searched yet.";
+  } else if (range && (!hasChunks || !hasBrowserFilter)) {
     noRecordsTitle = "No activity in this range";
     noRecordsDescription = `This session recorded nothing between ${format(
       range.startDate,
@@ -322,16 +391,13 @@ export const ActivityTab = ({ session }: Props) => {
   } else if (isFiltered) {
     noRecordsTitle = "No requests match these filters";
     noRecordsDescription = "Try a different search term, outcome, proxy or time range.";
-  } else if (!hasChunks) {
+  } else {
     // "Yet" and "appear here" are promises about a session that is still running. A retired one
     // will never make another request, so the same sentence there is simply false.
     noRecordsTitle = isActive ? "Nothing recorded yet" : "No activity recorded";
     noRecordsDescription = isActive
       ? "Requests this session makes through a proxy will appear here shortly after."
       : "This session ended without making any requests through a proxy.";
-  } else {
-    noRecordsTitle = "Activity unavailable";
-    noRecordsDescription = "None of this session's activity could be loaded.";
   }
 
   const isUnreachable =
@@ -531,10 +597,25 @@ export const ActivityTab = ({ session }: Props) => {
       {visible.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>
-            {isOpening && <Spinner size="sm" />}
+            {(isOpening || isStillSearching) && <Spinner size="sm" />}
             <EmptyTitle>{noRecordsTitle}</EmptyTitle>
             {noRecordsDescription && <EmptyDescription>{noRecordsDescription}</EmptyDescription>}
           </EmptyHeader>
+          {isSearchPaused && !isSearchFailed && (
+            <Button variant="outline" size="sm" onClick={searchOlder}>
+              Search older requests
+            </Button>
+          )}
+          {isSearchFailed && (
+            <Button
+              variant="outline"
+              size="sm"
+              isPending={isFetchingNextPage}
+              onClick={() => fetchNextPage().catch(() => {})}
+            >
+              Retry
+            </Button>
+          )}
           {isLoadError && (
             <Button
               variant="outline"
@@ -644,17 +725,24 @@ export const ActivityTab = ({ session }: Props) => {
             {/* A row of the table, so it sits with the last request rather than under the box. The
                   end marker also waits for the list to overflow: a session that fits on one screen
                   needs no telling. */}
-            {(isFetchingNextPage || (!hasNextPage && overflows)) && (
+            {(isFetchingNextPage || isSearchPaused || (!hasNextPage && overflows)) && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columnCount} className="text-center text-xs text-muted">
-                  {isFetchingNextPage ? (
+                  {isFetchingNextPage && (
                     <span className="flex items-center justify-center gap-2">
                       <Spinner size="xs" />
                       Loading more
                     </span>
-                  ) : (
-                    "No more requests"
                   )}
+                  {!isFetchingNextPage && isSearchPaused && searchedBackTo && (
+                    <span className="flex items-center justify-center gap-1">
+                      Searched back to {format(searchedBackTo, "MMM d, h:mm a")} ·
+                      <Button variant="link" size="xs" onClick={searchOlder}>
+                        Search older requests
+                      </Button>
+                    </span>
+                  )}
+                  {!isFetchingNextPage && !isSearchPaused && "No more requests"}
                 </TableCell>
               </TableRow>
             )}
@@ -664,7 +752,7 @@ export const ActivityTab = ({ session }: Props) => {
 
       {isTruncated && (
         <p className="text-xs text-muted">
-          Showing the most recent 100,000 requests. Narrow the search to see further back.
+          Showing the most recent 100,000 requests. Pick a time range to see further back.
         </p>
       )}
     </div>
