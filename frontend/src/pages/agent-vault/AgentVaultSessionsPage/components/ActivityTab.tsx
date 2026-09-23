@@ -214,6 +214,9 @@ export const ActivityTab = ({ session }: Props) => {
   if (isOverByteBudget && !isPlaceholderData && !isLivePausedForBudget) {
     setBudgetLatch({ scope: liveScope, isOver: true });
   }
+  // No reason given: a full buffer, a pause and a batch the server refused all land here, and the proxy's
+  // log already says which.
+  const droppedTotal = drops.reduce((total, drop) => total + drop.droppedCount, 0);
   // Only when there is nothing to show at all. A failed poll keeps the last good data on screen.
   const isLoadError = isError && !data;
 
@@ -601,10 +604,10 @@ export const ActivityTab = ({ session }: Props) => {
         </Alert>
       )}
 
-      {drops.length > 0 && (
+      {droppedTotal > 0 && (
         <div className="rounded-md border border-border bg-container px-3 py-2 text-xs text-muted">
-          {drops.reduce((total, drop) => total + drop.droppedCount, 0)} requests were not recorded,
-          because a proxy&apos;s buffer filled or recording was paused.
+          {droppedTotal.toLocaleString()} {droppedTotal === 1 ? "request was" : "requests were"} not
+          recorded.
         </div>
       )}
 
