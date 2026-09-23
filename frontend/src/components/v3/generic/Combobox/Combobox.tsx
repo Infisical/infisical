@@ -175,7 +175,7 @@ const ComboboxTrailingSlot = ({
       data-slot="combobox-trailing-slot"
       data-state={state}
       className={cn(
-        "pointer-events-none flex shrink-0 items-center justify-center text-accent",
+        "pointer-events-none flex size-7 shrink-0 items-center justify-center text-accent",
         className
       )}
     >
@@ -190,7 +190,7 @@ const ComboboxTrailingSlot = ({
           onClick={onClear}
           className="pointer-events-auto flex size-full items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <XIcon aria-hidden="true" className="size-3.5" />
+          <XIcon aria-hidden="true" className="size-4" />
         </button>
       )}
       {state === "chevron" && <ChevronDownIcon aria-hidden="true" className="size-4" />}
@@ -1076,7 +1076,7 @@ const SingleCombobox = <TOption,>({
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
         <ComboboxTrailingSlot
-          className="absolute top-0 right-0 z-10 h-9 w-9"
+          className="absolute top-1 right-1 z-10"
           isBusy={isLoading || isCreationPending}
           canClear={Boolean(
             onClear && !isDisabled && (value != null || (isEditing && search.length > 0))
@@ -1483,7 +1483,7 @@ const MultipleCombobox = <TOption,>({
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
         <ComboboxTrailingSlot
-          className="absolute top-1 right-1 z-10 size-6"
+          className="absolute top-1 right-1 z-10"
           isBusy={isLoading || isCreationPending}
           canClear={!isDisabled && (value.length > 0 || search.length > 0)}
           clearAriaLabel={clearAriaLabel}
