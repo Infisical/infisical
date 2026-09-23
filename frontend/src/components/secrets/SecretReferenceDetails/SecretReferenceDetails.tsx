@@ -208,9 +208,8 @@ const SecretTree = ({
       canDragAndDrop={false}
       canDropOnFolder={false}
       canReorderItems={false}
-      // Reference tree is read-only; no inline rename or its live-region announcements.
+      // Reference tree is read-only, so inline rename is disabled.
       canRename={false}
-      showLiveDescription={false}
       renderItemTitle={renderItemTitle}
     >
       <Tree treeId={treeId} rootItem={rootId} />
