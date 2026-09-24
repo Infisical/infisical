@@ -57,26 +57,30 @@ export const rateLimitServiceFactory = ({
     return rateLimitDAL.updateById(DEFAULT_RATE_LIMIT_CONFIG_ID, updates);
   };
 
+  const $syncRateLimitConfiguration = async () => {
+    const rateLimit = await getRateLimits();
+    if (rateLimit) {
+      const newRateLimitMaxConfiguration: typeof rateLimitMaxConfiguration = {
+        readLimit: rateLimit.readRateLimit,
+        publicEndpointLimit: rateLimit.publicEndpointLimit,
+        writeLimit: rateLimit.writeRateLimit,
+        secretsLimit: rateLimit.secretsRateLimit,
+        authRateLimit: rateLimit.authRateLimit,
+        inviteUserRateLimit: rateLimit.inviteUserRateLimit,
+        mfaRateLimit: rateLimit.mfaRateLimit,
+        identityCreationLimit: rateLimit.identityCreationLimit,
+        projectCreationLimit: rateLimit.projectCreationLimit
+      };
+
+      logger.info(newRateLimitMaxConfiguration, "syncRateLimitConfiguration: rate limit configuration");
+      Object.freeze(newRateLimitMaxConfiguration);
+      rateLimitMaxConfiguration = newRateLimitMaxConfiguration;
+    }
+  };
+
   const syncRateLimitConfiguration: TRateLimitServiceFactory["syncRateLimitConfiguration"] = async () => {
     try {
-      const rateLimit = await getRateLimits();
-      if (rateLimit) {
-        const newRateLimitMaxConfiguration: typeof rateLimitMaxConfiguration = {
-          readLimit: rateLimit.readRateLimit,
-          publicEndpointLimit: rateLimit.publicEndpointLimit,
-          writeLimit: rateLimit.writeRateLimit,
-          secretsLimit: rateLimit.secretsRateLimit,
-          authRateLimit: rateLimit.authRateLimit,
-          inviteUserRateLimit: rateLimit.inviteUserRateLimit,
-          mfaRateLimit: rateLimit.mfaRateLimit,
-          identityCreationLimit: rateLimit.identityCreationLimit,
-          projectCreationLimit: rateLimit.projectCreationLimit
-        };
-
-        logger.info(newRateLimitMaxConfiguration, "syncRateLimitConfiguration: rate limit configuration");
-        Object.freeze(newRateLimitMaxConfiguration);
-        rateLimitMaxConfiguration = newRateLimitMaxConfiguration;
-      }
+      await $syncRateLimitConfiguration();
     } catch (error) {
       logger.error(error, "Error syncing rate limit configurations");
     }
@@ -95,7 +99,7 @@ export const rateLimitServiceFactory = ({
     return startLocalRefresh({
       name: "rate-limit-config-sync",
       intervalMs: 10 * 60 * 1000,
-      task: syncRateLimitConfiguration
+      task: $syncRateLimitConfiguration
     });
   };
 

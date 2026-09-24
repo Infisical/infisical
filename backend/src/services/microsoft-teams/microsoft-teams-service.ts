@@ -123,45 +123,48 @@ export const microsoftTeamsServiceFactory = ({
     }
   };
 
+  // Throws, so the local refresh sees the failure; the startup sync in initializeBackgroundSync catches instead.
   const $syncMicrosoftTeamsIntegrationConfiguration = async () => {
-    try {
-      const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-      if (!serverCfg) {
-        throw new BadRequestError({
-          message: "Failed to get server configuration."
-        });
-      }
-
-      if (lastKnownUpdatedAt.getTime() === serverCfg.updatedAt.getTime()) {
-        logger.info("No changes to Microsoft Teams integration configuration, skipping sync");
-        return;
-      }
-
-      lastKnownUpdatedAt = serverCfg.updatedAt;
-
-      if (
-        serverCfg.encryptedMicrosoftTeamsAppId &&
-        serverCfg.encryptedMicrosoftTeamsClientSecret &&
-        serverCfg.encryptedMicrosoftTeamsBotId
-      ) {
-        const decryptWithRoot = kmsService.decryptWithRootKey();
-        const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
-        const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
-
-        await initializeTeamsBot({
-          botAppId: decryptedAppId.toString(),
-          botAppPassword: decryptedAppPassword.toString()
-        });
-      }
-    } catch (err) {
-      logger.error(err, "Error syncing Microsoft Teams integration configuration");
+    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
+    if (!serverCfg) {
+      throw new BadRequestError({
+        message: "Failed to get server configuration."
+      });
     }
+
+    if (lastKnownUpdatedAt.getTime() === serverCfg.updatedAt.getTime()) {
+      logger.info("No changes to Microsoft Teams integration configuration, skipping sync");
+      return;
+    }
+
+    if (
+      serverCfg.encryptedMicrosoftTeamsAppId &&
+      serverCfg.encryptedMicrosoftTeamsClientSecret &&
+      serverCfg.encryptedMicrosoftTeamsBotId
+    ) {
+      const decryptWithRoot = kmsService.decryptWithRootKey();
+      const decryptedAppId = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsAppId);
+      const decryptedAppPassword = decryptWithRoot(serverCfg.encryptedMicrosoftTeamsClientSecret);
+
+      await initializeTeamsBot({
+        botAppId: decryptedAppId.toString(),
+        botAppPassword: decryptedAppPassword.toString()
+      });
+    }
+
+    // Recorded only once the bot is up: marking the config seen before a failed init would make every
+    // later run skip it as unchanged, so a failure would never be retried.
+    lastKnownUpdatedAt = serverCfg.updatedAt;
   };
 
   const initializeBackgroundSync = async () => {
     logger.info("Setting up background sync process for Microsoft Teams workflow integration configuration");
     // initial sync upon startup
-    await $syncMicrosoftTeamsIntegrationConfiguration();
+    try {
+      await $syncMicrosoftTeamsIntegrationConfiguration();
+    } catch (err) {
+      logger.error(err, "Error syncing Microsoft Teams integration configuration");
+    }
 
     return startLocalRefresh({
       name: "microsoft-teams-config-sync",

@@ -161,7 +161,7 @@ export const licenseServiceFactory = ({
       return startLocalRefresh({
         name: "self-hosted-license-sync",
         intervalMs: 10 * 60 * 1000,
-        task: () => syncSelfHostedFeatures()
+        task: () => syncSelfHostedFeatures(true)
       });
     }
   };
