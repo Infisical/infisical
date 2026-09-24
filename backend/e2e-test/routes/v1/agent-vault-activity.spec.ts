@@ -489,6 +489,27 @@ describe("Agent Vault activity", async () => {
       );
     });
 
+    test("a re-sent chunk gets a fresh upload link that cannot replace what is already stored", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`activity-overwrite-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`activity-overwrite-${Date.now()}`);
+      const chunk = chunkBody();
+
+      const first = await recordChunk(proxy, session.id, chunk);
+      const stored = Buffer.alloc(CHUNK_BYTES, 1);
+      fakeActivityStorage.put(first.uploadUrl, stored);
+
+      // The retry path hands out a new link, which is what lets a failed upload finish. It must not also let
+      // a proxy swap the stored bytes for something else.
+      const second = await recordChunk(proxy, session.id, chunk);
+      expect(() => fakeActivityStorage.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
+
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string }[] }).chunks;
+      expect(fakeActivityStorage.get(only.presignedGetUrl)).toEqual(stored);
+    });
+
     test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-two-${Date.now()}`);

@@ -222,7 +222,9 @@ only, never bodies or headers, and never the query string (the proxy builds the 
   `agent-vault-activity-crypto.test.ts` and both implementations are checked against it.
 - **The write endpoint inserts the row, then returns a presigned PUT.** Row before object, so a failed
   upload is a visible gap rather than a silent one; re-POSTing the same chunk id replays idempotently.
-  The presign runs after commit: no network under the config row's lock.
+  The presign runs after commit: no network under the config row's lock. The PUT is create-only
+  (`If-None-Match: *` signed in), so a replay can finish an upload but never replace a stored chunk; the
+  proxy reads S3's 412 as "already uploaded".
 - **The org ceiling counts chunks, not records** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`, in the
   activity constants): what costs us is one index row per chunk, and a chunk holds 1 to 1000 records.
   It is **not customer-facing**: not an env var, not in the docs, the config response reports only

@@ -1,8 +1,14 @@
+import { S3Client } from "@aws-sdk/client-s3";
 import { describe, expect, test } from "vitest";
 
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { buildActivityObjectKey, normalizeKeyPrefix, resolveStorageConfig } from "./agent-vault-activity-storage";
+import {
+  buildActivityObjectKey,
+  normalizeKeyPrefix,
+  presignActivityPut,
+  resolveStorageConfig
+} from "./agent-vault-activity-storage";
 
 describe("normalizeKeyPrefix", () => {
   test.each([
@@ -70,5 +76,22 @@ describe("resolveStorageConfig", () => {
 
   test.each(["appConnectionId", "bucket", "region"] as const)("is null when %s is missing", (field) => {
     expect(resolveStorageConfig({ ...complete, [field]: null })).toBeNull();
+  });
+});
+
+describe("presignActivityPut", () => {
+  // Signing is local, so dummy credentials are enough and nothing leaves the process.
+  const client = new S3Client({
+    region: "us-east-1",
+    credentials: { accessKeyId: "AKIAEXAMPLE", secretAccessKey: "example-secret" }
+  });
+
+  test("signs the length and a create-only condition, so neither can be dropped or changed", async () => {
+    const url = new URL(
+      await presignActivityPut(client, { bucket: "my-bucket", objectKey: "logs/a.json.enc", ciphertextBytes: 42 })
+    );
+    const signed = (url.searchParams.get("X-Amz-SignedHeaders") ?? "").split(";");
+    expect(signed).toContain("content-length");
+    expect(signed).toContain("if-none-match");
   });
 });

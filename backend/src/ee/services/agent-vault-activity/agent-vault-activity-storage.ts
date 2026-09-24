@@ -58,6 +58,32 @@ export const resolveStorageConfig = (
   };
 };
 
+/**
+ * The upload link a proxy PUTs one chunk to. Two headers are signed in, so the uploader must send them and
+ * S3 enforces both. ContentLength means the link is not a blank cheque: it cannot carry more than the chunk
+ * declared. If-None-Match makes it create-only: a re-POST of a chunk id mints a fresh link for the same key,
+ * which is what lets a failed upload be retried, and without this a proxy could use that link to replace a
+ * chunk already stored. S3 answers 412 instead, which the proxy reads as "already uploaded".
+ */
+export const presignActivityPut = (
+  client: S3Client,
+  { bucket, objectKey, ciphertextBytes }: { bucket: string; objectKey: string; ciphertextBytes: number }
+) =>
+  getSignedUrl(
+    client,
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: objectKey,
+      ContentLength: ciphertextBytes,
+      ContentType: "application/octet-stream",
+      IfNoneMatch: "*"
+    }),
+    {
+      expiresIn: AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
+      unhoistableHeaders: new Set(["content-length", "if-none-match"])
+    }
+  );
+
 type TStorageDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey">;
@@ -105,20 +131,8 @@ export const buildActivityStorage = async (
 
   const { bucket, keyPrefix } = config;
 
-  const presignPut = async ({ objectKey, ciphertextBytes }: { objectKey: string; ciphertextBytes: number }) => {
-    // ContentLength is signed in, so the url is not a blank cheque: a proxy cannot reuse it to upload
-    // something larger than the chunk it declared.
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: objectKey,
-      ContentLength: ciphertextBytes,
-      ContentType: "application/octet-stream"
-    });
-    return getSignedUrl(client, command, {
-      expiresIn: AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
-      unhoistableHeaders: new Set(["content-length"])
-    });
-  };
+  const presignPut = async ({ objectKey, ciphertextBytes }: { objectKey: string; ciphertextBytes: number }) =>
+    presignActivityPut(client, { bucket, objectKey, ciphertextBytes });
 
   const presignGet = async (objectKey: string) =>
     getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {

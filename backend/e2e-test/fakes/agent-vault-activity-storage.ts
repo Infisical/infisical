@@ -70,7 +70,12 @@ export const fakeActivityStorage = {
       // The real presign signs ContentLength in, so S3 refuses a body of any other size.
       throw new Error(`Presigned PUT expects ${target.ciphertextBytes} bytes, got ${body.length}`);
     }
-    state.objects.set(objectId(target.bucket, target.objectKey), body);
+    const id = objectId(target.bucket, target.objectKey);
+    if (state.objects.has(id)) {
+      // The real presign signs If-None-Match: *, so S3 answers 412 rather than replace a stored object.
+      throw new Error(`Presigned PUT is create-only, and ${target.objectKey} already exists`);
+    }
+    state.objects.set(id, body);
   },
 
   /** The download the browser performs against a presigned GET url. */
