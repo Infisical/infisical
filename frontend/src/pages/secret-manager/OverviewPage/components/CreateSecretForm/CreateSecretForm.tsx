@@ -607,7 +607,7 @@ export const CreateSecretForm = ({
                                         onClick={() => createNewTag(tagSlug, index, secretField.id)}
                                       >
                                         <PlusIcon className="size-3" />
-                                        Create tag &ldquo;{tagSlug}&rdquo;
+                                        Create Tag &ldquo;{tagSlug}&rdquo;
                                       </Button>
                                     )
                                   }
