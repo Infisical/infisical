@@ -306,8 +306,10 @@ export const useAgentVaultActivityTimeline = (
       if (result.drop) drops.push(result.drop);
     });
 
+    const times = new Map<TAgentVaultActivityRecord, number>();
+    records.forEach((record) => times.set(record, Date.parse(record.ts)));
     records.sort((a, b) => {
-      const byTime = Date.parse(b.ts) - Date.parse(a.ts);
+      const byTime = (times.get(b) as number) - (times.get(a) as number);
       if (byTime !== 0) return byTime;
       if (a.proxyId !== b.proxyId) return a.proxyId < b.proxyId ? -1 : 1;
       return b.seq - a.seq;
