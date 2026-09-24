@@ -224,8 +224,6 @@ describe("resolveCertificateDeletionEligibility", () => {
 });
 
 describe("normalizeCaCertChain", () => {
-  x509.cryptoProvider.set(webcrypto as unknown as Crypto);
-
   const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
   let serial = 0;
 
@@ -252,7 +250,6 @@ describe("normalizeCaCertChain", () => {
     if (certificates.length === 0) return { result: "empty" as const };
     const chainItems = await new x509.X509ChainBuilder({ certificates }).build(issued);
     if (chainItems.length === 1) return { result: "issuer-not-found" as const };
-    if (chainItems.length !== certificates.length + 1) return { result: "extraneous" as const };
     return { result: "valid" as const, chain: chainItems.slice(1) };
   };
 
@@ -264,6 +261,8 @@ describe("normalizeCaCertChain", () => {
   let issuedByRenewed: x509.X509Certificate;
 
   beforeAll(async () => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+
     const rootKeys = await genKeys();
     const issuingKeys = await genKeys();
     const renewedKeys = await genKeys();
@@ -318,8 +317,10 @@ describe("normalizeCaCertChain", () => {
     expect((await validateChain(issuedByRenewed, [issuingCurrent, root])).result).toBe("valid");
   });
 
-  test("rejects certificates that are not on the issuing path", async () => {
-    expect((await validateChain(issuedByRenewed, [issuing, issuingCurrent, root])).result).toBe("extraneous");
+  test("accepts a bundle holding both the superseded and the current CA certificate and stores only the issuing path", async () => {
+    const result = await validateChain(issuedByRenewed, [issuing, issuingCurrent, root]);
+    expect(result.result).toBe("valid");
+    expect(result.chain?.map((c) => c.serialNumber)).toEqual([issuingCurrent.serialNumber, root.serialNumber]);
   });
 
   test("keeps distinct certificates for the same CA key", async () => {

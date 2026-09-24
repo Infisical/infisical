@@ -1625,11 +1625,13 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     // validate imported certificate and certificate chain
-    const suppliedCertificates = extractX509CertFromChain(certificateChain)?.map(
-      (cert) => new x509.X509Certificate(cert)
-    );
-
-    if (!suppliedCertificates) throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    let suppliedCertificates: x509.X509Certificate[];
+    try {
+      suppliedCertificates = extractX509CertFromChain(certificateChain).map((cert) => new x509.X509Certificate(cert));
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
+    }
 
     const certificates = normalizeCaCertChain(certObj, suppliedCertificates);
 
@@ -1650,12 +1652,6 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({
         message:
           "Invalid certificate chain: none of the certificates in the chain issued this certificate. If the issuing CA has been renewed, use the chain of its current CA certificate."
-      });
-    }
-
-    if (chainItems.length !== certificates.length + 1) {
-      throw new BadRequestError({
-        message: `Invalid certificate chain: ${certificates.length + 1 - chainItems.length} certificate(s) in the chain are not part of the path from this certificate to its root`
       });
     }
 
