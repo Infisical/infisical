@@ -204,6 +204,7 @@ export const CreateSecretForm = ({
   const [tagSearches, setTagSearches] = useState<Record<string, string>>({});
 
   const secretKeyInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const generateButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedEnvironments = watch("environments");
 
   const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
@@ -519,6 +520,12 @@ export const CreateSecretForm = ({
                         id={`create-secret-${index}-value`}
                         value={field.value ?? ""}
                         onChange={field.onChange}
+                        onKeyDown={(event) => {
+                          if (event.key === "Tab" && !event.shiftKey) {
+                            event.preventDefault();
+                            generateButtonRefs.current[index]?.focus();
+                          }
+                        }}
                         placeholder="Enter secret value..."
                       />
                       <FieldError errors={[errors.secrets?.[index]?.value]} />
@@ -526,7 +533,13 @@ export const CreateSecretForm = ({
                     <div className="col-start-2 row-start-1 flex items-center">
                       <PasswordGenerator
                         trigger={
-                          <Button variant="ghost" size="xs">
+                          <Button
+                            ref={(element) => {
+                              generateButtonRefs.current[index] = element;
+                            }}
+                            variant="ghost"
+                            size="xs"
+                          >
                             Generate
                           </Button>
                         }
