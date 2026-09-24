@@ -30,6 +30,7 @@ const liveSession = () => ({
   identityId: null,
   expiresAt: null,
   revokedAt: null,
+  updatedAt: new Date(Date.now() - 60_000),
   encryptedActivityKey: Buffer.alloc(32)
 });
 
@@ -151,13 +152,6 @@ describe("recordChunk: who is allowed to write", () => {
     const { service } = build({ session: undefined });
     await expect(record(service)).rejects.toMatchObject({ message: "Session not found" });
   });
-
-  test("an ownerless session is refused outright, with no grace window", async () => {
-    const { service } = build({ session: { ...liveSession(), userId: null, identityId: null } });
-    await expect(record(service)).rejects.toMatchObject({
-      message: "The identity this session belonged to has been deleted"
-    });
-  });
 });
 
 describe("recordChunk: the retirement grace window", () => {
@@ -185,6 +179,22 @@ describe("recordChunk: the retirement grace window", () => {
   test("retirement is the earlier of revoked and expired, so a long-expired session stays closed", async () => {
     const { service } = build({
       session: { ...liveSession(), revokedAt: new Date(Date.now() - 60_000), expiresAt: hoursAgo(24 * 7) }
+    });
+    await expect(record(service)).rejects.toMatchObject({
+      message: "Session retired too long ago to accept activity"
+    });
+  });
+
+  test("a session whose owner was deleted still accepts what the proxy held, for a day", async () => {
+    const { service } = build({
+      session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(23) }
+    });
+    await expect(record(service)).resolves.toMatchObject({ chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" });
+  });
+
+  test("a session whose owner was deleted more than a day ago is refused", async () => {
+    const { service } = build({
+      session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(25) }
     });
     await expect(record(service)).rejects.toMatchObject({
       message: "Session retired too long ago to accept activity"

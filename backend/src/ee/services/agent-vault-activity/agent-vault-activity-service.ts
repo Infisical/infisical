@@ -22,7 +22,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { getAgentVaultProjectAuthority } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
+import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultActivityChunkDALFactory } from "./agent-vault-activity-chunk-dal";
 import { TAgentVaultActivityConfigDALFactory } from "./agent-vault-activity-config-dal";
 import {
@@ -130,15 +130,16 @@ export const agentVaultActivityServiceFactory = ({
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId: proxy.projectId });
     if (!session) throw sessionNotFound();
 
-    if (!session.userId && !session.identityId) {
-      throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
-    }
-
     const now = new Date();
-    const expiredAt = session.expiresAt && session.expiresAt <= now ? session.expiresAt.getTime() : null;
-    const revokedAt = session.revokedAt ? session.revokedAt.getTime() : null;
-    const retiredAt =
-      revokedAt !== null && expiredAt !== null ? Math.min(revokedAt, expiredAt) : (revokedAt ?? expiredAt);
+    // Deleting the owner nulls it through the FK, which fires the update trigger, so updatedAt is when it happened.
+    const retirements = [
+      session.revokedAt,
+      session.expiresAt && session.expiresAt <= now ? session.expiresAt : null,
+      isOwnerlessSession(session) ? session.updatedAt : null
+    ]
+      .filter((at): at is Date => Boolean(at))
+      .map((at) => at.getTime());
+    const retiredAt = retirements.length ? Math.min(...retirements) : null;
 
     if (retiredAt !== null && now.getTime() - retiredAt > AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS) {
       throw new UnauthorizedError({ message: "Session retired too long ago to accept activity" });

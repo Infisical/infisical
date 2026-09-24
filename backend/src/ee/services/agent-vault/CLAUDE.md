@@ -190,6 +190,8 @@ hostile input: it must never be able to erase or hide its own records.
 - **Write inserts the row, commits, then presigns a create-only PUT** (`If-None-Match: *`). Row first so a
   failed upload is a visible gap, presign after commit so no network runs under the config row lock,
   create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
+- **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
+  (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
 - **History pages order and cursor on `chunkId`** (a ULID, unique per session); split them and pages drop
   chunks. Live polling reads by our `createdAt` instead (`receivedAfter`, overlapping by
   `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS`), so repeats are expected and deduped by chunk id.
