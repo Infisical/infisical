@@ -29,5 +29,6 @@ export const AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS = 2 * 60_000;
 // Wire contract: the Go proxy (cli/packages/agentvault/activity.go) switches on these APIError.Name values.
 export const AgentVaultActivityErrorName = {
   CeilingReached: "AgentVaultActivityCeilingReached",
-  Disabled: "AgentVaultActivityDisabled"
+  Disabled: "AgentVaultActivityDisabled",
+  ClockSkew: "AgentVaultActivityClockSkew"
 } as const;

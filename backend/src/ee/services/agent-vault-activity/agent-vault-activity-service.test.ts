@@ -230,11 +230,6 @@ describe("recordChunk: semantic validation", () => {
       message: "Chunk startedAt is after its endedAt"
     },
     {
-      why: "endedAt is beyond the clock-skew allowance",
-      patch: { endedAt: new Date(Date.now() + 10 * 60_000) },
-      message: "Chunk endedAt is in the future. Check the proxy's clock"
-    },
-    {
       why: "the chunk is older than the maximum age",
       patch: {
         startedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
@@ -263,6 +258,14 @@ describe("recordChunk: semantic validation", () => {
     await expect(
       record(service, { ...validChunk(), firstSeq: 0, lastSeq: 999, recordCount: 42 })
     ).resolves.toBeTruthy();
+  });
+
+  test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
+    const { service, createIfAbsent } = build();
+    const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
+    await expect(refusal).rejects.toMatchObject({ name: AgentVaultActivityErrorName.ClockSkew });
+    await expect(refusal).rejects.toThrow(/about 10 minutes ahead/);
+    expect(createIfAbsent).not.toHaveBeenCalled();
   });
 
   test("a small clock skew forward is tolerated", async () => {

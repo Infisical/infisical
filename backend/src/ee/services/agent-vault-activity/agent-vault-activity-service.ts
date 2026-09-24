@@ -157,8 +157,12 @@ export const agentVaultActivityServiceFactory = ({
     if (chunk.startedAt > chunk.endedAt) {
       throw new BadRequestError({ message: "Chunk startedAt is after its endedAt" });
     }
-    if (chunk.endedAt.getTime() > now.getTime() + AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS) {
-      throw new BadRequestError({ message: "Chunk endedAt is in the future. Check the proxy's clock" });
+    const aheadMs = chunk.endedAt.getTime() - now.getTime();
+    if (aheadMs > AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS) {
+      throw new BadRequestError({
+        name: AgentVaultActivityErrorName.ClockSkew,
+        message: `This proxy's clock is about ${Math.round(aheadMs / 60_000)} minutes ahead of Infisical's. Its clock must be within ${AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS / 60_000} minutes for activity to be recorded`
+      });
     }
     if (now.getTime() - chunk.startedAt.getTime() > AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS) {
       throw new BadRequestError({ message: "Chunk is older than the maximum accepted age" });
