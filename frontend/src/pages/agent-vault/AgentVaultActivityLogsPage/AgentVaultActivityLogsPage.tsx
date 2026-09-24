@@ -31,8 +31,6 @@ export const AgentVaultActivityLogsPage = () => {
             title="Activity Logs"
             description="Record what your agents reached, and where those records are stored."
           />
-          {/* A sibling of the page header, so it sits in the page's own spacing exactly as the
-              same warning does on the sessions page, rather than tucked into the card column. */}
           <ActivityLoggingAlerts />
           <div className="flex flex-col gap-4">
             <ActivityLoggingSection />

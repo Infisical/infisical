@@ -18,7 +18,6 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 
-/** The permissions the connection's credentials need on the bucket, narrowed to the configured prefix. */
 export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
   const prefix = keyPrefix.replace(/^\/+|\/+$/g, "");
   const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${prefix ? `${prefix}/` : ""}*`;
@@ -43,7 +42,6 @@ export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
   );
 };
 
-/** Playback reads the objects from S3 directly, so the bucket has to allow this origin. */
 export const corsPolicyFor = (origin: string) =>
   JSON.stringify(
     [
@@ -59,7 +57,6 @@ export const corsPolicyFor = (origin: string) =>
     2
   );
 
-/** A numbered list of console steps. Local because nothing else in v3 renders one. */
 const Steps = ({ items }: { items: string[] }) => (
   <ol className="flex flex-col gap-1.5 text-xs text-muted">
     {items.map((item, index) => (
@@ -80,11 +77,6 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   bucket: string | null;
   keyPrefix: string | null;
-  /**
-   * The result of the CORS check the save just ran, or null when this was opened for reference.
-   * The dialog never probes on its own: a check that runs on every open stalls the dialog and
-   * reports a problem nobody was asking about.
-   */
   isCorsMissing?: boolean;
 };
 
@@ -97,8 +89,6 @@ export const AwsSetupDialog = ({
 }: Props) => {
   const [tab, setTab] = useState<TabValue>("policy");
 
-  // The component stays mounted while closed, so the opening tab is chosen here rather than by a
-  // default value: a reopen would otherwise keep whichever tab was left behind last time.
   useEffect(() => {
     if (isOpen) setTab(isCorsMissing ? "cors" : "policy");
   }, [isOpen, isCorsMissing]);
@@ -114,14 +104,9 @@ export const AwsSetupDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* space-y, not flex: as flex items the code blocks shrink to fit instead of overflowing, and
-          CodeBlock clips its own content, so the panel silently truncates rather than scrolling. */}
         <DialogBody className="space-y-4">
           <Tabs value={tab} onValueChange={(next) => setTab(next as TabValue)}>
             <TabsList variant="av">
-              {/* Not "bucket policy": this one carries no Principal, so it is an identity policy and
-                S3's bucket policy editor rejects it. Naming the wrong surface sent people to the
-                wrong console page and an error that does not explain itself. */}
               <TabsTrigger value="policy">1. IAM Policy</TabsTrigger>
               <TabsTrigger value="cors">2. CORS Rule</TabsTrigger>
             </TabsList>
@@ -165,7 +150,6 @@ export const AwsSetupDialog = ({
         </DialogBody>
 
         <DialogFooter>
-          {/* Two numbered steps, so step one advances rather than offering to close halfway. */}
           {tab === "policy" ? (
             <Button variant="av" type="button" onClick={() => setTab("cors")}>
               Next

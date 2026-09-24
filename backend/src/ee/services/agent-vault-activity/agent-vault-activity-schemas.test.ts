@@ -94,7 +94,6 @@ describe("the settings patch", () => {
     expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
   });
 
-  // Measured as stored, where normalisation adds a trailing slash: the column holds 512 characters.
   test.each([
     { value: "a".repeat(511), fits: true, why: "511 characters, 512 once the slash is added" },
     { value: `${"a".repeat(511)}/`, fits: true, why: "512 characters that already end in the slash" },

@@ -94,9 +94,6 @@ export const agentVaultSessionServiceFactory = ({
     const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
     const { token, tokenHash } = generateSessionToken();
 
-    // Always minted, even while activity logging is off, so turning it on later covers sessions that are
-    // already running. Deriving the project data key is a KMS round trip, so it stays outside the
-    // transaction below.
     const encryptedActivityKey = await wrapActivityKey({ projectId, activityKey: generateActivityKey() }, kmsService);
 
     const session = await agentVaultSessionDAL.transaction(async (tx) => {
@@ -171,14 +168,6 @@ export const agentVaultSessionServiceFactory = ({
     };
   };
 
-  /**
-   * Answers a single session so a link to one opens for anyone entitled to see it, whatever page,
-   * scope or filter they happen to be on.
-   *
-   * A session the caller may not see and a session that does not exist answer with the same
-   * NotFoundError, as revokeSession already does: distinguishing them would turn a shared link into
-   * a way of confirming that somebody else's session id is real.
-   */
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
     const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
@@ -186,8 +175,6 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    // A member is scoped to their own sessions in SQL, so another actor's simply does not match and
-    // falls into the same not-found branch below.
     const { sessions } = await agentVaultSessionDAL.findForList({
       projectId,
       sessionId,

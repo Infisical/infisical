@@ -13,7 +13,6 @@ import {
 } from "./agent-vault-activity-constants";
 import { normalizeKeyPrefix } from "./agent-vault-activity-storage";
 
-/** 12 raw bytes as unpadded base64. Fixed width, so a wrong-sized IV is a 422 rather than a decrypt failure. */
 const IvSchema = z
   .string()
   .regex(/^[A-Za-z0-9+/]{16}$/, "Must be 12 bytes of unpadded base64")
@@ -101,14 +100,9 @@ export const AgentVaultActivityConfigResponseSchema = z.object({
   config: AgentVaultActivityConfigViewSchema,
   isStorageFull: z.boolean().describe(AGENT_VAULT.ACTIVITY.isStorageFull),
   corsProbeUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl),
-  // Observed state rather than stored configuration, so it sits beside isStorageFull rather than in config.
   lastRecordedAt: z.date().nullable().describe(AGENT_VAULT.ACTIVITY.lastRecordedAt)
 });
 
-/**
- * A patch: an omitted field keeps its stored value. `appConnectionId: null` detaches the connection,
- * which is why it is nullable rather than merely optional.
- */
 export const AgentVaultActivityConfigUpdateSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.configEnabled),
@@ -120,7 +114,6 @@ export const AgentVaultActivityConfigUpdateSchema = z
       .trim()
       .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "May only contain letters, numbers and ! - _ . * ' ( ) /")
       .refine((v) => !v.split("/").includes(".."), "May not contain '..'")
-      // Measured as stored: the slash normalisation adds at the end counts, and one already there does not.
       .refine(
         (v) => normalizeKeyPrefix(v).length <= AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
         `May be at most ${AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH} characters, including the trailing slash`

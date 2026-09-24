@@ -293,23 +293,11 @@ export type TAgentVaultActivityConfig = {
 
 export type TAgentVaultActivityConfigResponse = {
   config: TAgentVaultActivityConfig;
-  /** The storage limit itself is internal, so only the fact that it has been reached is reported. */
   isStorageFull: boolean;
-  /**
-   * A presigned GET the browser fetches to prove the bucket allows cross-origin reads. Server-side
-   * validation cannot see a missing CORS rule, so without this an admin gets a green save and every
-   * Activity tab fails with an opaque network error.
-   */
   corsProbeUrl: string | null;
-  /** When a record last landed in the bucket currently configured. Null after a repoint, by design. */
   lastRecordedAt: string | null;
 };
 
-/**
- * Mirrors isIngestEnabled in the backend's agent-vault-activity-service: the switch is on and the row
- * actually points at a bucket. Callers must check the query has resolved first, since an absent config
- * reads as "not recording" and would flash a warning on every cold load.
- */
 export const isAgentVaultRecording = (config: TAgentVaultActivityConfig) =>
   Boolean(config.enabled && config.appConnectionId && config.bucket && config.region);
 
@@ -321,7 +309,6 @@ export type TUpdateAgentVaultActivityConfigDTO = {
   keyPrefix?: string;
 };
 
-/** One sealed chunk, as the read endpoint describes it. The bytes live in the customer's bucket. */
 export type TAgentVaultActivityChunk = {
   chunkId: string;
   proxyId: string;
@@ -335,7 +322,6 @@ export type TAgentVaultActivityChunk = {
   configVersion: number;
   ciphertextBytes: number;
   iv: string;
-  /** Null when the chunk predates a change of bucket, so it is no longer reachable. */
   presignedGetUrl: string | null;
 };
 
@@ -347,7 +333,6 @@ export type TAgentVaultActivityPage = {
   chunks: TAgentVaultActivityChunk[];
   nextCursor: string | null;
   hasMore: boolean;
-  /** Where the next read of what arrived picks up. Points a little behind this read, so repeats are expected. */
   nextReceivedAfter: string;
 };
 
@@ -365,7 +350,6 @@ export type TAgentVaultActivityRecord = {
   accessBundle: string | null;
 };
 
-/** Why a chunk could not be shown. Rendered as one placeholder row rather than failing the whole view. */
 export type TAgentVaultActivityGapReason =
   | "fetch"
   | "size"
@@ -383,7 +367,6 @@ export type TAgentVaultActivityGap = {
   recordCount: number;
 };
 
-/** A dropped-records marker, rebuilt from droppedCount rather than from any record. */
 export type TAgentVaultActivityDrop = {
   chunkId: string;
   proxyId: string;
@@ -392,16 +375,13 @@ export type TAgentVaultActivityDrop = {
   droppedCount: number;
 };
 
-/** What opening one chunk produced: its records, or why it cannot be shown. */
 export type TAgentVaultDecryptedChunk = {
   records: TAgentVaultActivityRecord[];
   gap: TAgentVaultActivityGap | null;
   drop: TAgentVaultActivityDrop | null;
-  /** When its records reached the sheet, or null when they came with the first load. */
   arrivedAt: number | null;
 };
 
-/** A page as the sheet holds it: the index the server sent, plus every chunk opened in the browser. */
 export type TAgentVaultDecryptedActivityPage = TAgentVaultActivityPage & {
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };

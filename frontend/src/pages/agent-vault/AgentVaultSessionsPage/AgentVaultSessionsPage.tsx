@@ -112,8 +112,6 @@ export const AgentVaultSessionsPage = () => {
       PreferenceKey.SessionScope,
       AgentVaultSessionScope.All
     );
-    // The browser keeps whatever was saved, including a value a later release no longer has, and the API
-    // refuses a scope it does not know.
     return Object.values(AgentVaultSessionScope).includes(stored)
       ? stored
       : AgentVaultSessionScope.All;
@@ -135,16 +133,11 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
-  // Admin-only: the config endpoint answers a member with a 403, and only an admin can act on it.
   const { data: activityConfig } = useGetAgentVaultActivityConfig(isAdmin);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
 
-  // The open session is always fetched by id, so it never depends on what the list is showing: a link
-  // opens whatever the viewer's page, scope and filter, and a refresh that moves the session off the page
-  // cannot unmount the sheet and throw away its search and filters. The list's copy fills in while that
-  // loads, and stays if the fetch fails.
   const loadedOpenSession = sessions.find((session) => session.id === openSessionId);
   const { data: fetchedOpenSession, isPending: isFetchingOpenSession } = useGetAgentVaultSession(
     openSessionId,
@@ -187,8 +180,6 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
-      {/* A limit only matters while recording is on, so "not recording" takes precedence. No link: the
-          Activity Logs page would only repeat this, and only Infisical support can raise the limit. */}
       {activityConfig?.isStorageFull && isAgentVaultRecording(activityConfig.config) && (
         <Alert variant="danger">
           <AlertDescription>
@@ -197,7 +188,6 @@ export const AgentVaultSessionsPage = () => {
         </Alert>
       )}
 
-      {/* Only once the config has loaded, or a healthy org sees this on every cold navigation. */}
       {activityConfig && !isAgentVaultRecording(activityConfig.config) && (
         <Alert variant="warning">
           <AlertDescription>
@@ -414,11 +404,8 @@ export const AgentVaultSessionsPage = () => {
                     <TableCell>
                       <SessionStatusBadge status={session.status} />
                     </TableCell>
-                    {/* The row opens the sheet, so the action cell keeps its click to itself. */}
                     <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
-                        {/* On every row, revoked and expired included: those are the timelines most
-                            worth reading, and the menu beside this one renders only while active. */}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <IconButton
@@ -455,9 +442,6 @@ export const AgentVaultSessionsPage = () => {
                           </DropdownMenu>
                         )}
                         {session.status !== AgentVaultSessionStatus.Active && (
-                          // Holds the menu's place. Revoke only applies to an active session, so
-                          // without this the activity button slides right on every other row and
-                          // the column stops lining up.
                           <span aria-hidden className="size-7 shrink-0" />
                         )}
                       </div>

@@ -20,7 +20,6 @@ const record = (seq: number): TAgentVaultActivityRecord => ({
   accessBundle: null
 });
 
-// Newest first, as the sheet shows them.
 const rows = (...seqs: number[]) => seqs.map(record);
 
 describe("findRowShift", () => {

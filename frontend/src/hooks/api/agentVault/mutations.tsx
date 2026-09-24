@@ -375,12 +375,8 @@ export const useUpdateAgentVaultActivityConfig = () => {
       return data;
     },
     onSuccess: (data) => {
-      // Seeded, not just invalidated: the sidebar dot and the sessions banner read this, and an
-      // invalidation only schedules a refetch, so without this they stay stale until it lands.
       queryClient.setQueryData(agentVaultKeys.activityConfig(currentOrg.id), data);
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.activityConfig(currentOrg.id) });
-      // A change of destination decides whether older chunks are still reachable, so any open timeline
-      // has to be re-read rather than left showing URLs that now 404.
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
     }
   });

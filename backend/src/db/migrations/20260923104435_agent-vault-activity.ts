@@ -13,10 +13,6 @@ export async function up(knex: Knex): Promise<void> {
 
       t.boolean("enabled").notNullable().defaultTo(false);
 
-      // Blocks deleting a connection that is in use, as every other product's connection link does:
-      // it is what reads recorded activity back, so losing it silently makes that history unreadable.
-      // Deferred like theirs, so deleting an org, which removes its projects and its connections in
-      // one statement, is checked only at commit.
       t.uuid("appConnectionId");
       t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection).deferrable("deferred");
 
@@ -47,9 +43,8 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId", 36).notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
-      // Deliberately not a foreign key. proxyId is an input to the encryption AAD, so a SET NULL on
-      // proxy deletion would make every chunk that proxy wrote permanently undecryptable. proxyName
-      // is denormalised for the same reason.
+      // Deliberately not a foreign key: proxyId is part of the encryption AAD, so a SET NULL on proxy
+      // deletion would make every chunk that proxy wrote undecryptable.
       t.string("proxyId", 36).notNullable();
       t.string("proxyName", 64);
 
@@ -68,19 +63,12 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("ciphertextBytes").notNullable();
       t.string("iv", 24).notNullable();
 
-      // Rows are immutable: createdAt only, no updatedAt and no trigger.
-      //
-      // Millisecond precision, because createdAt is also the cursor for reading what arrived since a moment,
-      // and that cursor round-trips through a JavaScript Date. At Postgres's default microseconds the Date
-      // would truncate it, and a read resuming from the last row it returned would keep matching that row.
+      // Millisecond precision: createdAt is a cursor that round-trips through a JS Date, which drops microseconds.
       t.timestamp("createdAt", { useTz: true, precision: 3 }).notNullable().defaultTo(knex.fn.now());
 
-      // Scoped to the session rather than a global unique on a proxy-minted id, so a foreign proxy
-      // cannot squat an id.
       t.unique(["sessionId", "chunkId"]);
 
       t.index(["sessionId", "startedAt"]);
-      // What a live view polls: a session's chunks in the order the server received them.
       t.index(["sessionId", "createdAt"]);
       t.index(["projectId"]);
     });

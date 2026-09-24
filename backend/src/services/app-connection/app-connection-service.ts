@@ -1123,9 +1123,6 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
-        // Named for this one dependent because it is the one whose owner may not be the person
-        // deleting: an org-level connection can back Agent Vault's activity logging, and whoever
-        // is deleting it from Integrations may never have opened Agent Vault.
         if ((err.error as { table?: string })?.table === TableName.AgentVaultActivityConfig) {
           throw new BadRequestError({
             message:

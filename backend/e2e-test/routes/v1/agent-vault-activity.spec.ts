@@ -30,14 +30,9 @@ const createAccessBundle = async (name: string) => {
 const mintSession = async (bundleName: string, ttl = "1h") => {
   const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundleName], ttl });
   expect(res.statusCode).toBe(200);
-  // The token is returned once, inside the session object, and never again.
   return (JSON.parse(res.payload) as { session: { id: string; token: string } }).session;
 };
 
-/**
- * A fresh machine identity rather than demoting the seeded admin: the project permission cache serves a
- * 10 second marker, so a role change made mid-test is not visible to the next request.
- */
 const createMemberIdentity = async (name: string) => {
   const created = await inject("POST", "/api/v1/identities", {
     name,
@@ -83,7 +78,6 @@ const createMemberIdentity = async (name: string) => {
   };
 };
 
-/** A self-signed CA, which is all enrollment checks: it records the fingerprint and never stores the PEM. */
 const generateRootCaPem = async () => {
   const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" } as const;
   const keys = await x509.cryptoProvider.get().subtle.generateKey(alg, false, ["sign", "verify"]);
@@ -99,10 +93,6 @@ const generateRootCaPem = async () => {
   return cert.toString("pem");
 };
 
-/**
- * A fully enrolled proxy, so the chunk endpoint is exercised the way the Go proxy reaches it: its own
- * auth mode, its own rate limit and the route's params, not just the service beneath them.
- */
 const createProxy = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/proxies", { name });
   expect(res.statusCode).toBe(200);
@@ -135,15 +125,12 @@ const createProxy = async (name: string) => {
   };
 };
 
-// Monotonic per test run so chunks sort the way the proxy's would.
 let ulidCounter = 0;
 const nextChunkId = () => {
   ulidCounter += 1;
   return `01K5${ulidCounter.toString().padStart(22, "0")}`.toUpperCase();
 };
 
-// Large enough to be plausible for ten records: the server rejects a chunk that claims more records
-// than its bytes could hold, because recordCount is what moves the organization's ceiling.
 const CHUNK_BYTES = 1024;
 
 const chunkBody = (overrides: Record<string, unknown> = {}) => ({
@@ -159,7 +146,6 @@ const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-/** Posts a chunk and asserts it was accepted, returning the upload url the proxy would PUT to. */
 const recordChunk = async (
   proxy: Awaited<ReturnType<typeof createProxy>>,
   sessionId: string,
@@ -187,11 +173,7 @@ describe("Agent Vault activity", async () => {
     connectionId = await createAwsAppConnection({ name: `activity-aws-${Date.now()}`, authToken: jwtAuthToken });
   });
 
-  /**
-   * These specs share one database and one seeded org, and this file sorts before agent-vault.spec.ts,
-   * which asserts the Agent Vault project bootstraps with no members. So everything created here is
-   * removed again, including the admin membership this file needs in order to reach the settings routes.
-   */
+  // This file sorts before agent-vault.spec.ts, which asserts the Agent Vault project bootstraps with no members.
   afterAll(async () => {
     await testDb("agent_vault_activity_chunks").where({ projectId }).del();
     await testDb("agent_vault_activity_configs").where({ projectId }).del();
@@ -219,8 +201,6 @@ describe("Agent Vault activity", async () => {
       };
       expect(body.config).toMatchObject({ enabled: false, bucket: null, appConnectionId: null, configVersion: 1 });
       expect(body.corsProbeUrl).toBeNull();
-      // The record ceiling is ours, so the response carries whether it has been reached and never the
-      // count or the limit itself.
       expect(body).toMatchObject({ isStorageFull: false });
       expect(body).not.toHaveProperty("usage");
     });
@@ -265,15 +245,12 @@ describe("Agent Vault activity", async () => {
         region: "us-east-1"
       });
 
-      // The bucket has since become unreachable, or its credentials were rotated away. Checking it
-      // on the way out would trap an admin in a configuration they are trying to switch off.
       fakeActivityStorage.failsValidationWith("Unable to reach bucket");
 
       const res = await saveConfig({ enabled: false });
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.payload).config.enabled).toBe(false);
 
-      // Turning it back on is still gated on the bucket actually working.
       expect((await saveConfig({ enabled: true })).statusCode).toBe(400);
     });
 
@@ -308,7 +285,6 @@ describe("Agent Vault activity", async () => {
 
       const whileOff = await saveConfig({ enabled: false, appConnectionId: null });
       expect(whileOff.statusCode).toBe(200);
-      // Only the credential goes. Re-attaching one that reaches the bucket makes the history readable again.
       expect(JSON.parse(whileOff.payload).config).toMatchObject({
         enabled: false,
         appConnectionId: null,
@@ -317,12 +293,6 @@ describe("Agent Vault activity", async () => {
       });
     });
 
-    /**
-     * The connection is re-checked whenever a save puts its credentials to a new use, and never when a
-     * save only stops using them. Changing the connection's type is the simplest way to make the check
-     * refuse it. Moving it to another project would not do: its credentials are encrypted under this
-     * project's key, so the check fails to decrypt them and answers 500 before it can refuse.
-     */
     test("a save that puts the connection to a new use checks it again; turning recording off does not", async () => {
       await saveConfig({
         enabled: true,
@@ -425,13 +395,11 @@ describe("Agent Vault activity", async () => {
       expect(row).toMatchObject({ chunkId: chunk.chunkId, proxyId: proxy.id, proxyName: proxy.name, recordCount: 10 });
       expect(row.objectKey).toMatch(/^logs\/.+\/\d{4}-\d{2}-\d{2}\/.+\.json\.enc$/);
 
-      // The row landed first: nothing is in the bucket until the proxy uploads.
       expect(fakeActivityStorage.objectKeys(BUCKET)).toEqual([]);
 
       fakeActivityStorage.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
       expect(fakeActivityStorage.objectKeys(BUCKET)).toEqual([row.objectKey]);
 
-      // The presign pins the length, so a proxy cannot reuse the url for a larger body.
       expect(() => fakeActivityStorage.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
     });
 
@@ -452,8 +420,6 @@ describe("Agent Vault activity", async () => {
 
       expect(await readLastRecordedAt()).not.toBeNull();
 
-      // A new bucket is a new generation, and the chunk above is in the old one. Reporting its
-      // timestamp here would claim a destination is working when nothing has reached it.
       await configure({ bucket: `${BUCKET}-moved` });
       expect(await readLastRecordedAt()).toBeNull();
     });
@@ -480,7 +446,7 @@ describe("Agent Vault activity", async () => {
       const second = await recordChunk(proxy, session.id, chunk);
 
       expect(second.chunkId).toBe(first.chunkId);
-      expect(second.uploadUrl).not.toBe(first.uploadUrl); // a fresh, unexpired url
+      expect(second.uploadUrl).not.toBe(first.uploadUrl);
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id }).count()).toEqual([
         { count: "1" }
       ]);
@@ -500,8 +466,6 @@ describe("Agent Vault activity", async () => {
       const stored = Buffer.alloc(CHUNK_BYTES, 1);
       fakeActivityStorage.put(first.uploadUrl, stored);
 
-      // The retry path hands out a new link, which is what lets a failed upload finish. It must not also let
-      // a proxy swap the stored bytes for something else.
       const second = await recordChunk(proxy, session.id, chunk);
       expect(() => fakeActivityStorage.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
 
@@ -520,7 +484,6 @@ describe("Agent Vault activity", async () => {
       const sharedId = nextChunkId();
       await recordChunk(proxyOne, sessionA.id, chunkBody({ chunkId: sharedId }));
       await recordChunk(proxyTwo, sessionA.id);
-      // The same chunk id under a different session is a different chunk, so a foreign proxy cannot squat one.
       await recordChunk(proxyTwo, sessionB.id, chunkBody({ chunkId: sharedId }));
 
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: sessionA.id })).toHaveLength(2);
@@ -579,14 +542,11 @@ describe("Agent Vault activity", async () => {
       expect(firstBody.activity.projectId).toBe(projectId);
       expect(Buffer.from(firstBody.activity.sessionKey!, "base64")).toHaveLength(32);
 
-      // Unwrapping derives the project data key, so a proxy that already holds it is not charged for it
-      // on every poll. Getting this backwards would silently stop all logging after the first poll.
       const second = await proxy.resolve(session.token, true);
       const secondBody = JSON.parse(second.payload) as { activity: { enabled: boolean; sessionKey: string | null } };
       expect(secondBody.activity.enabled).toBe(true);
       expect(secondBody.activity.sessionKey).toBeNull();
 
-      // The key is stable, so a proxy that lost its cache gets the same one back.
       const third = await proxy.resolve(session.token, false);
       expect(JSON.parse(third.payload).activity.sessionKey).toBe(firstBody.activity.sessionKey);
     });
@@ -615,7 +575,6 @@ describe("Agent Vault activity", async () => {
 
       const res = await proxy.resolve(session.token);
       expect(res.statusCode, res.payload).toBe(200);
-      // No claim to a cached key, so it is treated as not holding one.
       expect(Buffer.from(JSON.parse(res.payload).activity.sessionKey as string, "base64")).toHaveLength(32);
     });
   });
@@ -703,7 +662,6 @@ describe("Agent Vault activity", async () => {
       const { session } = await setup("user");
 
       const res = await inject("POST", `/api/v1/agent-vault/proxy/sessions/${session.id}/activity/chunks`, chunkBody());
-      // verifyAuth answers a wrong auth mode with 403, as it does on every proxy-only route.
       expect(res.statusCode).toBe(403);
     });
   });
@@ -755,11 +713,9 @@ describe("Agent Vault activity", async () => {
       expect(body.chunks).toHaveLength(3);
       expect(body.chunks.every((chunk) => chunk.proxyId === proxy.id)).toBe(true);
 
-      // Newest first.
       const ids = body.chunks.map((chunk) => chunk.chunkId);
       expect([...ids].sort().reverse()).toEqual(ids);
 
-      // Every url resolves to the object the proxy uploaded.
       body.chunks.forEach((chunk) => {
         expect(fakeActivityStorage.get(chunk.presignedGetUrl!)).toHaveLength(CHUNK_BYTES);
       });
@@ -771,8 +727,6 @@ describe("Agent Vault activity", async () => {
       const session = await mintSession(bundle.name);
       const proxy = await createProxy(`activity-range-${Date.now()}`);
 
-      // Three chunks an hour apart. chunkId is a ULID minted per post, so id order and startedAt
-      // order disagree here, which is exactly the case the cursor has to survive.
       const hour = 60 * 60 * 1000;
       const startedAts = [new Date(Date.now() - 3 * hour), new Date(Date.now() - 2 * hour), new Date()];
       for (const startedAt of startedAts) {
@@ -792,8 +746,6 @@ describe("Agent Vault activity", async () => {
       expect(body.chunks).toHaveLength(1);
       expect(new Date(body.chunks[0].startedAt).getTime()).toBe(startedAts[1].getTime());
 
-      // A chunk that merely overlaps the window counts: it began before `from` but holds records
-      // inside it. Matching on startedAt alone would drop it and lose those records silently.
       const straddling = await recordChunk(
         proxy,
         session.id,
@@ -812,7 +764,6 @@ describe("Agent Vault activity", async () => {
       );
       expect((JSON.parse(overlapping.payload) as { chunks: unknown[] }).chunks).toHaveLength(2);
 
-      // No window still returns every chunk, so the filter is additive rather than a new default.
       const all = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
       expect((JSON.parse(all.payload) as { chunks: unknown[] }).chunks).toHaveLength(4);
     });
@@ -821,8 +772,6 @@ describe("Agent Vault activity", async () => {
       await configure();
       const { session } = await seedChunks(5);
 
-      // limit is a record budget, and every seeded chunk holds 10 records, so 20 buys two chunks.
-      // Chunks come back whole, so a page can overshoot the budget but never splits one.
       const budget = 20;
 
       const first = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity?limit=${budget}`);
@@ -836,7 +785,6 @@ describe("Agent Vault activity", async () => {
       );
       const secondBody = JSON.parse(second.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
       expect(secondBody.chunks).toHaveLength(2);
-      // The pages do not overlap.
       expect(secondBody.chunks.map((c) => c.chunkId)).not.toContain(firstBody.chunks[1].chunkId);
 
       const third = await inject(
@@ -854,8 +802,6 @@ describe("Agent Vault activity", async () => {
       const session = await mintSession(bundle.name);
       const proxy = await createProxy(`activity-bytes-${Date.now()}`);
 
-      // One record each, but as large as the server accepts. By records alone all three fit the default
-      // page, and the viewer would download them together. Nothing is uploaded: a read only presigns.
       for (let i = 0; i < 3; i += 1) {
         // eslint-disable-next-line no-await-in-loop
         await recordChunk(
@@ -872,12 +818,6 @@ describe("Agent Vault activity", async () => {
       expect(body.hasMore).toBe(true);
     });
 
-    /**
-     * The page is ordered and cursored on the same column, so no row can fall between two pages. This
-     * broke when the query ordered by startedAt and filtered on chunkId: a chunk sealed late but
-     * covering an early window sorts differently under the two, and the cursor dropped it for good.
-     * The short page then read as the end of the session, which is the worst failure an audit log has.
-     */
     test("pages cover every chunk when seal order and record order disagree", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-order-${Date.now()}`);
@@ -887,8 +827,6 @@ describe("Agent Vault activity", async () => {
 
       const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
 
-      // Interleaved on purpose: the chunk ids ascend with the order they are written, while startedAt
-      // descends, so the two orderings are exact opposites.
       const written: string[] = [];
       for (let i = 0; i < 6; i += 1) {
         const startedAt = hoursAgo(i + 1);
@@ -926,11 +864,6 @@ describe("Agent Vault activity", async () => {
       nextReceivedAfter: string;
     };
 
-    /**
-     * What a live view polls. A chunk from a proxy whose clock runs behind carries an id that sorts among
-     * old chunks, so a page only reaches it at the end of the session; reading by arrival returns it on
-     * the next poll.
-     */
     test("reading by arrival returns a late chunk that a page would sort among old ones", async () => {
       await configure();
       const { session, proxy } = await seedChunks(3);
@@ -940,7 +873,6 @@ describe("Agent Vault activity", async () => {
       expect(firstBody.chunks).toHaveLength(2);
       expect(new Date(firstBody.nextReceivedAfter).getTime()).toBeLessThanOrEqual(Date.now());
 
-      // Every id the spec mints starts 01K5, so this one sorts below all of them.
       const late = await recordChunk(proxy, session.id, chunkBody({ chunkId: `01K4${"0".repeat(21)}1` }));
       fakeActivityStorage.put(late.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
@@ -955,7 +887,6 @@ describe("Agent Vault activity", async () => {
       const body = JSON.parse(received.payload) as TReceivedBody;
       const ids = body.chunks.map((c) => c.chunkId);
 
-      // Oldest received first, and the overlap hands back the chunks the first read already returned.
       expect(ids[ids.length - 1]).toBe(late.chunkId);
       expect(ids).toEqual(expect.arrayContaining(firstBody.chunks.map((c) => c.chunkId)));
       expect(body.nextCursor).toBeNull();
@@ -966,7 +897,6 @@ describe("Agent Vault activity", async () => {
       await configure();
       const { session } = await seedChunks(3);
 
-      // Each seeded chunk holds 10 records, so a budget of 10 returns one new chunk per read.
       let receivedAfter = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const seen = new Set<string>();
       let reads = 0;
@@ -1074,10 +1004,6 @@ describe("Agent Vault activity", async () => {
         .where({ id: sessionId })
         .update({ revokedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000) });
 
-    /**
-     * A session's row holds the key that decrypts its activity, and its chunk rows cascade with it. The
-     * daily prune deleting one that recorded activity would leave every object it wrote unreadable.
-     */
     test("the daily prune keeps a retired session that recorded activity, and removes one that did not", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-prune-${Date.now()}`);

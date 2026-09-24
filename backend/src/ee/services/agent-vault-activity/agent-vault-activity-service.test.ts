@@ -63,7 +63,6 @@ type TOverrides = {
   config?: unknown;
   storedAfterIncrement?: number;
   createThrows?: unknown;
-  /** The session already holds a chunk with this id, so the insert does nothing. */
   isReplay?: boolean;
   existingChunk?: unknown;
 };
@@ -85,7 +84,6 @@ const build = (overrides: TOverrides = {}) => {
     agentVaultActivityChunkDAL: {
       createIfAbsent,
       findOne: findChunk,
-      // Runs the callback inline and lets a throw propagate, exactly as knex does.
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
       findForSessionPage: vi.fn(async () => []),
       countForSession: vi.fn(async () => 0)
@@ -131,8 +129,6 @@ describe("recordChunk: who is allowed to write", () => {
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
     expect(recordStoredChunk).toHaveBeenCalledWith({ id: "cfg-1", configVersion: 3 }, expect.anything());
 
-    // The proxy names neither of these, so a compromised proxy cannot choose where its bytes land or
-    // claim the chunk was written under an older configuration.
     const values = createIfAbsent.mock.calls[0][0];
     expect(String(values.objectKey)).toMatch(
       /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5ABCDEFGHJKMNPQRSTVWXYZ\.json\.enc$/
@@ -183,7 +179,6 @@ describe("recordChunk: the retirement grace window", () => {
   });
 
   test("retirement is the earlier of revoked and expired, so a long-expired session stays closed", async () => {
-    // Revoked a minute ago but expired a week ago: the session stopped being usable a week ago.
     const { service } = build({
       session: { ...liveSession(), revokedAt: new Date(Date.now() - 60_000), expiresAt: hoursAgo(24 * 7) }
     });
@@ -263,8 +258,6 @@ describe("recordChunk: semantic validation", () => {
   });
 
   test("refuses a chunk claiming more records than its bytes could hold", async () => {
-    // recordCount sizes a viewer's pages and is what a gap reports, so a proxy must not be able to claim
-    // it independently of the bytes it actually wrote.
     const { service, createIfAbsent } = build();
     await expect(
       record(service, { ...validChunk(), firstSeq: 0, lastSeq: 999, recordCount: 1000, ciphertextBytes: 64 })
@@ -285,8 +278,6 @@ describe("recordChunk: the organization ceiling", () => {
   });
 
   test("the refusal is thrown from inside the transaction, so the row is rolled back with it", async () => {
-    // The insert ran, but the throw leaves the transaction to undo it. If this ever threw before the
-    // insert, or after the commit, the counter and the rows would drift apart.
     const { service, createIfAbsent, recordStoredChunk } = build({ storedAfterIncrement: CEILING + 1 });
     await expect(record(service)).rejects.toThrow();
     expect(createIfAbsent).toHaveBeenCalledTimes(1);
@@ -318,12 +309,10 @@ describe("recordChunk: re-sending a chunk", () => {
 
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
-    // Read on the transaction, not a replica that may not have caught up with the row it conflicted with.
     expect(findChunk).toHaveBeenCalledWith(
       { sessionId: "sess-1", chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ" },
       expect.anything()
     );
-    // The insert did nothing, so the replay adds nothing. The first POST is what counted these records.
     expect(recordStoredChunk).not.toHaveBeenCalled();
   });
 
@@ -352,7 +341,6 @@ describe("recordChunk: re-sending a chunk", () => {
 });
 
 describe("updateActivityConfig: when the connection is checked again", () => {
-  // Admin is all the permission mock ever answers; the connection check itself is what is under test.
   const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
   const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 

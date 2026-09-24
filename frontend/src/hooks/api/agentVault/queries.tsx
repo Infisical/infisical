@@ -35,26 +35,12 @@ export const fetchAgentVaultProjectId = async () => {
 
 // Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
-/**
- * Records per page, not chunks. A chunk holds 1 to 1000 depending on how busy the agent was, so
- * asking for chunks makes the page size, and the browser's load, depend on the agent's pace.
- */
 const ACTIVITY_PAGE_RECORDS = 200;
 
-/**
- * Records per read of what arrived. Larger than a page, so a tab back from the background catches up in a
- * read or two rather than one small read per poll.
- */
 const ACTIVITY_LIVE_RECORDS = 1000;
 
-/** Reads one poll may chain while a backlog drains. Whatever is left waits for the next poll. */
 const ACTIVITY_LIVE_MAX_READS = 10;
 
-/**
- * 15s, not PAM's 5s. PAM tails a live terminal, where something new lands between any two ticks. Here the
- * proxy buffers for about a minute before it ships, so a chunk arrives every minute or two and a faster
- * poll mostly asks for nothing.
- */
 const ACTIVITY_LIVE_POLL_MS = 15_000;
 
 export const agentVaultKeys = {
@@ -245,14 +231,6 @@ export const useGetAgentVaultActivityConfig = (enabled = true) => {
   });
 };
 
-/**
- * One session by id, so a link to a timeline opens whatever page, scope or filter the viewer is on.
- *
- * Fetched whenever a sheet is open, even for a session the list already holds: the list refreshes, and a
- * session that moves off the current page must not take the open sheet with it. The endpoint answers the
- * same 404 for a session that does not exist and one the viewer may not see, so there is nothing to tell
- * apart here.
- */
 export const useGetAgentVaultSession = (sessionId: string | undefined, enabled = true) => {
   const { currentOrg } = useOrganization();
 
@@ -265,24 +243,11 @@ export const useGetAgentVaultSession = (sessionId: string | undefined, enabled =
       return data.session;
     },
     enabled: enabled && Boolean(sessionId),
-    // Matches the list query beside it. Status is derived from the clock, so a sheet left open on an
-    // active session has to notice it expiring: without this the header keeps saying Active and the
-    // activity tab keeps claiming Live, on a session that stopped working.
     refetchInterval: 30_000,
     retry: false
   });
 };
 
-/**
- * A session's activity, in two queries: older pages, loaded once each as the viewer scrolls, and a poll for
- * what arrives while the sheet is open. Each fetch decrypts its own chunks, so loading, cancelling and
- * retrying are React Query's state rather than something the sheet tracks alongside it.
- *
- * The poll is its own query on purpose. Polling the pages re-fetched every page held, so the cost grew
- * with each page opened, and every new chunk shifted each page boundary down, dropping rows off the
- * bottom. Writing arrivals into the pages' cache instead races "load more", which saves the pages it
- * started from over anything written in the meantime.
- */
 export const useGetAgentVaultSessionActivity = (
   sessionId: string | undefined,
   {
@@ -295,13 +260,10 @@ export const useGetAgentVaultSessionActivity = (
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
 
-  // Serialised into the key, so narrowing the window starts a fresh page one rather than appending
-  // to the pages fetched for the previous one.
   const range = { from: from?.toISOString(), to: to?.toISOString() };
   const url = `/api/v1/agent-vault/sessions/${sessionId}/activity`;
 
-  // Swapped during render, so neither query below fetches a new session into the old one's cache. Shared
-  // by both, so a chunk the poll opened is not downloaded again when a page lists it.
+  // Reset during render so neither query fetches a new session into the old one's cache.
   const chunkCache = useRef<TAgentVaultActivityChunkCache | null>(null);
   if (!chunkCache.current || chunkCache.current.sessionId !== sessionId) {
     chunkCache.current = createActivityChunkCache(sessionId ?? "");
@@ -325,20 +287,13 @@ export const useGetAgentVaultSessionActivity = (
       return decryptActivityPage(data, cache, signal);
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    // Narrowing the time range changes the key, and without this the query drops to `pending` with
-    // no data. The tab's loading branch then unmounts the whole filter row, so the date picker loses
-    // the range it is displaying and remounts on its own default. Only within one session: another
-    // session's rows shown under this one's header would be wrong in a way no loading state covers.
     placeholderData: (prev, prevQuery) =>
       sessionId && prevQuery?.queryKey.includes(sessionId) ? prev : undefined,
     staleTime: 0,
-    // Pages carry decrypted plaintext, so they go the moment nothing shows them rather than after
-    // the default five minutes.
+    // Pages hold decrypted plaintext, so drop them as soon as nothing observes them.
     gcTime: 0
   });
 
-  // Picks up where the first page's read left off. Never from a placeholder, which belongs to the
-  // previous range.
   const receivedFrom = history.isPlaceholderData
     ? undefined
     : history.data?.pages[0]?.nextReceivedAfter;
@@ -347,7 +302,6 @@ export const useGetAgentVaultSessionActivity = (
   const live = useQuery({
     queryKey: liveKey,
     enabled: enabled && isLive && Boolean(sessionId) && Boolean(receivedFrom),
-    // Accumulates: each poll folds what arrived into everything the earlier polls returned.
     queryFn: async ({ signal }) => {
       const cache = chunkCache.current as TAgentVaultActivityChunkCache;
       let arrived = queryClient.getQueryData<TAgentVaultDecryptedActivityPage>(liveKey);
@@ -371,7 +325,5 @@ export const useGetAgentVaultSessionActivity = (
     gcTime: 0
   });
 
-  // Kept after the poll stops, so a session that expires with the sheet open does not lose the rows that
-  // arrived while it was watched.
   return { history, arrived: live.data };
 };

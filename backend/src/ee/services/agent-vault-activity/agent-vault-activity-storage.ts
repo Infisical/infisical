@@ -16,16 +16,11 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-activity-constants";
 import { TResolvedActivityStorageConfig } from "./agent-vault-activity-types";
 
-/** Trailing slash included when non-empty, so callers can concatenate without branching. */
 export const normalizeKeyPrefix = (keyPrefix?: string | null) => {
   const trimmed = (keyPrefix ?? "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
   return trimmed ? `${trimmed}/` : "";
 };
 
-/**
- * The date segment exists so a customer can attach their own S3 lifecycle rule. Infisical adds none, and
- * never deletes an object itself.
- */
 export const buildActivityObjectKey = ({
   keyPrefix,
   projectId,
@@ -45,7 +40,6 @@ export const buildActivityObjectKey = ({
   return `${normalizeKeyPrefix(keyPrefix)}${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`;
 };
 
-/** Null when the row is not pointed at a bucket yet. Callers treat that as "activity is off". */
 export const resolveStorageConfig = (
   config: Pick<TAgentVaultActivityConfigs, "appConnectionId" | "bucket" | "region" | "keyPrefix">
 ): TResolvedActivityStorageConfig | null => {
@@ -58,13 +52,8 @@ export const resolveStorageConfig = (
   };
 };
 
-/**
- * The upload link a proxy PUTs one chunk to. Two headers are signed in, so the uploader must send them and
- * S3 enforces both. ContentLength means the link is not a blank cheque: it cannot carry more than the chunk
- * declared. If-None-Match makes it create-only: a re-POST of a chunk id mints a fresh link for the same key,
- * which is what lets a failed upload be retried, and without this a proxy could use that link to replace a
- * chunk already stored. S3 answers 412 instead, which the proxy reads as "already uploaded".
- */
+// Both headers are signed so S3 enforces them: the link cannot carry more than the declared size, and
+// If-None-Match stops a link re-minted for a retried chunk from overwriting one already stored.
 export const presignActivityPut = (
   client: S3Client,
   { bucket, objectKey, ciphertextBytes }: { bucket: string; objectKey: string; ciphertextBytes: number }
@@ -91,13 +80,6 @@ type TStorageDeps = {
 
 export type TAgentVaultActivityStorage = Awaited<ReturnType<typeof buildActivityStorage>>;
 
-/**
- * Builds an S3 client for a project's configured bucket.
- *
- * orgId is required, not optional: every caller reaches this with an id that came off a row rather than
- * from the request, and asserting the connection belongs to the same org is what stops a stored
- * appConnectionId from reaching across tenants after the config was written.
- */
 export const buildActivityStorage = async (
   config: TResolvedActivityStorageConfig,
   orgId: string,
@@ -139,11 +121,6 @@ export const buildActivityStorage = async (
       expiresIn: AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS
     });
 
-  /**
-   * A presigned GET on an object that is never written. S3 answers a matching CORS rule with the CORS
-   * headers even on a 404, and fetch only rejects when the rule is missing, so this detects the one
-   * misconfiguration server-side validation cannot see.
-   */
   const mintCorsProbeUrl = async () => presignGet(`${normalizeKeyPrefix(keyPrefix)}.cors-probe`);
 
   const validate = async () => {
@@ -156,8 +133,6 @@ export const buildActivityStorage = async (
       });
     }
 
-    // One fixed key, overwritten on every save and never deleted: Infisical holds no delete permission on
-    // the bucket, so a key per save would leave one behind each time.
     const testKey = `${normalizeKeyPrefix(keyPrefix)}.test/write-check`;
     try {
       await client.send(

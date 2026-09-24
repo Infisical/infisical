@@ -2,19 +2,6 @@ import crypto from "node:crypto";
 
 import { describe, expect, test } from "vitest";
 
-/**
- * The wire contract for a sealed activity chunk, pinned so three implementations cannot drift:
- * the Go proxy seals (cli/packages/agentvault/activity_crypto.go) and the browser opens
- * (frontend/src/hooks/api/agentVault/activityDecrypt.ts). Infisical itself never seals or opens one,
- * which is why this lives in a test rather than in src.
- *
- * Layout: AES-256-GCM, a random 12-byte IV carried beside the object as unpadded base64, and the
- * 16-byte tag appended to the ciphertext. That is what Web Crypto's `encrypt` returns natively and
- * what Go's `gcm.Seal` produces, so neither side has to split or splice the tag.
- *
- * Additional authenticated data binds a chunk to exactly one place in the hierarchy, so a chunk cannot
- * be replayed under another session, project or proxy even by someone holding the key.
- */
 const AAD_VERSION = "v1";
 
 const buildAad = ({
@@ -97,10 +84,7 @@ describe("the sealed chunk wire contract", () => {
     expect(() => open(KEY, IV, buildAad(CONTEXT), sealed)).toThrow();
   });
 
-  /**
-   * The cross-repo fixture. Go's TestSealMatchesNodeVector and the browser decrypt path both use these
-   * exact bytes, so a change to the AAD string, the IV width or the tag placement fails here first.
-   */
+  // Go's TestSealMatchesNodeVector and the browser decrypt path both use these exact bytes.
   test("matches the pinned vector the Go proxy and the browser are checked against", () => {
     expect(buildAad(CONTEXT).toString("hex")).toBe("ba75c71ef714535e84246066ca0a34685c42a03a130dd92fe1d795ad40908a7c");
     expect(IV.toString("base64").replace(/=+$/, "")).toBe("qrvM3e7/ABEiM0RV");

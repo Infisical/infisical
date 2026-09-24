@@ -12,8 +12,6 @@ export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
   await server.register(registerAgentVaultProjectRouter, { prefix: "/project" });
   await server.register(registerAgentVaultAccessBundleRouter, { prefix: "/access-bundles" });
   await server.register(registerAgentVaultSessionRouter, { prefix: "/sessions" });
-  // A second plugin on the same prefix. The session router declares no hooks and no conflicting route,
-  // so this keeps activity out of a file that is already long without inventing a new URL shape.
   await server.register(registerAgentVaultActivityRouter, { prefix: "/sessions" });
   await server.register(registerAgentVaultActivityConfigRouter, { prefix: "/activity" });
   await server.register(registerAgentVaultAppConnectionRouter, { prefix: "/app-connections" });

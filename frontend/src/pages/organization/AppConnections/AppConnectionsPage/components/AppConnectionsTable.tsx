@@ -336,8 +336,6 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                 <Button
                   variant={scopeVariant}
                   onClick={() => {
-                    // Agent Vault allows one app type, so the provider picker would be a search box
-                    // and two section headings over a single card. Go straight to its form.
                     if (isAgentVaultView) setPresetApp(AppConnection.AWS);
                     handlePopUpOpen("addConnection");
                   }}

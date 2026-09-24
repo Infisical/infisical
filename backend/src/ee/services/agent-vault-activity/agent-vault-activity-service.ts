@@ -79,15 +79,6 @@ export const agentVaultActivityServiceFactory = ({
 }: TAgentVaultActivityServiceFactoryDep) => {
   const $storageDeps = { appConnectionDAL, kmsService };
 
-  /**
-   * Building a storage client decrypts the app connection and, for the assume-role method, makes a live
-   * STS call. The write path runs once per chunk per session per proxy, so building one per request
-   * would put an AssumeRole in front of every flush and be throttled long before the rate limit is.
-   *
-   * The key carries every field that decides where bytes land or which credentials reach them, so a
-   * settings change is picked up on the next request rather than waiting out the TTL. The TTL is what
-   * bounds how long rotated credentials on an unchanged connection stay in use.
-   */
   const storageCache = new Map<string, { storage: TAgentVaultActivityStorage; expiresAt: number }>();
 
   const $getStorage = async (config: TResolvedActivityStorageConfig, orgId: string) => {
@@ -98,8 +89,6 @@ export const agentVaultActivityServiceFactory = ({
     const storage = await buildActivityStorage(config, orgId, $storageDeps);
     storageCache.set(key, { storage, expiresAt: Date.now() + AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS });
 
-    // Bounded by the number of distinct destinations an instance serves, which is one per project, but
-    // cleared wholesale rather than tracked so a long-lived process cannot grow without limit.
     if (storageCache.size > 512) {
       for (const [entryKey, entry] of storageCache) {
         if (entry.expiresAt <= Date.now()) storageCache.delete(entryKey);
@@ -109,8 +98,6 @@ export const agentVaultActivityServiceFactory = ({
     return storage;
   };
 
-  // node-postgres hands back int8 as a string, and no type parser is registered, so every bigint column
-  // is coerced before it reaches a response schema that declares a number.
   const toCount = (value: number | string) => Number(value);
 
   const toConfigView = (config: TAgentVaultActivityConfigs) => ({
@@ -122,7 +109,6 @@ export const agentVaultActivityServiceFactory = ({
     configVersion: config.configVersion
   });
 
-  /** Ingest is on only when the switch is on *and* the row actually points at a bucket. */
   const isIngestEnabled = (config?: TAgentVaultActivityConfigs) =>
     Boolean(config?.enabled && resolveStorageConfig(config));
 
@@ -135,13 +121,7 @@ export const agentVaultActivityServiceFactory = ({
     }
   };
 
-  /**
-   * Written by the proxy on every flush. Not audited: once a minute per session per proxy would swamp the
-   * audit table, exactly as resolve would.
-   */
   const recordChunk = async ({ proxyId, sessionId, chunk }: TRecordChunkDTO) => {
-    // One message for a missing proxy, a missing session and a session in another project, so a proxy
-    // cannot use this endpoint to discover which session ids exist elsewhere.
     const sessionNotFound = () => new NotFoundError({ message: "Session not found" });
 
     const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
@@ -151,7 +131,6 @@ export const agentVaultActivityServiceFactory = ({
     if (!session) throw sessionNotFound();
 
     if (!session.userId && !session.identityId) {
-      // Resolve already refuses these, and the actor's deletion time is unknown, so no grace is computable.
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
     }
 
@@ -161,8 +140,6 @@ export const agentVaultActivityServiceFactory = ({
     const retiredAt =
       revokedAt !== null && expiredAt !== null ? Math.min(revokedAt, expiredAt) : (revokedAt ?? expiredAt);
 
-    // A chunk recorded during a revoked session's grace window is legitimate, and a day of slack covers a
-    // proxy retrying through an outage.
     if (retiredAt !== null && now.getTime() - retiredAt > AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS) {
       throw new UnauthorizedError({ message: "Session retired too long ago to accept activity" });
     }
@@ -176,8 +153,6 @@ export const agentVaultActivityServiceFactory = ({
       });
     }
 
-    // Semantic checks zod cannot express. The proxy treats these as poison and drops the chunk, so each
-    // one has to be a genuine impossibility rather than a transient disagreement.
     if (chunk.startedAt > chunk.endedAt) {
       throw new BadRequestError({ message: "Chunk startedAt is after its endedAt" });
     }
@@ -193,7 +168,6 @@ export const agentVaultActivityServiceFactory = ({
     if (chunk.lastSeq - chunk.firstSeq + 1 < chunk.recordCount) {
       throw new BadRequestError({ message: "Chunk holds more records than its sequence range allows" });
     }
-    // recordCount cannot be claimed independently of the bytes actually written. See the constant.
     if (chunk.ciphertextBytes < chunk.recordCount * AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD) {
       throw new BadRequestError({ message: "Chunk is too small to hold the number of records it claims" });
     }
@@ -222,8 +196,6 @@ export const agentVaultActivityServiceFactory = ({
       );
 
       if (!created) {
-        // A re-POST of a chunk whose PUT failed. Already counted, so it must not count again. Read on
-        // the same transaction, which is the primary: a replica can lag the write it conflicted with.
         const existing = await agentVaultActivityChunkDAL.findOne(
           { sessionId: session.id, chunkId: chunk.chunkId },
           tx
@@ -234,15 +206,11 @@ export const agentVaultActivityServiceFactory = ({
         return existing;
       }
 
-      // Takes the config row's lock, so concurrent inserts serialise and each reads its own true total.
       const stored = await agentVaultActivityConfigDAL.recordStoredChunk(
         { id: config.id, configVersion: config.configVersion },
         tx
       );
       if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS) {
-        // Rolls the insert back with it, so refusing costs nothing and stays refusable next time.
-        // The ceiling is ours rather than the customer's, so neither the number nor a way to change
-        // it belongs in a message that lands in their proxy's logs.
         throw new BadRequestError({
           name: AgentVaultActivityErrorName.CeilingReached,
           message: "Activity logging has reached its limit for this organization. Contact Infisical support."
@@ -251,8 +219,6 @@ export const agentVaultActivityServiceFactory = ({
       return created;
     });
 
-    // After commit, deliberately: presigning is a network-shaped operation and must not run under the
-    // config row's lock. A failure here is a 500 the proxy retries onto the idempotent path above.
     const activityStorage = await $getStorage(storage, proxy.orgId);
     const uploadUrl = await activityStorage.presignPut({
       objectKey: row.objectKey,
@@ -276,7 +242,6 @@ export const agentVaultActivityServiceFactory = ({
     to,
     receivedAfter
   }: TGetSessionActivityDTO) => {
-    // Taken before the read, so nothing the read could have missed is ahead of it.
     const readAt = Date.now();
 
     if (receivedAfter && (before || from || to)) {
@@ -295,8 +260,6 @@ export const agentVaultActivityServiceFactory = ({
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    // The CASL read action alone would let any member read anyone's activity. 404, not 403, per the
-    // module's rule that an ungranted id never confirms it exists.
     if (!isSessionOwnedBy(ctx, session) && !isAdmin) {
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
@@ -317,8 +280,6 @@ export const agentVaultActivityServiceFactory = ({
       nextReceivedAfter: caughtUpTo
     };
 
-    // No storage at all means nothing was ever written and nothing can be read. `enabled: false` is about
-    // ingest; chunks written before the switch was turned off are still served below.
     if (!config || !storage) return empty;
 
     const { chunks: rows, hasMore } = receivedAfter
@@ -339,9 +300,6 @@ export const agentVaultActivityServiceFactory = ({
           to
         });
 
-    // A read cut short resumes from its last chunk, so a backlog is worked through rather than re-read. One
-    // that reached the end steps back by the overlap instead, for chunks written before it that were not
-    // yet visible to it.
     const nextReceivedAfter = receivedAfter && hasMore ? rows[rows.length - 1].createdAt : caughtUpTo;
     const continuation = { hasMore, nextReceivedAfter };
 
@@ -350,8 +308,6 @@ export const agentVaultActivityServiceFactory = ({
     }
 
     if (!session.encryptedActivityKey) {
-      // Minted before this feature shipped. Chunks cannot exist for it, but be explicit rather than
-      // handing the browser rows it has no key for.
       logger.warn(`agentVaultActivity: session has chunks but no activity key [sessionId=${sessionId}]`);
       return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
     }
@@ -376,8 +332,6 @@ export const agentVaultActivityServiceFactory = ({
         configVersion: row.configVersion,
         ciphertextBytes: row.ciphertextBytes,
         iv: row.iv,
-        // A chunk written under an earlier configuration lives in a bucket we are no longer pointed at.
-        // Presigning it would hand the browser a URL that 404s, so the UI is told instead.
         presignedGetUrl:
           row.configVersion === config.configVersion ? await activityStorage.presignGet(row.objectKey) : null
       }))
@@ -389,7 +343,6 @@ export const agentVaultActivityServiceFactory = ({
       projectId,
       configVersion: config.configVersion,
       chunks,
-      // Only a page going back through the session has older chunks to page to.
       nextCursor: hasMore && !receivedAfter ? rows[rows.length - 1].chunkId : null,
       ...continuation
     };
@@ -423,8 +376,6 @@ export const agentVaultActivityServiceFactory = ({
         const activityStorage = await $getStorage(storage, ctx.actorOrgId);
         corsProbeUrl = await activityStorage.mintCorsProbeUrl();
       } catch (error) {
-        // A settings page that cannot be opened because the bucket went away is worse than one that opens
-        // without its probe. The form still renders and the admin can repoint it.
         logger.warn(error, `agentVaultActivity: could not mint CORS probe url [projectId=${projectId}]`);
       }
     }
@@ -458,13 +409,8 @@ export const agentVaultActivityServiceFactory = ({
       keyPrefix: patch.keyPrefix === undefined ? (current.keyPrefix ?? null) : normalizeKeyPrefix(patch.keyPrefix)
     };
 
-    // Checked whenever this save puts the connection's credentials to a new use: a different connection,
-    // a different destination, or recording turned on. The check resolves the id through the app
-    // connection service's own org, type and project-availability checks and asks whether this caller
-    // may use it, so skipping it on a destination change would let an admin who may not use a connection
-    // point it at a bucket of their choosing. Never on a save that only stops using it or leaves the
-    // destination alone: a connection that has since become unusable must not stop anyone turning
-    // recording off.
+    // Any new use of the connection is revalidated, destination changes included, or an admin who may not use
+    // it could point it at their own bucket. Never on turn-off: that must work even with a broken connection.
     const usesConnectionAnew =
       next.appConnectionId !== current.appConnectionId ||
       next.bucket !== (current.bucket ?? null) ||
@@ -500,25 +446,13 @@ export const agentVaultActivityServiceFactory = ({
       }
     }
 
-    // Only the bucket and the prefix decide where an object lives. Swapping the connection or correcting
-    // the region leaves every existing object exactly where it is, and bumping on those would mark
-    // readable history as unreachable.
-    // Both prefixes go through normalizeKeyPrefix before they are compared. next.keyPrefix is already
-    // normalized, so a stored null (a config created through the API without a prefix) would otherwise
-    // read as a move the first time the config dialog saves "", bumping configVersion and marking
-    // every existing chunk unreachable when nothing had moved.
+    // Both sides normalised: a stored null prefix and a saved "" must not read as a move and bump configVersion.
     const relocated =
       Boolean(existing) &&
       (next.bucket !== (current.bucket ?? null) ||
         normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix));
 
-    // Only reached for a destination that is about to be used. Recording off means the bucket is
-    // not going to be written to, so checking it buys nothing and can do real harm: a bucket that
-    // has since become unreachable, or a connection whose credentials were rotated, would fail the
-    // check and leave an admin unable to turn recording off at all.
     const storage = next.enabled ? resolveStorageConfig(next) : null;
-    // Deliberately not cached: a save is the one path that has to see the connection as it is right now,
-    // and it reuses this one client for both the reachability check and the probe below.
     const activityStorage = storage ? await buildActivityStorage(storage, ctx.actorOrgId, $storageDeps) : null;
     if (activityStorage) await activityStorage.validate();
 
@@ -526,7 +460,6 @@ export const agentVaultActivityServiceFactory = ({
       ...next,
       projectId,
       configVersion: (existing?.configVersion ?? 1) + (relocated ? 1 : 0),
-      // A new destination has recorded nothing yet, whatever the previous one had.
       ...(relocated ? { lastRecordedAt: null } : {})
     };
 
@@ -534,13 +467,10 @@ export const agentVaultActivityServiceFactory = ({
       ? await agentVaultActivityConfigDAL.updateById(existing.id, values)
       : await agentVaultActivityConfigDAL.create(values);
 
-    // A save can repoint the destination, so anything cached for the old one is now the wrong client.
     storageCache.clear();
 
     const corsProbeUrl = activityStorage ? await activityStorage.mintCorsProbeUrl() : null;
 
-    // Resolved now for the audit event: once the connection is renamed or deleted, its id alone no longer
-    // tells an admin reading the log which one it was.
     let appConnectionName: string | null = null;
     if (validatedConnection) {
       appConnectionName = validatedConnection.name;

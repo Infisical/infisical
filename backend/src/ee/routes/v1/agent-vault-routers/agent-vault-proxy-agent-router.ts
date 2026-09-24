@@ -143,9 +143,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .describe(AGENT_VAULT.PROXY.sessionToken)
         })
         .passthrough(),
-      // Nullish rather than optional: a proxy predating activity logging sends no body at all, which
-      // arrives as null, and .optional() only admits undefined. Getting this wrong 422s every proxy
-      // already in the field the moment this ships.
+      // Nullish, not optional: proxies predating activity logging send no body, which arrives as null.
       body: z
         .object({
           hasActivityKey: z.boolean().default(false).describe(AGENT_VAULT.ACTIVITY.hasActivityKey)
@@ -218,7 +216,6 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // Unaudited for the same reason as resolve: once a minute per session per proxy.
       return server.services.agentVaultActivity.recordChunk({
         proxyId: req.permission.id,
         sessionId: req.params.sessionId,

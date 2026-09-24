@@ -29,14 +29,11 @@ import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { ActivityLoggingModal } from "./ActivityLoggingModal";
 import { AwsSetupDialog } from "./AwsSetupDialog";
 
-// AWS is the only app type Agent Vault allows, so the mark is fixed rather than looked up per row.
 const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
 export const ActivityLoggingSection = () => {
   const { currentProject } = useProject();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Held as a snapshot rather than read from the query: after a save the query is only invalidated,
-  // so it still holds the pre-save destination the policies would be generated from.
   const [awsSetup, setAwsSetup] = useState<{
     bucket: string | null;
     keyPrefix: string | null;
@@ -79,15 +76,12 @@ export const ActivityLoggingSection = () => {
                 View AWS Setup
               </Button>
               <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
-                {/* Configure while loading too, so a configured org never flashes "Set Up Logging". */}
                 {!data || hasDestination ? "Configure" : "Set Up Logging"}
               </Button>
             </div>
           </CardAction>
         </CardHeader>
 
-        {/* No body until there is something to put in it. An unconfigured card is its header and
-            its actions, which is what this card was before it had any detail to show. */}
         {(isPending || (hasDestination && config)) && (
           <CardContent>
             {isPending && (
@@ -100,15 +94,10 @@ export const ActivityLoggingSection = () => {
             )}
 
             {!isPending && hasDestination && config && (
-              // Two columns, so each line is a pair that belongs together: how it's doing, then the
-              // credential and where it reaches, then the location of the objects themselves.
               <DetailGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Detail>
                   <DetailLabel>Status</DetailLabel>
                   <DetailValue>
-                    {/* The switch itself, so the word matches the toggle in the dialog. Whether
-                        records are actually landing is the warning above, which covers the cases
-                        this cannot: enabled with no connection, or a full store. */}
                     <Badge variant={config.enabled ? "success" : "neutral"}>
                       {config.enabled ? "Enabled" : "Disabled"}
                     </Badge>
@@ -126,8 +115,6 @@ export const ActivityLoggingSection = () => {
                 <Detail>
                   <DetailLabel>Connection</DetailLabel>
                   <DetailValue className="flex items-center gap-2">
-                    {/* No mark when there is no connection to mark: an AWS logo beside "None" reads
-                      as though one is attached. */}
                     {connectionName && (
                       <ProviderIcon
                         alt={`${AWS_CONNECTION.name} connection`}
@@ -160,8 +147,6 @@ export const ActivityLoggingSection = () => {
       <ActivityLoggingModal
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
-        // Only when the save left recording on. Someone who just switched it off has no bucket to
-        // go and configure, so opening this at them is answering a question they didn't ask.
         onSaved={(result, isCorsMissing) => {
           if (!isAgentVaultRecording(result.config)) return;
           setAwsSetup({

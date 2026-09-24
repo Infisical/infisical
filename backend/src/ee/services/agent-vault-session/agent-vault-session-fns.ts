@@ -19,10 +19,6 @@ export const generateSessionToken = () => {
 export const isOwnerlessSession = (session: { userId?: string | null; identityId?: string | null }) =>
   !session.userId && !session.identityId;
 
-/**
- * The CASL read and revoke actions alone would let any member reach another member's session, so every
- * per-session path pairs its action check with this and answers 404 rather than 403 when it fails.
- */
 export const isSessionOwnedBy = (
   ctx: { actor: ActorType; actorId: string },
   session: { userId?: string | null; identityId?: string | null }

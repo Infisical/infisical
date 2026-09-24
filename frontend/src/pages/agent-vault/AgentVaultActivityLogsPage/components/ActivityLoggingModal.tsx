@@ -49,17 +49,13 @@ import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 const NO_CONNECTION = "none";
 const CREATE_CONNECTION = "_create";
 
-// AWS is the only app type Agent Vault allows, so the mark is fixed rather than looked up per option.
 const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
-/** Mirrors the server's normalisation, so "a", "/a" and "a/" are not read as three different prefixes. */
 const normalizePrefix = (value: string | null | undefined) => {
   const trimmed = (value ?? "").trim().replace(/^\/+|\/+$/g, "");
   return trimmed ? `${trimmed}/` : "";
 };
 
-// Built per saved state: a bucket already saved can be replaced but not cleared, since the API has no way
-// to remove one and an empty field would otherwise save as "keep the old one".
 const buildSchema = (hasSavedBucket: boolean) =>
   z
     .object({
@@ -135,9 +131,6 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
     if (!isOpen || !data) return;
 
     reset({
-      // On a first setup, on. Somebody opening this to name a bucket means to record into it, and
-      // a form that saves a complete destination with recording silently off is a trap. An existing
-      // config keeps whatever it was set to.
       enabled: data.config.bucket ? data.config.enabled : true,
       appConnectionId: data.config.appConnectionId ?? NO_CONNECTION,
       bucket: data.config.bucket ?? "",
@@ -157,20 +150,12 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
     ProjectPermissionSub.AppConnections
   );
 
-  // The create entry is a sentinel option rather than a button beside the field, matching every
-  // other product's connection picker.
-  // None only while recording is off: detaching is how a connection in use is freed for deletion,
-  // and recording cannot run without one.
   const connectionOptions = [
     ...(canCreateConnection ? [{ id: CREATE_CONNECTION, name: "Create New Connection" }] : []),
     ...(isEnabled ? [] : [{ id: NO_CONNECTION, name: "None" }]),
     ...(connections ?? [])
   ];
 
-  // Only the bucket and the prefix decide where an object lives, so only a change to one of those
-  // strands what is already recorded. Warning on a first setup, or on a change of connection or
-  // region, is noise that trains people to skip the warning that matters.
-  // Only once a real bucket name is typed: a field mid-edit, or one being cleared, moves nothing.
   const typedBucket = bucket.trim();
   const willRelocate =
     Boolean(data?.config.bucket) &&
@@ -189,10 +174,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
       createNotification({ text: "Activity logging settings saved", type: "success" });
       onOpenChange(false);
 
-      // A save is the one moment the CORS rule is worth checking: the destination just changed and
-      // the server cannot see the rule. The probe points at an object that is never written, since
-      // S3 answers a matching rule with the CORS headers even on a 404 and fetch rejects only when
-      // the rule is absent.
+      // S3 adds CORS headers even to this probe's 404; fetch rejects only when the rule is missing.
       let isCorsMissing = false;
       if (result.corsProbeUrl) {
         try {
@@ -204,7 +186,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
 
       onSaved(result, isCorsMissing);
     } catch {
-      // MutationCache.onError already reports the failure; a second toast would duplicate it.
+      // MutationCache.onError already reports the failure.
     }
   };
 
@@ -223,8 +205,6 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
           </DialogHeader>
 
           <FieldGroup>
-            {/* Its own FieldSet, peer to Storage below. Whether to record at all is the bigger of
-                the two decisions, and as a loose field it read as a footnote to its destination. */}
             <FieldSet>
               <FieldLegend variant="label">Recording</FieldLegend>
 
@@ -273,8 +253,6 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                         getOptionValue={(option) => option.id}
                         renderOption={(option) => (
                           <span className="flex min-w-0 items-center gap-2">
-                            {/* The create entry brings its own plus mark, and a logo beside it
-                                reads as though a connection already exists. */}
                             {option.id !== CREATE_CONNECTION && option.id !== NO_CONNECTION && (
                               <ProviderIcon
                                 alt={`${AWS_CONNECTION.name} connection`}
@@ -347,8 +325,6 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                 )}
               />
 
-              {/* Bucket and prefix share a line: together they are the object's location, and they
-                  are the pair a change to which orphans everything already recorded. */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Controller
                   control={control}
@@ -394,8 +370,6 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
               {willRelocate && (
                 <Alert variant="warning">
                   <AlertDescription>
-                    {/* One <p>, because AlertDescription lays its children out as grid rows and a
-                        bare <span> would break onto a line of its own mid-sentence. */}
                     <p>
                       Everything already recorded stays in{" "}
                       <span className="font-mono">{data?.config.bucket}</span>, where Infisical can

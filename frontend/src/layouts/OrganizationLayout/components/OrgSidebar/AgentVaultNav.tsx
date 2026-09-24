@@ -19,7 +19,6 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { hasProjectRole } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  // Admin-only: the config endpoint answers a member with a 403, and a member cannot act on it anyway.
   const { data: activityConfig } = useGetAgentVaultActivityConfig(isAdmin);
 
   const accessItems: NavItem[] = [
@@ -31,14 +30,10 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     { label: "Proxies", icon: Server, pathSuffix: "proxies" }
   ];
 
-  // Only once the config has loaded: an absent config reads as "not recording", so keying the dot on the
-  // negation alone would flash it on every cold load of a healthy org. Not recording comes first, since a
-  // limit only matters while recording is on.
   let activityDot: NavItem["dotVariant"];
   if (activityConfig && !isAgentVaultRecording(activityConfig.config)) activityDot = "warning";
   else if (activityConfig?.isStorageFull) activityDot = "danger";
 
-  // The group is already behind isAdmin, so nothing in it needs a guard of its own.
   const administrationItems: NavItem[] = isAdmin
     ? [
         {

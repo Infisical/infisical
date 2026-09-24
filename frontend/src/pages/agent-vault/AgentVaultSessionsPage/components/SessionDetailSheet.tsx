@@ -49,13 +49,8 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSheet()}>
-      {/* sm:, not an important override: SheetContent's own cap is `sm:max-w-md`, and matching the
-          variant is what lets tailwind-merge replace it. Tailwind 4 takes important as a suffix, so
-          the `!max-w-*` form generates no rule at all and silently leaves the 28rem default. */}
       <SheetContent
         className="flex h-full max-h-full w-full flex-col gap-y-0 sm:max-w-8xl"
-        // Nothing here is waiting for typing: the sheet is opened to read, and the search would
-        // otherwise take the caret and put a focus ring on the first thing the viewer sees.
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         {!session && isPending && (
@@ -65,8 +60,6 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
             </EmptyHeader>
           </Empty>
         )}
-        {/* A link to a session nobody can resolve says the same thing whether it never existed or
-            belongs to someone else, which is what the endpoint does too. */}
         {!session && !isPending && (
           <Empty className="m-4 border">
             <EmptyHeader>
@@ -79,8 +72,6 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
         )}
         {session && (
           <>
-            {/* Every field spelled out. The row has column headers to lean on and hides the rest
-                behind tooltips; here there is room to label each one and show it in full. */}
             <SheetHeader className="gap-4">
               <div className="flex flex-col gap-1">
                 <SheetTitle>Activity Logs</SheetTitle>
@@ -88,8 +79,6 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
                   Every request the agent made during this session.
                 </SheetDescription>
               </div>
-              {/* The identity and the bundle are the same shape — an icon and a name — so they read
-                  as the same kind of thing. */}
               <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2 text-sm text-foreground">
@@ -121,8 +110,6 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
                       </>
                     );
 
-                    // The icon and the description belong to the bundle as much as its name does,
-                    // so the whole block is the link rather than the name alone.
                     return bundle.id ? (
                       <Link
                         key={bundle.id}
@@ -140,8 +127,6 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
                   })}
                 </div>
                 <div className="flex flex-col items-end gap-3">
-                  {/* The badge already says whether the session still works; when it stops is the
-                      one thing it leaves out, so that is what the hover answers. */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>
@@ -160,8 +145,6 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
               </div>
             </SheetHeader>
 
-            {/* p-4 to match the header's own padding: the tab strip used to provide this gap, and
-                without it the summary sits flush against the header's bottom border. */}
             <div className="min-h-0 flex-1 p-4">
               <ActivityTab session={session} />
             </div>

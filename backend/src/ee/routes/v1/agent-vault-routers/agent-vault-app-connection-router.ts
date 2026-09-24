@@ -18,16 +18,6 @@ import {
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-/**
- * The generic app connection routes take a projectId, which Agent Vault does not have a public one
- * of: its project is resolved from the org by a preValidation hook and `GET /agent-vault/project`
- * is hidden. These routes exist so an API user can own a connection scoped to Agent Vault without
- * first discovering an id the product deliberately conceals.
- *
- * Only the route layer is duplicated. Every handler calls the same appConnectionService methods and
- * emits the same audit and telemetry events as the generic router, because those bodies reach
- * customer SIEMs and a parallel event name would split the rules built on them.
- */
 const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSchema.and(
   z.object({
     name: slugSchema({ field: "name" }).describe(AppConnections.CREATE(AppConnection.AWS).name),
@@ -41,13 +31,8 @@ const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSche
 );
 
 export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodProvider) => {
-  /**
-   * These routes address a connection by id alone, so without this an organization-level connection
-   * would be readable, editable and deletable through them: findAppConnectionById authorizes the
-   * actor but says nothing about scope, and an org admin passes that check. Deleting a connection
-   * Secret Sync depends on is the failure that matters. Answering 404 rather than 403 keeps the
-   * route from confirming that an id outside Agent Vault exists.
-   */
+  // findAppConnectionById authorizes the actor but not the scope; without this an org-level connection could
+  // be edited or deleted through these routes. 404, not 403, so ids outside Agent Vault are not confirmed.
   const $findAgentVaultConnection = async (req: {
     params: { connectionId: string };
     permission: Parameters<typeof server.services.appConnection.findAppConnectionById>[2];
@@ -216,7 +201,6 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
       const { name, credentials, description } = req.body;
       const { connectionId } = req.params;
 
-      // Read before the update so a rename records the name it had, which is what the log is searched by.
       const existing = await $findAgentVaultConnection(req);
 
       const appConnection = (await server.services.appConnection.updateAppConnection(

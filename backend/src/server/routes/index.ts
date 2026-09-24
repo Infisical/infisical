@@ -3183,8 +3183,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  // Declared here rather than beside the other agent-vault services: it resolves the activity bucket's
-  // AWS connection through appConnectionService, which is only constructed above.
   const agentVaultActivityService = agentVaultActivityServiceFactory({
     agentVaultActivityChunkDAL,
     agentVaultActivityConfigDAL,

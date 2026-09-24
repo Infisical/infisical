@@ -10,20 +10,7 @@ export type TAgentVaultActivityChunkDALFactory = ReturnType<typeof agentVaultAct
 export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultActivityChunk);
 
-  /**
-   * Newest first, ordered and cursored on the same column so a page can never skip a row.
-   *
-   * That column has to be chunkId rather than startedAt. A ULID is minted when a chunk is *sealed*,
-   * while startedAt is its first record's timestamp, and the two orderings differ whenever a second
-   * proxy serves the session or one proxy drains a backlog into several chunks. Ordering by startedAt
-   * while filtering on chunkId would drop every row whose id sorts above the cursor but whose
-   * startedAt sorts below it, and the short page would then read as the end of the session.
-   *
-   * Chunk order only decides which chunks land on which page: the viewer merges the records it opens
-   * and sorts those by their own timestamps.
-   *
-   * `(sessionId, chunkId)` is the table's unique index, so this is an index-only walk.
-   */
+  // Ordered and cursored on chunkId, never startedAt: proxies seal out of order, so mixing the two skips rows.
   const findForSessionPage = async (
     {
       sessionId,
@@ -48,31 +35,15 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
         .where({ sessionId })
         .orderBy("chunkId", "desc")
-        // Chunks, not records, because a chunk is one encrypted object and cannot be split. The
-        // budget is applied below; this is only a ceiling so a session of tiny chunks cannot make
-        // one request walk the whole table.
         .limit(maxChunks);
 
       if (before) void query.andWhere("chunkId", "<", before);
 
-      // An overlap test, not a containment one. A chunk spans [startedAt, endedAt], and chunks
-      // interleave freely: two proxies serve one session, and one proxy draining a backlog seals
-      // out of order. Matching on startedAt alone would drop a chunk that begins just before the
-      // window and holds most of its records inside it.
-      //
-      // A filter, never the ordering. Ordering by startedAt while the cursor compares chunkId is
-      // the exact bug the comment above describes, and it reads as the end of the session rather
-      // than as a missing page.
       if (from) void query.andWhere("endedAt", ">=", from);
       if (to) void query.andWhere("startedAt", "<=", to);
 
       const rows = (await query) as TAgentVaultActivityChunks[];
 
-      // Take whole chunks until the budget is met, so a page holds about the same number of
-      // *records* whatever the agent's pace. Counting chunks instead hands a busy agent 15,000 rows
-      // and a quiet one 15, off the same limit. The chunk that crosses the line is kept: dropping
-      // it would leave a page short, and the next page starts after it either way. Bytes are a
-      // second budget on the same terms, since the viewer holds every chunk on the page at once.
       let taken = 0;
       let bytes = 0;
       const page: TAgentVaultActivityChunks[] = [];
@@ -83,21 +54,12 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
         if (taken >= recordBudget || bytes >= byteBudget) break;
       }
 
-      // Whether another page exists is decided here rather than by the caller comparing lengths:
-      // with a budget, a short page can still be followed by more.
       return { chunks: page, hasMore: page.length < rows.length || rows.length === maxChunks };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault activity chunks" });
     }
   };
 
-  /**
-   * Chunks the server received at or after `receivedAfter`, oldest received first.
-   *
-   * Keyed on createdAt, our clock, rather than chunkId, the proxy's. A proxy whose clock runs behind, or
-   * one draining a backlog after an outage, writes chunks whose ids sort among old ones, so a read for
-   * "ids newer than the newest I hold" would never reach them.
-   */
   const findReceivedForSession = async (
     {
       sessionId,
@@ -123,10 +85,7 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
       const page: TAgentVaultActivityChunks[] = [];
       for (const row of rows) {
         page.push(row);
-        // A chunk stamped exactly at receivedAfter is the one the previous read ended on, returned again
-        // so a second chunk sharing its millisecond is not skipped. It rides along without spending
-        // either budget: counted, a large one could fill every page on its own and the caller would ask
-        // for the same page forever.
+        // The chunk exactly at receivedAfter resends the last read's; counting it could stall paging forever.
         if (row.createdAt.getTime() > receivedAfter.getTime()) {
           taken += row.recordCount;
           bytes += row.ciphertextBytes;
@@ -152,11 +111,6 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * Inserts the chunk, or does nothing when this session already holds one with that id, and says which.
-   * A conflicting row still uncommitted in another transaction is waited for, so a caller that gets
-   * nothing back can read the existing row on the same transaction and find it.
-   */
   const createIfAbsent = async (
     values: TAgentVaultActivityChunksInsert,
     tx?: Knex

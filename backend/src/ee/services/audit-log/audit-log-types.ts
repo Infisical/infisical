@@ -6316,7 +6316,6 @@ interface AgentVaultActivityConfigUpdateEvent {
     region: string | null;
     keyPrefix: string | null;
     configVersion: number;
-    // True when the destination moved, which leaves previously written activity unreadable.
     relocated: boolean;
   };
 }

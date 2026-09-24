@@ -404,14 +404,10 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
-    // One indexed lookup per resolve. It has to be every poll, not once, because turning logging off
-    // has to reach a running proxy.
     const activityConfig = await agentVaultActivityConfigDAL.findOne({ projectId: session.projectId });
     const activityEnabled = Boolean(
       activityConfig?.enabled && resolveStorageConfig(activityConfig) && session.encryptedActivityKey
     );
-    // The key never changes for a session's life, so it is sent once rather than every poll: unwrapping
-    // it derives the project data key, which is the kms_keys read the comment below already avoids.
     const activityKeyNeeded = activityEnabled && !hasActivityKey;
 
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
@@ -465,7 +461,6 @@ export const agentVaultProxyServiceFactory = ({
       services,
       activity: {
         enabled: activityEnabled,
-        // Null when the proxy said it already holds the key; it keeps its cached copy.
         sessionKey:
           activityKeyNeeded && session.encryptedActivityKey
             ? decryptor!({ cipherTextBlob: session.encryptedActivityKey }).toString("base64")

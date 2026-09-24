@@ -160,10 +160,6 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
 const getProjectId = async () =>
   (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
 
-/**
- * A fresh machine identity rather than demoting the seeded admin: the project permission cache serves
- * a 10 second marker, so a role change made mid-test is not visible to the next request.
- */
 const createMemberIdentity = async (name: string) => {
   const created = await inject("POST", "/api/v1/identities", {
     name,
@@ -1277,12 +1273,6 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("app connections", async () => {
-    /**
-     * The routes address a connection by id, and findAppConnectionById authorizes the actor without
-     * saying anything about scope, so an org admin passes it for a connection that is not Agent
-     * Vault's. Both directions are asserted in one test: the refusal is worth nothing if the same
-     * calls would fail on an Agent Vault connection too.
-     */
     test("an organization connection is out of reach here, and an Agent Vault one is not", async () => {
       const projectId = await getProjectId();
 
@@ -1295,7 +1285,6 @@ describe("Agent Vault V1 Router", async () => {
         name: `av-scope-own-${Date.now()}`,
         method: "access-key",
         credentials: { accessKeyId: "AKIAFAKEACCESSKEYID", secretAccessKey: "fake-secret-access-key" },
-        // Never part of the contract, so a caller naming another project must not move the connection.
         projectId: seedData1.project.id
       });
       expect(created.statusCode, created.payload).toBe(200);
@@ -1320,7 +1309,6 @@ describe("Agent Vault V1 Router", async () => {
         expect([method, res.statusCode]).toEqual([method, 404]);
       }
 
-      // The refusals above have to have protected it, not merely answered 404.
       const survived = await inject("GET", `/api/v1/app-connections/aws/${orgConnectionId}`);
       expect(survived.statusCode).toBe(200);
 
@@ -1342,10 +1330,6 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("sessions", async () => {
-    /**
-     * The sheet's session id lives in the URL so a timeline can be sent to someone, which only works
-     * if a session reads by id rather than out of whatever page the viewer happens to be on.
-     */
     test("a session reads by id, and one you may not see is indistinguishable from one that is not there", async () => {
       const bundle = await createAccessBundle(`session-by-id-${Date.now()}`);
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
@@ -1355,8 +1339,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { id: string } };
 
-      // The shape the detail sheet renders, which the list endpoint builds with joins rather than
-      // reading off the session row.
       const mine = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}`);
       expect(mine.statusCode).toBe(200);
       expect(mine.json().session).toMatchObject({
@@ -1368,16 +1350,12 @@ describe("Agent Vault V1 Router", async () => {
 
       const member = await createMemberIdentity(`session-by-id-member-${Date.now()}`);
       try {
-        // Sessions are readable to them in general, so the refusal below is about this one session.
         expect((await member.as("GET", "/api/v1/agent-vault/sessions")).statusCode).toBe(200);
 
         const missingId = crypto.randomUUID();
         const somebodyElses = await member.as("GET", `/api/v1/agent-vault/sessions/${session.id}`);
         const neverExisted = await member.as("GET", `/api/v1/agent-vault/sessions/${missingId}`);
 
-        // The property worth pinning: the answer is a function of the id asked for and nothing else,
-        // so a shared link cannot be used to confirm that somebody else's session id is real. The
-        // messages differ only by that id, which the caller supplied and already knows.
         expect([somebodyElses.statusCode, neverExisted.statusCode]).toEqual([404, 404]);
         expect(somebodyElses.json().message).toBe(`Session with ID '${session.id}' not found`);
         expect(neverExisted.json().message).toBe(`Session with ID '${missingId}' not found`);

@@ -1,10 +1,6 @@
 import { activityRecordKey } from "@app/hooks/api/agentVault/activityDecrypt";
 import { TAgentVaultActivityRecord } from "@app/hooks/api/agentVault/types";
 
-/**
- * How far the row at `index` in `before` moved in `after`: positive when rows landed above it, negative
- * when rows above it went away, and null when it is no longer shown.
- */
 export const findRowShift = (
   before: TAgentVaultActivityRecord[],
   after: TAgentVaultActivityRecord[],
@@ -19,7 +15,6 @@ export const findRowShift = (
 
 const CROCKFORD_BASE32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/** When a chunk was sealed. A chunk id is a ULID, whose first ten characters are that time in ms, base32. */
 export const chunkIdTime = (chunkId: string) =>
   new Date(
     [...chunkId.slice(0, 10).toUpperCase()].reduce(

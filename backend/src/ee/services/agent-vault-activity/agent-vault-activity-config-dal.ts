@@ -10,14 +10,7 @@ export type TAgentVaultActivityConfigDALFactory = ReturnType<typeof agentVaultAc
 export const agentVaultActivityConfigDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultActivityConfig);
 
-  /**
-   * Counts a stored chunk and stamps when it landed, returning the new total. The UPDATE takes the config
-   * row's lock, so concurrent chunk inserts serialise and each caller reads its own true total: this is
-   * what makes the ceiling check correct under load. Never read-modify-write here.
-   *
-   * The stamp is only for the current destination. A chunk that raced a repoint under the previous
-   * configVersion landed in a bucket this row no longer points at, and must not report it as working.
-   */
+  // One UPDATE, never read-modify-write: its row lock is what keeps the ceiling check correct under load.
   const recordStoredChunk = async (
     { id, configVersion }: { id: string; configVersion: number },
     tx?: Knex

@@ -86,7 +86,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       offset
     }: {
       projectId: string;
-      /** Narrows to one session, so a link can be opened without it being on the caller's page. */
       sessionId?: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       statuses?: AgentVaultSessionStatus[];
@@ -252,8 +251,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         session.accessBundles.push({
           id: row.accessBundleId,
           name: row.liveAccessBundleName ?? row.accessBundleName,
-          // Only the live bundle carries one; a deleted bundle leaves the session's snapshot, which
-          // never held a description.
           description: row.accessBundleDescription ?? null,
           position: row.position
         });
@@ -294,9 +291,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
             });
         })
-        // A session that recorded activity is kept for good. Its row holds the key that decrypts that
-        // activity, and its chunk rows cascade with it, so deleting it would leave the customer's objects
-        // unreadable by anyone.
+        // Never prune a session that recorded activity: its row holds the only key that decrypts it.
         .whereNotExists((qb) => {
           void qb
             .select(db.raw("1"))
