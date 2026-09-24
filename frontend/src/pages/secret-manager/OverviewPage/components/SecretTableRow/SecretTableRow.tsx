@@ -622,7 +622,7 @@ export const SecretTableRow = ({
                   <col />
                   <col className="w-32" />
                 </colgroup>
-                <TableHeader className="bg-container-hover">
+                <TableHeader className="bg-container-hover [&_th]:font-medium">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
