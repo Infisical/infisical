@@ -2752,7 +2752,11 @@ const OverviewPageContent = () => {
             </div>
             <ResourceSearchInput
               key={secretPath}
-              className="col-start-1 row-start-3 min-w-0 @min-[20rem]/card-header:row-start-2 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1"
+              className={`col-start-1 min-w-0 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1 ${
+                userAvailableEnvs.length > 0
+                  ? "row-start-3 @min-[20rem]/card-header:row-start-2"
+                  : "row-start-2"
+              }`}
               value={searchFilter}
               tags={tags}
               onChange={setSearchFilter}
