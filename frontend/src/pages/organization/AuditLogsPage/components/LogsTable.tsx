@@ -16,7 +16,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Timezone } from "@app/helpers/datetime";
-import { usePopUp, useScopeVariant } from "@app/hooks";
+import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus, useGetAuditLogs } from "@app/hooks/api";
 import { TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
 
@@ -33,7 +33,6 @@ const AUDIT_LOG_LIMIT = 30;
 
 export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
   const { data: status } = useFetchServerStatus();
-  const scopeVariant = useScopeVariant();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["logDetails"] as const);
 
   // Determine the project ID for filtering
@@ -75,7 +74,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
 
   return (
     <div>
-      <Table>
+      <Table containerClassName={!isPending ? "rounded-b-none" : undefined}>
         <TableHeader>
           <TableRow>
             <TableHead className="w-16">
@@ -124,16 +123,24 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
         </TableBody>
       </Table>
       {!isPending && (
-        <Button
-          className="mt-4"
-          isFullWidth
-          variant={scopeVariant}
-          isPending={isFetchingNextPage}
-          isDisabled={isFetchingNextPage || !hasNextPage}
-          onClick={() => fetchNextPage()}
-        >
-          {hasNextPage ? `Load More (${totalLoaded} loaded)` : `End of logs (${totalLoaded} total)`}
-        </Button>
+        <div className="flex min-h-10 items-center justify-between gap-3 rounded-b-md border border-t-0 border-border bg-container px-3 py-1.5">
+          <span className="text-xs text-muted" role="status">
+            {totalLoaded} {totalLoaded === 1 ? "log" : "logs"} loaded
+          </span>
+          {hasNextPage ? (
+            <Button
+              size="xs"
+              variant="ghost"
+              isPending={isFetchingNextPage}
+              isDisabled={isFetchingNextPage}
+              onClick={() => fetchNextPage()}
+            >
+              Load More
+            </Button>
+          ) : (
+            <span className="text-xs text-muted">End of logs</span>
+          )}
+        </div>
       )}
       <AuditLogDetailsSheet
         isOpen={popUp.logDetails.isOpen}
