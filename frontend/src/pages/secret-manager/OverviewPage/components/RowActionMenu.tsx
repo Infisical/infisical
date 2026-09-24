@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as ContextMenu from "@radix-ui/react-context-menu";
-import { EllipsisIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
+  EllipsisIcon,
+  GitBranchIcon,
+  MessageSquareIcon,
+  Settings2Icon,
+  WorkflowIcon
+} from "lucide-react";
 
 import {
   IconButton,
@@ -33,6 +41,7 @@ export const RowActionMenu = ({ label, actions, onCloseAutoFocus }: Props) => {
   const pendingFocusAction = useRef<(() => void) | null>(null);
   const [isTouch, setIsTouch] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   const openAt = (x: number, y: number) => {
     triggerRef.current?.dispatchEvent(
@@ -92,6 +101,7 @@ export const RowActionMenu = ({ label, actions, onCloseAutoFocus }: Props) => {
   const select = (action: RowAction) => {
     if (action.disabled) return;
     setIsOpen(false);
+    setSelectedGroup(null);
     if (action.focusOnClose) pendingFocusAction.current = action.onSelect;
     else action.onSelect();
   };
@@ -106,7 +116,62 @@ export const RowActionMenu = ({ label, actions, onCloseAutoFocus }: Props) => {
     }
   };
 
-  let lastGroup: string | undefined;
+  const directActions = actions.filter(
+    (action) =>
+      !action.danger &&
+      (actions.length <= 3 ||
+        !action.group ||
+        action.group === "Value" ||
+        action.label === "Copy Secret Name" ||
+        action.label === "Copied Secret Name")
+  );
+  const dangerActions = actions.filter((action) => action.danger);
+  const groupedActions = actions.filter(
+    (action) => !directActions.includes(action) && !action.danger
+  );
+  const groups = Array.from(new Set(groupedActions.map((action) => action.group ?? "Manage")));
+  const groupIcon = (group: string) => {
+    if (group === "Annotate") return <MessageSquareIcon className="size-4" />;
+    if (group === "Insights") return <WorkflowIcon className="size-4" />;
+    if (group === "Environments") return <GitBranchIcon className="size-4" />;
+    return <Settings2Icon className="size-4" />;
+  };
+  const renderDesktopAction = (action: RowAction) => (
+    <ContextMenu.Item
+      key={action.label}
+      disabled={action.disabled}
+      className={`relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-0 focus:bg-foreground/5 data-[disabled]:opacity-50 ${action.danger ? "text-danger" : ""}`}
+      onSelect={() => select(action)}
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4">
+        {action.icon}
+      </span>
+      <span className="flex flex-col">
+        {action.label}
+        {action.disabled && action.disabledReason && (
+          <span className="text-xs text-muted">{action.disabledReason}</span>
+        )}
+      </span>
+    </ContextMenu.Item>
+  );
+  const renderTouchAction = (action: RowAction) => (
+    <div key={action.label}>
+      <button
+        type="button"
+        disabled={action.disabled}
+        className={`flex min-h-11 w-full items-center gap-3 rounded-sm px-2 text-left text-sm disabled:opacity-50 ${action.danger ? "text-danger" : "text-foreground"}`}
+        onClick={() => select(action)}
+      >
+        <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4">
+          {action.icon}
+        </span>
+        <span>{action.label}</span>
+      </button>
+      {action.disabled && action.disabledReason && (
+        <div className="px-2 pb-2 text-xs text-muted">{action.disabledReason}</div>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -117,8 +182,7 @@ export const RowActionMenu = ({ label, actions, onCloseAutoFocus }: Props) => {
             data-row-action-trigger=""
             aria-label={`More actions for ${label}`}
             variant="ghost"
-            size="xs"
-            className="size-11 shrink-0 sm:size-9"
+            size="row"
             onClick={(event) => {
               event.stopPropagation();
               if (isTouch) setIsOpen(true);
@@ -151,77 +215,100 @@ export const RowActionMenu = ({ label, actions, onCloseAutoFocus }: Props) => {
           <ContextMenu.Portal>
             <ContextMenu.Content
               collisionPadding={8}
-              className="z-[var(--z-index-dropdown)] max-h-[min(80vh,var(--radix-context-menu-content-available-height))] thin-scrollbar min-w-52 overflow-y-auto rounded-popover border border-border bg-popover p-1.5 text-sm text-foreground shadow-md"
+              onClick={(event) => event.stopPropagation()}
+              className="z-[var(--z-index-dropdown)] min-w-48 rounded-popover border border-border bg-popover p-1 text-sm text-foreground shadow-md"
               onCloseAutoFocus={(event) => {
                 onCloseAutoFocus?.(event);
                 if (!event.defaultPrevented) restoreFocus(event);
               }}
             >
-              {actions.map((action, index) => {
-                const changedGroup = action.group !== lastGroup;
-                lastGroup = action.group;
-                return (
-                  <div key={`${action.group ?? ""}-${action.label}`}>
-                    {changedGroup && index > 0 && (
-                      <ContextMenu.Separator className="my-1 h-px bg-border" />
-                    )}
-                    {changedGroup && action.group && (
-                      <ContextMenu.Label className="px-2 py-1 text-xs text-muted">
-                        {action.group}
-                      </ContextMenu.Label>
-                    )}
-                    <ContextMenu.Item
-                      disabled={action.disabled}
-                      className={`relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 outline-0 focus:bg-foreground/5 data-[disabled]:opacity-50 ${action.danger ? "text-danger" : ""}`}
-                      onSelect={() => select(action)}
+              {directActions.map(renderDesktopAction)}
+              {groups.length > 0 && directActions.length > 0 && (
+                <ContextMenu.Separator className="my-1 h-px bg-border" />
+              )}
+              {groups.map((group) => (
+                <ContextMenu.Sub key={group}>
+                  <ContextMenu.SubTrigger className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-0 focus:bg-foreground/5 data-[state=open]:bg-foreground/5">
+                    {groupIcon(group)}
+                    <span className="grow">{group}</span>
+                    <ChevronRightIcon className="size-4 text-muted" />
+                  </ContextMenu.SubTrigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.SubContent
+                      collisionPadding={8}
+                      onClick={(event) => event.stopPropagation()}
+                      className="z-[var(--z-index-dropdown)] min-w-48 rounded-popover border border-border bg-popover p-1 text-foreground shadow-md"
                     >
-                      {action.icon}
-                      <span className="flex flex-col">
-                        {action.label}
-                        {action.disabled && action.disabledReason && (
-                          <span className="text-xs text-muted">{action.disabledReason}</span>
-                        )}
-                      </span>
-                    </ContextMenu.Item>
-                  </div>
-                );
-              })}
+                      {groupedActions
+                        .filter((action) => (action.group ?? "Manage") === group)
+                        .map(renderDesktopAction)}
+                    </ContextMenu.SubContent>
+                  </ContextMenu.Portal>
+                </ContextMenu.Sub>
+              ))}
+              {dangerActions.length > 0 && (
+                <ContextMenu.Separator className="my-1 h-px bg-border" />
+              )}
+              {dangerActions.map(renderDesktopAction)}
             </ContextMenu.Content>
           </ContextMenu.Portal>
         )}
       </ContextMenu.Root>
-      <Sheet open={isTouch && isOpen} onOpenChange={setIsOpen}>
+      <Sheet
+        open={isTouch && isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) setSelectedGroup(null);
+        }}
+      >
         <SheetContent
           side="bottom"
           className="max-h-[85dvh] rounded-t-lg"
+          onClick={(event) => event.stopPropagation()}
           onCloseAutoFocus={restoreFocus}
         >
-          <SheetHeader>
-            <SheetTitle>Actions for {label}</SheetTitle>
-            <SheetDescription>Select an action for this row.</SheetDescription>
+          <SheetHeader className="pr-12">
+            {selectedGroup && (
+              <button
+                type="button"
+                className="mb-2 flex items-center gap-2 self-start text-sm text-muted"
+                onClick={() => setSelectedGroup(null)}
+              >
+                <ArrowLeftIcon className="size-4" /> Back to Actions
+              </button>
+            )}
+            <SheetTitle>{selectedGroup ?? `Actions for ${label}`}</SheetTitle>
+            <SheetDescription>
+              {selectedGroup ? `Actions for ${label}` : "Select an action for this row."}
+            </SheetDescription>
           </SheetHeader>
-          <div className="thin-scrollbar overflow-y-auto p-3">
-            {actions.map((action, index) => (
-              <div key={`${action.group ?? ""}-${action.label}`}>
-                {action.group && (index === 0 || actions[index - 1].group !== action.group) && (
-                  <div className="px-2 pt-3 pb-1 text-xs font-medium text-muted">
-                    {action.group}
-                  </div>
+          <div className="thin-scrollbar overflow-y-auto p-2">
+            {selectedGroup ? (
+              groupedActions
+                .filter((action) => (action.group ?? "Manage") === selectedGroup)
+                .map(renderTouchAction)
+            ) : (
+              <>
+                {directActions.map(renderTouchAction)}
+                {groups.length > 0 && directActions.length > 0 && (
+                  <div className="my-1 h-px bg-border" />
                 )}
-                <button
-                  type="button"
-                  disabled={action.disabled}
-                  className={`flex min-h-11 w-full items-center gap-3 rounded-sm px-2 text-left text-sm disabled:opacity-50 ${action.danger ? "text-danger" : "text-foreground"}`}
-                  onClick={() => select(action)}
-                >
-                  {action.icon}
-                  <span>{action.label}</span>
-                </button>
-                {action.disabled && action.disabledReason && (
-                  <div className="px-2 pb-2 text-xs text-muted">{action.disabledReason}</div>
-                )}
-              </div>
-            ))}
+                {groups.map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-3 rounded-sm px-2 text-left text-sm text-foreground"
+                    onClick={() => setSelectedGroup(group)}
+                  >
+                    {groupIcon(group)}
+                    <span className="grow">{group}</span>
+                    <ChevronRightIcon className="size-4 text-muted" />
+                  </button>
+                ))}
+                {dangerActions.length > 0 && <div className="my-1 h-px bg-border" />}
+                {dangerActions.map(renderTouchAction)}
+              </>
+            )}
           </div>
         </SheetContent>
       </Sheet>

@@ -46,7 +46,8 @@ const iconButtonVariants = cva(
         xs: "h-7 w-7 [&>svg]:size-4 rounded-sm [&>svg]:stroke-[1.75]",
         sm: "h-8 w-8 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
         md: "h-9 w-9 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
-        lg: "h-10 w-10 [&>svg]:size-7 [&>svg]:stroke-[1.5]"
+        lg: "h-10 w-10 [&>svg]:size-7 [&>svg]:stroke-[1.5]",
+        row: "h-11 w-11 sm:h-9 sm:w-9 [&>svg]:size-4 [&>svg]:stroke-[1.5]"
       },
       isPending: {
         true: "text-transparent"
@@ -113,7 +114,8 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
               size === "xs" && "w-6",
               size === "sm" && "w-7",
               size === "md" && "w-8",
-              size === "lg" && "w-9"
+              size === "lg" && "w-9",
+              size === "row" && "w-8"
             )}
           />
         )}

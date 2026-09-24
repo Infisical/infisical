@@ -53,7 +53,7 @@ const meta = {
     },
     size: {
       control: "select",
-      options: ["2xs", "xs", "sm", "md", "lg"]
+      options: ["2xs", "xs", "sm", "md", "lg", "row"]
     },
     isPending: {
       control: "boolean"
@@ -133,6 +133,23 @@ export const Ghost: Story = {
       description: {
         story:
           "Borderless button that only shows a background on hover — use inside dense rows or next to content where an outline would be visual noise."
+      }
+    }
+  }
+};
+
+export const RowAction: Story = {
+  name: "Size: Row action",
+  args: {
+    variant: "ghost",
+    size: "row",
+    "aria-label": "More actions",
+    children: <MoreHorizontalIcon />
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "A 44px touch target that returns to a 36px control on wider screens."
       }
     }
   }

@@ -778,11 +778,16 @@ export const SecretImportTableRow = ({
                 />
               </div>
             )}
-            {!isSingleEnvView && !isExpanded && (
+            {!isSingleEnvView && (
               <div className="ml-auto shrink-0">
                 <RowActionMenu
                   label={`secret import ${importPath}`}
-                  actions={[{ label: "Expand environments", onSelect: () => setIsExpanded.on() }]}
+                  actions={[
+                    {
+                      label: isExpanded ? "Collapse environments" : "Expand environments",
+                      onSelect: () => setIsExpanded.toggle()
+                    }
+                  ]}
                 />
               </div>
             )}
