@@ -122,7 +122,7 @@ export const AwsSetupDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>AWS Setup</DialogTitle>
           <DialogDescription>

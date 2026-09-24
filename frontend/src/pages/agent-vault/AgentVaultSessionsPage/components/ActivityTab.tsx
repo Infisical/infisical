@@ -679,7 +679,7 @@ export const ActivityTab = ({ session }: Props) => {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="xs"
                             onClick={() => setServiceHost(hostPatternFor(record))}
                           >
