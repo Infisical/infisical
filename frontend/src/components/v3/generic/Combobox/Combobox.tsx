@@ -99,31 +99,63 @@ type ComboboxSharedProps<TOption> = {
   creation?: ComboboxCreationConfig<TOption>;
 };
 
+type ComboboxInputProps = Omit<
+  React.ComponentPropsWithoutRef<"input">,
+  "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
+>;
+
+type ComboboxSingleValueProps<TOption> = {
+  multiple?: false;
+  value?: TOption | null;
+};
+
+type ComboboxSingleDefaultClearProps<TOption> = ComboboxSingleValueProps<TOption> & {
+  isClearable?: true;
+  onValueChange: (option: TOption | null) => void;
+  onClear?: undefined;
+};
+
+type ComboboxSingleOverrideClearProps<TOption> = ComboboxSingleValueProps<TOption> & {
+  isClearable?: true;
+  onValueChange: (option: TOption) => void;
+  onClear: () => void;
+};
+
+type ComboboxSingleNonClearableProps<TOption> = ComboboxSingleValueProps<TOption> & {
+  isClearable: false;
+  onValueChange: (option: TOption) => void;
+  onClear?: never;
+};
+
 type ComboboxSingleProps<TOption> = ComboboxSharedProps<TOption> &
-  Omit<
-    React.ComponentPropsWithoutRef<"input">,
-    "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
-  > & {
-    multiple?: false;
-    value?: TOption | null;
-    onValueChange: (option: TOption) => void;
-    onClear?: () => void;
-  };
+  ComboboxInputProps &
+  (
+    | ComboboxSingleDefaultClearProps<TOption>
+    | ComboboxSingleOverrideClearProps<TOption>
+    | ComboboxSingleNonClearableProps<TOption>
+  );
 
 type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
-  Omit<
-    React.ComponentPropsWithoutRef<"input">,
-    "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
-  > & {
+  ComboboxInputProps & {
     multiple: true;
     singleLine?: boolean;
     isSelectAll?: boolean;
+    isClearable?: boolean;
     value?: readonly TOption[];
     onValueChange: (options: TOption[]) => void;
     onClear?: () => void;
   };
 
 type ComboboxProps<TOption> = ComboboxSingleProps<TOption> | ComboboxMultipleProps<TOption>;
+
+const clearSingleComboboxValue = <TOption,>(props: ComboboxSingleProps<TOption>) => {
+  if (props.onClear) {
+    props.onClear();
+    return;
+  }
+
+  if (props.isClearable !== false) props.onValueChange(null);
+};
 
 const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
 const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
@@ -719,44 +751,46 @@ const ComboboxCreationDialog = <TOption,>({
   );
 };
 
-const SingleCombobox = <TOption,>({
-  options = [],
-  value,
-  onValueChange,
-  getOptionValue,
-  getOptionLabel,
-  getOptionKeywords,
-  getOptionGroup,
-  isOptionDisabled,
-  onSearchChange,
-  listFooter,
-  renderOption,
-  renderOptionIndicator,
-  renderValue,
-  onClear,
-  clearAriaLabel = "Clear selection",
-  placeholder = "Select an option...",
-  searchPlaceholder = "Search...",
-  searchAriaLabel = searchPlaceholder,
-  emptyMessage = "No options found.",
-  loadingMessage = "Loading options...",
-  isDisabled = false,
-  isLoading = false,
-  isError = false,
-  modal = false,
-  portalContainer: portalContainerProp,
-  className,
-  contentClassName,
-  onInputValueChange,
-  shouldFilter = true,
-  includeMissingSelectedOptions = true,
-  creation,
-  id,
-  onClick,
-  onFocus,
-  onKeyDown,
-  ...inputProps
-}: ComboboxSingleProps<TOption>) => {
+const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
+  const {
+    options = [],
+    value,
+    onValueChange,
+    getOptionValue,
+    getOptionLabel,
+    getOptionKeywords,
+    getOptionGroup,
+    isOptionDisabled,
+    onSearchChange,
+    listFooter,
+    renderOption,
+    renderOptionIndicator,
+    renderValue,
+    onClear,
+    clearAriaLabel = "Clear selection",
+    placeholder = "Select an option...",
+    searchPlaceholder = "Search...",
+    searchAriaLabel = searchPlaceholder,
+    emptyMessage = "No options found.",
+    loadingMessage = "Loading options...",
+    isClearable = true,
+    isDisabled = false,
+    isLoading = false,
+    isError = false,
+    modal = false,
+    portalContainer: portalContainerProp,
+    className,
+    contentClassName,
+    onInputValueChange,
+    shouldFilter = true,
+    includeMissingSelectedOptions = true,
+    creation,
+    id,
+    onClick,
+    onFocus,
+    onKeyDown,
+    ...inputProps
+  } = props;
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen] = React.useState(false);
@@ -862,6 +896,14 @@ const SingleCombobox = <TOption,>({
     creation: isInlineCreationConfig(creation) ? creation : undefined,
     onSuccess: handleCreationSuccess
   });
+  const handleClear = () => {
+    if (!isClearable) return;
+    setIsEditing(false);
+    updateSearch("");
+    clearCreationError();
+    clearSingleComboboxValue(props);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
   const creationItem: ComboboxCreateItem | null =
     pendingInputValue || creationInput
       ? { type: "create", inputValue: pendingInputValue ?? creationInput! }
@@ -891,11 +933,7 @@ const SingleCombobox = <TOption,>({
           value={selectedItem}
           onValueChange={(nextValue, eventDetails) => {
             if (nextValue == null) {
-              if (eventDetails.reason === "clear-press") {
-                setIsEditing(false);
-                updateSearch("");
-                onClear?.();
-              }
+              if (eventDetails.reason === "clear-press") handleClear();
               return;
             }
             if (nextValue.type === "create") {
@@ -1079,16 +1117,10 @@ const SingleCombobox = <TOption,>({
           className="absolute top-1 right-1 z-10"
           isBusy={isLoading || isCreationPending}
           canClear={Boolean(
-            onClear && !isDisabled && (value != null || (isEditing && search.length > 0))
+            isClearable && !isDisabled && (value != null || (isEditing && search.length > 0))
           )}
           clearAriaLabel={clearAriaLabel}
-          onClear={() => {
-            setIsEditing(false);
-            updateSearch("");
-            clearCreationError();
-            onClear?.();
-            window.requestAnimationFrame(() => inputRef.current?.focus());
-          }}
+          onClear={handleClear}
         />
       </div>
       <ComboboxCreationDialog {...dialogCreation} />
@@ -1114,6 +1146,7 @@ const MultipleCombobox = <TOption,>({
   clearAriaLabel = "Clear all selections",
   singleLine = false,
   isSelectAll = false,
+  isClearable = true,
   placeholder = "Select options...",
   searchPlaceholder = "Search...",
   searchAriaLabel = searchPlaceholder,
@@ -1247,6 +1280,14 @@ const MultipleCombobox = <TOption,>({
     creation: isInlineCreationConfig(creation) ? creation : undefined,
     onSuccess: handleCreationSuccess
   });
+  const handleClear = () => {
+    if (!isClearable) return;
+    updateSearch("");
+    clearCreationError();
+    if (onClear) onClear();
+    else onValueChange([]);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
   const creationItem: ComboboxCreateItem | null =
     pendingInputValue || creationInput
       ? { type: "create", inputValue: pendingInputValue ?? creationInput! }
@@ -1310,8 +1351,8 @@ const MultipleCombobox = <TOption,>({
               window.requestAnimationFrame(() => inputRef.current?.focus());
             }
 
-            if (eventDetails.reason === "clear-press" && onClear) {
-              onClear();
+            if (eventDetails.reason === "clear-press") {
+              handleClear();
               return;
             }
 
@@ -1485,15 +1526,9 @@ const MultipleCombobox = <TOption,>({
         <ComboboxTrailingSlot
           className="absolute top-1 right-1 z-10"
           isBusy={isLoading || isCreationPending}
-          canClear={!isDisabled && (value.length > 0 || search.length > 0)}
+          canClear={isClearable && !isDisabled && (value.length > 0 || search.length > 0)}
           clearAriaLabel={clearAriaLabel}
-          onClear={() => {
-            updateSearch("");
-            clearCreationError();
-            if (onClear) onClear();
-            else onValueChange([]);
-            window.requestAnimationFrame(() => inputRef.current?.focus());
-          }}
+          onClear={handleClear}
         />
       </div>
       <ComboboxCreationDialog {...dialogCreation} />
@@ -1507,6 +1542,22 @@ const MultipleCombobox = <TOption,>({
  * Options are filtered in the browser unless `onSearchChange` is passed, which hands
  * filtering to the caller so the list can be fetched a page at a time.
  */
+function Combobox<TOption>(props: ComboboxMultipleProps<TOption>): React.ReactElement;
+function Combobox<TOption>(
+  props: ComboboxSharedProps<TOption> &
+    ComboboxInputProps &
+    ComboboxSingleOverrideClearProps<TOption>
+): React.ReactElement;
+function Combobox<TOption>(
+  props: ComboboxSharedProps<TOption> &
+    ComboboxInputProps &
+    ComboboxSingleNonClearableProps<TOption>
+): React.ReactElement;
+function Combobox<TOption>(
+  props: ComboboxSharedProps<TOption> &
+    ComboboxInputProps &
+    ComboboxSingleDefaultClearProps<TOption>
+): React.ReactElement;
 function Combobox<TOption>(props: ComboboxProps<TOption>) {
   const { multiple } = props;
   if (multiple) return <MultipleCombobox {...props} />;

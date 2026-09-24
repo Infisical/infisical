@@ -52,6 +52,7 @@ export const RootOrgFilter = ({
       searchPlaceholder="Search organizations..."
       searchAriaLabel="Search root organizations"
       isLoading={isLoading}
+      isClearable={false}
       options={options}
       value={selectedOrg}
       getOptionGroup={(option) => (option.id === ALL_ORGS_VALUE ? "" : "Organizations")}

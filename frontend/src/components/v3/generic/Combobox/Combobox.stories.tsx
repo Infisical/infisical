@@ -1,4 +1,5 @@
 import {
+  type ComponentType,
   createContext,
   type FormEvent,
   type ReactNode,
@@ -102,7 +103,8 @@ const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
 const StoryCombobox = <TOption,>(props: ComboboxProps<TOption>) => {
   const portalContainer = useContext(ComboboxStoryPortalContext);
   const { modal } = props;
-  return <Combobox {...props} portalContainer={modal ? undefined : portalContainer} />;
+  const StoryComponent = Combobox as ComponentType<ComboboxProps<TOption>>;
+  return <StoryComponent {...props} portalContainer={modal ? undefined : portalContainer} />;
 };
 
 export const ComboboxStoryFrame = ({
@@ -180,10 +182,9 @@ const DefaultRender = () => {
           id="combobox-environment"
           options={ENVIRONMENTS}
           value={value}
-          onValueChange={setValue}
-          onClear={() => {
-            setValue(null);
-            setClearCount((current) => current + 1);
+          onValueChange={(nextValue: (typeof ENVIRONMENTS)[number] | null) => {
+            setValue(nextValue);
+            if (nextValue === null) setClearCount((current) => current + 1);
           }}
           getOptionValue={(option) => option.id}
           getOptionLabel={(option) => option.name}
@@ -201,7 +202,9 @@ const DefaultRender = () => {
  * `Combobox` is a searchable object select built on Base UI and styled to match
  * Infisical's Radix-based controls. It portals its menu, flips near viewport
  * edges, and limits the scrollable option list to the available space. Selected
- * values remain the original option objects for controlled form libraries.
+ * values remain the original option objects for controlled form libraries. Single
+ * selections are clearable by default and emit `null`; use `onClear` to override
+ * that reset or `isClearable={false}` when the domain has no empty state.
  */
 export const Default: Story = {
   render: () => <DefaultRender />,
@@ -262,6 +265,8 @@ const ServerSearchRender = () => {
   const [value, setValue] = useState<(typeof ALL_ORGANIZATIONS)[number] | null>(
     ALL_ORGANIZATIONS[1998]
   );
+  const [valueChangeCount, setValueChangeCount] = useState(0);
+  const [clearOverrideCount, setClearOverrideCount] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [organizations, setOrganizations] = useState<typeof ALL_ORGANIZATIONS>([]);
@@ -290,8 +295,14 @@ const ServerSearchRender = () => {
           id="combobox-server-search"
           options={organizations}
           value={value}
-          onValueChange={setValue}
-          onClear={() => setValue(null)}
+          onValueChange={(nextValue: (typeof ALL_ORGANIZATIONS)[number]) => {
+            setValue(nextValue);
+            setValueChangeCount((current) => current + 1);
+          }}
+          onClear={() => {
+            setValue(null);
+            setClearOverrideCount((current) => current + 1);
+          }}
           onSearchChange={setSearch}
           isLoading={isLoading || search !== debouncedSearch}
           getOptionValue={(option) => option.id}
@@ -316,6 +327,9 @@ const ServerSearchRender = () => {
         Remote query: {search || "(empty)"}
       </p>
       <p className="sr-only">Selected organization: {value?.name ?? "none"}</p>
+      <p className="sr-only" data-testid="server-callback-counts">
+        Value changes: {valueChangeCount}; clear overrides: {clearOverrideCount}
+      </p>
     </div>
   );
 };
@@ -367,6 +381,9 @@ export const ServerSearch: Story = {
     clickOpenTrailingClear(input);
     await waitFor(() => expect(input).toHaveValue(""));
     await expect(canvas.getByTestId("server-query")).toHaveTextContent("Remote query: (empty)");
+    await expect(canvas.getByTestId("server-callback-counts")).toHaveTextContent(
+      "Value changes: 0; clear overrides: 1"
+    );
   }
 };
 
@@ -595,7 +612,6 @@ const NestedDialogCreationField = () => {
         options={options}
         value={value}
         onValueChange={setValue}
-        onClear={() => setValue(null)}
         getOptionValue={(option) => option}
         getOptionLabel={(option) => option}
         placeholder="Select or create a tag..."
@@ -662,7 +678,6 @@ const InDialogRender = () => {
               options={ORGANIZATION_ROLES}
               value={value}
               onValueChange={setValue}
-              onClear={() => setValue(null)}
               getOptionValue={(option) => option.slug}
               getOptionLabel={(option) => option.name}
               getOptionKeywords={(option) => [option.description]}
@@ -781,10 +796,21 @@ const StatesRender = () => {
           options={ENVIRONMENTS}
           value={ENVIRONMENTS[0]}
           onValueChange={() => undefined}
-          onClear={() => undefined}
           getOptionValue={(option) => option.id}
           getOptionLabel={(option) => option.name}
           isDisabled
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="combobox-non-clearable">Required environment</FieldLabel>
+        <StoryCombobox
+          id="combobox-non-clearable"
+          options={ENVIRONMENTS}
+          value={ENVIRONMENTS[0]}
+          onValueChange={() => undefined}
+          getOptionValue={(option) => option.id}
+          getOptionLabel={(option) => option.name}
+          isClearable={false}
         />
       </Field>
       <Field data-disabled="true">
@@ -810,7 +836,6 @@ const StatesRender = () => {
           options={ENVIRONMENTS}
           value={loadingSingleValue}
           onValueChange={setLoadingSingleValue}
-          onClear={() => setLoadingSingleValue(null)}
           getOptionValue={(option: (typeof ENVIRONMENTS)[number]) => option.id}
           getOptionLabel={(option) => option.name}
           isLoading
@@ -838,11 +863,13 @@ export const States: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const disabledSingle = canvasElement.querySelector<HTMLElement>("#combobox-disabled")!;
+    const nonClearableSingle = canvas.getByRole("combobox", { name: "Required environment" });
     const disabledMultiple = canvas.getByRole("combobox", { name: "Projects", hidden: true });
     const loadingSingle = canvas.getByRole("combobox", { name: "Loading environment" });
     const loadingMultiple = canvas.getByRole("combobox", { name: "Loading projects" });
 
     await expect(getTrailingSlot(disabledSingle)).toHaveAttribute("data-state", "chevron");
+    await expect(getTrailingSlot(nonClearableSingle)).toHaveAttribute("data-state", "chevron");
     await expect(getTrailingSlot(disabledMultiple)).toHaveAttribute("data-state", "chevron");
     await expect(canvas.queryByRole("button", { name: "Clear selection" })).not.toBeInTheDocument();
     await expect(
@@ -860,7 +887,7 @@ const ViewportEdgesRender = () => {
   const renderCombobox = (
     id: string,
     value: (typeof ORGANIZATION_ROLES)[number] | null,
-    onValueChange: (option: (typeof ORGANIZATION_ROLES)[number]) => void
+    onValueChange: (option: (typeof ORGANIZATION_ROLES)[number] | null) => void
   ) => (
     <StoryCombobox
       id={id}
@@ -931,7 +958,6 @@ export const ServerFilteredSelection: Story = {
         options={options}
         value={value}
         onValueChange={setValue}
-        onClear={() => setValue(null)}
         getOptionValue={(id) => id}
         getOptionLabel={(id) => id}
         shouldFilter={false}
@@ -1490,7 +1516,6 @@ function SingleDialogCreationRender({ modal = false }: { modal?: boolean }) {
           options={options}
           value={value}
           onValueChange={setValue}
-          onClear={() => setValue(null)}
           getOptionValue={(option) => option.id}
           getOptionLabel={(option) => option.name}
           getOptionKeywords={(option) => [option.slug, option.description]}

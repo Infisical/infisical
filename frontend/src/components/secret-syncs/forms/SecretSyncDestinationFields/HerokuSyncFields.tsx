@@ -64,8 +64,8 @@ export const HerokuSyncFields = () => {
                 isDisabled={!connectionId}
                 value={apps?.find((app) => app.id === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.id ?? "");
-                  setValue("destinationConfig.appName", option.name ?? "");
+                  onChange(option?.id ?? "");
+                  setValue("destinationConfig.appName", option?.name ?? "");
                 }}
                 options={apps}
                 placeholder="Select an app..."
