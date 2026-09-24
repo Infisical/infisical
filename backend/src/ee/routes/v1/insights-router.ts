@@ -124,56 +124,6 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST rather than GET because the secret value goes in the body. A GET would put it in the URL,
-  // where it lands in access logs, proxy logs and browser history.
-  server.route({
-    method: "POST",
-    url: "/secrets/search-by-value",
-    config: {
-      rateLimit: writeLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      operationId: "searchInsightsSecretsByValue",
-      description:
-        "Find every secret in the organization whose value matches the one supplied, in projects the caller can read.",
-      security: [{ bearerAuth: [] }],
-      body: z.object({
-        secretValue: z.string().min(1).max(10_000).describe("The secret value to look for.")
-      }),
-      response: {
-        200: z.object({
-          secrets: z
-            .object({
-              key: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              environment: z.object({ name: z.string(), slug: z.string() }),
-              secretPath: z.string()
-            })
-            .array()
-        })
-      }
-    },
-    handler: async (req) => {
-      const result = await server.services.insights.findSecretsByValue(
-        { secretValue: req.body.secretValue },
-        req.permission
-      );
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.SEARCH_INSIGHTS_SECRETS_BY_VALUE,
-          metadata: { matchCount: result.secrets.length }
-        }
-      });
-
-      return result;
-    }
-  });
-
   server.route({
     method: "GET",
     url: "/secrets/projects",

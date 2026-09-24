@@ -44,6 +44,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
   TDuplicateSecretDTO,
+  TFindSecretsByValueDTO,
   TGetSecretReferencesDTO,
   TGetSecretsRawByFolderMappingsDTO
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -3892,6 +3893,9 @@ export const secretServiceFactory = ({
     return revokedSecretIds;
   };
 
+  const findSecretsByValue = (dto: TFindSecretsByValueDTO, actor: OrgServiceActor) =>
+    secretV2BridgeService.findSecretsByValue(dto, actor);
+
   return {
     attachTags,
     detachTags,
@@ -3929,6 +3933,7 @@ export const secretServiceFactory = ({
     getChangeVersions,
     redactSecretVersionValue,
     getSecretReferenceDependencyTree,
-    getSecretsWithRevokedProjectFolderGrant
+    getSecretsWithRevokedProjectFolderGrant,
+    findSecretsByValue
   };
 };

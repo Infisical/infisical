@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   ActionProjectType,
   ProjectMembershipRole,
+  ProjectType,
   SecretsV2Schema,
   SecretType,
   TableName,
@@ -46,6 +47,7 @@ import {
   SecretCacheAccessResult,
   SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
+import { OrgServiceActor } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -76,7 +78,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
-import { createSecretBlindIndexer } from "./secret-blind-index-fns";
+import { createOrgSecretBlindIndexer, createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
@@ -100,6 +102,7 @@ import {
 } from "./secret-v2-bridge-fns";
 import {
   SecretUpdateMode,
+  SecretValueSearchScope,
   TBackFillSecretReferencesDTO,
   TCreateManySecretDTO,
   TCreateSecretDTO,
@@ -107,6 +110,7 @@ import {
   TDeleteSecretDTO,
   TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
+  TFindSecretsByValueDTO,
   TGetAccessibleSecretsDTO,
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
@@ -4029,6 +4033,81 @@ export const secretV2BridgeServiceFactory = ({
     };
   };
 
+  // Answers "is this value in use anywhere", the question someone asks when they learn a value is
+  // compromised. The caller supplies the value, so nothing here reveals a value that was not already
+  // known; what it reveals is the locations, which is why each hit is filtered against the actor's
+  // permission on the project holding it.
+  const findSecretsByValue = async (dto: TFindSecretsByValueDTO, actor: OrgServiceActor) => {
+    if (dto.scope === SecretValueSearchScope.Project) {
+      const [project] = await projectDAL.find({
+        id: dto.projectId,
+        orgId: actor.orgId,
+        type: ProjectType.SecretManager
+      });
+      if (!project)
+        throw new NotFoundError({ message: `Secrets management project with ID '${dto.projectId}' not found` });
+    }
+
+    // Every project in an org shares the org data key, so one digest answers for all of them.
+    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: actor.orgId, kmsService });
+    const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(dto.secretValue));
+
+    const matches = await secretDAL.findSecretsWithMatchingValue({
+      orgId: actor.orgId,
+      projectId: dto.scope === SecretValueSearchScope.Project ? dto.projectId : undefined,
+      secretValueDigest
+    });
+    if (!matches.length) return { secrets: [] };
+
+    const readableProjectIds = new Set<string>();
+    await Promise.all(
+      [...new Set(matches.map((match) => match.projectId))].map(async (projectId) => {
+        try {
+          const { permission } = await permissionService.getProjectPermission({
+            actor: actor.type,
+            actorId: actor.id,
+            projectId,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId,
+            actionProjectType: ActionProjectType.SecretManager
+          });
+          // DescribeSecret, not a read of the value: this answers where a value the caller already has
+          // is used, so the permission that matters is whether they may know the secret exists.
+          if (permission.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets)) {
+            readableProjectIds.add(projectId);
+          }
+        } catch {
+          // No membership in that project. A value the actor cannot see the location of is simply absent
+          // from their results rather than an error, so one inaccessible project does not fail the search.
+        }
+      })
+    );
+
+    const visible = matches.filter((match) => readableProjectIds.has(match.projectId));
+    if (!visible.length) return { secrets: [] };
+
+    const pathsByProject = await Promise.all(
+      [...new Set(visible.map((match) => match.projectId))].map((projectId) => {
+        const folderIds = [...new Set(visible.filter((m) => m.projectId === projectId).map((m) => m.folderId))];
+        return folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+      })
+    );
+    const pathByFolderId = new Map<string, string>();
+    pathsByProject.flat().forEach((folder) => {
+      if (folder) pathByFolderId.set(folder.id, folder.path);
+    });
+
+    return {
+      secrets: visible.map((match) => ({
+        key: match.key,
+        projectId: match.projectId,
+        projectName: match.projectName,
+        environment: { name: match.environmentName, slug: match.environment },
+        secretPath: pathByFolderId.get(match.folderId) ?? "/"
+      }))
+    };
+  };
+
   return {
     createSecret: withSecretMetrics(createSecret, { duration: "write", write: "create" }),
     deleteSecret: withSecretMetrics(deleteSecret, { duration: "delete", write: "delete" }),
@@ -4054,6 +4133,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
+    findSecretsByValue,
     $validateSecretReferences,
     redactSecretVersionValue
   };

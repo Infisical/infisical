@@ -7,7 +7,7 @@ import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { secretsLimit } from "@app/server/config/rateLimiter";
+import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -19,7 +19,7 @@ import {
   SecretImportReferencesBehavior,
   SecretProtectionType
 } from "@app/services/secret/secret-types";
-import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { SecretUpdateMode, SecretValueSearchScope } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedTagSchema, secretRawSchema } from "../sanitizedSchemas";
@@ -1624,6 +1624,80 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       return message;
+    }
+  });
+
+  // POST rather than GET because the secret value goes in the body. A GET would put it in the URL,
+  // where it lands in access logs, proxy logs and browser history.
+  server.route({
+    method: "POST",
+    url: "/search-by-value",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "searchByValue",
+      tags: [ApiDocsTags.Secrets],
+      description:
+        "Find every secret holding the supplied value, across the organization or within one project, in projects the caller can read.",
+      security: [{ bearerAuth: [] }],
+      body: z
+        .object({
+          secretValue: z.string().min(1).max(10_000).describe("The secret value to look for."),
+          scope: z
+            .nativeEnum(SecretValueSearchScope)
+            .default(SecretValueSearchScope.Organization)
+            .describe("Whether to search the whole organization or a single project."),
+          projectId: z.string().uuid().optional().describe("The project to search. Required when scope is project.")
+        })
+        .superRefine((data, ctx) => {
+          if (data.scope === SecretValueSearchScope.Project && !data.projectId) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["projectId"],
+              message: "projectId is required when scope is project"
+            });
+          }
+        }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              key: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              environment: z.object({ name: z.string(), slug: z.string() }),
+              secretPath: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretValue, scope, projectId } = req.body;
+      const result = await server.services.secret.findSecretsByValue(
+        scope === SecretValueSearchScope.Project && projectId
+          ? { secretValue, scope, projectId }
+          : { secretValue, scope: SecretValueSearchScope.Organization },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.SEARCH_SECRETS_BY_VALUE,
+          metadata: {
+            scope,
+            projectId,
+            matchCount: result.secrets.length
+          }
+        }
+      });
+
+      return result;
     }
   });
 };

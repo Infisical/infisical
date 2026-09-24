@@ -1284,13 +1284,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   };
 
   const batchSetBlindIndexes = async (
-    updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string | null }[],
+    updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string }[],
     tx?: Knex
   ) => {
     if (updates.length === 0) return;
 
     try {
-      const bindings: (string | null)[] = [];
+      const bindings: string[] = [];
       const valuePlaceholders = updates.map(({ id, secretValueBlindIndex, secretValueOrgBlindIndex }) => {
         bindings.push(id, secretValueBlindIndex, secretValueOrgBlindIndex);
         return "(CAST(? AS uuid), ?, CAST(? AS varchar))";
@@ -1500,16 +1500,29 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  // Finds every secret in the org whose value hashes to the given org-scoped digest. The caller is
-  // responsible for dropping the projects the actor cannot read before returning anything.
-  const findSecretsByOrgBlindIndex = async (orgId: string, secretValueOrgBlindIndex: string, tx?: Knex) => {
+  // Finds every secret holding the given value, either across an organization or within one of its
+  // projects. Matching is on the org-scoped digest in both cases, so the two scopes agree on which
+  // rows are searchable. The caller is responsible for dropping the projects the actor cannot read
+  // before returning anything.
+  const findSecretsWithMatchingValue = async (
+    {
+      orgId,
+      projectId,
+      secretValueDigest
+    }: {
+      orgId: string;
+      projectId?: string;
+      secretValueDigest: string;
+    },
+    tx?: Knex
+  ) => {
     try {
-      return await (tx || db.replicaNode())(TableName.SecretV2)
+      let query = (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .where(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueOrgBlindIndex)
+        .where(`${TableName.SecretV2}.secretValueOrgBlindIndex`, secretValueDigest)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .whereNull(`${TableName.SecretV2}.userId`)
@@ -1522,8 +1535,12 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("id").withSchema(TableName.Project).as("projectId"),
           db.ref("name").withSchema(TableName.Project).as("projectName")
         );
+
+      if (projectId) query = query.where(`${TableName.Project}.id`, projectId);
+
+      return await query;
     } catch (error) {
-      throw new DatabaseError({ error, name: "findSecretsByOrgBlindIndex" });
+      throw new DatabaseError({ error, name: "findSecretsWithMatchingValue" });
     }
   };
 
@@ -1626,7 +1643,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const findExistingSecretsByBlindIndexes = async (
+  const findExistingSecretsWithMatchingValues = async (
     projectId: string,
     blindIndexes: string[],
     excludeSecretIds?: string[],
@@ -1661,7 +1678,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
       return await query;
     } catch (error) {
-      throw new DatabaseError({ error, name: "findExistingSecretsByBlindIndexes" });
+      throw new DatabaseError({ error, name: "findExistingSecretsWithMatchingValues" });
     }
   };
 
@@ -1726,8 +1743,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByProject,
     findValueValidationCandidatesByProject,
     findDuplicatedSecretValues,
-    findSecretsByOrgBlindIndex,
-    findExistingSecretsByBlindIndexes,
+    findSecretsWithMatchingValue,
+    findExistingSecretsWithMatchingValues,
     findOne,
     find,
     invalidateSecretCacheByProjectId,

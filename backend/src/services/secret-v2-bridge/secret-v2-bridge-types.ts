@@ -186,6 +186,15 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
 
 export type TSecretReference = { environment: string; secretPath: string; secretKey: string };
 
+export enum SecretValueSearchScope {
+  Organization = "organization",
+  Project = "project"
+}
+
+export type TFindSecretsByValueDTO = {
+  secretValue: string;
+} & ({ scope: SecretValueSearchScope.Organization } | { scope: SecretValueSearchScope.Project; projectId: string });
+
 export type TFnSecretBulkInsert = {
   folderId: string;
   orgId: string;

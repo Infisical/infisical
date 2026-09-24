@@ -711,7 +711,7 @@ export const projectQueueFactory = ({
 
       if (secrets.length === 0) break;
 
-      const updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string | null }[] = [];
+      const updates: { id: string; secretValueBlindIndex: string; secretValueOrgBlindIndex: string }[] = [];
       for (const secret of secrets) {
         if (secret.encryptedValue) {
           const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });

@@ -21,6 +21,18 @@ export type TCreateSecretBlindIndexerDTO = {
   tx?: Knex;
 };
 
+export type TCreateOrgSecretBlindIndexerDTO = Omit<TCreateSecretBlindIndexerDTO, "projectId">;
+
+// Searching an org by value needs the org digest alone, so this resolves only the org data key
+// rather than paying for a project key it would never use.
+export const createOrgSecretBlindIndexer = async ({ orgId, kmsService, tx }: TCreateOrgSecretBlindIndexerDTO) => {
+  const orgCipher = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId }, tx);
+
+  return {
+    generateOrgLevelBlindIndex: (secretValue: Buffer) => orgCipher.generateSecretBlindIndex(secretValue)
+  };
+};
+
 // Build one of these per request and reuse it for every secret in that request. A bulk write can
 // carry thousands of values, and resolving a data key per value would hit an external KMS that many
 // times.
