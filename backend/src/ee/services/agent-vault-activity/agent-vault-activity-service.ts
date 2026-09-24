@@ -19,6 +19,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultProjectAuthority } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
@@ -461,7 +462,7 @@ export const agentVaultActivityServiceFactory = ({
   const updateActivityConfig = async ({ projectId, ctx, actor, ...patch }: TUpdateActivityConfigDTO) => {
     await $requireAdmin({ projectId, ctx });
 
-    const existing = await agentVaultActivityConfigDAL.findOne({ projectId });
+    const existing = await agentVaultActivityConfigDAL.findByProjectIdFromPrimary(projectId);
     const current = existing ?? {
       enabled: false,
       appConnectionId: null,
@@ -529,14 +530,27 @@ export const agentVaultActivityServiceFactory = ({
     const values = {
       ...next,
       projectId,
-      configVersion: (existing?.configVersion ?? 1) + (relocated ? 1 : 0),
       // Only uploads after this count toward lastRecordedAt, so a move doesn't inherit the old bucket's.
       ...(relocated || !existing ? { destinationChangedAt: new Date() } : {})
     };
 
-    const saved = existing
-      ? await agentVaultActivityConfigDAL.updateById(existing.id, values)
-      : await agentVaultActivityConfigDAL.create(values);
+    let saved: TAgentVaultActivityConfigs;
+    if (existing) {
+      // Incremented in the UPDATE rather than from the read, so two saves that both move the bucket get two versions.
+      saved = await agentVaultActivityConfigDAL.updateById(existing.id, {
+        ...values,
+        ...(relocated ? { $incr: { configVersion: 1 } } : {})
+      });
+    } else {
+      try {
+        saved = await agentVaultActivityConfigDAL.create(values);
+      } catch (err) {
+        if (isUniqueViolation(err)) {
+          throw new BadRequestError({ message: "Activity logging settings were just changed. Reload and try again." });
+        }
+        throw err;
+      }
+    }
 
     storageCache.clear();
 

@@ -70,6 +70,7 @@ type TOverrides = {
   existingChunk?: unknown;
   pageRows?: unknown[];
   connection?: unknown;
+  configCreateThrows?: unknown;
 };
 
 const build = (overrides: TOverrides = {}) => {
@@ -106,7 +107,11 @@ const build = (overrides: TOverrides = {}) => {
       updateById: vi.fn(async (_id: string, values: Record<string, unknown>) => ({
         ...(config as object),
         ...values
-      }))
+      })),
+      create: vi.fn(async (values: Record<string, unknown>) => {
+        if (overrides.configCreateThrows) return Promise.reject(overrides.configCreateThrows);
+        return { ...enabledConfig(), ...values };
+      })
     } as never,
     agentVaultSessionDAL: {
       findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
@@ -496,5 +501,22 @@ describe("the storage cache", () => {
     findConnection.mockResolvedValue({ id: "conn-1", updatedAt: new Date("2026-09-24T10:05:00.000Z") });
     await record(service);
     expect(buildActivityStorage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("updateActivityConfig: two first saves at once", () => {
+  test("the one that loses reads as a clash to retry, not a server error", async () => {
+    const { service } = build({
+      config: undefined,
+      configCreateThrows: new DatabaseError({ error: { code: "23505" }, name: "create" })
+    });
+    await expect(
+      service.updateActivityConfig({
+        projectId: "proj-1",
+        ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
+        actor: { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never,
+        enabled: false
+      })
+    ).rejects.toThrow("Activity logging settings were just changed. Reload and try again.");
   });
 });
