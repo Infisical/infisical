@@ -226,7 +226,7 @@ const ProjectSelectInner = () => {
                 ))}
               </CommandGroup>
             </CommandList>
-            <div className="border-t border-border p-1">
+            <div className="border-t border-border-soft p-1">
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
