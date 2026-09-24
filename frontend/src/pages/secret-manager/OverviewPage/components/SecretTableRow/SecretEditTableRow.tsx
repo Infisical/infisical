@@ -176,7 +176,7 @@ type Props = {
   isBatchMode?: boolean;
   isPendingCreate?: boolean;
   isPendingDelete?: boolean;
-  onBatchRevert?: (env: string, key: string) => void;
+  onBatchRevert?: (env: string, key: string, valueOnly?: boolean) => void;
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
@@ -466,7 +466,7 @@ export const SecretEditTableRow = ({
       defaultValue: field === "key" ? secretName : originalValueRef.current
     });
     if (field === "value" && isBatchMode && hasPendingValueChange) {
-      onBatchRevert?.(environment, secretName);
+      onBatchRevert?.(environment, secretName, true);
       lastAppliedRef.current.value = undefined;
     }
     setEditingField(null);

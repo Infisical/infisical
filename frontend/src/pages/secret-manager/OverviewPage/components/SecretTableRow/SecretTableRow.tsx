@@ -110,7 +110,7 @@ type Props = {
   }[];
   isSingleEnvSecretsVisible?: boolean;
   isBatchMode?: boolean;
-  onBatchRevert?: (env: string, key: string) => void;
+  onBatchRevert?: (env: string, key: string, valueOnly?: boolean) => void;
   isSelectionDisabled?: boolean;
   onCopySecret?: (request: {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
