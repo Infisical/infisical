@@ -203,6 +203,15 @@ export const agentVaultActivityServiceFactory = ({
         if (!existing) {
           throw new InternalServerError({ message: "Activity chunk vanished between insert and read" });
         }
+        // A proxy only re-sends a chunk it never confirmed uploading, so after a move it belongs at the new
+        // destination. Forward only: a lagging config read must not send a row back to an old one.
+        if (existing.configVersion < config.configVersion) {
+          return agentVaultActivityChunkDAL.updateById(
+            existing.id,
+            { configVersion: config.configVersion, objectKey },
+            tx
+          );
+        }
         return existing;
       }
 

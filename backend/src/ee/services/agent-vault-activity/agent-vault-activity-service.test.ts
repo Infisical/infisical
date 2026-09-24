@@ -77,6 +77,10 @@ const build = (overrides: TOverrides = {}) => {
   });
   const recordStoredChunk = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
   const findChunk = vi.fn(async () => overrides.existingChunk ?? null);
+  const repointChunk = vi.fn(async (_id: string, values: Record<string, unknown>) => ({
+    ...(overrides.existingChunk as object),
+    ...values
+  }));
   const validateConnection = vi.fn(async () => ({}));
   const config = "config" in overrides ? overrides.config : enabledConfig();
 
@@ -84,6 +88,7 @@ const build = (overrides: TOverrides = {}) => {
     agentVaultActivityChunkDAL: {
       createIfAbsent,
       findOne: findChunk,
+      updateById: repointChunk,
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
       findForSessionPage: vi.fn(async () => []),
       countForSession: vi.fn(async () => 0)
@@ -110,7 +115,7 @@ const build = (overrides: TOverrides = {}) => {
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
 
-  return { service, createIfAbsent, recordStoredChunk, findChunk, validateConnection };
+  return { service, createIfAbsent, recordStoredChunk, findChunk, repointChunk, validateConnection };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -323,6 +328,33 @@ describe("recordChunk: re-sending a chunk", () => {
     });
     await record(service);
     expect(presignPut).toHaveBeenCalledWith({ objectKey: "stored/key.json.enc", ciphertextBytes: 999 });
+  });
+
+  test("a chunk re-sent after the destination moved is pointed at the current one before it is presigned", async () => {
+    const { service, repointChunk } = build({
+      isReplay: true,
+      existingChunk: { ...validChunk(), id: "row-1", configVersion: 2, objectKey: "old/key.json.enc" }
+    });
+    await record(service);
+
+    const [id, values] = repointChunk.mock.calls[0];
+    expect(id).toBe("row-1");
+    expect(values.configVersion).toBe(3);
+    expect(String(values.objectKey)).toMatch(
+      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5[^/]+\.json\.enc$/
+    );
+    expect(presignPut).toHaveBeenCalledWith({ objectKey: values.objectKey, ciphertextBytes: 4096 });
+  });
+
+  test("never points a row at an older destination, so a lagging config read cannot strand it", async () => {
+    const { service, repointChunk } = build({
+      isReplay: true,
+      existingChunk: { ...validChunk(), configVersion: 4, objectKey: "newer/key.json.enc" }
+    });
+    await record(service);
+
+    expect(repointChunk).not.toHaveBeenCalled();
+    expect(presignPut).toHaveBeenCalledWith({ objectKey: "newer/key.json.enc", ciphertextBytes: 4096 });
   });
 
   test("a row that vanished between the insert and the read is a 500, not a silent success", async () => {

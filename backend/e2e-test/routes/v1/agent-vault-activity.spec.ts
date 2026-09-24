@@ -474,6 +474,33 @@ describe("Agent Vault activity", async () => {
       expect(fakeActivityStorage.get(only.presignedGetUrl)).toEqual(stored);
     });
 
+    test("a chunk re-sent after the destination moved is uploaded to the new one and reads back", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`activity-moved-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`activity-moved-${Date.now()}`);
+      const chunk = chunkBody();
+      await recordChunk(proxy, session.id, chunk);
+
+      const movedBucket = `${BUCKET}-moved`;
+      await configure({ bucket: movedBucket, keyPrefix: "moved" });
+
+      const resent = await recordChunk(proxy, session.id, chunk);
+      const stored = Buffer.alloc(CHUNK_BYTES, 3);
+      fakeActivityStorage.put(resent.uploadUrl, stored);
+
+      const row = await testDb("agent_vault_activity_chunks").where({ sessionId: session.id }).first();
+      expect(row.objectKey).toMatch(/^moved\//);
+      expect(fakeActivityStorage.objectKeys(movedBucket)).toEqual([row.objectKey]);
+
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      const [only] = (
+        JSON.parse(read.payload) as { chunks: { configVersion: number; presignedGetUrl: string | null }[] }
+      ).chunks;
+      expect(only.configVersion).toBe(2);
+      expect(fakeActivityStorage.get(only.presignedGetUrl as string)).toEqual(stored);
+    });
+
     test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-two-${Date.now()}`);
