@@ -332,6 +332,7 @@ type ComboboxListProps<TOption> = Omit<
   creationError: { error: unknown; inputValue: string } | null;
   isCreationPending: boolean;
   selectedValues: ReadonlySet<string>;
+  scrollRef: React.RefObject<HTMLDivElement>;
   maxHeight: string;
 };
 
@@ -354,6 +355,7 @@ const ComboboxList = <TOption,>({
   creationError,
   isCreationPending,
   selectedValues,
+  scrollRef,
   maxHeight
 }: ComboboxListProps<TOption>) => {
   const inlineCreation = isInlineCreationConfig(creation) ? creation : undefined;
@@ -366,7 +368,7 @@ const ComboboxList = <TOption,>({
       if (item.inputValue) {
         label = creation?.formatLabel?.(item.inputValue) ?? `Create "${item.inputValue}"`;
       }
-      if (isCreationPending && inlineCreation) {
+      if (isCreationPending && inlineCreation && item.inputValue) {
         label =
           inlineCreation.formatPendingLabel?.(item.inputValue) ??
           `Creating "${item.inputValue}"...`;
@@ -435,54 +437,17 @@ const ComboboxList = <TOption,>({
   };
 
   return (
-    <ComboboxPrimitive.List
-      aria-label={ariaLabel}
-      aria-busy={isLoading || undefined}
-      className="flex min-h-0 flex-col"
-    >
-      <div
-        onWheel={(event) => event.stopPropagation()}
-        className={cn(
-          "min-h-0 thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
-          isEmpty && "hidden"
-        )}
-        style={{ maxHeight }}
-      >
-        {getOptionGroup ? (
-          <ComboboxPrimitive.Collection>
-            {(group: ComboboxGroup<TOption>) =>
-              group.isCreationGroup ? null : (
-                <ComboboxPrimitive.Group
-                  key={group.value}
-                  items={group.items}
-                  className={cn(group.value === "" && "mb-1 border-b border-border pb-1")}
-                >
-                  {group.value !== "" && (
-                    <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
-                      {group.value}
-                    </ComboboxPrimitive.GroupLabel>
-                  )}
-                  <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
-                </ComboboxPrimitive.Group>
-              )
-            }
-          </ComboboxPrimitive.Collection>
-        ) : (
-          <ComboboxPrimitive.Collection>
-            {(item: ComboboxItem<TOption>) => (item.type === "option" ? renderItem(item) : null)}
-          </ComboboxPrimitive.Collection>
-        )}
-      </div>
+    <>
       {isEmpty && isLoading && (
         <div
           role="status"
-          className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
+          className="flex min-h-16 shrink-0 items-center justify-center px-3 py-4 text-sm text-muted"
         >
           <span>{loadingMessage}</span>
         </div>
       )}
       {isEmpty && !isLoading && showEmptyMessage && (
-        <div className="p-1">
+        <div className="shrink-0 p-1">
           <div
             role="status"
             className="flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-sm text-muted"
@@ -491,18 +456,58 @@ const ComboboxList = <TOption,>({
           </div>
         </div>
       )}
-      {creationItem && (
-        <div className={cn("shrink-0 p-1", (!isEmpty || isLoading) && "border-t border-border")}>
+      <ComboboxPrimitive.List
+        aria-label={ariaLabel}
+        aria-busy={isLoading || undefined}
+        className={cn("flex min-h-0 flex-col", isEmpty && !creationItem && "hidden")}
+      >
+        <div
+          ref={scrollRef}
+          onWheel={(event) => event.stopPropagation()}
+          className={cn(
+            "min-h-0 thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
+            isEmpty && "hidden"
+          )}
+          style={{ maxHeight }}
+        >
           {getOptionGroup ? (
-            <ComboboxPrimitive.Group items={[creationItem]}>
-              <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
-            </ComboboxPrimitive.Group>
+            <ComboboxPrimitive.Collection>
+              {(group: ComboboxGroup<TOption>) =>
+                group.isCreationGroup ? null : (
+                  <ComboboxPrimitive.Group
+                    key={group.value}
+                    items={group.items}
+                    className={cn(group.value === "" && "mb-1 border-b border-border pb-1")}
+                  >
+                    {group.value !== "" && (
+                      <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
+                        {group.value}
+                      </ComboboxPrimitive.GroupLabel>
+                    )}
+                    <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
+                  </ComboboxPrimitive.Group>
+                )
+              }
+            </ComboboxPrimitive.Collection>
           ) : (
-            renderItem(creationItem)
+            <ComboboxPrimitive.Collection>
+              {(item: ComboboxItem<TOption>) => (item.type === "option" ? renderItem(item) : null)}
+            </ComboboxPrimitive.Collection>
           )}
         </div>
-      )}
-    </ComboboxPrimitive.List>
+        {creationItem && (
+          <div className={cn("shrink-0 p-1", (!isEmpty || isLoading) && "border-t border-border")}>
+            {getOptionGroup ? (
+              <ComboboxPrimitive.Group items={[creationItem]}>
+                <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
+              </ComboboxPrimitive.Group>
+            ) : (
+              renderItem(creationItem)
+            )}
+          </div>
+        )}
+      </ComboboxPrimitive.List>
+    </>
   );
 };
 
@@ -821,6 +826,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     ...inputProps
   } = props;
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const selectedLabel = value == null ? "" : getOptionLabel(value);
@@ -876,6 +882,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     [getOptionValue, value]
   );
   const updateSearch = (nextSearch: string) => {
+    if (listScrollRef.current) listScrollRef.current.scrollTop = 0;
     setSearch(nextSearch);
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
@@ -1140,6 +1147,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
+              scrollRef={listScrollRef}
               maxHeight={SINGLE_LIST_MAX_HEIGHT}
             />
             {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
@@ -1202,6 +1210,7 @@ const MultipleCombobox = <TOption,>({
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const listScrollRef = React.useRef<HTMLDivElement>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
@@ -1249,6 +1258,7 @@ const MultipleCombobox = <TOption,>({
     [getOptionValue, value]
   );
   const updateSearch = (nextSearch: string) => {
+    if (listScrollRef.current) listScrollRef.current.scrollTop = 0;
     setSearch(nextSearch);
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
@@ -1553,6 +1563,7 @@ const MultipleCombobox = <TOption,>({
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
+              scrollRef={listScrollRef}
               maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
             />
             {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
