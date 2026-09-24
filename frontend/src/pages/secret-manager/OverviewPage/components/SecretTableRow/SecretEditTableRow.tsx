@@ -817,6 +817,7 @@ export const SecretEditTableRow = ({
         ...(isSingleEnvView ? { key: key || secretName } : {})
       });
     }
+    setEditingField(null);
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
@@ -850,6 +851,7 @@ export const SecretEditTableRow = ({
         value: secretValue,
         ...(isSingleEnvView ? { key: newKey || secretName } : {})
       });
+      setEditingField(null);
       handlePopUpClose("editSecret");
     } finally {
       setIsEditing.off();
