@@ -530,7 +530,7 @@ export const ProjectCategoryOverview = () => {
               <Tooltip key={type}>
                 <TooltipTrigger asChild>
                   <div aria-disabled className="cursor-not-allowed">
-                    <Card className="h-auto rounded-md opacity-50">{tileBody}</Card>
+                    <Card className="h-auto rounded-md opacity-50 shadow-xs">{tileBody}</Card>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
