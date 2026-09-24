@@ -412,6 +412,43 @@ export const CreateSecretForm = ({
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <Controller
+          control={control}
+          name="environments"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
+              <FieldContent>
+                <Combobox
+                  id="create-secret-environments"
+                  multiple
+                  options={environments.filter((environment) =>
+                    permission.can(
+                      ProjectPermissionSecretActions.Create,
+                      subject(ProjectPermissionSub.Secrets, {
+                        environment: environment.slug,
+                        secretPath,
+                        secretName: "*",
+                        secretTags: ["*"]
+                      })
+                    )
+                  )}
+                  value={value}
+                  onValueChange={onChange}
+                  isError={Boolean(error)}
+                  modal
+                  placeholder="Select environments to create secret in..."
+                  searchPlaceholder="Search environments..."
+                  searchAriaLabel="Search environments"
+                  emptyMessage="No environments found."
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.slug}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
         {secretFields.map((secretField, index) => {
           const secretKey = watch(`secrets.${index}.key`);
           const metadata = watch(`secrets.${index}.metadata`) ?? [];
@@ -453,7 +490,6 @@ export const CreateSecretForm = ({
                             onBlur={field.onBlur}
                             placeholder="Type your secret name"
                             onPaste={(event) => handlePaste(event, index)}
-                            autoFocus={index === 0}
                             autoComplete="off"
                             isError={Boolean(error)}
                             className={currentProject?.autoCapitalization ? "uppercase" : undefined}
@@ -836,43 +872,6 @@ export const CreateSecretForm = ({
           <PlusIcon className="size-4" />
           Add More
         </Button>
-        <Controller
-          control={control}
-          name="environments"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel htmlFor="create-secret-environments">Environments</FieldLabel>
-              <FieldContent>
-                <Combobox
-                  id="create-secret-environments"
-                  multiple
-                  options={environments.filter((environment) =>
-                    permission.can(
-                      ProjectPermissionSecretActions.Create,
-                      subject(ProjectPermissionSub.Secrets, {
-                        environment: environment.slug,
-                        secretPath,
-                        secretName: "*",
-                        secretTags: ["*"]
-                      })
-                    )
-                  )}
-                  value={value}
-                  onValueChange={onChange}
-                  isError={Boolean(error)}
-                  modal
-                  placeholder="Select environments to create secret in..."
-                  searchPlaceholder="Search environments..."
-                  searchAriaLabel="Search environments"
-                  emptyMessage="No environments found."
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.slug}
-                />
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          )}
-        />
       </div>
       <SheetFooter className="justify-between border-t">
         {onUploadSecrets && (
