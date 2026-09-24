@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -12,9 +13,24 @@ import { gzipSync } from "node:zlib";
 
 const runtimePackage = "release-age-fixture";
 const devPackage = "release-age-dev-fixture";
+const source = fileURLToPath(new URL("../", import.meta.url));
+const versions = Object.fromEntries(
+  readFileSync(join(source, "build-versions.env"), "utf8")
+    .split("\n")
+    .filter((line) => /^[A-Z_]+=/.test(line))
+    .map((line) => line.split("=")),
+);
 const devEngines = {
-  runtime: { name: "node", version: "^22.23.2", onFail: "error" },
-  packageManager: { name: "npm", version: "11.19.1", onFail: "error" },
+  runtime: {
+    name: "node",
+    version: `^${versions.NODE_VERSION}`,
+    onFail: "error",
+  },
+  packageManager: {
+    name: "npm",
+    version: `^${versions.NPM_VERSION}`,
+    onFail: "error",
+  },
 };
 let registry;
 let registryUrl;
@@ -174,11 +190,18 @@ after(async () => {
   );
 });
 
-test("regressions run with the pinned npm version", async (t) => {
+test("regressions run with a supported npm version", async (t) => {
   const cwd = await project(t);
   const result = await npm(cwd, "--version");
   succeeded(result);
-  assert.equal(result.stdout.trim(), "11.19.1");
+  const [major, minor, patch] = result.stdout.trim().split(".").map(Number);
+  const [requiredMajor, requiredMinor, requiredPatch] =
+    versions.NPM_VERSION.split(".").map(Number);
+  assert.equal(major, requiredMajor);
+  assert.ok(
+    minor > requiredMinor ||
+      (minor === requiredMinor && patch >= requiredPatch),
+  );
 });
 
 test("unlocked resolution selects an older release and permits lifecycle scripts", async (t) => {
@@ -296,7 +319,6 @@ for (const engine of ["runtime", "packageManager"]) {
 }
 
 test("repository checker accepts matching pins and rejects configuration drift", async (t) => {
-  const source = fileURLToPath(new URL("../", import.meta.url));
   const cwd = await mkdtemp(join(tmpdir(), "node-toolchain-checker-test-"));
   t.after(() => rm(cwd, { recursive: true, force: true }));
   const paths = [
@@ -321,9 +343,11 @@ test("repository checker accepts matching pins and rejects configuration drift",
       "upgrade-impact",
       "sink/oidc-server",
     ].flatMap((directory) =>
-      ["package.json", "package-lock.json", ".npmrc"].map((filename) =>
-        join(directory, filename),
-      ),
+      [
+        "package.json",
+        "package-lock.json",
+        ...(directory === "e2e" ? [] : [".npmrc"]),
+      ].map((filename) => join(directory, filename)),
     ),
   ];
   await Promise.all(

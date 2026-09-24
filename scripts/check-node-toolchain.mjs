@@ -15,17 +15,28 @@ const errors = [];
 const check = (condition, message) => {
   if (!condition) errors.push(message);
 };
+const matchesMajorRange = (actual, minimum) => {
+  const version = actual.replace(/^v/, "").split(".").map(Number);
+  const floor = minimum.split(".").map(Number);
+  return (
+    version.length === 3 &&
+    version.every(Number.isInteger) &&
+    version[0] === floor[0] &&
+    (version[1] > floor[1] ||
+      (version[1] === floor[1] && version[2] >= floor[2]))
+  );
+};
 const npm = execFileSync("npm", ["--version"], {
   encoding: "utf8",
   cwd: root,
 }).trim();
 check(
-  process.versions.node === versions.NODE_VERSION,
-  `Node ${process.versions.node} is active; use Node ${versions.NODE_VERSION} (nvm install && nvm use).`,
+  matchesMajorRange(process.versions.node, versions.NODE_VERSION),
+  `Node ${process.versions.node} is active; use Node ^${versions.NODE_VERSION} (nvm install && nvm use).`,
 );
 check(
-  npm === versions.NPM_VERSION,
-  `npm ${npm} is active; run npm install -g npm@${versions.NPM_VERSION}.`,
+  matchesMajorRange(npm, versions.NPM_VERSION),
+  `npm ${npm} is active; run npm install -g npm@${versions.NPM_VERSION} or a newer npm 11 release.`,
 );
 check(
   read(".nvmrc").trim() === versions.NODE_VERSION,
@@ -50,8 +61,8 @@ for (const directory of packageRoots) {
     `${path}: engines.node must be ${nodeRange}.`,
   );
   check(
-    pkg.engines?.npm === versions.NPM_VERSION,
-    `${path}: engines.npm must match NPM_VERSION.`,
+    pkg.engines?.npm === `^${versions.NPM_VERSION}`,
+    `${path}: engines.npm must accept ^NPM_VERSION.`,
   );
   check(
     pkg.packageManager === `npm@${versions.NPM_VERSION}`,
@@ -59,7 +70,7 @@ for (const directory of packageRoots) {
   );
   for (const [key, name, version] of [
     ["runtime", "node", nodeRange],
-    ["packageManager", "npm", versions.NPM_VERSION],
+    ["packageManager", "npm", `^${versions.NPM_VERSION}`],
   ]) {
     const engine = pkg.devEngines?.[key];
     check(
@@ -73,15 +84,17 @@ for (const directory of packageRoots) {
     JSON.stringify(lock.packages[""].engines) === JSON.stringify(pkg.engines),
     `${directory}/package-lock.json: root engines must match package.json.`,
   );
-  const config = read(join(directory, ".npmrc"));
-  check(
-    /^min-release-age=7$/m.test(config),
-    `${directory}/.npmrc must set min-release-age=7.`,
-  );
-  check(
-    /^engine-strict=true$/m.test(config),
-    `${directory}/.npmrc must set engine-strict=true.`,
-  );
+  if (directory !== "e2e") {
+    const config = read(join(directory, ".npmrc"));
+    check(
+      /^min-release-age=7$/m.test(config),
+      `${directory}/.npmrc must set min-release-age=7.`,
+    );
+    check(
+      /^engine-strict=true$/m.test(config),
+      `${directory}/.npmrc must set engine-strict=true.`,
+    );
+  }
 }
 
 const dockerfiles = [
@@ -113,8 +126,10 @@ for (const path of dockerfiles) {
     `${path}: NPM_VERSION defaults must match build-versions.env.`,
   );
   check(
-    text.includes("npm install -g npm@${NPM_VERSION}"),
-    `${path}: explicitly install the pinned npm version.`,
+    path === "backend/Dockerfile.dev.fips"
+      ? text.includes('RUN test "$(npm --version)" = "${NPM_VERSION}"')
+      : text.includes("npm install -g npm@${NPM_VERSION}"),
+    `${path}: use the pinned npm version.`,
   );
   check(
     text.includes("ENV npm_config_min_release_age=7"),
@@ -144,6 +159,6 @@ if (errors.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Node ${versions.NODE_VERSION} / npm ${versions.NPM_VERSION}: runtime, package roots, and build pins match.`,
+    `Node ${process.versions.node} / npm ${npm}: runtime, package roots, and build pins match (canonical ${versions.NODE_VERSION} / ${versions.NPM_VERSION}).`,
   );
 }

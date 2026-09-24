@@ -30,12 +30,16 @@ npm install -g npm@$(sed -n 's/^NPM_VERSION=//p' build-versions.env)
 node scripts/check-node-toolchain.mjs
 ```
 
+Newer Node.js 22 and npm 11 releases are compatible for local work; CI and Docker use the
+exact versions above so builds stay reproducible.
+
 Run `npm ci` in the package directory you work on, such as `frontend` or `backend`.
 An incompatible Node.js or npm version stops installation before dependencies are installed.
 Don't bypass this check with `--force`; switch to the versions above instead.
 
-Each package directory has an `.npmrc` with a seven-day minimum release age for dependency
-resolution. Keep that file when copying a package directory into a build environment.
+The backend and frontend package directories have an `.npmrc` with a seven-day minimum
+release age for dependency resolution. Keep that file when copying either package directory
+into a build environment. The separate `e2e` test harness doesn't apply this policy.
 `npm ci` installs the versions in `package-lock.json` without checking their publication dates,
 so review dependency changes and don't generate that file with a release-age override.
 Don't disable backend install scripts: several dependencies compile native modules during
