@@ -44,7 +44,11 @@ const ResolvedValueContent = ({ environment, secretPath, secretKey }: Props) => 
   });
 
   if (isPending) {
-    return <Skeleton className="h-9 w-full" />;
+    return (
+      <div className="p-3">
+        <Skeleton className="h-4 w-full" />
+      </div>
+    );
   }
 
   if (isError) {
