@@ -14,12 +14,10 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretRotationV2StatusBadge } from "@app/components/secret-rotations-v2/SecretRotationV2StatusBadge";
 import {
   Badge,
   Checkbox,
-  IconButton,
   ProviderIcon,
   Table,
   TableBody,
@@ -31,6 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProjectPermission } from "@app/context/ProjectPermissionContext";
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
@@ -47,11 +46,8 @@ import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotati
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { RowAction, RowActionMenu } from "../RowActionMenu";
 import {
-  TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
@@ -106,6 +102,7 @@ export const SecretRotationTableRow = ({
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
+  const { permission } = useProjectPermission();
 
   const handleCheckActiveCredentials = async (secretRotation: TSecretRotationV2) => {
     if (checkingRotationId) return;
@@ -139,201 +136,67 @@ export const SecretRotationTableRow = ({
     [activityId, onActivityChange]
   );
 
-  const renderActionButtons = (secretRotation: TSecretRotationV2) => {
-    const { environment, folder } = secretRotation;
-
-    const showReconcileButton = shouldShowReconciliationButton(secretRotation);
+  const getActions = (secretRotation: TSecretRotationV2): RowAction[] => {
+    const resource = subject(ProjectPermissionSub.SecretRotation, {
+      environment: secretRotation.environment.slug,
+      secretPath: secretRotation.folder.path,
+      ...(secretRotation.connectionId && { connectionId: secretRotation.connectionId })
+    });
+    const canRead = permission.can(
+      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      resource
+    );
+    const canRotate = permission.can(
+      ProjectPermissionSecretRotationActions.RotateSecrets,
+      resource
+    );
+    const canEdit = permission.can(ProjectPermissionSecretRotationActions.Edit, resource);
+    const canDelete = permission.can(ProjectPermissionSecretRotationActions.Delete, resource);
     const isCheckingRotation = checkingRotationId === secretRotation.id;
 
-    return (
-      <div
-        className={twMerge(
-          "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-          TABLE_ROW_ACTION_BAR_CLASS_NAME,
-          isCheckingRotation && TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME
-        )}
-      >
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretRotationActions.ReadGeneratedCredentials}
-          a={subject(ProjectPermissionSub.SecretRotation, {
-            environment: environment.slug,
-            secretPath: folder.path,
-            ...(secretRotation.connectionId && {
-              connectionId: secretRotation.connectionId
-            })
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Validate rotation credentials"
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(
-                    TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-                    isCheckingRotation && TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
-                  )}
-                  isDisabled={!isAllowed || Boolean(checkingRotationId)}
-                  onClick={() => handleCheckActiveCredentials(secretRotation)}
-                >
-                  {isCheckingRotation ? (
-                    <LoaderCircleIcon className="animate-spin" />
-                  ) : (
-                    <ActivityIcon />
-                  )}
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Validate Credentials</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretRotationActions.ReadGeneratedCredentials}
-          a={subject(ProjectPermissionSub.SecretRotation, {
-            environment: environment.slug,
-            secretPath: folder.path,
-            ...(secretRotation.connectionId && {
-              connectionId: secretRotation.connectionId
-            })
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="View generated rotation credentials"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!isAllowed}
-                  onClick={() => onViewGeneratedCredentials(secretRotation)}
-                >
-                  <EyeIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>View Generated Credentials</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretRotationActions.RotateSecrets}
-          a={subject(ProjectPermissionSub.SecretRotation, {
-            environment: environment.slug,
-            secretPath: folder.path,
-            ...(secretRotation.connectionId && {
-              connectionId: secretRotation.connectionId
-            })
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Rotate secret"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!isAllowed}
-                  onClick={() => onRotate(secretRotation)}
-                >
-                  <RefreshCwIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Rotate Secret</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        {showReconcileButton && (
-          <ProjectPermissionCan
-            I={ProjectPermissionSecretRotationActions.RotateSecrets}
-            a={subject(ProjectPermissionSub.SecretRotation, {
-              environment: environment.slug,
-              secretPath: folder.path,
-              ...(secretRotation.connectionId && {
-                connectionId: secretRotation.connectionId
-              })
-            })}
-          >
-            {(isAllowed) => (
-              <Tooltip>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Reconcile secret rotation"
-                    variant="ghost"
-                    size="xs"
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                    isDisabled={!isAllowed}
-                    onClick={() => onReconcile(secretRotation)}
-                  >
-                    <HandshakeIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Reconcile Secret</TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-        )}
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretRotationActions.Edit}
-          a={subject(ProjectPermissionSub.SecretRotation, {
-            environment: environment.slug,
-            secretPath: folder.path,
-            ...(secretRotation.connectionId && {
-              connectionId: secretRotation.connectionId
-            })
-          })}
-          renderTooltip
-          allowedLabel="Edit"
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Edit secret rotation"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!isAllowed}
-                  onClick={() => onEdit(secretRotation)}
-                >
-                  <EditIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionSecretRotationActions.Delete}
-          a={subject(ProjectPermissionSub.SecretRotation, {
-            environment: environment.slug,
-            secretPath: folder.path,
-            ...(secretRotation.connectionId && {
-              connectionId: secretRotation.connectionId
-            })
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger>
-                <IconButton
-                  aria-label="Delete secret rotation"
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
-                  onClick={() => onDelete(secretRotation)}
-                  isDisabled={!isAllowed}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Delete</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-      </div>
-    );
+    return [
+      {
+        label: "Validate Credentials",
+        icon: isCheckingRotation ? <LoaderCircleIcon className="animate-spin" /> : <ActivityIcon />,
+        onSelect: () => handleCheckActiveCredentials(secretRotation),
+        disabled: !canRead || Boolean(checkingRotationId)
+      },
+      {
+        label: "View Generated Credentials",
+        icon: <EyeIcon />,
+        onSelect: () => onViewGeneratedCredentials(secretRotation),
+        disabled: !canRead
+      },
+      {
+        label: "Rotate Secret",
+        icon: <RefreshCwIcon />,
+        onSelect: () => onRotate(secretRotation),
+        disabled: !canRotate
+      },
+      ...(shouldShowReconciliationButton(secretRotation)
+        ? [
+            {
+              label: "Reconcile Secret",
+              icon: <HandshakeIcon />,
+              onSelect: () => onReconcile(secretRotation),
+              disabled: !canRotate
+            }
+          ]
+        : []),
+      {
+        label: "Edit",
+        icon: <EditIcon />,
+        onSelect: () => onEdit(secretRotation),
+        disabled: !canEdit
+      },
+      {
+        label: "Delete",
+        icon: <TrashIcon />,
+        onSelect: () => onDelete(secretRotation),
+        disabled: !canDelete,
+        danger: true
+      }
+    ];
   };
 
   return (
@@ -381,7 +244,8 @@ export const SecretRotationTableRow = ({
         </TableCell>
         <TableCell
           className={twMerge(
-            !isSingleEnvView && "sticky left-10 z-10 border-r",
+            "sticky left-10 z-10",
+            !isSingleEnvView && "border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
@@ -389,9 +253,9 @@ export const SecretRotationTableRow = ({
           colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvRotation ? (
-            <div className="relative flex w-full items-center">
-              <span className="truncate">{secretRotationName}</span>
-              <Badge variant="neutral" className="mx-2.5">
+            <div className="flex w-full items-center">
+              <span className="min-w-0 truncate">{secretRotationName}</span>
+              <Badge variant="neutral" className="mx-2.5 shrink-0">
                 <ProviderIcon
                   icon={SECRET_ROTATION_MAP[singleEnvRotation.type].image}
                   style={{ width: "11px" }}
@@ -407,35 +271,23 @@ export const SecretRotationTableRow = ({
                   <TooltipContent>{singleEnvRotation.description}</TooltipContent>
                 </Tooltip>
               )}
-              {isSingleEnvView && singleEnvRotation && (
-                <>
-                  <div
-                    className={twMerge(
-                      "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none",
-                      shouldShowReconciliationButton(singleEnvRotation)
-                        ? "mr-48 [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-48 [@media(hover:hover)]:group-hover:mr-48"
-                        : "mr-40 [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-40 [@media(hover:hover)]:group-hover:mr-40",
-                      checkingRotationId === singleEnvRotation.id &&
-                        (shouldShowReconciliationButton(singleEnvRotation)
-                          ? "[@media(hover:hover)]:mr-48"
-                          : "[@media(hover:hover)]:mr-40")
-                    )}
-                  >
-                    <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
-                  </div>
-                  <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                    {renderActionButtons(singleEnvRotation)}
-                  </div>
-                </>
-              )}
+              <div className="ml-auto shrink-0">
+                <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
+              </div>
+              <div className="shrink-0">
+                <RowActionMenu
+                  label={`${secretRotationName} in ${environments[0].name}`}
+                  actions={getActions(singleEnvRotation)}
+                />
+              </div>
             </div>
           ) : (
-            <>
-              {secretRotationName}
+            <div className="flex items-center">
+              <span className="min-w-0 truncate">{secretRotationName}</span>
               {statuses?.some((status) => status === SecretRotationStatus.Failed) && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge className="absolute top-1/2 right-2 -translate-y-1/2" variant="danger">
+                    <Badge className="ml-auto shrink-0" variant="danger">
                       <XIcon />
                       Rotation Failed
                     </Badge>
@@ -443,7 +295,18 @@ export const SecretRotationTableRow = ({
                   <TooltipContent>One or more secrets failed to rotate.</TooltipContent>
                 </Tooltip>
               )}
-            </>
+              <div className="ml-auto shrink-0">
+                <RowActionMenu
+                  label={secretRotationName}
+                  actions={[
+                    {
+                      label: isExpanded ? "Collapse Environments" : "Expand Environments",
+                      onSelect: setIsExpanded.toggle
+                    }
+                  ]}
+                />
+              </div>
+            </div>
           )}
         </TableCell>
         {environments.length > 1 &&
@@ -492,16 +355,27 @@ export const SecretRotationTableRow = ({
 
                       const { name: rotationType, image } = SECRET_ROTATION_MAP[type];
 
-                      const showReconcileButton = shouldShowReconciliationButton(secretRotation);
-
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
-                            {envName}
+                          <TableCell
+                            className={twMerge(
+                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+                              "sticky left-10 z-10 bg-container"
+                            )}
+                          >
+                            <div className="flex items-center">
+                              <span className="min-w-0 truncate">{envName}</span>
+                              <div className="ml-auto shrink-0">
+                                <RowActionMenu
+                                  label={`${secretRotationName} in ${envName}`}
+                                  actions={getActions(secretRotation)}
+                                />
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <div className="relative flex w-full flex-wrap items-center">
+                            <div className="flex w-full flex-wrap items-center">
                               <Badge variant="neutral">
                                 <ProviderIcon
                                   icon={image}
@@ -520,22 +394,8 @@ export const SecretRotationTableRow = ({
                                   <TooltipContent>{description}</TooltipContent>
                                 </Tooltip>
                               )}
-                              <div
-                                className={twMerge(
-                                  "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none",
-                                  showReconcileButton
-                                    ? "mr-48 [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-48 [@media(hover:hover)]:group-hover:mr-48"
-                                    : "mr-40 [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-40 [@media(hover:hover)]:group-hover:mr-40",
-                                  checkingRotationId === secretRotation.id &&
-                                    (showReconcileButton
-                                      ? "[@media(hover:hover)]:mr-48"
-                                      : "[@media(hover:hover)]:mr-40")
-                                )}
-                              >
+                              <div className="ml-auto flex items-center">
                                 <SecretRotationV2StatusBadge secretRotation={secretRotation} />
-                              </div>
-                              <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
-                                {renderActionButtons(secretRotation)}
                               </div>
                             </div>
                           </TableCell>

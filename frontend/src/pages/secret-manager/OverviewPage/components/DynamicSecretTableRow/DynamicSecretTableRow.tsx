@@ -12,10 +12,8 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { dynamicSecretProviderRegistry } from "@app/components/dynamic-secrets";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
-  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -27,13 +25,13 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
+import { useProjectPermission } from "@app/context/ProjectPermissionContext";
 import { useToggle } from "@app/hooks";
 import { DynamicSecretStatus, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { RowAction, RowActionMenu } from "../RowActionMenu";
 import {
-  TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
@@ -75,6 +73,7 @@ export const DynamicSecretTableRow = ({
   onForceDelete
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const { permission } = useProjectPermission();
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;
@@ -109,165 +108,61 @@ export const DynamicSecretTableRow = ({
     );
   };
 
-  const renderActionButtons = (dynamicSecret: DynamicSecretWithEnv) => {
+  const getActions = (dynamicSecret: DynamicSecretWithEnv): RowAction[] => {
     const isRevoking = dynamicSecret.status === DynamicSecretStatus.Deleting;
-
-    return (
-      <div
-        className={twMerge(
-          "flex items-center rounded-md border border-border bg-container-hover p-0.5",
-          TABLE_ROW_ACTION_BAR_CLASS_NAME
-        )}
-      >
-        <ProjectPermissionCan
-          I={ProjectPermissionDynamicSecretActions.Lease}
-          a={subject(ProjectPermissionSub.DynamicSecrets, {
-            environment: dynamicSecret.environment,
-            secretPath,
-            metadata: dynamicSecret.metadata
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label="View leases"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!isAllowed || isRevoking}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewLeases(dynamicSecret);
-                  }}
-                >
-                  <ListIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>View Leases</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionDynamicSecretActions.Lease}
-          a={subject(ProjectPermissionSub.DynamicSecrets, {
-            environment: dynamicSecret.environment,
-            secretPath,
-            metadata: dynamicSecret.metadata
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label="Generate lease"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!isAllowed || isRevoking}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onGenerateLease(dynamicSecret);
-                  }}
-                >
-                  <FileKeyIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Generate Lease</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        <ProjectPermissionCan
-          I={ProjectPermissionDynamicSecretActions.EditRootCredential}
-          a={subject(ProjectPermissionSub.DynamicSecrets, {
-            environment: dynamicSecret.environment,
-            secretPath,
-            metadata: dynamicSecret.metadata
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label="Edit dynamic secret"
-                  variant="ghost"
-                  size="xs"
-                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  isDisabled={!isAllowed || isRevoking}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(dynamicSecret);
-                  }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-        {dynamicSecret.status === DynamicSecretStatus.FailedDeletion && (
-          <ProjectPermissionCan
-            I={ProjectPermissionDynamicSecretActions.DeleteRootCredential}
-            a={subject(ProjectPermissionSub.DynamicSecrets, {
-              environment: dynamicSecret.environment,
-              secretPath,
-              metadata: dynamicSecret.metadata
-            })}
-          >
-            {(isAllowed) => (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <IconButton
-                    aria-label="Force delete dynamic secret"
-                    variant="ghost"
-                    size="xs"
-                    className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
-                    isDisabled={!isAllowed}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onForceDelete(dynamicSecret);
-                    }}
-                  >
-                    <XIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Force Delete</TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-        )}
-        <ProjectPermissionCan
-          I={ProjectPermissionDynamicSecretActions.DeleteRootCredential}
-          a={subject(ProjectPermissionSub.DynamicSecrets, {
-            environment: dynamicSecret.environment,
-            secretPath,
-            metadata: dynamicSecret.metadata
-          })}
-        >
-          {(isAllowed) => (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label="Delete dynamic secret"
-                  variant="ghost"
-                  size="xs"
-                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
-                  isDisabled={!isAllowed || isRevoking}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(dynamicSecret);
-                  }}
-                >
-                  <TrashIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>Delete</TooltipContent>
-            </Tooltip>
-          )}
-        </ProjectPermissionCan>
-      </div>
+    const resource = subject(ProjectPermissionSub.DynamicSecrets, {
+      environment: dynamicSecret.environment,
+      secretPath,
+      metadata: dynamicSecret.metadata
+    });
+    const canLease = permission.can(ProjectPermissionDynamicSecretActions.Lease, resource);
+    const canEdit = permission.can(
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      resource
     );
+    const canDelete = permission.can(
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+      resource
+    );
+
+    return [
+      {
+        label: "View Leases",
+        icon: <ListIcon />,
+        onSelect: () => onViewLeases(dynamicSecret),
+        disabled: !canLease || isRevoking
+      },
+      {
+        label: "Generate Lease",
+        icon: <FileKeyIcon />,
+        onSelect: () => onGenerateLease(dynamicSecret),
+        disabled: !canLease || isRevoking
+      },
+      {
+        label: "Edit",
+        icon: <EditIcon />,
+        onSelect: () => onEdit(dynamicSecret),
+        disabled: !canEdit || isRevoking
+      },
+      ...(dynamicSecret.status === DynamicSecretStatus.FailedDeletion
+        ? [
+            {
+              label: "Force Delete",
+              icon: <XIcon />,
+              onSelect: () => onForceDelete(dynamicSecret),
+              disabled: !canDelete,
+              danger: true
+            }
+          ]
+        : []),
+      {
+        label: "Delete",
+        icon: <TrashIcon />,
+        onSelect: () => onDelete(dynamicSecret),
+        disabled: !canDelete || isRevoking,
+        danger: true
+      }
+    ];
   };
 
   return (
@@ -303,7 +198,8 @@ export const DynamicSecretTableRow = ({
         </TableCell>
         <TableCell
           className={twMerge(
-            !isSingleEnvView && "sticky left-10 z-10 border-r",
+            "sticky left-10 z-10",
+            !isSingleEnvView && "border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
@@ -311,19 +207,22 @@ export const DynamicSecretTableRow = ({
           colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvDynamicSecret ? (
-            <div className="relative flex w-full items-center pr-40">
-              <span className="truncate">{dynamicSecretName}</span>
-              <Badge variant="neutral" className="ml-2">
+            <div className="flex w-full items-center">
+              <span className="min-w-0 truncate">{dynamicSecretName}</span>
+              <Badge variant="neutral" className="ml-2 shrink-0">
                 {dynamicSecretProviderRegistry.requireDefinition(singleEnvDynamicSecret.type).label}
               </Badge>
               {renderStatusIndicator(singleEnvDynamicSecret)}
-              <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                {renderActionButtons(singleEnvDynamicSecret)}
+              <div className="ml-auto shrink-0">
+                <RowActionMenu
+                  label={`${dynamicSecretName} in ${environments[0].name}`}
+                  actions={getActions(singleEnvDynamicSecret)}
+                />
               </div>
             </div>
           ) : (
-            <>
-              {dynamicSecretName}
+            <div className="flex items-center">
+              <span className="min-w-0 truncate">{dynamicSecretName}</span>
               {statuses?.some(
                 (status) =>
                   status === DynamicSecretStatus.FailedDeletion ||
@@ -331,7 +230,7 @@ export const DynamicSecretTableRow = ({
               ) && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge className="absolute top-1/2 right-2 -translate-y-1/2" variant="danger">
+                    <Badge className="ml-auto shrink-0" variant="danger">
                       <XIcon />
                       {statuses?.some((status) => status === DynamicSecretStatus.FailedDeletion)
                         ? "Deletion Failed"
@@ -341,7 +240,18 @@ export const DynamicSecretTableRow = ({
                   <TooltipContent>One or more dynamic secrets have issues.</TooltipContent>
                 </Tooltip>
               )}
-            </>
+              <div className="ml-auto shrink-0">
+                <RowActionMenu
+                  label={dynamicSecretName}
+                  actions={[
+                    {
+                      label: isExpanded ? "Collapse Environments" : "Expand Environments",
+                      onSelect: setIsExpanded.toggle
+                    }
+                  ]}
+                />
+              </div>
+            </div>
           )}
         </TableCell>
         {environments.length > 1 &&
@@ -393,11 +303,24 @@ export const DynamicSecretTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
-                            {envName}
+                          <TableCell
+                            className={twMerge(
+                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+                              "sticky left-10 z-10 bg-container"
+                            )}
+                          >
+                            <div className="flex items-center">
+                              <span className="min-w-0 truncate">{envName}</span>
+                              <div className="ml-auto shrink-0">
+                                <RowActionMenu
+                                  label={`${dynamicSecretName} in ${envName}`}
+                                  actions={getActions(dynamicSecret)}
+                                />
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <div className="relative flex w-full flex-wrap items-center pr-40">
+                            <div className="flex w-full flex-wrap items-center">
                               <Badge variant="neutral">
                                 {
                                   dynamicSecretProviderRegistry.requireDefinition(
@@ -406,9 +329,6 @@ export const DynamicSecretTableRow = ({
                                 }
                               </Badge>
                               {renderStatusIndicator(dynamicSecret)}
-                              <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
-                                {renderActionButtons(dynamicSecret)}
-                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

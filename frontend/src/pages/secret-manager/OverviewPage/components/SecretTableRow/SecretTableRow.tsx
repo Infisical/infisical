@@ -1,9 +1,8 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
   ChevronDownIcon,
-  ClipboardCheckIcon,
   CopyIcon,
   EditIcon,
   EyeIcon,
@@ -26,7 +25,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -52,9 +50,8 @@ import { ProjectEnv } from "@app/hooks/api/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { RowActionMenu } from "../RowActionMenu";
 import {
-  TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
@@ -158,6 +155,7 @@ export const SecretTableRow = ({
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
+  const menuId = useId();
 
   const isSingleEnvView = environments.length === 1;
   const isRowActive = isSingleEnvView
@@ -459,49 +457,30 @@ export const SecretTableRow = ({
                   </Badge>
                 )}
             </div>
-            <div
-              className={twMerge(
-                "absolute z-20",
-                "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-                TABLE_ROW_ACTION_BAR_CLASS_NAME,
-                "top-1/2 right-[3px] -translate-y-1/2"
-              )}
-            >
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Copy secret name"
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      copyTokenToClipboard();
-                    }}
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  >
-                    {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Secret Name</TooltipContent>
-              </Tooltip>
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Edit secret name"
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      setIsEditSecretNameOpen(true);
-                      e.stopPropagation();
-                    }}
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Edit Secret Name</TooltipContent>
-              </Tooltip>
+            <div className="absolute top-1/2 right-1 z-20 -translate-y-1/2">
+              <RowActionMenu
+                label={secretKey}
+                actions={[
+                  {
+                    label: isSecNameCopied ? "Copied Secret Name" : "Copy Secret Name",
+                    icon: <CopyIcon />,
+                    onSelect: copyTokenToClipboard,
+                    group: "Name"
+                  },
+                  {
+                    label: "Edit Secret Name",
+                    icon: <EditIcon />,
+                    onSelect: () => setIsEditSecretNameOpen(true),
+                    group: "Name"
+                  },
+                  {
+                    label: isFormExpanded ? "Collapse Environments" : "Expand Environments",
+                    icon: <ChevronDownIcon />,
+                    onSelect: () => setIsFormExpanded.toggle(),
+                    group: "Environments"
+                  }
+                ]}
+              />
             </div>
           </TableCell>
         )}
@@ -555,15 +534,19 @@ export const SecretTableRow = ({
           </TableCell>
           <TableCell
             className={twMerge(
-              "border-r text-override",
+              "sticky left-10 z-10 border-r bg-container text-override",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            <span>{secretKey}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate">{secretKey}</span>
+              <span id={`${menuId}-override-${singleEnvSlug}`} />
+            </div>
           </TableCell>
           <TableCell>
             <SecretOverrideRow
               isSingleEnvView
+              menuTargetId={`${menuId}-override-${singleEnvSlug}`}
               secretName={secretKey}
               environment={singleEnvSlug}
               secretPath={secretPath}
@@ -716,6 +699,7 @@ export const SecretTableRow = ({
                                   <TooltipContent>Honey Token secret</TooltipContent>
                                 </Tooltip>
                               )}
+                              <span className="ml-auto" id={`${menuId}-secret-${slug}`} />
                             </div>
                           </TableCell>
                           <TableCell
@@ -723,6 +707,7 @@ export const SecretTableRow = ({
                             className={hasOverride ? "border-b-border/50" : undefined}
                           >
                             <SecretEditTableRow
+                              menuTargetId={`${menuId}-secret-${slug}`}
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
@@ -776,10 +761,16 @@ export const SecretTableRow = ({
                           >
                             <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                             <TableCell
-                              className={hasOverride ? "border-l border-l-override" : undefined}
-                            />
+                              className={twMerge(
+                                "sticky left-10 z-10 bg-container",
+                                hasOverride && "border-l border-l-override"
+                              )}
+                            >
+                              <span id={`${menuId}-override-${slug}`} />
+                            </TableCell>
                             <TableCell colSpan={2}>
                               <SecretOverrideRow
+                                menuTargetId={`${menuId}-override-${slug}`}
                                 secretName={secretKey}
                                 environment={slug}
                                 secretPath={secretPath}

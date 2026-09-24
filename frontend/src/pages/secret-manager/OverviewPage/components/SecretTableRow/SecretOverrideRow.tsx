@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Controller, useForm } from "react-hook-form";
 import { CopyIcon, GitBranchIcon, TrashIcon } from "lucide-react";
 
@@ -13,12 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-  IconButton,
   InfisicalSecretInput,
   SecretInputActions,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   useSecretInputActionShortcuts
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
@@ -27,6 +24,8 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretType } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+
+import { RowActionMenu } from "../RowActionMenu";
 
 type Props = {
   secretName: string;
@@ -56,6 +55,7 @@ type Props = {
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isSingleEnvView?: boolean;
   onActiveChange?: (isActive: boolean) => void;
+  menuTargetId?: string;
 };
 
 export const SecretOverrideRow = ({
@@ -72,7 +72,8 @@ export const SecretOverrideRow = ({
   onSecretUpdate,
   onSecretDelete,
   isSingleEnvView,
-  onActiveChange
+  onActiveChange,
+  menuTargetId
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -83,6 +84,11 @@ export const SecretOverrideRow = ({
     { environment, secretPath, secretName, secretTags: ["*"] }
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [menuTarget, setMenuTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (menuTargetId) setMenuTarget(document.getElementById(menuTargetId));
+  }, [menuTargetId]);
 
   const fetchOverrideValueParams = {
     environment,
@@ -255,69 +261,61 @@ export const SecretOverrideRow = ({
             onUndo={handleFormReset}
           />
         ) : (
-          <>
-            {!isCreatingOverride && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <IconButton
-                    aria-label="Copy Override"
-                    isDisabled={!canFetchOverrideValue}
-                    onClick={handleCopyOverrideToClipboard}
-                    variant="ghost-muted"
-                    size="xs"
-                  >
-                    <CopyIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Override</TooltipContent>
-              </Tooltip>
-            )}
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogMedia>
-                    <TrashIcon />
-                  </AlertDialogMedia>
-                  <AlertDialogTitle>Remove Override</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to remove this personal override? The shared secret value
-                    will be used instead.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction variant="danger" onClick={handleDeleteOverride}>
-                    Remove
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  aria-label={isCreatingOverride ? "Cancel Override" : "Remove Override"}
-                  onClick={
-                    isCreatingOverride
-                      ? () => {
-                          onCreatingOverrideChange(false);
-                          reset({ value: null });
-                        }
-                      : () => setIsDeleteDialogOpen(true)
-                  }
-                  variant="ghost-muted"
-                  size="xs"
-                  className="hover:text-danger"
-                >
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogMedia>
                   <TrashIcon />
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isCreatingOverride ? "Cancel Override" : "Remove Override"}
-              </TooltipContent>
-            </Tooltip>
-          </>
+                </AlertDialogMedia>
+                <AlertDialogTitle>Remove Override</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to remove this personal override? The shared secret value
+                  will be used instead.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="danger" onClick={handleDeleteOverride}>
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
+      {menuTarget &&
+        createPortal(
+          <RowActionMenu
+            label={`personal override for ${secretName} in ${environment}`}
+            actions={[
+              ...(!isCreatingOverride
+                ? [
+                    {
+                      label: "Copy Override",
+                      icon: <CopyIcon />,
+                      onSelect: handleCopyOverrideToClipboard,
+                      disabled: isDirty || !canFetchOverrideValue,
+                      disabledReason: isDirty ? "Save or Undo Changes First" : "No Override Value"
+                    }
+                  ]
+                : []),
+              {
+                label: isCreatingOverride ? "Cancel Override" : "Remove Override",
+                icon: <TrashIcon />,
+                danger: true,
+                disabled: isDirty && !isCreatingOverride,
+                disabledReason: "Save or Undo Changes First",
+                onSelect: isCreatingOverride
+                  ? () => {
+                      onCreatingOverrideChange(false);
+                      reset({ value: null });
+                    }
+                  : () => setIsDeleteDialogOpen(true)
+              }
+            ]}
+          />,
+          menuTarget
+        )}
     </div>
   );
 };
