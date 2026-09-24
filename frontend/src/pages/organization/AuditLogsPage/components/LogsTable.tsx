@@ -9,6 +9,7 @@ import {
   EmptyTitle,
   Skeleton,
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCell,
   TableHead,
@@ -73,7 +74,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
 
   return (
     <div>
-      <Table containerClassName={!isPending ? "rounded-b-none" : undefined}>
+      <Table hasAttachedFooter={!isPending}>
         <TableHeader>
           <TableRow>
             <TableHead className="w-16">
@@ -121,24 +122,23 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             ))}
         </TableBody>
       </Table>
-      {!isPending &&
-        (hasNextPage ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            isFullWidth
-            className="h-10 rounded-t-none rounded-b-md border-t-0 border-border bg-container hover:border-border hover:bg-container-hover"
-            isPending={isFetchingNextPage}
-            isDisabled={isFetchingNextPage}
-            onClick={() => fetchNextPage()}
-          >
-            Load More
-          </Button>
-        ) : (
-          <div className="flex min-h-10 items-center justify-center rounded-b-md border border-t-0 border-border bg-container text-xs text-muted">
-            End of logs
-          </div>
-        ))}
+      {!isPending && (
+        <TableAttachedFooter>
+          {hasNextPage ? (
+            <Button
+              size="lg"
+              variant="ghost"
+              isFullWidth
+              isPending={isFetchingNextPage}
+              onClick={() => fetchNextPage()}
+            >
+              Load More
+            </Button>
+          ) : (
+            <span className="text-xs text-muted">End of logs</span>
+          )}
+        </TableAttachedFooter>
+      )}
       <AuditLogDetailsSheet
         isOpen={popUp.logDetails.isOpen}
         onOpenChange={(open) => handlePopUpToggle("logDetails", open)}
