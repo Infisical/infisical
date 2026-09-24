@@ -53,7 +53,6 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
     );
 
   const isEmpty = !isPending && !data?.pages?.[0].length;
-  const totalLoaded = data?.pages?.reduce((sum, page) => sum + page.length, 0) ?? 0;
 
   if (isEmpty) {
     return (
@@ -122,26 +121,24 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             ))}
         </TableBody>
       </Table>
-      {!isPending && (
-        <div className="flex min-h-10 items-center justify-between gap-3 rounded-b-md border border-t-0 border-border bg-container px-3 py-1.5">
-          <span className="text-xs text-muted" role="status">
-            {totalLoaded} {totalLoaded === 1 ? "log" : "logs"} loaded
-          </span>
-          {hasNextPage ? (
-            <Button
-              size="xs"
-              variant="ghost"
-              isPending={isFetchingNextPage}
-              isDisabled={isFetchingNextPage}
-              onClick={() => fetchNextPage()}
-            >
-              Load More
-            </Button>
-          ) : (
-            <span className="text-xs text-muted">End of logs</span>
-          )}
-        </div>
-      )}
+      {!isPending &&
+        (hasNextPage ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            isFullWidth
+            className="h-10 rounded-t-none rounded-b-md border-t-0 border-border bg-container hover:border-border hover:bg-container-hover"
+            isPending={isFetchingNextPage}
+            isDisabled={isFetchingNextPage}
+            onClick={() => fetchNextPage()}
+          >
+            Load More
+          </Button>
+        ) : (
+          <div className="flex min-h-10 items-center justify-center rounded-b-md border border-t-0 border-border bg-container text-xs text-muted">
+            End of logs
+          </div>
+        ))}
       <AuditLogDetailsSheet
         isOpen={popUp.logDetails.isOpen}
         onOpenChange={(open) => handlePopUpToggle("logDetails", open)}
