@@ -122,7 +122,7 @@ export const SignupOnboardingPage = () => {
   const renderView = () => {
     switch (section) {
       case OnboardingSection.OrgName:
-        return <OrgNameStep onComplete={handleOrgNameComplete} />;
+        return <OrgNameStep onComplete={handleOrgNameComplete} callbackPort={callbackPort} />;
       case OnboardingSection.ProductSelect:
         return (
           <ProductSelectionStep

@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useRouteContext } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
@@ -29,7 +29,7 @@ export const CliRedirectPage = () => {
     initialState: false
   });
   const cliToken = getTerminalCliToken();
-  const { dashboardOrgId } = useRouteContext({ from: "/cli-redirect" });
+  const { org_id: dashboardOrgId } = useSearch({ from: "/cli-redirect" });
 
   const copyUrlToClipboard = () => {
     if (cliToken) {

@@ -184,11 +184,10 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
             JSON.stringify({
               expiry: formatISO(addSeconds(new Date(), 30)),
               data: window.btoa(JSON.stringify(payload)),
-              callbackPort: search.callback_port,
-              orgId: targetOrgId
+              callbackPort: search.callback_port
             })
           );
-          throw redirect({ to: "/cli-redirect" });
+          throw redirect({ to: "/cli-redirect", search: { org_id: targetOrgId } });
         }
 
         setAuthToken(result.token);

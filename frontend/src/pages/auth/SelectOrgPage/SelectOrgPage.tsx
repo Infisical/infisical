@@ -295,11 +295,10 @@ export const SelectOrgPage = () => {
         JSON.stringify({
           expiry: formatISO(addSeconds(new Date(), 30)),
           data: window.btoa(JSON.stringify(payload)),
-          callbackPort,
-          orgId: targetOrgId
+          callbackPort
         })
       );
-      navigate({ to: "/cli-redirect" });
+      navigate({ to: "/cli-redirect", search: { org_id: targetOrgId } });
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
