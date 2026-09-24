@@ -2739,53 +2739,51 @@ const OverviewPageContent = () => {
       />
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="flex min-w-0 flex-wrap items-center gap-2 md:flex-nowrap">
-                <div className="max-w-full shrink-0">
-                  <EnvironmentSelect
-                    selectedEnvs={filteredEnvs}
-                    setSelectedEnvs={setFilteredEnvs}
-                    isDisabled={
-                      isBatchModeActive &&
-                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                    }
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 @min-[48rem]/card-header:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]">
+            <div className="col-start-1 row-start-1 max-w-full min-w-0">
+              <EnvironmentSelect
+                selectedEnvs={filteredEnvs}
+                setSelectedEnvs={setFilteredEnvs}
+                isDisabled={
+                  isBatchModeActive &&
+                  (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                }
+              />
+            </div>
+            <ResourceSearchInput
+              key={secretPath}
+              className="col-start-1 row-start-2 min-w-0 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1"
+              value={searchFilter}
+              tags={tags}
+              onChange={setSearchFilter}
+              onSelectResult={({ search }) => setSearchFilter(search)}
+              environments={userAvailableEnvs}
+              projectId={currentProject?.id}
+            />
+            {userAvailableEnvs.length > 0 && (
+              <>
+                <div className="col-start-2 row-start-2 @min-[48rem]/card-header:col-start-3 @min-[48rem]/card-header:row-start-1">
+                  <ResourceFilter
+                    rowTypeFilter={filter}
+                    onToggleRowType={handleToggleRowType}
+                    tags={tags}
+                    selectedTagSlugs={tagFilter}
+                    onToggleTag={handleToggleTag}
+                    onClearTags={handleClearTags}
                   />
                 </div>
-                <ResourceSearchInput
-                  key={secretPath}
-                  className="max-w-2xl min-w-0 flex-1 basis-48"
-                  value={searchFilter}
-                  tags={tags}
-                  onChange={setSearchFilter}
-                  onSelectResult={({ search }) => setSearchFilter(search)}
-                  environments={userAvailableEnvs}
-                  projectId={currentProject?.id}
-                />
-                {userAvailableEnvs.length > 0 && (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <ResourceFilter
-                      rowTypeFilter={filter}
-                      onToggleRowType={handleToggleRowType}
-                      tags={tags}
-                      selectedTagSlugs={tagFilter}
-                      onToggleTag={handleToggleTag}
-                      onClearTags={handleClearTags}
-                    />
-                    <DownloadEnvButton
-                      secretPath={secretPath}
-                      environments={visibleEnvs}
-                      projectId={projectId}
-                    />
-                  </div>
-                )}
-              </div>
-              {userAvailableEnvs.length > 0 && (
-                <div className="flex justify-end">
+                <div className="col-start-3 row-start-2 @min-[48rem]/card-header:col-start-4 @min-[48rem]/card-header:row-start-1">
+                  <DownloadEnvButton
+                    secretPath={secretPath}
+                    environments={visibleEnvs}
+                    projectId={projectId}
+                  />
+                </div>
+                <div className="col-start-3 row-start-1 justify-self-end @min-[48rem]/card-header:col-start-5">
                   <AddResourceButtons {...addResourceButtonsProps} />
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </CardHeader>
         <CardContent className="min-w-0">
