@@ -90,8 +90,7 @@ const build = (overrides: TOverrides = {}) => {
       findOne: findChunk,
       updateById: repointChunk,
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
-      findForSessionPage: vi.fn(async () => []),
-      countForSession: vi.fn(async () => 0)
+      findForSessionPage: vi.fn(async () => ({ chunks: [], hasMore: false }))
     } as never,
     agentVaultActivityConfigDAL: {
       findOne: vi.fn(async () => config),

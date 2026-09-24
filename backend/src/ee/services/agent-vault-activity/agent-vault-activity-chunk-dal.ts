@@ -99,18 +99,6 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countForSession = async (sessionId: string, tx?: Knex): Promise<number> => {
-    try {
-      const row = await (tx || db.replicaNode())(TableName.AgentVaultActivityChunk)
-        .where({ sessionId })
-        .count<{ count: string }[]>("* as count")
-        .first();
-      return Number(row?.count ?? 0);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count agent vault activity chunks" });
-    }
-  };
-
   const createIfAbsent = async (
     values: TAgentVaultActivityChunksInsert,
     tx?: Knex
@@ -127,5 +115,5 @@ export const agentVaultActivityChunkDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForSessionPage, findReceivedForSession, countForSession, createIfAbsent };
+  return { ...orm, findForSessionPage, findReceivedForSession, createIfAbsent };
 };
