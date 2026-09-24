@@ -323,23 +323,13 @@ export const pamAccessRequestServiceFactory = ({
       });
     }
 
-    // Break-glass skips the approver, not the permission the request itself needed.
     const accessType = requestData.requestData.accessType ?? PamAccessType.Session;
-    await checkAccountAccess(
-      permissionService,
-      account.id,
-      account.folderId,
-      projectId,
-      accessType === PamAccessType.Credential
-        ? ResourcePermissionPamResourceActions.ViewCredentials
-        : ResourcePermissionPamResourceActions.LaunchSessions,
-      ctx
-    );
 
     await pamAccessApprovalResource.assertBreakGlassEligible({
       projectId,
       accountId,
       folderId,
+      accessType,
       actor: toApprovalActor(ctx)
     });
 

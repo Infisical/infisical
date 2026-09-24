@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import {
   ActionProjectType,
+  OrganizationActionScope,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
   ResourceType,
@@ -616,6 +617,19 @@ export const approvalPolicyServiceFactory = ({
       });
     }
 
+    if (resources[policyType]?.singlePolicyPerScope && dbScopeId) {
+      const existing = await approvalPolicyDAL.findOne({
+        type: policyType,
+        scopeType: dbScopeType,
+        scopeId: dbScopeId
+      });
+      if (existing) {
+        throw new BadRequestError({
+          message: `An approval policy named '${existing.name}' already governs this scope. Update it instead of creating another.`
+        });
+      }
+    }
+
     await $verifyPolicyActors({
       policyType,
       projectId,
@@ -1083,11 +1097,23 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
+  const $assertOrgMember = (organizationId: string, actor: TApprovalActor) =>
+    permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: organizationId,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any,
+      actorAuthMethod: actor.authMethod
+    });
+
   const getRequestById = async (requestId: string, actor: TApprovalActor) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
     }
+
+    await $assertOrgMember(request.organizationId, actor);
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
 
@@ -1178,6 +1204,8 @@ export const approvalPolicyServiceFactory = ({
         message: `Request type mismatch: expected ${policyType}, got ${request.type}`
       });
     }
+
+    await $assertOrgMember(request.organizationId, actor);
 
     const supportsBreakGlass = Boolean(resources[policyType]?.isBreakGlassEligible);
     if (bypassReason !== undefined && !supportsBreakGlass) {
@@ -1401,6 +1429,8 @@ export const approvalPolicyServiceFactory = ({
         message: `Request type mismatch: expected ${policyType}, got ${request.type}`
       });
     }
+
+    await $assertOrgMember(request.organizationId, actor);
 
     if (request.status !== ApprovalRequestStatus.Pending) {
       throw new BadRequestError({ message: "Request is not pending" });

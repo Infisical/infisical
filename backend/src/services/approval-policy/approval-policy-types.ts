@@ -239,6 +239,9 @@ export type TApprovalResource<
   // Whether the actor may read a scope's requests and grants, for a type whose read authority is the
   // scope rather than the project.
   canReadScope?: (args: { projectId: string; scopeId: string | null; actor: TApprovalActor }) => Promise<boolean>;
+
+  // Set where a scope may carry at most one policy, so creating a second is refused rather than ignored.
+  singlePolicyPerScope?: boolean;
   verifyPolicyActors?: (args: {
     projectId: string;
     scopeId: string | null;

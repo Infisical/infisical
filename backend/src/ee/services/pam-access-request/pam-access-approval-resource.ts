@@ -138,6 +138,7 @@ type TBreakGlassSubject = {
   projectId: string;
   accountId?: string;
   folderId?: string;
+  accessType?: PamAccessType;
   actor: TApprovalActor;
 };
 
@@ -251,8 +252,12 @@ export const pamAccessApprovalResourceFactory = ({
     );
   };
 
-  const matchesInputs: NonNullable<TPamAccessApprovalResource["matchesInputs"]> = (payload, inputs) =>
-    matchesPamAccessSubject(payload, inputs as TPamAccessPolicyInputs);
+  const matchesInputs: NonNullable<TPamAccessApprovalResource["matchesInputs"]> = (payload, inputs) => {
+    const target = inputs as TPamAccessPolicyInputs;
+    if (target.accessType) return matchesPamAccessSubject(payload, target);
+
+    return (payload as { accountId?: string } | null)?.accountId === target.accountId;
+  };
 
   const validateConstraints: TPamAccessApprovalResource["validateConstraints"] = (policy, requestData) => {
     const requestedMs = parsePamAccessDuration(requestData.duration);
@@ -531,6 +536,7 @@ export const pamAccessApprovalResourceFactory = ({
     projectId,
     accountId,
     folderId,
+    accessType,
     bypassers,
     actor,
     userGroupIds
@@ -564,10 +570,31 @@ export const pamAccessApprovalResourceFactory = ({
       return new ForbiddenRequestError({ message: "You are not a member of this folder" });
     }
 
+    try {
+      await checkAccountAccess(
+        permissionService,
+        account.id,
+        folderId,
+        projectId,
+        accessType === PamAccessType.Credential
+          ? ResourcePermissionPamResourceActions.ViewCredentials
+          : ResourcePermissionPamResourceActions.LaunchSessions,
+        toActorContext(actor)
+      );
+    } catch (err) {
+      return err as Error;
+    }
+
     return null;
   };
 
-  const assertBreakGlassEligible = async ({ projectId, accountId, folderId, actor }: TBreakGlassSubject) => {
+  const assertBreakGlassEligible = async ({
+    projectId,
+    accountId,
+    folderId,
+    accessType,
+    actor
+  }: TBreakGlassSubject) => {
     const policy = folderId ? await $findFolderPolicy(projectId, folderId) : null;
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Approval policy no longer exists for this folder" });
@@ -582,6 +609,7 @@ export const pamAccessApprovalResourceFactory = ({
       projectId,
       accountId,
       folderId,
+      accessType,
       actor,
       bypassers,
       userGroupIds: new Set(userGroupMemberships.map((g) => g.groupId))
@@ -600,6 +628,7 @@ export const pamAccessApprovalResourceFactory = ({
       projectId: request.projectId,
       accountId: inputs?.accountId,
       folderId: inputs?.folderId,
+      accessType: inputs?.accessType,
       actor,
       bypassers,
       userGroupIds
@@ -1033,6 +1062,7 @@ export const pamAccessApprovalResourceFactory = ({
     noMatchingPolicyMessage: "No approval configuration found for this folder",
     assertCanManagePolicy,
     canReadScope,
+    singlePolicyPerScope: true,
     verifyPolicyActors,
     assertCanCreateRequest,
     assertCanReview,
