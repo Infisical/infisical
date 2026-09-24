@@ -96,7 +96,7 @@ export const CreateSecretSyncModal = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+        <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
           <SheetHeader className="border-b">
             {selectedSync ? (
               <>

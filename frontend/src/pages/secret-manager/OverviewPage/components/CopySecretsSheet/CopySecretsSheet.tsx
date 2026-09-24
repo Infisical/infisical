@@ -574,7 +574,7 @@ const CopySecretsSession = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
-        <SheetContent className="w-full sm:w-3/4 sm:max-w-[1500px]">
+        <SheetContent size="workspace" className="w-full sm:w-3/4">
           <form
             className="flex min-h-0 flex-1 flex-col"
             onSubmit={(event) => event.preventDefault()}
