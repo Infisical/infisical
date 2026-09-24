@@ -55,13 +55,20 @@ export const advanceCursor = ({
   const folderIds = folderIdsByProject[cursor.projectId] ?? [];
   const folderIndex = folderIds.indexOf(cursor.folderId);
 
+  // The cursor's folder is gone. Folder ids are sorted, so resuming at the first one past it keeps
+  // the walk moving forward rather than re-reading everything this project already covered.
   if (folderIndex === -1) {
-    if (folderIds.length) {
-      return { done: false, cursor: startOfFolder(cursor.projectId, folderIds[0]), completedProjectId: null };
+    const nextFolderId = folderIds.find((folderId) => folderId > cursor.folderId);
+    if (nextFolderId) {
+      return { done: false, cursor: startOfFolder(cursor.projectId, nextFolderId), completedProjectId: null };
     }
     const next = firstProjectWithFolders(projectIds, folderIdsByProject, projectIndex + 1);
     if (!next) return { done: true };
-    return { done: false, cursor: startOfFolder(next.projectId, next.folderId), completedProjectId: null };
+    return {
+      done: false,
+      cursor: startOfFolder(next.projectId, next.folderId),
+      completedProjectId: folderIds.length ? cursor.projectId : null
+    };
   }
 
   if (!folderExhausted && lastRow) {
@@ -111,4 +118,18 @@ export const resolveRunStatus = (
   }
 
   return { status: JobState.Pending };
+};
+
+// The status endpoint answers from this, so a payload it cannot use has to read as "no run in
+// progress" rather than reach the response schema. The counters matter as much as the timestamp:
+// a non-numeric one becomes NaN, which `z.number()` rejects, turning a graceful degrade into a 500.
+export const isUsableRunState = (value: unknown): value is TBackfillRunState => {
+  const state = value as Partial<TBackfillRunState> | null;
+  if (!state || typeof state !== "object") return false;
+  if (state.status !== "running" && state.status !== "failed") return false;
+  if (typeof state.lastProgressAt !== "string") return false;
+
+  return (["projectsTotal", "projectsDone", "secretsProcessed"] as const).every((field) =>
+    Number.isFinite(state[field])
+  );
 };

@@ -12,13 +12,20 @@ import { createOrgSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-in
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { advanceCursor, needsBackfill } from "./secret-value-tracking-fns";
 import { secretValueTrackingStateFactory } from "./secret-value-tracking-state";
-import { TBackfillScope } from "./secret-value-tracking-types";
+import { TBackfillCursor, TBackfillScope } from "./secret-value-tracking-types";
 
 // A chunk is many read batches rather than one, because the per-project data key is resolved once
 // per chunk: on an org using external KMS that resolve is a network call, and a chunk per batch
 // would pay it five times as often for nothing.
 const CHUNK_SIZE = 5000;
 const READ_BATCH_SIZE = 1000;
+// A folder that holds nothing still costs a query, so a chunk is bounded on steps as well as rows.
+// Without it a project of tens of thousands of empty folders runs unbounded inside one job.
+const MAX_STEPS_PER_CHUNK = 500;
+// Refreshes lastProgressAt inside a long chunk. Left to the end of the chunk, a slow one reads as
+// stalled and the enable guard lets a second chain take the same scope while this one is still
+// walking it.
+const HEARTBEAT_EVERY_STEPS = 50;
 
 type TSecretValueTrackingQueueFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -33,8 +40,10 @@ type TSecretValueTrackingQueueFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-// Jobs queued before the org-wide walk shipped carry only a projectId, so a payload with no scope
-// is read as project scope and a deploy does not strand them.
+// A payload with no scope is one queued before the org-wide walk shipped. It is read as project
+// scope so the shape is understood, but such a job has no run state and the handler stops on that:
+// the old code kept no state, so there is no cursor to resume and nothing to safely assume. The
+// enable button simply comes back for the customer to press again.
 const resolveScope = (data: { scope?: "org" | "project"; orgId?: string; projectId?: string }): TBackfillScope => {
   if (data.scope === "org" && data.orgId) return { scope: "org", orgId: data.orgId };
   return { scope: "project", projectId: data.projectId as string };
@@ -59,6 +68,10 @@ export const secretValueTrackingQueueFactory = ({
     queueService.queue(QueueName.SecretBlindIndexMigration, QueueJobs.SecretBlindIndexMigration, scope, {
       removeOnComplete: { age: 60 },
       removeOnFail: { age: 24 * 3600 },
+      // Without retries one transient database or KMS blip ends the chain and the customer has to
+      // start the backfill again by hand.
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
       jobId: `secret-value-tracking-${scopeIdOf(scope)}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     });
 
@@ -133,25 +146,53 @@ export const secretValueTrackingQueueFactory = ({
     let { projectsDone } = runState;
     let { secretsProcessed } = runState;
     let readThisChunk = 0;
+    let steps = 0;
     let done = false;
 
-    // Seed the cursor for a run that has not started, and step it past anything deleted since the
-    // last chunk, before reading a single row.
-    const seedProjects = cursor ? [cursor.projectId] : projectIds;
-    await Promise.all(seedProjects.map((projectId) => $foldersOf(projectId)));
-    if (!cursor) {
-      const seeded = advanceCursor({
-        cursor: null,
-        projectIds,
-        folderIdsByProject: foldersByProject,
-        lastRow: null,
-        folderExhausted: false
+    const $writeProgress = async (at: TBackfillCursor | null) => {
+      await state.write(scopeId, {
+        status: "running",
+        cursor: at,
+        projectsTotal: runState.projectsTotal,
+        projectsDone,
+        secretsProcessed,
+        lastProgressAt: new Date().toISOString()
       });
+    };
+
+    // advanceCursor only sees the projects whose folders are loaded, and reads an unloaded one as a
+    // project with none, so it would declare the walk finished at the first project boundary. Load
+    // the next unseeded project and ask again before accepting the end.
+    const $advance = async (
+      from: TBackfillCursor | null,
+      lastRow: { key: string; id: string } | null,
+      folderExhausted: boolean
+    ) => {
+      for (;;) {
+        const next = advanceCursor({
+          cursor: from,
+          projectIds,
+          folderIdsByProject: foldersByProject,
+          lastRow,
+          folderExhausted
+        });
+        if (!next.done) return next;
+
+        const unseeded = projectIds.find((projectId) => !(projectId in foldersByProject));
+        if (!unseeded) return next;
+        // eslint-disable-next-line no-await-in-loop
+        await $foldersOf(unseeded);
+      }
+    };
+
+    if (!cursor) {
+      const seeded = await $advance(null, null, false);
       if (seeded.done) done = true;
       else cursor = seeded.cursor;
     }
 
-    while (!done && cursor && readThisChunk < CHUNK_SIZE) {
+    while (!done && cursor && readThisChunk < CHUNK_SIZE && steps < MAX_STEPS_PER_CHUNK) {
+      steps += 1;
       // eslint-disable-next-line no-await-in-loop
       await $foldersOf(cursor.projectId);
 
@@ -184,20 +225,18 @@ export const secretValueTrackingQueueFactory = ({
       }
 
       const lastRow = rows.length ? { key: rows[rows.length - 1].key, id: rows[rows.length - 1].id } : null;
-      const next = advanceCursor({
-        cursor,
-        projectIds,
-        folderIdsByProject: foldersByProject,
-        lastRow,
-        folderExhausted: rows.length < READ_BATCH_SIZE
-      });
+      // eslint-disable-next-line no-await-in-loop
+      const next = await $advance(cursor, lastRow, rows.length < READ_BATCH_SIZE);
 
       if (next.done) {
         // The walk ends inside the project it was working, so that project's own flag is set here
-        // rather than from a completedProjectId the `done` branch never carries.
-        // eslint-disable-next-line no-await-in-loop
-        await $markProjectComplete(cursor.projectId);
-        projectsDone += 1;
+        // rather than from a completedProjectId the `done` branch never carries. A cursor left on a
+        // project that has since been deleted is not a project to flag.
+        if (projectIds.includes(cursor.projectId)) {
+          // eslint-disable-next-line no-await-in-loop
+          await $markProjectComplete(cursor.projectId);
+          projectsDone += 1;
+        }
         done = true;
         break;
       }
@@ -208,6 +247,11 @@ export const secretValueTrackingQueueFactory = ({
         projectsDone += 1;
       }
       cursor = next.cursor;
+
+      if (steps % HEARTBEAT_EVERY_STEPS === 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await $writeProgress(cursor);
+      }
     }
 
     if (done) {
@@ -219,14 +263,7 @@ export const secretValueTrackingQueueFactory = ({
       return;
     }
 
-    await state.write(scopeId, {
-      status: "running",
-      cursor,
-      projectsTotal: runState.projectsTotal,
-      projectsDone,
-      secretsProcessed,
-      lastProgressAt: new Date().toISOString()
-    });
+    await $writeProgress(cursor);
     await queueChunk(scope);
   };
 

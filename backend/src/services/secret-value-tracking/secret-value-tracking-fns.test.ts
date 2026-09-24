@@ -1,6 +1,6 @@
 import { JobState } from "@app/queue/queue-service";
 
-import { advanceCursor, needsBackfill, resolveRunStatus } from "./secret-value-tracking-fns";
+import { advanceCursor, isUsableRunState, needsBackfill, resolveRunStatus } from "./secret-value-tracking-fns";
 import { TBackfillRunState } from "./secret-value-tracking-types";
 
 const PROJECTS = ["p1", "p2"];
@@ -84,16 +84,30 @@ describe("advanceCursor", () => {
     ).toEqual({ done: false, cursor: { projectId: "p1", folderId: "f2", key: "", id: "" }, completedProjectId: null });
   });
 
-  test("a cursor on a deleted folder resumes at the next folder of that project", () => {
+  // Folder ids are sorted, so resuming past the deleted one keeps the walk moving forward instead of
+  // re-reading everything the run already covered in that project.
+  test("a cursor on a deleted folder resumes at the next folder after it, not at the first", () => {
     expect(
       advanceCursor({
-        cursor: { projectId: "p1", folderId: "gone", key: "M", id: "s5" },
+        cursor: { projectId: "p1", folderId: "f1a", key: "M", id: "s5" },
         projectIds: PROJECTS,
         folderIdsByProject: FOLDERS,
         lastRow: null,
         folderExhausted: false
       })
-    ).toEqual({ done: false, cursor: { projectId: "p1", folderId: "f1", key: "", id: "" }, completedProjectId: null });
+    ).toEqual({ done: false, cursor: { projectId: "p1", folderId: "f2", key: "", id: "" }, completedProjectId: null });
+  });
+
+  test("a cursor on a deleted folder past the project's last one moves to the next project", () => {
+    expect(
+      advanceCursor({
+        cursor: { projectId: "p1", folderId: "zz-gone", key: "M", id: "s5" },
+        projectIds: PROJECTS,
+        folderIdsByProject: FOLDERS,
+        lastRow: null,
+        folderExhausted: false
+      })
+    ).toEqual({ done: false, cursor: { projectId: "p2", folderId: "f3", key: "", id: "" }, completedProjectId: "p1" });
   });
 
   test("a cursor on a deleted project resumes at the next project", () => {
@@ -203,5 +217,23 @@ describe("resolveRunStatus", () => {
   // An unreadable timestamp must not throw into the status endpoint.
   test("an unparseable lastProgressAt reads as stalled rather than throwing", () => {
     expect(resolveRunStatus({ ...running(""), lastProgressAt: "not-a-date" }, false, NOW).status).toBe(JobState.Failed);
+  });
+});
+
+describe("run state shape validation", () => {
+  test("a payload with non-numeric counters is rejected rather than yielding NaN", () => {
+    // The status endpoint's response schema rejects NaN, so a payload like this would turn the one
+    // endpoint whose job is to degrade gracefully into a 500.
+    expect(isUsableRunState({ status: "running", lastProgressAt: NOW.toISOString(), projectsDone: "many" })).toBe(
+      false
+    );
+  });
+
+  test("a well formed payload is usable", () => {
+    expect(isUsableRunState(running(minutesAgo(1)))).toBe(true);
+  });
+
+  test("a payload missing its timestamp is rejected", () => {
+    expect(isUsableRunState({ status: "running", projectsTotal: 1, projectsDone: 0, secretsProcessed: 0 })).toBe(false);
   });
 });

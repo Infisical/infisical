@@ -70,7 +70,14 @@ export const secretValueTrackingServiceFactory = ({
       });
     }
 
-    await secretValueTrackingQueue.startBackfill({ scope: "org", orgId: actor.orgId });
+    // Releasing the claim matters: without it a failed enqueue leaves the organization holding a
+    // claim it is not using, and the guard refuses every retry until the staleness window passes.
+    try {
+      await secretValueTrackingQueue.startBackfill({ scope: "org", orgId: actor.orgId });
+    } catch (error) {
+      await state.clear(actor.orgId);
+      throw error;
+    }
 
     return { projectsTotal };
   };
@@ -131,7 +138,12 @@ export const secretValueTrackingServiceFactory = ({
       throw new BadRequestError({ message: "A secret value tracking backfill is already running for this project" });
     }
 
-    await secretValueTrackingQueue.startBackfill({ scope: "project", projectId: project.id });
+    try {
+      await secretValueTrackingQueue.startBackfill({ scope: "project", projectId: project.id });
+    } catch (error) {
+      await state.clear(project.id);
+      throw error;
+    }
   };
 
   const getProjectStatus = async (dto: TProjectPermission) => {

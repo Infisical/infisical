@@ -1,7 +1,7 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
-import { BACKFILL_STALE_AFTER_MS } from "./secret-value-tracking-fns";
+import { BACKFILL_STALE_AFTER_MS, isUsableRunState } from "./secret-value-tracking-fns";
 import { TBackfillRunState } from "./secret-value-tracking-types";
 
 type TSecretValueTrackingStateFactoryDep = {
@@ -16,11 +16,10 @@ export const secretValueTrackingStateFactory = ({ keyStore }: TSecretValueTracki
     if (!raw) return null;
 
     try {
-      const parsed = JSON.parse(raw) as TBackfillRunState;
       // An unreadable key means no run in progress, which the status endpoint can answer, rather
       // than an exception it cannot.
-      if (typeof parsed?.lastProgressAt !== "string" || typeof parsed?.status !== "string") return null;
-      return parsed;
+      const parsed: unknown = JSON.parse(raw);
+      return isUsableRunState(parsed) ? parsed : null;
     } catch (error) {
       logger.warn(error, `Secret value tracking backfill state unreadable [scopeId=${scopeId}]`);
       return null;
