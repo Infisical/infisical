@@ -47,7 +47,7 @@ export const verifyGcpTokenAndExtractCaller = async ({
   errorContext
 }: TVerifyGcpTokenInput): Promise<TGcpIdentityDetails> => {
   // A token that does not even parse is the caller's mistake, not a verification outcome.
-  const unverifiedPayload = crypto.jwt().decode(jwt) as { email?: string } | null;
+  const unverifiedPayload = crypto.jwt().decode(jwt) as { email?: string; aud?: string | string[] } | null;
   if (!unverifiedPayload) {
     throw new UnauthorizedError({
       message: "Access denied: the GCP token could not be parsed as a JWT.",
@@ -66,6 +66,20 @@ export const verifyGcpTokenAndExtractCaller = async ({
     });
   }
 
+  // Checked here rather than left to the validators: google-auth-library reports a wrong audience,
+  // a bad signature and an expired token as one indistinguishable failure. The signature is still
+  // verified below, so an attacker gains nothing by putting the right audience on a forged token.
+  const claimedAudience = unverifiedPayload.aud;
+  const audienceMatches = Array.isArray(claimedAudience)
+    ? claimedAudience.includes(audience)
+    : claimedAudience === audience;
+  if (!audienceMatches) {
+    throw new UnauthorizedError({
+      message: `Access denied: the GCP token was issued for a different audience. Request it with this gateway's ID (${audience}) as the audience.`,
+      detail: { reasonCode: ResourceAuthLoginFailureReason.GcpTokenAudienceRejected, ...errorContext }
+    });
+  }
+
   let identityDetails: TGcpIdentityDetails;
   try {
     identityDetails =
@@ -78,15 +92,15 @@ export const verifyGcpTokenAndExtractCaller = async ({
       `Resource GCP Auth Login: token verification failed [resourceId=${String(errorContext.resourceId)}]`
     );
 
-    // The validators raise UnauthorizedError when a claim is wrong and anything else when the
-    // signature check or the call to Google fails, so the two are worth telling apart.
-    const claimRejected = err instanceof UnauthorizedError;
+    // The validators raise UnauthorizedError when they reject the token itself and anything else
+    // when the call to Google fails, so the two are worth telling apart.
+    const tokenRejected = err instanceof UnauthorizedError;
     throw new UnauthorizedError({
-      message: claimRejected
-        ? "Access denied: the GCP token's claims were rejected. Check that it was issued for this gateway's ID as the audience, and that it carries a service account identity."
-        : "Access denied: the GCP token could not be verified against Google's signing keys. This is a bad signature, an expired token, or Google being unreachable.",
+      message: tokenRejected
+        ? "Access denied: the GCP token was rejected. Its signature did not verify against Google's signing keys, it has expired, or its service account identifier is not one Google issues."
+        : "Access denied: the GCP token could not be checked because Google's signing key endpoint could not be reached. Retry shortly.",
       detail: {
-        reasonCode: claimRejected
+        reasonCode: tokenRejected
           ? ResourceAuthLoginFailureReason.GcpTokenRejected
           : ResourceAuthLoginFailureReason.GcpTokenVerificationFailed,
         ...errorContext

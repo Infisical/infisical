@@ -216,6 +216,10 @@ export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDNS;
 };
 
+export type TPowerDnsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PowerDns;
+};
+
 export type TSshConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.SSH;
 };
@@ -400,6 +404,7 @@ export type TAppConnectionOption =
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
   | TAzureDNSConnectionOption
+  | TPowerDnsConnectionOption
   | TOctopusDeployConnectionOption
   | TSshConnectionOption
   | TDbtConnectionOption
@@ -484,6 +489,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
   [AppConnection.Chef]: TChefConnectionOption;
   [AppConnection.AzureDNS]: TAzureDNSConnectionOption;
+  [AppConnection.PowerDns]: TPowerDnsConnectionOption;
   [AppConnection.OctopusDeploy]: TOctopusDeployConnectionOption;
   [AppConnection.SSH]: TSshConnectionOption;
   [AppConnection.Dbt]: TDbtConnectionOption;

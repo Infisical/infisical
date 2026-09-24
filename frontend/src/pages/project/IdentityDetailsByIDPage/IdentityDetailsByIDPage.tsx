@@ -60,11 +60,12 @@ import {
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
-import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { useRevokeAgentVaultMembers } from "@app/hooks/api/agentVault";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
 import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
@@ -83,21 +84,23 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
-  const { mutateAsync: removeAgentVaultIdentityMutateAsync } = useRemoveAgentVaultProductMember();
+  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
   // Products where the underlying project is an internal detail the user never sees
+  const isSecretManager = currentProject?.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
   const isStandaloneProduct = isCertManager || isPam || isAgentVault;
   const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
 
@@ -154,7 +157,7 @@ const Page = () => {
     } else if (isAgentVault) {
       // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
       // and reaps the identity's bundle grants, none of which the generic route does.
-      await removeAgentVaultIdentityMutateAsync({ identityId });
+      await revokeAgentVaultMembers({ machineIdentityIds: [identityId] });
     } else {
       await removeIdentityMutateAsync({
         identityId,
@@ -212,7 +215,7 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {identityMembershipDetails ? (
         <>
           <PageHeader
@@ -239,14 +242,11 @@ const Page = () => {
               {isProjectIdentity ? (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   projectId={currentProject.id}
-                  projectName={currentProject.name}
                 />
               ) : (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   readOnly
                 />
               )}
@@ -330,7 +330,7 @@ const Page = () => {
               </DropdownMenu>
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={isOrgIdentity}
@@ -338,7 +338,7 @@ const Page = () => {
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}
@@ -403,16 +403,20 @@ const Page = () => {
                   identityMembershipDetails={identityMembershipDetails}
                 />
               )}
-              {currentProject.type === ProjectType.SecretManager &&
-                subscription?.secretsFolderRbac && (
-                  <FolderAccessSection
-                    actor={{
-                      type: "identity",
-                      id: identityMembershipDetails.identity.id,
-                      name: identityMembershipDetails.identity.name
-                    }}
-                  />
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
                 )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "identity",
+                    id: identityMembershipDetails.identity.id,
+                    name: identityMembershipDetails.identity.name
+                  }}
+                />
+              )}
             </div>
           </div>
           <IdentityActionConfirmationDialog

@@ -210,8 +210,27 @@ describe("verifyGcpTokenAndExtractCaller", () => {
     expect(validateIdTokenIdentity).not.toHaveBeenCalled();
   });
 
-  test("reports a signature or upstream failure separately from a rejected claim", async () => {
-    vi.mocked(validateIdTokenIdentity).mockRejectedValue(new Error("bad signature"));
+  test("names a token minted for a different audience before calling a validator", async () => {
+    await expect(
+      verifyGcpTokenAndExtractCaller({
+        type: "gce",
+        jwt: jwtWith({ aud: "another-gateway", email: SERVICE_ACCOUNT }),
+        audience: "gw-1",
+        errorContext
+      })
+    ).rejects.toMatchObject({ detail: { reasonCode: "gcp_token_audience_rejected", resourceId: "gw-1" } });
+    expect(validateIdTokenIdentity).not.toHaveBeenCalled();
+  });
+
+  test("accepts an audience the token lists among several", async () => {
+    vi.mocked(validateIdTokenIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT, computeEngineDetails: undefined });
+    const jwt = jwtWith({ aud: ["other", "gw-1"], email: SERVICE_ACCOUNT });
+    await verifyGcpTokenAndExtractCaller({ type: "gce", jwt, audience: "gw-1", errorContext });
+    expect(validateIdTokenIdentity).toHaveBeenCalledWith({ audience: "gw-1", jwt });
+  });
+
+  test("reports Google being unreachable separately from a rejected token", async () => {
+    vi.mocked(validateIdTokenIdentity).mockRejectedValue(new Error("ETIMEDOUT"));
     await expect(
       verifyGcpTokenAndExtractCaller({
         type: "gce",
@@ -224,18 +243,27 @@ describe("verifyGcpTokenAndExtractCaller", () => {
     });
   });
 
-  test("reports a claim the validator rejected as such", async () => {
-    vi.mocked(validateIamIdentity).mockRejectedValue(new UnauthorizedError({ message: "Invalid audience" }));
+  // The audience is settled above, so this bucket can no longer be a wrong-audience token.
+  test("reports a token the validator rejected as such", async () => {
+    vi.mocked(validateIdTokenIdentity).mockRejectedValue(new UnauthorizedError({ message: "Invalid GCP ID token" }));
     await expect(
       verifyGcpTokenAndExtractCaller({
-        type: "iam",
-        jwt: jwtWith({ sub: SERVICE_ACCOUNT, aud: "gw-1", exp: futureExp }),
+        type: "gce",
+        jwt: jwtWith({ aud: "gw-1", email: SERVICE_ACCOUNT }),
         audience: "gw-1",
         errorContext
       })
     ).rejects.toMatchObject({
       detail: { reasonCode: "gcp_token_rejected", resourceId: "gw-1" }
     });
+    await expect(
+      verifyGcpTokenAndExtractCaller({
+        type: "gce",
+        jwt: jwtWith({ aud: "gw-1", email: SERVICE_ACCOUNT }),
+        audience: "gw-1",
+        errorContext
+      })
+    ).rejects.toMatchObject({ message: expect.not.stringContaining("audience") as string });
   });
 
   test("refuses a verified iam token whose payload has no expiry", async () => {

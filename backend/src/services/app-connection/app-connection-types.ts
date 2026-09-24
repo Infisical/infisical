@@ -15,7 +15,6 @@ import {
   TOracleDBConnectionInput,
   TValidateOracleDBConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
@@ -372,6 +371,12 @@ import {
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
 import {
+  TPowerDnsConnection,
+  TPowerDnsConnectionConfig,
+  TPowerDnsConnectionInput,
+  TValidatePowerDnsConnectionCredentialsSchema
+} from "./powerdns";
+import {
   TQoveryConnection,
   TQoveryConnectionConfig,
   TQoveryConnectionInput,
@@ -583,6 +588,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
+  | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
 );
@@ -678,6 +684,7 @@ export type TAppConnectionInput = { id: string } & (
   | TLiteLLMConnectionInput
   | TFireworksConnectionInput
   | TNutanixPrismCentralConnectionInput
+  | TPowerDnsConnectionInput
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
 );
@@ -805,6 +812,7 @@ export type TAppConnectionConfig =
   | TLiteLLMConnectionConfig
   | TFireworksConnectionConfig
   | TNutanixPrismCentralConnectionConfig
+  | TPowerDnsConnectionConfig
   | TSpaceliftConnectionConfig
   | TDaytonaConnectionConfig;
 
@@ -891,6 +899,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateLiteLLMConnectionCredentialsSchema
   | TValidateFireworksConnectionCredentialsSchema
   | TValidateNutanixPrismCentralConnectionCredentialsSchema
+  | TValidatePowerDnsConnectionCredentialsSchema
   | TValidateSpaceliftConnectionCredentialsSchema
   | TValidateDaytonaConnectionCredentialsSchema;
 
@@ -917,14 +926,12 @@ export type TListAwsConnectionListeners = {
 
 export type TAppConnectionCredentialsValidator = (
   appConnection: TAppConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => Promise<TAppConnection["credentials"]>;
 
 export type TAppConnectionTransitionCredentialsToPlatform = (
   appConnection: TAppConnectionConfig,
   callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => Promise<TAppConnectionRaw>;
 

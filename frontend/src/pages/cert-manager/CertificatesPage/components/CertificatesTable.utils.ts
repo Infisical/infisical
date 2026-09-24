@@ -48,6 +48,35 @@ export const getCertificateDisplayStatus = (certificate: TCertificateStatusSourc
   return { status: CertStatus.ACTIVE, label: "Active", variant: "success" as const };
 };
 
+const DELETION_BLOCKED_NOT_EXPIRED =
+  "This certificate has not expired yet. Revoke it to retire it early, then delete it once it has expired.";
+
+const DELETION_BLOCKED_NOT_EXPIRED_NO_ISSUER =
+  "This certificate has not expired yet. Delete it once it has expired.";
+
+const DELETION_BLOCKED_REVOKED_NOT_EXPIRED =
+  "This certificate was revoked but has not expired yet. Delete it once it has expired.";
+
+type TCertificateDeletionSource = {
+  status?: string | null;
+  notAfter: string;
+  source?: string | null;
+};
+
+export const getCertificateDeletionBlockReason = (
+  certificate: TCertificateDeletionSource,
+  canRevoke: boolean
+) => {
+  const source = certificate.source ?? CertSource.Issued;
+  const hasExpired = new Date(certificate.notAfter) <= new Date();
+
+  if (hasExpired) return null;
+  if (certificate.status === CertStatus.REVOKED) return DELETION_BLOCKED_REVOKED_NOT_EXPIRED;
+  if (source === CertSource.Discovered || source === CertSource.Imported) return null;
+
+  return canRevoke ? DELETION_BLOCKED_NOT_EXPIRED : DELETION_BLOCKED_NOT_EXPIRED_NO_ISSUER;
+};
+
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {
   const expiryDate = new Date(notAfter);
   const now = new Date();

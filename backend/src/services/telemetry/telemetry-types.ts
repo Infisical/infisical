@@ -1,5 +1,9 @@
-import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
-import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schemas";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultTrafficPolicy
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -24,7 +28,7 @@ import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotat
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
@@ -103,8 +107,6 @@ export enum PostHogEventTypes {
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
-  GatewayUpdated = "Gateway Updated",
-  GatewayDeleted = "Gateway Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
   PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
@@ -217,6 +219,9 @@ export enum PostHogEventTypes {
   ProjectMembershipCreated = "Project Membership Created",
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
   ProjectMembershipDeleted = "Project Membership Deleted",
+  FolderAccessGrantCreated = "Folder Access Grant Created",
+  FolderAccessGrantUpdated = "Folder Access Grant Updated",
+  FolderAccessGrantDeleted = "Folder Access Grant Deleted",
   OrganizationCreated = "Organization Created",
   SubOrganizationCreated = "Sub Organization Created",
 
@@ -1103,20 +1108,6 @@ export type TGatewayCertExchangedEvent = {
   };
 };
 
-export type TGatewayUpdatedEvent = {
-  event: PostHogEventTypes.GatewayUpdated;
-  properties: {
-    gatewayId: string;
-  };
-};
-
-export type TGatewayDeletedEvent = {
-  event: PostHogEventTypes.GatewayDeleted;
-  properties: {
-    gatewayId: string;
-  };
-};
-
 export type TPamAccountTemplateEvent = {
   event:
     | PostHogEventTypes.PamAccountTemplateCreated
@@ -1903,6 +1894,19 @@ export type TProjectMembershipDeletedEvent = {
   };
 };
 
+export type TFolderAccessGrantEvent = {
+  event:
+    | PostHogEventTypes.FolderAccessGrantCreated
+    | PostHogEventTypes.FolderAccessGrantUpdated
+    | PostHogEventTypes.FolderAccessGrantDeleted;
+  properties: {
+    projectId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    permission: SecretFolderRole;
+    isTemporary: boolean;
+  };
+};
+
 // CMEK events
 export type TCmekCreatedEvent = {
   event: PostHogEventTypes.CmekCreated;
@@ -2412,8 +2416,6 @@ type TAgentVaultEventBase = {
   actorType: string;
 };
 
-type TAgentVaultMemberType = "user" | "group" | "identity";
-
 export type TAgentVaultAccessBundleCreatedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleCreated;
   properties: TAgentVaultEventBase & { accessBundleId: string };
@@ -2436,6 +2438,10 @@ export type TAgentVaultServiceCreatedEvent = {
     serviceId: string;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
   };
 };
 
@@ -2446,6 +2452,10 @@ export type TAgentVaultServiceUpdatedEvent = {
     serviceId: string;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
   };
 };
 
@@ -2456,12 +2466,12 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded;
-  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
 };
 
 export type TAgentVaultAccessBundleMemberRemovedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved;
-  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
 };
 
 export type TAgentVaultSessionCreatedEvent = {
@@ -2523,17 +2533,17 @@ export type TAgentVaultProxyEnrolledEvent = {
 
 export type TAgentVaultProductMemberAddedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberAdded;
-  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
 };
 
 export type TAgentVaultProductMemberUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberUpdated;
-  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
 };
 
 export type TAgentVaultProductMemberRemovedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberRemoved;
-  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType };
 };
 
 export type TAgentVaultPostHogEvent =
@@ -2668,8 +2678,6 @@ export type TPostHogEvent = {
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
-  | TGatewayUpdatedEvent
-  | TGatewayDeletedEvent
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent
@@ -2754,6 +2762,7 @@ export type TPostHogEvent = {
   | TProjectMembershipCreatedEvent
   | TProjectMembershipRoleUpdatedEvent
   | TProjectMembershipDeletedEvent
+  | TFolderAccessGrantEvent
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
   | TCmekCreatedEvent

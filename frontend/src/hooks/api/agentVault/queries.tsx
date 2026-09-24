@@ -3,14 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
+import { AgentVaultMemberType } from "./enums";
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
-  TAgentVaultProductGroupMember,
-  TAgentVaultProductIdentityMember,
-  TAgentVaultProductUserMember,
+  TAgentVaultMember,
+  TAgentVaultProductActor,
+  TAgentVaultProductMemberOf,
   TAgentVaultProxy,
   TAgentVaultSession,
+  TListAgentVaultAccessBundlesDTO,
+  TListAgentVaultMembersDTO,
+  TListAgentVaultProxiesDTO,
   TListAgentVaultSessionsDTO
 } from "./types";
 
@@ -31,64 +35,107 @@ export const agentVaultKeys = {
   sessions: (orgId: string) => [...agentVaultKeys.all(orgId), "sessions"] as const,
   sessionList: (orgId: string, params?: TListAgentVaultSessionsDTO) =>
     [...agentVaultKeys.sessions(orgId), params] as const,
+  accessBundleList: (orgId: string, params?: TListAgentVaultAccessBundlesDTO) =>
+    [...agentVaultKeys.accessBundles(orgId), "list", params] as const,
   proxies: (orgId: string) => [...agentVaultKeys.all(orgId), "proxies"] as const,
-  productMembers: (orgId: string) => [...agentVaultKeys.all(orgId), "product-members"] as const,
-  productUserMembers: (orgId: string) =>
-    [...agentVaultKeys.productMembers(orgId), "users"] as const,
-  productGroupMembers: (orgId: string) =>
-    [...agentVaultKeys.productMembers(orgId), "groups"] as const,
-  productIdentityMembers: (orgId: string) =>
-    [...agentVaultKeys.productMembers(orgId), "identities"] as const
+  proxyList: (orgId: string, params?: TListAgentVaultProxiesDTO) =>
+    [...agentVaultKeys.proxies(orgId), params] as const,
+  accessBundleMembers: (orgId: string, accessBundleId: string) =>
+    [...agentVaultKeys.accessBundle(orgId, accessBundleId), "members"] as const,
+  accessBundleMemberList: (
+    orgId: string,
+    accessBundleId: string,
+    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+  ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), params] as const,
+  members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
+  memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
+    [...agentVaultKeys.members(orgId), params] as const,
+  // Nested under members() so adding a member invalidates the candidate list too.
+  availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
+  availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
+    [...agentVaultKeys.availableMembers(orgId), params] as const
 };
 
-const fetchProductMembers = async <T,>(path: string) => {
-  const { data } = await apiRequest.get<{ members: T[] }>(
-    `/api/v1/agent-vault/memberships/${path}`
-  );
-  return data.members;
-};
-
-export const useListAgentVaultProductUserMembers = (enabled = true) => {
+export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
+  params: TListAgentVaultMembersDTO & { actorType?: T } = {},
+  enabled = true
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.productUserMembers(currentOrg.id),
-    queryFn: () => fetchProductMembers<TAgentVaultProductUserMember>("users"),
-    enabled
+    queryKey: agentVaultKeys.memberList(currentOrg.id, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        members: TAgentVaultProductMemberOf<T>[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/members", { params });
+      return data;
+    },
+    enabled,
+    placeholderData: (prev) => prev
   });
 };
 
-export const useListAgentVaultProductGroupMembers = (enabled = true) => {
+// One page is enough for a picker: past it the admin searches. The default lives here so both add
+// dialogs page the same way.
+const AVAILABLE_MEMBER_LIMIT = 50;
+
+export const useListAvailableAgentVaultMembers = <
+  T extends AgentVaultMemberType = AgentVaultMemberType
+>(
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO & { actorType?: T } = {},
+  enabled = true
+) => {
   const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
 
   return useQuery({
-    queryKey: agentVaultKeys.productGroupMembers(currentOrg.id),
-    queryFn: () => fetchProductMembers<TAgentVaultProductGroupMember>("groups"),
-    enabled
+    queryKey: agentVaultKeys.availableMemberList(currentOrg.id, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        actors: Extract<TAgentVaultProductActor, { type: T }>[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/members/available", { params });
+      return data;
+    },
+    enabled,
+    placeholderData: (prev) => prev
   });
 };
 
-export const useListAgentVaultProductIdentityMembers = (enabled = true) => {
+export const useListAgentVaultAccessBundleMembers = (
+  accessBundleId: string,
+  params: Omit<TListAgentVaultMembersDTO, "actorType"> = {}
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.productIdentityMembers(currentOrg.id),
-    queryFn: () => fetchProductMembers<TAgentVaultProductIdentityMember>("identities"),
-    enabled
+    queryKey: agentVaultKeys.accessBundleMemberList(currentOrg.id, accessBundleId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ members: TAgentVaultMember[]; totalCount: number }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+        { params }
+      );
+      return data;
+    },
+    enabled: Boolean(accessBundleId),
+    placeholderData: (prev) => prev
   });
 };
 
-export const useListAgentVaultAccessBundles = () => {
+export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBundlesDTO = {}) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.accessBundles(currentOrg.id),
+    queryKey: agentVaultKeys.accessBundleList(currentOrg.id, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         accessBundles: TAgentVaultAccessBundleListItem[];
-      }>("/api/v1/agent-vault/access-bundles");
-      return data.accessBundles;
-    }
+        totalCount: number;
+      }>("/api/v1/agent-vault/access-bundles", { params });
+      return data;
+    },
+    placeholderData: (prev) => prev
   });
 };
 
@@ -124,17 +171,19 @@ export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) =
   });
 };
 
-export const useListAgentVaultProxies = () => {
+export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {}) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.proxies(currentOrg.id),
+    queryKey: agentVaultKeys.proxyList(currentOrg.id, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ proxies: TAgentVaultProxy[] }>(
-        "/api/v1/agent-vault/proxies"
+      const { data } = await apiRequest.get<{ proxies: TAgentVaultProxy[]; totalCount: number }>(
+        "/api/v1/agent-vault/proxies",
+        { params }
       );
-      return data.proxies;
+      return data;
     },
-    refetchInterval: 30_000
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev
   });
 };

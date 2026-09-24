@@ -74,6 +74,13 @@ const makeFactory = (overrides?: Partial<Parameters<typeof cronJobFactory>[0]>) 
     retryBackoffMaxMs: 500,
     handlerTimeoutMs: 5_000,
     minProcessAgeMs: 0,
+    // Off by default so pickup timing is deterministic. Every test here registers against
+    // FAST_PATTERN, whose derived window is 15s, while `waitForFreshMinute` leaves the suite
+    // starting at an arbitrary point after a minute boundary. A job would therefore be held
+    // back by anything from 0 to its full offset depending on when the test happened to run,
+    // which makes every "handler was called by Xms" assertion a coin flip. The jitter
+    // describe below opts back in.
+    maxJitterMs: 0,
     // Keep test cleanup snappy. Production default is 25s to fit Kubernetes'
     // grace period; in tests we'd rather not stall afterEach if a handler
     // happens to be in flight at shutdown.
@@ -431,6 +438,58 @@ describe("min-age gate", () => {
     });
 
     expect(handler).toHaveBeenCalled();
+  }, 10_000);
+});
+
+// ── jitter ─────────────────────────────────────────────────────────────────────
+
+describe("jitter", () => {
+  // Asserted on the zset score rather than on wall-clock pickup: the score is written once at
+  // enqueue and is what actually holds a run back, so this pins the behaviour against real
+  // Redis without depending on where in the minute the test happens to start.
+  const readEnqueued = async (name: string) => {
+    const keys = await testRedis.keys(RUN_KEYS(name));
+    expect(keys.length).toBe(1);
+    const id = keys[0].replace(`${KEY_PREFIX}:run:`, "");
+    const [score, scheduledAt] = await Promise.all([
+      testRedis.zscore(PENDING_ZSET, id),
+      testRedis.hget(`${KEY_PREFIX}:run:${id}`, "scheduled_at")
+    ]);
+    expect(score).not.toBeNull();
+    expect(scheduledAt).not.toBeNull();
+    return { eligibleAt: Number(score), scheduledAt: Number(scheduledAt), id };
+  };
+
+  // processIntervalMs is parked past the test so nothing claims the run and clears the zset
+  // entry out from under the assertion.
+  const enqueueOnly = { processIntervalMs: 60_000 };
+
+  test("a jittered run is scored past its scheduled fire, and the id still keys on the fire", async () => {
+    const f = factory({ ...enqueueOnly, maxJitterMs: 5 * 60_000 });
+    f.register({ name: "jitter-job", pattern: FAST_PATTERN, handler: vi.fn(), runHashTtlS: 3600 });
+    f.start();
+    await new Promise((r) => {
+      setTimeout(r, 900);
+    });
+
+    const { eligibleAt, scheduledAt, id } = await readEnqueued("jitter-job");
+    expect(eligibleAt).toBeGreaterThan(scheduledAt);
+    // FAST_PATTERN's window is a quarter of its 60s interval.
+    expect(eligibleAt - scheduledAt).toBeLessThan(15_000);
+    // Run identity stays on the unjittered fire, which is what the dedup and lease keys use.
+    expect(id).toBe(`jitter-job:${scheduledAt}`);
+  }, 10_000);
+
+  test("maxJitterMs: 0 scores the run at its exact scheduled fire", async () => {
+    const f = factory({ ...enqueueOnly, maxJitterMs: 0 });
+    f.register({ name: "no-jitter-job", pattern: FAST_PATTERN, handler: vi.fn(), runHashTtlS: 3600 });
+    f.start();
+    await new Promise((r) => {
+      setTimeout(r, 900);
+    });
+
+    const { eligibleAt, scheduledAt } = await readEnqueued("no-jitter-job");
+    expect(eligibleAt).toBe(scheduledAt);
   }, 10_000);
 });
 

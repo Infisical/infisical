@@ -51,6 +51,7 @@ export enum TableName {
   AlertChannelMembership = "alert_channel_memberships",
   AlertHistory = "alert_history",
   AlertHistoryTarget = "alert_history_target",
+  EventOutbox = "event_outbox",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
@@ -167,7 +168,9 @@ export enum TableName {
   ProjectSplitBackfillIds = "project_split_backfill_ids",
   UserNotifications = "user_notifications",
   ScimEvents = "scim_events",
-  // Gateway
+  // Gateway v1. Retired: nothing reads or writes these tables, or the gatewayId columns on
+  // dynamic_secrets / identity_kubernetes_auths / identity_auth_templates that point at them.
+  // They are kept populated so the removal can be reverted without data loss.
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
   ProjectGateway = "project_gateways",
@@ -273,6 +276,8 @@ export enum TableName {
   PamAccountPolicy = "pam_account_policies",
   AgentVaultAccessBundle = "agent_vault_access_bundles",
   AgentVaultService = "agent_vault_services",
+  AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",
+  AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",

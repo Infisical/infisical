@@ -5,7 +5,7 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
-import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, EmptyState } from "@app/components/v2";
 import {
   AccessRestrictedDialog,
   Button,
@@ -13,6 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   PageLoader,
   Tooltip,
   TooltipContent,
@@ -56,6 +57,7 @@ import { CertificateManageRenewalModal } from "../CertificatesPage/components/Ce
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
 import {
+  getCertificateDeletionBlockReason,
   isExpiringWithinOneDay,
   isManagedCertificate,
   RENEWAL_UNAVAILABLE_NO_PROFILE
@@ -262,6 +264,50 @@ const Page = () => {
       )
     );
 
+  let certificateBackLink = (
+    <Link
+      to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
+      params={{
+        orgId: currentOrg.id,
+        projectId
+      }}
+    >
+      <ChevronLeftIcon size={16} />
+      Certificates
+    </Link>
+  );
+
+  if (parentApplication) {
+    certificateBackLink = (
+      <Link
+        to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+        params={{
+          orgId: currentOrg.id,
+          projectId,
+          applicationName: parentApplication
+        }}
+        search={{ selectedTab: ApplicationTab.Certificates }}
+      >
+        <ChevronLeftIcon size={16} />
+        Go back to Application
+      </Link>
+    );
+  } else if (fromHsmConnector) {
+    certificateBackLink = (
+      <Link
+        to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
+        params={{
+          orgId: currentOrg.id,
+          projectId,
+          connectorId: fromHsmConnector
+        }}
+      >
+        <ChevronLeftIcon size={16} />
+        HSM Connector
+      </Link>
+    );
+  }
+
   let pageBody: React.ReactNode = null;
   if (!certificate) {
     pageBody = <EmptyState title="Error: Unable to find the certificate." className="py-12" />;
@@ -276,50 +322,9 @@ const Page = () => {
     );
   } else {
     pageBody = (
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        {parentApplication && (
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-            params={{
-              orgId: currentOrg.id,
-              projectId,
-              applicationName: parentApplication
-            }}
-            search={{ selectedTab: ApplicationTab.Certificates }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            Go back to Application
-          </Link>
-        )}
-        {!parentApplication && fromHsmConnector && (
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
-            params={{
-              orgId: currentOrg.id,
-              projectId,
-              connectorId: fromHsmConnector
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            HSM Connector
-          </Link>
-        )}
-        {!parentApplication && !fromHsmConnector && (
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
-            params={{
-              orgId: currentOrg.id,
-              projectId
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            Certificates
-          </Link>
-        )}
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
+          backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
           description="View certificate details"
           title={displayName}
@@ -464,15 +469,36 @@ const Page = () => {
                     Revoke Certificate
                   </DropdownMenuItem>
                 )}
-              {!(isInventoryView && certificate.applicationId) && (
-                <DropdownMenuItem
-                  variant="danger"
-                  isDisabled={!canDeleteCertificate}
-                  onClick={() => handlePopUpOpen("deleteCertificate")}
-                >
-                  Delete Certificate
-                </DropdownMenuItem>
-              )}
+              {!(isInventoryView && certificate.applicationId) &&
+                (() => {
+                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                    certificate,
+                    supportsRevocation
+                  );
+
+                  const item = (
+                    <DropdownMenuItem
+                      variant="danger"
+                      isDisabled={!canDeleteCertificate || Boolean(deletionBlockReason)}
+                      onClick={() => handlePopUpOpen("deleteCertificate")}
+                    >
+                      Delete Certificate
+                    </DropdownMenuItem>
+                  );
+
+                  if (!deletionBlockReason) return item;
+
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>{item}</div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={20} className="max-w-72">
+                        {deletionBlockReason}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })()}
             </DropdownMenuContent>
           </DropdownMenu>
         </PageHeader>
@@ -488,7 +514,7 @@ const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {pageBody}
       <CertificateCertModal
         popUp={popUp}

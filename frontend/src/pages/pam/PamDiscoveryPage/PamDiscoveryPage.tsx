@@ -28,6 +28,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -180,8 +181,8 @@ export const PamDiscoveryPage = () => {
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           {meta?.icon && (
-                            <img
-                              src={`/images/integrations/${meta.icon}`}
+                            <ProviderIcon
+                              icon={meta.icon}
                               alt={meta.name}
                               className="size-5 rounded-sm"
                             />

@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { OrgPermissionSubjects, ProjectPermissionSub, useOrganization } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -134,13 +135,13 @@ export const AppConnectionRow = ({
       <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <img
+            <ProviderIcon
               alt={`${connectionDetails.name} integration`}
-              src={`/images/integrations/${connectionDetails.image}`}
+              icon={connectionDetails.image}
               className="mr-0.5 w-5"
             />
             {ConnectionIcon && (
-              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-primary-700" />
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-project" />
             )}
           </div>
           <span className="hidden lg:inline">{connectionDetails.name}</span>
@@ -152,7 +153,7 @@ export const AppConnectionRow = ({
           {description && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <InfoIcon className="ml-1 size-3.5 text-mineshaft-400" />
+                <InfoIcon className="ml-1 size-3.5 text-muted" />
               </TooltipTrigger>
               <TooltipContent>{description}</TooltipContent>
             </Tooltip>
@@ -168,24 +169,24 @@ export const AppConnectionRow = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 text-mineshaft-100 underline-offset-2 hover:text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-foreground underline-offset-2 hover:text-project hover:underline"
               >
-                <MethodIcon className="size-3.5 text-mineshaft-300/75" />
+                <MethodIcon className="size-3.5 text-label/75" />
                 <span className="truncate underline">{methodDetails.name}</span>
               </a>
             </TooltipTrigger>
             <TooltipContent>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] tracking-wider text-mineshaft-400 uppercase">
+                <span className="text-[10px] tracking-wider text-muted uppercase">
                   {methodDetails.name}
                 </span>
-                <span className="font-mono text-sm text-mineshaft-100">{linkedGitHubApp.slug}</span>
+                <span className="font-mono text-sm text-foreground">{linkedGitHubApp.slug}</span>
               </div>
             </TooltipContent>
           </Tooltip>
         ) : (
           <p className="truncate">
-            <MethodIcon className="mr-1.5 inline size-3.5 text-mineshaft-300/75" />
+            <MethodIcon className="mr-1.5 inline size-3.5 text-label/75" />
             {methodDetails.name}
           </p>
         )}
@@ -203,13 +204,13 @@ export const AppConnectionRow = ({
               className="underline"
             >
               <p className="flex items-center gap-1.5 truncate">
-                <ProjectIcon className="size-3.5 text-mineshaft-300/75" />
+                <ProjectIcon className="size-3.5 text-label/75" />
                 {project.name}
               </p>
             </Link>
           ) : (
             <p className="flex items-center gap-1.5 truncate">
-              <OrgIcon className="size-3.5 text-mineshaft-300/75" />
+              <OrgIcon className="size-3.5 text-label/75" />
               Organization
             </p>
           )}

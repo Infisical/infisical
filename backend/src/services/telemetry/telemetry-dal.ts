@@ -175,20 +175,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
         }
       });
 
-      // Count active gateways from both legacy (Gateway) and V2 (GatewayV2) tables.
-      // Legacy gateways heartbeat every ~3 minutes; use a 5-minute window to avoid undercounting.
-      const legacyActiveResult = (
-        await db(TableName.Gateway)
-          .whereNotNull("heartbeat")
-          .whereRaw(`"heartbeat" > NOW() - INTERVAL '5 minutes'`)
-          .count()
-          .first()
-      )?.count as string;
-
-      const v2ActiveResult = (await db(TableName.GatewayV2).whereRaw(buildGatewayReachableSql()).count().first())
+      const activeGatewaysResult = (await db(TableName.GatewayV2).whereRaw(buildGatewayReachableSql()).count().first())
         ?.count as string;
 
-      const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);
+      const activeGateways = parseInt(activeGatewaysResult || "0", 10);
 
       // Merge legacy `secrets` and `secrets_v2` counts. secrets_v2 is the active table;
       // legacy `secrets` only retains rows for projects that haven't been migrated.

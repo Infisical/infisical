@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
@@ -150,6 +151,7 @@ export default function UserInfoStep({
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    if (!isInvite) captureSignupCompleted("email");
 
     const userOrgs = await fetchOrganizations();
     const orgId = userOrgs[0]?.id;
@@ -176,18 +178,18 @@ export default function UserInfoStep({
           >
             {isInvite ? (
               <>
-                <span className="shrink-0 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                <span className="shrink-0 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-transparent opacity-70">
                   Join
                 </span>
                 <span
-                  className="min-w-0 truncate bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent"
+                  className="min-w-0 truncate bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-transparent"
                   title={inviteOrganizationLabel}
                 >
                   {inviteOrganizationLabel}
                 </span>
               </>
             ) : (
-              <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+              <span className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text text-transparent">
                 {stepTitle}
               </span>
             )}

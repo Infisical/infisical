@@ -2,7 +2,7 @@
 * Added GCP auth enrollment (`gateway.enrollment.method: gcp`). The gateway proves its identity with a token from the GCP metadata server, so no credential is distributed to the cluster or the VM.
 * Added `gateway.enrollment.gcp.gatewayId`, `gateway.enrollment.gcp.type` and `gateway.enrollment.gcp.serviceAccountKeyFilePath`.
 * Added `extraVolumes` and `extraVolumeMounts`, which are what mount a service account key file for `gateway.enrollment.gcp.type: iam`. Setting `serviceAccountKeyFilePath` without them now fails the render instead of crash-looping the pod on a missing file.
-* The default CLI image must be bumped to the first release containing `--enroll-method=gcp` before this chart version is published. Until then, `gateway.enrollment.method: gcp` crash-loops the pod on `unknown flag: --gcp-auth-type`.
+* Bumped the default CLI image from `0.43.131` to `0.43.134`, the first release containing `--enroll-method=gcp`. Pinning `image.tag` to an older release makes `gateway.enrollment.method: gcp` crash-loop the pod on `unknown flag: --gcp-auth-type`.
 
 ## 1.5.0 (September 7, 2026)
 * Added `gateway.listenAddress`, a `host:port` that Infisical dials to reach the gateway, which runs it in direct listen mode instead of connecting out to a relay. Leave it empty for relay mode.

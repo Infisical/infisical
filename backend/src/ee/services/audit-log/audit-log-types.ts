@@ -1,6 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
@@ -40,6 +41,7 @@ import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/a
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsage,
+  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CrlReason
@@ -975,6 +977,7 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
 
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
+  EventType.GET_SECRETS,
   EventType.DELETE_SECRETS,
   EventType.CREATE_SECRETS,
   EventType.UPDATE_SECRETS,
@@ -3189,7 +3192,11 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: CertificateSource;
+    deletionAllowedReason: CertificateDeletionEligibility;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -6331,6 +6338,11 @@ interface AgentVaultServiceCreateEvent {
     credentialType: string;
     headerName?: string;
     headerPrefix?: string;
+    allowedMethods?: string[] | null;
+    allowedPathPrefixes?: string[] | null;
+    // Names and placeholders only. A sealed value must never reach an audit row.
+    customHeaderNames?: string[];
+    substitutionPlaceholders?: string[];
   };
 }
 
@@ -6344,6 +6356,12 @@ interface AgentVaultServiceUpdateEvent {
     credentialType?: string;
     headerName?: string;
     headerPrefix?: string;
+    allowedMethods?: string[] | null;
+    allowedPathPrefixes?: string[] | null;
+    customHeaderNames?: string[];
+    customHeadersReplaced?: string[];
+    substitutionPlaceholders?: string[];
+    substitutionsReplaced?: string[];
     credentialReplaced: boolean;
   };
 }
@@ -6364,8 +6382,8 @@ interface AgentVaultProductMemberAddEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
     role: string;
   };
 }
@@ -6377,8 +6395,8 @@ interface AgentVaultProductMemberUpdateEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
     role: string;
   };
 }
@@ -6390,8 +6408,8 @@ interface AgentVaultProductMemberRemoveEvent {
     userName?: string;
     groupId?: string;
     groupName?: string;
-    identityId?: string;
-    identityName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6402,7 +6420,7 @@ interface AgentVaultAccessBundleMemberAddEvent {
     accessBundleName: string;
     memberId: string;
     userId?: string;
-    identityId?: string;
+    machineIdentityId?: string;
     groupId?: string;
   };
 }
@@ -6413,6 +6431,9 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
     accessBundleId: string;
     accessBundleName: string;
     memberId: string;
+    userId?: string;
+    machineIdentityId?: string;
+    groupId?: string;
   };
 }
 
@@ -7221,6 +7242,7 @@ interface ScepRenewalEvent {
     transactionId: string;
     csrSubject: string;
     existingCertificateSerial?: string;
+    existingCertificateSubject?: string;
     status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;

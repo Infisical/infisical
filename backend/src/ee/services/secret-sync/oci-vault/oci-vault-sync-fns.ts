@@ -13,7 +13,7 @@ import {
 import { delay } from "@app/lib/delay";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 const listOCIVaultVariables = async ({ provider, compartmentId, vaultId, onlyActive }: TOCIVaultListVariables) => {
   const vaultsClient = new vault.VaultsClient({ authenticationDetailsProvider: provider });
@@ -115,7 +115,8 @@ const unmarkOCIVaultVariableFromDeletion = async ({ provider, secretId }: TUnmar
 };
 
 export const OCIVaultSyncFns = {
-  syncSecrets: async (secretSync: TOCIVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TOCIVaultSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -254,7 +255,8 @@ export const OCIVaultSyncFns = {
       }
     }
   },
-  removeSecrets: async (secretSync: TOCIVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TOCIVaultSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { compartmentOcid, vaultOcid }

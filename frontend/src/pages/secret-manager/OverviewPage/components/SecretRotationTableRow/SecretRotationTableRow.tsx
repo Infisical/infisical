@@ -2,9 +2,9 @@ import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ActivityIcon,
-  AsteriskIcon,
   ChevronDownIcon,
   EditIcon,
+  EyeIcon,
   HandshakeIcon,
   InfoIcon,
   LoaderCircleIcon,
@@ -20,6 +20,7 @@ import {
   Badge,
   Checkbox,
   IconButton,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -50,7 +51,9 @@ import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 
 type Props = {
@@ -189,7 +192,7 @@ export const SecretRotationTableRow = ({
                   isDisabled={!isAllowed}
                   onClick={() => onViewGeneratedCredentials(secretRotation)}
                 >
-                  <AsteriskIcon />
+                  <EyeIcon />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>View Generated Credentials</TooltipContent>
@@ -369,8 +372,8 @@ export const SecretRotationTableRow = ({
             <div className="relative flex w-full items-center">
               <span className="truncate">{secretRotationName}</span>
               <Badge variant="neutral" className="mx-2.5">
-                <img
-                  src={`/images/integrations/${SECRET_ROTATION_MAP[singleEnvRotation.type].image}`}
+                <ProviderIcon
+                  icon={SECRET_ROTATION_MAP[singleEnvRotation.type].image}
                   style={{ width: "11px" }}
                   alt={`${SECRET_ROTATION_MAP[singleEnvRotation.type].name} logo`}
                 />
@@ -448,8 +451,10 @@ export const SecretRotationTableRow = ({
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className="w-full">Environment</TableHead>
-                    <TableHead variant="action" className="w-px" />
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
+                    <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -470,12 +475,14 @@ export const SecretRotationTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell colSpan={2}>
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
+                            {envName}
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full flex-wrap items-center">
-                              <span>{envName}</span>
-                              <Badge variant="neutral" className="mx-2.5">
-                                <img
-                                  src={`/images/integrations/${image}`}
+                              <Badge variant="neutral">
+                                <ProviderIcon
+                                  icon={image}
                                   style={{
                                     width: "11px"
                                   }}

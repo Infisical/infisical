@@ -60,6 +60,7 @@ export type TAlertResponse = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
+  triggerType: string;
   condition: unknown;
   enabled: boolean;
   orgId: string;
