@@ -1,4 +1,5 @@
 import { logger } from "@app/lib/logger";
+import { LocalRefreshOutcome, recordLocalRefreshRunMetric } from "@app/lib/telemetry/metrics";
 
 export type TLocalRefreshHandle = {
   stop: () => void;
@@ -33,24 +34,33 @@ export const startLocalRefresh = ({
 
   let stopped = false;
   let running = false;
+  let consecutiveFailures = 0;
   let timer: NodeJS.Timeout | undefined;
 
   const run = async () => {
     if (stopped) return;
     if (running) {
       logger.warn(`Local refresh skipped, previous run still in progress [name=${name}]`);
+      recordLocalRefreshRunMetric({ name, outcome: LocalRefreshOutcome.SKIPPED });
       return;
     }
 
     running = true;
     const startedAt = Date.now();
+    let outcome = LocalRefreshOutcome.COMPLETED;
+    let failure: unknown;
     try {
       await task();
+      consecutiveFailures = 0;
     } catch (error) {
-      logger.error(error, `Local refresh failed [name=${name}]`);
+      outcome = LocalRefreshOutcome.FAILED;
+      failure = error;
+      consecutiveFailures += 1;
+      logger.error(error, `Local refresh failed [name=${name}] [consecutiveFailures=${consecutiveFailures}]`);
     } finally {
       running = false;
       const durationMs = Date.now() - startedAt;
+      recordLocalRefreshRunMetric({ name, outcome, durationMs, error: failure, consecutiveFailures });
       logger.debug(
         { name, duration_ms: durationMs },
         `Local refresh finished [name=${name}] [durationMs=${durationMs}]`

@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { logger } from "@app/lib/logger";
+import { LocalRefreshOutcome, recordLocalRefreshRunMetric } from "@app/lib/telemetry/metrics";
 
 import { startLocalRefresh, TLocalRefreshHandle } from "./local-refresh";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}));
+
+// Stubbed outright: the real module reaches this file again through env -> crypto -> license-service,
+// so a partial mock built from importOriginal() hands local-refresh the unmocked helper.
+vi.mock("@app/lib/telemetry/metrics", () => ({
+  LocalRefreshOutcome: { COMPLETED: "completed", FAILED: "failed", SKIPPED: "skipped" },
+  recordLocalRefreshRunMetric: vi.fn()
 }));
 
 const INTERVAL_MS = 5 * 60 * 1000;
@@ -138,6 +146,52 @@ describe("startLocalRefresh", () => {
     expect(task).toHaveBeenCalledTimes(3);
     expect(logger.error).toHaveBeenCalledTimes(2);
     expect(logger.error).toHaveBeenCalledWith(expect.any(Error), expect.stringContaining("[name=flaky]"));
+  });
+
+  test("counts consecutive failures and resets the count on the next success", async () => {
+    mockRandom(0);
+    const boom = new Error("boom");
+    const task = vi
+      .fn()
+      .mockRejectedValueOnce(boom)
+      .mockRejectedValueOnce(boom)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(boom);
+
+    handle = startLocalRefresh({ name: "flaky", intervalMs: INTERVAL_MS, task });
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(INTERVAL_MS * 3);
+
+    const recorded = vi.mocked(recordLocalRefreshRunMetric).mock.calls.map(([params]) => params);
+    expect(recorded.map(({ outcome, consecutiveFailures }) => [outcome, consecutiveFailures])).toEqual([
+      [LocalRefreshOutcome.FAILED, 1],
+      [LocalRefreshOutcome.FAILED, 2],
+      [LocalRefreshOutcome.COMPLETED, 0],
+      [LocalRefreshOutcome.FAILED, 1]
+    ]);
+    expect(recorded[0]).toEqual(expect.objectContaining({ name: "flaky", error: boom }));
+    expect(recorded[2].error).toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(boom, expect.stringContaining("[consecutiveFailures=2]"));
+  });
+
+  test("records run duration, and a skipped tick without one", async () => {
+    mockRandom(0);
+    let release: () => void = () => {};
+    const task = vi.fn(async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    });
+
+    handle = startLocalRefresh({ name: "slow", intervalMs: INTERVAL_MS, task });
+    await vi.advanceTimersByTimeAsync(INTERVAL_MS);
+    expect(recordLocalRefreshRunMetric).toHaveBeenCalledWith({ name: "slow", outcome: LocalRefreshOutcome.SKIPPED });
+
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(recordLocalRefreshRunMetric).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: "slow", outcome: LocalRefreshOutcome.COMPLETED, durationMs: INTERVAL_MS })
+    );
   });
 
   test("logs duration at debug and warns only above the threshold", async () => {
