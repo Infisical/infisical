@@ -49,6 +49,35 @@ describe("handleAxiosError", () => {
     expect(error.message).toBe("bearer token [REDACTED] is not valid");
   });
 
+  it("removes a credential from the HTTP reason phrase fallback", () => {
+    const opaqueToken = "abcdef.0123456789abcdef";
+    const err = new AxiosError("Request failed", "ERR_BAD_RESPONSE", undefined, undefined, {
+      status: 502,
+      statusText: `Bad Gateway for ${opaqueToken}`,
+      data: {},
+      headers: {},
+      config: { headers: new AxiosHeaders() }
+    });
+    const error = handleAxiosError(
+      err,
+      { host: "https://k8s.example.com", credentials: [opaqueToken] },
+      KubernetesAuthErrorContext.KubernetesApiServer
+    );
+    expect(error.message).toBe("Kubernetes returned HTTP 502: Bad Gateway for [REDACTED]");
+  });
+
+  it("removes a credential from the generic path when there is no response", () => {
+    const opaqueToken = "abcdef.0123456789abcdef";
+    const error = handleAxiosError(
+      new AxiosError(`socket closed while sending ${opaqueToken}`, "ERR_UNKNOWN"),
+      { host: "https://k8s.example.com", credentials: [opaqueToken] },
+      KubernetesAuthErrorContext.KubernetesApiServer
+    );
+    expect(error.name).toBe("KubernetesConnectionError");
+    expect(error.message).not.toContain(opaqueToken);
+    expect(error.message).toContain("[REDACTED]");
+  });
+
   it.each([
     [401, "Token reviewer JWT is invalid or expired"],
     [403, "Token reviewer JWT does not have permission"],

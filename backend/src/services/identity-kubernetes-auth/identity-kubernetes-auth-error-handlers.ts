@@ -113,8 +113,7 @@ export const handleAxiosNetworkError = (
  */
 export const handleAxiosHttpError = (
   err: AxiosError,
-  contextType: KubernetesAuthErrorContext,
-  credentials: (string | undefined)[] = []
+  contextType: KubernetesAuthErrorContext
 ): UnauthorizedError | BadRequestError | null => {
   if (!err.response) {
     return null;
@@ -127,10 +126,6 @@ export const handleAxiosHttpError = (
 
   if (!message && typeof err.response.data === "string") {
     message = err.response.data;
-  }
-
-  if (message) {
-    message = redactCredentialsFromText(message, credentials);
   }
 
   if (statusCode === 401) {
@@ -195,15 +190,11 @@ export const handleAxiosError = (
   context: ErrorContext,
   contextType: KubernetesAuthErrorContext
 ): BadRequestError | UnauthorizedError => {
-  const networkError = handleAxiosNetworkError(err, context, contextType);
-  if (networkError) {
-    return networkError;
-  }
+  const error =
+    handleAxiosNetworkError(err, context, contextType) ??
+    handleAxiosHttpError(err, contextType) ??
+    handleAxiosGenericError(err, context, contextType);
 
-  const httpError = handleAxiosHttpError(err, contextType, context.credentials);
-  if (httpError) {
-    return httpError;
-  }
-
-  return handleAxiosGenericError(err, context, contextType);
+  error.message = redactCredentialsFromText(error.message, context.credentials);
+  return error;
 };
