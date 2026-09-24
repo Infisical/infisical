@@ -210,6 +210,7 @@ export * from "./rate-limit";
 export * from "./relays";
 export * from "./resource-auth-methods";
 export * from "./resource-aws-auths";
+export * from "./resource-gcp-auths";
 export * from "./resource-kubernetes-auths";
 export * from "./resource-metadata";
 export * from "./resource-token-auths";

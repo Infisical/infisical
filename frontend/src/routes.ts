@@ -455,8 +455,9 @@ const organizationRoutes = route("/organizations/$orgId", [
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
   route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
+  route("/shared/new", "public/ShareSecretPage/route.tsx"),
   route("/secret-request/secret/$secretRequestId", "public/ViewSecretRequestByIDPage/route.tsx"),
-  route("/share-secret", "public/ShareSecretPage/route.tsx"),
+  route("/share-secret", "public/ShareSecretPage/legacy-route.tsx"),
   route("/cli-redirect", "auth/CliRedirectPage/route.tsx"),
   middleware("restrict-login-signup.tsx", [
     route("/admin/signup", "admin/SignUpPage/route.tsx"),

@@ -55,9 +55,11 @@ import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnv
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -121,6 +123,8 @@ type Props = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -155,7 +159,9 @@ export const SecretTableRow = ({
   virtualIndex,
   measureElement,
   onUnsavedChange,
-  onCopySecret
+  onCopySecret,
+  activityId,
+  onActivityChange
 }: Props) => {
   const totalCols = environments.length + 2; // secret key row + icon
   const rowRef = useRef<HTMLTableRowElement | null>(null);
@@ -175,13 +181,29 @@ export const SecretTableRow = ({
     if (rowRef.current) measureElement(rowRef.current);
   });
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
+  const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
+  const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
+  const isRowActive = isSingleEnvView
+    ? isSingleEnvBaseActive || isSingleEnvOverrideActive
+    : isExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
+
+  useEffect(() => {
+    onActivityChange(activityId, isRowActive);
+  }, [activityId, isRowActive, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   // Pre-compute single-env data
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -334,7 +356,12 @@ export const SecretTableRow = ({
         ref={setRowRef}
         data-index={virtualIndex}
         onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
-        className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
+        className={twMerge(
+          "group hover:z-10",
+          (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
+            TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+          pendingActionRowClass(singleEnvPendingAction)
+        )}
       >
         <TableCell
           className={twMerge(
@@ -464,6 +491,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onExpandedChange={setIsSingleEnvBaseActive}
           />
         ) : (
           <TableCell
@@ -541,7 +569,13 @@ export const SecretTableRow = ({
         )}
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
-            if (isExpanded) return <TableCell className="border-b-0 bg-container-hover" />;
+            if (isExpanded)
+              return (
+                <TableCell
+                  key={`sec-overview-${slug}-${i + 1}-expanded`}
+                  className="border-b-0 bg-container-hover"
+                />
+              );
 
             const secret = getSecretByKey(slug, secretKey);
 
@@ -574,7 +608,10 @@ export const SecretTableRow = ({
       {isSingleEnvView && singleEnvShowOverride && (
         <TableRow
           data-index={virtualIndex}
-          className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
+          className={twMerge(
+            "group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]",
+            (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+          )}
         >
           <TableCell>
             <GitBranchIcon className="text-override" />
@@ -585,7 +622,7 @@ export const SecretTableRow = ({
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            {secretKey}
+            <span>{secretKey}</span>
           </TableCell>
           <TableCell>
             <SecretOverrideRow
@@ -614,6 +651,7 @@ export const SecretTableRow = ({
               onSecretCreate={onSecretCreate}
               onSecretUpdate={onSecretUpdate}
               onSecretDelete={onSecretDelete}
+              onActiveChange={setIsSingleEnvOverrideActive}
             />
           </TableCell>
         </TableRow>
@@ -634,7 +672,10 @@ export const SecretTableRow = ({
         </Dialog>
       )}
       {!isSingleEnvView && isExpanded && (
-        <TableRow data-index={virtualIndex} className="border-0 hover:bg-transparent">
+        <TableRow
+          data-index={virtualIndex}
+          className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+        >
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}

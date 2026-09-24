@@ -1,11 +1,23 @@
 import { OrgServiceActor } from "@app/lib/types";
 
-import { ResourceAuthMethodType, ResourceRef, TKubernetesTokenReviewMode } from "./resource-auth-method-fns";
+import {
+  ResourceAuthMethodType,
+  ResourceRef,
+  TGcpAuthType,
+  TKubernetesTokenReviewMode
+} from "./resource-auth-method-fns";
 
 export type TAwsAuthMethodConfig = {
   stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
+};
+
+export type TGcpAuthMethodConfig = {
+  type: TGcpAuthType;
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
 };
 
 export type TKubernetesAuthMethodConfig = {
@@ -48,6 +60,7 @@ export type TKubernetesAuthMethodConfigView = Omit<
 
 export type TSetAuthMethodInput =
   | ({ method: typeof ResourceAuthMethodType.Aws } & TAwsAuthMethodConfig)
+  | ({ method: typeof ResourceAuthMethodType.Gcp } & TGcpAuthMethodConfig)
   | ({ method: typeof ResourceAuthMethodType.Kubernetes } & TKubernetesAuthMethodConfig)
   | { method: typeof ResourceAuthMethodType.Token };
 
@@ -74,6 +87,11 @@ export type TLoginWithAwsDTO = {
   iamRequestHeaders: string;
 };
 
+export type TLoginWithGcpDTO = {
+  resource: ResourceRef;
+  jwt: string;
+};
+
 export type TLoginWithKubernetesDTO = {
   resource: ResourceRef;
   jwt: string;
@@ -88,6 +106,10 @@ export type TAuthMethodView =
   | {
       method: typeof ResourceAuthMethodType.Aws;
       config: TAwsAuthMethodConfig & { id: string; createdAt: Date; updatedAt: Date };
+    }
+  | {
+      method: typeof ResourceAuthMethodType.Gcp;
+      config: TGcpAuthMethodConfig & { id: string; createdAt: Date; updatedAt: Date };
     }
   | {
       method: typeof ResourceAuthMethodType.Kubernetes;

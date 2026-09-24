@@ -658,7 +658,8 @@ export type TQueueServiceFactory = {
       token?: string,
       signal?: AbortSignal
     ) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency" | "limiter">
+    queueSettings?: Omit<QueueOptions, "connection"> &
+      Pick<WorkerOptions, "concurrency" | "limiter" | "maxStalledCount">
   ) => void;
   listen: <
     T extends QueueName,

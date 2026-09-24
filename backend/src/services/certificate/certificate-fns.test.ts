@@ -2,6 +2,7 @@ import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
@@ -9,8 +10,10 @@ import {
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
   normalizeThumbprint,
-  parseCertificateBody
+  parseCertificateBody,
+  resolveCertificateDeletionEligibility
 } from "./certificate-fns";
+import { CertificateDeletionEligibility, CertStatus } from "./certificate-types";
 
 describe("normalizeThumbprint", () => {
   const sha1Hex = "a".repeat(40);
@@ -143,5 +146,78 @@ describe("parseCertificateBody usages", () => {
     const fields = extractCertificateFields(pem);
 
     expect(fields.extendedKeyUsages).toEqual(["serverAuth", "smartCardLogon"]);
+  });
+});
+
+describe("resolveCertificateDeletionEligibility", () => {
+  const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  it("allows an expired certificate", () => {
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: past })).toBe(
+      CertificateDeletionEligibility.Expired
+    );
+  });
+
+  it("allows a discovered certificate that has not expired", () => {
+    expect(
+      resolveCertificateDeletionEligibility({
+        status: CertStatus.ACTIVE,
+        notAfter: future,
+        source: CertificateSource.Discovered
+      })
+    ).toBe(CertificateDeletionEligibility.Discovered);
+  });
+
+  it("allows an imported certificate that has not expired", () => {
+    expect(
+      resolveCertificateDeletionEligibility({
+        status: CertStatus.ACTIVE,
+        notAfter: future,
+        source: CertificateSource.Imported
+      })
+    ).toBe(CertificateDeletionEligibility.Imported);
+  });
+
+  it("blocks an issued certificate that has not expired", () => {
+    expect(
+      resolveCertificateDeletionEligibility({
+        status: CertStatus.ACTIVE,
+        notAfter: future,
+        source: CertificateSource.Issued
+      })
+    ).toBeNull();
+  });
+
+  it("blocks a certificate with no source, because issuance never records one", () => {
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: future })).toBeNull();
+  });
+
+  it("blocks a revoked certificate until it expires, so its serial stays on the CRL", () => {
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: future })).toBeNull();
+  });
+
+  it("blocks a revoked certificate even when its source would exempt it", () => {
+    expect(
+      resolveCertificateDeletionEligibility({
+        status: CertStatus.REVOKED,
+        notAfter: future,
+        source: CertificateSource.Imported
+      })
+    ).toBeNull();
+
+    expect(
+      resolveCertificateDeletionEligibility({
+        status: CertStatus.REVOKED,
+        notAfter: future,
+        source: CertificateSource.Discovered
+      })
+    ).toBeNull();
+  });
+
+  it("allows a revoked certificate once it has expired", () => {
+    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
+      CertificateDeletionEligibility.Expired
+    );
   });
 });

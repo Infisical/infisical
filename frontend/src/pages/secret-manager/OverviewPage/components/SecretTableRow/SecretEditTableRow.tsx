@@ -186,6 +186,7 @@ type Props = {
   unsavedChangeId?: string;
   onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
   onCopySecret?: () => void;
+  onExpandedChange?: (isExpanded: boolean) => void;
 };
 
 export const SecretEditTableRow = ({
@@ -226,7 +227,8 @@ export const SecretEditTableRow = ({
   revokedProjectFolderGrant,
   unsavedChangeId,
   onUnsavedChange,
-  onCopySecret
+  onCopySecret,
+  onExpandedChange
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -247,6 +249,10 @@ export const SecretEditTableRow = ({
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
   const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
+
+  useEffect(() => {
+    onExpandedChange?.(isFieldActive);
+  }, [isFieldActive, onExpandedChange]);
 
   const fetchSharedValueParams =
     importedSecret && !isSecretPresent
@@ -981,10 +987,12 @@ export const SecretEditTableRow = ({
               : event.currentTarget.value;
             field.onChange(value);
           }}
+          onFocus={() => setIsFieldFocused.on()}
           onKeyDown={handleEditShortcut}
           onBlur={(e) => {
             field.onBlur();
             if (!isBatchMode && field.onChange) field.onChange(e);
+            setIsFieldFocused.off();
           }}
         />
       )}
@@ -1193,6 +1201,7 @@ export const SecretEditTableRow = ({
         !isBatchMode
       ) && (
         <div
+          data-table-row-filter-positioner
           onMouseEnter={() => setIsHoveringActionZone(true)}
           onMouseLeave={() => setIsHoveringActionZone(false)}
           className={twMerge(
@@ -2007,11 +2016,20 @@ export const SecretEditTableRow = ({
           {nameInput}
         </TableCell>
         <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>
-          <div className="flex w-full flex-col gap-y-2">{valueContent}</div>
+          <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
+            {valueContent}
+          </div>
         </TableCell>
       </>
     );
   }
 
-  return <div className="relative flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>;
+  return (
+    <div
+      data-table-row-filter-contents
+      className="relative flex w-full flex-col gap-y-2 py-1.5 !filter-none"
+    >
+      {valueContent}
+    </div>
+  );
 };

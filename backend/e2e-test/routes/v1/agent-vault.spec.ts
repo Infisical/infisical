@@ -123,6 +123,17 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
   const [group] = (await testDb("groups")
     .insert({ orgId: seedData1.organization.id, name, slug: `${name}-${Date.now()}` })
     .returning("*")) as { id: string }[];
+  // Every path that creates a group gives it an org-scope membership as well, and that row is what says
+  // the organization reaches it. Seeding only the project one leaves a group nothing can resolve.
+  const [orgMembership] = (await testDb("memberships")
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: seedData1.organization.id,
+      actorGroupId: group.id,
+      isActive: true
+    })
+    .returning("*")) as { id: string }[];
+  await testDb("membership_roles").insert({ membershipId: orgMembership.id, role: OrgMembershipRole.NoAccess });
   const [membership] = (await testDb("memberships")
     .insert({
       scope: AccessScope.Project,
@@ -137,7 +148,7 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
     id: group.id,
     cleanup: async () => {
       await testDb("identity_group_membership").where({ groupId: group.id }).delete();
-      await testDb("memberships").where({ id: membership.id }).delete();
+      await testDb("memberships").whereIn("id", [membership.id, orgMembership.id]).delete();
       await testDb("groups").where({ id: group.id }).delete();
     }
   };
@@ -956,7 +967,8 @@ describe("Agent Vault V1 Router", async () => {
         // group they belong to stays active, so the group row must not vouch for them.
         const refused = await inject("POST", membersUrl, { userIds: [user.id], role: "member" });
         expect(refused.statusCode).toBe(400);
-        expect(JSON.parse(refused.payload).message).toContain("not an active member");
+        // Named as deactivated rather than missing: reactivating is the remedy, not inviting.
+        expect(JSON.parse(refused.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("user_group_membership").where({ userId: user.id }).delete();
         await testDb("memberships").where({ actorUserId: user.id }).delete();
@@ -1035,6 +1047,73 @@ describe("Agent Vault V1 Router", async () => {
         await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
         await deleteOrgIdentity(identity.id);
       }
+    });
+
+    test("available lists the actors that are not members yet, and drops each one as it is added", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-available-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-available-group", ProjectMembershipRole.Member);
+
+      const listAvailable = async (query = "") => {
+        const res = await inject("GET", `${membersUrl}/available${query ? `?${query}` : ""}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as {
+          actors: { type: string; id: string }[];
+          totalCount: number;
+        };
+      };
+
+      try {
+        const idsOf = (actors: { id: string }[]) => actors.map((actor) => actor.id);
+
+        // The identity is in the organization but not in Agent Vault, so it is offered. The group and the
+        // seed admin are already members, so they are not.
+        const before = await listAvailable("limit=100");
+        expect(idsOf(before.actors)).toContain(identity.id);
+        expect(idsOf(before.actors)).not.toContain(group.id);
+        expect(idsOf(before.actors)).not.toContain(seedData1.id);
+
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" })).statusCode
+        ).toBe(200);
+
+        const afterAdd = await listAvailable("limit=100");
+        expect(idsOf(afterAdd.actors)).not.toContain(identity.id);
+        expect(afterAdd.totalCount).toBe(before.totalCount - 1);
+
+        // Revoking puts it back, so the list tracks membership rather than caching it.
+        expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
+          200
+        );
+        const afterRevoke = await listAvailable("limit=100");
+        expect(idsOf(afterRevoke.actors)).toContain(identity.id);
+        expect(afterRevoke.totalCount).toBe(before.totalCount);
+
+        // The filter and the search reach the same row.
+        const identitiesOnly = await listAvailable("actorType=machineIdentity&limit=100");
+        expect(identitiesOnly.actors.every((actor) => actor.type === "machineIdentity")).toBe(true);
+        expect(idsOf(identitiesOnly.actors)).toContain(identity.id);
+
+        const searched = await listAvailable(`search=${encodeURIComponent("av-available-")}`);
+        expect(idsOf(searched.actors)).toContain(identity.id);
+
+        // totalCount is the whole set, not the page, so a picker can say the list is truncated.
+        const firstPage = await listAvailable("limit=1");
+        expect(firstPage.actors).toHaveLength(1);
+        expect(firstPage.totalCount).toBe(before.totalCount);
+      } finally {
+        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await group.cleanup();
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("available rejects the same out-of-range query values the member list does", async () => {
+      const availableUrl = `${membersUrl}/available`;
+      expect((await inject("GET", `${availableUrl}?limit=0`)).statusCode).toBe(422);
+      expect((await inject("GET", `${availableUrl}?limit=101`)).statusCode).toBe(422);
+      expect((await inject("GET", `${availableUrl}?offset=10001`)).statusCode).toBe(422);
+      expect((await inject("GET", `${availableUrl}?actorType=nonsense`)).statusCode).toBe(422);
     });
 
     test("one add names every actor kind at once, dedupes a repeat, and skips whoever already had access", async () => {
@@ -2235,7 +2314,7 @@ describe("Agent Vault V1 Router", async () => {
         role: ProjectMembershipRole.Member
       });
       expect(stranger.statusCode).toBe(400);
-      expect(JSON.parse(stranger.payload).message).toContain("not an active member of this organization");
+      expect(JSON.parse(stranger.payload).message).toContain("is not a member of this organization");
 
       const rows = await testDb("memberships").where({ actorUserId: "99999999-8888-7777-6666-555555555555" });
       expect(rows).toHaveLength(0);
@@ -2261,7 +2340,7 @@ describe("Agent Vault V1 Router", async () => {
           role: ProjectMembershipRole.Member
         });
         expect(res.statusCode).toBe(400);
-        expect(JSON.parse(res.payload).message).toContain("not an active member of this organization");
+        expect(JSON.parse(res.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: true });
       }

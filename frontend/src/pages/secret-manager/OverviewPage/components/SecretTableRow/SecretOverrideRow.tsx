@@ -59,6 +59,7 @@ type Props = {
   // they are outstanding to avoid unmounting the row and discarding them.
   unsavedChangeId?: string;
   onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
+  onActiveChange?: (isActive: boolean) => void;
 };
 
 export const SecretOverrideRow = ({
@@ -76,7 +77,8 @@ export const SecretOverrideRow = ({
   onSecretDelete,
   isSingleEnvView,
   unsavedChangeId,
-  onUnsavedChange
+  onUnsavedChange,
+  onActiveChange
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -207,8 +209,23 @@ export const SecretOverrideRow = ({
     }
   }, [isCreatingOverride]);
 
+  useEffect(
+    () => () => {
+      onActiveChange?.(false);
+    },
+    [onActiveChange]
+  );
+
   return (
-    <div className="flex w-full cursor-text items-center gap-2">
+    <div
+      className="flex w-full cursor-text items-center gap-2"
+      onFocusCapture={() => onActiveChange?.(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          onActiveChange?.(false);
+        }
+      }}
+    >
       {!isSingleEnvView && (
         <div className="flex shrink-0 items-center text-override">
           <GitBranchIcon className="size-3.5" />

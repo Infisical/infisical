@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { LoaderCircle } from "lucide-react";
 
+import {
+  isSignupFlowExperimentEnabled,
+  SignupFlowVariant,
+  useSignupFlowVariant
+} from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
@@ -21,6 +27,8 @@ import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+
+import { SignupPreviewLayout } from "./components/SignupPreviewLayout";
 
 enum SignupSection {
   Email = "email",
@@ -45,6 +53,7 @@ export interface SignUpPageProps {
 
 export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const isInvite = Boolean(invite);
+  const signupFlowVariant = useSignupFlowVariant(!isInvite && isSignupFlowExperimentEnabled());
   const [email, setEmail] = useState(invite?.email ?? "");
   const [pendingEmailVerification, setPendingEmailVerification] =
     useState<PendingEmailVerification | null>(null);
@@ -264,14 +273,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       />
     ) : undefined;
 
-  return (
-    <AuthPageLayout
-      showFooter={false}
-      bottomContent={renderBottomContent()}
-      headerAction={stepIndicator}
-      variant={isWorkspaceSetup ? "focused" : "split"}
-      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
-    >
+  const pageContent = (
+    <>
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -291,6 +294,41 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           </form>
         )}
       </OnboardingStepTransition>
+    </>
+  );
+
+  if (!signupFlowVariant) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-page" role="status">
+        <div className="flex flex-col items-center gap-3 text-sm text-label">
+          <LoaderCircle className="size-5 animate-spin text-project motion-reduce:animate-none" />
+          <span>Preparing sign up</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    !isInvite &&
+    section === SignupSection.Email &&
+    signupFlowVariant === SignupFlowVariant.DashboardPreview
+  ) {
+    return (
+      <SignupPreviewLayout bottomContent={renderBottomContent()} headerAction={stepIndicator}>
+        {pageContent}
+      </SignupPreviewLayout>
+    );
+  }
+
+  return (
+    <AuthPageLayout
+      showFooter={false}
+      bottomContent={renderBottomContent()}
+      headerAction={stepIndicator}
+      variant={isWorkspaceSetup ? "focused" : "split"}
+      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
+    >
+      {pageContent}
     </AuthPageLayout>
   );
 };
