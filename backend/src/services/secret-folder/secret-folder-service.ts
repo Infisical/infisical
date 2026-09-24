@@ -1057,9 +1057,15 @@ export const secretFolderServiceFactory = ({
 
     // findByEnvsDeep paths are relative to the walk root, which is the resolved secretPath
     const rootPath = parentFolders[0].path;
+    const resolvePathFromWalkRoot = (relativePath: string) => {
+      if (relativePath === "/") return rootPath;
+      if (rootPath === "/") return relativePath;
+      return `${rootPath}${relativePath}`;
+    };
+
     return folders.map((folder) => ({
       ...folder,
-      path: folder.path === "/" ? rootPath : rootPath === "/" ? folder.path : `${rootPath}${folder.path}`
+      path: resolvePathFromWalkRoot(folder.path)
     }));
   };
 
