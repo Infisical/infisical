@@ -235,6 +235,10 @@ export type TApprovalResource<
     actor: TApprovalActor;
     action: ResourcePermissionApprovalPolicyActions;
   }) => Promise<void>;
+
+  // Whether the actor may read a scope's requests and grants, for a type whose read authority is the
+  // scope rather than the project.
+  canReadScope?: (args: { projectId: string; scopeId: string | null; actor: TApprovalActor }) => Promise<boolean>;
   verifyPolicyActors?: (args: {
     projectId: string;
     scopeId: string | null;

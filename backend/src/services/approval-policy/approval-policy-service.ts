@@ -1106,6 +1106,7 @@ export const approvalPolicyServiceFactory = ({
     );
 
     const checkLiveApprover = resources[request.type as ApprovalPolicyType]?.isLiveApprover;
+    const checkScopeRead = resources[request.type as ApprovalPolicyType]?.canReadScope;
     const isApprover =
       isSnapshotApprover &&
       (!checkLiveApprover ||
@@ -1132,6 +1133,10 @@ export const approvalPolicyServiceFactory = ({
         if (
           !resourcePermission.can(ProjectPermissionApprovalRequestActions.Read, ResourcePermissionSub.ApprovalRequests)
         ) {
+          throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+        }
+      } else if (checkScopeRead) {
+        if (!(await checkScopeRead({ projectId: request.projectId, scopeId: request.scopeId ?? null, actor }))) {
           throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
         }
       } else {
@@ -1516,6 +1521,8 @@ export const approvalPolicyServiceFactory = ({
         ProjectPermissionApprovalRequestActions.Read,
         ResourcePermissionSub.ApprovalRequests
       );
+    } else if (resources[policyType]?.canReadScope) {
+      hasReadPermission = await resources[policyType]!.canReadScope!({ projectId, scopeId: dbScopeId, actor });
     } else {
       const { permission } = await permissionService.getProjectPermission({
         actor: actor.type,
@@ -1643,6 +1650,10 @@ export const approvalPolicyServiceFactory = ({
       ) {
         throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
+    } else if (resources[policyType]?.canReadScope) {
+      if (!(await resources[policyType]!.canReadScope!({ projectId, scopeId: dbScopeId, actor }))) {
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+      }
     } else {
       const { permission } = await permissionService.getProjectPermission({
         actor: actor.type,
@@ -1684,19 +1695,27 @@ export const approvalPolicyServiceFactory = ({
       throw new NotFoundError({ message: "Grant not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: grant.projectId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const checkScopeRead = resources[grant.type as ApprovalPolicyType]?.canReadScope;
+    if (checkScopeRead) {
+      const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
+      if (!(await checkScopeRead({ projectId: grant.projectId, scopeId: request?.scopeId ?? null, actor }))) {
+        throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+      }
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        projectId: grant.projectId,
+        actionProjectType: ActionProjectType.Any
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalRequestGrantActions.Read,
-      ProjectPermissionSub.ApprovalRequestGrants
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionApprovalRequestGrantActions.Read,
+        ProjectPermissionSub.ApprovalRequestGrants
+      );
+    }
 
     let { status } = grant;
     if (

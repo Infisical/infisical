@@ -347,6 +347,24 @@ export const pamAccessApprovalResourceFactory = ({
     });
   };
 
+  const canReadScope: NonNullable<TPamAccessApprovalResource["canReadScope"]> = async ({
+    projectId,
+    scopeId,
+    actor
+  }) => {
+    if (!scopeId) return false;
+
+    try {
+      const { permission } = await checkFolderPermission(permissionService, scopeId, projectId, toActorContext(actor));
+      return (
+        permission.can(ResourcePermissionPamResourceActions.ManagePolicies, ResourcePermissionSub.PamResource) ||
+        permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource)
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const verifyPolicyActors: NonNullable<TPamAccessApprovalResource["verifyPolicyActors"]> = async ({
     projectId,
     scopeId,
@@ -1014,6 +1032,7 @@ export const pamAccessApprovalResourceFactory = ({
     resolveScope,
     noMatchingPolicyMessage: "No approval configuration found for this folder",
     assertCanManagePolicy,
+    canReadScope,
     verifyPolicyActors,
     assertCanCreateRequest,
     assertCanReview,
