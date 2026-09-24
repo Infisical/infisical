@@ -87,7 +87,7 @@ export const CliRedirectPage = () => {
             {dashboardOrgId && (
               <Button asChild variant="outline" className="mt-6">
                 <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
-                  Open Infisical dashboard
+                  Open Infisical Dashboard
                 </Link>
               </Button>
             )}
