@@ -1,3 +1,4 @@
+import { TDbClient } from "@app/db";
 import { ActionProjectType } from "@app/db/schemas";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -6,19 +7,22 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
-import { TResourceMetadataDALFactory } from "./resource-metadata-dal";
+import { MAX_SECRET_METADATA_SEARCH_SECRETS, TResourceMetadataDALFactory } from "./resource-metadata-dal";
 import { dedupeMetadata, matchesSecretMetadataFilters } from "./resource-metadata-fns";
 import { TResolvedSecretMetadata, TSearchSecretMetadataDTO } from "./resource-metadata-types";
 
 type TResourceMetadataServiceFactoryDep = {
+  db: TDbClient;
   resourceMetadataDAL: Pick<
     TResourceMetadataDALFactory,
     "searchSecretMetadata" | "searchSecretMetadataWithEncryptedValues" | "transaction"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPathMultiEnv" | "findByEnvsDeep">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -35,15 +39,25 @@ type TMatchedSecret = {
 };
 
 export const resourceMetadataServiceFactory = ({
+  db,
   resourceMetadataDAL,
   permissionService,
   folderDAL,
+  projectEnvDAL,
   kmsService
 }: TResourceMetadataServiceFactoryDep) => {
   // Project-scoped secret metadata search. The base query matches on org + project + key/value; the
   // results are then filtered so the requester actually has DescribeSecret permission on each returned
   // secret (path/tag aware). Requesting a project the actor cannot access throws (via getProjectPermission).
-  const searchSecretMetadata = async ({ projectId, filters, operator, tagSlugs, actor }: TSearchSecretMetadataDTO) => {
+  const searchSecretMetadata = async ({
+    projectId,
+    filters,
+    operator,
+    tagSlugs,
+    environments,
+    secretPath = "/",
+    actor
+  }: TSearchSecretMetadataDTO) => {
     if (!filters.length) {
       throw new BadRequestError({ message: "At least one metadata filter is required" });
     }
@@ -57,16 +71,24 @@ export const resourceMetadataServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    const searchLimit = MAX_SECRET_METADATA_SEARCH_SECRETS;
+    const environmentSlugs =
+      environments ?? (await projectEnvDAL.find({ projectId }, { tx: db })).map((env) => env.slug);
+    const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath, db);
+    if (!parents.length) return { secrets: [], searchLimit };
+    const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
+    const scopedFolderIds = scopedFolders.map((folder) => folder.id);
+
     // run both searches on primary via a transaction so recently written metadata is visible (avoids
     // replica lag). Plaintext values are matched in SQL; encrypted values can't be (non-deterministic
     // ciphertext), so their candidates are fetched by key and matched in-app after decryption below.
     const { plaintextMatched, encryptedCandidates } = await resourceMetadataDAL.transaction(async (tx) => {
       const plaintext = await resourceMetadataDAL.searchSecretMetadata(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs },
+        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds },
         tx
       );
       const encrypted = await resourceMetadataDAL.searchSecretMetadataWithEncryptedValues(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs },
+        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds },
         tx
       );
       return { plaintextMatched: plaintext, encryptedCandidates: encrypted };
@@ -129,10 +151,10 @@ export const resourceMetadataServiceFactory = ({
     }
 
     const matchedSecrets = [...matchedSecretById.values()];
-    if (!matchedSecrets.length) return { secrets: [] };
+    if (!matchedSecrets.length) return { secrets: [], searchLimit };
 
     const folderIds = [...new Set(matchedSecrets.map((secret) => secret.folderId))];
-    const foldersWithPath = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+    const foldersWithPath = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, db);
     const folderPathById: Record<string, { path: string; environmentSlug: string }> = {};
     foldersWithPath.forEach((folder) => {
       if (folder) folderPathById[folder.id] = { path: folder.path, environmentSlug: folder.environmentSlug };
@@ -161,12 +183,23 @@ export const resourceMetadataServiceFactory = ({
           secretKey: secret.secretKey,
           environment: folder.environmentSlug,
           secretPath: folder.path,
+          tags: secret.tags,
+          secretValueHidden: !hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: folder.environmentSlug,
+              secretPath: folder.path,
+              secretName: secret.secretKey,
+              secretTags: secret.tags.map((tag) => tag.slug)
+            }
+          ),
           metadata: dedupeMetadata(secret.metadata)
         }
       ];
     });
 
-    return { secrets };
+    return { secrets, searchLimit };
   };
 
   return { searchSecretMetadata };

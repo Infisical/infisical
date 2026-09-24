@@ -1,5 +1,10 @@
 import { removeTrailingSlash } from "@app/lib/fn";
 
+export const resolveSecretSearchFolderPath = (secretPath: string, folderPath: string) => {
+  const basePath = removeTrailingSlash(secretPath);
+  return removeTrailingSlash(`${basePath === "/" ? "" : basePath}${folderPath}`);
+};
+
 /**
  * Splits a deep search query into a folder path and a name so that a query like `prod/api`
  * can mean "things named `api` inside a folder path ending in `/prod`".

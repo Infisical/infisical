@@ -4,21 +4,20 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@app/compone
 
 type Props = {
   envName: string;
-  // trailing header cell; defaults to the empty actions column used by the deep-search results
-  trailingHead?: ReactNode;
   children: ReactNode;
 };
 
-export const QuickSearchEnvTable = ({ envName, trailingHead, children }: Props) => (
+export const QuickSearchEnvTable = ({ envName, children }: Props) => (
   <div>
     <h3 className="mb-2 text-sm font-medium text-foreground">{envName}</h3>
-    <Table>
+    <Table className="[&_td:first-child]:w-10 [&_td:first-child]:max-w-10 [&_td:first-child]:min-w-10 [&_td:first-child]:px-2 [&_th:first-child]:w-10 [&_th:first-child]:max-w-10 [&_th:first-child]:min-w-10 [&_th:first-child]:px-2">
       <TableHeader>
         <TableRow>
           <TableHead className="w-8" />
-          <TableHead>Name</TableHead>
-          <TableHead>Location</TableHead>
-          {trailingHead ?? <TableHead className="w-24" />}
+          <TableHead className="min-w-60">Name</TableHead>
+          <TableHead className="min-w-36">Location</TableHead>
+          <TableHead className="min-w-56">Metadata</TableHead>
+          <TableHead className="w-24" />
         </TableRow>
       </TableHeader>
       <TableBody>{children}</TableBody>
