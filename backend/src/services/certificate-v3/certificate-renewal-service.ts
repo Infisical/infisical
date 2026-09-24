@@ -102,10 +102,12 @@ import {
   buildRenewalAuditChanges,
   buildRenewalCertificateRequest,
   buildRenewalDistinguishedName,
+  buildRenewalPreview,
   CertificateRenewalMode,
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
@@ -464,7 +466,7 @@ export const certificateRenewalServiceFactory = ({
       applicationId: originalCert.applicationId ?? undefined,
       csr: renewalCsr,
       commonName: certificateRequest.commonName,
-      altNames: requestedAltNames.length > 0 ? requestedAltNames : undefined,
+      altNames: requestedAltNames,
       keyUsages: certificateRequest.keyUsages,
       extendedKeyUsages: certificateRequest.extendedKeyUsages,
       notBefore,
@@ -580,21 +582,15 @@ export const certificateRenewalServiceFactory = ({
       });
     }
 
-    const originalSignatureAlgorithm = Object.values(CertSignatureAlgorithm).includes(
-      originalCert.signatureAlgorithm as CertSignatureAlgorithm
-    )
-      ? (originalCert.signatureAlgorithm as CertSignatureAlgorithm)
-      : undefined;
-    const originalKeyAlgorithm = Object.values(CertKeyAlgorithm).includes(originalCert.keyAlgorithm as CertKeyAlgorithm)
-      ? (originalCert.keyAlgorithm as CertKeyAlgorithm)
-      : undefined;
-
     const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId, tx);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
     const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(originalCert.id, tx);
+    const { signatureAlgorithm: originalSignatureAlgorithm, keyAlgorithm: originalKeyAlgorithm } =
+      resolveRenewalAlgorithms(originatingRequest, originalCert);
+
     const { enrollmentType } = originatingRequest;
     if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
@@ -791,7 +787,12 @@ export const certificateRenewalServiceFactory = ({
       throw new RenewalBlockedError(`Certificate renewal failed. Errors: ${validationResult.errors.join(", ")}`);
     }
 
-    return { certificateRequest, ttl, resolvedCustomExtensions: validationResult.resolvedCustomExtensions };
+    return {
+      certificateRequest,
+      replayedRequest: originalRequest,
+      ttl,
+      resolvedCustomExtensions: validationResult.resolvedCustomExtensions
+    };
   };
 
   const $assertKeySourceSupported = ({
@@ -873,7 +874,7 @@ export const certificateRenewalServiceFactory = ({
       profileId: originalCert.profileId ?? undefined,
       applicationId: originalCert.applicationId ?? undefined,
       commonName: certificateRequest.commonName,
-      altNames: renewalAltNames.length > 0 ? renewalAltNames : undefined,
+      altNames: renewalAltNames,
       keyUsages: certificateRequest.keyUsages,
       extendedKeyUsages: certificateRequest.extendedKeyUsages,
       notBefore,
@@ -1113,7 +1114,7 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
-        const { certificateRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
+        const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
           csrRenewalRequest,
@@ -1125,7 +1126,7 @@ export const certificateRenewalServiceFactory = ({
           profileCustomExtensions: profile?.defaults?.customExtensions
         });
 
-        changedAttributes = buildRenewalAuditChanges(originalCert, { ...certificateRequest, validity: { ttl } });
+        changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
 
         if (renewalAuth?.projectPermission) {
           assertCanEditCertificateResult({
@@ -1291,7 +1292,7 @@ export const certificateRenewalServiceFactory = ({
           profileId: originalCert.profileId || undefined,
           applicationId: originalCert.applicationId ?? undefined,
           commonName: certificateRequest.commonName,
-          altNames: renewalAltNames.length > 0 ? renewalAltNames : undefined,
+          altNames: renewalAltNames,
           keyUsages: certificateRequest.keyUsages,
           extendedKeyUsages: certificateRequest.extendedKeyUsages,
           notBefore: new Date(newCert.notBefore),
@@ -1404,7 +1405,7 @@ export const certificateRenewalServiceFactory = ({
         caId: ca.id,
         csr,
         commonName: renewalRequest.commonName,
-        altNames: structuredAltNames.length > 0 ? structuredAltNames : undefined,
+        altNames: structuredAltNames,
         keyUsages: renewalRequest.keyUsages,
         extendedKeyUsages: renewalRequest.extendedKeyUsages,
         keyAlgorithm: effectiveKeyAlgorithm,
@@ -1528,6 +1529,32 @@ export const certificateRenewalServiceFactory = ({
     return certificate;
   };
 
+  const getRenewalPreview = async ({
+    certificateId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    certificateId: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    const certificate = await $loadCertificateForRenewalConfig({
+      certificateId,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificate.id);
+
+    return buildRenewalPreview(originatingRequest, certificate);
+  };
+
   const updateRenewalConfig = async ({
     certificateId,
     renewBeforeDays,
@@ -1638,6 +1665,7 @@ export const certificateRenewalServiceFactory = ({
 
   return {
     renewCertificate,
+    getRenewalPreview,
     updateRenewalConfig,
     disableRenewalConfig
   };

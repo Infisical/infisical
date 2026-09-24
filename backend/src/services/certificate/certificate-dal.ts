@@ -65,6 +65,8 @@ export type TOriginatingCertificateRequest = {
   keyUsages: string[] | null;
   extendedKeyUsages: string[] | null;
   customExtensions: unknown;
+  keyAlgorithm: string | null;
+  signatureAlgorithm: string | null;
 };
 
 export const certificateDALFactory = (db: TDbClient) => {
@@ -777,7 +779,9 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.CertificateRequests}.altNames`,
           `${TableName.CertificateRequests}.keyUsages`,
           `${TableName.CertificateRequests}.extendedKeyUsages`,
-          `${TableName.CertificateRequests}.customExtensions`
+          `${TableName.CertificateRequests}.customExtensions`,
+          `${TableName.CertificateRequests}.keyAlgorithm`,
+          `${TableName.CertificateRequests}.signatureAlgorithm`
         )
         .first()) as Partial<TOriginatingCertificateRequest> | undefined;
 
@@ -795,7 +799,9 @@ export const certificateDALFactory = (db: TDbClient) => {
         altNames: row?.altNames ?? null,
         keyUsages: row?.keyUsages ?? null,
         extendedKeyUsages: row?.extendedKeyUsages ?? null,
-        customExtensions: row?.customExtensions ?? null
+        customExtensions: row?.customExtensions ?? null,
+        keyAlgorithm: row?.keyAlgorithm ?? null,
+        signatureAlgorithm: row?.signatureAlgorithm ?? null
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Get originating request by cert id" });

@@ -379,3 +379,28 @@ export type TTriggerCertificateRequestValidationResponse = {
   status: CertificateRequestStatus;
   orderStatus?: string;
 };
+
+export type TIssuerModifiedField = {
+  field: string;
+  requested: string;
+  issued: string;
+};
+
+export type TCertificateRenewalPreview = {
+  hasOriginatingRequest: boolean;
+  request: {
+    commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
+    domainComponents?: string[];
+    altNames: { type: string; value: string }[];
+    keyUsages: string[];
+    extendedKeyUsages: string[];
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+  };
+  issuerModifiedFields: TIssuerModifiedField[];
+};

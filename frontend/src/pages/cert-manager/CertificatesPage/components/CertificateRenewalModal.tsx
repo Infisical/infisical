@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -35,7 +35,10 @@ import {
   CertificateIssuerKind,
   CertificateRenewalKeySource
 } from "@app/hooks/api/certificates/enums";
-import { useGetCertificateById } from "@app/hooks/api/certificates/queries";
+import {
+  useGetCertificateById,
+  useGetCertificateRenewalPreview
+} from "@app/hooks/api/certificates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
@@ -54,6 +57,7 @@ import {
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
+import { IssuerModifiedHint, IssuerModifiedNotice } from "./IssuerModifiedNotice";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { RequestCustomExtensionsField } from "./RequestCustomExtensionsField";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
@@ -178,6 +182,23 @@ const STEP_META: Record<RenewalStepKey, WizardStep> = {
   }
 };
 
+const REPLAYED_STEP_COPY: Partial<Record<RenewalStepKey, Partial<WizardStep>>> = {
+  subject: {
+    subtitle: "These are copied from the original request. Change only what should differ.",
+    rightDescription:
+      "Subject attributes and alternative names identify the certificate. They start as a copy of the request that produced it, so anything the authority added on its own is called out below rather than repeated here."
+  },
+  options: {
+    rightDescription:
+      "Every value here starts as a copy of the request that produced this certificate, including any profile defaults it recorded, and is validated against the profile's policy at issuance."
+  },
+  extensions: {
+    subtitle: "These are copied from the original request. Change only what should differ.",
+    rightDescription:
+      "Custom extensions start as a copy of the request that produced this certificate, and the profile's policy still constrains which object identifiers are permitted and what values they may take."
+  }
+};
+
 const EXTERNAL_TEMPLATE_OPTIONS_STEP: WizardStep = {
   ...STEP_META.options,
   shortDescription: "Key algorithm",
@@ -210,6 +231,17 @@ type Props = {
   ) => void;
 };
 
+const SUBJECT_ISSUER_FIELDS = new Set([
+  "commonName",
+  "organization",
+  "organizationalUnit",
+  "country",
+  "state",
+  "locality",
+  "domainComponents",
+  "altNames"
+]);
+
 export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
@@ -222,6 +254,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     isOpen && certificateId ? certificateId : ""
   );
   const certificate = certificateData?.certificate;
+
+  const { data: renewalPreview, isPending: isRenewalPreviewPending } =
+    useGetCertificateRenewalPreview(isOpen && certificateId ? certificateId : "");
+  const hasOriginatingRequest = renewalPreview?.hasOriginatingRequest ?? false;
+  const issuerModifiedFields = renewalPreview?.issuerModifiedFields ?? [];
+  const issuerModifiedByField = useMemo(
+    () => new Map(issuerModifiedFields.map((entry) => [entry.field, entry])),
+    [issuerModifiedFields]
+  );
 
   const { data: profile } = useGetCertificateProfileById({
     profileId: certificate?.profileId ?? ""
@@ -437,25 +478,39 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const steps = useMemo(
     () =>
-      stepKeys.map((key) =>
-        key === "options" && isExternalTemplateProfile
-          ? EXTERNAL_TEMPLATE_OPTIONS_STEP
-          : STEP_META[key]
-      ),
-    [stepKeys, isExternalTemplateProfile]
+      stepKeys.map((key) => {
+        const meta =
+          key === "options" && isExternalTemplateProfile
+            ? EXTERNAL_TEMPLATE_OPTIONS_STEP
+            : STEP_META[key];
+        return hasOriginatingRequest ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) } : meta;
+      }),
+    [stepKeys, isExternalTemplateProfile, hasOriginatingRequest]
   );
 
+  const subjectIssuerChanges = useMemo(
+    () => issuerModifiedFields.filter((entry) => SUBJECT_ISSUER_FIELDS.has(entry.field)),
+    [issuerModifiedFields]
+  );
+
+  const [isSeeded, setIsSeeded] = useState(false);
   const seededCertificateIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isOpen) {
       seededCertificateIdRef.current = null;
+      setIsSeeded(false);
       return;
     }
-    if (!certificate || !isPolicyResolved || seededCertificateIdRef.current === certificate.id)
+    if (
+      !certificate ||
+      !isPolicyResolved ||
+      isRenewalPreviewPending ||
+      seededCertificateIdRef.current === certificate.id
+    )
       return;
 
     seededCertificateIdRef.current = certificate.id;
-    const renewalDefaults = buildRenewalFormDefaults(certificate, constraints);
+    const renewalDefaults = buildRenewalFormDefaults(certificate, constraints, renewalPreview);
     // Seed the rows the policy requires so they are visible as fields from the start.
     const seeded = withRequiredRows(
       buildPolicyRules(policyData),
@@ -468,7 +523,17 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       subjectAltNames: seeded.subjectAltNames
     });
     setStep(0);
-  }, [isOpen, certificate, isPolicyResolved, constraints, policyData, reset]);
+    setIsSeeded(true);
+  }, [
+    isOpen,
+    certificate,
+    isPolicyResolved,
+    isRenewalPreviewPending,
+    renewalPreview,
+    constraints,
+    policyData,
+    reset
+  ]);
 
   const closeWizard = () => {
     handlePopUpToggle("renewCertificate", false);
@@ -570,8 +635,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       onBack={goBack}
       onContinue={goNext}
       isSubmitting={isSubmitting}
-      isSubmitDisabled={!certificate}
-      isContinueDisabled={!certificate}
+      isSubmitDisabled={!certificate || !isSeeded}
+      isContinueDisabled={!certificate || !isSeeded}
     >
       {currentStepKey === "setup" && (
         <Controller
@@ -681,6 +746,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
           )}
+          <IssuerModifiedNotice fields={subjectIssuerChanges} />
         </div>
       )}
 
@@ -728,23 +794,33 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 : "Select key algorithm"
             }
           />
+          {!isExternalTemplateProfile && (
+            <IssuerModifiedHint field={issuerModifiedByField.get("signatureAlgorithm")} />
+          )}
+          <IssuerModifiedHint field={issuerModifiedByField.get("keyAlgorithm")} />
 
           {!isExternalTemplateProfile && (
             <div className="mt-4 space-y-6">
-              <KeyUsageSection
-                control={control}
-                title="Key Usages"
-                namePrefix="keyUsages"
-                options={selectableKeyUsages}
-                requiredUsages={constraints.requiredKeyUsages}
-              />
-              <KeyUsageSection
-                control={control}
-                title="Extended Key Usages"
-                namePrefix="extendedKeyUsages"
-                options={selectableExtendedKeyUsages}
-                requiredUsages={constraints.requiredExtendedKeyUsages}
-              />
+              <div>
+                <KeyUsageSection
+                  control={control}
+                  title="Key Usages"
+                  namePrefix="keyUsages"
+                  options={selectableKeyUsages}
+                  requiredUsages={constraints.requiredKeyUsages}
+                />
+                <IssuerModifiedHint field={issuerModifiedByField.get("keyUsages")} />
+              </div>
+              <div>
+                <KeyUsageSection
+                  control={control}
+                  title="Extended Key Usages"
+                  namePrefix="extendedKeyUsages"
+                  options={selectableExtendedKeyUsages}
+                  requiredUsages={constraints.requiredExtendedKeyUsages}
+                />
+                <IssuerModifiedHint field={issuerModifiedByField.get("extendedKeyUsages")} />
+              </div>
               {constraints.templateAllowsCA && (
                 <BasicConstraintsField
                   control={control}
