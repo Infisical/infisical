@@ -43,7 +43,10 @@ export const EditSecretRotationV2Modal = ({ secretRotation, isOpen, onOpenChange
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4 sm:max-w-[1500px]">
+        <SheetContent
+          size="workspace"
+          className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4"
+        >
           <SheetHeader>
             <SheetTitle className="sr-only">Edit secret rotation</SheetTitle>
             <SecretRotationV2ModalHeader isConfigured type={secretRotation.type} />

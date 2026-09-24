@@ -50,7 +50,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "The baseline slide-over — `side` defaults to `right`, the most common placement for detail panes and edit flows. Wrap the footer's Cancel button in `SheetClose` so it dismisses the sheet without managing state. `SheetContent` defaults to a responsive width (`w-3/4` with `sm:max-w-md`); override via `className` when you need more or less room."
+          'The baseline slide-over — `side` defaults to `right`, the most common placement for detail panes and edit flows. Wrap the footer\'s Cancel button in `SheetClose` so it dismisses the sheet without managing state. `SheetContent` defaults to a responsive width (`w-3/4` with `sm:max-w-md`). Use `size="form"` for a full-width mobile form capped at 3xl, `size="wide"` for 1100px workflows, or `size="workspace"` for 1500px multi-column workspaces.'
       }
     }
   },
@@ -77,6 +77,64 @@ export const Default: Story = {
             <Button variant="ghost">Cancel</Button>
           </SheetClose>
           <Button>Save changes</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  )
+};
+
+export const FormWidth: Story = {
+  name: "Example: Form Width",
+  render: () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline">Create dynamic secret</Button>
+      </SheetTrigger>
+      <SheetContent size="form">
+        <SheetHeader>
+          <SheetTitle>Create Dynamic Secret</SheetTitle>
+          <SheetDescription>
+            Configure the provider and credentials for this secret.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-4 p-4">
+          <Label htmlFor="dynamic-secret-name">Name</Label>
+          <Input id="dynamic-secret-name" placeholder="database-credentials" />
+          <Label htmlFor="dynamic-secret-path">Secret Path</Label>
+          <Input id="dynamic-secret-path" placeholder="/production" />
+        </div>
+        <SheetFooter>
+          <Button>Create Dynamic Secret</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  )
+};
+
+export const WorkspaceWidth: Story = {
+  name: "Example: Workspace Width",
+  render: () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline">Create secret sync</Button>
+      </SheetTrigger>
+      <SheetContent size="workspace">
+        <SheetHeader>
+          <SheetTitle>Create Secret Sync</SheetTitle>
+          <SheetDescription>Choose a source and destination for these secrets.</SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-4 p-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="sync-source">Source</Label>
+            <Input id="sync-source" placeholder="Production" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="sync-destination">Destination</Label>
+            <Input id="sync-destination" placeholder="AWS Secrets Manager" />
+          </div>
+        </div>
+        <SheetFooter>
+          <Button>Create Secret Sync</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
