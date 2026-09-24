@@ -39,7 +39,10 @@ import {
   TableHead,
   TableHeader,
   TableHeadLabel,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionKmipActions,
@@ -266,28 +269,48 @@ export const KmipClientTable = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handlePopUpOpen("generateKmipClientCert", kmipClient)}
-                              isDisabled={cannotGenerateKmipClientCertificate}
-                            >
-                              <FileBadgeIcon />
-                              Generate Certificate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handlePopUpOpen("upsertKmipClient", kmipClient)}
-                              isDisabled={cannotEditKmipClient}
-                            >
-                              <PencilIcon />
-                              Edit KMIP Client
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handlePopUpOpen("deleteKmipClient", kmipClient)}
-                              isDisabled={cannotDeleteKmipClient}
-                              variant="danger"
-                            >
-                              <TrashIcon />
-                              Delete KMIP Client
-                            </DropdownMenuItem>
+                            <Tooltip open={cannotGenerateKmipClientCertificate ? undefined : false}>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handlePopUpOpen("generateKmipClientCert", kmipClient)
+                                  }
+                                  isDisabled={cannotGenerateKmipClientCertificate}
+                                  isDisabledFocusable={cannotGenerateKmipClientCertificate}
+                                >
+                                  <FileBadgeIcon />
+                                  Generate Certificate
+                                </DropdownMenuItem>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Access Restricted</TooltipContent>
+                            </Tooltip>
+                            <Tooltip open={cannotEditKmipClient ? undefined : false}>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuItem
+                                  onClick={() => handlePopUpOpen("upsertKmipClient", kmipClient)}
+                                  isDisabled={cannotEditKmipClient}
+                                  isDisabledFocusable={cannotEditKmipClient}
+                                >
+                                  <PencilIcon />
+                                  Edit KMIP Client
+                                </DropdownMenuItem>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Access Restricted</TooltipContent>
+                            </Tooltip>
+                            <Tooltip open={cannotDeleteKmipClient ? undefined : false}>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuItem
+                                  onClick={() => handlePopUpOpen("deleteKmipClient", kmipClient)}
+                                  isDisabled={cannotDeleteKmipClient}
+                                  isDisabledFocusable={cannotDeleteKmipClient}
+                                  variant="danger"
+                                >
+                                  <TrashIcon />
+                                  Delete KMIP Client
+                                </DropdownMenuItem>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Access Restricted</TooltipContent>
+                            </Tooltip>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
