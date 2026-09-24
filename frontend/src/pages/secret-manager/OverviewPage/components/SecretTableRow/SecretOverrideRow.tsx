@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Button,
   IconButton,
   InfisicalSecretInput,
   SecretInputActions,
@@ -290,14 +291,15 @@ export const SecretOverrideRow = ({
               {previewOverrideValue}
             </span>
             {canSaveOverride && (
-              <button
+              <Button
                 type="button"
-                className="text-xs text-accent"
+                variant="link"
+                size="xs"
                 onClick={() => setIsEditingValue(true)}
                 aria-label={`Edit personal override in ${environment}`}
               >
                 Edit
-              </button>
+              </Button>
             )}
           </div>
         )}
