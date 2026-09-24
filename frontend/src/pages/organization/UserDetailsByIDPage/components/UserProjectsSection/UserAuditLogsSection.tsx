@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@app/components/v3";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 import { OrgPermissionMemberActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
@@ -17,6 +17,9 @@ export const UserAuditLogsSection = withPermission(
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Audit Logs</CardTitle>
+            <CardDescription>
+              Review this user&apos;s activity across the organization.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <LogsSection

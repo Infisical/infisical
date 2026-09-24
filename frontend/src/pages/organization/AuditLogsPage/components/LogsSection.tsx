@@ -255,7 +255,7 @@ const LogsSectionComponent = ({
         </Alert>
       )}
       {showFilters && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <ButtonGroup>
             <DateRangeQuickPresets
               value={activePreset}
@@ -275,7 +275,9 @@ const LogsSectionComponent = ({
               accent={dateRangeAccent}
             />
           </ButtonGroup>
-          <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
+          <div className="ml-auto">
+            <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
+          </div>
         </div>
       )}
       <LogsTable
