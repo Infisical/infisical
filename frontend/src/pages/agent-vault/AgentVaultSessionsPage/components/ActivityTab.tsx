@@ -42,6 +42,7 @@ import {
   activityRecordKey,
   AgentVaultActivityDecision,
   AgentVaultSessionStatus,
+  isRetryableActivityGap,
   useAgentVaultActivityTimeline,
   useGetAgentVaultSessionActivity
 } from "@app/hooks/api/agentVault";
@@ -101,6 +102,8 @@ const decisionPresentation = (decision: AgentVaultActivityDecision) =>
 const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
   repointed: "Stored in a bucket or prefix this project no longer uses",
   fetch: "Could not be read from the bucket",
+  missing: "No longer in the bucket",
+  refused: "The bucket refused the download",
   size: "The stored object is the wrong size",
   gcm: "Could not be decrypted",
   json: "The decrypted contents were not readable",
@@ -538,7 +541,9 @@ export const ActivityTab = ({ session }: Props) => {
               ))}
               {gaps.length > 5 && <span>and {gaps.length - 5} more.</span>}
             </div>
-            {gaps.some((gap) => gap.reason === "fetch") && <AlertAction>{retryButton}</AlertAction>}
+            {gaps.some((gap) => isRetryableActivityGap(gap.reason)) && (
+              <AlertAction>{retryButton}</AlertAction>
+            )}
           </AlertDescription>
         </Alert>
       )}

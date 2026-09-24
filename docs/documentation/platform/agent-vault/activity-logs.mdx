@@ -115,7 +115,7 @@ A session token works on any enrolled proxy, so several proxies can serve one se
 If a record couldn't be kept, the sheet shows a notice instead of leaving a silent gap:
 
 - **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the sheet shows how many
-- **Unreadable batch:** if a batch is missing from the bucket, the wrong size, or fails decryption, the sheet marks it and shows the rest (select **Retry** if the download failed)
+- **Unreadable batch:** if a batch is missing from the bucket, the bucket refuses the download, or the batch is the wrong size or fails decryption, the sheet marks the batch and shows the rest (select **Retry** to try a missing, refused, or failed download again)
 - **Batch in an old location:** if you changed the bucket or prefix, batches recorded before the change are marked as stored where the project no longer reads
 
 ## Changing where activity is stored
@@ -128,7 +128,7 @@ Changing the bucket or the key prefix copies nothing, and everything recorded be
 
 Infisical never deletes activity. A session that recorded activity is kept indefinitely, along with its records. A session that recorded nothing is removed 30 days after it's revoked or expires.
 
-Infisical doesn't delete anything from your bucket either, and the [IAM policy](#setting-up-storage) doesn't allow it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. A batch the rule has removed shows in the timeline as unreadable.
+Infisical doesn't delete anything from your bucket either, and the [IAM policy](#setting-up-storage) doesn't allow it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. If the rule removes a batch, the timeline marks the batch as no longer in the bucket.
 
 ## When activity logging reaches its limit
 

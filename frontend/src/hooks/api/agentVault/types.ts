@@ -357,6 +357,8 @@ export type TAgentVaultActivityRecord = {
 
 export type TAgentVaultActivityGapReason =
   | "fetch"
+  | "missing"
+  | "refused"
   | "size"
   | "gcm"
   | "json"

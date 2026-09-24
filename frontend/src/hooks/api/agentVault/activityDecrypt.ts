@@ -102,6 +102,9 @@ const gapFor = (
   arrivedAt: null
 });
 
+export const isRetryableActivityGap = (reason?: TAgentVaultActivityGapReason) =>
+  reason === "fetch" || reason === "missing" || reason === "refused";
+
 const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -132,7 +135,7 @@ const openChunk = async (
       credentials: "omit",
       signal: download.signal
     });
-    if (!res.ok) return gapFor(chunk, "fetch");
+    if (!res.ok) return gapFor(chunk, res.status === 404 ? "missing" : "refused");
     body = await res.arrayBuffer();
   } catch (error) {
     if (signal?.aborted) throw error;
@@ -224,7 +227,7 @@ export const decryptActivityPage = async (
       }
       const result = key ? await openChunk(chunk, key, context, signal) : gapFor(chunk, "gcm");
       // Failed downloads stay uncached so the next fetch retries with a freshly presigned URL.
-      if (result.gap?.reason !== "fetch") cache.chunks.set(chunk.chunkId, result);
+      if (!isRetryableActivityGap(result.gap?.reason)) cache.chunks.set(chunk.chunkId, result);
       decrypted[chunk.chunkId] = result;
       opened.push(chunk.chunkId);
     })
@@ -276,7 +279,11 @@ export const useAgentVaultActivityTimeline = (
         const result = page.decrypted[chunk.chunkId];
         if (!result) return;
         const known = opened.get(chunk.chunkId);
-        if (known && (known.gap?.reason !== "fetch" || result.gap?.reason === "fetch")) return;
+        if (
+          known &&
+          (!isRetryableActivityGap(known.gap?.reason) || isRetryableActivityGap(result.gap?.reason))
+        )
+          return;
         opened.set(chunk.chunkId, result);
         openedBytes.set(chunk.chunkId, chunk.ciphertextBytes);
       })

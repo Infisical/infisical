@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
-import { describe, it } from "vitest";
+import { afterEach, describe, it, vi } from "vitest";
 
-import { parseActivityRecords, recordsMatchChunk } from "./activityDecrypt";
+import {
+  createActivityChunkCache,
+  decryptActivityPage,
+  parseActivityRecords,
+  recordsMatchChunk
+} from "./activityDecrypt";
+import { TAgentVaultActivityPage } from "./types";
 
 const record = {
   ts: "2026-09-23T10:00:00.000Z",
@@ -59,5 +65,72 @@ describe("recordsMatchChunk", () => {
 
   it("refuses a sequence number outside the batch's range", () => {
     assert.equal(recordsMatchChunk([records[0], { ...records[1], seq: 13 }], chunk), false);
+  });
+});
+
+describe("decryptActivityPage", () => {
+  const chunkId = "01K5ABCDEFGHJKMNPQRSTVWXYZ";
+  const page: TAgentVaultActivityPage = {
+    enabled: true,
+    sessionKey: btoa("\0".repeat(32)),
+    projectId: "project-1",
+    configVersion: 1,
+    chunks: [
+      {
+        chunkId,
+        proxyId: "proxy-1",
+        proxyName: "proxy",
+        startedAt: record.ts,
+        endedAt: record.ts,
+        firstSeq: 0,
+        lastSeq: 0,
+        recordCount: 1,
+        droppedCount: 0,
+        configVersion: 1,
+        ciphertextBytes: 64,
+        iv: "qrvM3e7/ABEiM0RV",
+        presignedGetUrl: "https://bucket.example/chunk"
+      }
+    ],
+    nextCursor: null,
+    hasMore: false,
+    nextReceivedAfter: record.ts,
+    storageUnavailable: null
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const openTwice = async (download: () => Promise<Response>) => {
+    const fetchMock = vi.fn(download);
+    vi.stubGlobal("fetch", fetchMock);
+    const cache = createActivityChunkCache("session-1");
+    const first = await decryptActivityPage(page, cache);
+    await decryptActivityPage(page, cache);
+    return { reason: first.decrypted[chunkId].gap?.reason, downloads: fetchMock.mock.calls.length };
+  };
+
+  it("tells an object the bucket no longer has apart from a blocked request, and tries it again", async () => {
+    assert.deepEqual(await openTwice(async () => new Response(null, { status: 404 })), {
+      reason: "missing",
+      downloads: 2
+    });
+  });
+
+  it("reports a download the bucket refused, and tries it again", async () => {
+    assert.deepEqual(await openTwice(async () => new Response(null, { status: 403 })), {
+      reason: "refused",
+      downloads: 2
+    });
+  });
+
+  it("keeps a request the browser could not make as a failed download, and tries it again", async () => {
+    assert.deepEqual(
+      await openTwice(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+      { reason: "fetch", downloads: 2 }
+    );
   });
 });
