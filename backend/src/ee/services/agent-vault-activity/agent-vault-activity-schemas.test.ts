@@ -87,6 +87,7 @@ describe("the settings patch", () => {
     { value: "logs/../../etc", why: "a traversal segment in the middle" },
     { value: "logs/../secrets", why: "climbing out of the prefix" },
     { value: "logs/\u0000", why: "a control character" },
+    { value: "team*", why: "an asterisk, which is a wildcard in the suggested IAM policy" },
     { value: `a${"b".repeat(512)}`, why: "longer than the column" }
   ])("rejects a key prefix: $why", ({ value }) => {
     expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(false);

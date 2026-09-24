@@ -66,7 +66,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
       keyPrefix: z
         .string()
         .trim()
-        .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "Use only letters, numbers and ! - _ . * ' ( ) /")
+        .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "Use only letters, numbers and ! - _ . ' ( ) /")
         .refine((value) => !value.split("/").includes(".."), "Cannot contain '..'")
         .refine(
           (value) => normalizePrefix(value).length <= 512,

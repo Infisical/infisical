@@ -123,7 +123,7 @@ export const AgentVaultActivityConfigUpdateSchema = z
     keyPrefix: z
       .string()
       .trim()
-      .regex(/^[A-Za-z0-9!\-_.*'()/]*$/, "May only contain letters, numbers and ! - _ . * ' ( ) /")
+      .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "May only contain letters, numbers and ! - _ . ' ( ) /")
       .refine((v) => !v.split("/").includes(".."), "May not contain '..'")
       .refine(
         (v) => normalizeKeyPrefix(v).length <= AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
