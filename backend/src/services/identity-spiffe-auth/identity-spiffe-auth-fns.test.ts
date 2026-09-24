@@ -1,9 +1,11 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, JWK, jwtVerify, SignJWT } from "jose";
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { parseSpiffeBundleJwtAuthorities } from "./identity-spiffe-auth-fns";
+import { claimKidMissRefresh, parseSpiffeBundleJwtAuthorities } from "./identity-spiffe-auth-fns";
+
+vi.mock("@app/lib/logger", () => ({ logger: { warn: vi.fn() } }));
 
 describe("parseSpiffeBundleJwtAuthorities", () => {
   let jwtSigningKey: JWK;
@@ -66,5 +68,26 @@ describe("parseSpiffeBundleJwtAuthorities", () => {
     ["only X.509 authorities", JSON.stringify({ keys: [{ use: "x509-svid", kty: "EC", x5c: ["MIIB"] }] })]
   ])("rejects a bundle with %s", (_, bundle) => {
     expect(() => parseSpiffeBundleJwtAuthorities(bundle)).toThrow(BadRequestError);
+  });
+});
+
+describe("claimKidMissRefresh", () => {
+  test("claims the cooldown for the config", async () => {
+    const setItemWithExpiryNX = vi.fn().mockResolvedValue("OK");
+
+    await expect(claimKidMissRefresh({ setItemWithExpiryNX }, "config-1")).resolves.toBe(true);
+    expect(setItemWithExpiryNX).toHaveBeenCalledWith("spiffe-kid-miss-refresh:config-1", 30, "1");
+  });
+
+  test("refuses while another caller holds the cooldown", async () => {
+    const setItemWithExpiryNX = vi.fn().mockResolvedValue(null);
+
+    await expect(claimKidMissRefresh({ setItemWithExpiryNX }, "config-1")).resolves.toBe(false);
+  });
+
+  test("skips the refresh when the keystore is unavailable", async () => {
+    const setItemWithExpiryNX = vi.fn().mockRejectedValue(new Error("Connection is closed."));
+
+    await expect(claimKidMissRefresh({ setItemWithExpiryNX }, "config-1")).resolves.toBe(false);
   });
 });

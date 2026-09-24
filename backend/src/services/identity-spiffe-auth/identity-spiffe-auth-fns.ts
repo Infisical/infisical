@@ -3,8 +3,12 @@ import { JSONWebKeySet, JWK } from "jose";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+
+const KID_MISS_REFRESH_COOLDOWN_SECONDS = 30;
 
 const SPIFFE_ID_REGEX = new RE2("^spiffe:\\/\\/([^/]+)(\\/.*)?");
 
@@ -79,4 +83,22 @@ export const parseSpiffeBundleJwtAuthorities = (bundleJson: string): JSONWebKeyS
   }
 
   return { keys: jwtAuthorities };
+};
+
+export const claimKidMissRefresh = async (
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">,
+  configId: string
+): Promise<boolean> => {
+  try {
+    return Boolean(
+      await keyStore.setItemWithExpiryNX(
+        KeyStorePrefixes.SpiffeKidMissRefresh(configId),
+        KID_MISS_REFRESH_COOLDOWN_SECONDS,
+        "1"
+      )
+    );
+  } catch (error) {
+    logger.warn(error, `SPIFFE auth: skipping kid-miss bundle refresh, keystore unavailable [configId=${configId}]`);
+    return false;
+  }
 };
