@@ -423,7 +423,7 @@ export const ProjectCategoryOverview = () => {
     return (
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {Array.from({ length: PRODUCT_TILE_COUNT }).map((_, i) => (
-          <Card key={`tile-loading-${i + 1}`} className="shadow-xs">
+          <Card key={`tile-loading-${i + 1}`} shadow="xs">
             <CardHeader>
               <div className="flex items-start gap-3">
                 <Skeleton className="h-9 w-9 shrink-0" />
@@ -530,7 +530,9 @@ export const ProjectCategoryOverview = () => {
               <Tooltip key={type}>
                 <TooltipTrigger asChild>
                   <div aria-disabled className="cursor-not-allowed">
-                    <Card className="h-auto rounded-md opacity-50 shadow-xs">{tileBody}</Card>
+                    <Card className="h-auto rounded-md opacity-50" shadow="xs">
+                      {tileBody}
+                    </Card>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -541,7 +543,7 @@ export const ProjectCategoryOverview = () => {
             );
           }
 
-          const tileClassName = `group h-auto cursor-pointer rounded-md shadow-xs transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
+          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
           // Cert Manager and PAM resolve their destination asynchronously (instance picker,
           // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
@@ -553,6 +555,7 @@ export const ProjectCategoryOverview = () => {
             return (
               <Card
                 key={type}
+                shadow="xs"
                 role="button"
                 tabIndex={0}
                 onClick={() => handleTileClick(type)}
@@ -573,7 +576,9 @@ export const ProjectCategoryOverview = () => {
               params={{ orgId: currentOrg?.id || "", type: projectTypeToUrlSlug(type) }}
               className="block"
             >
-              <Card className={tileClassName}>{tileBody}</Card>
+              <Card className={tileClassName} shadow="xs">
+                {tileBody}
+              </Card>
             </Link>
           );
         })}
