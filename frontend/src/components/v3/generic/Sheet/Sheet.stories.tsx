@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "../Button";
+import { Field, FieldGroup, FieldLabel } from "../Field";
 import { Input } from "../Input";
 import { Label } from "../Label";
 import {
@@ -97,12 +98,16 @@ export const FormWidth: Story = {
             Configure the provider and credentials for this secret.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-4 p-4">
-          <Label htmlFor="dynamic-secret-name">Name</Label>
-          <Input id="dynamic-secret-name" placeholder="database-credentials" />
-          <Label htmlFor="dynamic-secret-path">Secret Path</Label>
-          <Input id="dynamic-secret-path" placeholder="/production" />
-        </div>
+        <FieldGroup className="p-4">
+          <Field>
+            <FieldLabel htmlFor="dynamic-secret-name">Name</FieldLabel>
+            <Input id="dynamic-secret-name" placeholder="database-credentials" />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="dynamic-secret-path">Secret Path</FieldLabel>
+            <Input id="dynamic-secret-path" placeholder="/production" />
+          </Field>
+        </FieldGroup>
         <SheetFooter>
           <Button>Create Dynamic Secret</Button>
         </SheetFooter>
@@ -124,14 +129,14 @@ export const WorkspaceWidth: Story = {
           <SheetDescription>Choose a source and destination for these secrets.</SheetDescription>
         </SheetHeader>
         <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="sync-source">Source</Label>
+          <Field>
+            <FieldLabel htmlFor="sync-source">Source</FieldLabel>
             <Input id="sync-source" placeholder="Production" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="sync-destination">Destination</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="sync-destination">Destination</FieldLabel>
             <Input id="sync-destination" placeholder="AWS Secrets Manager" />
-          </div>
+          </Field>
         </div>
         <SheetFooter>
           <Button>Create Secret Sync</Button>
