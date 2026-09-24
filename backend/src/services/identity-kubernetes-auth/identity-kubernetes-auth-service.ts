@@ -433,7 +433,7 @@ export const identityKubernetesAuthServiceFactory = ({
                 port,
                 status: err.response?.status,
                 code: err.code,
-                ...getKubernetesStatusForLog(err.response?.data),
+                ...getKubernetesStatusForLog(err.response?.data, [tokenReviewerJwt, serviceAccountJwt]),
                 tokenReviewerJwtFingerprint,
                 serviceAccountJwtFingerprint
               },

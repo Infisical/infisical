@@ -2,6 +2,8 @@ import { AxiosError } from "axios";
 
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
+import { redactCredentialsFromText } from "./identity-kubernetes-auth-fns";
+
 type ErrorContext = {
   host?: string;
   port?: number;
@@ -122,6 +124,10 @@ export const handleAxiosHttpError = (
 
   if (!message && typeof err.response.data === "string") {
     message = err.response.data;
+  }
+
+  if (message) {
+    message = redactCredentialsFromText(message);
   }
 
   if (statusCode === 401) {
