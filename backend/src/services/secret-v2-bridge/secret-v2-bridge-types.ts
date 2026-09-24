@@ -503,12 +503,6 @@ export type TFindSecretsByFolderIdsFilter = {
   excludeRotatedSecrets?: boolean;
 };
 
-export type TSecretSortCandidate = Pick<TSecretsV2, "id" | "key" | "folderId" | "createdAt" | "updatedAt">;
-
-export type TSecretSortCandidateWithTags = TSecretSortCandidate & {
-  tags: { id: string; slug: string }[];
-};
-
 export type TGetSecretsMultiEnvDTO = Pick<
   TGetSecretsDTO,
   | "actorId"
