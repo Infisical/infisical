@@ -16,7 +16,8 @@ import {
   Input,
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
+  Separator
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { isOrgScopedProduct } from "@app/helpers/project";
@@ -173,13 +174,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <LogFilterItem
-              label="Events"
-              className="sm:col-span-2"
-              onClear={() => {
-                setValue("eventType", [], { shouldDirty: true });
-              }}
-            >
+            <LogFilterItem label="Events" className="sm:col-span-2">
               <Controller
                 control={control}
                 name="eventType"
@@ -192,6 +187,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         field.value.includes(eventType.value as EventType)
                       )}
                       multiple
+                      isSelectAll
                       isClearable
                       onValueChange={(options) =>
                         field.onChange(options.map((option) => option.value))
@@ -205,12 +201,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                 )}
               />
             </LogFilterItem>
-            <LogFilterItem
-              label="Source"
-              onClear={() => {
-                setValue("userAgentType", null, { shouldDirty: true });
-              }}
-            >
+            <LogFilterItem label="Source">
               <Controller
                 control={control}
                 name="userAgentType"
@@ -238,15 +229,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               />
             </LogFilterItem>
             {!project && (
-              <LogFilterItem
-                label="Project"
-                onClear={() => {
-                  setValue("project", null, { shouldDirty: true });
-                  setValue("environment", null, { shouldDirty: true });
-                  setValue("secretPath", "", { shouldDirty: true });
-                  setValue("secretKey", "", { shouldDirty: true });
-                }}
-              >
+              <LogFilterItem label="Project">
                 <Controller
                   control={control}
                   name="project"
@@ -282,8 +265,11 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               </LogFilterItem>
             )}
             {showSecretsSection && (
-              <div className="grid grid-cols-1 gap-3 border-t border-border pt-3 sm:col-span-2 sm:grid-cols-2">
-                <p className="text-xs text-muted sm:col-span-2">Secrets</p>
+              <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
+                <div className="flex items-center gap-3 sm:col-span-2">
+                  <p className="text-xs text-muted">Secrets</p>
+                  <Separator className="flex-1" />
+                </div>
                 <LogFilterItem
                   label="Environment"
                   hoverTooltip={
@@ -292,9 +278,6 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       : undefined
                   }
                   className={twMerge("sm:col-span-2", !selectedProject && "opacity-50")}
-                  onClear={() => {
-                    setValue("environment", null, { shouldDirty: true });
-                  }}
                 >
                   <Controller
                     control={control}
@@ -331,9 +314,6 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       : undefined
                   }
                   className={twMerge(!selectedProject && "opacity-50")}
-                  onClear={() => {
-                    setValue("secretPath", "", { shouldDirty: true });
-                  }}
                 >
                   <Controller
                     control={control}
@@ -361,9 +341,6 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                   tooltipText="Enter the exact secret key name (wildcards like * are not supported)"
                   className={twMerge(!selectedProject && "opacity-50")}
                   label="Secret Key"
-                  onClear={() => {
-                    setValue("secretKey", "", { shouldDirty: true });
-                  }}
                 >
                   <Controller
                     control={control}
