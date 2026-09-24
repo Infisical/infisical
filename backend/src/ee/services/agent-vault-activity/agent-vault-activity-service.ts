@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenRequestError,
   InternalServerError,
   NotFoundError,
@@ -244,6 +245,9 @@ export const agentVaultActivityServiceFactory = ({
         );
         if (!existing) {
           throw new InternalServerError({ message: "Activity chunk vanished between insert and read" });
+        }
+        if (existing.proxyId !== proxyId) {
+          throw new ConflictError({ message: "This chunk ID was already recorded by another proxy" });
         }
         // A proxy only re-sends a chunk it never confirmed uploading, so after a move it belongs at the new
         // destination. Forward only: a lagging config read must not send a row back to an old one.

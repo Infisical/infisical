@@ -82,7 +82,9 @@ const build = (overrides: TOverrides = {}) => {
     return { ...created, ...values };
   });
   const recordStoredChunk = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
-  const findChunk = vi.fn(async () => overrides.existingChunk ?? null);
+  const findChunk = vi.fn(async () =>
+    overrides.existingChunk ? { proxyId: PROXY.id, ...(overrides.existingChunk as object) } : null
+  );
   const repointChunk = vi.fn(async (_id: string, values: Record<string, unknown>) => ({
     ...(overrides.existingChunk as object),
     ...values
@@ -383,6 +385,21 @@ describe("recordChunk: re-sending a chunk", () => {
 
     expect(repointChunk).not.toHaveBeenCalled();
     expect(presignPut).toHaveBeenCalledWith({ objectKey: "newer/key.json.enc", ciphertextBytes: 4096 });
+  });
+
+  test("a chunk id another proxy recorded is refused before the row is touched", async () => {
+    const { service, repointChunk, recordStoredChunk } = build({
+      isReplay: true,
+      existingChunk: { ...validChunk(), proxyId: "proxy-2", configVersion: 2, objectKey: "theirs/key.json.enc" }
+    });
+
+    await expect(record(service)).rejects.toMatchObject({
+      name: "Conflict",
+      message: "This chunk ID was already recorded by another proxy"
+    });
+    expect(repointChunk).not.toHaveBeenCalled();
+    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a row that vanished between the insert and the read is a 500, not a silent success", async () => {

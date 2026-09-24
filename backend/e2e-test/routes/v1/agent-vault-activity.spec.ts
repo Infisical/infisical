@@ -535,6 +535,10 @@ describe("Agent Vault activity", async () => {
       await recordChunk(proxyTwo, sessionA.id);
       await recordChunk(proxyTwo, sessionB.id, chunkBody({ chunkId: sharedId }));
 
+      const claimed = await proxyTwo.postChunk(sessionA.id, chunkBody({ chunkId: sharedId }));
+      expect(claimed.statusCode, claimed.payload).toBe(409);
+      await recordChunk(proxyOne, sessionA.id, chunkBody({ chunkId: sharedId }));
+
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: sessionA.id })).toHaveLength(2);
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: sessionB.id })).toHaveLength(1);
     });
