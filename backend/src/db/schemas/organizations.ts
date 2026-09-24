@@ -43,7 +43,8 @@ export const OrganizationsSchema = z.object({
   blockDuplicateSecretSyncDestinations: z.boolean().default(false),
   secretShareBrandConfig: z.unknown().nullable().optional(),
   defaultCertManagerProjectId: z.string().nullable().optional(),
-  allowCrossProjectSecretSharing: z.boolean().default(false)
+  allowCrossProjectSecretSharing: z.boolean().default(false),
+  orgWideSecretValueTrackingEnabled: z.boolean().default(true)
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;
