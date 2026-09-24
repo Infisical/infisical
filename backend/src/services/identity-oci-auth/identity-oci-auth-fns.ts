@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+import { AxiosError, AxiosHeaders, RawAxiosHeaders } from "axios";
 import RE2 from "re2";
 
 const SIGNATURE_SCHEME = "signature ";
@@ -14,7 +14,9 @@ export const getOciErrorForLog = (err: AxiosError) => {
     status: err.response?.status,
     code: err.code,
     ociErrorCode: toLoggableIdentifier(data?.code),
-    ociRequestId: toLoggableIdentifier(err.response?.headers?.["opc-request-id"])
+    ociRequestId: err.response
+      ? toLoggableIdentifier(AxiosHeaders.from(err.response.headers as RawAxiosHeaders).get("opc-request-id"))
+      : undefined
   };
 };
 

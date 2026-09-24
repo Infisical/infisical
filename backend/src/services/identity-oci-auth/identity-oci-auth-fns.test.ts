@@ -27,6 +27,11 @@ describe("getOciErrorForLog", () => {
     });
   });
 
+  it("reads opc-request-id regardless of header-name casing", () => {
+    const err = ociError(401, { code: "NotAuthenticated" }, { "Opc-Request-Id": "D1B2C3/E4F5A6/B7C8D9" });
+    expect(getOciErrorForLog(err).ociRequestId).toBe("D1B2C3/E4F5A6/B7C8D9");
+  });
+
   it("never returns the OCI message, which can echo client-supplied values", () => {
     const echoed = "ocid1.user.oc1..aaaaaaaasecretvalue";
     const logged = JSON.stringify(
