@@ -313,7 +313,8 @@ elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 | --------------- | ---------------------------------------- | ----------------------------------- |
 | Page            | `bg-background`                          | —                                   |
 | Card            | `bg-card`                                | `border-border`                     |
-| Popover / Dropdown | `bg-popover`                           | `border-border` + `shadow-md`       |
+| Popover / Dropdown main menu | `bg-popover`               | `border-border` + `shadow-md`       |
+| Dropdown submenu | `bg-popover`                           | `border-border` + `shadow-lg`       |
 | Sheet           | `bg-popover`                             | `border-border` + `shadow-lg`       |
 | Floating bar    | `bg-popover`                             | `border-border` + `shadow-floating` |
 | Row hover       | `bg-container-hover`                     | —                                   |
