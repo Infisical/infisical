@@ -95,6 +95,7 @@ const build = (overrides: TOverrides = {}) => {
     } as never,
     agentVaultActivityConfigDAL: {
       findOne: vi.fn(async () => config),
+      findByProjectIdFromPrimary: vi.fn(async () => config),
       recordStoredChunk,
       updateById: vi.fn(async (_id: string, values: Record<string, unknown>) => ({
         ...(config as object),

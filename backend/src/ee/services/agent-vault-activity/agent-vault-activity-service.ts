@@ -145,7 +145,7 @@ export const agentVaultActivityServiceFactory = ({
       throw new UnauthorizedError({ message: "Session retired too long ago to accept activity" });
     }
 
-    const config = await agentVaultActivityConfigDAL.findOne({ projectId: proxy.projectId });
+    const config = await agentVaultActivityConfigDAL.findByProjectIdFromPrimary(proxy.projectId);
     const storage = config ? resolveStorageConfig(config) : null;
     if (!config || !config.enabled || !storage) {
       throw new BadRequestError({
