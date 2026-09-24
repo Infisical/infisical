@@ -236,7 +236,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                               <SelectItem
                                 value={value}
                                 key={`encryption-algorithm-${value}`}
-                                isDisabled={isDisabled}
+                                disabled={isDisabled}
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="uppercase">{value.replaceAll("-", " ")}</span>
