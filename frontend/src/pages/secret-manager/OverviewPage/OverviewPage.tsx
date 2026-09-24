@@ -267,7 +267,8 @@ import {
   SecretRotationTableRow,
   SecretSyncStatusBadgeOverview,
   SecretTableRow,
-  TableEmptyRow
+  TableEmptyRow,
+  TableFilteredEmptyRow
 } from "./components";
 
 export enum EntryType {
@@ -389,6 +390,7 @@ const OverviewPageContent = () => {
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
+  const [isSearchAllFoldersOpen, setIsSearchAllFoldersOpen] = useState(false);
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -2802,6 +2804,7 @@ const OverviewPageContent = () => {
     }
     return "table" as const;
   })();
+  const isTableVisible = tableView !== "no-environments";
 
   let quickAddSaveLabel: string | undefined;
   if (isBatchModeActive) quickAddSaveLabel = "Add Pending Change";
@@ -2978,6 +2981,8 @@ const OverviewPageContent = () => {
                 tags={tags}
                 onChange={setSearchFilter}
                 onSelectResult={({ search }) => setSearchFilter(search)}
+                isSearchAllFoldersOpen={isSearchAllFoldersOpen}
+                onSearchAllFoldersOpenChange={setIsSearchAllFoldersOpen}
                 environments={userAvailableEnvs}
                 projectId={currentProject?.id}
               />
@@ -3087,7 +3092,7 @@ const OverviewPageContent = () => {
           <div
             className={twMerge(
               "flex h-10 min-w-0 items-center border border-border bg-container-hover whitespace-nowrap",
-              tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
+              isTableVisible ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
             )}
           >
             <FolderBreadcrumb secretPath={secretPath} />
@@ -3116,11 +3121,7 @@ const OverviewPageContent = () => {
               }}
             />
           )}
-          {tableView === "tag-filter-empty" && <EmptyResourceDisplay isFiltered />}
-          {tableView === "filter-empty" && (
-            <EmptyResourceDisplay isFiltered={isTableFiltered || Boolean(searchFilter)} />
-          )}
-          {tableView === "table" && (
+          {isTableVisible && (
             <>
               <DragDropProvider onDragEnd={handleSecretImportReorder}>
                 <Table
@@ -3472,6 +3473,18 @@ const OverviewPageContent = () => {
                         "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
                     )}
                   >
+                    {tableView !== "table" && (
+                      <TableFilteredEmptyRow
+                        colSpan={visibleEnvs.length + 2}
+                        isFiltered={
+                          tableView === "tag-filter-empty" ||
+                          isTableFiltered ||
+                          Boolean(searchFilter.trim())
+                        }
+                        hasSearch={Boolean(searchFilter.trim())}
+                        onSearchAllFolders={() => setIsSearchAllFoldersOpen(true)}
+                      />
+                    )}
                     {showOverviewSkeleton ? (
                       Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                         <TableRow className="group" key={`loading-row-${index + 1}`}>
@@ -3741,21 +3754,24 @@ const OverviewPageContent = () => {
                             onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
-                        <SecretNoAccessTableRow
-                          environments={visibleEnvs}
-                          count={Math.max(
-                            (page * perPage > totalCount ? totalCount % perPage : perPage) -
-                              (totalUniqueFoldersInPage || 0) -
-                              (totalUniqueDynamicSecretsInPage || 0) -
-                              (totalUniqueSecretsInPage || 0) -
-                              (totalUniqueSecretImportsInPage || 0) -
-                              (totalUniqueSecretRotationsInPage || 0) -
-                              (totalUniqueHoneyTokensInPage || 0) -
-                              (totalUniqueProxiedServicesInPage || 0),
-                            0
-                          )}
-                        />
+                        {tableView === "table" && (
+                          <SecretNoAccessTableRow
+                            environments={visibleEnvs}
+                            count={Math.max(
+                              (page * perPage > totalCount ? totalCount % perPage : perPage) -
+                                (totalUniqueFoldersInPage || 0) -
+                                (totalUniqueDynamicSecretsInPage || 0) -
+                                (totalUniqueSecretsInPage || 0) -
+                                (totalUniqueSecretImportsInPage || 0) -
+                                (totalUniqueSecretRotationsInPage || 0) -
+                                (totalUniqueHoneyTokensInPage || 0) -
+                                (totalUniqueProxiedServicesInPage || 0),
+                              0
+                            )}
+                          />
+                        )}
                         {visibleEnvs.length > 0 &&
+                          tableView === "table" &&
                           canCreateSecretsInAllVisibleEnvs &&
                           isLastPage &&
                           !isTableEmpty && (
@@ -3790,7 +3806,7 @@ const OverviewPageContent = () => {
                               secretPath={secretPath}
                             />
                           )}
-                        {isTableEmpty && (
+                        {tableView === "table" && isTableEmpty && (
                           <TableEmptyRow
                             colSpan={visibleEnvs.length + 2}
                             onImportSecrets={(step) => {

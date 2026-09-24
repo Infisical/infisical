@@ -2,8 +2,23 @@ import {
   isInSecretSearchScope,
   isSecretPathMatch,
   parseSecretPathSearch,
-  resolveSecretDeepSearch
+  resolveSecretDeepSearch,
+  resolveSecretSearchFolderPath
 } from "./dashboard-secret-search-fns";
+
+describe("resolveSecretSearchFolderPath", () => {
+  test.each([
+    ["/", "/", "/"],
+    ["/", "/nested", "/nested"],
+    ["/app", "/", "/app"],
+    ["/app", "/nested", "/app/nested"],
+    ["/app/", "/", "/app"],
+    ["/app/", "/nested/deeper", "/app/nested/deeper"],
+    ["/app", "/nested/", "/app/nested"]
+  ])("resolves folder %s + %s to %s", (secretPath, folderPath, expected) => {
+    expect(resolveSecretSearchFolderPath(secretPath, folderPath)).toBe(expected);
+  });
+});
 
 describe("parseSecretPathSearch", () => {
   test.each([

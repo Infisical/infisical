@@ -40,7 +40,12 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
-import { isInSecretSearchScope, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+import {
+  isInSecretSearchScope,
+  isSecretPathMatch,
+  resolveSecretDeepSearch,
+  resolveSecretSearchFolderPath
+} from "./dashboard-secret-search-fns";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
 const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
@@ -103,6 +108,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         .object({
           projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
           operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional(),
+          environments: z
+            .string()
+            .trim()
+            .max(65535)
+            .transform((value) => value.split(","))
+            .pipe(slugSchema({ field: "Environment slug" }).array().min(1).max(1000))
+            .optional()
+            .describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
+          secretPath: SecretMetadataQuerySchema.shape.secretPath,
           tags: z.string().trim().transform(decodeURIComponent).optional()
         })
         .describe(
@@ -110,12 +124,18 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         ),
       response: {
         200: z.object({
+          searchLimit: z.number().describe(DASHBOARD.SECRET_METADATA_SEARCH.searchLimit),
           secrets: z
             .object({
               secretId: z.string(),
               secretKey: z.string(),
               environment: z.string(),
               secretPath: z.string(),
+              tags: z
+                .object({ id: z.string(), slug: z.string() })
+                .array()
+                .describe(DASHBOARD.SECRET_METADATA_SEARCH.tags),
+              secretValueHidden: z.boolean().describe(DASHBOARD.SECRET_METADATA_LIST.secretValueHidden),
               metadata: z
                 .object({
                   key: z.string(),
@@ -134,13 +154,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const { projectId } = req.query;
       const tagSlugs = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
 
-      const { secrets } = await server.services.resourceMetadata.searchSecretMetadata({
+      const result = await server.services.resourceMetadata.searchSecretMetadata({
         filters,
         operator,
         tagSlugs,
+        environments: req.query.environments,
+        secretPath: req.query.secretPath,
         actor: req.permission,
         projectId
       });
+      const { secrets } = result;
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -162,7 +185,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { secrets };
+      return result;
     }
   });
 
@@ -1596,7 +1619,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const tags = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
       if (!search && !tags.length) throw new BadRequestError({ message: "Search or tags required" });
 
-      const allFolders = await server.services.folder.getFoldersDeepByEnvs(
+      const scopedFolders = await server.services.folder.getFoldersDeepByEnvs(
         {
           projectId,
           environments,
@@ -1604,6 +1627,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         },
         req.permission
       );
+
+      const allFolders = scopedFolders.map((folder) => ({
+        ...folder,
+        path: resolveSecretSearchFolderPath(secretPath, folder.path)
+      }));
 
       const { searchName, searchPath } = resolveSecretDeepSearch(
         search,

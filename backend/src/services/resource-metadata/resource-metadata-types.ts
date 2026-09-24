@@ -28,6 +28,7 @@ export type TSearchSecretMetadataDALDTO = {
   filters: TSecretMetadataSearchFilter[];
   operator: SecretMetadataSearchLogicalOperator;
   tagSlugs?: string[];
+  folderIds?: string[];
   limit?: number;
 };
 
@@ -37,5 +38,7 @@ export type TSearchSecretMetadataDTO = {
   filters: TSecretMetadataSearchFilter[];
   operator: SecretMetadataSearchLogicalOperator;
   tagSlugs?: string[];
+  environments?: string[];
+  secretPath?: string;
   actor: OrgServiceActor;
 };
