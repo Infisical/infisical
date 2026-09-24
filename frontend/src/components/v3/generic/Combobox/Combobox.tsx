@@ -482,11 +482,13 @@ const ComboboxList = <TOption,>({
         </div>
       )}
       {isEmpty && !isLoading && showEmptyMessage && (
-        <div
-          role="status"
-          className="flex min-h-8 items-center justify-center px-3 py-1.5 text-center text-sm text-muted"
-        >
-          {emptyMessage}
+        <div className="p-1">
+          <div
+            role="status"
+            className="flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-sm text-muted"
+          >
+            {emptyMessage}
+          </div>
         </div>
       )}
       {creationItem && (
