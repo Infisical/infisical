@@ -92,7 +92,7 @@ type ComboboxSharedProps<TOption> = {
   /** Keep selected values in the option list even when absent from the latest results. */
   includeMissingSelectedOptions?: boolean;
   /**
-   * Adds a fixed Create footer button. Inline mode persists directly from the query;
+   * Adds a fixed Create footer option. Inline mode persists directly from the query;
    * dialog mode delegates metadata, validation, persistence, and controlled
    * option/selection updates to the caller's form.
    */
@@ -179,9 +179,9 @@ const isComboboxTrailingSlotEvent = (event: Event) =>
   event.target instanceof Element &&
   Boolean(event.target.closest("[data-slot='combobox-trailing-slot']"));
 
-const isComboboxCreateButtonEvent = (event: Event) =>
+const isComboboxCreateItemEvent = (event: Event) =>
   event.target instanceof Element &&
-  Boolean(event.target.closest("[data-slot='combobox-create-button']"));
+  Boolean(event.target.closest("[data-slot='combobox-create-item']"));
 
 type ComboboxTrailingSlotProps = {
   canClear: boolean;
@@ -247,12 +247,18 @@ type ComboboxOptionItem<TOption> = {
   option: TOption;
 };
 
-type ComboboxItem<TOption> = ComboboxOptionItem<TOption>;
+type ComboboxCreateItem = {
+  type: "create";
+  inputValue: string;
+};
+
+type ComboboxItem<TOption> = ComboboxOptionItem<TOption> | ComboboxCreateItem;
 
 type ComboboxGroup<TOption> = {
   type: "group";
   value: string;
   items: ComboboxItem<TOption>[];
+  isCreationGroup?: boolean;
 };
 
 const isInlineCreationConfig = <TOption,>(
@@ -311,6 +317,7 @@ type ComboboxListProps<TOption> = Omit<
     | "isLoading"
     | "isOptionDisabled"
     | "loadingMessage"
+    | "creation"
     | "renderOption"
     | "renderOptionIndicator"
   >,
@@ -319,6 +326,11 @@ type ComboboxListProps<TOption> = Omit<
   emptyMessage?: React.ReactNode;
   ariaLabel: string;
   isEmpty: boolean;
+  showEmptyMessage: boolean;
+  creationItem: ComboboxCreateItem | null;
+  canCreate: boolean;
+  creationError: { error: unknown; inputValue: string } | null;
+  isCreationPending: boolean;
   selectedValues: ReadonlySet<string>;
   maxHeight: string;
 };
@@ -331,14 +343,64 @@ const ComboboxList = <TOption,>({
   isLoading,
   isOptionDisabled,
   loadingMessage,
+  creation,
   renderOption,
   renderOptionIndicator,
   ariaLabel,
   isEmpty,
+  showEmptyMessage,
+  creationItem,
+  canCreate,
+  creationError,
+  isCreationPending,
   selectedValues,
   maxHeight
 }: ComboboxListProps<TOption>) => {
+  const inlineCreation = isInlineCreationConfig(creation) ? creation : undefined;
   const renderItem = (item: ComboboxItem<TOption>) => {
+    if (item.type === "create") {
+      const hasCreationError = Boolean(
+        inlineCreation && creationError?.inputValue === item.inputValue
+      );
+      let label: React.ReactNode = "Create";
+      if (item.inputValue) {
+        label = creation?.formatLabel?.(item.inputValue) ?? `Create "${item.inputValue}"`;
+      }
+      if (isCreationPending && inlineCreation) {
+        label =
+          inlineCreation.formatPendingLabel?.(item.inputValue) ??
+          `Creating "${item.inputValue}"...`;
+      }
+
+      return (
+        <ComboboxPrimitive.Item
+          key={`create:${item.inputValue}`}
+          data-slot="combobox-create-item"
+          value={item}
+          disabled={!canCreate || creation?.isDisabled || creation?.isPending || isCreationPending}
+          className={cn(
+            COMBOBOX_ROW_CLASS,
+            "w-full px-2 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-65 data-[highlighted]:bg-foreground/5 data-[highlighted]:text-foreground"
+          )}
+        >
+          {isCreationPending ? (
+            <Loader2Icon className="size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
+          ) : (
+            <PlusIcon className="size-4 shrink-0 text-accent" aria-hidden="true" />
+          )}
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block truncate">{label}</span>
+            {hasCreationError && (
+              <span role="alert" className="block text-xs whitespace-normal text-danger">
+                {inlineCreation?.formatError?.(creationError?.error, item.inputValue) ??
+                  `Could not create "${item.inputValue}". Try again.`}
+              </span>
+            )}
+          </span>
+        </ComboboxPrimitive.Item>
+      );
+    }
+
     const { option } = item;
     const optionValue = getOptionValue(option);
     const isSelected = selectedValues.has(optionValue);
@@ -373,124 +435,74 @@ const ComboboxList = <TOption,>({
   };
 
   return (
-    <>
-      <ComboboxPrimitive.List
-        aria-label={ariaLabel}
-        aria-busy={isLoading || undefined}
+    <ComboboxPrimitive.List aria-label={ariaLabel} aria-busy={isLoading || undefined}>
+      <div
         onWheel={(event) => event.stopPropagation()}
-        className={() =>
-          cn(
-            "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
-            isEmpty && "hidden"
-          )
-        }
+        className={cn(
+          "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
+          isEmpty && "hidden"
+        )}
         style={{ maxHeight }}
       >
-        {getOptionGroup
-          ? (group: ComboboxGroup<TOption>) => (
-              <ComboboxPrimitive.Group
-                key={group.value}
-                items={group.items}
-                className={cn(group.value === "" && "mb-1 border-b border-border pb-1")}
-              >
-                {group.value !== "" && (
-                  <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
-                    {group.value}
-                  </ComboboxPrimitive.GroupLabel>
-                )}
-                <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
-              </ComboboxPrimitive.Group>
-            )
-          : renderItem}
-      </ComboboxPrimitive.List>
-      {isEmpty &&
-        (isLoading ? (
-          <div
-            role="status"
-            className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
-          >
-            <span>{loadingMessage}</span>
-          </div>
+        {getOptionGroup ? (
+          <ComboboxPrimitive.Collection>
+            {(group: ComboboxGroup<TOption>) =>
+              group.isCreationGroup ? null : (
+                <ComboboxPrimitive.Group
+                  key={group.value}
+                  items={group.items}
+                  className={cn(group.value === "" && "mb-1 border-b border-border pb-1")}
+                >
+                  {group.value !== "" && (
+                    <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
+                      {group.value}
+                    </ComboboxPrimitive.GroupLabel>
+                  )}
+                  <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
+                </ComboboxPrimitive.Group>
+              )
+            }
+          </ComboboxPrimitive.Collection>
         ) : (
-          <div role="status" className="py-6 text-center text-sm text-muted">
-            {emptyMessage}
-          </div>
-        ))}
-    </>
+          <ComboboxPrimitive.Collection>
+            {(item: ComboboxItem<TOption>) => (item.type === "option" ? renderItem(item) : null)}
+          </ComboboxPrimitive.Collection>
+        )}
+      </div>
+      {isEmpty && isLoading && (
+        <div
+          role="status"
+          className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
+        >
+          <span>{loadingMessage}</span>
+        </div>
+      )}
+      {isEmpty && !isLoading && showEmptyMessage && (
+        <div
+          role="status"
+          className="flex min-h-8 items-center justify-center px-3 py-1.5 text-center text-sm text-muted"
+        >
+          {emptyMessage}
+        </div>
+      )}
+      {creationItem && (
+        <div className={cn("p-1", (!isEmpty || isLoading) && "border-t border-border")}>
+          {getOptionGroup ? (
+            <ComboboxPrimitive.Group items={[creationItem]}>
+              <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
+            </ComboboxPrimitive.Group>
+          ) : (
+            renderItem(creationItem)
+          )}
+        </div>
+      )}
+    </ComboboxPrimitive.List>
   );
 };
 
 const ComboboxListFooter = ({ children }: { children: React.ReactNode }) => (
   <div className="border-t border-border px-3 py-2 text-xs text-muted">{children}</div>
 );
-
-type ComboboxCreateButtonProps<TOption> = {
-  creation: ComboboxCreationConfig<TOption>;
-  buttonRef: React.Ref<HTMLButtonElement>;
-  inputValue: string;
-  canCreate: boolean;
-  isCreationPending: boolean;
-  creationError: { error: unknown; inputValue: string } | null;
-  onCreate: () => void;
-  onBackToInput: () => void;
-};
-
-const ComboboxCreateButton = <TOption,>({
-  creation,
-  buttonRef,
-  inputValue,
-  canCreate,
-  isCreationPending,
-  creationError,
-  onCreate,
-  onBackToInput
-}: ComboboxCreateButtonProps<TOption>) => {
-  const inlineCreation = isInlineCreationConfig(creation) ? creation : undefined;
-  const hasCreationError = Boolean(inlineCreation && creationError?.inputValue === inputValue);
-  let label: React.ReactNode = "Create";
-  if (inputValue) label = creation.formatLabel?.(inputValue) ?? `Create "${inputValue}"`;
-  if (isCreationPending && inlineCreation) {
-    label = inlineCreation.formatPendingLabel?.(inputValue) ?? `Creating "${inputValue}"...`;
-  }
-
-  return (
-    <div className="border-t border-border p-1">
-      <button
-        ref={buttonRef}
-        type="button"
-        data-slot="combobox-create-button"
-        disabled={!canCreate || creation.isDisabled || creation.isPending || isCreationPending}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={onCreate}
-        onKeyDown={(event) => {
-          if (event.key === "Tab" && event.shiftKey) {
-            event.preventDefault();
-            onBackToInput();
-          }
-        }}
-        className={cn(
-          COMBOBOX_ROW_CLASS,
-          "w-full px-2 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:bg-transparent"
-        )}
-      >
-        {isCreationPending ? (
-          <Loader2Icon className="size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
-        ) : (
-          <PlusIcon className="size-4 shrink-0 text-accent" aria-hidden="true" />
-        )}
-        <span className="min-w-0 flex-1 text-left">
-          <span className="block truncate">{label}</span>
-          {hasCreationError && (
-            <span role="alert" className="block text-xs whitespace-normal text-danger">
-              {inlineCreation?.formatError?.(creationError?.error, inputValue) ??
-                `Could not create "${inputValue}". Try again.`}
-            </span>
-          )}
-        </span>
-      </button>
-    </div>
-  );
-};
 
 type ComboboxSelectAllProps = {
   areAllSelected: boolean;
@@ -803,7 +815,6 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     ...inputProps
   } = props;
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const createButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const selectedLabel = value == null ? "" : getOptionLabel(value);
@@ -842,7 +853,8 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
       : (itemsByValue.get(getOptionValue(value)) ?? ({ type: "option", option: value } as const));
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
   const primitiveFilter = React.useCallback(
-    (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
+    (item: ComboboxItem<TOption>, query: string) =>
+      item.type === "create" || filter(item.option, query),
     [filter]
   );
   const visibleOptions = React.useMemo(
@@ -915,18 +927,22 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     clearSingleComboboxValue(props);
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
-  const createInputValue = pendingInputValue ?? search.trim();
-  const handleCreate = () => {
-    if (!creationInput || !creation || creation.isDisabled || isCreationPending) return;
-    if (dialogCreation.creation) {
-      isDialogCreationActiveRef.current = true;
-      setOpen(false);
-      dialogCreation.open(creationInput);
-    } else {
-      inputRef.current?.focus();
-      createOption(creationInput);
-    }
-  };
+  const creationItem: ComboboxCreateItem | null = creation
+    ? { type: "create", inputValue: pendingInputValue ?? (isEditing ? search.trim() : "") }
+    : null;
+  const primitiveItems = React.useMemo(() => {
+    if (!creationItem) return rootItems;
+    if (!getOptionGroup) return [...rootItems, creationItem];
+    return [
+      ...rootItems,
+      {
+        type: "group" as const,
+        value: "__combobox-creation__",
+        items: [creationItem],
+        isCreationGroup: true
+      }
+    ];
+  }, [creationItem, getOptionGroup, rootItems]);
   let statusMessage: React.ReactNode = null;
   if (isLoading) statusMessage = loadingMessage;
   else if (isCreationPending) statusMessage = "Creating option...";
@@ -935,11 +951,23 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     <>
       <div data-slot="combobox-control" className="relative w-full">
         <ComboboxPrimitive.Root<ComboboxItem<TOption>, false>
-          items={rootItems}
+          items={primitiveItems}
           value={selectedItem}
           onValueChange={(nextValue, eventDetails) => {
             if (nextValue == null) {
               if (eventDetails.reason === "clear-press") handleClear();
+              return;
+            }
+            if (nextValue.type === "create") {
+              eventDetails.cancel();
+              if (!creationInput || nextValue.inputValue !== creationInput) return;
+              if (dialogCreation.creation) {
+                isDialogCreationActiveRef.current = true;
+                setOpen(false);
+                dialogCreation.open(creationInput);
+              } else {
+                createOption(creationInput);
+              }
               return;
             }
             onValueChange(nextValue.option);
@@ -960,10 +988,9 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             }
             const isOpeningCreationDialog =
               !nextOpen &&
-              (eventDetails.reason === "item-press" || eventDetails.reason === "outside-press") &&
+              eventDetails.reason === "item-press" &&
               isDialogCreationConfig(creation) &&
-              (isDialogCreationActiveRef.current ||
-                isComboboxCreateButtonEvent(eventDetails.event));
+              (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
             setOpen(nextOpen);
             if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
               highlightedOptionValueRef.current = null;
@@ -973,7 +1000,8 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             }
           }}
           onItemHighlighted={(item) => {
-            highlightedOptionValueRef.current = item ? getOptionValue(item.option) : null;
+            highlightedOptionValueRef.current =
+              item?.type === "option" ? getOptionValue(item.option) : (item?.inputValue ?? null);
           }}
           inputValue={isEditing ? search : selectedLabel}
           onInputValueChange={(nextValue, eventDetails) => {
@@ -988,9 +1016,15 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               clearCreationError();
             }
           }}
-          itemToStringLabel={(item) => getOptionLabel(item.option)}
-          itemToStringValue={(item) => getOptionValue(item.option)}
+          itemToStringLabel={(item) =>
+            item.type === "create" ? item.inputValue : getOptionLabel(item.option)
+          }
+          itemToStringValue={(item) =>
+            item.type === "create" ? `create:${item.inputValue}` : getOptionValue(item.option)
+          }
           isItemEqualToValue={(option, selectedOption) =>
+            option.type === "option" &&
+            selectedOption.type === "option" &&
             getOptionValue(option.option) === getOptionValue(selectedOption.option)
           }
           filter={isLocalFilterEnabled && isEditing ? primitiveFilter : null}
@@ -1021,21 +1055,6 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               }}
               onKeyDown={(event) => {
                 onKeyDown?.(event);
-
-                if (
-                  !event.defaultPrevented &&
-                  event.key === "Tab" &&
-                  !event.shiftKey &&
-                  open &&
-                  creationInput &&
-                  !creation?.isDisabled &&
-                  !creation?.isPending &&
-                  !isCreationPending
-                ) {
-                  event.preventDefault();
-                  createButtonRef.current?.focus();
-                  return;
-                }
 
                 if (
                   !event.defaultPrevented &&
@@ -1108,21 +1127,15 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               renderOptionIndicator={renderOptionIndicator}
               ariaLabel={`${searchAriaLabel} suggestions`}
               isEmpty={visibleOptions.length === 0}
+              showEmptyMessage={!creation}
+              creation={creation}
+              creationItem={creationItem}
+              canCreate={Boolean(creationInput)}
+              creationError={creationError}
+              isCreationPending={isCreationPending}
               selectedValues={selectedValues}
               maxHeight={SINGLE_LIST_MAX_HEIGHT}
             />
-            {creation && (
-              <ComboboxCreateButton
-                creation={creation}
-                buttonRef={createButtonRef}
-                inputValue={createInputValue}
-                canCreate={Boolean(creationInput)}
-                isCreationPending={isCreationPending}
-                creationError={creationError}
-                onCreate={handleCreate}
-                onBackToInput={() => inputRef.current?.focus()}
-              />
-            )}
             {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
@@ -1183,7 +1196,6 @@ const MultipleCombobox = <TOption,>({
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const createButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
@@ -1222,7 +1234,8 @@ const MultipleCombobox = <TOption,>({
   );
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
   const primitiveFilter = React.useCallback(
-    (item: ComboboxItem<TOption>, query: string) => filter(item.option, query),
+    (item: ComboboxItem<TOption>, query: string) =>
+      item.type === "create" || filter(item.option, query),
     [filter]
   );
   const selectedValues = React.useMemo(
@@ -1301,19 +1314,22 @@ const MultipleCombobox = <TOption,>({
     else onValueChange([]);
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
-  const createInputValue = pendingInputValue ?? search.trim();
-  const handleCreate = () => {
-    if (!creationInput || !creation || creation.isDisabled || isCreationPending) return;
-    if (dialogCreation.creation) {
-      isDialogCreationActiveRef.current = true;
-      openRef.current = false;
-      setOpen(false);
-      dialogCreation.open(creationInput);
-    } else {
-      inputRef.current?.focus();
-      createOption(creationInput);
-    }
-  };
+  const creationItem: ComboboxCreateItem | null = creation
+    ? { type: "create", inputValue: pendingInputValue ?? search.trim() }
+    : null;
+  const primitiveItems = React.useMemo(() => {
+    if (!creationItem) return rootItems;
+    if (!getOptionGroup) return [...rootItems, creationItem];
+    return [
+      ...rootItems,
+      {
+        type: "group" as const,
+        value: "__combobox-creation__",
+        items: [creationItem],
+        isCreationGroup: true
+      }
+    ];
+  }, [creationItem, getOptionGroup, rootItems]);
   let statusMessage: React.ReactNode = null;
   if (isLoading) statusMessage = loadingMessage;
   else if (isCreationPending) statusMessage = "Creating option...";
@@ -1336,9 +1352,24 @@ const MultipleCombobox = <TOption,>({
       <div data-slot="combobox-control" className="relative w-full">
         <ComboboxPrimitive.Root<ComboboxItem<TOption>, true>
           multiple
-          items={rootItems}
+          items={primitiveItems}
           value={selectedItems}
           onValueChange={(nextValue, eventDetails) => {
+            const createItem = nextValue.find((item) => item.type === "create");
+            if (createItem) {
+              eventDetails.cancel();
+              if (!creationInput || createItem.inputValue !== creationInput) return;
+              if (dialogCreation.creation) {
+                isDialogCreationActiveRef.current = true;
+                openRef.current = false;
+                setOpen(false);
+                dialogCreation.open(creationInput);
+              } else {
+                createOption(creationInput);
+              }
+              return;
+            }
+
             if (eventDetails.reason === "item-press") {
               eventDetails.cancel();
               updateSearch("");
@@ -1351,7 +1382,9 @@ const MultipleCombobox = <TOption,>({
               return;
             }
 
-            onValueChange(nextValue.map((item) => item.option));
+            onValueChange(
+              nextValue.flatMap((item) => (item.type === "option" ? [item.option] : []))
+            );
           }}
           open={open}
           onOpenChange={(nextOpen, eventDetails) => {
@@ -1370,10 +1403,9 @@ const MultipleCombobox = <TOption,>({
             }
             const isOpeningCreationDialog =
               !nextOpen &&
-              (eventDetails.reason === "item-press" || eventDetails.reason === "outside-press") &&
+              eventDetails.reason === "item-press" &&
               isDialogCreationConfig(creation) &&
-              (isDialogCreationActiveRef.current ||
-                isComboboxCreateButtonEvent(eventDetails.event));
+              (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
             openRef.current = nextOpen;
             setOpen(nextOpen);
             if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
@@ -1395,9 +1427,15 @@ const MultipleCombobox = <TOption,>({
               onInputValueChange?.(nextValue);
             }
           }}
-          itemToStringLabel={(item) => getOptionLabel(item.option)}
-          itemToStringValue={(item) => getOptionValue(item.option)}
+          itemToStringLabel={(item) =>
+            item.type === "create" ? item.inputValue : getOptionLabel(item.option)
+          }
+          itemToStringValue={(item) =>
+            item.type === "create" ? `create:${item.inputValue}` : getOptionValue(item.option)
+          }
           isItemEqualToValue={(option, selectedOption) =>
+            option.type === "option" &&
+            selectedOption.type === "option" &&
             getOptionValue(option.option) === getOptionValue(selectedOption.option)
           }
           filter={isLocalFilterEnabled ? primitiveFilter : null}
@@ -1428,6 +1466,7 @@ const MultipleCombobox = <TOption,>({
                 {(selectedValue: ComboboxItem<TOption>[]) => (
                   <>
                     {selectedValue.map((item) => {
+                      if (item.type === "create") return null;
                       const { option } = item;
                       const label = getOptionLabel(option);
                       return (
@@ -1467,20 +1506,6 @@ const MultipleCombobox = <TOption,>({
                 placeholder={value.length === 0 ? placeholder : undefined}
                 onKeyDown={(event) => {
                   onKeyDown?.(event);
-                  if (
-                    !event.defaultPrevented &&
-                    event.key === "Tab" &&
-                    !event.shiftKey &&
-                    open &&
-                    creationInput &&
-                    !creation?.isDisabled &&
-                    !creation?.isPending &&
-                    !isCreationPending
-                  ) {
-                    event.preventDefault();
-                    createButtonRef.current?.focus();
-                    return;
-                  }
                   preventComboboxFormSubmit(event);
                 }}
                 className={COMBOBOX_CHIPS_INPUT_CLASS}
@@ -1515,21 +1540,15 @@ const MultipleCombobox = <TOption,>({
               renderOptionIndicator={renderOptionIndicator}
               ariaLabel={`${searchAriaLabel} suggestions`}
               isEmpty={visibleOptions.length === 0}
+              showEmptyMessage={!creation}
+              creation={creation}
+              creationItem={creationItem}
+              canCreate={Boolean(creationInput)}
+              creationError={creationError}
+              isCreationPending={isCreationPending}
               selectedValues={selectedValues}
               maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
             />
-            {creation && (
-              <ComboboxCreateButton
-                creation={creation}
-                buttonRef={createButtonRef}
-                inputValue={createInputValue}
-                canCreate={Boolean(creationInput)}
-                isCreationPending={isCreationPending}
-                creationError={creationError}
-                onCreate={handleCreate}
-                onBackToInput={() => inputRef.current?.focus()}
-              />
-            )}
             {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
