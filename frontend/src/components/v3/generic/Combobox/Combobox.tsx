@@ -882,7 +882,9 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     [getOptionValue, value]
   );
   const updateSearch = (nextSearch: string) => {
-    if (listScrollRef.current) listScrollRef.current.scrollTop = 0;
+    if (nextSearch !== searchRef.current && listScrollRef.current)
+      listScrollRef.current.scrollTop = 0;
+    searchRef.current = nextSearch;
     setSearch(nextSearch);
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
@@ -1258,7 +1260,9 @@ const MultipleCombobox = <TOption,>({
     [getOptionValue, value]
   );
   const updateSearch = (nextSearch: string) => {
-    if (listScrollRef.current) listScrollRef.current.scrollTop = 0;
+    if (nextSearch !== searchRef.current && listScrollRef.current)
+      listScrollRef.current.scrollTop = 0;
+    searchRef.current = nextSearch;
     setSearch(nextSearch);
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
