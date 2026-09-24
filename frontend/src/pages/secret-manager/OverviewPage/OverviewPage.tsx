@@ -2075,10 +2075,21 @@ const OverviewPageContent = () => {
 
   // Batch mode: revert a pending change (e.g. when user reverts value to original)
   const handleBatchRevert = useCallback(
-    (env: string, key: string) => {
+    (env: string, key: string, valueOnly = false) => {
       if (!isBatchModeActive) return;
       const pendingSecret = pendingChanges.secrets.find((c) => c.secretKey === key);
       if (pendingSecret) {
+        if (valueOnly && pendingSecret.type === PendingAction.Update) {
+          addPendingChange(
+            {
+              ...pendingSecret,
+              secretValue: pendingSecret.originalValue ?? "",
+              timestamp: Date.now()
+            },
+            { projectId, environment: env, secretPath }
+          );
+          return;
+        }
         removePendingChange(pendingSecret.id, "secret", {
           projectId,
           environment: env,
@@ -2086,7 +2097,14 @@ const OverviewPageContent = () => {
         });
       }
     },
-    [isBatchModeActive, pendingChanges.secrets, removePendingChange, projectId, secretPath]
+    [
+      isBatchModeActive,
+      pendingChanges.secrets,
+      addPendingChange,
+      removePendingChange,
+      projectId,
+      secretPath
+    ]
   );
 
   const handleBatchFolderRevert = useCallback(
