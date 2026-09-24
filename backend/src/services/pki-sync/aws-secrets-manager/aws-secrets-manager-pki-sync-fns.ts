@@ -432,7 +432,10 @@ export const awsSecretsManagerPkiSyncFactory = ({
         (secretName) =>
           !activeExternalIdentifiers.has(secretName) && (allowPatternCleanup || trackedExternalIds.has(secretName))
       );
-      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(orphanedSecretNames, pkiSync.id);
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(orphanedSecretNames, {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
 
       for (const secretName of orphanedSecretNames) {
         if (!ownedByOtherSync.has(secretName)) {

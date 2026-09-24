@@ -649,10 +649,10 @@ export const kempLoadMasterPkiSyncFactory = ({
         }
       }
 
-      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
-        [...removalCandidates],
-        pkiSync.id
-      );
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
       for (const identifier of removalCandidates) {
         if (!ownedByOtherSync.has(identifier)) {
           identifiersToRemove.add(identifier);

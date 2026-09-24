@@ -596,10 +596,10 @@ export const netScalerPkiSyncFactory = ({
               }
             }
 
-            const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
-              [...removalCandidates],
-              pkiSync.id
-            );
+            const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+              excludePkiSyncId: pkiSync.id,
+              destination: pkiSync.destination
+            });
             const certKeysToRemove = [...removalCandidates].filter((certKeyName) => !ownedByOtherSync.has(certKeyName));
 
             for (const certKeyName of certKeysToRemove) {

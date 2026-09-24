@@ -390,7 +390,10 @@ export const chefPkiSyncFactory = ({
           (trackedExternalIds.has(itemName) ||
             (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync)))
       );
-      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(removalCandidates, pkiSync.id);
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(removalCandidates, {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
       const itemsToRemove = removalCandidates.filter((itemName) => !ownedByOtherSync.has(itemName));
 
       if (itemsToRemove.length > 0) {

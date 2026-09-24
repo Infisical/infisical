@@ -1020,10 +1020,10 @@ export const f5BigIpPkiSyncFactory = ({
             }
 
             if (partitionCandidates.length > 0) {
-              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
-                partitionCandidates,
-                pkiSync.id
-              );
+              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(partitionCandidates, {
+                excludePkiSyncId: pkiSync.id,
+                destination: pkiSync.destination
+              });
               for (const certName of partitionCandidates) {
                 if (!ownedByOtherSync.has(certName)) {
                   certNamesToRemove.add(certName);

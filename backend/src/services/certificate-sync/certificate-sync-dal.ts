@@ -72,15 +72,17 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findExternalIdentifiersInUse = async (
     externalIdentifiers: string[],
-    excludePkiSyncId: string,
+    { excludePkiSyncId, destination }: { excludePkiSyncId: string; destination: string },
     tx?: Knex
   ): Promise<Set<string>> => {
     try {
       if (externalIdentifiers.length === 0) return new Set();
       const docs = (await (tx || db)(TableName.CertificateSync)
-        .whereIn("externalIdentifier", externalIdentifiers)
-        .andWhereNot({ pkiSyncId: excludePkiSyncId })
-        .select("externalIdentifier")) as Array<{ externalIdentifier: string | null }>;
+        .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
+        .whereIn(`${TableName.CertificateSync}.externalIdentifier`, externalIdentifiers)
+        .where(`${TableName.PkiSync}.destination`, destination)
+        .whereNot(`${TableName.CertificateSync}.pkiSyncId`, excludePkiSyncId)
+        .select(`${TableName.CertificateSync}.externalIdentifier`)) as Array<{ externalIdentifier: string | null }>;
       return new Set(docs.map((doc) => doc.externalIdentifier).filter((v): v is string => Boolean(v)));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindExternalIdentifiersInUse" });

@@ -464,10 +464,10 @@ export const azureKeyVaultPkiSyncFactory = ({
         });
       }
 
-      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
-        [...removalCandidates],
-        pkiSync.id
-      );
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
       certificatesToRemove.push(
         ...[...removalCandidates].filter((certificateName) => !ownedByOtherSync.has(certificateName))
       );
