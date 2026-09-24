@@ -17,10 +17,9 @@ const TAG_OPTIONS: Option[] = [
 const slugRegex = /^[a-z][a-z0-9-]*$/;
 
 /**
- * `CreatableSelect` is the v3 react-select-based dropdown that lets users pick
- * from existing options *or* create new ones inline. The canonical use is a
- * tag input — choose existing tags from the menu, type a new one and hit Enter
- * to create it.
+ * `CreatableSelect` is the deprecated react-select compatibility path for
+ * existing inline-creation consumers. New and migrated code should use
+ * `Combobox` with its `creation` config.
  *
  * Inherits `FilterableSelect`'s state and styling, plus react-select-creatable's
  * extras for managing inline creation:
@@ -30,9 +29,9 @@ const slugRegex = /^[a-z][a-z0-9-]*$/;
  *   length, uniqueness). Return `false` to hide the Create suggestion.
  * - **`formatCreateLabel(input)`** — customize the suggestion text.
  *
- * Reach for `CreatableSelect` over `FilterableSelect` only when the user
- * legitimately needs to add new entries (tags, role names, custom claims).
- * For a fixed list, `FilterableSelect` is the right primitive.
+ * Keep this component only where a consumer still depends on react-select-specific
+ * component overrides. Migrate those customizations to Combobox composition before
+ * removing the compatibility path.
  */
 const meta = {
   title: "Generic/CreatableSelect",
@@ -40,7 +39,7 @@ const meta = {
   parameters: {
     layout: "centered"
   },
-  tags: ["autodocs"],
+  tags: ["autodocs", "deprecated"],
   decorators: [
     (Story) => (
       <div className="h-52 w-96">
