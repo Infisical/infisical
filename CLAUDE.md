@@ -23,7 +23,6 @@ infisical/
 ├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
-├── stripe-app/            # Stripe App manifest granting Infisical api_key_write (see stripe-app/README.md)
 ├── docs/                  # Documentation site (Mintlify-based)
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
