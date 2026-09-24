@@ -250,7 +250,9 @@ export const KmipClientTable = () => {
                   return (
                     <TableRow key={id}>
                       <TableCell>{name}</TableCell>
-                      <TableCell className="max-w-80 break-all">{description}</TableCell>
+                      <TableCell className="max-w-80 break-all">
+                        {description?.trim() || <span className="text-muted italic">none</span>}
+                      </TableCell>
                       <TableCell className="max-w-40">
                         {permissions.length ? permissions.join(", ") : "—"}
                       </TableCell>
