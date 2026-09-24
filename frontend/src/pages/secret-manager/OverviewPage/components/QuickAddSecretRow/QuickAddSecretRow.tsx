@@ -19,6 +19,9 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 
+import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
 type Props = {
@@ -35,6 +38,8 @@ type Props = {
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
   saveLabel?: string;
   secretPath: string;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 export const QuickAddSecretRow = ({
@@ -45,7 +50,9 @@ export const QuickAddSecretRow = ({
   onPasteSecrets,
   renderResourceTypeTrigger,
   saveLabel,
-  secretPath
+  secretPath,
+  activityId,
+  onActivityChange
 }: Props) => {
   const { currentProject } = useProject();
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -56,6 +63,7 @@ export const QuickAddSecretRow = ({
   const [value, setValue] = useState("");
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string>();
+  const [isActive, setIsActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
@@ -89,6 +97,17 @@ export const QuickAddSecretRow = ({
 
     return () => resizeObserver.disconnect();
   }, [isMultiEnvironmentView]);
+
+  useEffect(() => {
+    onActivityChange(activityId, isActive);
+  }, [activityId, isActive, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   const submitDraft = async ({ refocus = true }: { refocus?: boolean } = {}) => {
     const normalizedKey = key.trim();
@@ -174,8 +193,13 @@ export const QuickAddSecretRow = ({
   return (
     <TableRow
       ref={rowRef}
-      className="group"
+      className={isActive ? `group ${TABLE_ROW_ACTIVE_FILTER_CLASS_NAME}` : "group"}
+      onFocusCapture={() => setIsActive(true)}
       onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsActive(false);
+        }
+
         if (
           !autoQueueOnBlur ||
           !isDraftActive ||

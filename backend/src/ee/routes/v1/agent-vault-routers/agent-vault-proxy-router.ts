@@ -48,6 +48,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultProxies",
       description: "List the organization's Agent Vault proxies",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -79,6 +80,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createAgentVaultProxy",
       description: "Register an Agent Vault proxy and issue its one-time enrollment token",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -128,6 +130,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     url: "/:proxyId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultProxy",
       description: "Update an Agent Vault proxy's name or settings",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -188,6 +191,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     url: "/:proxyId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "deleteAgentVaultProxy",
       description: "Delete an Agent Vault proxy",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -223,6 +227,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     url: "/:proxyId/token-auth/enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "reissueAgentVaultProxyEnrollmentToken",
       description: "Issue a replacement enrollment token for an Agent Vault proxy",
       tags: [ApiDocsTags.AgentVaultProxies],
@@ -261,6 +266,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     url: "/:proxyId/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "revokeAgentVaultProxyAccess",
       description: "Revoke an Agent Vault proxy's access token",
       tags: [ApiDocsTags.AgentVaultProxies],

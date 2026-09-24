@@ -42,7 +42,11 @@ import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-co
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
+import {
+  TAwsAuthMethodConfig,
+  TGcpAuthMethodConfig,
+  TKubernetesAuthMethodConfig
+} from "../resource-auth-method/resource-auth-method-types";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -1055,7 +1059,11 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: { pkcs11?: boolean };
+    capabilities?: {
+      pkcs11?: boolean;
+      sessionLogMaskingBuiltInDetection?: boolean;
+      supported_account_types?: string[];
+    };
   }) => {
     const nextCapabilities = capabilities ?? {};
 
@@ -1328,6 +1336,7 @@ export const gatewayV2ServiceFactory = ({
     name: string;
     authMethod:
       | { method: "aws"; config: TAwsAuthMethodConfig }
+      | { method: "gcp"; config: TGcpAuthMethodConfig }
       | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
       | { method: "token" };
   }) => {

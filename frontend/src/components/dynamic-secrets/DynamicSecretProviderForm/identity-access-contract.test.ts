@@ -924,14 +924,19 @@ const sshCreateDefaults = {
   defaultTTL: "1h",
   maxTTL: "24h",
   environment,
-  inputs: { principals: [], keyAlgorithm: SshCertKeyAlgorithm.ED25519 }
+  inputs: {
+    principals: [],
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+  }
 };
 const sshCreateValues = {
   ...sshCreateDefaults,
   name: "ssh-secret",
   inputs: {
     principals: ["deploy", "root"],
-    keyAlgorithm: SshCertKeyAlgorithm.ED25519
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
   }
 };
 const sshEditContext = getEditContext({
@@ -939,7 +944,8 @@ const sshEditContext = getEditContext({
   inputs: {
     caPublicKey: "ignored",
     principals: ["deploy"],
-    keyAlgorithm: SshCertKeyAlgorithm.ED25519
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
   }
 });
 const sshEditValues = {
@@ -948,7 +954,8 @@ const sshEditValues = {
   maxTTL: "24h",
   inputs: {
     principals: ["deploy"],
-    keyAlgorithm: SshCertKeyAlgorithm.ED25519
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
   }
 };
 
@@ -976,6 +983,26 @@ testDynamicSecretProviderContract({
         name: "no principals",
         values: { ...sshCreateValues, inputs: { ...sshCreateValues.inputs, principals: [] } },
         issuePaths: [["inputs", "principals"]]
+      },
+      {
+        name: "max TTL is missing",
+        values: { ...sshCreateValues, maxTTL: "" },
+        issuePaths: [["maxTTL"]]
+      },
+      {
+        name: "max TTL exceeds 7 days",
+        values: { ...sshCreateValues, maxTTL: "8d" },
+        issuePaths: [["maxTTL"]]
+      },
+      {
+        name: "default TTL exceeds 7 days",
+        values: { ...sshCreateValues, defaultTTL: "8d", maxTTL: "8d" },
+        issuePaths: [["defaultTTL"], ["maxTTL"]]
+      },
+      {
+        name: "TTL is not a duration",
+        values: { ...sshCreateValues, defaultTTL: "invalid" },
+        issuePaths: [["defaultTTL"]]
       }
     ]
   },
@@ -987,10 +1014,23 @@ testDynamicSecretProviderContract({
       maxTTL: "24h",
       inputs: {
         principals: ["deploy"],
-        keyAlgorithm: SshCertKeyAlgorithm.ED25519
+        keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+        caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
       }
     },
     validValues: sshEditValues,
+    invalidValues: [
+      {
+        name: "max TTL is missing",
+        values: { ...sshEditValues, maxTTL: "" },
+        issuePaths: [["maxTTL"]]
+      },
+      {
+        name: "max TTL exceeds 7 days",
+        values: { ...sshEditValues, maxTTL: "8d" },
+        issuePaths: [["maxTTL"]]
+      }
+    ],
     payload: {
       name: "existing-secret",
       path: "/folder",

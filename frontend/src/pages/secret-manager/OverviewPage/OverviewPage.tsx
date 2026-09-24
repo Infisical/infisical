@@ -11,7 +11,6 @@ import { AxiosError } from "axios";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
-  ArrowUpDownIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -49,6 +48,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Alert,
@@ -117,7 +117,8 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSecretRotationActions
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { downloadSecretEnvFile } from "@app/helpers/download";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
@@ -198,6 +199,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -227,11 +229,16 @@ import { type CopySecretsInvocation, CopySecretsSheet } from "./components/CopyS
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersModal } from "./components/InviteMembersModal/InviteMembersModal";
+import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+import {
+  getTableRowActivityId,
+  type TableRowActivityChangeHandler,
+  type TableRowActivityId
+} from "./components/tableRowActivity";
 import {
   DownloadEnvButton,
   DynamicSecretTableRow,
@@ -590,8 +597,6 @@ const OverviewPageContent = () => {
       getSecretSortValue(option.orderBy, option.orderDirection) ===
       getSecretSortValue(orderBy, orderDirection)
   );
-  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
-
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
     if (canApproveAny) return pendingApprovalsCount;
@@ -633,6 +638,23 @@ const OverviewPageContent = () => {
   const isProtectedBranch = Boolean(boardPolicy);
 
   const isSingleEnvView = visibleEnvs.length === 1;
+  const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
+    (rowId, isActive) => {
+      setActiveTableRows((current) => {
+        if (current.has(rowId) === isActive) return current;
+
+        const next = new Set(current);
+        if (isActive) {
+          next.add(rowId);
+        } else {
+          next.delete(rowId);
+        }
+        return next;
+      });
+    },
+    []
+  );
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
   const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
@@ -660,6 +682,29 @@ const OverviewPageContent = () => {
       subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
     )
   );
+  const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: env.slug,
+        secretPath,
+        metadata: ["*"]
+      })
+    )
+  );
+  const userAvailableSecretRotationEnvs = userAvailableEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionSecretRotationActions.Create,
+      subject(ProjectPermissionSub.SecretRotation, { environment: env.slug, secretPath })
+    )
+  );
+  const secretSyncSourceEnv = visibleEnvs.find((env) =>
+    permission.can(
+      ProjectPermissionSecretSyncActions.Create,
+      subject(ProjectPermissionSub.SecretSyncs, { environment: env.slug, secretPath })
+    )
+  );
+  const canCreateSecretSyncs = Boolean(secretSyncSourceEnv);
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
@@ -1101,6 +1146,7 @@ const OverviewPageContent = () => {
     "snapshots",
     "deleteSecretImport",
     "addSecretImport",
+    "addSecretSync",
     "deleteEnv",
     "requestAccess",
     "importFromVault",
@@ -1164,14 +1210,22 @@ const OverviewPageContent = () => {
       setFolderAccessTarget({
         folderPath: childFolderPath(folderName)
       });
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "folder_row",
+        projectId
+      });
     },
-    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
     if (!ensureFolderRbacPlan()) return;
     setIsCurrentFolderAccessOpen(true);
-  }, [ensureFolderRbacPlan]);
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+      source: "breadcrumb",
+      projectId
+    });
+  }, [ensureFolderRbacPlan, orgId, projectId]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -2202,6 +2256,11 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntriesOnPage =
+    mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
+    secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
+    mergedSecKeys.some((key) => selectedEntries.secret[key]);
+
   const allRowsSelectedOnPage = useMemo(() => {
     if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
 
@@ -2552,6 +2611,20 @@ const OverviewPageContent = () => {
     | undefined;
 
   const addResourceButtonsProps: AddResourceButtonsProps = {
+    onMenuOpen: (source, menuLevel) =>
+      analytics.captureForOrganization(AnalyticsEvent.SecretsAddResourceMenuOpened, orgId, {
+        projectId,
+        source,
+        menuLevel,
+        environmentMode: isSingleEnvView ? "single" : "multiple"
+      }),
+    onActionSelect: (action, source) =>
+      analytics.captureForOrganization(AnalyticsEvent.SecretsAddResourceActionSelected, orgId, {
+        projectId,
+        source,
+        action,
+        environmentMode: isSingleEnvView ? "single" : "multiple"
+      }),
     onAddSecret: () => handlePopUpOpen("addSecretsInAllEnvs"),
     onAddFolder: () => handlePopUpOpen("addFolder"),
     onImportSecrets: () => handlePopUpOpen("importSecrets"),
@@ -2630,6 +2703,7 @@ const OverviewPageContent = () => {
     isSecretRotationAvailable: visibleSecretRotationEnvs.length > 0,
     isHoneyTokenAvailable: true,
     onAddSecretImport: handleAddSecretImport,
+    onAddSecretSync: () => handlePopUpOpen("addSecretSync"),
     isSecretImportAvailable: visibleSecretImportEnvs.length > 0,
     isSingleEnvSelected: isSingleEnvView,
     hasVaultConnection,
@@ -2637,6 +2711,7 @@ const OverviewPageContent = () => {
     canCreateSecrets,
     canCreateFolders,
     canCreateHoneyTokens,
+    canCreateSecretSyncs,
     onImportFromVault: () => handlePopUpOpen("importFromVault"),
     onImportFromDoppler: () => handlePopUpOpen("importFromDoppler")
   };
@@ -2797,7 +2872,7 @@ const OverviewPageContent = () => {
               tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
             )}
           >
-            <FolderBreadcrumb projectName={currentProject.name} secretPath={secretPath} />
+            <FolderBreadcrumb secretPath={secretPath} />
             {canManageCurrentFolderAccess && (
               <Button
                 variant="ghost"
@@ -2864,11 +2939,11 @@ const OverviewPageContent = () => {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="flex h-full w-full cursor-pointer items-center gap-2 px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                              className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
                             >
                               <span className="text-foreground">Name</span>
-                              <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                              <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
@@ -3091,7 +3166,13 @@ const OverviewPageContent = () => {
                       )}
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="transition-all duration-500">
+                  <TableBody
+                    className={twMerge(
+                      "transition-all duration-500 [&>tr>td>*:not([data-table-row-filter-contents])]:transition-[filter] [&>tr>td>*:not([data-table-row-filter-contents])]:duration-200 motion-reduce:[&>tr>td>*:not([data-table-row-filter-contents])]:transition-none [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-none [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-none [@media(hover:hover)]:[&>tr:hover>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none",
+                      (activeTableRows.size > 0 || hasSelectedEntriesOnPage) &&
+                        "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
+                    )}
+                  >
                     {showOverviewSkeleton ? (
                       Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                         <TableRow className="group" key={`loading-row-${index + 1}`}>
@@ -3145,6 +3226,8 @@ const OverviewPageContent = () => {
                               }
                               importedSecrets={importedSecretsFlat}
                               isVisible={isSingleEnvSecretsVisible}
+                              activityId={getTableRowActivityId("secret-import", imp.id)}
+                              onActivityChange={handleTableRowActivityChange}
                             />
                           ))}
                         {!isSingleEnvView &&
@@ -3167,6 +3250,12 @@ const OverviewPageContent = () => {
                                 }
                                 importedSecrets={importedSecretsFlat}
                                 isVisible={isSingleEnvSecretsVisible}
+                                activityId={getTableRowActivityId(
+                                  "secret-import",
+                                  importEnvSlug,
+                                  importPath
+                                )}
+                                onActivityChange={handleTableRowActivityChange}
                               />
                             )
                           )}
@@ -3283,6 +3372,11 @@ const OverviewPageContent = () => {
                                 text: `Successfully authenticated to ${SECRET_ROTATION_MAP[secretRotation.type].name} with the current rotated credentials for ${secretRotation.name}`
                               });
                             }}
+                            activityId={getTableRowActivityId(
+                              "secret-rotation",
+                              secretRotationName
+                            )}
+                            onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
                         {honeyTokenNames.map((honeyTokenName, index) => (
@@ -3344,6 +3438,8 @@ const OverviewPageContent = () => {
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
+                            activityId={getTableRowActivityId("secret", key)}
+                            onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
                         <SecretNoAccessTableRow
@@ -3366,8 +3462,10 @@ const OverviewPageContent = () => {
                           !isTableEmpty && (
                             <QuickAddSecretRow
                               autoQueueOnBlur={isBatchModeActive}
+                              activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
                               existingSecretKeys={mergedSecKeys}
+                              onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment) =>
                                 handleSecretCreate(
@@ -3528,7 +3626,7 @@ const OverviewPageContent = () => {
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environments={visibleDynamicSecretEnvs}
+        environments={userAvailableDynamicSecretEnvs}
         secretPath={secretPath}
       />
       <Dialog
@@ -3694,6 +3792,17 @@ const OverviewPageContent = () => {
           })
         }
       />
+      <CreateSecretSyncModal
+        isOpen={popUp.addSecretSync.isOpen}
+        initialFormData={
+          isSingleEnvView && secretSyncSourceEnv
+            ? { environment: secretSyncSourceEnv, secretPath }
+            : undefined
+        }
+        initialFormDataIsDirty={false}
+        startOnDestination={false}
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
+      />
       {subscription && (
         <UpgradePlanModal
           paywallKey="secret-manager.overview"
@@ -3714,7 +3823,7 @@ const OverviewPageContent = () => {
       />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
-        environments={visibleSecretRotationEnvs}
+        environments={userAvailableSecretRotationEnvs}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
@@ -3957,13 +4066,14 @@ const OverviewPageContent = () => {
           environment={singleEnvSlug}
         />
       )}
-      {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal
-          popUp={invitePopUp}
-          handlePopUpToggle={handleInvitePopUpToggle}
-          experimentVariant={null}
-        />
-      )}
+      <SecretsActivationNudge
+        popUp={invitePopUp}
+        handlePopUpToggle={handleInvitePopUpToggle}
+        isLifted={
+          hasPendingBatchChanges ||
+          Object.values(selectedEntries).some((entries) => Object.keys(entries).length > 0)
+        }
+      />
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
           onCommit={handleCreateCommit}

@@ -121,9 +121,9 @@ export const GitHubSyncFields = () => {
                     isDisabled={!connectionId}
                     value={organizations.find((org) => org.login === value) ?? null}
                     onValueChange={(option) => {
-                      if (option.login === value) return;
+                      if (option?.login === value) return;
 
-                      onChange(option.login);
+                      onChange(option?.login ?? "");
                       setValue("destinationConfig.selectedRepositoryIds", []);
                     }}
                     options={organizations}
@@ -274,7 +274,7 @@ export const GitHubSyncFields = () => {
                   isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
                   isDisabled={!connectionId || !currentRepo}
                   value={environments.find((env) => env.name === value) ?? null}
-                  onValueChange={(option) => onChange(option.name ?? null)}
+                  onValueChange={(option) => onChange(option?.name ?? null)}
                   options={environments}
                   placeholder="Select an environment..."
                   getOptionLabel={(option) => option.name}

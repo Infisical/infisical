@@ -218,12 +218,6 @@ export const Overview = ({
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
-      {/* <DeprecationBanners
-        overview={overview}
-        catalog={catalog}
-        onManage={onUpgrade}
-        onContact={onContact}
-      /> */}
       <TrialBanners
         overview={overview}
         catalog={catalog}

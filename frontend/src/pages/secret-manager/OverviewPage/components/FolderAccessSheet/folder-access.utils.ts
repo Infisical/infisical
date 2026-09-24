@@ -116,3 +116,10 @@ export const formatExpirationTime = (expiresAt: string, now: number, suffix?: st
     value: `${minutes}m ${seconds}s${suffix ? ` ${suffix}` : ""}`
   };
 };
+
+// SecretPathInput emits a trailing slash when a suggestion is picked, so `/foo/` and `/foo` both
+// reach a form that has to compare the path against stored grants
+export const normalizeFolderPath = (path: string) => {
+  const segments = path.trim().split("/").filter(Boolean);
+  return segments.length ? `/${segments.join("/")}` : "/";
+};

@@ -65,6 +65,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
 import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
@@ -83,8 +84,8 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
@@ -98,6 +99,8 @@ const Page = () => {
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
   // Products where the underlying project is an internal detail the user never sees
+  const isSecretManager = currentProject?.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
   const isStandaloneProduct = isCertManager || isPam || isAgentVault;
   const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
 
@@ -400,16 +403,20 @@ const Page = () => {
                   identityMembershipDetails={identityMembershipDetails}
                 />
               )}
-              {currentProject.type === ProjectType.SecretManager &&
-                subscription?.secretsFolderRbac && (
-                  <FolderAccessSection
-                    actor={{
-                      type: "identity",
-                      id: identityMembershipDetails.identity.id,
-                      name: identityMembershipDetails.identity.name
-                    }}
-                  />
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
                 )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "identity",
+                    id: identityMembershipDetails.identity.id,
+                    name: identityMembershipDetails.identity.name
+                  }}
+                />
+              )}
             </div>
           </div>
           <IdentityActionConfirmationDialog

@@ -26,11 +26,19 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableHeader({
+  className,
+  sticky = false,
+  ...props
+}: React.ComponentProps<"thead"> & { sticky?: boolean }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn(
+        "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
+        sticky && "sticky top-0 z-10 bg-container",
+        className
+      )}
       {...props}
     />
   );

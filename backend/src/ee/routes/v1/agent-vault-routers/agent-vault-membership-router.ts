@@ -13,6 +13,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { actorContext, auditActorFields } from "./agent-vault-router-fns";
 import {
   agentVaultListQuery,
+  AgentVaultProductActorSchema,
   AgentVaultProductMemberAddSchema,
   AgentVaultProductMemberIdsSchema,
   AgentVaultProductMemberRefSchema,
@@ -41,6 +42,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listAgentVaultMembers",
       description: "List the users, groups and machine identities that are members of Agent Vault",
       tags: [ApiDocsTags.AgentVaultMembers],
@@ -62,10 +64,37 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
   });
 
   server.route({
+    method: "GET",
+    url: "/available",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAvailableAgentVaultMembers",
+      description: "List the users, groups and machine identities in the organization that can be added to Agent Vault",
+      tags: [ApiDocsTags.AgentVaultMembers],
+      querystring: z.object({
+        actorType: z.nativeEnum(AgentVaultMemberType).optional().describe(AGENT_VAULT.AVAILABLE_MEMBER.actorTypeFilter),
+        ...agentVaultListQuery(AGENT_VAULT.AVAILABLE_MEMBER)
+      }),
+      response: {
+        200: z.object({ actors: AgentVaultProductActorSchema.array(), totalCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultMembership.listAvailableProductMembers({
+        projectId: req.internalAgentVaultProjectId,
+        ...req.query,
+        ctx: actorContext(req)
+      })
+  });
+
+  server.route({
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "addAgentVaultMembers",
       description: "Give users, groups and machine identities access to Agent Vault, by id or by email",
       tags: [ApiDocsTags.AgentVaultMembers],
@@ -119,6 +148,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/:actorType/:actorId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateAgentVaultMemberRole",
       description: "Change a member's Agent Vault role",
       tags: [ApiDocsTags.AgentVaultMembers],
@@ -167,6 +197,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     url: "/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "revokeAgentVaultMembers",
       // A deliberate REST deviation: DELETE cannot carry a body reliably, so bulk removal is a named action.
       description: "Remove members from Agent Vault, and with them every bundle they hold",
