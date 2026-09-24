@@ -5,24 +5,26 @@ import { ChangeType, ResourceType } from "@app/services/folder-commit/folder-com
 
 import { pitServiceFactory } from "./pit-service";
 
-const buildService = () => {
+const buildService = ({ commitFolderId = "folder-1" }: { commitFolderId?: string } = {}) => {
   const getChangeVersions = vi.fn().mockResolvedValue([]);
+  const compareFolderStates = vi.fn().mockResolvedValue([
+    {
+      type: ResourceType.SECRET,
+      id: "change-1",
+      secretKey: "DB_PASSWORD",
+      secretVersion: "2",
+      secretId: "secret-1",
+      isUpdate: true,
+      changeType: ChangeType.UPDATE,
+      fromVersion: "1"
+    }
+  ]);
+  const findEnv = vi.fn().mockResolvedValue({ id: "env-prod" });
   const service = pitServiceFactory({
     folderCommitService: {
       getLatestCommit: vi.fn().mockResolvedValue({ id: "latest-commit" }),
-      getCommitById: vi.fn().mockResolvedValue({ id: "target-commit" }),
-      compareFolderStates: vi.fn().mockResolvedValue([
-        {
-          type: ResourceType.SECRET,
-          id: "change-1",
-          secretKey: "DB_PASSWORD",
-          secretVersion: "2",
-          secretId: "secret-1",
-          isUpdate: true,
-          changeType: ChangeType.UPDATE,
-          fromVersion: "1"
-        }
-      ])
+      getCommitById: vi.fn().mockResolvedValue({ id: "target-commit", folderId: commitFolderId, envId: "env-prod" }),
+      compareFolderStates
     },
     secretService: { getChangeVersions },
     folderService: {
@@ -33,15 +35,15 @@ const buildService = () => {
       })
     },
     projectEnvDAL: {
-      findOne: vi.fn().mockResolvedValue({ id: "env-1" })
+      findOne: findEnv
     }
   } as unknown as Parameters<typeof pitServiceFactory>[0]);
 
-  return { service, getChangeVersions };
+  return { service, getChangeVersions, compareFolderStates, findEnv };
 };
 
 describe("compareCommitChanges", () => {
-  test("checks secret versions against the folder absolute path when the caller passes a relative path", async () => {
+  test("checks secret versions against the absolute path of the commit's folder", async () => {
     const { service, getChangeVersions } = buildService();
 
     const diffs = await service.compareCommitChanges({
@@ -52,9 +54,7 @@ describe("compareCommitChanges", () => {
       projectId: "project-1",
       commitId: "target-commit",
       folderId: "folder-1",
-      environment: "prod",
-      deepRollback: false,
-      secretPath: "backend"
+      deepRollback: false
     });
 
     expect(getChangeVersions).toHaveBeenCalledWith(
@@ -68,10 +68,47 @@ describe("compareCommitChanges", () => {
       ActorType.USER,
       "org-1",
       null,
-      "env-1",
+      "env-prod",
       "project-1",
       "/app/backend"
     );
     expect(diffs[0]?.folderPath).toBe("/app/backend");
+  });
+
+  test("resolves the environment from the commit", async () => {
+    const { service, findEnv } = buildService();
+
+    await service.compareCommitChanges({
+      actor: ActorType.USER,
+      actorId: "user-1",
+      actorOrgId: "org-1",
+      actorAuthMethod: null,
+      projectId: "project-1",
+      commitId: "target-commit",
+      folderId: "folder-1",
+      deepRollback: false
+    });
+
+    expect(findEnv).toHaveBeenCalledWith({ projectId: "project-1", id: "env-prod" });
+  });
+
+  test("rejects a commit that belongs to a different folder", async () => {
+    const { service, getChangeVersions, compareFolderStates } = buildService({ commitFolderId: "restricted-folder" });
+
+    await expect(
+      service.compareCommitChanges({
+        actor: ActorType.USER,
+        actorId: "user-1",
+        actorOrgId: "org-1",
+        actorAuthMethod: null,
+        projectId: "project-1",
+        commitId: "target-commit",
+        folderId: "folder-1",
+        deepRollback: false
+      })
+    ).rejects.toThrow("does not belong to folder");
+
+    expect(compareFolderStates).not.toHaveBeenCalled();
+    expect(getChangeVersions).not.toHaveBeenCalled();
   });
 });

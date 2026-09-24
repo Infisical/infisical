@@ -254,7 +254,6 @@ export const pitServiceFactory = ({
     projectId,
     commitId,
     folderId,
-    environment,
     deepRollback
   }: {
     actor: ActorType;
@@ -264,9 +263,7 @@ export const pitServiceFactory = ({
     projectId: string;
     commitId: string;
     folderId: string;
-    environment: string;
     deepRollback: boolean;
-    secretPath: string;
   }) => {
     const latestCommit = await folderCommitService.getLatestCommit({
       folderId,
@@ -286,9 +283,15 @@ export const pitServiceFactory = ({
       projectId
     });
 
+    if (targetCommit.folderId !== folderId) {
+      throw new BadRequestError({
+        message: `Commit with ID '${commitId}' does not belong to folder with ID '${folderId}'`
+      });
+    }
+
     const env = await projectEnvDAL.findOne({
       projectId,
-      slug: environment
+      id: targetCommit.envId
     });
 
     if (!latestCommit) {
