@@ -24,16 +24,18 @@ action is destructive, not because red is the accent. A project-colored button
 signals project scope, not visual variety. Designers pick intent; hex values
 follow.
 
-Depth is drawn with borders and surface tones, not shadows. Motion is
-restrained — 200ms ease-in-out, no springs, no decorative animation. Secret
-values are masked by default; revealing one is an intentional act.
+Depth is drawn primarily with borders and surface tones; the shared v3 `Card`
+adds a subtle `shadow-xs`. Motion is restrained — 200ms ease-in-out, no springs,
+no decorative animation. Secret values are masked by default; revealing one
+is an intentional act.
 
 **Key characteristics:**
 
 - Dark-native; `--color-page` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
 - Scope-aware (org / sub-org / project / admin)
-- Border-defined depth; overlapping labels retain the shared Badge styling
+- Border-first depth with the shared `Card`'s `shadow-xs`; overlapping labels
+  retain the shared Badge styling
 - Inter for product UI, Alliance for display typography, and distinct
   functional and decorative monospace roles
 - Secrets masked by default; reveal is an act
@@ -277,8 +279,9 @@ host component; don't override unless necessary.
 
 ## 6. Depth & Elevation
 
-Depth is conveyed by layered surface tones and borders. Shadows are reserved
-for elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
+Depth is conveyed primarily by layered surface tones and borders. The shared
+v3 `Card` includes `shadow-xs` by default; stronger shadows are reserved for
+elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 
 | Layer           | Surface                                  | Border                              |
 | --------------- | ---------------------------------------- | ----------------------------------- |
@@ -290,10 +293,10 @@ for elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 | Focus           | —                                        | 3px ring, `--color-ring`            |
 | Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                                   |
 
-Never add a box-shadow to a Card, Table row, standalone Badge, or `ButtonBadge`;
-it breaks the border-defined system. An overlapping `ButtonBadge` uses its
-solidified semantic tint—not custom content styling or elevation—to remain
-legible across the control edge.
+Do not add a shadow to a Card beyond its shared `shadow-xs` default, or to a
+Table row, standalone Badge, or `ButtonBadge`. An overlapping `ButtonBadge`
+uses its solidified semantic tint—not custom content styling or elevation—to
+remain legible across the control edge.
 
 ## 7. Do's and Don'ts
 
@@ -308,9 +311,9 @@ legible across the control edge.
   consequence (see §9).
 - **DO** cite tokens (`bg-card`) over hex (`#xxxxxx`) in new code.
 - **DON'T** use v2 components when a v3 equivalent exists unless the existing scope is v2.
-- **DON'T** add box-shadows as a depth cue — borders and surface tones do
-  that work. The exception is elements that genuinely float (Popover,
-  DropdownMenu, Sheet, SelectedActionBar), which already include it.
+- **DON'T** add ad hoc box-shadows as a depth cue — borders and surface tones do
+  that work. The shared `Card` already has `shadow-xs`; floating elements
+  (Popover, DropdownMenu, Sheet, SelectedActionBar) include stronger shadows.
 - **DON'T** invent new colors. If it isn't in `index.css` `@theme`, it
   doesn't belong.
 - **DON'T** use `project` yellow, `org` blue, or `sub-org` green as generic
