@@ -730,7 +730,7 @@ export const InDialog: Story = {
     const input = within(parentDialog).getByRole("combobox", { name: "Primary tag" });
     await userEvent.click(input);
     await userEvent.type(input, "Enter tag");
-    await userEvent.click(body.getByRole("option", { name: 'Create "Enter tag"' }));
+    await userEvent.click(body.getByRole("button", { name: 'Create "Enter tag"' }));
     const creationDialog = await body.findByRole("dialog", { name: "Create Nested Tag" });
     await expect(within(creationDialog).getByLabelText("Tag name")).toHaveValue("Enter tag");
     await userEvent.keyboard("{Enter}");
@@ -749,7 +749,7 @@ export const InDialog: Story = {
     await userEvent.click(input);
     await userEvent.clear(input);
     await userEvent.type(input, "Button tag");
-    await userEvent.click(body.getByRole("option", { name: 'Create "Button tag"' }));
+    await userEvent.click(body.getByRole("button", { name: 'Create "Button tag"' }));
     const buttonCreationDialog = await body.findByRole("dialog", { name: "Create Nested Tag" });
     await userEvent.click(within(buttonCreationDialog).getByRole("button", { name: "Create Tag" }));
     await waitFor(() =>
@@ -1050,7 +1050,7 @@ export const SingleDismissedFailure: Story = {
 
     await userEvent.click(input);
     await userEvent.type(input, "retryable");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "retryable"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "retryable"' }));
     await expect(getTrailingSlot(input)).toHaveAttribute("data-state", "loading");
     await userEvent.keyboard("{Escape}");
     await userEvent.click(continueButton);
@@ -1063,7 +1063,7 @@ export const SingleDismissedFailure: Story = {
       'Could not create "retryable"'
     );
     await expect(input).toHaveValue("retryable");
-    await userEvent.click(canvas.getByRole("option", { name: /Create "retryable"/ }));
+    await userEvent.click(canvas.getByRole("button", { name: /Create "retryable"/ }));
     await expect(await canvas.findByText("Selected retryable")).toBeInTheDocument();
     await expect(input).toHaveAttribute("aria-expanded", "false");
     await expect(input).toHaveValue("retryable");
@@ -1132,17 +1132,18 @@ export const InlineCreation: Story = {
     const tagsInput = canvas.getByRole("combobox", { name: "Tags" });
 
     await userEvent.click(environmentInput);
+    await expect(canvas.getByRole("button", { name: "Create" })).toBeDisabled();
     await userEvent.type(environmentInput, "prod");
     await expect(canvas.getByRole("option", { name: "Production" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "prod"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "prod"' }));
     await expect(environmentInput).toHaveValue("prod");
 
     await userEvent.click(tagsInput);
     await userEvent.type(tagsInput, "release-ready");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create tag "release-ready"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create tag "release-ready"' }));
     await expect(
-      canvas.getByRole("option", { name: 'Creating tag "release-ready"...' })
-    ).toHaveAttribute("aria-disabled", "true");
+      canvas.getByRole("button", { name: 'Creating tag "release-ready"...' })
+    ).toBeDisabled();
     await expect(getTrailingSlot(tagsInput)).toHaveAttribute("data-state", "loading");
     await expect(
       canvas.queryByRole("button", { name: "Clear all selections" })
@@ -1153,7 +1154,8 @@ export const InlineCreation: Story = {
     await expect(getTrailingSlot(tagsInput)).toHaveAttribute("data-state", "clear");
 
     await userEvent.type(tagsInput, "reserved");
-    await userEvent.keyboard("{Enter}{Escape}");
+    await userEvent.click(canvas.getByRole("button", { name: 'Create tag "reserved"' }));
+    await userEvent.keyboard("{Escape}");
     await sleep(450);
     await userEvent.click(tagsInput);
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
@@ -1212,7 +1214,7 @@ export const DismissedPendingCreation: Story = {
 
     await userEvent.click(input);
     await userEvent.type(input, "deferred");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "deferred"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "deferred"' }));
     await userEvent.keyboard("{Escape}");
     await userEvent.click(continueButton);
     await expect(
@@ -1240,14 +1242,14 @@ export const PreserveNewQueryDuringCreation: Story = {
 
     await userEvent.click(input);
     await userEvent.type(input, "first-tag");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "first-tag"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "first-tag"' }));
     await userEvent.clear(input);
     await userEvent.type(input, "next-query");
     await expect(
       await canvas.findByRole("button", { name: "Remove first-tag" })
     ).toBeInTheDocument();
     await expect(input).toHaveValue("next-query");
-    await expect(canvas.getByRole("option", { name: 'Create "next-query"' })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: 'Create "next-query"' })).toBeInTheDocument();
   }
 };
 
@@ -1307,7 +1309,7 @@ export const UnmountedPendingCreation: Story = {
 
     await userEvent.click(input);
     await userEvent.type(input, "unmounted");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "unmounted"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "unmounted"' }));
     await userEvent.click(hideButton);
     await expect(canvas.queryByRole("combobox", { name: "Tags" })).not.toBeInTheDocument();
     await expect(await canvas.findByText("Created 1 tag")).toBeInTheDocument();
@@ -1367,13 +1369,13 @@ export const ValidatedCreation: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "member@example.com");
     await expect(
-      canvas.queryByRole("option", { name: 'Use member email "member@example.com"' })
-    ).not.toBeInTheDocument();
+      canvas.getByRole("button", { name: 'Use member email "member@example.com"' })
+    ).toBeDisabled();
     await userEvent.clear(input);
     await userEvent.type(input, "new.member@example.com");
     await expect(
-      canvas.getByRole("option", { name: 'Use member email "new.member@example.com"' })
-    ).toBeInTheDocument();
+      canvas.getByRole("button", { name: 'Use member email "new.member@example.com"' })
+    ).toBeEnabled();
   }
 };
 
@@ -1619,7 +1621,7 @@ export const DialogCreation: Story = {
 
     await userEvent.click(primaryInput);
     await userEvent.type(primaryInput, "Release workflow");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "Release workflow"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "Release workflow"' }));
     let dialog = await body.findByRole("dialog", { name: "Create Tag" });
     await expect(within(dialog).getByLabelText("Name")).toHaveValue("Release workflow");
     const slugInput = within(dialog).getByLabelText("Slug");
@@ -1635,7 +1637,7 @@ export const DialogCreation: Story = {
     await expect(primaryInput).toHaveValue("Release workflow");
     await expect(primaryInput).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "Release workflow"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "Release workflow"' }));
     dialog = await body.findByRole("dialog", { name: "Create Tag" });
     await userEvent.type(
       within(dialog).getByLabelText("Description"),
@@ -1661,7 +1663,7 @@ export const DialogCreation: Story = {
 
     await userEvent.click(additionalInput);
     await userEvent.type(additionalInput, "Security review");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create "Security review"' }));
+    await userEvent.click(canvas.getByRole("button", { name: 'Create "Security review"' }));
     dialog = await body.findByRole("dialog", { name: "Create Tag" });
     await userEvent.clear(within(dialog).getByLabelText("Slug"));
     await userEvent.type(within(dialog).getByLabelText("Slug"), "reserved");
@@ -1717,7 +1719,7 @@ export const GroupedRemoteCreation: Story = {
     docs: {
       description: {
         story:
-          "Creation composes with grouped, caller-filtered multi-select results. The internal Create item stays outside domain groups and Select All counts only real options, and successful creation resets the caller-owned query so refreshed results remain visible."
+          "Creation composes with grouped, caller-filtered multi-select results. The fixed Create footer stays outside domain groups and Select All counts only real options, and successful creation resets the caller-owned query so refreshed results remain visible."
       }
     }
   },
@@ -1729,16 +1731,16 @@ export const GroupedRemoteCreation: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "prod");
     await expect(canvas.getByRole("button", { name: "Select All (1)" })).toBeInTheDocument();
-    await expect(canvas.getByRole("option", { name: 'Create "prod"' })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: 'Create "prod"' })).toBeEnabled();
     await userEvent.click(canvas.getByRole("button", { name: "Select All (1)" }));
     await expect(canvas.getByRole("button", { name: "Remove production" })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Remove prod" })).not.toBeInTheDocument();
 
     await userEvent.clear(input);
     await userEvent.type(input, "remote-created");
-    const createOption = canvas.getByRole("option", { name: 'Create "remote-created"' });
-    await userEvent.keyboard("{ArrowDown}");
-    await expect(createOption).toHaveAttribute("data-highlighted");
+    const createButton = canvas.getByRole("button", { name: 'Create "remote-created"' });
+    createButton.focus();
+    await expect(createButton).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     await expect(canvas.getByRole("button", { name: "Remove remote-created" })).toBeInTheDocument();
     await expect(input).toHaveValue("");
