@@ -47,6 +47,7 @@ type TKempLoadMasterPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
     | "updateSyncStatus"
     | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -498,6 +499,10 @@ export const kempLoadMasterPkiSyncFactory = ({
       oldCertificateIdToRemove
     } of certificatesToUpload) {
       try {
+        if (certificateId) {
+          await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetIdentifier);
+        }
+
         const bundle = buildCertificateBundle(cert, privateKey, certificateChain);
         await upsertCertificate(
           makeRequest,

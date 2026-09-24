@@ -87,6 +87,26 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const claimExternalIdentifier = async (
+    pkiSyncId: string,
+    certificateId: string,
+    externalIdentifier: string,
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      await (tx || db)(TableName.CertificateSync)
+        .insert({ pkiSyncId, certificateId, syncStatus: CertificateSyncStatus.Pending, externalIdentifier })
+        .onConflict(["pkiSyncId", "certificateId"])
+        .ignore();
+      await (tx || db)(TableName.CertificateSync)
+        .where({ pkiSyncId, certificateId })
+        .whereNull("externalIdentifier")
+        .update({ externalIdentifier });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ClaimExternalIdentifier" });
+    }
+  };
+
   const addCertificates = async (
     pkiSyncId: string,
     certificateData: Array<{ certificateId: string; externalIdentifier?: string }>,
@@ -327,6 +347,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     findCertificateIdsByPkiSyncId,
     findPkiSyncIdsByCertificateId,
     findExternalIdentifiersInUse,
+    claimExternalIdentifier,
     addCertificates,
     removeCertificates,
     updateSyncStatus,

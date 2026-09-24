@@ -46,6 +46,7 @@ type TNetScalerPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
     | "updateSyncStatus"
     | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -494,6 +495,10 @@ export const netScalerPkiSyncFactory = ({
               let fullCertContent = cert;
               if (certificateChain) {
                 fullCertContent = `${cert}\n${certificateChain}`;
+              }
+
+              if (certificateId) {
+                await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetCertKeyName);
               }
 
               await uploadFileToNetScaler(session, certFilename, fullCertContent);

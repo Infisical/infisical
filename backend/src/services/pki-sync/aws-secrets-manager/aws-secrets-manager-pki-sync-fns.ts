@@ -110,6 +110,7 @@ type TAwsSecretsManagerPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
     | "updateSyncStatus"
     | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
 };
 
@@ -346,6 +347,8 @@ export const awsSecretsManagerPkiSyncFactory = ({
         const configKeyId: unknown = awsPkiSync.destinationConfig.keyId;
         const keyId: string = typeof configKeyId === "string" ? configKeyId : "alias/aws/secretsmanager";
 
+        await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetSecretName);
+
         if (isUpdate) {
           await withRateLimitRetry(
             () =>
@@ -381,34 +384,18 @@ export const awsSecretsManagerPkiSyncFactory = ({
           result.uploaded += 1;
         }
 
-        const existingRecord = syncRecordsByCertId.get(certificateId);
-        if (existingRecord?.id) {
-          await certificateSyncDAL.updateById(existingRecord.id, {
+        const certSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+        if (certSync?.id) {
+          await certificateSyncDAL.updateById(certSync.id, {
             externalIdentifier: targetSecretName,
             syncStatus: CertificateSyncStatus.Succeeded,
             lastSyncedAt: new Date(),
             lastSyncMessage: "Certificate successfully synced to AWS Secrets Manager"
           });
+        }
 
-          if (oldCertificateIdToRemove && oldCertificateIdToRemove !== certificateId) {
-            await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateIdToRemove]);
-          }
-        } else {
-          await certificateSyncDAL.addCertificates(pkiSync.id, [
-            {
-              certificateId,
-              externalIdentifier: targetSecretName
-            }
-          ]);
-
-          const newCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
-          if (newCertSync?.id) {
-            await certificateSyncDAL.updateById(newCertSync.id, {
-              syncStatus: CertificateSyncStatus.Succeeded,
-              lastSyncedAt: new Date(),
-              lastSyncMessage: "Certificate successfully synced to AWS Secrets Manager"
-            });
-          }
+        if (oldCertificateIdToRemove && oldCertificateIdToRemove !== certificateId) {
+          await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateIdToRemove]);
         }
       } catch (error) {
         result.details?.failedUploads?.push({
@@ -425,9 +412,9 @@ export const awsSecretsManagerPkiSyncFactory = ({
           "Failed to sync certificate"
         );
 
-        const existingRecord = syncRecordsByCertId.get(certificateId);
-        if (existingRecord?.id) {
-          await certificateSyncDAL.updateById(existingRecord.id, {
+        const failedCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+        if (failedCertSync?.id) {
+          await certificateSyncDAL.updateById(failedCertSync.id, {
             syncStatus: CertificateSyncStatus.Failed,
             lastSyncMessage: parseErrorMessage(error)
           });

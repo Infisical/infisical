@@ -62,6 +62,7 @@ type TAzureKeyVaultPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
     | "updateSyncStatus"
     | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
 };
@@ -525,6 +526,10 @@ export const azureKeyVaultPkiSyncFactory = ({
               exportable: true
             }
           };
+
+          if (certificateId) {
+            await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, key);
+          }
 
           const response = await request.post(
             `${destinationConfig.vaultBaseUrl}/certificates/${encodeURIComponent(key)}/import?api-version=7.4`,

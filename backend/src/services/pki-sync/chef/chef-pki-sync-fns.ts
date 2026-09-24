@@ -74,6 +74,7 @@ type TChefPkiSyncFactoryDeps = {
     | "findByPkiSyncId"
     | "updateSyncStatus"
     | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -296,6 +297,8 @@ export const chefPkiSyncFactory = ({
           ...(certificateChain && { [fieldMappings.certificateChain]: certificateChain }),
           ...(caCertificate && { [fieldMappings.caCertificate]: caCertificate })
         };
+
+        await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetItemName);
 
         const itemExists = chefDataBagItems[targetItemName] === true;
 
