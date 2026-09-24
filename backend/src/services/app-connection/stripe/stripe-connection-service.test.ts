@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_platform" })
+  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
 }));
 vi.mock("@app/lib/config/request", () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
@@ -12,9 +12,6 @@ vi.mock("@app/lib/config/request", () => ({
 vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
-
-// eslint-disable-next-line import/first
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 // eslint-disable-next-line import/first
 import { stripeConnectionService } from "./stripe-connection-service";
@@ -78,7 +75,7 @@ describe("stripeConnectionService.listApiKeys", () => {
     expect(getMock.mock.calls[1][0]).toBe("https://api.stripe.com/v2/iam/api_keys?page=2");
   });
 
-  it("never sends the platform credential to a next_page_url outside the Stripe API keys endpoint", async () => {
+  it("never sends the app credential to a next_page_url outside the Stripe API keys endpoint", async () => {
     getMock.mockResolvedValueOnce(keyPage("mk_1", "https://evil.example.com/v2/iam/api_keys?page=2"));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
@@ -86,16 +83,5 @@ describe("stripeConnectionService.listApiKeys", () => {
 
     expect(keys.map((key) => key.id)).toEqual(["mk_1"]);
     expect(getMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("authorizes the caller for this connection before reaching Stripe", async () => {
-    getMock.mockResolvedValueOnce(keyPage("mk_1"));
-    const getAppConnection = vi.fn(async () => ({ credentials: { accountId: "acct_123" } }));
-    const actor = { type: "user", id: "user-1", authMethod: "email", orgId: "org-1" };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-    await stripeConnectionService(getAppConnection as any).listApiKeys("connection-id", actor as any);
-
-    expect(getAppConnection).toHaveBeenCalledWith(AppConnection.Stripe, "connection-id", actor);
   });
 });

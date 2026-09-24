@@ -31,9 +31,11 @@ export const StripeApiKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <ReviewField label="Permissions">
-          {summarizePermissions(parameters.permissions)}
-        </ReviewField>
+        {Boolean(parameters.permissions?.length) && (
+          <ReviewField label="Permissions">
+            {summarizePermissions(parameters.permissions ?? [])}
+          </ReviewField>
+        )}
         {Boolean(parameters.connectPermissions?.length) && (
           <ReviewField label="Connect Permissions">
             {summarizePermissions(parameters.connectPermissions ?? [])}

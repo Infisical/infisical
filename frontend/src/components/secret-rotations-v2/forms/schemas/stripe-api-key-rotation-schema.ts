@@ -6,10 +6,20 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 export const StripeApiKeyRotationSchema = z
   .object({
     type: z.literal(SecretRotation.StripeApiKey),
-    parameters: z.object({
-      permissions: z.string().trim().array().min(1, "At least one permission is required"),
-      connectPermissions: z.string().trim().array().optional()
-    }),
+    parameters: z
+      .object({
+        permissions: z.string().trim().array().optional(),
+        connectPermissions: z.string().trim().array().optional()
+      })
+      .superRefine((parameters, ctx) => {
+        if (parameters.permissions?.length || parameters.connectPermissions?.length) return;
+
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["permissions"],
+          message: "At least one permission or Connect permission is required"
+        });
+      }),
     secretsMapping: z.object({
       apiKey: z.string().trim().min(1, "API Key secret name required")
     })

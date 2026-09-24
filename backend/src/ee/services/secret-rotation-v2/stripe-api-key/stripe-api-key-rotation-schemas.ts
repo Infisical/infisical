@@ -23,16 +23,28 @@ export const StripeApiKeyRotationGeneratedCredentialsSchema = z
   .min(1)
   .max(2);
 
-const StripeApiKeyRotationParametersSchema = z.object({
-  permissions: StripeApiKeyPermissionSchema.array()
-    .min(1, "At least one permission is required")
-    .max(STRIPE_API_KEY_PERMISSIONS.length)
-    .describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.permissions),
-  connectPermissions: StripeApiKeyPermissionSchema.array()
-    .max(STRIPE_API_KEY_PERMISSIONS.length)
-    .optional()
-    .describe(SecretRotations.PARAMETERS.STRIPE_API_KEY.connectPermissions)
-});
+const StripeApiKeyPermissionListSchema = StripeApiKeyPermissionSchema.array()
+  .max(STRIPE_API_KEY_PERMISSIONS.length)
+  .transform((permissions) => [...new Set(permissions)]);
+
+const StripeApiKeyRotationParametersSchema = z
+  .object({
+    permissions: StripeApiKeyPermissionListSchema.optional().describe(
+      SecretRotations.PARAMETERS.STRIPE_API_KEY.permissions
+    ),
+    connectPermissions: StripeApiKeyPermissionListSchema.optional().describe(
+      SecretRotations.PARAMETERS.STRIPE_API_KEY.connectPermissions
+    )
+  })
+  .superRefine((parameters, ctx) => {
+    if (parameters.permissions?.length || parameters.connectPermissions?.length) return;
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["permissions"],
+      message: "At least one permission or Connect permission is required"
+    });
+  });
 
 const StripeApiKeyRotationSecretsMappingSchema = z.object({
   apiKey: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.STRIPE_API_KEY.apiKey)

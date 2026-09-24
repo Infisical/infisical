@@ -3,7 +3,7 @@ import RE2 from "re2";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_platform" })
+  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
 }));
 
 // eslint-disable-next-line import/first
@@ -11,10 +11,10 @@ import { InternalServerError } from "@app/lib/errors";
 
 // eslint-disable-next-line import/first
 import {
+  getStripeAppRequestConfig,
   getStripeErrorMessage,
   getStripeErrorStatus,
   getStripeMerchantRequestConfig,
-  getStripePlatformRequestConfig,
   STRIPE_PREVIEW_API_VERSION,
   throwStripeApiKeyManagementError,
   withIdempotencyKey
@@ -33,11 +33,11 @@ const axiosErrorWith = (status: number, data: unknown) =>
   });
 
 describe("stripe public client", () => {
-  it("authenticates as the platform and names the account", () => {
-    const config = getStripePlatformRequestConfig("acct_123");
+  it("authenticates as the app and names the account", () => {
+    const config = getStripeAppRequestConfig("acct_123");
 
-    expect(config.auth).toEqual({ username: "sk_test_platform", password: "" });
     expect(config.headers).toEqual({
+      Authorization: "Bearer sk_test_app",
       "Stripe-Version": STRIPE_PREVIEW_API_VERSION,
       "Stripe-Context": "acct_123"
     });
@@ -46,12 +46,11 @@ describe("stripe public client", () => {
   it("authenticates as a merchant key without context or preview version", () => {
     const config = getStripeMerchantRequestConfig("rk_test_merchant");
 
-    expect(config.auth).toEqual({ username: "rk_test_merchant", password: "" });
-    expect(config.headers).toBeUndefined();
+    expect(config.headers).toEqual({ Authorization: "Bearer rk_test_merchant" });
   });
 
   it("adds an idempotency key without dropping existing headers", () => {
-    const config = withIdempotencyKey(getStripePlatformRequestConfig("acct_123"));
+    const config = withIdempotencyKey(getStripeAppRequestConfig("acct_123"));
     const idempotencyKey = config.headers?.["Idempotency-Key"] as string;
 
     expect(config.headers?.["Stripe-Context"]).toBe("acct_123");

@@ -35,8 +35,6 @@ export const registerStripeConnectionRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: z.object({
-          // An allowlist, deliberately. Stripe's own list response carries every key's plaintext
-          // secret, so a passthrough schema here would ship them to the browser.
           apiKeys: z
             .object({
               id: z.string(),

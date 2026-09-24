@@ -8,7 +8,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 
 import { StripeConnectionMethod } from "./stripe-connection-enums";
 import {
-  getStripePlatformRequestConfig,
+  getStripeAppRequestConfig,
   getStripeSecretKey,
   STRIPE_API_KEYS_URL,
   throwStripeApiKeyManagementError
@@ -29,9 +29,10 @@ export const getStripeConnectionListItem = () => {
     app: AppConnection.Stripe as const,
     methods: Object.values(StripeConnectionMethod) as [StripeConnectionMethod.OAuth],
     oauthClientId: INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID,
-    // Stripe embeds a per-app, per-mode channel link ID in the install URL path, so it cannot be
-    // derived from the client ID and has to be copied out of the Stripe dashboard.
-    oauthAuthorizeUrl: INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
+    // A published app's install link is the marketplace URL plus the client ID, which the frontend
+    // appends along with the redirect URI it is actually on. Only the test-mode and sandbox links
+    // are per-app strings out of the Stripe dashboard, so those are the override.
+    oauthAuthorizeUrl: INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL || IntegrationUrls.STRIPE_APP_AUTHORIZE_URL
   };
 };
 
@@ -81,7 +82,7 @@ const exchangeStripeOAuthCode = async (code: string): Promise<string> => {
  */
 const assertCanManageApiKeys = async (accountId: string) => {
   try {
-    await request.get(STRIPE_API_KEYS_URL, getStripePlatformRequestConfig(accountId));
+    await request.get(STRIPE_API_KEYS_URL, getStripeAppRequestConfig(accountId));
   } catch (error) {
     throwStripeApiKeyManagementError(accountId, error);
   }

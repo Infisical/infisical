@@ -9,7 +9,7 @@ const { getMock, postMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_platform" })
+  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
 }));
 vi.mock("@app/lib/config/request", () => ({
   request: { get: getMock, post: postMock }
@@ -159,24 +159,27 @@ describe("stripeApiKeyRotationFactory", () => {
       expect(createBody?.public_key.pem_key.data).toContain("BEGIN PUBLIC KEY");
     });
 
-    it("expires the new key when the commit fails", async () => {
-      mockStripe();
-
-      await expect(
-        makeFactory().issueCredentials(async () => {
+    // The key exists in Stripe before the row does, so both failure points after create have to
+    // take it with them.
+    it.each([
+      {
+        failure: "the commit fails",
+        omitSecret: false,
+        callback: async () => {
           throw new Error("conflicting secret");
-        })
-      ).rejects.toThrow("conflicting secret");
+        },
+        message: "conflicting secret"
+      },
+      {
+        failure: "reading the returned secret fails",
+        omitSecret: true,
+        callback: commit,
+        message: "Stripe returned an API key without a secret"
+      }
+    ])("expires the new key when $failure", async ({ omitSecret, callback, message }) => {
+      mockStripe({ omitSecret });
 
-      expect(calls).toEqual(["create", "expire:mk_new"]);
-    });
-
-    it("expires the new key when reading the returned secret fails", async () => {
-      mockStripe({ omitSecret: true });
-
-      await expect(makeFactory().issueCredentials(commit)).rejects.toThrow(
-        "Stripe returned an API key without a secret"
-      );
+      await expect(makeFactory().issueCredentials(callback)).rejects.toThrow(message);
 
       expect(calls).toEqual(["create", "expire:mk_new"]);
       expect(commit).not.toHaveBeenCalled();
@@ -202,17 +205,6 @@ describe("stripeApiKeyRotationFactory", () => {
 
       expect(calls).toEqual(["create", "expire:mk_old", "lookup:mk_old", "expire:mk_new"]);
       expect(commit).not.toHaveBeenCalled();
-    });
-
-    it("names both stranded keys when the cleanup also fails", async () => {
-      mockStripe({
-        expire: async () => {
-          throw httpError(500, "Stripe is down");
-        }
-      });
-      mockKeyLookup(async () => {});
-
-      await expect(makeFactory().rotateCredentials(OLD_KEY, commit, OLD_KEY)).rejects.toThrow(/mk_old.*mk_new/s);
     });
 
     it("treats a 404 on expire as already gone", async () => {

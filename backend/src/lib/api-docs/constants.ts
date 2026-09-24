@@ -3653,7 +3653,7 @@ export const SecretRotations = {
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do.",
       connectPermissions:
-        "The permissions the generated Stripe API key has over connected accounts. Only meaningful when the account is a Connect platform."
+        "The permissions that the generated Stripe API key has over connected accounts. If your Stripe account is not a Connect platform account, you cannot configure Connect permissions for the key."
     }
   },
   SECRETS_MAPPING: {

@@ -52,22 +52,18 @@ describe("decryptStripeJwe", () => {
   it("rejects a JWE without exactly five segments", async () => {
     const { privateKey } = await generateStripeEncryptionKeyPair();
 
-    expect(() => decryptStripeJwe("a.b.c", privateKey)).toThrow(/5 segments, got 3/);
+    expect(() => decryptStripeJwe("a.b.c", privateKey)).toThrow(/5 JWE segments, got 3/);
   });
 
-  it("names an unsupported key algorithm rather than guessing", async () => {
-    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
-    const jwe = encryptJwe("rk_live_secret", publicKey, { alg: "RSA1_5" });
+  it.each([{ alg: "RSA1_5" }, { enc: "A128GCM" }])(
+    "names an unsupported algorithm rather than guessing (%o)",
+    async (header) => {
+      const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
+      const jwe = encryptJwe("rk_live_secret", publicKey, header);
 
-    expect(() => decryptStripeJwe(jwe, privateKey)).toThrow(/RSA1_5/);
-  });
-
-  it("rejects an unsupported content encryption algorithm", async () => {
-    const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();
-    const jwe = encryptJwe("rk_live_secret", publicKey, { enc: "A128GCM" });
-
-    expect(() => decryptStripeJwe(jwe, privateKey)).toThrow(/A128GCM/);
-  });
+      expect(() => decryptStripeJwe(jwe, privateKey)).toThrow(/RSA1_5|A128GCM/);
+    }
+  );
 
   it("rejects an authentication tag that is not the 16 bytes A256GCM requires", async () => {
     const { publicKey, privateKey } = await generateStripeEncryptionKeyPair();

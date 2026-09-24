@@ -2393,6 +2393,18 @@
                         ]
                       },
                       {
+                        "group": "Stripe",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/stripe/list",
+                          "api-reference/endpoints/app-connections/stripe/available",
+                          "api-reference/endpoints/app-connections/stripe/get-by-id",
+                          "api-reference/endpoints/app-connections/stripe/get-by-name",
+                          "api-reference/endpoints/app-connections/stripe/create",
+                          "api-reference/endpoints/app-connections/stripe/update",
+                          "api-reference/endpoints/app-connections/stripe/delete"
+                        ]
+                      },
+                      {
                         "group": "Supabase",
                         "pages": [
                           "api-reference/endpoints/app-connections/supabase/list",

@@ -9,10 +9,10 @@ import {
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import {
+  getStripeAppRequestConfig,
   getStripeErrorMessage,
   getStripeErrorStatus,
   getStripeMerchantRequestConfig,
-  getStripePlatformRequestConfig,
   STRIPE_API_KEYS_URL,
   throwStripeApiKeyManagementError,
   withIdempotencyKey
@@ -52,7 +52,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
    */
   const $keyExists = async (keyId: string): Promise<boolean> => {
     try {
-      await request.get(`${STRIPE_API_KEYS_URL}/${keyId}`, getStripePlatformRequestConfig(accountId));
+      await request.get(`${STRIPE_API_KEYS_URL}/${keyId}`, getStripeAppRequestConfig(accountId));
       return true;
     } catch (error) {
       if (getStripeErrorStatus(error) === 404) return false;
@@ -66,7 +66,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
       await request.post(
         `${STRIPE_API_KEYS_URL}/${keyId}/expire`,
         {},
-        withIdempotencyKey(getStripePlatformRequestConfig(accountId))
+        withIdempotencyKey(getStripeAppRequestConfig(accountId))
       );
       return { retired: true };
     } catch (expireError) {
@@ -129,11 +129,11 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
         {
           type: "secret_key",
           name: $keyName(),
-          permissions,
+          ...(permissions?.length ? { permissions } : {}),
           ...(connectPermissions?.length ? { connect_permissions: connectPermissions } : {}),
           public_key: { pem_key: { data: publicKey, algorithm: "RSA" } }
         },
-        withIdempotencyKey(getStripePlatformRequestConfig(accountId))
+        withIdempotencyKey(getStripeAppRequestConfig(accountId))
       ));
     } catch (error) {
       return throwStripeApiKeyManagementError(accountId, error);

@@ -36,13 +36,14 @@ Infisical supports connecting to Stripe through an installed Stripe App, so it c
       </Note>
     </Step>
     <Step title="Add your Stripe App credentials to Infisical">
-      From the Stripe dashboard, collect your app's **Client ID** and its **OAuth install link**, and the **secret key** of the Stripe account that owns the app.
+      From the Stripe dashboard, collect your app's **Client ID** and the **secret key** of the Stripe account that owns the app.
 
       Set the following environment variables on your Infisical instance:
 
       - `INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID`: The Client ID of your Stripe App.
-      - `INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL`: The OAuth install link for your Stripe App, copied from the Stripe dashboard. Stripe issues a different link per mode, and it must match the mode of the secret key below.
       - `INF_APP_CONNECTION_STRIPE_SECRET_KEY`: The secret key of the Stripe account that owns your Stripe App. Infisical authenticates as this account when it manages keys on a connected account's behalf.
+
+      Infisical builds the install link from the Client ID, so a published app needs nothing further. If your secret key is a test-mode or sandbox key, copy that mode's install link from the Stripe dashboard and set it as `INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL`.
 
       Restart your instance once these are set.
     </Step>

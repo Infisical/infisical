@@ -11,7 +11,6 @@ description: "Learn how to automatically rotate Stripe restricted API keys."
 
 Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/keys#limit-access-with-restricted-api-keys) on the interval you set, so your applications always have a working credential without a manual key swap. A few things about how it behaves are worth knowing before you set it up.
 
-- **The minted key's mode follows your Stripe account's own key.** If your Stripe account is in test mode, every key this rotation generates is a test-mode key. Your account decides the mode; the rotation doesn't, and there's no setting to override it.
 - **The generated value is a restricted key (`rk_...`), never a secret key (`sk_...`).** If anything downstream checks the credential's prefix, check it against `rk_`.
 - **Infisical never touches the key you already have.** Rotation only creates and retires the keys it generates itself. Your original Stripe key keeps working until you manually delete it in the Stripe dashboard, once you've confirmed your applications are reading the rotated secret.
 - **Retiring a key doesn't kill it instantly.** When a key is due for retirement, Infisical expires it through Stripe, but Stripe decides when that expiration takes effect. A retired key can keep authenticating requests for a short window afterward, so don't build anything that assumes the old key stops working the moment rotation runs.

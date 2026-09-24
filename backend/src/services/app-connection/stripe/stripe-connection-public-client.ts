@@ -26,18 +26,18 @@ export const getStripeSecretKey = () => {
   return INF_APP_CONNECTION_STRIPE_SECRET_KEY;
 };
 
-/** Infisical acting on a customer's account: our own key, with Stripe-Context naming the account. */
-export const getStripePlatformRequestConfig = (accountId: string): AxiosRequestConfig => ({
-  auth: { username: getStripeSecretKey(), password: "" },
+/** The Infisical Stripe App acting on a customer's account, named by Stripe-Context. */
+export const getStripeAppRequestConfig = (accountId: string): AxiosRequestConfig => ({
   headers: {
+    Authorization: `Bearer ${getStripeSecretKey()}`,
     "Stripe-Version": STRIPE_PREVIEW_API_VERSION,
     "Stripe-Context": accountId
   }
 });
 
-/** A rotated merchant key acting as itself. It is not the platform, so it carries neither header. */
+/** A rotated merchant key acting as itself, so it carries neither of the app's headers. */
 export const getStripeMerchantRequestConfig = (apiKey: string): AxiosRequestConfig => ({
-  auth: { username: apiKey, password: "" }
+  headers: { Authorization: `Bearer ${apiKey}` }
 });
 
 export const withIdempotencyKey = (config: AxiosRequestConfig): AxiosRequestConfig => ({
@@ -63,7 +63,7 @@ export const getStripeErrorStatus = (error: unknown): number | undefined =>
  * tokens, so it arrives here as a 403. The remedy is offered conditionally rather than asserted.
  *
  * Only an Axios error is actually a response from Stripe. Anything else, eg a local
- * misconfiguration like a missing platform key, gets rethrown as itself rather than reworded into
+ * misconfiguration like a missing app key, gets rethrown as itself rather than reworded into
  * a message that blames Stripe or the installed app for something neither caused.
  */
 export const throwStripeApiKeyManagementError = (accountId: string, error: unknown): never => {
@@ -109,7 +109,7 @@ const sanitizeApiKeyListItem = (item: TStripeApiKeyListItem): TStripeApiKeyListI
 });
 
 export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKeyListItem[]> => {
-  const config = getStripePlatformRequestConfig(accountId);
+  const config = getStripeAppRequestConfig(accountId);
   const keys: TStripeApiKeyListItem[] = [];
 
   let url: string | undefined = `${STRIPE_API_KEYS_URL}?limit=${STRIPE_LIST_PAGE_SIZE}`;
@@ -127,9 +127,9 @@ export const listStripeApiKeys = async (accountId: string): Promise<TStripeApiKe
 
     const nextPageUrl = response.data?.next_page_url ?? undefined;
 
-    // config.auth carries our platform key, which can act on every connected Stripe account, not a
-    // per-connection token. This must be checked before that credential goes out on the next request,
-    // never after, since next_page_url comes from the response body Stripe controls.
+    // config carries the app's own key, which can act on every account the app is installed on, not
+    // a per-connection token. This must be checked before that credential goes out on the next
+    // request, never after, since next_page_url comes from the response body Stripe controls.
     if (nextPageUrl && !nextPageUrl.startsWith(STRIPE_API_KEYS_URL)) {
       logger.error(
         `listStripeApiKeys: next_page_url for account ${accountId} did not point at the Stripe API keys endpoint, stopped paginating`

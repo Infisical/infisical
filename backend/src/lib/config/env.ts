@@ -1141,7 +1141,7 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
         description:
-          "The OAuth install link for your Stripe app, copied from the Stripe dashboard. Stripe issues a different link per mode, and the link must match the mode of the secret key below."
+          "Optional. Overrides the Stripe App Marketplace install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key."
       },
       {
         key: "INF_APP_CONNECTION_STRIPE_SECRET_KEY",

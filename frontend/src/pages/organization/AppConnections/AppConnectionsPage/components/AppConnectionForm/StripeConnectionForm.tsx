@@ -71,7 +71,7 @@ export const StripeConnectionForm = ({ appConnection, projectId }: Props) => {
 
   useAppConnectionFormDirtyState(isDirty);
 
-  const isMissingConfig = !oauthClientId || !oauthAuthorizeUrl;
+  const isMissingConfig = !oauthClientId;
 
   let submitLabel = "Connect to Stripe";
   if (isRedirecting) submitLabel = "Redirecting to Stripe...";
@@ -95,9 +95,8 @@ export const StripeConnectionForm = ({ appConnection, projectId }: Props) => {
       })
     );
 
-    // Stripe's install link already carries client_id and redirect_uri, so the whole link can be
-    // pasted into config as-is. Setting them again keeps the redirect in step with the origin the
-    // user is actually on.
+    // The redirect URI is taken from the origin the user is actually on rather than from config,
+    // so one Stripe app serves every deployment listing that origin in its manifest.
     const oauthUrl = new URL(oauthAuthorizeUrl);
     oauthUrl.searchParams.set("client_id", oauthClientId);
     oauthUrl.searchParams.set(

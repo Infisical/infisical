@@ -176,8 +176,6 @@ export const STRIPE_API_KEY_ROTATION_LIST_OPTION: TSecretRotationV2ListItem = {
     secretsMapping: {
       apiKey: "STRIPE_API_KEY"
     },
-    // The frontend picker reads the permission names from here. It cannot import this file, since
-    // the frontend is a separate package, and Stripe has no endpoint that lists them.
     permissions: [...STRIPE_API_KEY_PERMISSIONS]
   }
 };
