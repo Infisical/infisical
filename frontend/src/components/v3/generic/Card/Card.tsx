@@ -2,17 +2,12 @@ import * as React from "react";
 
 import { cn } from "../../utils";
 
-function Card({
-  className,
-  shadow = "sm",
-  ...props
-}: React.ComponentProps<"div"> & { shadow?: "sm" | "xs" }) {
+function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
       className={cn(
-        "flex h-fit flex-col gap-5 rounded-card border border-border bg-card p-5 text-foreground",
-        shadow === "xs" ? "shadow-xs" : "shadow-sm",
+        "flex h-fit flex-col gap-5 rounded-card border border-border bg-card p-5 text-foreground shadow-xs",
         className
       )}
       {...props}
