@@ -239,7 +239,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                                 disabled={isDisabled}
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="uppercase">{value.replaceAll("-", " ")}</span>
+                                  <span>{value.replaceAll("-", " ")}</span>
                                   {isDisabled && <Badge variant="info">Enterprise</Badge>}
                                   {isLegacyHmac && <Badge variant="warning">Legacy</Badge>}
                                 </div>
@@ -259,7 +259,6 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           <FieldLabel htmlFor="cmek-description">Description (optional)</FieldLabel>
           <TextArea
             id="cmek-description"
-            className="min-h-24"
             {...register("description")}
             isError={Boolean(errors.description)}
           />
