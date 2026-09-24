@@ -227,6 +227,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                     <FieldContent>
                       <Combobox
                         value={connectionOptions.find((option) => option.id === field.value)}
+                        isClearable={false}
                         onValueChange={(option) => {
                           if (option.id === CREATE_CONNECTION) {
                             handlePopUpOpen("addConnection");
