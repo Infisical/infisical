@@ -192,7 +192,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -4038,6 +4038,21 @@ export const secretV2BridgeServiceFactory = ({
   // known; what it reveals is the locations, which is why each hit is filtered against the actor's
   // permission on the project holding it.
   const findSecretsByValue = async (dto: TFindSecretsByValueDTO, actor: OrgServiceActor) => {
+    // findById rather than findOrgById: findOrgById takes no tx and reads the replica, which is the
+    // deadlock trigger CODE_QUALITY.md warns about if this ever moves inside a transaction.
+    const org = await orgDAL.findById(actor.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
+
+    // Both scopes match on the org digest, so both are only trustworthy once the org is complete.
+    // A partial index answering "this value is used nowhere" is the wrong answer to give someone
+    // chasing a leaked credential.
+    if (!org.orgWideSecretValueTrackingEnabled) {
+      throw new BadRequestError({
+        message:
+          "Enable org-wide secret value tracking for this organization before searching for a secret by its value"
+      });
+    }
+
     if (dto.scope === SecretValueSearchScope.Project) {
       const [project] = await projectDAL.find({
         id: dto.projectId,

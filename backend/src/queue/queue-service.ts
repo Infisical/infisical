@@ -622,7 +622,9 @@ export type TQueueJobTypes = {
   };
   [QueueName.SecretBlindIndexMigration]: {
     name: QueueJobs.SecretBlindIndexMigration;
-    payload: { projectId: string };
+    // `scope` is absent on jobs queued before the org-wide walk shipped, and the handler reads those
+    // as project scope so a deploy does not strand them.
+    payload: { scope: "org"; orgId: string } | { scope: "project"; projectId: string } | { projectId: string };
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;

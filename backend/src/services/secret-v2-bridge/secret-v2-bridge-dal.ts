@@ -1266,20 +1266,39 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  const findProjectSecretsWithNullBlindIndex = async (projectId: string, limit: number, tx?: Knex) => {
+  // Walks a folder in (key, id) order so a backfill visits every row exactly once, over the existing
+  // (folderId, key) index. Ordering on the pair matters: the unique index on (key, folderId) is
+  // partial on type = 'shared', so a personal override shares a key with the shared secret beside it
+  // and a key-only cursor would step over one of them.
+  const findSecretsInFolderAfter = async (
+    folderId: string,
+    after: { key: string; id: string },
+    limit: number,
+    tx?: Knex
+  ) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretV2)
-        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
-        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
-        .whereNull(`${TableName.SecretV2}.secretValueBlindIndex`)
-        .whereNotNull(`${TableName.SecretV2}.encryptedValue`)
-        .select(`${TableName.SecretV2}.id` as "id", `${TableName.SecretV2}.encryptedValue` as "encryptedValue")
-        .limit(limit);
-      return docs as Pick<TSecretsV2, "id" | "encryptedValue">[];
+        .where(`${TableName.SecretV2}.folderId`, folderId)
+        .whereRaw(`("${TableName.SecretV2}"."key", "${TableName.SecretV2}"."id"::text) > (?, ?)`, [after.key, after.id])
+        .orderBy([
+          { column: `${TableName.SecretV2}.key`, order: "asc" },
+          { column: `${TableName.SecretV2}.id`, order: "asc" }
+        ])
+        .limit(limit)
+        .select(
+          db.ref("id").withSchema(TableName.SecretV2),
+          db.ref("key").withSchema(TableName.SecretV2),
+          db.ref("encryptedValue").withSchema(TableName.SecretV2),
+          db.ref("secretValueBlindIndex").withSchema(TableName.SecretV2),
+          db.ref("secretValueOrgBlindIndex").withSchema(TableName.SecretV2)
+        );
+
+      return docs as Pick<
+        TSecretsV2,
+        "id" | "key" | "encryptedValue" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"
+      >[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindProjectSecretsWithNullBlindIndex" });
+      throw new DatabaseError({ error, name: "FindSecretsInFolderAfter" });
     }
   };
 
@@ -1302,7 +1321,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             "secretValueOrgBlindIndex" = v.org_blind_index
         FROM (VALUES ${valuePlaceholders.join(", ")}) AS v(id, blind_index, org_blind_index)
         WHERE ${TableName.SecretV2}.id = v.id
-          AND ${TableName.SecretV2}."secretValueBlindIndex" IS NULL
+          AND (${TableName.SecretV2}."secretValueBlindIndex" IS NULL
+               OR ${TableName.SecretV2}."secretValueOrgBlindIndex" IS NULL)
       `;
 
       await (tx || db).raw(query, bindings);
@@ -1735,7 +1755,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     upsertSecretReferences,
     findReferencedSecretReferences,
     findAllProjectSecretValues,
-    findProjectSecretsWithNullBlindIndex,
+    findSecretsInFolderAfter,
     batchSetBlindIndexes,
     countByFolderIds,
     findStaleByProject,
