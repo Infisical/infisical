@@ -61,13 +61,17 @@ that file. `check-dockerfile-pins.yml` fails a PR when the defaults drift from i
 file and the `ARG` defaults together.
 
 Use `nvm install && nvm use`, then `npm install -g npm@$(sed -n 's/^NPM_VERSION=//p' build-versions.env)`.
-Run `node scripts/check-node-toolchain.mjs` before installing dependencies. CI uses
+Run `node scripts/check-node-toolchain.mjs` before installing dependencies. Compatible newer
+Node 22 and npm 11 releases pass locally; CI and Docker pin exact versions for reproducibility. CI uses
 `.github/actions/setup-node-toolchain` to perform the same setup and check. All six npm package roots
 declare matching `engines` and `devEngines`; npm rejects incompatible toolchains before
 installing, including with `--ignore-scripts`. Update these declarations, `.nvmrc`, the
-Dockerfile defaults, and lockfile root metadata together when changing the toolchain.
+Dockerfile defaults and lockfile root metadata together when changing the toolchain;
+`scripts/node-toolchain.test.mjs` reads the pinned versions from `build-versions.env`.
 
-Each package root configures `min-release-age=7` and `engine-strict=true` in `.npmrc`.
+The npm package roots other than the external `e2e/` test harness configure
+`min-release-age=7` and `engine-strict=true` in `.npmrc`; the e2e harness deliberately
+does not apply the release-age policy (see `e2e/CLAUDE.md`).
 Docker install stages copy that file before installing; global installs also receive the
 release-age setting. The age limit applies to dependency resolution, not replaying an
 existing lockfile: `npm ci` trusts locked versions and does not fetch publication dates.
