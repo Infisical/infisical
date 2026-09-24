@@ -450,19 +450,20 @@ const ComboboxList = <TOption,>({
         <div className="shrink-0 p-1">
           <div
             role="status"
-            className="flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-sm text-muted"
+            className={cn(COMBOBOX_ROW_CLASS, "justify-center px-2 text-center text-muted")}
           >
-            {emptyMessage}
+            <span>{emptyMessage}</span>
           </div>
         </div>
       )}
       <ComboboxPrimitive.List
         aria-label={ariaLabel}
         aria-busy={isLoading || undefined}
-        className={cn("flex min-h-0 flex-col", isEmpty && !creationItem && "hidden")}
+        className={cn("flex min-h-0 flex-col outline-none", isEmpty && !creationItem && "hidden")}
       >
         <div
           ref={scrollRef}
+          tabIndex={-1}
           onWheel={(event) => event.stopPropagation()}
           className={cn(
             "min-h-0 thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
@@ -498,7 +499,7 @@ const ComboboxList = <TOption,>({
         {creationItem && (
           <div className={cn("shrink-0 p-1", (!isEmpty || isLoading) && "border-t border-border")}>
             {getOptionGroup ? (
-              <ComboboxPrimitive.Group items={[creationItem]}>
+              <ComboboxPrimitive.Group aria-label="Create option" items={[creationItem]}>
                 <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
               </ComboboxPrimitive.Group>
             ) : (

@@ -1157,8 +1157,7 @@ export const InlineCreation: Story = {
     await expect(getTrailingSlot(tagsInput)).toHaveAttribute("data-state", "clear");
 
     await userEvent.type(tagsInput, "reserved");
-    await userEvent.click(canvas.getByRole("option", { name: 'Create tag "reserved"' }));
-    await userEvent.keyboard("{Escape}");
+    await userEvent.keyboard("{Enter}{Escape}");
     await sleep(450);
     await userEvent.click(tagsInput);
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
