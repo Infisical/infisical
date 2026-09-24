@@ -102,7 +102,7 @@ A machine identity whose credential expires unnoticed takes your workload down w
 
 A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
 
-A Token Auth token is watched until its access token TTL runs out, counted from the moment the token was created. That's when the token stops working unless the workload renews it. Infisical doesn't track renewals, so a token that is renewed still triggers this alert on that first expiry. Revoked tokens are skipped.
+The alert watches a Token Auth token's original expiry: when the token was created plus its access token TTL. That's when the token stops working if it isn't renewed. Renewing the token doesn't move that date, so a renewed token still triggers this alert on its original expiry and gets no alert after that date passes. Deleting the alert and creating a new one doesn't move it either, since the new alert watches the same date. To get alerts for a later expiry, create a new token. Revoked tokens are skipped.
 
 Unlike a client secret, a Token Auth token with an access token TTL of `0` still expires. Every access token is capped at a maximum lifetime, 90 days by default, so a token with a TTL of `0` or a TTL longer than the cap triggers this alert as it approaches that cap. Self-hosted instances can change the cap with the `MAX_MACHINE_IDENTITY_TOKEN_AGE` environment variable.
 
