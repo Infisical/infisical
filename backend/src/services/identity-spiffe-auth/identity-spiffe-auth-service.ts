@@ -90,6 +90,8 @@ export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffe
 
 const JWT_SVID_NO_MATCHING_KEY_MESSAGE = "No key in the SPIFFE trust bundle matches the JWT-SVID signing key";
 
+const KID_MISS_REFRESH_COOLDOWN_MS = 30 * 1000;
+
 const verifyJwtSvid = async (jwtValue: string, jwksJson: string, allowedAudiences: string[]) => {
   const jwks = createLocalJWKSet(parseSpiffeBundleJwtAuthorities(jwksJson));
 
@@ -340,8 +342,12 @@ export const identitySpiffeAuthServiceFactory = ({
         tokenData = await verifyJwtSvid(jwtValue, jwksJson, allowedAudiences);
       } catch (verifyError) {
         // Kid-miss retry: if we used a cached JWKS and the kid wasn't found, force-refresh once
+        const cacheAgeMs = identitySpiffeAuth.cachedBundleLastRefreshedAt
+          ? Date.now() - new Date(identitySpiffeAuth.cachedBundleLastRefreshedAt).getTime()
+          : Infinity;
         if (
           fromCache &&
+          cacheAgeMs >= KID_MISS_REFRESH_COOLDOWN_MS &&
           verifyError instanceof UnauthorizedError &&
           verifyError.message === JWT_SVID_NO_MATCHING_KEY_MESSAGE
         ) {
