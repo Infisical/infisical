@@ -2,9 +2,10 @@ import { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from
 import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format } from "date-fns";
-import { AlertTriangleIcon, SearchIcon, XIcon } from "lucide-react";
+import { CirclePlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Alert,
@@ -118,6 +119,12 @@ const statusTone = (status: number) => {
   return "text-foreground";
 };
 
+// A host pattern without a port means 443, and an IPv6 literal needs its brackets back.
+const hostPatternFor = (record: TAgentVaultActivityRecord) => {
+  const host = record.host.includes(":") ? `[${record.host}]` : record.host;
+  return record.port === "443" ? host : `${host}:${record.port}`;
+};
+
 type Props = {
   session: TAgentVaultSession;
 };
@@ -126,6 +133,10 @@ export const ActivityTab = ({ session }: Props) => {
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const accessBundle = session.accessBundles[0];
+  const canAddService = isAdmin && Boolean(accessBundle?.id);
+  const [serviceHost, setServiceHost] = useState<string | null>(null);
+  const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
@@ -204,11 +215,6 @@ export const ActivityTab = ({ session }: Props) => {
     })
   );
   const proxies = [...seenProxies.current.entries()].map(([id, name]) => ({ id, name }));
-
-  const bundleHosts = useMemo(
-    () => new Set(records.filter((r) => r.service).map((r) => r.host)),
-    [records]
-  );
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -649,14 +655,28 @@ export const ActivityTab = ({ session }: Props) => {
                     <span className="flex items-center gap-2 text-sm">
                       <ServiceIcon hostPattern={record.host} />
                       {record.host}
-                      {!bundleHosts.has(record.host) && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <AlertTriangleIcon className="size-3 text-warning" />
-                          </TooltipTrigger>
-                          <TooltipContent>No access bundle covers this host.</TooltipContent>
-                        </Tooltip>
-                      )}
+                      {canAddService &&
+                        !record.service &&
+                        (record.decision === AgentVaultActivityDecision.Blocked ||
+                          record.decision === AgentVaultActivityDecision.Passthrough) &&
+                        !addedHosts.has(hostPatternFor(record)) && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="ml-auto"
+                                onClick={() => setServiceHost(hostPatternFor(record))}
+                              >
+                                <CirclePlusIcon />
+                                Add Service
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Add {record.host} to {accessBundle.name}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -707,6 +727,18 @@ export const ActivityTab = ({ session }: Props) => {
           see further back.
           {isActive && isRangeOpen && isLivePausedForBudget && " Live updates are paused."}
         </p>
+      )}
+
+      {canAddService && accessBundle.id && (
+        <ServiceSheet
+          isOpen={Boolean(serviceHost)}
+          onOpenChange={(open) => !open && setServiceHost(null)}
+          accessBundleId={accessBundle.id}
+          prefillHost={serviceHost ?? undefined}
+          onSaved={() => {
+            if (serviceHost) setAddedHosts((prev) => new Set(prev).add(serviceHost));
+          }}
+        />
       )}
     </div>
   );
