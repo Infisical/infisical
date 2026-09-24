@@ -34,6 +34,7 @@ import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { InternalCas } from "../license-client";
 import { TUsageMeteringServiceFactory } from "../license-client/usage";
+import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -167,6 +168,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "assertAttachPermission">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -197,7 +199,8 @@ export const certificateAuthorityServiceFactory = ({
   usageMeteringService,
   hsmConnectorService,
   certificateAuthoritySecretDAL,
-  licenseService
+  licenseService,
+  pkiAlertV2Queue
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -1473,7 +1476,8 @@ export const certificateAuthorityServiceFactory = ({
               resourceMetadataDAL,
               godaddyFns,
               projectDAL,
-              telemetryService
+              telemetryService,
+              pkiAlertV2Queue
             },
             certificateRequest
           )
@@ -1487,7 +1491,8 @@ export const certificateAuthorityServiceFactory = ({
               resourceMetadataDAL,
               digicertFns,
               projectDAL,
-              telemetryService
+              telemetryService,
+              pkiAlertV2Queue
             },
             certificateRequest
           );

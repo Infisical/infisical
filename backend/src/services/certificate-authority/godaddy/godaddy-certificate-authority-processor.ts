@@ -18,6 +18,8 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../../certificate-request/certificate-request-types";
+import { TPkiAlertV2QueueServiceFactory } from "../../pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "../../pki-alert-v2/pki-alert-v2-types";
 import { TResourceMetadataDALFactory } from "../../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../../resource-metadata/resource-metadata-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -63,6 +65,7 @@ export type TProcessGoDaddyRequestDeps = {
   godaddyFns: Pick<TGoDaddyCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TProcessGoDaddyRequestResult =
@@ -191,6 +194,20 @@ export const processGoDaddyPendingValidationRequest = async (
         enrollmentType: EnrollmentType.API,
         operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
       });
+
+      try {
+        await deps.pkiAlertV2Queue?.queueCertificateEvent({
+          certificateId,
+          projectId: request.projectId,
+          eventType: parsed.godaddy.isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+          applicationId: request.applicationId
+        });
+      } catch (error) {
+        logger.warn(
+          error,
+          `Failed to queue PKI alert event [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
+        );
+      }
 
       return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
     } catch (error) {

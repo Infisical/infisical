@@ -17,6 +17,8 @@ import {
   TAttachCertificateToRequestDTO,
   TUpdateCertificateRequestStatusDTO
 } from "../../certificate-request/certificate-request-types";
+import { TPkiAlertV2QueueServiceFactory } from "../../pki-alert-v2/pki-alert-v2-queue";
+import { PkiAlertEventType } from "../../pki-alert-v2/pki-alert-v2-types";
 import { TResourceMetadataDALFactory } from "../../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromRequestToCertificate } from "../../resource-metadata/resource-metadata-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -63,6 +65,7 @@ export type TProcessDigiCertRequestDeps = {
   digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
 };
 
 export type TProcessDigiCertRequestResult =
@@ -197,6 +200,20 @@ export const processDigiCertPendingValidationRequest = async (
       enrollmentType: EnrollmentType.API,
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
     });
+
+    try {
+      await deps.pkiAlertV2Queue?.queueCertificateEvent({
+        certificateId,
+        projectId: request.projectId,
+        eventType: parsed.digicert.isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+        applicationId: request.applicationId
+      });
+    } catch (error) {
+      logger.warn(
+        error,
+        `Failed to queue PKI alert event [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
+      );
+    }
 
     return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
   }
