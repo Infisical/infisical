@@ -1,13 +1,9 @@
 export const AGENT_PROMPT = [
   "Help me get set up with Infisical for secrets management. Do the following:",
-  "1. Install the Infisical CLI. Detect my OS and available package managers (npm, Homebrew, Winget, apt-get) and run the right command without asking: `npm install -g @infisical/cli` if this is a Node project or npm is on my PATH; `brew install infisical/get-cli/infisical` on macOS with Homebrew; `winget install infisical` on Windows with Winget; `curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash && sudo apt-get update && sudo apt-get install -y infisical` on Debian or Ubuntu. Only ask me if none of these apply.",
-  "2. If `.infisical.json` already exists in this directory, skip to step 6.",
-  "3. Tell me a browser is about to open on my machine and that I should complete the login there. Then run `infisical login --domain https://app.infisical.com` yourself with a subprocess timeout of at least 10 minutes. The command blocks until I finish in the browser and exits automatically when I'm done. If I mention I'm on EU Cloud or a self-hosted instance, swap the domain to `https://eu.infisical.com` or my instance URL. If the subprocess errors or times out (e.g., no display server), fall back to asking me to run it in my own terminal.",
-  "4. Run `infisical org list --json`. If I belong to more than one organization, ask me which to use.",
-  "5. Create a project named after this repo's directory: run `infisical projects create --name <dir-name> --json`, capture the returned `id`, then run `infisical init --yes --project-id <id>` to link this directory.",
-  "6. If `.env`, `.env.local`, or `.env.development` exists here, run `infisical import --yes --add-gitignore` and show me the CLI's summary (which files it scanned and how many keys it uploaded). Don't open, read, or delete those files yourself; the CLI parses them and preserves the source.",
-  "7. Read my `package.json` scripts (or `Makefile`, `Procfile`, or equivalent) and print the exact `infisical run -- <my start command>` I should use from now on. Also mention that I can browse or edit values with `infisical secrets`, and switch environments with `--env <slug>`."
-].join(" ");
+  "1. Install the Infisical setup skill with `npx skills add Infisical/ai-skills --skill infisical-setup --agent <agent> -y`, replacing `<agent>` with your own name, such as `claude-code`, `cursor`, or `codex`.",
+  "2. Follow the `infisical-setup` skill to install the Infisical CLI, connect this project to Infisical, and import the secrets from any `.env` files here into it. Don't open or read the files yourself.",
+  "3. Suggest the most relevant next steps."
+].join("\n\n");
 
 export const HomeHero = ({ title, description, aside, children }) => (
   <div className="ifx-home__hero">
