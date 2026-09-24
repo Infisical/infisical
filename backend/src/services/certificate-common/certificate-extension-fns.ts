@@ -380,7 +380,7 @@ export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtens
         }
 
         logger?.warn(
-          `Custom extension '${extension.oid}' cannot be read back into a value a request can carry, so it is omitted [oid=${extension.oid}]`
+          `Custom extension cannot be read back into a value a request can carry, so it is omitted [oid=${extension.oid}]`
         );
         return [];
       }
