@@ -2739,8 +2739,8 @@ const OverviewPageContent = () => {
       />
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 @min-[48rem]/card-header:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]">
-            <div className="col-start-1 row-start-1 max-w-full min-w-0">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 @min-[48rem]/card-header:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <div className="col-start-1 row-start-1 min-w-0">
               <EnvironmentSelect
                 selectedEnvs={filteredEnvs}
                 setSelectedEnvs={setFilteredEnvs}
@@ -2750,23 +2750,25 @@ const OverviewPageContent = () => {
                 }
               />
             </div>
-            <ResourceSearchInput
-              key={secretPath}
-              className={`col-start-1 min-w-0 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1 ${
+            <div
+              className={`col-span-2 flex min-w-0 items-center gap-2 @min-[48rem]/card-header:col-span-1 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1 ${
                 userAvailableEnvs.length > 0
-                  ? "row-start-3 @min-[20rem]/card-header:row-start-2"
+                  ? "row-start-3 @min-[15rem]/card-header:row-start-2"
                   : "row-start-2"
               }`}
-              value={searchFilter}
-              tags={tags}
-              onChange={setSearchFilter}
-              onSelectResult={({ search }) => setSearchFilter(search)}
-              environments={userAvailableEnvs}
-              projectId={currentProject?.id}
-            />
-            {userAvailableEnvs.length > 0 && (
-              <>
-                <div className="col-start-2 row-start-3 @min-[20rem]/card-header:row-start-2 @min-[48rem]/card-header:col-start-3 @min-[48rem]/card-header:row-start-1">
+            >
+              <ResourceSearchInput
+                key={secretPath}
+                className="min-w-0 flex-1"
+                value={searchFilter}
+                tags={tags}
+                onChange={setSearchFilter}
+                onSelectResult={({ search }) => setSearchFilter(search)}
+                environments={userAvailableEnvs}
+                projectId={currentProject?.id}
+              />
+              {userAvailableEnvs.length > 0 && (
+                <>
                   <ResourceFilter
                     rowTypeFilter={filter}
                     onToggleRowType={handleToggleRowType}
@@ -2775,18 +2777,20 @@ const OverviewPageContent = () => {
                     onToggleTag={handleToggleTag}
                     onClearTags={handleClearTags}
                   />
-                </div>
-                <div className="col-start-3 row-start-3 @min-[20rem]/card-header:row-start-2 @min-[48rem]/card-header:col-start-4 @min-[48rem]/card-header:row-start-1">
-                  <DownloadEnvButton
-                    secretPath={secretPath}
-                    environments={visibleEnvs}
-                    projectId={projectId}
-                  />
-                </div>
-                <div className="col-start-3 row-start-2 justify-self-end @min-[20rem]/card-header:row-start-1 @min-[48rem]/card-header:col-start-5">
-                  <AddResourceButtons {...addResourceButtonsProps} />
-                </div>
-              </>
+                  <div className="hidden @min-[20rem]/card-header:block">
+                    <DownloadEnvButton
+                      secretPath={secretPath}
+                      environments={visibleEnvs}
+                      projectId={projectId}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            {userAvailableEnvs.length > 0 && (
+              <div className="col-start-2 row-start-2 justify-self-end @min-[15rem]/card-header:row-start-1 @min-[48rem]/card-header:col-start-3">
+                <AddResourceButtons {...addResourceButtonsProps} />
+              </div>
             )}
           </div>
         </CardHeader>
