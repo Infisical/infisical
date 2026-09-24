@@ -247,8 +247,3 @@ export type TUpdateSecretScanningFindingDTO = {
   remarks?: string | null;
   findingId: string;
 };
-
-export type TUpsertSecretScanningConfigDTO = {
-  projectId: string;
-  content: string | null;
-};

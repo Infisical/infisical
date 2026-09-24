@@ -126,7 +126,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const resourceOrm = ormify(db, TableName.SecretScanningResource);
   const scanOrm = ormify(db, TableName.SecretScanningScan);
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
-  const configOrm = ormify(db, TableName.SecretScanningConfig);
 
   const findDataSource = async (filter: Parameters<(typeof dataSourceOrm)["find"]>[0], tx?: Knex) => {
     try {
@@ -530,7 +529,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     findings: {
       ...findingOrm,
       countByScanId: countFindingsByScanId
-    },
-    configs: configOrm
+    }
   };
 };

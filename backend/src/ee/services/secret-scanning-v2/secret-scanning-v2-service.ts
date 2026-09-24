@@ -1,21 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
-import { join } from "path";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import {
-  createTempFolder,
-  deleteTempFolder,
-  scanContentAndGetFindings,
-  writeTextToFile
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
@@ -40,8 +32,7 @@ import {
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
   TUpdateSecretScanningDataSourceDTO,
-  TUpdateSecretScanningFindingDTO,
-  TUpsertSecretScanningConfigDTO
+  TUpdateSecretScanningFindingDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -835,94 +826,6 @@ export const secretScanningV2ServiceFactory = ({
     return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };
   };
 
-  const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningConfigActions.Read,
-      ProjectPermissionSub.SecretScanningConfigs
-    );
-
-    const config = await secretScanningV2DAL.configs.findOne({
-      projectId
-    });
-
-    return (
-      config ?? { content: null, projectId, updatedAt: null } // using default config
-    );
-  };
-
-  const upsertSecretScanningConfig = async (
-    { projectId, content }: TUpsertSecretScanningConfigDTO,
-    actor: OrgServiceActor
-  ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
-
-    if (!plan.secretScanning)
-      throw new BadRequestError({
-        message:
-          "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
-      });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningConfigActions.Update,
-      ProjectPermissionSub.SecretScanningConfigs
-    );
-
-    if (content) {
-      const tempFolder = await createTempFolder();
-      try {
-        const configPath = join(tempFolder, "infisical-scan.toml");
-        await writeTextToFile(configPath, content);
-
-        // just checking if config parses
-        await scanContentAndGetFindings("", configPath);
-      } catch (e) {
-        throw new BadRequestError({
-          message: "Unable to parse configuration: Check syntax and formatting."
-        });
-      } finally {
-        await deleteTempFolder(tempFolder);
-      }
-    }
-
-    const [config] = await secretScanningV2DAL.configs.upsert(
-      [
-        {
-          projectId,
-          content
-        }
-      ],
-      "projectId"
-    );
-
-    return config;
-  };
-
   return {
     listSecretScanningDataSourceOptions,
     listSecretScanningDataSourcesByProjectId,
@@ -940,8 +843,6 @@ export const secretScanningV2ServiceFactory = ({
     getSecretScanningUnresolvedFindingsCountByProjectId,
     listSecretScanningFindingsByProjectId,
     updateSecretScanningFindingById,
-    findSecretScanningConfigByProjectId,
-    upsertSecretScanningConfig,
     github: githubSecretScanningService(secretScanningV2DAL, secretScanningV2Queue),
     bitbucket: bitbucketSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService),
     gitlab: gitlabSecretScanningService(secretScanningV2DAL, secretScanningV2Queue, kmsService)

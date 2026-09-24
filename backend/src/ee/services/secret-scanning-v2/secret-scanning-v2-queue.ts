@@ -2,11 +2,7 @@ import { join } from "path";
 
 import { ProjectMembershipRole, TSecretScanningFindings } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  createTempFolder,
-  deleteTempFolder,
-  writeTextToFile
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { createTempFolder, deleteTempFolder } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
@@ -329,17 +325,6 @@ export const secretScanningV2QueueServiceFactory = ({
         tempFolder
       });
 
-      const config = await secretScanningV2DAL.configs.findOne({
-        projectId: dataSource.projectId
-      });
-
-      let configPath: string | undefined;
-
-      if (config && config.content) {
-        configPath = join(tempFolder, "infisical-scan.toml");
-        await writeTextToFile(configPath, config.content);
-      }
-
       // Counts what this attempt scanned, for the progress logs only. The scan's finding total is
       // read from the database at the end, because an attempt that resumes a partly-scanned scan
       // never sees the batches an earlier one already persisted.
@@ -407,7 +392,7 @@ export const secretScanningV2QueueServiceFactory = ({
           const { SECRET_SCANNING_COMMIT_BATCH_SIZE: batchSize } = getConfig();
 
           if (!batchSize) {
-            const batchFindings = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
+            const batchFindings = await scanGitRepositoryAndGetFindings(scanPath, findingsPath);
             scannedFindingsCount += batchFindings.length;
             stillOwned = await persistBatch(batchFindings);
             break;
@@ -429,7 +414,7 @@ export const secretScanningV2QueueServiceFactory = ({
             const batchFindings = await scanGitRepositoryAndGetFindings(
               scanPath,
               join(tempFolder, `findings-${index}.json`),
-              configPath,
+              undefined,
               batch
             );
 
@@ -677,25 +662,13 @@ export const secretScanningV2QueueServiceFactory = ({
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
-      const config = await secretScanningV2DAL.configs.findOne({
-        projectId: dataSource.projectId
-      });
-
-      let configPath: string | undefined;
-
-      if (config && config.content) {
-        configPath = join(tempFolder, "infisical-scan.toml");
-        await writeTextToFile(configPath, config.content);
-      }
-
       const findingsPayload = await factory.getDiffScanFindingsPayload({
         dataSource: {
           ...dataSource,
           connection
         } as TSecretScanningDataSourceWithConnection,
         resourceName: resource.name,
-        payload,
-        configPath
+        payload
       });
 
       const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {

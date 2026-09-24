@@ -3497,7 +3497,8 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
 const SecretScanningSubject = (enabled = false) => ({
   [ProjectPermissionSub.SecretScanningDataSources]: enabled,
   [ProjectPermissionSub.SecretScanningFindings]: enabled,
-  [ProjectPermissionSub.SecretScanningConfigs]: enabled
+  // Hidden until the scanning configuration is redesigned; nothing reads it today.
+  [ProjectPermissionSub.SecretScanningConfigs]: false
 });
 
 const AgentVaultPermissionSubjects = (enabled = false) => ({
@@ -3769,10 +3770,6 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretScanningFindings,
           actions: [ProjectPermissionSecretScanningFindingActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.SecretScanningConfigs,
-          actions: [ProjectPermissionSecretScanningConfigActions.Read]
         }
       ]
     },
@@ -3789,19 +3786,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretScanningFindings,
           actions: Object.values(ProjectPermissionSecretScanningFindingActions)
-        },
-        {
-          subject: ProjectPermissionSub.SecretScanningConfigs,
-          actions: [ProjectPermissionSecretScanningConfigActions.Read]
         }
       ]
     },
-    projectManagerTemplate([
-      {
-        subject: ProjectPermissionSub.SecretScanningConfigs,
-        actions: Object.values(ProjectPermissionSecretScanningConfigActions)
-      }
-    ])
+    projectManagerTemplate()
   ],
   [ProjectType.SecretManager]: [
     {
