@@ -68,6 +68,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
       keyPrefix: z
         .string()
         .trim()
+        .max(1024, "At most 512 characters, including the trailing slash")
         .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "Use only letters, numbers and ! - _ . ' ( ) /")
         .refine(
           (value) => !value.split("/").some((segment) => segment === "." || segment === ".."),
