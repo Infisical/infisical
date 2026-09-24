@@ -418,8 +418,9 @@ export const certificateIssuanceQueueFactory = ({
     };
 
     // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
-    // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
+    // must not be reported as issued.
     let certificateExistsAfterThisJob = true;
+    let issuedCertificateId: string | undefined;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -519,6 +520,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
+        issuedCertificateId = acmeResult?.id;
+
         if (certificateRequestId && certificateRequestService && acmeResult?.id) {
           try {
             await certificateRequestService.attachCertificateToRequest({
@@ -584,6 +587,8 @@ export const certificateIssuanceQueueFactory = ({
           logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
           return;
         }
+
+        issuedCertificateId = azureResult?.certificateId;
 
         if (certificateRequestId && certificateRequestService && azureResult?.certificateId) {
           try {
@@ -655,6 +660,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
+        issuedCertificateId = adcsResult?.certificateId;
+
         if (certificateRequestId && certificateRequestService && adcsResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
@@ -722,6 +729,8 @@ export const certificateIssuanceQueueFactory = ({
           logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
           return;
         }
+
+        issuedCertificateId = acmResult?.certificateId;
 
         if (certificateRequestId && certificateRequestService && acmResult?.certificateId) {
           try {
@@ -792,6 +801,8 @@ export const certificateIssuanceQueueFactory = ({
           logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
           return;
         }
+
+        issuedCertificateId = awsPcaResult?.certificateId;
 
         if (certificateRequestId && certificateRequestService && awsPcaResult?.certificateId) {
           try {
@@ -922,6 +933,7 @@ export const certificateIssuanceQueueFactory = ({
               isRenewal,
               originalCertificateId
             });
+            issuedCertificateId = attachedCertificateId;
 
             if (certificateRequestService) {
               await certificateRequestService.attachCertificateToRequest({
@@ -1070,6 +1082,8 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
+        issuedCertificateId = venafiTppResult?.certificateId;
+
         if (certificateRequestId && certificateRequestService && venafiTppResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
@@ -1109,16 +1123,11 @@ export const certificateIssuanceQueueFactory = ({
       );
 
       let scopedApplicationId: string | null = data.applicationId ?? null;
-      let issuedCertificateId: string | null | undefined;
       try {
         if (!scopedApplicationId && isRenewal && originalCertificateId) {
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
         }
-        issuedCertificateId =
-          certificateRequestId && certificateRequestDAL
-            ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
-            : certificateId;
         if (scopedApplicationId && issuedCertificateId) {
           await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
         }
@@ -1187,12 +1196,16 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId,
-          projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
-          applicationId: scopedApplicationId
-        });
+        // The job's certificateId is an order id minted before issuance, not a certificate row, so the
+        // alert has to target the certificate the CA actually produced.
+        if (certificateExistsAfterThisJob && issuedCertificateId) {
+          await pkiAlertV2Queue?.queueCertificateEvent({
+            certificateId: issuedCertificateId,
+            projectId: ca.projectId,
+            eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+            applicationId: scopedApplicationId
+          });
+        }
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
       }
