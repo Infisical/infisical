@@ -34,19 +34,18 @@ export const rateLimitServiceFactory = ({
 }: TRateLimitServiceFactoryDep): TRateLimitServiceFactory => {
   const DEFAULT_RATE_LIMIT_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
 
-  const getRateLimits: TRateLimitServiceFactory["getRateLimits"] = async () => {
-    let rateLimit: TRateLimit;
+  const $findOrCreateRateLimit = async (): Promise<TRateLimit> => {
+    const rateLimit = await rateLimitDAL.findOne({ id: DEFAULT_RATE_LIMIT_CONFIG_ID });
+    if (rateLimit) return rateLimit;
+    return rateLimitDAL.create({
+      // @ts-expect-error id is kept as fixed because there should only be one rate limit config per instance
+      id: DEFAULT_RATE_LIMIT_CONFIG_ID
+    });
+  };
 
+  const getRateLimits: TRateLimitServiceFactory["getRateLimits"] = async () => {
     try {
-      rateLimit = await rateLimitDAL.findOne({ id: DEFAULT_RATE_LIMIT_CONFIG_ID });
-      if (!rateLimit) {
-        // rate limit might not exist
-        rateLimit = await rateLimitDAL.create({
-          // @ts-expect-error id is kept as fixed because there should only be one rate limit config per instance
-          id: DEFAULT_RATE_LIMIT_CONFIG_ID
-        });
-      }
-      return rateLimit;
+      return await $findOrCreateRateLimit();
     } catch (err) {
       logger.error(err, "Error fetching rate limits");
       return undefined;
@@ -58,24 +57,22 @@ export const rateLimitServiceFactory = ({
   };
 
   const $syncRateLimitConfiguration = async () => {
-    const rateLimit = await getRateLimits();
-    if (rateLimit) {
-      const newRateLimitMaxConfiguration: typeof rateLimitMaxConfiguration = {
-        readLimit: rateLimit.readRateLimit,
-        publicEndpointLimit: rateLimit.publicEndpointLimit,
-        writeLimit: rateLimit.writeRateLimit,
-        secretsLimit: rateLimit.secretsRateLimit,
-        authRateLimit: rateLimit.authRateLimit,
-        inviteUserRateLimit: rateLimit.inviteUserRateLimit,
-        mfaRateLimit: rateLimit.mfaRateLimit,
-        identityCreationLimit: rateLimit.identityCreationLimit,
-        projectCreationLimit: rateLimit.projectCreationLimit
-      };
+    const rateLimit = await $findOrCreateRateLimit();
+    const newRateLimitMaxConfiguration: typeof rateLimitMaxConfiguration = {
+      readLimit: rateLimit.readRateLimit,
+      publicEndpointLimit: rateLimit.publicEndpointLimit,
+      writeLimit: rateLimit.writeRateLimit,
+      secretsLimit: rateLimit.secretsRateLimit,
+      authRateLimit: rateLimit.authRateLimit,
+      inviteUserRateLimit: rateLimit.inviteUserRateLimit,
+      mfaRateLimit: rateLimit.mfaRateLimit,
+      identityCreationLimit: rateLimit.identityCreationLimit,
+      projectCreationLimit: rateLimit.projectCreationLimit
+    };
 
-      logger.info(newRateLimitMaxConfiguration, "syncRateLimitConfiguration: rate limit configuration");
-      Object.freeze(newRateLimitMaxConfiguration);
-      rateLimitMaxConfiguration = newRateLimitMaxConfiguration;
-    }
+    logger.info(newRateLimitMaxConfiguration, "syncRateLimitConfiguration: rate limit configuration");
+    Object.freeze(newRateLimitMaxConfiguration);
+    rateLimitMaxConfiguration = newRateLimitMaxConfiguration;
   };
 
   const syncRateLimitConfiguration: TRateLimitServiceFactory["syncRateLimitConfiguration"] = async () => {
