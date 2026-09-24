@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { CopyIcon, GitBranchIcon, TrashIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -85,6 +86,7 @@ export const SecretOverrideRow = ({
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditingValue, setIsEditingValue] = useState(false);
+  const [isSelected, setIsSelected] = useState(false);
   const [savedOverrideValue, setSavedOverrideValue] = useState<string | null>(null);
 
   useEffect(() => setSavedOverrideValue(null), [idOverride, valueOverride]);
@@ -227,7 +229,11 @@ export const SecretOverrideRow = ({
 
   return (
     <div
-      className="flex w-full cursor-text items-center gap-2"
+      className={twMerge(
+        "flex w-full cursor-text items-center gap-2",
+        (isSelected || isEditingValue) &&
+          "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
+      )}
       onFocusCapture={() => onActiveChange?.(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -280,11 +286,22 @@ export const SecretOverrideRow = ({
               tabIndex={canSaveOverride ? 0 : -1}
               aria-label={`Edit personal override in ${environment}`}
               className="ph-no-capture min-w-0 grow text-sm break-all outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onDoubleClick={() => canSaveOverride && setIsEditingValue(true)}
+              onClick={(event) => event.currentTarget.focus()}
+              onFocus={() => setIsSelected(true)}
+              onBlur={() => setIsSelected(false)}
+              onDoubleClick={() => {
+                if (canSaveOverride) {
+                  setIsSelected(false);
+                  setIsEditingValue(true);
+                }
+              }}
               onKeyDown={(event) => {
                 if (canSaveOverride && (event.key === "Enter" || event.key === "F2")) {
                   event.preventDefault();
+                  setIsSelected(false);
                   setIsEditingValue(true);
+                } else if (event.key === "Escape") {
+                  event.currentTarget.blur();
                 }
               }}
             >
@@ -295,7 +312,10 @@ export const SecretOverrideRow = ({
                 type="button"
                 variant="link"
                 size="xs"
-                onClick={() => setIsEditingValue(true)}
+                onClick={() => {
+                  setIsSelected(false);
+                  setIsEditingValue(true);
+                }}
                 aria-label={`Edit personal override in ${environment}`}
               >
                 Edit

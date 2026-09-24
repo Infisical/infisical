@@ -239,6 +239,7 @@ export const SecretEditTableRow = ({
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const [editingField, setEditingField] = useState<"key" | "value" | null>(null);
+  const [selectedField, setSelectedField] = useState<"key" | "value" | null>(null);
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
   const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -951,6 +952,7 @@ export const SecretEditTableRow = ({
         : isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue
     )
       return;
+    setSelectedField(null);
     setEditingField(field);
   };
 
@@ -958,6 +960,8 @@ export const SecretEditTableRow = ({
     if (event.key === "Enter" || event.key === "F2") {
       event.preventDefault();
       enterEdit(field);
+    } else if (event.key === "Escape") {
+      event.currentTarget.blur();
     }
   };
 
@@ -992,6 +996,9 @@ export const SecretEditTableRow = ({
           tabIndex={0}
           aria-label={`Edit secret name ${secretName}`}
           className="min-w-0 grow truncate outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={(event) => event.currentTarget.focus()}
+          onFocus={() => setSelectedField("key")}
+          onBlur={() => setSelectedField(null)}
           onDoubleClick={() => enterEdit("key")}
           onKeyDown={previewKeys("key")}
         >
@@ -1149,6 +1156,9 @@ export const SecretEditTableRow = ({
                 tabIndex={0}
                 aria-label={`Edit secret value in ${environmentName}`}
                 className="ph-no-capture min-w-0 grow text-sm break-all whitespace-pre-wrap outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={(event) => event.currentTarget.focus()}
+                onFocus={() => setSelectedField("value")}
+                onBlur={() => setSelectedField(null)}
                 onDoubleClick={() => enterEdit("value")}
                 onKeyDown={previewKeys("value")}
               >
@@ -2071,13 +2081,20 @@ export const SecretEditTableRow = ({
           isTruncatable
           className={twMerge(
             "border-r",
-            isOverride && "border-l border-b-border/50 border-l-override"
+            isOverride && "border-l border-b-border/50 border-l-override",
+            (selectedField === "key" || editingField === "key") &&
+              "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
           )}
         >
           {nameInput}
         </TableCell>
         <TableCell
-          className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}
+          className={twMerge(
+            "relative w-full max-w-0",
+            isOverride && "border-b-border/50",
+            (selectedField === "value" || editingField === "value") &&
+              "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
+          )}
         >
           <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
             {valueContent}
@@ -2090,7 +2107,11 @@ export const SecretEditTableRow = ({
   return (
     <div
       data-table-row-filter-contents
-      className="relative flex w-full flex-col gap-y-2 py-1.5 !filter-none"
+      className={twMerge(
+        "relative flex w-full flex-col gap-y-2 py-1.5 !filter-none",
+        (selectedField === "value" || editingField === "value") &&
+          "bg-project/20 outline outline-2 -outline-offset-2 outline-project"
+      )}
     >
       {valueContent}
     </div>
