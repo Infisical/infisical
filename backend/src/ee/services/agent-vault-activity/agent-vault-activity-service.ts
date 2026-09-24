@@ -84,7 +84,16 @@ export const agentVaultActivityServiceFactory = ({
   const storageCache = new Map<string, { storage: TAgentVaultActivityStorage; expiresAt: number }>();
 
   const $getStorage = async (config: TResolvedActivityStorageConfig, orgId: string) => {
-    const key = [orgId, config.appConnectionId, config.bucket, config.region, config.keyPrefix ?? ""].join("|");
+    // Read on every call so an edited connection is used at once: every edit bumps updatedAt, which is in the key.
+    const connection = await appConnectionDAL.findById(config.appConnectionId);
+    const key = [
+      orgId,
+      config.appConnectionId,
+      connection?.updatedAt.getTime() ?? "",
+      config.bucket,
+      config.region,
+      config.keyPrefix ?? ""
+    ].join("|");
     const cached = storageCache.get(key);
     if (cached && cached.expiresAt > Date.now()) return cached.storage;
 

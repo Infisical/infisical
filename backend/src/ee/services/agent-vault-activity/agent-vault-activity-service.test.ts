@@ -69,6 +69,7 @@ type TOverrides = {
   isReplay?: boolean;
   existingChunk?: unknown;
   pageRows?: unknown[];
+  connection?: unknown;
 };
 
 const build = (overrides: TOverrides = {}) => {
@@ -86,6 +87,7 @@ const build = (overrides: TOverrides = {}) => {
     ...values
   }));
   const validateConnection = vi.fn(async () => ({}));
+  const findConnection = vi.fn(async () => overrides.connection);
   const config = "config" in overrides ? overrides.config : enabledConfig();
 
   const service = agentVaultActivityServiceFactory({
@@ -113,7 +115,7 @@ const build = (overrides: TOverrides = {}) => {
       findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY)),
       findLastActivityUploadAt: vi.fn(async () => null)
     } as never,
-    appConnectionDAL: { findById: vi.fn() } as never,
+    appConnectionDAL: { findById: findConnection } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
@@ -124,7 +126,7 @@ const build = (overrides: TOverrides = {}) => {
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
 
-  return { service, createIfAbsent, recordStoredChunk, findChunk, repointChunk, validateConnection };
+  return { service, createIfAbsent, recordStoredChunk, findChunk, repointChunk, validateConnection, findConnection };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -479,5 +481,20 @@ describe("updateActivityConfig: when the connection is checked again", () => {
       keyPrefix: "/logs/"
     });
     expect(validateConnection).not.toHaveBeenCalled();
+  });
+});
+
+describe("the storage cache", () => {
+  test("an edited connection is used at once, not after the cache expires", async () => {
+    const { service, findConnection } = build({
+      connection: { id: "conn-1", updatedAt: new Date("2026-09-24T10:00:00.000Z") }
+    });
+    await record(service);
+    await record(service);
+    expect(buildActivityStorage).toHaveBeenCalledTimes(1);
+
+    findConnection.mockResolvedValue({ id: "conn-1", updatedAt: new Date("2026-09-24T10:05:00.000Z") });
+    await record(service);
+    expect(buildActivityStorage).toHaveBeenCalledTimes(2);
   });
 });
