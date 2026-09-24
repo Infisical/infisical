@@ -60,7 +60,7 @@ type TAgentVaultActivityServiceFactoryDep = {
   agentVaultActivityChunkDAL: TAgentVaultActivityChunkDALFactory;
   agentVaultActivityConfigDAL: TAgentVaultActivityConfigDALFactory;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findOne">;
-  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg">;
+  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "findLastActivityUploadAt">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -247,10 +247,7 @@ export const agentVaultActivityServiceFactory = ({
         return existing;
       }
 
-      const stored = await agentVaultActivityConfigDAL.recordStoredChunk(
-        { id: config.id, configVersion: config.configVersion },
-        tx
-      );
+      const stored = await agentVaultActivityConfigDAL.recordStoredChunk(config.id, tx);
       if (stored > AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS) {
         throw new BadRequestError({
           name: AgentVaultActivityErrorName.CeilingReached,
@@ -448,7 +445,7 @@ export const agentVaultActivityServiceFactory = ({
       isStorageFull: toCount(config.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
       connectionError,
-      lastRecordedAt: config.lastRecordedAt ?? null
+      lastRecordedAt: await agentVaultProxyDAL.findLastActivityUploadAt(projectId, config.destinationChangedAt ?? null)
     };
   };
 
@@ -524,7 +521,8 @@ export const agentVaultActivityServiceFactory = ({
       ...next,
       projectId,
       configVersion: (existing?.configVersion ?? 1) + (relocated ? 1 : 0),
-      ...(relocated ? { lastRecordedAt: null } : {})
+      // Only uploads after this count toward lastRecordedAt, so a move doesn't inherit the old bucket's.
+      ...(relocated || !existing ? { destinationChangedAt: new Date() } : {})
     };
 
     const saved = existing
@@ -547,7 +545,7 @@ export const agentVaultActivityServiceFactory = ({
       isStorageFull: toCount(saved.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
       connectionError: null,
-      lastRecordedAt: saved.lastRecordedAt ?? null,
+      lastRecordedAt: await agentVaultProxyDAL.findLastActivityUploadAt(projectId, saved.destinationChangedAt ?? null),
       relocated,
       appConnectionName
     };

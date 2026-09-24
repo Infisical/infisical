@@ -285,8 +285,8 @@ export const agentVaultProxyServiceFactory = ({
     };
   };
 
-  const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
-    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId);
+  const heartbeat = async ({ proxyId, activityUploaded }: THeartbeatDTO) => {
+    const proxy = await agentVaultProxyDAL.recordHeartbeat({ id: proxyId, activityUploaded });
     if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
     return { config: toConfig(proxy) };
   };

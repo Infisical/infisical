@@ -84,13 +84,19 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
 
   // heartbeatTTL is copied from the row's own pollInterval in the same statement, so it records the
   // interval the proxy is about to be handed back rather than whatever the settings said earlier.
-  const recordHeartbeat = async (id: string, tx?: Knex): Promise<TAgentVaultProxies | undefined> => {
+  const recordHeartbeat = async (
+    { id, activityUploaded }: { id: string; activityUploaded: boolean },
+    tx?: Knex
+  ): Promise<TAgentVaultProxies | undefined> => {
     try {
+      const now = new Date();
       // Raw because the typed update builder will not take a column reference as a value, and copying
       // pollInterval across in one statement is the point: two statements could straddle a settings save.
       const updated = await (tx || db).raw<{ rows: TAgentVaultProxies[] }>(
-        `UPDATE ?? SET "heartbeat" = ?, "heartbeatTTL" = "pollInterval" WHERE "id" = ? RETURNING *`,
-        [TableName.AgentVaultProxy, new Date(), id]
+        activityUploaded
+          ? `UPDATE ?? SET "heartbeat" = ?, "heartbeatTTL" = "pollInterval", "activityUploadedAt" = ? WHERE "id" = ? RETURNING *`
+          : `UPDATE ?? SET "heartbeat" = ?, "heartbeatTTL" = "pollInterval" WHERE "id" = ? RETURNING *`,
+        activityUploaded ? [TableName.AgentVaultProxy, now, now, id] : [TableName.AgentVaultProxy, now, id]
       );
       return updated.rows[0];
     } catch (error) {
@@ -98,5 +104,18 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat };
+  const findLastActivityUploadAt = async (projectId: string, since: Date | null, tx?: Knex): Promise<Date | null> => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.AgentVaultProxy)
+        .where({ projectId })
+        .max("activityUploadedAt as latest");
+      if (since) void query.andWhere("activityUploadedAt", ">", since);
+      const row = (await query.first()) as { latest: Date | null } | undefined;
+      return row?.latest ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find last agent vault activity upload" });
+    }
+  };
+
+  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat, findLastActivityUploadAt };
 };

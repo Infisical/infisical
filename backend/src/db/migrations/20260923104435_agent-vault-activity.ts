@@ -24,7 +24,7 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("configVersion").notNullable().defaultTo(1);
 
       t.bigint("storedChunkCount").notNullable().defaultTo(0);
-      t.timestamp("lastRecordedAt", { useTz: true });
+      t.timestamp("destinationChangedAt", { useTz: true });
 
       t.timestamps(true, true, true);
     });
@@ -83,9 +83,27 @@ export async function up(knex: Knex): Promise<void> {
       });
     }
   }
+
+  if (await knex.schema.hasTable(TableName.AgentVaultProxy)) {
+    const hasUploadedAt = await knex.schema.hasColumn(TableName.AgentVaultProxy, "activityUploadedAt");
+    if (!hasUploadedAt) {
+      await knex.schema.alterTable(TableName.AgentVaultProxy, (t) => {
+        t.timestamp("activityUploadedAt", { useTz: true });
+      });
+    }
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.AgentVaultProxy)) {
+    const hasUploadedAt = await knex.schema.hasColumn(TableName.AgentVaultProxy, "activityUploadedAt");
+    if (hasUploadedAt) {
+      await knex.schema.alterTable(TableName.AgentVaultProxy, (t) => {
+        t.dropColumn("activityUploadedAt");
+      });
+    }
+  }
+
   if (await knex.schema.hasTable(TableName.AgentVaultSession)) {
     const hasActivityKey = await knex.schema.hasColumn(TableName.AgentVaultSession, "encryptedActivityKey");
     if (hasActivityKey) {

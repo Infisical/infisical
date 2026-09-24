@@ -24,16 +24,11 @@ export const agentVaultActivityConfigDALFactory = (db: TDbClient) => {
   };
 
   // One UPDATE, never read-modify-write: its row lock is what keeps the ceiling check correct under load.
-  const recordStoredChunk = async (
-    { id, configVersion }: { id: string; configVersion: number },
-    tx?: Knex
-  ): Promise<number> => {
+  const recordStoredChunk = async (id: string, tx?: Knex): Promise<number> => {
     try {
       const result = await (tx || db).raw<{ rows: { storedChunkCount: string }[] }>(
-        `UPDATE ?? SET "storedChunkCount" = "storedChunkCount" + 1,
-           "lastRecordedAt" = CASE WHEN "configVersion" = ? THEN now() ELSE "lastRecordedAt" END
-         WHERE "id" = ? RETURNING "storedChunkCount"`,
-        [TableName.AgentVaultActivityConfig, configVersion, id]
+        `UPDATE ?? SET "storedChunkCount" = "storedChunkCount" + 1 WHERE "id" = ? RETURNING "storedChunkCount"`,
+        [TableName.AgentVaultActivityConfig, id]
       );
       return Number(result.rows[0]?.storedChunkCount ?? 0);
     } catch (error) {

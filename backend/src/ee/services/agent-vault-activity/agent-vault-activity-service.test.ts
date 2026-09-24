@@ -110,7 +110,8 @@ const build = (overrides: TOverrides = {}) => {
       findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
     } as never,
     agentVaultProxyDAL: {
-      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
+      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY)),
+      findLastActivityUploadAt: vi.fn(async () => null)
     } as never,
     appConnectionDAL: { findById: vi.fn() } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
@@ -140,7 +141,7 @@ describe("recordChunk: who is allowed to write", () => {
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
-    expect(recordStoredChunk).toHaveBeenCalledWith({ id: "cfg-1", configVersion: 3 }, expect.anything());
+    expect(recordStoredChunk).toHaveBeenCalledWith("cfg-1", expect.anything());
 
     const values = createIfAbsent.mock.calls[0][0];
     expect(String(values.objectKey)).toMatch(

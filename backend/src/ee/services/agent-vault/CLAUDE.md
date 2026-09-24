@@ -192,6 +192,10 @@ hostile input: it must never be able to erase or hide its own records.
   create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
 - **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
   (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
+- **`lastRecordedAt` comes from proxy heartbeats**, not chunk rows: a proxy sends `activityUploaded` when it
+  uploaded since its last answered heartbeat, stamped on the proxy row in the same UPDATE. The config keeps only
+  `destinationChangedAt`, so a move doesn't inherit the old bucket's uploads. A row is written before its upload,
+  so row inserts would say "recorded" while S3 refused every PUT.
 - **History pages order and cursor on `chunkId`** (a ULID, unique per session); split them and pages drop
   chunks. Live polling reads by our `createdAt` instead (`receivedAfter`, overlapping by
   `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS`), so repeats are expected and deduped by chunk id.

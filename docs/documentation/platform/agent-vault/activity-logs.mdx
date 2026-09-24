@@ -186,6 +186,8 @@ To stop using a connection without replacing it, turn **Enabled** off, set **AWS
 
 ## What this doesn't cover
 
-If a proxy can't reach your bucket, it keeps retrying and writes the failure to its own logs, but doesn't report it to Infisical. If a session you expect to see activity for shows none, check that proxy's logs.
+**Last Recorded** on the **Activity Logging** card shows when a proxy last reported uploading activity to your bucket. Proxies report on every poll, so the time can lag by one poll interval. If a proxy can't reach your bucket, it keeps retrying and logs the failure, but doesn't report the error to Infisical. If **Last Recorded** stops updating while agents are active, or a session you expect to see activity for shows none, check each proxy's logs. If you delete a proxy, its uploads no longer count toward **Last Recorded**.
+
+If a proxy's clock runs more than 5 minutes ahead of Infisical's, Infisical refuses that proxy's activity. The proxy logs how far ahead its clock is.
 
 Recording is an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch it off.

@@ -4417,7 +4417,8 @@ export const AGENT_VAULT = {
       "Whether activity logging has reached its limit for this organization. Contact Infisical support to raise it.",
     hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again.",
     lastRecordedAt:
-      "When a record last landed in the currently configured bucket. Null when nothing has been recorded there yet."
+      "When a proxy last reported uploading activity to the current bucket and prefix, to within one poll interval. Null when none has since the destination was last changed.",
+    activityUploaded: "Whether the proxy has uploaded any activity since its last heartbeat that Infisical answered."
   },
   SESSION: {
     sessionId: "The ID of the session.",

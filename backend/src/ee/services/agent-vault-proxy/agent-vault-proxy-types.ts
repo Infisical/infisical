@@ -41,6 +41,7 @@ export type TEnrollProxyDTO = {
 
 export type THeartbeatDTO = {
   proxyId: string;
+  activityUploaded: boolean;
 };
 
 export type TResolveSessionDTO = {
