@@ -4373,7 +4373,7 @@ export const AGENT_VAULT = {
     lastSeq: "The sequence number of the last record in the chunk, counted per proxy.",
     recordCount: "How many records the chunk holds.",
     droppedCount:
-      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused.",
+      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused or switched off.",
     configVersion:
       "The version of the storage configuration the chunk was written under. An earlier version means the chunk is in a bucket or prefix that is no longer configured.",
     ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
@@ -4381,9 +4381,15 @@ export const AGENT_VAULT = {
     objectKey: "Where the encrypted chunk lives in the configured bucket.",
     uploadUrl: "A presigned URL to PUT the encrypted chunk to. Accepts exactly ciphertextBytes bytes.",
     presignedGetUrl:
-      "A presigned URL to GET the encrypted chunk from. Null when the chunk was written under an earlier storage configuration and is no longer reachable.",
+      "A presigned URL to GET the encrypted chunk from. Null when the chunk was written under an earlier storage configuration, or when `storageUnavailable` is set.",
     expiresInSeconds: "How long the presigned URL stays valid.",
-    sessionKey: "The session's activity key, base64 encoded. Decrypts every chunk in this response.",
+    sessionKey:
+      "The session's activity key, base64 encoded. Decrypts every chunk in this response. Null when there is nothing to decrypt.",
+    storageUnavailable:
+      "Set when the session recorded activity that cannot be read right now. The chunks are listed without URLs to fetch them. Null otherwise.",
+    storageUnavailableReason:
+      "`no-connection` when activity logging has no AWS connection, `connection-unusable` when Infisical could not use it.",
+    storageUnavailableMessage: "Why the connection could not be used. Only returned to administrators.",
     nextCursor:
       "Pass as `before` to fetch the next, older page. Null when there are no older chunks, and always null when reading with `receivedAfter`.",
     hasMore:

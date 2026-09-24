@@ -334,6 +334,10 @@ export type TAgentVaultActivityPage = {
   nextCursor: string | null;
   hasMore: boolean;
   nextReceivedAfter: string;
+  storageUnavailable: {
+    reason: "no-connection" | "connection-unusable";
+    message: string | null;
+  } | null;
 };
 
 export type TAgentVaultActivityRecord = {

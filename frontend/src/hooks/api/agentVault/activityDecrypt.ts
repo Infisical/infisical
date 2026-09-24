@@ -200,7 +200,8 @@ export const decryptActivityPage = async (
   const decrypted: Record<string, TAgentVaultDecryptedChunk> = {};
   const { sessionKey } = page;
   if (!sessionKey || !page.chunks.length) {
-    cache.settle();
+    // Rows that could not be opened have not been shown, so the load that finally opens them is the first one.
+    if (!page.storageUnavailable) cache.settle();
     return { ...page, decrypted };
   }
 

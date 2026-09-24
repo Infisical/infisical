@@ -184,6 +184,8 @@ export const ActivityTab = ({ session }: Props) => {
 
   const isEnabled = pages?.[0]?.enabled ?? false;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
+  const storageUnavailable =
+    data?.pages.find((page) => page.storageUnavailable)?.storageUnavailable ?? null;
 
   const seenProxies = useRef(new Map<string, string>());
   if (seenProxiesSessionId.current !== session.id) {
@@ -357,6 +359,31 @@ export const ActivityTab = ({ session }: Props) => {
       Retry
     </Button>
   );
+
+  if (!isPending && !isPlaceholderData && !isLoadError && storageUnavailable) {
+    const unreadableDescription = isAdmin
+      ? "Activity logging has no AWS connection, so this session's recorded requests can't be loaded."
+      : "This session's recorded requests aren't available. Ask an admin.";
+
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Activity can&apos;t be read</EmptyTitle>
+          <EmptyDescription>{unreadableDescription}</EmptyDescription>
+        </EmptyHeader>
+        {isAdmin && (
+          <Button variant="av" asChild>
+            <Link
+              to="/organizations/$orgId/agent-vault/activity-logs"
+              params={{ orgId: currentOrg.id }}
+            >
+              Go to Activity Logs
+            </Link>
+          </Button>
+        )}
+      </Empty>
+    );
+  }
 
   if (!isPending && !isPlaceholderData && !isLoadError && !isEnabled && !hasChunks && !range) {
     const offDescription = isAdmin

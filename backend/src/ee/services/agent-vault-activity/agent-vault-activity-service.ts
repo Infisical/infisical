@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TAgentVaultActivityConfigs } from "@app/db/schemas";
+import { TAgentVaultActivityChunks, TAgentVaultActivityConfigs } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -36,7 +36,8 @@ import {
   AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS,
   AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS,
-  AgentVaultActivityErrorName
+  AgentVaultActivityErrorName,
+  AgentVaultActivityStorageUnavailableReason
 } from "./agent-vault-activity-constants";
 import { unwrapActivityKey } from "./agent-vault-activity-secrets";
 import {
@@ -47,6 +48,7 @@ import {
   TAgentVaultActivityStorage
 } from "./agent-vault-activity-storage";
 import {
+  TAgentVaultActivityStorageUnavailable,
   TGetActivityConfigDTO,
   TGetSessionActivityDTO,
   TRecordChunkDTO,
@@ -99,6 +101,22 @@ export const agentVaultActivityServiceFactory = ({
   };
 
   const toCount = (value: number | string) => Number(value);
+
+  const toChunkView = (row: TAgentVaultActivityChunks, presignedGetUrl: string | null) => ({
+    chunkId: row.chunkId,
+    proxyId: row.proxyId,
+    proxyName: row.proxyName ?? null,
+    startedAt: row.startedAt,
+    endedAt: row.endedAt,
+    firstSeq: toCount(row.firstSeq),
+    lastSeq: toCount(row.lastSeq),
+    recordCount: row.recordCount,
+    droppedCount: toCount(row.droppedCount),
+    configVersion: row.configVersion,
+    ciphertextBytes: row.ciphertextBytes,
+    iv: row.iv,
+    presignedGetUrl
+  });
 
   const toConfigView = (config: TAgentVaultActivityConfigs) => ({
     enabled: config.enabled,
@@ -291,10 +309,11 @@ export const agentVaultActivityServiceFactory = ({
       chunks: [],
       nextCursor: null,
       hasMore: false,
-      nextReceivedAfter: caughtUpTo
+      nextReceivedAfter: caughtUpTo,
+      storageUnavailable: null
     };
 
-    if (!config || !storage) return empty;
+    if (!config) return empty;
 
     const { chunks: rows, hasMore } = receivedAfter
       ? await agentVaultActivityChunkDAL.findReceivedForSession({
@@ -326,6 +345,32 @@ export const agentVaultActivityServiceFactory = ({
       return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
     }
 
+    const page = {
+      enabled: isIngestEnabled(config),
+      projectId,
+      configVersion: config.configVersion,
+      nextCursor: hasMore && !receivedAfter ? rows[rows.length - 1].chunkId : null,
+      ...continuation
+    };
+
+    // A live read holds its cursor rather than skipping past rows it could not hand links for, so they still
+    // arrive once the connection is back.
+    const unreadable = (storageUnavailable: TAgentVaultActivityStorageUnavailable) =>
+      receivedAfter
+        ? {
+            ...page,
+            sessionKey: null,
+            chunks: [],
+            hasMore: false,
+            nextReceivedAfter: receivedAfter,
+            storageUnavailable
+          }
+        : { ...page, sessionKey: null, chunks: rows.map((row) => toChunkView(row, null)), storageUnavailable };
+
+    if (!storage) {
+      return unreadable({ reason: AgentVaultActivityStorageUnavailableReason.NoConnection, message: null });
+    }
+
     const activityStorage = await $getStorage(storage, ctx.actorOrgId);
     const sessionKey = await unwrapActivityKey(
       { projectId, encryptedActivityKey: session.encryptedActivityKey },
@@ -333,33 +378,15 @@ export const agentVaultActivityServiceFactory = ({
     );
 
     const chunks = await Promise.all(
-      rows.map(async (row) => ({
-        chunkId: row.chunkId,
-        proxyId: row.proxyId,
-        proxyName: row.proxyName ?? null,
-        startedAt: row.startedAt,
-        endedAt: row.endedAt,
-        firstSeq: toCount(row.firstSeq),
-        lastSeq: toCount(row.lastSeq),
-        recordCount: row.recordCount,
-        droppedCount: toCount(row.droppedCount),
-        configVersion: row.configVersion,
-        ciphertextBytes: row.ciphertextBytes,
-        iv: row.iv,
-        presignedGetUrl:
+      rows.map(async (row) =>
+        toChunkView(
+          row,
           row.configVersion === config.configVersion ? await activityStorage.presignGet(row.objectKey) : null
-      }))
+        )
+      )
     );
 
-    return {
-      enabled: isIngestEnabled(config),
-      sessionKey: sessionKey.toString("base64"),
-      projectId,
-      configVersion: config.configVersion,
-      chunks,
-      nextCursor: hasMore && !receivedAfter ? rows[rows.length - 1].chunkId : null,
-      ...continuation
-    };
+    return { ...page, sessionKey: sessionKey.toString("base64"), chunks, storageUnavailable: null };
   };
 
   const getActivityConfig = async ({ projectId, ctx }: TGetActivityConfigDTO) => {

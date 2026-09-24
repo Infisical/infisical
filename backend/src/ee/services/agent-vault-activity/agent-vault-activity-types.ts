@@ -2,6 +2,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
+import { AgentVaultActivityStorageUnavailableReason } from "./agent-vault-activity-constants";
 
 export type TAgentVaultActivityChunkInput = {
   chunkId: string;
@@ -51,4 +52,9 @@ export type TResolvedActivityStorageConfig = {
   bucket: string;
   region: AWSRegion;
   keyPrefix: string | null;
+};
+
+export type TAgentVaultActivityStorageUnavailable = {
+  reason: (typeof AgentVaultActivityStorageUnavailableReason)[keyof typeof AgentVaultActivityStorageUnavailableReason];
+  message: string | null;
 };

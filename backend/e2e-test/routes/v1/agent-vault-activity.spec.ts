@@ -987,6 +987,35 @@ describe("Agent Vault activity", async () => {
       expect(body.chunks).toHaveLength(2);
     });
 
+    test("without a connection, a session lists what it recorded as unreadable rather than as nothing", async () => {
+      await configure();
+      const { session } = await seedChunks(2);
+
+      expect((await saveConfig({ enabled: false, appConnectionId: null })).statusCode).toBe(200);
+
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload) as {
+        sessionKey: string | null;
+        chunks: { presignedGetUrl: string | null }[];
+        storageUnavailable: { reason: string; message: string | null } | null;
+      };
+      expect(body.storageUnavailable).toEqual({ reason: "no-connection", message: null });
+      expect(body.sessionKey).toBeNull();
+      expect(body.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null, null]);
+
+      const since = new Date(Date.now() - 60 * 60_000).toISOString();
+      const live = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity?receivedAfter=${since}`);
+      const liveBody = JSON.parse(live.payload) as {
+        chunks: unknown[];
+        nextReceivedAfter: string;
+        storageUnavailable: { reason: string } | null;
+      };
+      expect(liveBody.chunks).toEqual([]);
+      expect(liveBody.nextReceivedAfter).toBe(since);
+      expect(liveBody.storageUnavailable?.reason).toBe("no-connection");
+    });
+
     test("a session with no activity comes back empty rather than erroring", async () => {
       await configure();
       const bundle = await createAccessBundle(`activity-empty-${Date.now()}`);

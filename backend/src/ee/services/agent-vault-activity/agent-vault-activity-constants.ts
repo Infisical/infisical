@@ -26,6 +26,11 @@ export const AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES = 16 * 1024 * 1024;
 
 export const AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS = 2 * 60_000;
 
+export const AgentVaultActivityStorageUnavailableReason = {
+  NoConnection: "no-connection",
+  ConnectionUnusable: "connection-unusable"
+} as const;
+
 // Wire contract: the Go proxy (cli/packages/agentvault/activity.go) switches on these APIError.Name values.
 export const AgentVaultActivityErrorName = {
   CeilingReached: "AgentVaultActivityCeilingReached",

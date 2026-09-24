@@ -9,7 +9,8 @@ import {
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS,
   AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
   AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS,
-  AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES
+  AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES,
+  AgentVaultActivityStorageUnavailableReason
 } from "./agent-vault-activity-constants";
 import { normalizeKeyPrefix } from "./agent-vault-activity-storage";
 
@@ -84,7 +85,16 @@ export const AgentVaultActivityResponseSchema = z.object({
   chunks: AgentVaultActivityChunkViewSchema.array(),
   nextCursor: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.nextCursor),
   hasMore: z.boolean().describe(AGENT_VAULT.ACTIVITY.hasMore),
-  nextReceivedAfter: z.date().describe(AGENT_VAULT.ACTIVITY.nextReceivedAfter)
+  nextReceivedAfter: z.date().describe(AGENT_VAULT.ACTIVITY.nextReceivedAfter),
+  storageUnavailable: z
+    .object({
+      reason: z
+        .nativeEnum(AgentVaultActivityStorageUnavailableReason)
+        .describe(AGENT_VAULT.ACTIVITY.storageUnavailableReason),
+      message: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.storageUnavailableMessage)
+    })
+    .nullable()
+    .describe(AGENT_VAULT.ACTIVITY.storageUnavailable)
 });
 
 export const AgentVaultActivityConfigViewSchema = z.object({
