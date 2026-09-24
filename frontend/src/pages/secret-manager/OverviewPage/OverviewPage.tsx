@@ -235,6 +235,11 @@ import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection"
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
+  getTableRowActivityId,
+  type TableRowActivityChangeHandler,
+  type TableRowActivityId
+} from "./components/tableRowActivity";
+import {
   DownloadEnvButton,
   DynamicSecretTableRow,
   EmptyResourceDisplay,
@@ -633,6 +638,23 @@ const OverviewPageContent = () => {
   const isProtectedBranch = Boolean(boardPolicy);
 
   const isSingleEnvView = visibleEnvs.length === 1;
+  const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
+    (rowId, isActive) => {
+      setActiveTableRows((current) => {
+        if (current.has(rowId) === isActive) return current;
+
+        const next = new Set(current);
+        if (isActive) {
+          next.add(rowId);
+        } else {
+          next.delete(rowId);
+        }
+        return next;
+      });
+    },
+    []
+  );
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
   const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
@@ -2234,6 +2256,11 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntriesOnPage =
+    mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
+    secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
+    mergedSecKeys.some((key) => selectedEntries.secret[key]);
+
   const allRowsSelectedOnPage = useMemo(() => {
     if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
 
@@ -3139,7 +3166,13 @@ const OverviewPageContent = () => {
                       )}
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="transition-all duration-500">
+                  <TableBody
+                    className={twMerge(
+                      "transition-all duration-500 [&>tr>td>*:not([data-table-row-filter-contents])]:transition-[filter] [&>tr>td>*:not([data-table-row-filter-contents])]:duration-200 motion-reduce:[&>tr>td>*:not([data-table-row-filter-contents])]:transition-none [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-none [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-none [@media(hover:hover)]:[&>tr:hover>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none",
+                      (activeTableRows.size > 0 || hasSelectedEntriesOnPage) &&
+                        "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
+                    )}
+                  >
                     {showOverviewSkeleton ? (
                       Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                         <TableRow className="group" key={`loading-row-${index + 1}`}>
@@ -3193,6 +3226,8 @@ const OverviewPageContent = () => {
                               }
                               importedSecrets={importedSecretsFlat}
                               isVisible={isSingleEnvSecretsVisible}
+                              activityId={getTableRowActivityId("secret-import", imp.id)}
+                              onActivityChange={handleTableRowActivityChange}
                             />
                           ))}
                         {!isSingleEnvView &&
@@ -3215,6 +3250,12 @@ const OverviewPageContent = () => {
                                 }
                                 importedSecrets={importedSecretsFlat}
                                 isVisible={isSingleEnvSecretsVisible}
+                                activityId={getTableRowActivityId(
+                                  "secret-import",
+                                  importEnvSlug,
+                                  importPath
+                                )}
+                                onActivityChange={handleTableRowActivityChange}
                               />
                             )
                           )}
@@ -3331,6 +3372,11 @@ const OverviewPageContent = () => {
                                 text: `Successfully authenticated to ${SECRET_ROTATION_MAP[secretRotation.type].name} with the current rotated credentials for ${secretRotation.name}`
                               });
                             }}
+                            activityId={getTableRowActivityId(
+                              "secret-rotation",
+                              secretRotationName
+                            )}
+                            onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
                         {honeyTokenNames.map((honeyTokenName, index) => (
@@ -3392,6 +3438,8 @@ const OverviewPageContent = () => {
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
+                            activityId={getTableRowActivityId("secret", key)}
+                            onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
                         <SecretNoAccessTableRow
@@ -3414,8 +3462,10 @@ const OverviewPageContent = () => {
                           !isTableEmpty && (
                             <QuickAddSecretRow
                               autoQueueOnBlur={isBatchModeActive}
+                              activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
                               existingSecretKeys={mergedSecKeys}
+                              onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment) =>
                                 handleSecretCreate(
