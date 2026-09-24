@@ -127,7 +127,8 @@ const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
   fetch: "Could not be read from the bucket",
   size: "The stored object is the wrong size",
   gcm: "Could not be decrypted",
-  json: "The decrypted contents were not readable"
+  json: "The decrypted contents were not readable",
+  mismatch: "Its records don't match the proxy and batch that sent them"
 };
 
 const statusTone = (status: number) => {

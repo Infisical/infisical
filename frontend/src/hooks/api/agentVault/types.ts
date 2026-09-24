@@ -366,7 +366,13 @@ export type TAgentVaultActivityRecord = {
 };
 
 /** Why a chunk could not be shown. Rendered as one placeholder row rather than failing the whole view. */
-export type TAgentVaultActivityGapReason = "fetch" | "size" | "gcm" | "json" | "repointed";
+export type TAgentVaultActivityGapReason =
+  | "fetch"
+  | "size"
+  | "gcm"
+  | "json"
+  | "mismatch"
+  | "repointed";
 
 export type TAgentVaultActivityGap = {
   chunkId: string;

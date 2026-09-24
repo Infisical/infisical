@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { parseActivityRecords } from "./activityDecrypt";
+import { parseActivityRecords, recordsMatchChunk } from "./activityDecrypt";
 
 const record = {
   ts: "2026-09-23T10:00:00.000Z",
@@ -32,5 +32,32 @@ describe("parseActivityRecords", () => {
 
   it("refuses anything that is not an array of records", () => {
     assert.equal(parseActivityRecords({ records: [record] }), null);
+  });
+});
+
+describe("recordsMatchChunk", () => {
+  const chunk = { proxyId: "proxy-1", recordCount: 2, firstSeq: 10, lastSeq: 12 };
+  const records = parseActivityRecords([
+    { ...record, seq: 10 },
+    { ...record, seq: 12 }
+  ])!;
+
+  it("accepts records that match the batch they came in, gaps in the sequence included", () => {
+    assert.equal(recordsMatchChunk(records, chunk), true);
+  });
+
+  it("refuses a record that claims another proxy", () => {
+    assert.equal(
+      recordsMatchChunk([records[0], { ...records[1], proxyId: "proxy-2" }], chunk),
+      false
+    );
+  });
+
+  it("refuses more or fewer records than the batch counts", () => {
+    assert.equal(recordsMatchChunk(records.slice(0, 1), chunk), false);
+  });
+
+  it("refuses a sequence number outside the batch's range", () => {
+    assert.equal(recordsMatchChunk([records[0], { ...records[1], seq: 13 }], chunk), false);
   });
 });

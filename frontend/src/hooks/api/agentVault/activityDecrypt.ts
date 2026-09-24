@@ -87,6 +87,25 @@ export const parseActivityRecords = (json: unknown): TAgentVaultActivityRecord[]
   return parsed.success ? (parsed.data as TAgentVaultActivityRecord[]) : null;
 };
 
+/**
+ * The chunk's proxy comes from the authenticated caller and is bound into the AAD, while each record's
+ * fields are whatever the proxy wrote. A batch whose records disagree with it, claiming another proxy's id,
+ * more records than the row counts, or sequence numbers outside its range, can only come from a proxy
+ * that lied. Nothing in it can be trusted, so it is shown as a batch that cannot be read rather than
+ * relabelled.
+ */
+export const recordsMatchChunk = (
+  records: TAgentVaultActivityRecord[],
+  chunk: Pick<TAgentVaultActivityChunk, "proxyId" | "recordCount" | "firstSeq" | "lastSeq">
+) =>
+  records.length === chunk.recordCount &&
+  records.every(
+    (record) =>
+      record.proxyId === chunk.proxyId &&
+      record.seq >= chunk.firstSeq &&
+      record.seq <= chunk.lastSeq
+  );
+
 const dropFor = (chunk: TAgentVaultActivityChunk): TAgentVaultActivityDrop | null =>
   chunk.droppedCount > 0
     ? {
@@ -187,6 +206,7 @@ const openChunk = async (
   try {
     const records = parseActivityRecords(JSON.parse(new TextDecoder().decode(plaintext)));
     if (!records) return gapFor(chunk, "json");
+    if (!recordsMatchChunk(records, chunk)) return gapFor(chunk, "mismatch");
     return {
       records,
       gap: null,
