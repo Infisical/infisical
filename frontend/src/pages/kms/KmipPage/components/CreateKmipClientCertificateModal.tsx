@@ -338,7 +338,17 @@ export const CreateKmipClientCertificateModal = ({
 }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          const ttlInput = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>(
+            "#kmip-cert-ttl"
+          );
+          if (ttlInput) {
+            event.preventDefault();
+            ttlInput.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>KMIP Client Certificate</DialogTitle>
           <DialogDescription>

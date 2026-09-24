@@ -1,6 +1,5 @@
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
+  ChevronDownIcon,
   FileBadgeIcon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -120,12 +119,6 @@ export const KmipClientTable = () => {
     "upgradePlan"
   ] as const);
 
-  const handleSort = () => {
-    setOrderDirection((prev) =>
-      prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
-    );
-  };
-
   const cannotEditKmipClient = permission.cannot(
     ProjectPermissionKmipActions.UpdateClients,
     ProjectPermissionSub.Kmip
@@ -206,22 +199,20 @@ export const KmipClientTable = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <TableHeadLabel>Name</TableHeadLabel>
-                    <IconButton
-                      variant="ghost"
-                      size="xs"
-                      aria-label="Sort clients by name"
-                      onClick={handleSort}
-                    >
-                      {orderDirection === OrderByDirection.DESC ? (
-                        <ArrowUpIcon />
-                      ) : (
-                        <ArrowDownIcon />
-                      )}
-                    </IconButton>
-                  </div>
+                <TableHead
+                  sortDirection={
+                    orderDirection === OrderByDirection.ASC ? "ascending" : "descending"
+                  }
+                  onSortChange={(direction) =>
+                    setOrderDirection(
+                      direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC
+                    )
+                  }
+                >
+                  Name
+                  <ChevronDownIcon
+                    className={orderDirection === OrderByDirection.DESC ? "rotate-180" : undefined}
+                  />
                 </TableHead>
                 <TableHead>
                   <TableHeadLabel>Description</TableHeadLabel>
@@ -256,7 +247,9 @@ export const KmipClientTable = () => {
                     <TableRow key={id}>
                       <TableCell>{name}</TableCell>
                       <TableCell className="max-w-80 break-all">{description}</TableCell>
-                      <TableCell className="max-w-40">{permissions.join(", ")}</TableCell>
+                      <TableCell className="max-w-40">
+                        {permissions.length ? permissions.join(", ") : "—"}
+                      </TableCell>
                       <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
