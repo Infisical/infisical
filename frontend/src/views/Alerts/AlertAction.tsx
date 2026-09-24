@@ -30,6 +30,7 @@ import { cn } from "@app/components/v3/utils";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
+  ALERT_EVENT_TYPE_LABELS,
   AlertChannelType,
   AlertEventType,
   AlertResourceType,
@@ -40,6 +41,7 @@ import {
 } from "@app/hooks/api/alerts";
 
 import { AddAlertModal } from "./AddAlertModal";
+import { getChannelIcon } from "./channelIcons";
 
 type Props = {
   identityId: string;
@@ -52,13 +54,10 @@ type Props = {
   renderPermissionGate: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
 };
 
-const formatChannelSummary = (alert: TAlert): string =>
-  Object.values(AlertChannelType)
-    .filter((type) =>
-      alert.channels.some((channel) => channel.channelType === type && channel.enabled)
-    )
-    .map((type) => ALERT_CHANNEL_TYPE_LABELS[type])
-    .join(", ");
+const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
+  Object.values(AlertChannelType).filter((type) =>
+    alert.channels.some((channel) => channel.channelType === type && channel.enabled)
+  );
 
 export const AlertAction = ({
   identityId,
@@ -144,16 +143,34 @@ export const AlertAction = ({
             </div>
             <div className="max-h-80 divide-y divide-border overflow-y-auto">
               {alerts.map((alert) => {
-                const channelSummary = formatChannelSummary(alert);
+                const channelTypes = getEnabledChannelTypes(alert);
                 return (
                   <div key={alert.id} className="flex items-center justify-between gap-3 px-4 py-3">
                     <div className={cn("flex min-w-0 flex-col", !alert.enabled && "opacity-60")}>
                       <span className="truncate text-sm text-foreground">{alert.name}</span>
-                      {channelSummary && (
-                        <span className="truncate text-xs text-muted">
-                          Notifies {channelSummary}
+                      <div className="flex min-w-0 items-center gap-2 text-xs text-muted">
+                        <span className="truncate">
+                          {ALERT_EVENT_TYPE_LABELS[alert.eventType as AlertEventType]}
                         </span>
-                      )}
+                        {channelTypes.length > 0 && (
+                          <>
+                            <span aria-hidden>·</span>
+                            <div className="flex shrink-0 items-center gap-1">
+                              {channelTypes.map((type) => {
+                                const ChannelIcon = getChannelIcon(type);
+                                return (
+                                  <ChannelIcon
+                                    key={type}
+                                    role="img"
+                                    aria-label={ALERT_CHANNEL_TYPE_LABELS[type]}
+                                    className="size-3.5"
+                                  />
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                     {readOnly ? (
                       <Badge variant={alert.enabled ? "success" : "neutral"}>
