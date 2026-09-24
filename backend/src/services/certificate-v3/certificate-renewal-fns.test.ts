@@ -159,6 +159,15 @@ describe("resolveRenewalCustomExtensions", () => {
     ).toEqual([]);
   });
 
+  it("omits an unreadable value rather than blocking the renewal, whichever side it came from", () => {
+    const unreadable = [{ oid: CUSTOM_OID, value: "BQA=", critical: false }];
+
+    expect(resolveRenewalCustomExtensions({ exists: true, customExtensions: unreadable }, {})).toEqual([]);
+    expect(
+      resolveRenewalCustomExtensions({ exists: false, customExtensions: null }, { customExtensions: unreadable })
+    ).toEqual([]);
+  });
+
   it("reads the certificate back when there is no request behind it, for imports and discovery", () => {
     expect(
       resolveRenewalCustomExtensions({ exists: false, customExtensions: null }, { customExtensions: [asked] })

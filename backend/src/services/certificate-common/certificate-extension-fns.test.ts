@@ -446,6 +446,32 @@ describe("resolveCustomExtensions", () => {
     expect(toRequestCustomExtensions(stored).map((entry) => entry.oid)).toEqual([CUSTOM_OID, SID_OID]);
   });
 
+  it("accepts no value it cannot read back, so a renewal can always reissue what a user asked for", () => {
+    const candidates = [
+      "ops-prod",
+      "a".repeat(200),
+      "h\u00e9llo",
+      "  ",
+      "0",
+      "*",
+      "a,b",
+      "5",
+      "S-1-5-21-1-2-3-4",
+      "WebServer"
+    ];
+
+    for (const oid of ["1.3.6.1.4.1.99001.7", ...Object.keys(CUSTOM_EXTENSION_PRESETS_BY_OID)]) {
+      for (const candidate of candidates) {
+        if (validateCustomExtensionValue(oid, candidate) !== null) continue;
+        const stored = encodeCustomExtensionValue(oid, candidate);
+        expect(
+          describeCustomExtensionValue(oid, stored),
+          `${oid} accepted '${candidate}' but cannot read it back`
+        ).not.toBeNull();
+      }
+    }
+  });
+
   it("omits an extension whose stored value cannot be read back", () => {
     const stored = [{ oid: SID_OID, critical: false, value: Buffer.from([0x05, 0x00]).toString("base64") }];
 
@@ -714,7 +740,6 @@ describe("toRequestCustomExtensions", () => {
     ];
 
     expect(toRequestCustomExtensions(stored)).toEqual([]);
-    expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 });
 
@@ -727,7 +752,6 @@ describe("parseImportedCustomExtensions", () => {
     const stored = parseImportedCustomExtensions(certificate);
 
     expect(stored).toEqual([{ oid: "1.3.6.1.5.5.7.1.3", critical: false, value: qcStatements.toString("base64") }]);
-    expect(toRequestCustomExtensions(stored)).toEqual([]);
     expect(toRequestCustomExtensions(stored)).toEqual([]);
   });
 
