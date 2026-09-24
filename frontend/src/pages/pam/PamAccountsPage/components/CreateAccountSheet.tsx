@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowUpRight, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,8 +48,10 @@ import {
 } from "@app/components/v3/generic/Sheet";
 import { TextArea } from "@app/components/v3/generic/TextArea";
 import { useOrganization } from "@app/context";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import {
   accountTypeRequiresRecording,
+  gatewaySupportsAccountType,
   PamAccountType,
   PamResourcePermissionActions,
   useCreatePamAccount,
@@ -81,6 +84,28 @@ type Props = {
   // Set when the caller is scoped to one folder, so the account can't be filed somewhere else.
   isFolderLocked?: boolean;
   onCreated?: (accountId: string) => void;
+};
+
+const TemplateSubtitle = ({ text, highlight }: { text: string; highlight: string }) => {
+  const [isTruncated, setIsTruncated] = useState(false);
+  const measure = useCallback((node: HTMLParagraphElement | null) => {
+    if (node) setIsTruncated(node.scrollWidth > node.clientWidth);
+  }, []);
+
+  const line = (
+    <p ref={measure} className="truncate text-xs text-muted">
+      <HighlightText text={text} highlight={highlight} />
+    </p>
+  );
+
+  if (!isTruncated) return line;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{line}</TooltipTrigger>
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
+  );
 };
 
 export const CreateAccountSheet = ({
@@ -138,10 +163,21 @@ export const CreateAccountSheet = ({
     filterByAction: PamResourcePermissionActions.CreateAccounts
   });
   const { data: templates = [] } = useListPamAccountTemplates();
+  const { data: gateways = [] } = useQuery(gatewaysQueryKeys.listAll());
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
   const selectedMetadata = accountTypes.find((t) => t.type === selectedTemplate?.type);
+
+  const unsupportedBy = (gatewayId: string | null | undefined, accountType: string) => {
+    const attached = gatewayId ? gateways.find((g) => g.id === gatewayId) : undefined;
+    return attached && !gatewaySupportsAccountType(attached, accountType) ? attached.name : null;
+  };
+  const templateGatewayUnsupported = (tpl: { gatewayId?: string | null; type: string }) =>
+    unsupportedBy(tpl.gatewayId, tpl.type);
+  const selectedGatewayUnsupported = selectedTemplate
+    ? unsupportedBy(gateway.gatewayId, selectedTemplate.type)
+    : null;
 
   const needsGateway = Boolean(
     selectedMetadata?.requiresGateway !== false &&
@@ -193,7 +229,12 @@ export const CreateAccountSheet = ({
     setGatewayError(false);
   }, [selectedMetadata?.type, selectedTemplateId, setValue]);
 
-  const canProceed = Boolean(selectedFolderId && selectedTemplateId);
+  const canProceed = Boolean(
+    selectedFolderId &&
+      selectedTemplateId &&
+      selectedTemplate &&
+      !templateGatewayUnsupported(selectedTemplate)
+  );
 
   const onSubmit = (values: TAccountFormValues) => {
     if (!selectedMetadata) return;
@@ -212,7 +253,12 @@ export const CreateAccountSheet = ({
     const gatewayMissing = needsGateway && !gateway.gatewayId && !gateway.gatewayPoolId;
     setGatewayError(gatewayMissing);
 
-    if (missingConnection.length || missingCredentials.length || gatewayMissing) {
+    if (
+      missingConnection.length ||
+      missingCredentials.length ||
+      gatewayMissing ||
+      selectedGatewayUnsupported
+    ) {
       missingConnection.forEach((key) =>
         setError(`connectionDetails.${key}`, {
           type: "required",
@@ -409,24 +455,32 @@ export const CreateAccountSheet = ({
                         >
                           {filteredTemplates.map((tpl) => {
                             const typeName = accountTypeMap[tpl.type]?.name ?? tpl.type;
-                            const subtitle = tpl.description
-                              ? `${typeName} • ${tpl.description}`
-                              : typeName;
+                            const unusableOn = templateGatewayUnsupported(tpl);
+                            let subtitle = typeName;
+                            if (unusableOn) {
+                              subtitle = `${typeName} • Gateway '${unusableOn}' does not support this type`;
+                            } else if (tpl.description) {
+                              subtitle = `${typeName} • ${tpl.description}`;
+                            }
                             return (
-                              <FieldLabel key={tpl.id} htmlFor={`tpl-${tpl.id}`} variant="pam">
+                              <FieldLabel
+                                key={tpl.id}
+                                htmlFor={`tpl-${tpl.id}`}
+                                variant="pam"
+                                className={unusableOn ? "cursor-not-allowed opacity-50" : undefined}
+                              >
                                 <Field orientation="horizontal" className="items-center gap-3">
                                   <AccountPlatformIcon accountType={tpl.type} size={28} />
                                   <div className="min-w-0 flex-1 text-left">
                                     <p className="truncate text-sm font-medium text-foreground">
                                       <HighlightText text={tpl.name} highlight={templateSearch} />
                                     </p>
-                                    <p className="truncate text-xs text-muted">
-                                      <HighlightText text={subtitle} highlight={templateSearch} />
-                                    </p>
+                                    <TemplateSubtitle text={subtitle} highlight={templateSearch} />
                                   </div>
                                   <RadioGroupItem
                                     id={`tpl-${tpl.id}`}
                                     value={tpl.id}
+                                    disabled={Boolean(unusableOn)}
                                     className="sr-only"
                                   />
                                 </Field>
@@ -486,7 +540,13 @@ export const CreateAccountSheet = ({
                         Name<span className="text-product-pam">*</span>
                       </FieldLabel>
                       <FieldContent>
-                        <Input {...field} placeholder="My account" isError={!!fieldState.error} />
+                        <Input
+                          {...field}
+                          placeholder="My account"
+                          isError={!!fieldState.error}
+                          autoComplete="off"
+                          name="pam-account-name"
+                        />
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
                     </Field>
@@ -536,6 +596,11 @@ export const CreateAccountSheet = ({
                             isError={gatewayError}
                           />
                           {gatewayError && <FieldError>A gateway is required</FieldError>}
+                          {selectedGatewayUnsupported && (
+                            <FieldError>
+                              {`Gateway '${selectedGatewayUnsupported}' does not support this account type. Update the gateway, or pick another one.`}
+                            </FieldError>
+                          )}
                         </FieldContent>
                       </Field>
                     )}

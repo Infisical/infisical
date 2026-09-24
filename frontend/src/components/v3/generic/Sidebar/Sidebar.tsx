@@ -36,7 +36,14 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-type SidebarScope = "org" | "sub-org" | "project" | "pam" | "admin";
+type SidebarScope = "org" | "sub-org" | "project" | "pam" | "agent-vault" | "admin";
+
+// Products that own a colour repoint the shared --color-project variable rather than adding a parallel
+// set of scope classes.
+const SIDEBAR_SCOPE_COLOR_OVERRIDE: Partial<Record<SidebarScope, Record<string, string>>> = {
+  pam: { "--color-project": "#ed3453" },
+  "agent-vault": { "--color-project": "var(--color-product-av)" }
+};
 
 const SidebarScopeContext = React.createContext<SidebarScope>("org");
 
@@ -195,8 +202,9 @@ function Sidebar({
               data-slot="sidebar"
               data-mobile="true"
               className={cn(
-                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
-                (scope === "project" || scope === "pam") && "from-project/5",
+                "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground in-data-[theme=light]:bg-none [&>button]:hidden",
+                (scope === "project" || scope === "pam" || scope === "agent-vault") &&
+                  "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
                 scope === "admin" && "from-admin/5"
@@ -204,7 +212,7 @@ function Sidebar({
               style={
                 {
                   "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-                  ...(scope === "pam" ? { "--color-project": "#ed3453" } : {})
+                  ...(SIDEBAR_SCOPE_COLOR_OVERRIDE[scope] ?? {})
                 } as React.CSSProperties
               }
               side={side}
@@ -230,19 +238,16 @@ function Sidebar({
         >
           <div
             className={cn(
-              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
+              "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear in-data-[theme=light]:bg-none",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
-              (scope === "project" || scope === "pam") && "from-project/5",
+              (scope === "project" || scope === "pam" || scope === "agent-vault") &&
+                "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
               scope === "admin" && "from-admin/5",
               className
             )}
-            style={
-              scope === "pam"
-                ? ({ "--color-project": "#ed3453" } as React.CSSProperties)
-                : undefined
-            }
+            style={SIDEBAR_SCOPE_COLOR_OVERRIDE[scope] as React.CSSProperties | undefined}
             {...props}
           >
             {children}
@@ -306,7 +311,7 @@ function Sidebar({
           data-slot="sidebar-container"
           data-side={side}
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) border-border transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+            "fixed inset-y-0 z-[var(--z-index-sticky)] hidden h-svh w-(--sidebar-width) border-border transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
@@ -648,6 +653,7 @@ const sidebarMenuButtonVariants = cva(
         "sub-org": "data-active:border-l-sub-org data-active:[&_svg]:text-sub-org",
         project: "data-active:border-l-project data-active:[&_svg]:text-project",
         pam: "data-active:border-l-project data-active:[&_svg]:text-project",
+        "agent-vault": "data-active:border-l-project data-active:[&_svg]:text-project",
         admin: "data-active:border-l-admin data-active:[&_svg]:text-admin"
       }
     },

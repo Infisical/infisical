@@ -341,8 +341,14 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                       <TooltipContent className="max-w-sm">Your GitLab Access Token</TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <SecretInput
+                    aria-describedby={error ? "gitlab-access-token-error" : undefined}
+                    id="gitlab-access-token"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="gitlab-access-token-error" errors={[error]} />
                 </Field>
               )}
             />

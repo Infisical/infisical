@@ -1,5 +1,5 @@
 ---
-title: "Networking"
+title: "Infisical IP addresses"
 sidebarTitle: "Infisical IP addresses"
 description: "Network configuration details for Infisical Cloud"
 ---
@@ -34,6 +34,8 @@ Infisical Cloud operates from multiple regions. If your infrastructure has stric
 These IP addresses are static and managed by Infisical. Any changes will be communicated with 60-day advance notice.
 </Warning>
 
-## What these IP addresses are used for
+## What connects from these addresses
 
-These IP addresses represent the source IPs you'll see when Infisical Cloud makes connections to your infrastructure. All outbound traffic from Infisical Cloud originates from these IP addresses, ensuring predictable source IP addresses for your firewall rules.
+Anything Infisical Cloud reaches over the internet: app connections, dynamic secrets, secret rotation, and secret syncs. Allowing these addresses is what lets those features reach a target that would otherwise refuse the connection.
+
+Features that run work on your side of the network need a [gateway](/documentation/platform/gateways/overview) instead, and allowing these addresses does nothing for them. That covers PAM sessions, HSM, ADCS, and discovery.

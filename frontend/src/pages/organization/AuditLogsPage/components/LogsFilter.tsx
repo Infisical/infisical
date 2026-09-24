@@ -19,6 +19,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { isOrgScopedProduct } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
@@ -29,7 +30,7 @@ import {
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import { Project } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -100,7 +101,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
     secretEvents.includes(eventType)
   );
   const showSecretsSection =
-    selectedProject?.type !== ProjectType.PAM &&
+    !(selectedProject?.type && isOrgScopedProduct(selectedProject.type)) &&
     (hasSecretEventFilter || currentSelectedEventTypes.length === 0);
 
   const filteredEventTypes = useMemo(() => {

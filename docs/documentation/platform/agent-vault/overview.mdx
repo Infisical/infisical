@@ -1,0 +1,49 @@
+---
+title: "Agent Vault"
+description: "Securely run AI agents with the access, context, and capabilities they need to do work."
+sidebarTitle: "Agent Vault"
+icon: "vault"
+---
+
+Infisical Agent Vault is an access layer for AI agents. It securely equips agents with what they need to do work, including access to the services they call: LLM providers, GitHub, Slack, and more.
+
+## Get started
+
+<Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-vault/quickstart">
+  Launch an agent that makes authenticated API calls without needing an actual token.
+</Card>
+
+<CardGroup cols={2}>
+  <Card title="Why use Agent Vault?" icon="shield" href="/documentation/platform/agent-vault/why-agent-vault">
+    Learn more about the problem Agent Vault addresses.
+  </Card>
+  <Card title="How it works" icon="settings-2" href="/documentation/platform/agent-vault/how-it-works">
+    Understand the Agent Vault mental model.
+  </Card>
+</CardGroup>
+
+## Concepts
+
+<CardGroup cols={2}>
+  <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
+    Lists of services that AI agents can access during a session.
+  </Card>
+  <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
+    External APIs that an AI agent can securely call during a session.
+  </Card>
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/agent-vault/sessions">
+    Time-bound grants that let AI agents access services without holding real credentials.
+  </Card>
+  <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
+    Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
+  </Card>
+  <Card title="Access control" icon="shield-half" href="/documentation/platform/agent-vault/access-control">
+    Understand how permissions work in Agent Vault.
+  </Card>
+</CardGroup>
+
+## Reference
+
+<Card title="CLI reference" icon="terminal" href="/cli/commands/agent-vault">
+  Every flag of `infisical agent-vault proxy` and `infisical agent-vault run`.
+</Card>

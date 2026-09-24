@@ -165,6 +165,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Billing Team"
                       isError={Boolean(error)}
                       {...field}
+                      autoComplete="off"
+                      name="org-role-name"
                     />
                     <FieldError>{error?.message}</FieldError>
                   </Field>
@@ -219,10 +221,10 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         </DialogContent>
       </Dialog>
       <UpgradePlanModal
+        paywallKey="organization.role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
       />
     </>
   );

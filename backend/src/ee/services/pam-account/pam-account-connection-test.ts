@@ -8,7 +8,15 @@ import {
 } from "../pam-session/aws-iam/aws-iam-federation";
 import { AZURE_SCOPES, getAzureAccessToken } from "../pam-session/azure/azure-federation";
 import { mintGcpAccessToken } from "../pam-session/gcp/gcp-federation";
-import { extractGatewayTarget, isCredentialConfigured, qualifyUsernameWithDomain } from "./pam-account-schemas";
+import {
+  extractGatewayTarget,
+  isCredentialConfigured,
+  ORACLE_MAX_PASSWORD_LENGTH,
+  ORACLE_MIN_GATEWAY_VERSION,
+  qualifyUsernameWithDomain
+} from "./pam-account-schemas";
+
+export { ORACLE_MAX_PASSWORD_LENGTH, ORACLE_MIN_GATEWAY_VERSION };
 
 export enum TestConnectionMode {
   SQL = "sql",
@@ -17,6 +25,8 @@ export enum TestConnectionMode {
   LDAP = "ldap",
   Kubernetes = "kubernetes",
   SSH = "ssh",
+  Snowflake = "snowflake",
+  ClickHouse = "clickhouse",
   Tcp = "tcp"
 }
 
@@ -24,7 +34,7 @@ export enum TestConnectionMode {
 export type TestConnectionRequest =
   | {
       mode: TestConnectionMode.SQL;
-      dialect: "postgres" | "mysql" | "mssql";
+      dialect: "postgres" | "mysql" | "mssql" | "oracle";
       username: string;
       password?: string;
       database: string;
@@ -80,15 +90,47 @@ export type TestConnectionRequest =
       privateKey?: string;
       certificate?: string;
     }
+  | {
+      mode: TestConnectionMode.Snowflake;
+      account: string;
+      authMethod: string;
+      username: string;
+      password?: string;
+      token?: string;
+      privateKey?: string;
+      privateKeyPassphrase?: string;
+      warehouse?: string;
+      database?: string;
+      schema?: string;
+      role?: string;
+    }
+  | {
+      mode: TestConnectionMode.ClickHouse;
+      username: string;
+      password?: string;
+      database: string;
+      sslEnabled?: boolean;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    }
   | { mode: TestConnectionMode.Tcp };
 
 const SQL_DIALECTS = {
   [PamAccountType.Postgres]: "postgres",
   [PamAccountType.MySQL]: "mysql",
-  [PamAccountType.MsSQL]: "mssql"
+  [PamAccountType.MsSQL]: "mssql",
+  [PamAccountType.OracleDB]: "oracle"
 } as const;
 
 const tcp = (host: string, port: number) => ({ host, port, request: { mode: TestConnectionMode.Tcp } as const });
+
+export const exceedsOraclePasswordLimit = (
+  accountType: PamAccountType,
+  credentials: Record<string, unknown> | null
+): boolean =>
+  accountType === PamAccountType.OracleDB &&
+  typeof credentials?.password === "string" &&
+  credentials.password.length > ORACLE_MAX_PASSWORD_LENGTH;
 
 // resolves the gateway target and the per-type auth request
 export const buildGatewayConnectionTest = async (
@@ -96,8 +138,8 @@ export const buildGatewayConnectionTest = async (
   connectionDetails: Record<string, unknown>,
   credentials: Record<string, unknown> | null,
   orgId: string,
-  // Off for account create and update, which must not fail against a gateway predating the proxy handshake.
-  opts?: { allowWindowsAuthSql?: boolean }
+  // Off for account create and update, which must not fail against a gateway predating the test they need.
+  opts?: { allowNewerGatewayTests?: boolean }
 ): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
 
@@ -114,7 +156,8 @@ export const buildGatewayConnectionTest = async (
   switch (accountType) {
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
-    case PamAccountType.MsSQL: {
+    case PamAccountType.MsSQL:
+    case PamAccountType.OracleDB: {
       const cd = connectionDetails as {
         database: string;
         sslEnabled?: boolean;
@@ -133,9 +176,11 @@ export const buildGatewayConnectionTest = async (
         spn?: string;
       } | null;
       if (!c) return tcp(host, port);
-      if (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login" && !opts?.allowWindowsAuthSql) {
-        return tcp(host, port);
-      }
+      const needsNewerGateway =
+        (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login") ||
+        accountType === PamAccountType.OracleDB;
+      if (needsNewerGateway && !opts?.allowNewerGatewayTests) return tcp(host, port);
+      if (exceedsOraclePasswordLimit(accountType, c)) return tcp(host, port);
       // An IAM login's password is a token Infisical mints per connection, so the test mints its own
       const password =
         c.authMethod === PamPostgresAuthMethod.AwsIam
@@ -297,6 +342,65 @@ export const buildGatewayConnectionTest = async (
           password: c.password,
           privateKey: c.privateKey,
           certificate: c.certificate
+        }
+      };
+    }
+    case PamAccountType.Snowflake: {
+      const cd = connectionDetails as {
+        account: string;
+        warehouse?: string;
+        database?: string;
+        schema?: string;
+        role?: string;
+      };
+      const c = creds as {
+        authMethod: string;
+        username: string;
+        password?: string;
+        token?: string;
+        privateKey?: string;
+        privateKeyPassphrase?: string;
+      } | null;
+      if (!c) return tcp(host, port);
+      return {
+        host,
+        port,
+        request: {
+          mode: TestConnectionMode.Snowflake,
+          account: cd.account,
+          authMethod: c.authMethod,
+          username: c.username,
+          password: c.password,
+          token: c.token,
+          privateKey: c.privateKey,
+          privateKeyPassphrase: c.privateKeyPassphrase,
+          warehouse: cd.warehouse,
+          database: cd.database,
+          schema: cd.schema,
+          role: cd.role
+        }
+      };
+    }
+    case PamAccountType.ClickHouse: {
+      const cd = connectionDetails as {
+        database: string;
+        sslEnabled?: boolean;
+        sslRejectUnauthorized?: boolean;
+        sslCertificate?: string;
+      };
+      const c = creds as { username: string; password?: string } | null;
+      if (!c) return tcp(host, port);
+      return {
+        host,
+        port,
+        request: {
+          mode: TestConnectionMode.ClickHouse,
+          username: c.username,
+          password: c.password,
+          database: cd.database,
+          sslEnabled: cd.sslEnabled,
+          sslRejectUnauthorized: cd.sslRejectUnauthorized,
+          sslCertificate: cd.sslCertificate
         }
       };
     }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { SshCertKeyAlgorithm } from "@app/hooks/api/dynamicSecret/constants";
 import {
@@ -48,7 +48,6 @@ import {
   githubCreateFormSchema,
   githubEditFormSchema
 } from "./providerDefinitions/githubContract";
-import { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./providerDefinitions/identityAccessContract";
 import {
   getLdapCreateDefaultValues,
   getLdapCreatePayload,
@@ -65,7 +64,6 @@ import {
   getSshCreatePayload,
   getSshEditDefaultValues,
   getSshEditPayload,
-  SSH_CREATE_WORKFLOW_BOUNDARY_REASONS,
   SSH_CUSTOM_RENDERER_REASONS,
   sshCreateFormSchema,
   sshEditFormSchema
@@ -80,7 +78,6 @@ import {
   tailscaleEditFormSchema
 } from "./providerDefinitions/tailscaleContract";
 import { testDynamicSecretProviderContract } from "./providerContractTestHarness";
-import { createDynamicSecretProviderRegistry, defineDynamicSecretProviderModule } from "./registry";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "./schemas";
 import type {
   TCreateDynamicSecretProviderFormContext,
@@ -288,19 +285,6 @@ const ldapDynamicSecretProvider = defineDynamicSecretProvider({
     submitLabel: "Submit",
     successMessage: "Successfully updated dynamic secret"
   }
-});
-
-const identityAccessContractModule = defineDynamicSecretProviderModule({
-  id: "identity-access",
-  definitions: [
-    awsIamDynamicSecretProvider,
-    gcpIamDynamicSecretProvider,
-    azureEntraIdDynamicSecretProvider,
-    githubDynamicSecretProvider,
-    tailscaleDynamicSecretProvider,
-    sshDynamicSecretProvider,
-    ldapDynamicSecretProvider
-  ]
 });
 
 const awsCreateDefaults: TAwsIamFormValues = {
@@ -940,14 +924,19 @@ const sshCreateDefaults = {
   defaultTTL: "1h",
   maxTTL: "24h",
   environment,
-  inputs: { principals: [], keyAlgorithm: SshCertKeyAlgorithm.ED25519 }
+  inputs: {
+    principals: [],
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+  }
 };
 const sshCreateValues = {
   ...sshCreateDefaults,
   name: "ssh-secret",
   inputs: {
     principals: ["deploy", "root"],
-    keyAlgorithm: SshCertKeyAlgorithm.ED25519
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
   }
 };
 const sshEditContext = getEditContext({
@@ -955,7 +944,8 @@ const sshEditContext = getEditContext({
   inputs: {
     caPublicKey: "ignored",
     principals: ["deploy"],
-    keyAlgorithm: SshCertKeyAlgorithm.ED25519
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
   }
 });
 const sshEditValues = {
@@ -964,7 +954,8 @@ const sshEditValues = {
   maxTTL: "24h",
   inputs: {
     principals: ["deploy"],
-    keyAlgorithm: SshCertKeyAlgorithm.ED25519
+    keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+    caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
   }
 };
 
@@ -992,6 +983,26 @@ testDynamicSecretProviderContract({
         name: "no principals",
         values: { ...sshCreateValues, inputs: { ...sshCreateValues.inputs, principals: [] } },
         issuePaths: [["inputs", "principals"]]
+      },
+      {
+        name: "max TTL is missing",
+        values: { ...sshCreateValues, maxTTL: "" },
+        issuePaths: [["maxTTL"]]
+      },
+      {
+        name: "max TTL exceeds 7 days",
+        values: { ...sshCreateValues, maxTTL: "8d" },
+        issuePaths: [["maxTTL"]]
+      },
+      {
+        name: "default TTL exceeds 7 days",
+        values: { ...sshCreateValues, defaultTTL: "8d", maxTTL: "8d" },
+        issuePaths: [["defaultTTL"], ["maxTTL"]]
+      },
+      {
+        name: "TTL is not a duration",
+        values: { ...sshCreateValues, defaultTTL: "invalid" },
+        issuePaths: [["defaultTTL"]]
       }
     ]
   },
@@ -1003,10 +1014,23 @@ testDynamicSecretProviderContract({
       maxTTL: "24h",
       inputs: {
         principals: ["deploy"],
-        keyAlgorithm: SshCertKeyAlgorithm.ED25519
+        keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+        caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
       }
     },
     validValues: sshEditValues,
+    invalidValues: [
+      {
+        name: "max TTL is missing",
+        values: { ...sshEditValues, maxTTL: "" },
+        issuePaths: [["maxTTL"]]
+      },
+      {
+        name: "max TTL exceeds 7 days",
+        values: { ...sshEditValues, maxTTL: "8d" },
+        issuePaths: [["maxTTL"]]
+      }
+    ],
     payload: {
       name: "existing-secret",
       path: "/folder",
@@ -1143,45 +1167,7 @@ testDynamicSecretProviderContract({
   }
 });
 
-describe("identity and access provider registration", () => {
-  it("registers the seven-provider batch in product picker order", () => {
-    assert.deepEqual(
-      identityAccessContractModule.definitions.map(({ provider }) => provider),
-      IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS
-    );
-    const registry = createDynamicSecretProviderRegistry(identityAccessContractModule);
-
-    assert.deepEqual(registry.providers, [
-      DynamicSecretProviders.AwsIam,
-      DynamicSecretProviders.AzureEntraId,
-      DynamicSecretProviders.Ldap,
-      DynamicSecretProviders.GcpIam,
-      DynamicSecretProviders.Github,
-      DynamicSecretProviders.Ssh,
-      DynamicSecretProviders.Tailscale
-    ]);
-    registry.providers.forEach((provider) => {
-      assert.equal(registry.requireDefinition(provider).provider, provider);
-    });
-  });
-
-  it("declares every provider-specific renderer boundary", () => {
-    assert.ok(awsIamDynamicSecretProvider.customRenderer?.reasons.includes("conditional-fields"));
-    assert.ok(gcpIamDynamicSecretProvider.customRenderer?.reasons.includes("repeatable-fields"));
-    assert.ok(
-      azureEntraIdDynamicSecretProvider.create.customRenderer?.reasons.includes("multi-create")
-    );
-    assert.ok(
-      githubDynamicSecretProvider.edit.customRenderer?.reasons.includes("non-scalar-value")
-    );
-    assert.ok(
-      tailscaleDynamicSecretProvider.customRenderer?.reasons.includes("conditional-fields")
-    );
-    assert.ok(sshDynamicSecretProvider.customRenderer?.reasons.includes("repeatable-fields"));
-    assert.ok(SSH_CREATE_WORKFLOW_BOUNDARY_REASONS.includes("post-create-workflow"));
-    assert.ok(ldapDynamicSecretProvider.customRenderer?.reasons.includes("import-workflow"));
-  });
-
+describe("identity and access provider-specific branches", () => {
   it("maps LDAP Vault roles without inventing a bind password", () => {
     const imported = getLdapVaultImportValues({
       name: "ldap-role",

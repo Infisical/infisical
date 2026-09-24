@@ -35,10 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableHeadLabel,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import {
   OrgGatewayPoolPermissionActions,
@@ -82,7 +79,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   );
 
   const availableGateways = useMemo(
-    () => allGateways?.filter((g) => !g.isV1 && !pool?.memberGatewayIds.includes(g.id)) ?? [],
+    () => allGateways?.filter((g) => !pool?.memberGatewayIds.includes(g.id)) ?? [],
     [allGateways, pool?.memberGatewayIds]
   );
 
@@ -235,16 +232,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                       <TableCell>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="min-w-0 flex-1 truncate">{gw.name}</span>
-                          {gw.isV1 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="neutral" className="shrink-0">
-                                  V1
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>Legacy</TooltipContent>
-                            </Tooltip>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -265,12 +252,10 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="z-[60] min-w-[180px]">
-                            {!gw.isV1 && (
-                              <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
-                                <FontAwesomeIcon icon={faHeartPulse} />
-                                Trigger health check
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
+                              <FontAwesomeIcon icon={faHeartPulse} />
+                              Trigger health check
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="danger"
                               onSelect={() =>

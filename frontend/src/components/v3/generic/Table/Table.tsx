@@ -11,13 +11,13 @@ const Table = React.forwardRef<
       ref={ref}
       data-slot="table-container"
       className={cn(
-        "relative thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-container",
+        "relative thin-scrollbar w-full min-w-0 overflow-x-auto rounded-md border border-border bg-container",
         containerClassName
       )}
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-max min-w-full caption-bottom text-start text-sm", className)}
         {...props}
       />
     </div>
@@ -26,11 +26,19 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableHeader({
+  className,
+  sticky = false,
+  ...props
+}: React.ComponentProps<"thead"> & { sticky?: boolean }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn(
+        "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
+        sticky && "sticky top-0 z-10 bg-container",
+        className
+      )}
       {...props}
     />
   );

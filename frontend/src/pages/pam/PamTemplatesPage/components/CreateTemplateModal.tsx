@@ -10,6 +10,7 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  ProviderIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -107,6 +108,7 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
                   placeholder="e.g. production-postgresql"
                   isError={!!errors.name}
                   {...register("name")}
+                  autoComplete="off"
                 />
                 <FieldError>{errors.name?.message}</FieldError>
               </FieldContent>
@@ -127,8 +129,8 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
                   <SelectContent position="popper" sideOffset={4}>
                     {accountTypes.map((meta) => (
                       <SelectItem key={meta.type} value={meta.type}>
-                        <img
-                          src={`/images/integrations/${meta.icon}`}
+                        <ProviderIcon
+                          icon={meta.icon}
                           alt={meta.name}
                           className="mr-1.5 inline-block size-4 rounded-sm"
                         />

@@ -401,7 +401,6 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -454,7 +453,6 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       kmsService
     });
 
@@ -703,7 +701,6 @@ export const secretQueueFactory = ({
         }
       },
       {
-        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
@@ -711,6 +708,14 @@ export const secretQueueFactory = ({
         backoff: {
           type: "exponential",
           delay: 3000
+        },
+        // A plain jobId dedupes only while the previous job is queued/delayed: BullMQ silently drops an
+        // add() that collides with an *active* job, so a secret change merged mid-webhook-call never fired.
+        // keepLastIfActive stores that add and replays it once the active job finishes instead of dropping it.
+        deduplication: {
+          id: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+          keepLastIfActive: true,
+          replace: true
         }
       }
     );

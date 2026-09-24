@@ -3,6 +3,7 @@ import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TFeatureCounterFn, TLimitFeatureDescriptor } from "../feature";
 import {
   ActiveCerts,
+  AgentVaultIdentities,
   IdentitiesMeter,
   InternalCas,
   PamIdentities,
@@ -21,21 +22,32 @@ export type TMeteredFeature = {
   resolveReportOrgId?: (orgId: string) => Promise<string>;
 };
 
-// Static list of every metered dimension key (no DAL needed). For callers that only need the keys, not
-// the count fns — e.g. background reconciliation emitting one event per dimension for an org.
-export const METERED_DIMENSION_KEYS: string[] = [
+const METERED_FEATURES = [
   IdentitiesMeter,
   InternalCas,
   ActiveCerts,
   WildcardCerts,
   SecretIdentities,
   PamIdentities,
+  AgentVaultIdentities,
   UserIdentities
-].map((feature) => feature.key);
+] as const;
+
+export type TMeteredDimensionKey = (typeof METERED_FEATURES)[number]["key"];
+
+export const METERED_DIMENSION_KEYS: TMeteredDimensionKey[] = METERED_FEATURES.map((feature) => feature.key);
 
 type TBuildMeteredFeaturesDep = {
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;
-  usageCounterDAL: TUsageCounterDALFactory;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    | "countInternalCas"
+    | "resolveRootOrgId"
+    | "countActiveCertificateQuotaKeysByOrg"
+    | "countSecretManagementIdentities"
+    | "countPamIdentities"
+    | "countAgentVaultIdentities"
+  >;
   // Cloud meters per org; self-hosted meters the whole instance (a single license covers the DB).
   isCloud: boolean;
 };
@@ -78,6 +90,10 @@ export const buildMeteredFeatures = ({
   {
     feature: PamIdentities,
     count: (orgId) => usageCounterDAL.countPamIdentities(isCloud ? orgId : undefined)
+  },
+  {
+    feature: AgentVaultIdentities,
+    count: (orgId) => usageCounterDAL.countAgentVaultIdentities(isCloud ? orgId : undefined)
   },
   {
     // Human users only (org members), never machine identities. Legacy per-user plans.

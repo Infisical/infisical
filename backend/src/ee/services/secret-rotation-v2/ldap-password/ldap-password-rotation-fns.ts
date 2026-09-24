@@ -111,15 +111,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (
-  secretRotation,
-  appConnectionDAL,
-  kmsService,
-  gatewayService,
-  gatewayV2Service,
-  gatewayPoolService,
-  passwordValidationContext
-) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;
@@ -157,7 +149,7 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     if (!credentials.url.startsWith("ldaps")) throw new Error("Password Rotation requires an LDAPS connection");
 
     const isConnectionRotation = credentials.dn === dn;
-    const password = passwordValidationContext?.constraints?.length
+    const password = passwordValidationContext
       ? generatePasswordWithConstraints(passwordValidationContext.constraints)
       : generatePassword(passwordRequirements);
 

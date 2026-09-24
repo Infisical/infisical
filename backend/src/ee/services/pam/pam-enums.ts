@@ -6,6 +6,8 @@ export enum PamAccountType {
   OracleDB = "oracledb",
   MongoDB = "mongodb",
   Redis = "redis",
+  Snowflake = "snowflake",
+  ClickHouse = "clickhouse",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
@@ -43,6 +45,12 @@ export enum PamSessionStatus {
 export enum PamSessionEndReason {
   Completed = "completed",
   Expired = "expired"
+}
+
+export enum PamSnowflakeAuthMethod {
+  KeyPair = "key-pair",
+  ProgrammaticAccessToken = "programmatic-access-token",
+  Password = "password"
 }
 
 export enum GcpServiceAccountAuthMethod {
@@ -91,3 +99,18 @@ export enum PamNotificationEvent {
   AccessRequestDenied = "access-request-denied",
   AccessRequestBypassed = "access-request-bypassed"
 }
+
+// Best-effort: the tunnel is torn down either way.
+export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;
+
+// Informational conditions surfaced on an account. Unlike PamAccountAccessibilityIssue these gate
+// nothing: the account launches, records and rotates as normal.
+export enum PamAccountWarning {
+  SessionLogMaskingDegraded = "session-log-masking-degraded"
+}
+
+// Whether sessions for this type produce a session log the gateway can mask.
+export const accountTypeSupportsSessionLogMasking = (accountType: PamAccountType): boolean =>
+  accountType !== PamAccountType.Windows &&
+  accountType !== PamAccountType.WindowsAd &&
+  accountType !== PamAccountType.AwsIam;

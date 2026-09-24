@@ -45,11 +45,12 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
 import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -143,6 +144,9 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isSecretManager = currentProject.type === ProjectType.SecretManager;
+  const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
+  const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
   let memberDisplayName = "Unnamed User";
   if (membershipDetails) {
     const { firstName, lastName, email, username } = membershipDetails.user;
@@ -153,23 +157,9 @@ export const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
       {membershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId: currentProject.id,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Member
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Users" : "Project Users"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             title={memberDisplayName}
@@ -177,6 +167,21 @@ export const Page = () => {
               isCertManager
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId: currentProject.id,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Member
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Users" : "Project Users"}
+              </Link>
             }
           >
             <div className="flex items-center gap-2">
@@ -219,7 +224,7 @@ export const Page = () => {
                     >
                       Copy User ID
                     </DropdownMenuItem>
-                    {!isCertManager && (
+                    {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
                         a={ProjectPermissionSub.Member}
@@ -270,9 +275,9 @@ export const Page = () => {
               )}
             </div>
           </PageHeader>
-          <div className="flex flex-col gap-5 lg:flex-row">
+          <div className="flex flex-col gap-5 @4xl:flex-row">
             <ProjectMemberDetailsSection membership={membershipDetails} />
-            <div className="flex flex-1 flex-col gap-y-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-5">
               <MemberRoleDetailsSection
                 membershipDetails={membershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
@@ -286,21 +291,25 @@ export const Page = () => {
               {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
               )}
-              {currentProject.type === ProjectType.SecretManager &&
-                subscription?.secretsFolderRbac && (
-                  <FolderAccessSection
-                    actor={{
-                      type: "user",
-                      id: membershipDetails.user.id,
-                      membershipId: membershipDetails.id,
-                      username: membershipDetails.user.username,
-                      email: membershipDetails.user.email,
-                      firstName: membershipDetails.user.firstName,
-                      lastName: membershipDetails.user.lastName
-                    }}
-                    hideActions={isOwnProjectMembershipDetails}
-                  />
+              {isSecretManager &&
+                !hasFolderRbacPlan &&
+                !currentProject.isLegacyAdditionalPrivilegesEnabled && (
+                  <AdditionalPrivilegesRemovedSection />
                 )}
+              {isSecretManager && hasFolderRbacPlan && (
+                <FolderAccessSection
+                  actor={{
+                    type: "user",
+                    id: membershipDetails.user.id,
+                    membershipId: membershipDetails.id,
+                    username: membershipDetails.user.username,
+                    email: membershipDetails.user.email,
+                    firstName: membershipDetails.user.firstName,
+                    lastName: membershipDetails.user.lastName
+                  }}
+                  hideActions={isOwnProjectMembershipDetails}
+                />
+              )}
             </div>
           </div>
           <DeleteConfirmDialog
@@ -328,6 +337,7 @@ export const Page = () => {
             actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
           <UpgradePlanModal
+            paywallKey="project.member-details-by-id"
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text={popUp.upgradePlan?.data?.text}

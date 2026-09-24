@@ -21,7 +21,7 @@ import {
   FieldGroup,
   FieldTitle,
   Skeleton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import {
@@ -138,7 +138,7 @@ export const OrgGithubSyncSection = () => {
                     a={OrgPermissionSubjects.GithubOrgSync}
                   >
                     {(isAllowed) => (
-                      <Switch
+                      <Toggle
                         id="enable-sync"
                         variant="org"
                         checked={data.isActive}
@@ -190,6 +190,7 @@ export const OrgGithubSyncSection = () => {
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="organization.org-github-sync"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to GitHub Organization Sync. To unlock this feature, please upgrade to Infisical Enterprise plan."

@@ -21,7 +21,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -100,7 +100,7 @@ export const OrgGenericAuthSection = () => {
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-org-mfa"
                     variant="org"
                     checked={currentOrg?.enforceMfa ?? false}
@@ -138,9 +138,10 @@ export const OrgGenericAuthSection = () => {
         </CardContent>
       </Card>
       <UpgradePlanModal
+        paywallKey="organization.org-generic-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to enforce user MFA. To unlock this feature, please upgrade to Infisical Pro plan."
+        text="Your current plan does not include access to enforce user MFA. To unlock this feature, please upgrade to Infisical Advanced plan."
       />
     </>
   );

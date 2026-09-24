@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 export const TravisCISyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
@@ -9,7 +9,10 @@ export const TravisCISyncDestinationSchema = BaseSecretSyncSchema().merge(
     destinationConfig: z.object({
       repositoryId: z.string().min(1, "Repository required"),
       repositorySlug: z.string().min(1, "Repository required"),
-      branch: z.string().optional()
+      branch: z
+        .string()
+        .nullish()
+        .transform((value) => value || undefined)
     })
   })
 );

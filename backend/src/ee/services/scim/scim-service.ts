@@ -39,7 +39,7 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -100,6 +100,7 @@ type TScimServiceFactoryDep = {
     | "findMembership"
     | "findEffectiveOrgMembership"
     | "findMembershipWithScimFilter"
+    | "countMembershipWithScimFilter"
     | "deleteMembershipById"
     | "transaction"
     | "updateMembershipById"
@@ -114,6 +115,7 @@ type TScimServiceFactoryDep = {
     | "findAllGroupPossibleUsers"
     | "delete"
     | "findGroups"
+    | "countGroups"
     | "transaction"
     | "updateById"
     | "update"
@@ -334,7 +336,10 @@ export const scimServiceFactory = ({
       ...(limit && { limit })
     };
 
-    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, org.orgAuthMethod, findOpts);
+    const [users, totalResults] = await Promise.all([
+      orgDAL.findMembershipWithScimFilter(orgId, filter, org.orgAuthMethod, findOpts),
+      orgDAL.countMembershipWithScimFilter(orgId, filter, org.orgAuthMethod)
+    ]);
 
     const scimUsers = users.map(
       ({ id, externalId, username, firstName, lastName, email, isActive, createdAt, updatedAt }) =>
@@ -362,7 +367,8 @@ export const scimServiceFactory = ({
     return buildScimUserList({
       scimUsers,
       startIndex,
-      limit
+      limit,
+      totalResults
     });
   };
 
@@ -981,8 +987,17 @@ export const scimServiceFactory = ({
       [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
     });
 
-    // Return success even if user not found (idempotent delete per SCIM RFC 7644)
     if (!membership) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.DELETE_USER,
+        event: {
+          deleted: false,
+          orgMembershipId,
+          detail: "No matching organization membership; nothing was deleted"
+        }
+      });
+
       return {};
     }
 
@@ -1011,11 +1026,13 @@ export const scimServiceFactory = ({
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
     usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
     usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, AgentVaultIdentities.key);
 
     await scimEventsDAL.create({
       orgId,
       eventType: ScimEvent.DELETE_USER,
       event: {
+        deleted: true,
         firstName: membership.firstName,
         email: membership.email,
         lastName: membership.lastName,
@@ -1053,16 +1070,20 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const groups = await groupDAL.findGroups(
-      {
-        ...(filter && parseScimFilter(filter)),
-        orgId
-      },
-      {
+    const groupFilter = {
+      ...(filter && parseScimFilter(filter)),
+      orgId
+    };
+
+    const [groups, totalResults] = await Promise.all([
+      groupDAL.findGroups(groupFilter, {
         offset: startIndex - 1,
-        limit
-      }
-    );
+        limit,
+        // Unordered paging can skip or repeat groups between pages.
+        sort: [["id", "asc"]]
+      }),
+      groupDAL.countGroups(groupFilter)
+    ]);
 
     const scimGroups: TScimGroup[] = [];
     if (isMembersExcluded) {
@@ -1077,7 +1098,8 @@ export const scimServiceFactory = ({
           })
         ),
         startIndex,
-        limit
+        limit,
+        totalResults
       });
     }
 
@@ -1108,7 +1130,8 @@ export const scimServiceFactory = ({
     return buildScimGroupList({
       scimGroups,
       startIndex,
-      limit
+      limit,
+      totalResults
     });
   };
 
@@ -1683,8 +1706,17 @@ export const scimServiceFactory = ({
       return deleted;
     });
 
-    // Return success even if group not found (idempotent delete per SCIM RFC 7644)
     if (!group) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.DELETE_GROUP,
+        event: {
+          deleted: false,
+          groupId,
+          detail: "No matching group; nothing was deleted"
+        }
+      });
+
       return {};
     }
 
@@ -1692,6 +1724,7 @@ export const scimServiceFactory = ({
       orgId,
       eventType: ScimEvent.DELETE_GROUP,
       event: {
+        deleted: true,
         groupName: group.name
       }
     });

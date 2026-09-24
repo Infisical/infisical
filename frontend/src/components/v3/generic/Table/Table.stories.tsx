@@ -87,6 +87,8 @@ const identities: Identity[] = [
  * structure, a `<ul>` of `Item`s is usually a better fit.
  *
  * Useful per-cell flags:
+ * - **`sticky`** on `TableHeader` pins the header while scrolling a table
+ *   with a height-constrained container (`containerClassName="max-h-40"`).
  * - **`isTruncatable`** on `TableHead` / `TableCell` clips long content with
  *   ellipsis instead of letting the column blow out the row width.
  * - **`data-state="selected"`** on a `TableRow` paints the selected highlight
@@ -98,17 +100,21 @@ const identities: Identity[] = [
  * For datasets that don't fit on a single screen, pair the `Table` with the
  * `Pagination` component as a sibling below it — see *Example: With
  * Pagination*.
+ *
+ * Anchor the table on the start edge. Extra column width grows toward the end
+ * and scrolls inside the bordered container; do not center the table so it
+ * grows both ways. Stories use `layout: "padded"` for that reason.
  */
 const meta = {
   title: "Generic/Table",
   component: Table,
   parameters: {
-    layout: "centered"
+    layout: "padded"
   },
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <div className="w-[760px]">
+      <div className="ms-0 w-full max-w-3xl min-w-0">
         <Story />
       </div>
     )
@@ -139,6 +145,40 @@ export const Default: Story = {
       </TableHeader>
       <TableBody>
         {identities.slice(0, 4).map((id) => (
+          <TableRow key={id.name}>
+            <TableCell className="font-medium">{id.name}</TableCell>
+            <TableCell>{id.role}</TableCell>
+            <TableCell>
+              <Badge variant="success">Active</Badge>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const StickyHeader: Story = {
+  name: "Example: Sticky Header",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `sticky` on `TableHeader` and constrain the table container height with `containerClassName`. The header stays visible while the rows scroll; by default, headers are not sticky."
+      }
+    }
+  },
+  render: () => (
+    <Table containerClassName="max-h-40">
+      <TableHeader sticky>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {identities.map((id) => (
           <TableRow key={id.name}>
             <TableCell className="font-medium">{id.name}</TableCell>
             <TableCell>{id.role}</TableCell>

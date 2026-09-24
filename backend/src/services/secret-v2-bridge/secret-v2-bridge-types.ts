@@ -1,7 +1,7 @@
 import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
-import { SecretType, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
+import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -133,6 +133,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId: string;
   environment: string;
+  folder?: Pick<TSecretFolders, "id" | "envId"> & { environment: { slug: string; name: string } };
   secrets: {
     secretKey: string;
     secretValue: string;
@@ -332,6 +333,17 @@ export type TDispatchSecretMoveSideEffectsDTO = {
   actor: ActorType;
   actorId: string;
 } & TFnSecretMoveResult;
+
+export type TDispatchSecretCreateSideEffectsDTO = {
+  projectId: string;
+  orgId: string;
+  actor: ActorType;
+  actorId: string;
+  environmentSlug: string;
+  environmentName: string;
+  secretPath: string;
+  secretKeys: string[];
+};
 
 export type THandleReminderDTO = {
   newSecret: TPartialInputSecret;

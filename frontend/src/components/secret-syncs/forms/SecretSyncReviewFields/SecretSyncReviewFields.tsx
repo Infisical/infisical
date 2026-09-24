@@ -2,7 +2,10 @@ import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 import { TriangleAlert } from "lucide-react";
 
-import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import {
+  getSecretSyncDestinationConfig,
+  TSecretSyncForm
+} from "@app/components/secret-syncs/forms/schemas";
 import {
   Alert,
   AlertDescription,
@@ -96,7 +99,7 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
     destination,
     isAutoSyncEnabled
   } = watch();
@@ -108,7 +111,7 @@ export const SecretSyncReviewFields = () => {
     projectId: currentProject?.id || "",
     connectionId: connection?.id,
     enabled: true,
-    destinationConfig: watch("destinationConfig")
+    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig"))
   });
 
   switch (destination) {
@@ -357,6 +360,14 @@ export const SecretSyncReviewFields = () => {
             )}
           </Detail>
           {AdditionalSyncOptionsFieldsComponent}
+          <Detail>
+            <DetailLabel>Include All Subfolders</DetailLabel>
+            <DetailValue>
+              <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
+                {includeAllSubFolders ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
           <Detail>
             <DetailLabel>Secret Deletion Protection</DetailLabel>
             <DetailValue>

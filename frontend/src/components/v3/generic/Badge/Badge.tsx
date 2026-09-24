@@ -30,7 +30,7 @@ const badgeVariants = cva(
       },
       variant: {
         ghost: "text-foreground border-none [a&,button&]:hover:bg-foreground/10",
-        default: "bg-label text-background border-label [a&,button&]:hover:bg-primary/35",
+        default: "bg-label text-background border-label [a&,button&]:hover:bg-project/35",
         outline: "border border-border text-muted",
         shaded: "bg-border text-foreground/60 border-none",
         neutral: "bg-neutral/15 border-neutral/10 text-neutral [a&,button&]:hover:bg-neutral/35",
@@ -42,7 +42,8 @@ const badgeVariants = cva(
           "bg-project/15 text-project border-project/10 border [a&,button&]:hover:bg-project/35",
         org: "bg-org/15 border  border-org/10 text-org [a&,button&]:hover:bg-org/35",
         "sub-org": "bg-sub-org/15 border-sub-org/10 text-sub-org [a&,button&]:hover:bg-sub-org/35",
-        pam: "bg-product-pam/15 border-product-pam/10 text-product-pam [a&,button&]:hover:bg-product-pam/35"
+        pam: "bg-product-pam/15 border-product-pam/10 text-product-pam [a&,button&]:hover:bg-product-pam/35",
+        av: "bg-product-av/15 border-product-av/10 text-product-av [a&,button&]:hover:bg-product-av/35"
       }
     },
     defaultVariants: {

@@ -1,11 +1,14 @@
 export type TGatewayV2 = {
   id: string;
   identityId: string | null;
+  relayId: string | null;
   name: string;
   createdAt: string;
   updatedAt: string;
   heartbeat: string | null;
   heartbeatTTL: number | null;
+  directAddress: string | null;
+  directHeartbeat: string | null;
   canRevoke: boolean;
   connectedResourcesCount: number;
   identity: {
@@ -20,6 +23,16 @@ export type GatewayAwsAuthConfig = {
   stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GatewayGcpAuthConfig = {
+  id: string;
+  type: "gce" | "iam";
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,6 +62,7 @@ export type GatewayIdentityAuthConfig = {
 
 export type GatewayAuthMethodView =
   | { method: "aws"; config: GatewayAwsAuthConfig }
+  | { method: "gcp"; config: GatewayGcpAuthConfig }
   | { method: "kubernetes"; config: GatewayKubernetesAuthConfig }
   | { method: "token"; config: GatewayTokenAuthConfig }
   | { method: "identity"; config: GatewayIdentityAuthConfig };
@@ -63,6 +77,13 @@ export type SettableAuthMethodInput =
       stsEndpoint?: string;
       allowedPrincipalArns: string;
       allowedAccountIds: string;
+    }
+  | {
+      method: "gcp";
+      type: "gce" | "iam";
+      allowedServiceAccounts: string;
+      allowedProjects: string;
+      allowedZones: string;
     }
   | {
       method: "kubernetes";

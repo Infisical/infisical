@@ -49,6 +49,32 @@ For a full overview of how gateways work, see the [Gateway documentation](/docum
         ```
       </Tab>
 
+      <Tab title="GCP Auth">
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+          --namespace infisical-gateway \
+          --create-namespace \
+          --set gateway.name=<gateway-name> \
+          --set gateway.enrollment.method=gcp \
+          --set gateway.enrollment.gcp.gatewayId=<gateway-id> \
+          --set gateway.domain=https://app.infisical.com \
+          --set serviceAccount.annotations."iam\.gke\.io/gcp-service-account"=<gsa-name>@<project-id>.iam.gserviceaccount.com
+        ```
+
+        The gateway reads an identity token from the GKE metadata server, so no credential has to be
+        distributed to the cluster.
+
+        <Warning>
+          The Google service account in that annotation is the identity Infisical sees, so its email
+          must be in the gateway's allowed service account emails. Its IAM policy also needs a
+          `roles/iam.workloadIdentityUser` binding for the Kubernetes service account the chart
+          creates. A workload identity token carries no Compute Engine instance details, so a login
+          is refused while the gateway has an allowed projects or zones list. See
+          [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for the full
+          configuration.
+        </Warning>
+      </Tab>
+
       <Tab title="Kubernetes Auth">
         ```bash
         helm install infisical-gateway infisical-helm-charts/infisical-gateway \
@@ -93,22 +119,26 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 |-----------|---------|-------------|
 | `gateway.name` | `""` | Name of the gateway as created in the Infisical UI. |
 | `gateway.domain` | `""` | Infisical instance URL (e.g., `https://app.infisical.com`). |
-| `gateway.enrollment.method` | `""` | Enrollment method: `token`, `aws`, or `kubernetes`. |
+| `gateway.enrollment.method` | `""` | Enrollment method: `token`, `aws`, `gcp`, or `kubernetes`. |
 | `gateway.enrollment.token.value` | `""` | Inline enrollment token. Mutually exclusive with `existingSecretRef`. |
 | `gateway.enrollment.token.existingSecretRef` | `""` | Kubernetes secret containing the enrollment token. |
 | `gateway.enrollment.token.secretKey` | `"enrollment-token"` | Key in the secret that holds the token. |
 | `gateway.enrollment.aws.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for AWS auth. |
+| `gateway.enrollment.gcp.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for GCP auth. |
+| `gateway.enrollment.gcp.type` | `""` | How the identity is proven: `gce` reads a token from the metadata server, `iam` signs one through the IAM Credentials API. Empty means `gce`. |
+| `gateway.enrollment.gcp.serviceAccountKeyFilePath` | `""` | Only for `type: iam` on a pod with no workload identity. Path to a service account key file, which you mount with `extraVolumes` and `extraVolumeMounts`. |
 | `gateway.enrollment.kubernetes.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for Kubernetes auth. |
 | `gateway.enrollment.kubernetes.serviceAccountTokenPath` | `""` | Override the projected service account token path. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`. |
 | `gateway.enrollment.kubernetes.externalTokenReview` | `false` | Set true when TokenReview permission comes from outside this chart, either a token reviewer JWT configured in Infisical or a binding you manage. Required to install with `serviceAccount.createAsAuthDelegator` disabled. |
 | `gateway.enrollment.credentialsSecretRef` | `""` | Kubernetes secret with credentials injected as env vars. |
 | `gateway.relayName` | `""` | Specific relay to connect to. Empty for automatic selection. |
-| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth, optional for AWS and Kubernetes auth. |
+| `gateway.listenAddress` | `""` | `host:port` that Infisical dials to reach the gateway, which runs it in direct listen mode. Empty for relay mode. |
+| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth, optional for AWS, GCP and Kubernetes auth. |
 | `persistence.storageClass` | `""` | Storage class for the PVC. |
 | `persistence.size` | `5Gi` | PVC size. |
 | `persistence.existingClaim` | `""` | Use an existing PVC. |
 | `image.repository` | `infisical/cli` | Container image. |
-| `image.tag` | `"0.43.123"` | Image tag. |
+| `image.tag` | `"0.43.134"` | Image tag. |
 | `resources.requests.cpu` | `100m` | CPU request. |
 | `resources.requests.memory` | `128Mi` | Memory request. |
 | `resources.limits.cpu` | `500m` | CPU limit. |
@@ -121,14 +151,60 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `extraEnv` | `[]` | Extra environment variables for the gateway container. |
 | `extraEnvFrom` | `[]` | Load environment variables from Secrets or ConfigMaps. |
 | `extraArgs` | `[]` | Extra arguments appended to the gateway container command. |
+| `extraVolumes` | `[]` | Additional volumes to attach to the gateway pod. |
+| `extraVolumeMounts` | `[]` | Additional volume mounts for the gateway container. |
 | `extraObjects` | `[]` | Extra Kubernetes manifests to deploy with this chart. |
+| `service.type` | `ClusterIP` | Type of the Service created in direct listen mode. |
+| `service.port` | `""` | Port the Service exposes. Empty means the port from `gateway.listenAddress`. Set it only to put a different port in front of the gateway. |
+
+## Resource limits
+
+PAM is heavier per session, so raise the chart's resource limits:
+
+```yaml
+resources:
+  requests:
+    cpu: 4
+    memory: 8Gi
+  limits:
+    cpu: 4
+    memory: 8Gi
+```
+
+Kubernetes schedules on requests, so requests below the minimum can place the gateway on a node that can't supply it.
+
+Recordings share the volume with the gateway's credentials, so raise `persistence.size` above its 5Gi default if your sessions are long or numerous.
+
+## Direct listen mode
+
+By default the gateway connects out to a relay. To have Infisical connect to the gateway instead, set `gateway.listenAddress` to the address Infisical dials.
+
+```bash
+helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+  --namespace infisical-gateway \
+  --create-namespace \
+  --set gateway.name=<gateway-name> \
+  --set gateway.listenAddress=infisical-gateway.infisical-gateway.svc.cluster.local:8443 \
+  --set gateway.enrollment.method=token \
+  --set gateway.enrollment.token.value=<enrollment-token> \
+  --set gateway.domain=<your-infisical-domain>
+```
+
+The chart takes the container port from `gateway.listenAddress`, points the Service at it, and exposes that same port, which keeps all three in step. A `host:port` value is required, and the chart fails the render if the port is missing. Set `service.port` only if you want the Service to answer on a different port than the gateway binds, in which case the listen address has to name the Service's port.
+
+The Service is created only in direct listen mode. A relay-mode gateway accepts no connections and needs none.
+
+The address has to be one Infisical can resolve and reach. An in-cluster Service DNS name works when you self-host Infisical in the same cluster. From outside the cluster, expose the gateway through an Ingress or a `LoadBalancer` Service and register that address instead.
+
+Direct listen is only available on self-hosted Infisical.
 
 ## Default Helm values
 
+<Accordion title="values.yaml">
 ```yaml
 image:
   repository: infisical/cli
-  tag: "0.43.123"
+  tag: "0.43.134"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
@@ -144,7 +220,7 @@ gateway:
   domain: ""
 
   enrollment:
-    # Enrollment method: "token", "aws", or "kubernetes".
+    # Enrollment method: "token", "aws", "gcp", or "kubernetes".
     # Leave empty to use the legacy machine identity flow (env vars from secret.name).
     method: ""
 
@@ -161,6 +237,18 @@ gateway:
     aws:
       # Required when method=aws. Gateway ID from the Infisical UI.
       gatewayId: ""
+
+    # GCP enrollment settings (method=gcp)
+    gcp:
+      # Required when method=gcp. Gateway ID from the Infisical UI.
+      gatewayId: ""
+      # How the gateway proves its GCP identity: "gce" reads an identity token from the instance
+      # metadata server, which covers GKE workload identity; "iam" signs a JWT through the IAM
+      # Credentials API. Leave empty for the CLI default of "gce".
+      type: ""
+      # Only for type=iam, and only when the pod has no workload identity to sign with. Path to a
+      # service account key file, which you mount with extraVolumes and extraVolumeMounts.
+      serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
     kubernetes:
@@ -181,11 +269,16 @@ gateway:
   # Specific relay to connect to. Leave empty for automatic selection.
   relayName: ""
 
+  # Stable host:port advertised by a gateway accepting direct connections.
+  # Requires an image.tag of 0.43.131 or newer; older images reject the flag and the pod
+  # crash-loops on startup.
+  listenAddress: ""
+
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
 # Persistent storage for the gateway (credentials and session recordings).
 # Required when enrollment.method=token so credentials survive pod restarts.
-# Optional when enrollment.method=aws or enrollment.method=kubernetes, since both re-authenticate
+# Optional when enrollment.method is aws, gcp or kubernetes, since all three re-authenticate
 # on every start.
 # For legacy machine-identity installs (no enrollment.method), persistence only takes effect
 # when existingClaim is provided.
@@ -231,7 +324,9 @@ tolerations: {}
 nodeSelector: {}
 service:
   type: ClusterIP
-  port: 80
+  # Port the Service exposes. Empty means the port from gateway.listenAddress, which is the port
+  # the platform dials. Only set this to put a different port in front of the gateway.
+  port: ""
 
 ingress:
   enabled: false
@@ -257,6 +352,19 @@ extraEnvFrom: []
 extraArgs: []
 #  - --log-level=debug
 
+# Additional volumes to attach to the gateway pod
+extraVolumes: []
+#  - name: gcp-service-account-key
+#    secret:
+#      secretName: gcp-service-account-key
+
+# Additional volume mounts for the gateway container
+extraVolumeMounts: []
+#  - name: gcp-service-account-key
+#    mountPath: /var/secrets/gcp
+#    readOnly: true
+
 # Extra Kubernetes manifests to deploy with this chart
 extraObjects: []
 ```
+</Accordion>

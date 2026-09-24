@@ -21,23 +21,13 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  NotFoundError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -51,8 +41,15 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
+import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -79,7 +76,10 @@ type TIdentityOidcAuthServiceFactoryDep = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
@@ -87,6 +87,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -102,7 +103,8 @@ export const identityOidcAuthServiceFactory = ({
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt, organizationSlug }: TLoginOidcAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -412,9 +414,9 @@ export const identityOidcAuthServiceFactory = ({
 
       if (identityOidcAuth.boundAudiences) {
         if (
-          !identityOidcAuth.boundAudiences
-            .split(", ")
-            .some((policyValue) => doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue))
+          !splitCommaSeparatedPolicyValues(identityOidcAuth.boundAudiences).some((policyValue) =>
+            doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue)
+          )
         ) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC audience not allowed.",
@@ -446,7 +448,11 @@ export const identityOidcAuthServiceFactory = ({
           }
 
           // handle both single and multi-valued claims
-          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
+          if (
+            !splitCommaSeparatedPolicyValues(claimValue).some((claimEntry) =>
+              doesFieldValueMatchOidcPolicy(value, claimEntry)
+            )
+          ) {
             throw new UnauthorizedError({
               message: "Access denied: OIDC claim not allowed.",
               detail: {
@@ -663,6 +669,21 @@ export const identityOidcAuthServiceFactory = ({
       );
     }
 
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to add oidc auth to identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -767,6 +788,17 @@ export const identityOidcAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OIDC_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
@@ -852,6 +884,21 @@ export const identityOidcAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update oidc auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -972,7 +1019,21 @@ export const identityOidcAuthServiceFactory = ({
       updateQuery.encryptedCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
-    const updatedOidcAuth = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery);
+    const updatedOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
+      const doc = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery, tx);
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OIDC_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
+    });
     const updatedCACert = updatedOidcAuth.encryptedCaCertificate
       ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
       : "";
@@ -1105,39 +1166,22 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.RevokeAuth,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke oidc auth of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.RevokeAuth,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.RevokeAuth,
+        baseMessage: "Failed to revoke oidc auth of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -1145,6 +1189,17 @@ export const identityOidcAuthServiceFactory = ({
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OIDC_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OIDC_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

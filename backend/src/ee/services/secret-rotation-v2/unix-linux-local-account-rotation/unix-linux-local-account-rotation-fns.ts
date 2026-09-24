@@ -362,15 +362,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationWithConnection,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
-> = (
-  secretRotation,
-  appConnectionDAL,
-  kmsService,
-  _gatewayService,
-  gatewayV2Service,
-  gatewayPoolService,
-  passwordValidationContext
-) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const {
     username,
@@ -455,7 +447,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const conn = await getResolvedConnection();
     const { credentials } = conn;
-    const newPassword = passwordValidationContext?.constraints?.length
+    const newPassword = passwordValidationContext
       ? generatePasswordWithConstraints(passwordValidationContext.constraints)
       : generatePassword(passwordRequirements);
 

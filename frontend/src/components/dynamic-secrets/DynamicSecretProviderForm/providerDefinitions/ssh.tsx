@@ -81,6 +81,8 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
                   onChange={(event) => setPrincipal(event.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Enter principal name..."
+                  isError={Boolean(error)}
+                  aria-describedby="ssh-principals-feedback"
                 />
                 <Button
                   type="button"
@@ -138,6 +140,7 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
                   id="ssh-key-algorithm"
                   onBlur={field.onBlur}
                   isError={Boolean(error)}
+                  aria-describedby="ssh-key-algorithm-feedback"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -152,6 +155,44 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
               <FieldFeedback
                 id="ssh-key-algorithm-feedback"
                 description="Algorithm for ephemeral key pairs generated per lease."
+                error={error?.message}
+              />
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="inputs.caKeyAlgorithm"
+          render={({ field, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="ssh-ca-key-algorithm">CA Key Algorithm</FieldLabel>
+              <Select
+                value={field.value}
+                onValueChange={(value) => {
+                  if (!value || value === field.value) return;
+                  field.onChange(value);
+                }}
+              >
+                <SelectTrigger
+                  ref={field.ref}
+                  id="ssh-ca-key-algorithm"
+                  onBlur={field.onBlur}
+                  isError={Boolean(error)}
+                  aria-describedby="ssh-ca-key-algorithm-feedback"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sshCertKeyAlgorithms.map((algorithm) => (
+                    <SelectItem key={algorithm.value} value={algorithm.value}>
+                      {algorithm.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldFeedback
+                id="ssh-ca-key-algorithm-feedback"
+                description="Algorithm for the CA that signs lease certificates. Updating this requires hosts to be configured again."
                 error={error?.message}
               />
             </Field>

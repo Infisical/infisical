@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { NotificationContainer } from "@app/components/notifications";
@@ -7,15 +7,20 @@ import {
   RootCommandMenu,
   type RootCommandMenuShell
 } from "@app/components/v3/platform/RootCommandMenu";
+import { ThemeProvider } from "@app/components/v3/platform/ThemeProvider";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { fetchAuthToken, shouldRetryAuthTokenFetch } from "@app/hooks/api/auth/refresh";
-import { queryClient } from "@app/hooks/api/reactQuery";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type TRouterContext = {
   serverConfig: TServerConfig | null;
   queryClient: QueryClient;
+  // Published by the PAM and Agent Vault layouts, whose URLs carry no $projectId. Optional because
+  // only those two branches of the tree set them; see useImplicitProjectId and useImplicitProduct.
+  implicitProjectId?: string;
+  implicitProductType?: ProjectType;
 };
 
 const RootCommandMenuMount = () => {
@@ -42,14 +47,15 @@ const RootCommandMenuMount = () => {
 };
 
 const RootPage = () => {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <QueryClientProvider client={queryClient}>
+    <ThemeProvider pathname={pathname}>
       <TooltipProvider>
         <Outlet />
         <RootCommandMenuMount />
         <NotificationContainer />
       </TooltipProvider>
-    </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

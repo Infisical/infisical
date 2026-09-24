@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -9,6 +9,7 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -22,10 +23,13 @@ import {
   OrgPermissionSubjects
 } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
 import { TGatewayProxyRegistry } from "./gateway-proxy-registry";
+import { TResourceGcpAuthDALFactory } from "./gcp-auth-dal";
+import { validateGcpAllowlists, verifyGcpTokenAndExtractCaller } from "./gcp-auth-fns";
 import { TResourceKubernetesAuthDALFactory } from "./kubernetes-auth-dal";
 import {
   assertKubernetesHostAllowed,
@@ -41,24 +45,30 @@ import {
   assertGatewayResource,
   assertKmipServerResource,
   assertRelayResource,
+  GcpAuthType,
   KubernetesTokenReviewMode,
+  mintAgentVaultProxyJwt,
   mintGatewayJwt,
   mintKmipServerJwt,
   mintRelayJwt,
+  RESOURCE_TYPE_AGENT_VAULT_PROXY,
   RESOURCE_TYPE_GATEWAY,
   RESOURCE_TYPE_KMIP,
   RESOURCE_TYPE_RELAY,
   ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
-  type ResourceRef
+  type ResourceRef,
+  type TSettableAuthMethod
 } from "./resource-auth-method-fns";
 import {
   TAuthMethodView,
   TAwsAuthMethodConfig,
   TEncryptedKubernetesSecrets,
+  TGcpAuthMethodConfig,
   TGetAuthMethodDTO,
   TKubernetesAuthMethodConfig,
   TLoginWithAwsDTO,
+  TLoginWithGcpDTO,
   TLoginWithKubernetesDTO,
   TLoginWithTokenDTO,
   TMintTokenDTO,
@@ -72,8 +82,15 @@ const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
 // Bounds the reviewer chain walk; nobody legitimately chains proxies this deep.
 const MAX_PROXY_CHAIN_DEPTH = 10;
 
-const $generateEnrollmentToken = () => {
-  const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
+const ENROLLMENT_TOKEN_PREFIX: Record<ResourceRef["type"], string> = {
+  [RESOURCE_TYPE_GATEWAY]: "gwe_",
+  [RESOURCE_TYPE_RELAY]: "gwe_",
+  [RESOURCE_TYPE_KMIP]: "gwe_",
+  [RESOURCE_TYPE_AGENT_VAULT_PROXY]: "avp_"
+};
+
+const $generateEnrollmentToken = (prefix: string) => {
+  const plainToken = `${prefix}${crypto.randomBytes(32).toString("base64url")}`;
   const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
   const expiresAt = new Date(Date.now() + ENROLLMENT_TOKEN_TTL_SECONDS * 1000);
   return { plainToken, tokenHash, expiresAt };
@@ -82,6 +99,7 @@ const $generateEnrollmentToken = () => {
 type TResourceAuthMethodServiceFactoryDep = {
   resourceAuthMethodDAL: TResourceAuthMethodDALFactory;
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
+  resourceGcpAuthDAL: TResourceGcpAuthDALFactory;
   resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -90,8 +108,9 @@ type TResourceAuthMethodServiceFactoryDep = {
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
+  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
@@ -102,32 +121,50 @@ export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMe
 const GATEWAY_PERMISSION_MAP = {
   list: OrgPermissionGatewayActions.ListGateways,
   edit: OrgPermissionGatewayActions.EditGateways,
+  create: OrgPermissionGatewayActions.EditGateways,
+  issue: OrgPermissionGatewayActions.EditGateways,
   revoke: OrgPermissionGatewayActions.RevokeGatewayAccess
 } as const;
 
 const RELAY_PERMISSION_MAP = {
   list: OrgPermissionRelayActions.ListRelays,
   edit: OrgPermissionRelayActions.EditRelays,
+  create: OrgPermissionRelayActions.EditRelays,
+  issue: OrgPermissionRelayActions.EditRelays,
   revoke: OrgPermissionRelayActions.RevokeRelayAccess
 } as const;
 
+// create and issue exist for products that gate them separately; these three keep them on edit, which
+// is the action that has always covered minting here.
 const KMIP_SERVER_PERMISSION_MAP = {
   list: OrgPermissionKmipServerActions.ListKmipServers,
   edit: OrgPermissionKmipServerActions.EditKmipServers,
+  create: OrgPermissionKmipServerActions.EditKmipServers,
+  issue: OrgPermissionKmipServerActions.EditKmipServers,
   revoke: OrgPermissionKmipServerActions.RevokeKmipServerAccess
 } as const;
 
 const RESOURCE_LABEL: Record<ResourceRef["type"], string> = {
   [RESOURCE_TYPE_GATEWAY]: "Gateway",
   [RESOURCE_TYPE_RELAY]: "Relay",
-  [RESOURCE_TYPE_KMIP]: "KMIP server"
+  [RESOURCE_TYPE_KMIP]: "KMIP server",
+  [RESOURCE_TYPE_AGENT_VAULT_PROXY]: "Agent Vault proxy"
 };
+
+const AGENT_VAULT_PROXY_PERMISSION_MAP = {
+  list: ProjectPermissionAgentVaultProxyActions.Read,
+  edit: ProjectPermissionAgentVaultProxyActions.Edit,
+  create: ProjectPermissionAgentVaultProxyActions.Create,
+  issue: ProjectPermissionAgentVaultProxyActions.IssueToken,
+  revoke: ProjectPermissionAgentVaultProxyActions.Revoke
+} as const;
 
 type TBasicResource = { id: string; name: string; orgId: string | null; identityId: string | null };
 
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
+  resourceGcpAuthDAL,
   resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
   kmsService,
@@ -136,6 +173,7 @@ export const resourceAuthMethodServiceFactory = ({
   gatewayPoolMembershipDAL,
   relayDAL,
   kmipServerDAL,
+  agentVaultProxyDAL,
   identityDAL,
   permissionService,
   licenseService,
@@ -145,6 +183,7 @@ export const resourceAuthMethodServiceFactory = ({
   const $registryFilter = (resource: ResourceRef) => {
     if (resource.type === RESOURCE_TYPE_GATEWAY) return { gatewayId: resource.id };
     if (resource.type === RESOURCE_TYPE_RELAY) return { relayId: resource.id };
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) return { agentVaultProxyId: resource.id };
     return { kmipServerId: resource.id };
   };
 
@@ -164,23 +203,35 @@ export const resourceAuthMethodServiceFactory = ({
         ? { id: relay.id, name: relay.name, orgId: relay.orgId ?? null, identityId: relay.identityId ?? null }
         : null;
     }
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      const proxy = await agentVaultProxyDAL.findByIdWithOrg(resource.id, tx);
+      return proxy ? { id: proxy.id, name: proxy.name, orgId: proxy.orgId, identityId: null } : null;
+    }
+    // Unmatched types load as a KMIP server rather than failing, so a new resource type needs its own arm above.
     const kmipServer = await kmipServerDAL.findById(resource.id, tx);
     return kmipServer ? { id: kmipServer.id, name: kmipServer.name, orgId: kmipServer.orgId, identityId: null } : null;
   };
 
-  // Bumps tokenVersion (invalidating outstanding JWTs) and clears heartbeat. Gateways
-  // additionally clear heartbeatTTL; KMIP servers have neither heartbeat column.
+  // Bumps tokenVersion and clears every liveness probe. KMIP servers have no heartbeat columns.
   const $bumpTokenVersion = async (resource: ResourceRef, tx?: Knex): Promise<number> => {
     if (resource.type === RESOURCE_TYPE_GATEWAY) {
       const refreshed = await gatewayV2DAL.updateById(
         resource.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
+        { $incr: { tokenVersion: 1 }, heartbeat: null, directHeartbeat: null, heartbeatTTL: null },
         tx
       );
       return refreshed.tokenVersion;
     }
     if (resource.type === RESOURCE_TYPE_RELAY) {
       const refreshed = await relayDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
+      return refreshed.tokenVersion;
+    }
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      const refreshed = await agentVaultProxyDAL.updateById(
+        resource.id,
+        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
+        tx
+      );
       return refreshed.tokenVersion;
     }
     const refreshed = await kmipServerDAL.updateById(resource.id, { $incr: { tokenVersion: 1 } }, tx);
@@ -194,14 +245,43 @@ export const resourceAuthMethodServiceFactory = ({
     if (resource.type === RESOURCE_TYPE_RELAY) {
       return mintRelayJwt({ relayId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
     }
+    if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      return mintAgentVaultProxyJwt({ agentVaultProxyId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
+    }
     return mintKmipServerJwt({ kmipServerId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
   };
 
   const $checkPermission = async (
     actor: TSetAuthMethodDTO["actor"],
-    intent: "list" | "edit" | "revoke",
-    resourceType: ResourceRef["type"]
+    intent: "list" | "edit" | "create" | "issue" | "revoke",
+    resourceType: ResourceRef["type"],
+    resourceId?: string
   ) => {
+    // A project subject, not an org one: the else branch below would reintroduce the org-admin fallback
+    // the product forbids.
+    if (resourceType === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
+      if (!resourceId) {
+        throw new BadRequestError({ message: "Agent Vault proxy permission check requires the proxy id" });
+      }
+      const proxy = await agentVaultProxyDAL.findByIdWithOrg(resourceId);
+      if (!proxy || proxy.orgId !== actor.orgId) {
+        throw new NotFoundError({ message: `Agent Vault proxy ${resourceId} not found` });
+      }
+      const { permission: projectPermission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId: proxy.projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.AgentVault
+      });
+      ForbiddenError.from(projectPermission).throwUnlessCan(
+        AGENT_VAULT_PROXY_PERMISSION_MAP[intent],
+        ProjectPermissionSub.AgentVaultProxies
+      );
+      return;
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor: actor.type,
@@ -293,6 +373,25 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: config.stsEndpoint,
           allowedPrincipalArns: config.allowedPrincipalArns,
           allowedAccountIds: config.allowedAccountIds,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt
+        }
+      };
+    }
+
+    if (registry.method === ResourceAuthMethodType.Gcp) {
+      const config = await resourceGcpAuthDAL.findOne({ authMethodId: registry.id });
+      if (!config) {
+        throw new NotFoundError({ message: `GCP auth config missing for ${resource.type}` });
+      }
+      return {
+        method: ResourceAuthMethodType.Gcp,
+        config: {
+          id: config.id,
+          type: config.type === GcpAuthType.Iam ? GcpAuthType.Iam : GcpAuthType.Gce,
+          allowedServiceAccounts: config.allowedServiceAccounts,
+          allowedProjects: config.allowedProjects,
+          allowedZones: config.allowedZones,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt
         }
@@ -662,6 +761,7 @@ export const resourceAuthMethodServiceFactory = ({
       resource: ResourceRef;
       authMethod:
         | { method: typeof ResourceAuthMethodType.Aws; config: TAwsAuthMethodConfig }
+        | { method: typeof ResourceAuthMethodType.Gcp; config: TGcpAuthMethodConfig }
         | {
             method: typeof ResourceAuthMethodType.Kubernetes;
             config: TKubernetesAuthMethodConfig & TEncryptedKubernetesSecrets;
@@ -681,6 +781,18 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: authMethod.config.stsEndpoint,
           allowedPrincipalArns: authMethod.config.allowedPrincipalArns,
           allowedAccountIds: authMethod.config.allowedAccountIds
+        },
+        tx
+      );
+    }
+    if (authMethod.method === ResourceAuthMethodType.Gcp) {
+      await resourceGcpAuthDAL.create(
+        {
+          authMethodId: registry.id,
+          type: authMethod.config.type,
+          allowedServiceAccounts: authMethod.config.allowedServiceAccounts,
+          allowedProjects: authMethod.config.allowedProjects,
+          allowedZones: authMethod.config.allowedZones
         },
         tx
       );
@@ -708,7 +820,7 @@ export const resourceAuthMethodServiceFactory = ({
   // tokenVersion is intentionally NOT bumped on method change — running resources keep
   // their JWT until the next restart, avoiding forced downtime. Use revoke for that.
   const setMethod = async ({ resource, authMethod, actor }: TSetAuthMethodDTO): Promise<TAuthMethodView> => {
-    await $checkPermission(actor, "edit", resource.type);
+    await $checkPermission(actor, "edit", resource.type, resource.id);
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);
@@ -825,6 +937,13 @@ export const resourceAuthMethodServiceFactory = ({
         await resourceAwsAuthDAL.delete({ authMethodId: current.id }, tx);
       }
       if (
+        previousMethod === ResourceAuthMethodType.Gcp &&
+        authMethod.method !== ResourceAuthMethodType.Gcp &&
+        current
+      ) {
+        await resourceGcpAuthDAL.delete({ authMethodId: current.id }, tx);
+      }
+      if (
         previousMethod === ResourceAuthMethodType.Kubernetes &&
         authMethod.method !== ResourceAuthMethodType.Kubernetes &&
         current
@@ -862,6 +981,22 @@ export const resourceAuthMethodServiceFactory = ({
             },
             tx
           );
+        }
+      }
+
+      if (authMethod.method === ResourceAuthMethodType.Gcp) {
+        const gcpFields = {
+          type: authMethod.type,
+          allowedServiceAccounts: authMethod.allowedServiceAccounts,
+          allowedProjects: authMethod.allowedProjects,
+          allowedZones: authMethod.allowedZones
+        };
+
+        const existingGcp = await resourceGcpAuthDAL.findOne({ authMethodId: registryRow.id }, tx);
+        if (existingGcp) {
+          await resourceGcpAuthDAL.updateById(existingGcp.id, gcpFields, tx);
+        } else {
+          await resourceGcpAuthDAL.create({ authMethodId: registryRow.id, ...gcpFields }, tx);
         }
       }
 
@@ -908,8 +1043,8 @@ export const resourceAuthMethodServiceFactory = ({
 
   // Non-destructive: minting a new token does NOT bump tokenVersion or clear heartbeat,
   // so a running resource keeps working. The next login (with the new token) does the bump.
-  const mintToken = async ({ resource, actor }: TMintTokenDTO) => {
-    await $checkPermission(actor, "edit", resource.type);
+  const mintToken = async ({ resource, actor, intent = "issue" }: TMintTokenDTO) => {
+    await $checkPermission(actor, intent, resource.type, resource.id);
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);
@@ -924,7 +1059,7 @@ export const resourceAuthMethodServiceFactory = ({
       });
     }
 
-    const generated = $generateEnrollmentToken();
+    const generated = $generateEnrollmentToken(ENROLLMENT_TOKEN_PREFIX[resource.type]);
 
     const record = await resourceTokenAuthDAL.transaction(async (tx) => {
       await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
@@ -949,7 +1084,7 @@ export const resourceAuthMethodServiceFactory = ({
   };
 
   const revokeAccess = async ({ resource, actor }: TRevokeTokenDTO) => {
-    await $checkPermission(actor, "revoke", resource.type);
+    await $checkPermission(actor, "revoke", resource.type, resource.id);
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);
@@ -963,7 +1098,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
     if (loaded.identityId) {
       throw new BadRequestError({
-        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, Kubernetes, or Token auth instead.`
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, GCP, Kubernetes, or Token auth instead.`
       });
     }
 
@@ -980,7 +1115,7 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       resourceName: loaded.name,
       orgId: loaded.orgId,
-      method: registry.method as "aws" | "kubernetes" | "token"
+      method: registry.method as TSettableAuthMethod
     };
   };
 
@@ -1052,6 +1187,74 @@ export const resourceAuthMethodServiceFactory = ({
       config,
       principalArn: Arn,
       accountId: Account
+    };
+  };
+
+  const loginWithGcp = async ({ resource, jwt }: TLoginWithGcpDTO) => {
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || !loaded.orgId) {
+      throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+    }
+    const resourceName = loaded.name;
+    const resourceOrgId = loaded.orgId;
+
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
+    if (!registry || registry.method !== ResourceAuthMethodType.Gcp) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for GCP authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const config = await resourceGcpAuthDAL.findOne({ authMethodId: registry.id });
+    if (!config) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for GCP authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const errorContext = { resourceId: resource.id, orgId: resourceOrgId, resourceName };
+    const type = config.type === GcpAuthType.Iam ? GcpAuthType.Iam : GcpAuthType.Gce;
+
+    const identityDetails = await verifyGcpTokenAndExtractCaller({
+      type,
+      jwt,
+      audience: resource.id,
+      errorContext
+    });
+
+    validateGcpAllowlists({
+      type,
+      identityDetails,
+      allowedServiceAccounts: config.allowedServiceAccounts,
+      allowedProjects: config.allowedProjects,
+      allowedZones: config.allowedZones,
+      errorContext
+    });
+
+    const refreshedTokenVersion = await $bumpTokenVersion(resource);
+
+    const accessToken = $mintJwt(resource, resourceOrgId, refreshedTokenVersion);
+
+    return {
+      accessToken,
+      resourceId: resource.id,
+      resourceName,
+      orgId: resourceOrgId,
+      configId: config.id,
+      serviceAccountEmail: identityDetails.email,
+      projectId: identityDetails.computeEngineDetails?.project_id,
+      zone: identityDetails.computeEngineDetails?.zone
     };
   };
 
@@ -1171,7 +1374,8 @@ export const resourceAuthMethodServiceFactory = ({
     }
 
     // Determine resource type from which FK is set on the registry row — exactly one must be set.
-    const linkedResourceId = registry.gatewayId ?? registry.relayId ?? registry.kmipServerId;
+    const linkedResourceId =
+      registry.gatewayId ?? registry.relayId ?? registry.kmipServerId ?? registry.agentVaultProxyId;
     if (!linkedResourceId) {
       throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
     }
@@ -1179,6 +1383,7 @@ export const resourceAuthMethodServiceFactory = ({
     let actualResourceType: ResourceRef["type"];
     if (registry.gatewayId) actualResourceType = RESOURCE_TYPE_GATEWAY;
     else if (registry.relayId) actualResourceType = RESOURCE_TYPE_RELAY;
+    else if (registry.agentVaultProxyId) actualResourceType = RESOURCE_TYPE_AGENT_VAULT_PROXY;
     else actualResourceType = RESOURCE_TYPE_KMIP;
 
     if (actualResourceType !== expectedResourceType) {
@@ -1232,6 +1437,7 @@ export const resourceAuthMethodServiceFactory = ({
     mintToken,
     revokeAccess,
     loginWithAws,
+    loginWithGcp,
     loginWithKubernetes,
     loginWithToken
   };

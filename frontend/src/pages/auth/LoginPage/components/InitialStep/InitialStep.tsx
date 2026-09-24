@@ -9,7 +9,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import Error from "@app/components/basic/Error";
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
 import attemptLogin from "@app/components/utilities/attemptLogin";
@@ -22,6 +21,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Field,
+  FieldError,
   FieldSeparator,
   Input,
   InputGroup,
@@ -95,6 +96,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
     }
   });
   const showDangerState = submitCount > 0;
+  const isLoginErrorVisible = !isLoading && loginError;
 
   const redirectToSaml = (orgSlug: string) => {
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${encodeURIComponent(orgSlug)}${
@@ -321,7 +323,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
       >
         <AuthPagePanel>
           <CardHeader className="mb-8 gap-2">
-            <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+            <CardTitle className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
               Log in to Infisical
             </CardTitle>
             <CardAction>
@@ -350,7 +352,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
     >
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Welcome back
           </CardTitle>
           <CardDescription className="ml-0.5 text-base">
@@ -449,24 +451,30 @@ export const InitialStep = ({ isAdmin }: Props) => {
                 className="h-10"
                 isError={(showDangerState && Boolean(errors.email)) || loginError}
               />
-              <InputGroup variant="outlined" className="h-10">
-                <InputGroupInput
-                  {...register("password", { onChange: () => setLoginError(false) })}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  id="current-password"
-                  aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
-                />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff /> : <Eye />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
+              <Field data-invalid={loginError}>
+                <InputGroup variant="outlined" className="h-10">
+                  <InputGroupInput
+                    {...register("password", { onChange: () => setLoginError(false) })}
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    id="current-password"
+                    aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
+                    aria-describedby={isLoginErrorVisible ? "login-credentials-error" : undefined}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                <FieldError id="login-credentials-error" isOpen={isLoginErrorVisible}>
+                  {t("login.error-login") ?? ""}
+                </FieldError>
+              </Field>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
                 <div className="flex justify-center [&>div]:!w-full">
                   <HCaptcha
@@ -492,8 +500,6 @@ export const InitialStep = ({ isAdmin }: Props) => {
               </Button>
             </div>
           )}
-
-          {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         </CardContent>
       </AuthPagePanel>
       {config.allowSignUp &&

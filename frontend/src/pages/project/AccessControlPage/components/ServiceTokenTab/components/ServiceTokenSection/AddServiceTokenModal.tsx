@@ -214,6 +214,8 @@ const ServiceTokenForm = () => {
                         autoFocus
                         isError={Boolean(error)}
                         placeholder="Type your token name"
+                        autoComplete="off"
+                        name="service-token-name"
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>

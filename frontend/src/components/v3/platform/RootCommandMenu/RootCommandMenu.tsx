@@ -2,24 +2,29 @@ import { useLocation, useNavigate, useParams, useRouteContext } from "@tanstack/
 import {
   BlocksIcon,
   BuildingIcon,
+  CheckIcon,
   CogIcon,
   CreditCardIcon,
   DatabaseIcon,
   FileTextIcon,
   FolderOpenIcon,
+  IdCardIcon,
   InboxIcon,
   KeyIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  MoonIcon,
   SearchIcon,
   ServerCogIcon,
   SettingsIcon,
   ShieldCheckIcon,
   ShieldIcon,
+  SunIcon,
   UserIcon,
   UsersIcon
 } from "lucide-react";
 
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   GlobalCommandMenu,
   type GlobalCommandMenuGroup,
@@ -27,6 +32,11 @@ import {
   type GlobalCommandMenuSearchStatus
 } from "@app/components/v3/generic/Command";
 import { OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3/platform/ScopeIcons";
+import {
+  type Theme,
+  type ThemeChangeSource,
+  useTheme
+} from "@app/components/v3/platform/ThemeProvider";
 import {
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
@@ -56,6 +66,7 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
 import { useGetAccessibleProjectsWithSubOrgs } from "@app/hooks/api/projects/queries";
 import type { Project, TProjectNavigation } from "@app/hooks/api/projects/types";
@@ -80,37 +91,75 @@ type AsyncCommandSearch = {
   onSearchChange: (search: string) => void;
 };
 
+const COMMAND_MENU_EVENTS = {
+  Opened: "Command Menu Opened",
+  ActionSelected: "Command Menu Action Selected"
+} as const;
+
+const PRIVATE_ACTION_TYPES = [
+  ["entity-project-", "Project"],
+  ["entity-organization-", "Organization"],
+  ["entity-team-", "Team"],
+  ["project-resource-folder-", "Folder"],
+  ["project-resource-dynamic-", "Dynamic Secret"],
+  ["project-resource-rotation-", "Secret Rotation"],
+  ["project-resource-secret-", "Secret"]
+] as const;
+
+const getCommandMenuAction = ({ id, label }: Pick<GlobalCommandMenuItem, "id" | "label">) =>
+  PRIVATE_ACTION_TYPES.find(([prefix]) => id.startsWith(prefix))?.[1] ?? label;
+
 const projectIconClassNames: Record<ProjectType, string> = {
   [ProjectType.SecretManager]: "text-product-sm",
   [ProjectType.CertificateManager]: "text-product-pki",
   [ProjectType.KMS]: "text-product-kms",
   [ProjectType.SecretScanning]: "text-product-ss",
-  [ProjectType.PAM]: "text-product-pam"
+  [ProjectType.PAM]: "text-product-pam",
+  [ProjectType.AgentVault]: "text-product-av"
 };
 
 const NavigationCommandMenu = ({
+  shell,
   browseGroups,
   searchGroups,
   searchStatus,
   asyncSearch
 }: CommandContent & {
+  shell: RootCommandMenuShell;
   asyncSearch?: AsyncCommandSearch;
-}) => (
-  <GlobalCommandMenu
-    groups={browseGroups}
-    searchGroups={[...searchGroups, ...(asyncSearch?.groups ?? [])]}
-    searchStatus={
-      [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "loading") ??
-      [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "error")
-    }
-    onSearchChange={asyncSearch?.onSearchChange}
-    title="Search Infisical"
-    description="Search pages, projects, organizations, teams, and commands."
-    placeholder="Find..."
-    emptyMessage="No matching pages or commands."
-    showFooter={false}
-  />
-);
+}) => {
+  const telemetry = new Telemetry().getInstance();
+
+  return (
+    <GlobalCommandMenu
+      groups={browseGroups}
+      searchGroups={[...searchGroups, ...(asyncSearch?.groups ?? [])]}
+      searchStatus={
+        [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "loading") ??
+        [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "error")
+      }
+      onSearchChange={asyncSearch?.onSearchChange}
+      onShortcutToggle={(open) => {
+        if (open) {
+          telemetry.capture(COMMAND_MENU_EVENTS.Opened, { shell, source: "keyboard-shortcut" });
+        }
+      }}
+      onItemSelect={(item, { mode }) => {
+        telemetry.capture(COMMAND_MENU_EVENTS.ActionSelected, {
+          shell,
+          mode,
+          action: getCommandMenuAction(item),
+          actionType: item.children ? "drill-down" : "navigation"
+        });
+      }}
+      title="Search Infisical"
+      description="Search pages, projects, organizations, teams, and commands."
+      placeholder="Find..."
+      emptyMessage="No matching pages or commands."
+      showFooter={false}
+    />
+  );
+};
 
 const navigateToProject = (
   navigate: ReturnType<typeof useNavigate>,
@@ -135,6 +184,11 @@ const navigateToProject = (
     case ProjectType.PAM:
       return navigate({
         to: "/organizations/$orgId/pam/accounts",
+        params: { orgId: project.orgId }
+      });
+    case ProjectType.AgentVault:
+      return navigate({
+        to: "/organizations/$orgId/agent-vault/sessions",
         params: { orgId: project.orgId }
       });
     case ProjectType.KMS:
@@ -260,11 +314,15 @@ const useEntityCommandGroups = ({
 const getNestedCommandGroup = ({
   projectItems,
   organizationItems,
-  teamItems
+  teamItems,
+  theme,
+  setTheme
 }: {
   projectItems: GlobalCommandMenuItem[];
   organizationItems: GlobalCommandMenuItem[];
   teamItems: GlobalCommandMenuItem[];
+  theme: Theme;
+  setTheme: (theme: Theme, source: ThemeChangeSource) => void;
 }): GlobalCommandMenuGroup => ({
   heading: "Explore",
   items: [
@@ -298,7 +356,40 @@ const getNestedCommandGroup = ({
             drilldownPlaceholder: "Search teams..."
           }
         ]
-      : [])
+      : []),
+    {
+      id: "command-change-theme",
+      label: "Change Theme…",
+      breadcrumb: "Global / Appearance",
+      icon: theme === "dark" ? MoonIcon : SunIcon,
+      keywords: ["dark", "light", "appearance"],
+      children: [
+        {
+          heading: "Theme",
+          items: [
+            {
+              id: "theme-dark",
+              label: "Dark",
+              breadcrumb: `Appearance / ${theme === "dark" ? "Current theme" : "Theme"}`,
+              icon: theme === "dark" ? CheckIcon : MoonIcon,
+              keywords: ["theme"],
+              isDisabled: theme === "dark",
+              onSelect: () => setTheme("dark", "command-menu")
+            },
+            {
+              id: "theme-light",
+              label: "Light",
+              breadcrumb: `Appearance / ${theme === "light" ? "Current theme" : "Theme"}`,
+              icon: theme === "light" ? CheckIcon : SunIcon,
+              keywords: ["theme"],
+              isDisabled: theme === "light",
+              onSelect: () => setTheme("light", "command-menu")
+            }
+          ]
+        }
+      ],
+      drilldownPlaceholder: "Choose a theme..."
+    }
   ]
 });
 
@@ -334,6 +425,7 @@ const getAccountItems = (navigate: ReturnType<typeof useNavigate>): GlobalComman
 ];
 
 const PersonalSettingsCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const organizationId = useRouteContext({
     from: "/_authenticate",
     select: (context) => context.organizationId
@@ -341,10 +433,11 @@ const PersonalSettingsCommandMenu = () => {
   const navigate = useNavigate();
   const accountItems = getAccountItems(navigate).map((item) => ({ ...item, priority: 30 }));
   const entityGroups = useEntityCommandGroups({ currentOrganizationId: organizationId });
-  const nestedGroup = getNestedCommandGroup(entityGroups);
+  const nestedGroup = getNestedCommandGroup({ ...entityGroups, theme, setTheme });
 
   return (
     <NavigationCommandMenu
+      shell="personal-settings"
       searchStatus={entityGroups.searchStatus}
       browseGroups={[{ heading: "Account", items: accountItems }, nestedGroup]}
       searchGroups={[
@@ -356,6 +449,7 @@ const PersonalSettingsCommandMenu = () => {
 };
 
 const AdminCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const accountItems = getAccountItems(navigate);
@@ -399,11 +493,12 @@ const AdminCommandMenu = () => {
 
   return (
     <NavigationCommandMenu
+      shell="admin"
       searchStatus={entityGroups.searchStatus}
       browseGroups={[
         { heading: "Server Console", items: adminItems },
         { heading: "Global", items: accountItems.slice(0, 1) },
-        getNestedCommandGroup(entityGroups)
+        getNestedCommandGroup({ ...entityGroups, theme, setTheme })
       ]}
       searchGroups={[
         { heading: "Pages & Settings", items: [...adminItems, ...accountItems] },
@@ -633,7 +728,8 @@ const getProjectLandingItem = ({
       [ProjectType.CertificateManager]: { label: "Dashboard", icon: LayoutDashboardIcon },
       [ProjectType.KMS]: { label: "Overview", icon: KeyIcon },
       [ProjectType.SecretScanning]: { label: "Data Sources", icon: DatabaseIcon },
-      [ProjectType.PAM]: { label: "Accounts", icon: FolderOpenIcon }
+      [ProjectType.PAM]: { label: "Accounts", icon: FolderOpenIcon },
+      [ProjectType.AgentVault]: { label: "Sessions", icon: IdCardIcon }
     };
 
   return {
@@ -905,6 +1001,7 @@ const CertificateProjectCommandMenu = ({
 
   return (
     <NavigationCommandMenu
+      shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
@@ -927,6 +1024,7 @@ const SecretManagerProjectCommandMenu = ({
 
   return (
     <NavigationCommandMenu
+      shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
@@ -971,6 +1069,7 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 
   return (
     <NavigationCommandMenu
+      shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
@@ -982,8 +1081,9 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 };
 
 const OrganizationCommandMenu = () => {
-  const { pathname } = useLocation();
+  const { theme, setTheme } = useTheme();
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
+  const orgScopedProduct = useImplicitProduct();
   const { currentOrg, isRootOrganization } = useOrganization();
   const user = useRouteContext({ from: "/_authenticate", select: (context) => context.user });
   const { permission } = useOrgPermission();
@@ -1045,18 +1145,15 @@ const OrganizationCommandMenu = () => {
     browseGroups: [
       { heading: currentOrg.name, items: organizationItems.slice(0, 3) },
       { heading: "Global", items: globalItems.slice(0, user.superAdmin ? 2 : 1) },
-      getNestedCommandGroup(entityGroups)
+      getNestedCommandGroup({ ...entityGroups, theme, setTheme })
     ],
     searchGroups: [
       { heading: "Pages & Settings", items: [...organizationItems, ...globalItems] },
       ...entityGroups.searchGroups
     ]
   };
-  const isProjectRoute = Boolean(projectId);
-  const isPamRoute = pathname.startsWith(`/organizations/${currentOrg.id}/pam`);
-
-  if (isProjectRoute || isPamRoute) return <CurrentProjectCommandMenu content={content} />;
-  return <NavigationCommandMenu {...content} />;
+  if (projectId || orgScopedProduct) return <CurrentProjectCommandMenu content={content} />;
+  return <NavigationCommandMenu shell="organization" {...content} />;
 };
 
 export const RootCommandMenu = ({ shell }: { shell: RootCommandMenuShell }) => {

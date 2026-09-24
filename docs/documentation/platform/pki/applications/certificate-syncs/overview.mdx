@@ -59,22 +59,22 @@ flowchart LR
 ## Supported destinations
 
 <CardGroup cols={2}>
-  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+  <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for use with AWS services.
   </Card>
-  <Card title="AWS Elastic Load Balancer" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer">
+  <Card title="AWS Elastic Load Balancer" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer">
     Deploy certificates directly to ALB/NLB listeners.
   </Card>
-  <Card title="AWS Secrets Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager">
+  <Card title="AWS Secrets Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager">
     Store certificates as secrets for application retrieval.
   </Card>
-  <Card title="Azure Key Vault" icon="microsoft" href="/documentation/platform/pki/applications/certificate-syncs/azure-key-vault">
+  <Card title="Azure Key Vault" icon="microsoft" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/azure-key-vault">
     Import certificates into Azure Key Vault.
   </Card>
-  <Card title="GCP Certificate Manager" icon="google" href="/documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager">
+  <Card title="GCP Certificate Manager" icon="google" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager">
     Upload certificates for Google Cloud load balancers.
   </Card>
-  <Card title="Cloudflare" icon="cloudflare" href="/documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate">
+  <Card title="Cloudflare" icon="cloudflare" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate">
     Deploy custom SSL certificates to Cloudflare zones.
   </Card>
   <Card title="Chef Infra" icon="utensils" href="/documentation/platform/pki/applications/certificate-syncs/chef">
@@ -83,16 +83,16 @@ flowchart LR
   <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
     Deploy certificates to Citrix NetScaler ADC.
   </Card>
-  <Card title="Kemp LoadMaster" icon="scale-balanced" href="/documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster">
+  <Card title="Kemp LoadMaster" icon="scale" href="/documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster">
     Deploy certificates to Progress Kemp LoadMaster.
   </Card>
   <Card title="F5 BIG-IP" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/f5-big-ip">
     Deploy certificates to F5 BIG-IP appliances and SSL profiles.
   </Card>
-  <Card title="Linux Server" icon="linux" href="/documentation/platform/pki/applications/certificate-syncs/linux-server">
+  <Card title="Linux Server" icon="linux" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/linux-server">
     Deploy certificates to Linux servers over SSH.
   </Card>
-  <Card title="Windows Server" icon="windows" href="/documentation/platform/pki/applications/certificate-syncs/windows-server">
+  <Card title="Windows Server" icon="windows" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/windows-server">
     Deploy certificates to Windows servers over WinRM.
   </Card>
   <Card title="Nutanix Prism Central" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central">
@@ -115,7 +115,7 @@ flowchart LR
     
     Configure:
     - **Destination**: Select the App Connection and target endpoint
-    - **Certificates**: Choose which certificates to sync
+    - **Certificates**: Add filters describing the certificates this sync holds
     - **Options**: Configure sync behavior (see below)
   </Step>
   <Step title="Certificates are synced">
@@ -123,11 +123,37 @@ flowchart LR
   </Step>
 </Steps>
 
+## Certificate filters
+
+A sync holds whichever of the Application's certificates match its filters. Filters describe certificates instead of naming them, so a certificate issued into the Application later joins the sync as soon as it matches.
+
+### The filters
+
+Filters live on the **Certificates** step of the sync, under **Add Filter**:
+
+| Filter | API field | Matches |
+|--------|-----------|---------|
+| **[Certificate Orders](/documentation/platform/pki/applications/certificates#certificate-orders)** | `certificateOrderIds` | The current certificate of each selected order, so the sync follows that order through its renewals |
+| **[Certificate profile](/documentation/platform/pki/settings/profiles)** | `profileIds` | Certificates issued from any of the selected profiles |
+| **Metadata** | `metadata` | Certificates carrying every key and value pair listed |
+
+Matching is exact, and a certificate has to match every filter you set. Two filters are stricter than one, so `profile = Prod TLS Edge` together with `metadata tier = prod` holds the certificates that are both.
+
+<Warning>
+  A sync with no filters syncs nothing. A new sync stays empty until you set one.
+</Warning>
+
+### Dropping a certificate can delete it at the destination
+
+A certificate that leaves a sync is deleted from the destination when **Allow to remove certificates from destination** is enabled, whether it left because it was deleted, because it stopped being active, or because a filter changed.
+
+So a filter edit can be destructive. A load balancer serving a certificate loses it the moment that certificate stops matching. Before you save, Infisical lists the certificates the change would drop and asks you to confirm.
+
 ## Sync options
 
 | Option | Description |
 |--------|-------------|
-| **Remove on expiry** | Automatically remove expired certificates from the destination |
+| **Allow to remove certificates from destination** | Delete a certificate from the destination once it leaves this sync |
 | **Include Root CA** | Include the root CA certificate in the chain |
 | **Certificate naming** | Customize how certificates are named in the destination via the Certificate Name Schema (default: `Infisical-{{certificateId}}`) |
 
@@ -160,10 +186,10 @@ Keep `{{certificateId}}` or `{{shortCertificateId}}` in the schema to guarantee 
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+  <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for AWS services.
   </Card>
-  <Card title="Azure Key Vault" icon="microsoft" href="/documentation/platform/pki/applications/certificate-syncs/azure-key-vault">
+  <Card title="Azure Key Vault" icon="microsoft" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/azure-key-vault">
     Store certificates in Azure Key Vault.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">

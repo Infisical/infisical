@@ -7,6 +7,7 @@ export enum ActorType {
   ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
+  AGENT_VAULT_PROXY = "agentVaultProxy",
   UNKNOWN_USER = "unknownUser"
 }
 
@@ -198,6 +199,9 @@ export enum EventType {
   CREATE_PKI_SYNC = "create-pki-sync",
   UPDATE_PKI_SYNC = "update-pki-sync",
   DELETE_PKI_SYNC = "delete-pki-sync",
+  PKI_SYNC_LINK_CERTIFICATES = "pki-sync-link-certificates",
+  PKI_SYNC_UNLINK_CERTIFICATES = "pki-sync-unlink-certificates",
+  PKI_SYNC_SKIP_CERTIFICATE = "pki-sync-skip-certificate",
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
@@ -425,13 +429,16 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+  IMPORT_VAULT_SECRETS = "import-vault-secrets",
 
   // Gateway
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLL = "gateway-enroll",
+  GATEWAY_CONNECT = "gateway-connect",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_CREATE = "resource-auth-method-create",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",
@@ -450,5 +457,25 @@ export enum EventType {
   // Secret folder access (folder RBAC)
   CREATE_SECRET_FOLDER_ACCESS = "create-secret-folder-access",
   UPDATE_SECRET_FOLDER_ACCESS = "update-secret-folder-access",
-  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access"
+  DELETE_SECRET_FOLDER_ACCESS = "delete-secret-folder-access",
+
+  AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
+  AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
+  AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
+  AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
+  AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
+  AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
+  AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
+  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
+  AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
+  AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
+  AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
+  AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete"
 }

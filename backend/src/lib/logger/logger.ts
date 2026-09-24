@@ -86,6 +86,29 @@ const redactedKeys = [
   "X-VAULT-TOKEN"
 ];
 
+const outgoingRequestRedactPaths = [
+  "_header",
+  "*._header",
+  "*.*._header",
+  "*.*.*._header",
+  "request.path",
+  "*.request.path",
+  "*.*.request.path"
+];
+
+// redact until depth of three
+// Keys with special characters (hyphens) need bracket notation for fast-redact
+export const loggerRedactPaths = [
+  ...redactedKeys.flatMap((key) => {
+    if (key.includes("-")) {
+      const k = `["${key}"]`;
+      return [k, `*${k}`, `*.*${k}`];
+    }
+    return [key, `*.${key}`, `*.*.${key}`];
+  }),
+  ...outgoingRequestRedactPaths
+];
+
 const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";
 
 const extractReqId = () => {
@@ -106,10 +129,12 @@ const extractOrgId = () => {
   }
 };
 
+const getLogLevel = () => process.env.PINO_LOG_LEVEL || "info";
+
 export const initLogger = () => {
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
-      level: "info",
+      level: getLogLevel(),
       target: "pino/file",
       options: {
         destination: 1,
@@ -151,7 +176,7 @@ export const initLogger = () => {
       mixin(_context, level) {
         return { severity: logLevelToSeverityLookup[level] || logLevelToSeverityLookup["30"] };
       },
-      level: process.env.PINO_LOG_LEVEL || "info",
+      level: getLogLevel(),
       formatters: {
         bindings: (bindings) => ({
           pid: bindings.pid,
@@ -159,15 +184,7 @@ export const initLogger = () => {
           // node_version: process.version
         })
       },
-      // redact until depth of three
-      // Keys with special characters (hyphens) need bracket notation for fast-redact
-      redact: redactedKeys.flatMap((key) => {
-        if (key.includes("-")) {
-          const k = `["${key}"]`;
-          return [k, `*${k}`, `*.*${k}`];
-        }
-        return [key, `*.${key}`, `*.*.${key}`];
-      })
+      redact: loggerRedactPaths
     },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     transport

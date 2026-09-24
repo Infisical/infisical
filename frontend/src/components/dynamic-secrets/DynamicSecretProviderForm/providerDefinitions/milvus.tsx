@@ -22,7 +22,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import {
@@ -349,7 +349,7 @@ const MilvusFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) => {
                   error={error?.message}
                 />
               </FieldContent>
-              <Switch
+              <Toggle
                 ref={field.ref}
                 checked={field.value ?? true}
                 onBlur={field.onBlur}

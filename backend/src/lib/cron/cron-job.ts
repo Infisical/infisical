@@ -1,12 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { CronExpressionParser } from "cron-parser";
 import { Cluster, Redis } from "ioredis";
+import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
 import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock";
-
-// ── cron job name registry ────────────────────────────────────────────────────
 
 export const CronJobName = {
   HealthAlert: "health-alert",
@@ -47,18 +46,18 @@ export const CronJobName = {
   PamHeartbeatQueueChecks: "pam-heartbeat-queue-checks",
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
+  EventOutboxStaleClaimSweeper: "event-outbox-stale-claim-sweeper",
+  EventOutboxCleanup: "event-outbox-cleanup",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check"
 } as const;
 
-// ── tuning constants ──────────────────────────────────────────────────────────
-
+const JITTER_INTERVAL_FRACTION = 0.25; // keep below ~0.48 so 30s retry fits before next 1-min fire
+const CRON_FIELD_COUNT = 5;
+const CRON_FIELD_SEPARATOR = new RE2(/\s+/);
 const PARTICIPANT_SLOTS = 5;
 const PROCESS_BATCH_SIZE = 50;
-// Safety buffer in `fitsBeforeNextFire`: if the retry's nextAttemptAt is within
-// this many ms of the next scheduled fire, treat the run as final and let the
-// next fire (separate id) be the natural retry instead.
-const NEXT_FIRE_BUFFER_MS = 1_000;
+const NEXT_FIRE_BUFFER_MS = 1_000; // shared margin for fitsBeforeNextFire and jitterWindowMs
 const ERROR_MESSAGE_MAX_LEN = 4_000;
 
 const DEFAULTS = {
@@ -71,18 +70,12 @@ const DEFAULTS = {
   handlerTimeoutMs: 5 * 60_000,
   retryBackoffBaseMs: 30_000,
   retryBackoffMaxMs: 5 * 60_000,
-  drainTimeoutMs: 25_000
+  drainTimeoutMs: 25_000,
+  maxJitterMs: 5 * 60_000
 } as const;
 
-// ── redis schema ──────────────────────────────────────────────────────────────
-
-// Every key this module writes lives under a single Redis Cluster hash tag so
-// multi-key Lua scripts never return CROSSSLOT. A custom `keyPrefix` must keep
-// that property — see `assertHashTagged`.
 const KEY_HASH_TAG = "{cron}";
 
-// Run-hash status values. Stored as plain strings in the hash so we don't
-// break Redis tooling, but referenced through this object to avoid drift.
 const RunStatus = {
   Pending: "pending",
   Running: "running",
@@ -103,9 +96,7 @@ const F = {
   NextAttemptAt: "next_attempt_at"
 } as const;
 
-// ── lua scripts ───────────────────────────────────────────────────────────────
-
-// Atomic "enqueue this run hash + zset entry if no other pod beat us to it".
+// ARGV[2] = unjittered scheduled_at; ARGV[6] = eligibleAt (pending zset score).
 const ENQUEUE_RUN_LUA = `
   if redis.call('exists', KEYS[1]) == 0 then
     redis.call('hset', KEYS[1],
@@ -115,17 +106,14 @@ const ENQUEUE_RUN_LUA = `
       'attempts', 0,
       'enqueued_at_ms', ARGV[5])
     redis.call('expire', KEYS[1], ARGV[3])
-    redis.call('zadd', KEYS[2], ARGV[2], ARGV[4])
+    redis.call('zadd', KEYS[2], ARGV[6], ARGV[4])
     return 1
   end
   return 0
 `;
 
-// "DEL only if I still own this slot". Stops a stale stop() call from
-// accidentally evicting the new owner after our TTL expired.
+// Release slot only if we still own it (stale stop() after TTL expiry).
 const RELEASE_SLOT_IF_MINE_LUA = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
-
-// ── types ─────────────────────────────────────────────────────────────────────
 
 type Handler = () => Promise<void>;
 type CronEntry = {
@@ -144,9 +132,7 @@ class HandlerTimeoutError extends Error {
   }
 }
 
-// A prefix without a `{...}` hash tag would spread this module's keys across
-// Cluster slots and break every multi-key EVAL. Fail loudly at construction
-// rather than silently at the first enqueue tick.
+// Multi-key EVAL requires all keys in one Redis Cluster slot.
 const assertHashTagged = (keyPrefix: string) => {
   const start = keyPrefix.indexOf("{");
   const end = keyPrefix.indexOf("}", start + 1);
@@ -156,8 +142,6 @@ const assertHashTagged = (keyPrefix: string) => {
 };
 
 export type TCronJobFactory = ReturnType<typeof cronJobFactory>;
-
-// ── factory ───────────────────────────────────────────────────────────────────
 
 export const cronJobFactory = ({
   redis,
@@ -172,7 +156,9 @@ export const cronJobFactory = ({
   retryBackoffBaseMs = DEFAULTS.retryBackoffBaseMs,
   retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs,
   drainTimeoutMs = DEFAULTS.drainTimeoutMs,
-  keyPrefix = KEY_HASH_TAG
+  maxJitterMs = DEFAULTS.maxJitterMs,
+  keyPrefix = KEY_HASH_TAG,
+  schedulingEnabled = true
 }: {
   redis: Redis | Cluster;
   redlock: Redlock;
@@ -187,18 +173,31 @@ export const cronJobFactory = ({
   retryBackoffMaxMs?: number;
   drainTimeoutMs?: number;
   /**
-   * Namespace for every Redis key this manager owns. Defaults to the production
-   * `{cron}` namespace. Tests override it so a test-owned manager and the
-   * server's real one can share a Redis without colliding on slot keys.
+   * 0 disables jitter (dev wiring).
+   */
+  maxJitterMs?: number;
+  /**
+   * Must include a Redis Cluster hash tag; tests override to avoid slot collisions.
    */
   keyPrefix?: string;
+  /**
+   * When false, register is a no-op (api-only pods).
+   */
+  schedulingEnabled?: boolean;
 }) => {
   assertHashTagged(keyPrefix);
+  if (!Number.isFinite(maxJitterMs) || maxJitterMs < 0) {
+    throw new Error(`cron: maxJitterMs (${maxJitterMs}) must be a non-negative number`);
+  }
 
   const SLOT_KEY = (i: number) => `${keyPrefix}:slot:${i}`;
   const RUN_KEY = (id: string) => `${keyPrefix}:run:${id}`;
   const LEASE_KEY = (id: string) => `${keyPrefix}:lease:${id}`;
   const PENDING_ZSET = `${keyPrefix}:pending`;
+
+  if (!schedulingEnabled) {
+    logger.info("cron: scheduling disabled for this run mode, skipping every registration");
+  }
 
   const workerId = randomUUID();
   const entries = new Map<string, CronEntry>();
@@ -209,14 +208,25 @@ export const cronJobFactory = ({
   let processTimer: ReturnType<typeof setInterval> | null = null;
   let currentSlot: number | null = null;
   let stopped = false;
-  // Tail of the serialized slot-operation chain. Never rejects.
-  let slotOp: Promise<void> = Promise.resolve();
-
-  // ── helpers ────────────────────────────────────────────────────────────
+  let slotOp: Promise<void> = Promise.resolve(); // serialized slot claim chain
 
   const prevFireMs = (pattern: string) => CronExpressionParser.parse(pattern, { tz: "UTC" }).prev().toDate().getTime();
 
   const nextFireMs = (pattern: string) => CronExpressionParser.parse(pattern, { tz: "UTC" }).next().toDate().getTime();
+
+  const jitterWindowMs = (intervalMs: number) =>
+    Math.min(intervalMs * JITTER_INTERVAL_FRACTION, maxJitterMs, Math.max(0, intervalMs - NEXT_FIRE_BUFFER_MS));
+
+  // Hash, not random: every pod must derive the same eligibleAt for dedup/leases.
+  const jitterOffsetMs = (name: string, windowMs: number) => {
+    if (windowMs <= 0) return 0;
+    return createHash("sha256").update(name).digest().readUIntBE(0, 6) % windowMs;
+  };
+
+  const eligibleAtMs = (entry: CronEntry, scheduledAt: number, nextFire: number) => {
+    const windowMs = jitterWindowMs(nextFire - scheduledAt);
+    return scheduledAt + jitterOffsetMs(entry.name, windowMs);
+  };
 
   const shuffleInPlace = <T>(arr: T[]): void => {
     for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -226,10 +236,7 @@ export const cronJobFactory = ({
     }
   };
 
-  // Races `task` against a timeout. If the timeout wins, throws a
-  // HandlerTimeoutError so executeUnderLease's catch can mark the run
-  // failed-final (rather than pending-retry) and prevent another pod from
-  // running the handler concurrently with the still-executing zombie.
+  // Timeout → failed-final, not retry (handler may still be running as a zombie).
   const withTimeout = async (task: () => Promise<void>, timeoutMs: number) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
@@ -242,11 +249,10 @@ export const cronJobFactory = ({
       await Promise.race([taskPromise, timeout]);
     } finally {
       if (timer) clearTimeout(timer);
+      // Nothing waits on the handler after a timeout, so absorb its eventual rejection.
       taskPromise.catch(() => {});
     }
   };
-
-  // ── run-hash status writes ──────────────────────────────────────────────────
 
   const markRunning = (id: string, attempt: number) =>
     redis.hset(
@@ -266,8 +272,6 @@ export const cronJobFactory = ({
     await redis.zrem(PENDING_ZSET, id);
   };
 
-  // `err` is optional: the max-attempts-reached path writes a "failed" status
-  // without a last_error.
   const markFailedFinal = async (id: string, err?: unknown) => {
     if (err === undefined) {
       await redis.hset(RUN_KEY(id), F.Status, RunStatus.Failed, F.CompletedAt, String(Date.now()));
@@ -295,15 +299,9 @@ export const cronJobFactory = ({
       F.NextAttemptAt,
       String(nextAttemptAt)
     );
-    // zset score = next_attempt_at so processTick's zrangebyscore filter skips
-    // this run until its backoff window elapses.
     await redis.zadd(PENDING_ZSET, nextAttemptAt, id);
   };
 
-  // ── registration ────────────────────────────────────────────────────────────
-
-  // Registers a cron entry with this pod. `runHashTtlS` controls how long each
-  // run's hash lives in Redis after enqueue.
   const register = ({
     name,
     pattern,
@@ -323,12 +321,27 @@ export const cronJobFactory = ({
     handlerTimeoutMs?: number;
     leaseDurationMs?: number;
   }) => {
+    if (!schedulingEnabled) return;
+
     if (!enabled) {
       logger.info(`cron[${name}]: disabled`);
       return;
     }
     if (entries.has(name)) throw new Error(`cron[${name}] already registered`);
     CronExpressionParser.parse(pattern, { tz: "UTC" }); // validate at registration
+    if (pattern.trim().split(CRON_FIELD_SEPARATOR).length !== CRON_FIELD_COUNT) {
+      throw new Error(
+        `cron[${name}] pattern "${pattern}" must have ${CRON_FIELD_COUNT} fields. The cron manager schedules at minute granularity; sub-minute work belongs on a setInterval or a queue`
+      );
+    }
+
+    if (runHashTtlS * 1000 <= maxJitterMs) {
+      throw new Error(
+        `cron[${name}] runHashTtlS (${runHashTtlS}s) must exceed the maximum jitter window (${Math.round(
+          maxJitterMs / 1000
+        )}s), otherwise the run hash can expire before the run is picked up`
+      );
+    }
 
     const effectiveHandlerTimeoutMs = entryHandlerTimeoutMs ?? handlerTimeoutMs;
     const effectiveLeaseDurationMs = entryLeaseDurationMs ?? leaseDurationMs;
@@ -350,11 +363,6 @@ export const cronJobFactory = ({
     logger.info(`cron[${name}]: registered (pattern="${pattern}")`);
   };
 
-  // ── slot election ───────────────────────────────────────────────────────────
-
-  // Caps the number of pods that participate in cron ticking. Each pod holds
-  // one of N slots via SET NX/XX with a short TTL: refreshes its own slot if
-  // it still owns one, otherwise tries to claim a free slot.
   const claimOrRefreshSlot = async () => {
     if (currentSlot !== null) {
       const ok = await redis.set(SLOT_KEY(currentSlot), workerId, "PX", slotTtlMs, "XX");
@@ -373,17 +381,7 @@ export const cronJobFactory = ({
     }
   };
 
-  // Runs slot claims/refreshes strictly one at a time.
-  //
-  // `claimOrRefreshSlot` awaits between reading `currentSlot` and writing it,
-  // so two overlapping ticks could both observe a lost slot, both null
-  // `currentSlot`, and then claim two *different* slots — the pod would burn
-  // two of the five participant slots and leak one on shutdown, since only the
-  // last-assigned `currentSlot` is ever released.
-  //
-  // Chaining also gives stop() one handle to await, so it can never read
-  // `currentSlot` mid-handover (skipping the release) or have a late claim land
-  // after the release.
+  // Serialize slot ops: overlapping ticks could claim two slots and leak one on shutdown.
   const runSlotOp = (label: string) => {
     slotOp = slotOp
       .then(() => (stopped ? undefined : claimOrRefreshSlot()))
@@ -391,12 +389,7 @@ export const cronJobFactory = ({
     return slotOp;
   };
 
-  // ── enqueue ─────────────────────────────────────────────────────────────────
-
-  // For each registered entry, computes the most recent scheduled fire time
-  // and atomically inserts a run hash + pending-zset entry if not already
-  // present. The Lua script makes the existence check + write a single op so
-  // multiple pods racing to enqueue the same fire produce exactly one run.
+  // Run id uses unjittered scheduledAt; pending zset score carries eligibleAt.
   const enqueueDueFires = async () => {
     for (const entry of entries.values()) {
       const scheduledAt = prevFireMs(entry.pattern);
@@ -404,6 +397,7 @@ export const cronJobFactory = ({
       if (lastEnqueuedAt.get(entry.name) === scheduledAt) continue;
 
       const id = `${entry.name}:${scheduledAt}`;
+      const eligibleAt = eligibleAtMs(entry, scheduledAt, nextFireMs(entry.pattern));
       // eslint-disable-next-line no-await-in-loop
       const initialized = await redis.eval(
         ENQUEUE_RUN_LUA,
@@ -414,36 +408,25 @@ export const cronJobFactory = ({
         String(scheduledAt),
         String(entry.runHashTtlS),
         id,
-        String(Date.now())
+        String(Date.now()),
+        String(eligibleAt)
       );
       if (initialized)
         logger.info(
-          `cron[${entry.name}]: enqueued run [id=${id}] [scheduled_at=${new Date(scheduledAt).toISOString()}]`
+          `cron[${entry.name}]: enqueued run [id=${id}] [scheduled_at=${new Date(
+            scheduledAt
+          ).toISOString()}] [eligible_at=${new Date(eligibleAt).toISOString()}]`
         );
       lastEnqueuedAt.set(entry.name, scheduledAt);
     }
   };
 
-  // Slow timer (~30s) that only creates run hashes for due fires. Split from
-  // processing so the pod that enqueues doesn't immediately consume everything
-  // it just created — leaves time for other slot-holders' process ticks to race.
   const enqueueTick = async () => {
     if (currentSlot === null) return;
     await enqueueDueFires();
   };
 
-  // ── process ─────────────────────────────────────────────────────────────────
-
-  // Executes one attempt of `entry` under an already-acquired redlock. Writes
-  // the running state, races the handler against handlerTimeoutMs, and
-  // branches into success / retry / final failure on completion.
-  //
-  // Two-knob recovery model:
-  //   leaseDurationMs  → governs CRASH recovery. When the holder pod dies,
-  //                      its lease key TTLs out and other pods see the run as
-  //                      stalled via the isStalled path in processCandidate.
-  //   handlerTimeoutMs → bounds the LEASE for HANG recovery. On timeout we release the lease and
-  //                      mark the run failed-final — a retry would race with the still-running zombie handler. The next scheduled fire is the natural retry.
+  // leaseDurationMs: crash recovery via stalled reclaim. handlerTimeoutMs: hang → failed-final.
   const executeUnderLease = async (entry: CronEntry, id: string, attempt: number) => {
     try {
       await markRunning(id, attempt);
@@ -462,13 +445,8 @@ export const cronJobFactory = ({
     } catch (err) {
       const isHandlerTimeout = err instanceof HandlerTimeoutError;
 
-      // Exponential backoff: 1×, 2×, 4× ... capped at retryBackoffMaxMs.
       const backoffMs = Math.min(retryBackoffBaseMs * 2 ** (attempt - 1), retryBackoffMaxMs);
       const nextAttemptAt = Date.now() + backoffMs;
-      // If the retry wouldn't fit before the next scheduled fire, treat this
-      // run as final — the upcoming fire (separate id) is the natural retry.
-      // Avoids overlapping attempts of the same cron and avoids squashing
-      // backoff to ~0 near the end of an interval.
       const fitsBeforeNextFire = nextAttemptAt + NEXT_FIRE_BUFFER_MS < nextFireMs(entry.pattern);
       const final = isHandlerTimeout || attempt >= entry.maxAttempts || !fitsBeforeNextFire;
 
@@ -493,28 +471,24 @@ export const cronJobFactory = ({
     }
   };
 
-  // Inspects one pending zset id: validates the run hash, applies the
-  // min-age and max-attempts gates, and races for the lease. Anything that
-  // can be decided without taking a lock is decided here so we only ever
-  // hand a "ready, attempt-eligible" run to executeUnderLease.
   const processCandidate = async (id: string) => {
     const data = await redis.hgetall(RUN_KEY(id));
     if (!data?.name) {
-      // Hash expired (TTL) but zset entry lingered; clean up.
+      logger.error(
+        `cron: pending run expired before it was claimed and will not execute, raise its runHashTtlS [id=${id}]`
+      );
       await redis.zrem(PENDING_ZSET, id);
       return;
     }
 
     const entry = entries.get(data.name);
-    if (!entry) return; // not handled on this pod
+    if (!entry) return;
 
     const isPending = data.status === RunStatus.Pending;
     const isStalled = data.status === RunStatus.Running && (await redis.exists(LEASE_KEY(id))) === 0;
     if (!isPending && !isStalled) return;
 
-    // Min-age delay on first pickup so the pod that enqueued doesn't
-    // immediately grab everything before other slot-holders' process ticks
-    // fire. Stalled runs bypass this — they're already past first pickup.
+    // Brief delay so other slot-holders can race for freshly enqueued runs.
     if (isPending) {
       const enqueuedAtMs = Number(data[F.EnqueuedAtMs] ?? 0);
       if (Date.now() - enqueuedAtMs < minProcessAgeMs) return;
@@ -531,9 +505,6 @@ export const cronJobFactory = ({
       logger.info(`cron[${data.name}]: re-claiming stalled run [id=${id}] [previous_worker=${data.worker_id}]`);
     }
 
-    // Track the in-flight run so stop() can wait for it to settle before
-    // tearing down. Lock-contention rejections settle within a tick, so they
-    // don't measurably delay shutdown drain.
     const tracked = redlock.using([LEASE_KEY(id)], entry.leaseDurationMs ?? leaseDurationMs, () =>
       executeUnderLease(entry, id, attempts + 1)
     );
@@ -541,7 +512,6 @@ export const cronJobFactory = ({
     try {
       await tracked;
     } catch (err) {
-      // ExecutionError / ResourceLockedError mean another pod owns the lease — expected contention, swallow.
       if (err instanceof ExecutionError || err instanceof ResourceLockedError) return;
       logger.error({ err }, `cron[${data.name}]: unexpected error acquiring lease [id=${id}]`);
     } finally {
@@ -549,15 +519,9 @@ export const cronJobFactory = ({
     }
   };
 
-  // Fast timer (~5s) that scans the pending zset and races for runs to
-  // execute. Ids are shuffled per tick so different slot-holders try
-  // different ids first, spreading lease contention and distributing handler
-  // load across pods.
   const processTick = async () => {
     if (currentSlot === null) return;
 
-    // Filter by zset score so backed-off retries (score = next_attempt_at)
-    // are skipped until their backoff window elapses.
     const ids = await redis.zrangebyscore(PENDING_ZSET, "-inf", Date.now(), "LIMIT", 0, PROCESS_BATCH_SIZE);
     shuffleInPlace(ids);
 
@@ -571,15 +535,10 @@ export const cronJobFactory = ({
     }
   };
 
-  // ── lifecycle ───────────────────────────────────────────────────────────────
-
   const safeTick = (label: string, fn: () => Promise<void>) => () => {
     fn().catch((err: unknown) => logger.error({ err }, `cron: ${label} failed`));
   };
 
-  // Starts the slot-refresh, enqueue, and process timers, and claims a slot
-  // immediately so the pod doesn't wait a full `slotRefreshMs` before
-  // participating.
   const start = () => {
     stopped = false;
     slotTimer = setInterval(() => void runSlotOp("slot refresh"), slotRefreshMs);
@@ -588,13 +547,7 @@ export const cronJobFactory = ({
     void runSlotOp("initial slot claim");
   };
 
-  // Stops the timers, drains in-flight handlers, and atomically releases the
-  // held slot (only if we still own it) so another pod can take over without
-  // waiting for the slot TTL.
-  //
-  // Drain semantics wait for the currently active runs to finish so destructive handlers (rotations, deletions)
-  // aren't aborted mid-execution and graceful redeploys don't leave runs
-  // stuck in `status='running'` until the lease TTL elapses.
+  // Drain in-flight handlers before releasing the slot so runs are not left stuck as running.
   const stop = async () => {
     stopped = true;
     if (slotTimer) clearInterval(slotTimer);
@@ -620,9 +573,6 @@ export const cronJobFactory = ({
       }
     }
 
-    // No new slot ops can be queued (timers cleared, `stopped` set), so this is
-    // the final tail. Waiting on it guarantees `currentSlot` is settled and that
-    // nothing can re-create the key after the release below.
     await slotOp;
 
     if (currentSlot !== null) {

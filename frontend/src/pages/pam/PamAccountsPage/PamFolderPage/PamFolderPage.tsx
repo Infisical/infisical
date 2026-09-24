@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -32,6 +32,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Table,
   TableBody,
   TableHead,
@@ -59,6 +60,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
 import { LaunchSessionSheet } from "../../components/LaunchSessionSheet";
 import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
@@ -81,6 +83,8 @@ export const PamFolderPage = () => {
   const navigate = useNavigate();
 
   const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
 
   const [debouncedSearch] = useDebounce(searchInput);
@@ -307,8 +311,8 @@ export const PamFolderPage = () => {
                     <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
                     {accountTypes.map((meta) => (
                       <DropdownMenuRadioItem key={meta.type} value={meta.type}>
-                        <img
-                          src={`/images/integrations/${meta.icon}`}
+                        <ProviderIcon
+                          icon={meta.icon}
                           alt={meta.name}
                           className="size-4 rounded-sm"
                         />
@@ -324,6 +328,7 @@ export const PamFolderPage = () => {
                   <Search />
                 </InputGroupAddon>
                 <InputGroupInput
+                  ref={searchInputRef}
                   placeholder="Search accounts..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}

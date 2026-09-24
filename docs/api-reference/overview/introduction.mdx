@@ -1,51 +1,51 @@
 ---
 title: "API reference"
-description: "Programmatically manage secrets, access control, and audit logs over HTTPS with the Infisical REST API."
+description: "Programmatically manage resources over HTTPS with the Infisical REST API."
 sidebarTitle: "API"
-icon: "book-open-lines"
+icon: "book-open"
 ---
 
-Infisical's Public (REST) API provides users an alternative way to programmatically access and manage
-secrets via HTTPS requests. This can be useful for automating tasks, such as
-rotating credentials, or for integrating secret management into a larger system.
+The Infisical API is a REST API served over HTTPS. It supports every action available in the Infisical dashboard: reading and writing secrets, managing projects and machine identities, reading audit logs, and configuring the other resources in an organization.
 
-With the Public API, you can create, read, update, and delete secrets, as well as manage access control, query audit logs, and more.
+<Card title="Quickstart" icon="rocket" href="/api-reference/overview/quickstart">
+  Make your first authenticated request to the Infisical API using Universal Auth.
+</Card>
+
+<Tip>
+  You can also interact with Infisical programmatically using the [CLI](/cli/overview) and [SDKs](/sdks/overview).
+</Tip>
+
+## Base URL
+
+If you use Infisical Cloud, all endpoints are available under `https://app.infisical.com/api` (US region) or `https://eu.infisical.com/api` (EU region).
+
+If you self-host Infisical or run a dedicated instance, replace the host with the address of your instance: `https://<your-instance>/api`.
+
+Each endpoint page in this reference lists a path (for example, `/api/v3/secrets/raw`). The full URL for a request is the base URL followed by that path.
 
 ## API versioning
 
-The API is versioned on a per-resource basis. A resource's version is only incremented for breaking changes, so different endpoints may have different version numbers (e.g., `/api/v4/secrets` vs. `/api/v1/secret-syncs`).
+Each endpoint path is versioned independently. When an endpoint changes in a way that breaks existing callers, Infisical adds a new version of that endpoint and leaves the previous version in place. Different endpoints can therefore be on different versions (for example, `/api/v4/secrets` and `/api/v1/secret-syncs`).
 
-As a best practice, always use the latest available version for each endpoint to ensure access to the most recent features and improvements.
+For each endpoint, use the highest version listed in this reference.
 
-## Rate limits
+## OpenAPI
 
-Infisical enforces several different types of rate limits:
+Every running Infisical instance serves its OpenAPI specification at `/api/docs/json` (on Infisical Cloud, `https://app.infisical.com/api/docs/json`). Code generators and client libraries can read the specification from that URL to produce typed clients for any endpoint in this reference.
 
-- **Read**: For GET and LIST operations.
-- **Write**: For CREATE, UPDATE, and DELETE operations.
-- **Secret**: Specifically for secret management operations such as getting and creating secrets.
-- **Identity Creation**: For creating new identities within an organization.
-- **Project Creation**: For creating new projects within an organization.
+## Get started
 
-**Self-hosted** instances have no limits, these limits apply only to **Infisical Cloud**.
-
-<Tabs>
-  <Tab title="Free Plan">
-    - **Read**: 200/minute
-    - **Write**: 90/minute
-    - **Secret**: 120/minute
-    - **Identity Creation**: 30/minute
-    - **Project Creation**: 30/minute
-  </Tab>
-  <Tab title="Pro Plan">
-    - **Read**: 350/minute
-    - **Write**: 200/minute
-    - **Secret**: 300/minute
-    - **Identity Creation**: 30/minute
-    - **Project Creation**: 30/minute
-  </Tab>
-</Tabs>
-
-<Note>
-    Custom rate limits are available for Enterprise customers. If you need higher rate limits, please contact sales@infisical.com.
-</Note>
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api-reference/overview/authentication">
+    Authenticate as a machine identity and use the returned access token on every request.
+  </Card>
+  <Card title="Pagination" icon="list" href="/api-reference/overview/pagination">
+    Use `offset` and `limit` to read all pages from a paginated endpoint.
+  </Card>
+  <Card title="Rate limiting" icon="gauge-high" href="/api-reference/overview/rate-limits">
+    Per-minute rate limits by category, and the format of the HTTP 429 response.
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/api-reference/overview/errors">
+    The format of an error response, the common HTTP status codes, and the `reqId` field.
+  </Card>
+</CardGroup>

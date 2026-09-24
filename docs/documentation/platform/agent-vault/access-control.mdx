@@ -1,0 +1,90 @@
+---
+title: "Access control"
+description: "Understand how permissions work in Agent Vault."
+---
+
+Access control in Agent Vault happens at two levels:
+
+1. **Product membership:** being added to Agent Vault itself
+2. **Access bundle grants:** being granted an [access bundle](/documentation/platform/agent-vault/access-bundles), which lets you create sessions with it
+
+Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) go through both levels and use the same roles, so this page applies to all three unless it says otherwise.
+
+<Note>
+Access control doesn't directly apply to the actual agents you run through Agent Vault:
+
+- A user or machine identity uses their access to create a [session](/documentation/platform/agent-vault/sessions) with an associated access bundle
+- Agents can only make requests that are allowed by their session's access bundle
+
+This keeps the user or machine identity directly accountable for what an agent can access.
+</Note>
+
+## Product membership
+
+Agent Vault has one member list for your whole organization, instead of one per project. Each member has one of two roles:
+
+| Role | What they can do |
+|------|------------------|
+| **Admin** | <ul><li>Create and manage access bundles, services, and proxies</li><li>Grant access bundles</li><li>Manage membership</li><li>Read audit logs</li></ul> |
+| **Member** | <ul><li>Create sessions with the access bundles granted to them</li><li>Revoke their own sessions</li></ul> |
+
+An admin can use every access bundle without a grant. A member can't use an access bundle until an admin grants it, and only sees the bundles granted to them. On the **Sessions** page, members see their own sessions, and admins can switch between **All Sessions** and **My Sessions**.
+
+<Note>
+  If you're an organization admin, Infisical adds you to Agent Vault as an admin the first time you open it. You don't need another admin to add you.
+</Note>
+
+### Adding members
+
+<Info>
+  You need the **Admin** role in Agent Vault to add members.
+</Info>
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Control**.
+  </Step>
+  <Step>
+    Select the **Users**, **Machine Identities**, or **Groups** tab.
+  </Step>
+  <Step>
+    Select **Add Users**, **Add Machine Identity**, or **Add Group**.
+  </Step>
+  <Step>
+    Select who to add, and choose **Admin** or **Member** in **Product Role**.
+  </Step>
+</Steps>
+
+You can only add users who are already in the [organization](/documentation/platform/organization), including users whose invite is still pending. If a user's invite is pending, they can't create sessions until they accept it.
+
+<Note>
+You can't change your own role or remove your own access. Ask an admin if you need to do either.
+</Note>
+
+## Access bundle grants
+
+Adding someone to Agent Vault doesn't automatically give their agents access to any external APIs. They also need a grant on an [access bundle](/documentation/platform/agent-vault/access-bundles), which defines the external APIs their agents can access during a [session](/documentation/platform/agent-vault/sessions).
+
+<Info>
+  You need the **Admin** role in Agent Vault to grant access bundles.
+</Info>
+
+Open an access bundle and select **Manage Access** to [grant it](/documentation/platform/agent-vault/access-bundles#grant-access) to a user, machine identity, or group.
+
+### Groups
+
+If you grant an access bundle to a group, every member of that group gets access to it, and each member can independently create sessions.
+
+<Note>
+If someone joins the group, they inherit access to the bundle. If they leave the group, they lose access to the bundle.
+</Note>
+
+## When access changes
+
+If someone's Agent Vault membership or access bundle grants change while their agent is running, the proxy applies the change to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). They don't need to restart the agent.
+
+If someone is removed from Agent Vault, Infisical also removes their access bundle grants. If they get added back, they'll need to be re-granted the same access bundles again before their sessions get credentials.
+
+<Tip>
+For more information about what happens when access changes mid-run, check out [access changes](/documentation/platform/agent-vault/sessions#access-changes).
+</Tip>

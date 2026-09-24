@@ -1,8 +1,8 @@
 import path from "node:path";
 
+import { Knex } from "knex";
 import RE2 from "re2";
 
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -11,7 +11,6 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
@@ -102,7 +101,6 @@ type TInterpolateSecretArg = {
   // Omit them for same-project-only expansion; cross-project refs then fail closed.
   actorOrgId?: string;
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
-  licenseService?: Pick<TLicenseServiceFactory, "getPlan">;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   projectDAL?: Pick<TProjectDALFactory, "find">;
   kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -111,6 +109,7 @@ type TInterpolateSecretArg = {
   // same-project relative references; cross-project reads must stay raw so source
   // project imports are not resolved through the target project context.
   crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  tx?: Knex;
 };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
@@ -123,22 +122,20 @@ export const expandSecretReferencesFactory = ({
   userId,
   actorOrgId,
   orgDAL,
-  licenseService,
   projectFolderGrantDAL,
   projectDAL,
   kmsService,
-  crossProjectSecretDAL
+  crossProjectSecretDAL,
+  tx
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(
-    actorOrgId && orgDAL && licenseService && projectFolderGrantDAL && projectDAL && kmsService
-  );
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
-    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL || !licenseService) return false;
+    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
-    const plan = await licenseService.getPlan(actorOrgId);
-    crossProjectAllowedCache = await isCrossProjectEnabled(actorOrgId, orgDAL, plan);
+    const org = await orgDAL.findOrgById(actorOrgId);
+    crossProjectAllowedCache = org?.allowCrossProjectSecretSharing ?? false;
     return crossProjectAllowedCache;
   };
   const slugToProjectId = new Map<string, string | null>();
@@ -169,11 +166,11 @@ export const expandSecretReferencesFactory = ({
 
   const loadFolderSecrets = async (environment: string, secretPath: string, cacheKey: string) => {
     try {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!folder) return;
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
-      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
+      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId, tx });
 
       const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
         (prev, secret) => {
@@ -348,7 +345,7 @@ export const expandSecretReferencesFactory = ({
             } else {
               try {
                 // eslint-disable-next-line no-await-in-loop
-                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath);
+                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath, tx);
                 if (!sourceFolder) {
                   secretCache[crossProjCacheKey] = {};
                   crossProjSecretData = { value: "", tags: [], exists: false };
@@ -377,7 +374,8 @@ export const expandSecretReferencesFactory = ({
                     // with import-aware behavior.
                     // eslint-disable-next-line no-await-in-loop
                     const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
-                      folderId: sourceFolder.id
+                      folderId: sourceFolder.id,
+                      tx
                     });
 
                     const crossProjDecrypted = sourceSecrets.reduce<

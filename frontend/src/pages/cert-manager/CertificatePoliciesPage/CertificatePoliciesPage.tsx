@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionCertificatePolicyActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -12,11 +12,11 @@ import { CertificatePoliciesTab } from "../PoliciesPage/components";
 export const CertificatePoliciesPage = () => {
   const { t } = useTranslation();
   return (
-    <div className="mx-auto flex h-full flex-col justify-between text-white">
+    <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Policies" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Certificate Policies"

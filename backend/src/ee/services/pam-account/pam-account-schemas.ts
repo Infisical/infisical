@@ -8,7 +8,13 @@ import { z } from "zod";
 import { BadRequestError } from "@app/lib/errors";
 import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
 
-import { GcpServiceAccountAuthMethod, PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
+import {
+  GcpServiceAccountAuthMethod,
+  PamAccountType,
+  PamPostgresAuthMethod,
+  PamSnowflakeAuthMethod,
+  PamSshAuthMethod
+} from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 import {
   PamAccountSettingsOverridesSchema,
@@ -33,6 +39,14 @@ const optionalTrimmedString = z
   .transform((v) => v || undefined)
   .optional();
 
+const boundedOptionalString = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => v || undefined)
+    .optional();
+
 const normalizeDelimitedStringList = (value: unknown): unknown => {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string") return value;
@@ -45,6 +59,7 @@ const normalizeDelimitedStringList = (value: unknown): unknown => {
 };
 
 export const hostPattern = new RE2(/^[A-Za-z0-9.:_-]+$/);
+const snowflakeAccountPattern = new RE2(/^[A-Za-z0-9][A-Za-z0-9._-]*$/);
 const delimitedStringList = z.preprocess(
   normalizeDelimitedStringList,
   z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1)
@@ -82,6 +97,10 @@ type TFieldConditionHint = { field: string; equals: string | boolean };
 type TFieldForcedRuleHint = { when: TFieldConditionHint; value: string | number | boolean; reason: string };
 
 // Source of truth for account types: per-type schemas + sparse UI hints
+export const ORACLE_MAX_PASSWORD_LENGTH = 30;
+
+export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
@@ -314,6 +333,55 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.OracleDB]: {
+    name: "Oracle Database",
+    icon: "Oracle.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number().int().min(1).max(65535),
+      database: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(
+          new RE2(/^[A-Za-z0-9][A-Za-z0-9_.\-#$]*$/),
+          "Must start with a letter or digit and contain only letters, digits, underscores, dots, hyphens, # or $"
+        ),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(128),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: { defaultValue: 1521 },
+      database: {
+        label: "Service Name",
+        tooltip: "The Oracle service name. For example FREEPDB1 or ORCL."
+      },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
   [PamAccountType.MongoDB]: {
     name: "MongoDB",
     icon: "MongoDB.png",
@@ -422,6 +490,138 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: {
         defaultValue: "default",
         tooltip: "The Redis ACL username. Use 'default' for the default user."
+      },
+      password: { widget: PamFieldWidget.Password, secret: true, optional: true },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      }
+    }
+  },
+
+  [PamAccountType.Snowflake]: {
+    name: "Snowflake",
+    icon: "Snowflake.png",
+    connectionDetails: z.object({
+      account: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(snowflakeAccountPattern, "Must be a valid Snowflake account identifier")
+        .refine((val) => !val.toLowerCase().includes("snowflakecomputing.com"), {
+          message: "Enter the account identifier only, without the snowflakecomputing.com suffix"
+        }),
+      warehouse: boundedOptionalString(255),
+      database: z.string().trim().min(1).max(255),
+      schema: boundedOptionalString(255),
+      role: boundedOptionalString(255)
+    }),
+    credentials: z.discriminatedUnion("authMethod", [
+      z.object({
+        authMethod: z.literal(PamSnowflakeAuthMethod.KeyPair),
+        username: z.string().trim().min(1).max(255),
+        privateKey: boundedOptionalString(8192),
+        privateKeyPassphrase: boundedOptionalString(256)
+      }),
+      z.object({
+        authMethod: z.literal(PamSnowflakeAuthMethod.ProgrammaticAccessToken),
+        username: z.string().trim().min(1).max(255),
+        token: boundedOptionalString(2048)
+      }),
+      z.object({
+        authMethod: z.literal(PamSnowflakeAuthMethod.Password),
+        username: z.string().trim().min(1).max(255),
+        password: boundedOptionalString(256)
+      })
+    ]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string(),
+      username: z.string()
+    }),
+    ui: {
+      account: {
+        label: "Account Identifier",
+        tooltip:
+          "The account identifier from the Snowflake URL, without the snowflakecomputing.com suffix (e.g. myorg-myaccount)."
+      },
+      warehouse: {
+        label: "Default Warehouse",
+        tooltip: "The warehouse a session runs its queries on. Leave empty to use the user's own default."
+      },
+      database: { tooltip: "The database sessions open. The explorer lists the schemas and tables inside it." },
+      schema: {
+        label: "Default Schema",
+        tooltip: "The schema a session starts in. A session can still switch to another schema the role can reach."
+      },
+      role: {
+        label: "Default Role",
+        tooltip:
+          "The role a session starts with. A session can still switch to another role the user holds, so grant the user only the roles its sessions should reach."
+      },
+      authMethod: {
+        label: "Auth Method",
+        defaultValue: PamSnowflakeAuthMethod.KeyPair,
+        tooltip:
+          "Snowflake blocks single-factor password sign-in for human users, so key pair or a programmatic access token is required for most accounts.",
+        options: [
+          { label: "Key Pair (Recommended)", value: PamSnowflakeAuthMethod.KeyPair },
+          { label: "Programmatic Access Token", value: PamSnowflakeAuthMethod.ProgrammaticAccessToken },
+          { label: "Password", value: PamSnowflakeAuthMethod.Password }
+        ]
+      },
+      privateKey: {
+        label: "Private Key",
+        widget: PamFieldWidget.Textarea,
+        secret: true,
+        tooltip: "The PKCS#8 private key whose public key is set on the Snowflake user (RSA_PUBLIC_KEY)."
+      },
+      privateKeyPassphrase: {
+        label: "Private Key Passphrase",
+        widget: PamFieldWidget.Password,
+        secret: true,
+        optional: true
+      },
+      token: { label: "Programmatic Access Token", widget: PamFieldWidget.Password, secret: true },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.ClickHouse]: {
+    name: "ClickHouse",
+    icon: "ClickHouse.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number().int().min(1).max(65535),
+      database: z.string().trim().min(1).max(255),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: boundedOptionalString(16384)
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: boundedOptionalString(256)
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: {
+        defaultValue: 8123,
+        tooltip:
+          "The HTTP interface port: 8123 for plain HTTP, 8443 for HTTPS. Sessions never use the native protocol on 9000."
+      },
+      database: {
+        defaultValue: "default",
+        tooltip: "The database sessions open. The explorer lists the tables inside it."
+      },
+      username: {
+        defaultValue: "default",
+        tooltip: "The ClickHouse user sessions connect as. Use 'default' for the built-in user."
       },
       password: { widget: PamFieldWidget.Password, secret: true, optional: true },
       sslEnabled: { label: "SSL Enabled" },
@@ -776,7 +976,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
   >
 >;
 
-type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
+export type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
 
 export type TWindowsConnectionDetails = z.infer<
   (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.Windows]["connectionDetails"]
@@ -788,7 +988,8 @@ export type TWindowsAdConnectionDetails = z.infer<
 export const SQL_ROTATABLE_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
-  PamAccountType.MsSQL
+  PamAccountType.MsSQL,
+  PamAccountType.OracleDB
 ] as const;
 
 // Windows accounts rotate over WinRM through the gateway: local accounts on their host, domain accounts
@@ -850,7 +1051,9 @@ export const extractGatewayTarget = async (
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
+    case PamAccountType.OracleDB:
     case PamAccountType.Redis:
+    case PamAccountType.ClickHouse:
     case PamAccountType.Windows:
       return {
         host: (validated as { host: string; port: number }).host,
@@ -896,10 +1099,12 @@ export const extractGatewayTarget = async (
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
       throw new Error("AWS IAM accounts do not use gateway routing");
+    case PamAccountType.Snowflake:
+      return { host: `${(validated as { account: string }).account}.snowflakecomputing.com`, port: 443 };
     case PamAccountType.AzureCli:
       return { host: "management.azure.com", port: 443 };
     default:
-      throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
+      throw new Error(`No gateway target extraction defined for account type '${accountType as PamAccountType}'`);
   }
 };
 
@@ -929,6 +1134,11 @@ export const resolveSelectedHost = (
 // The account type the gateway sees. Windows AD is brokered through the Windows RDP protocol
 export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
   accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
+
+export const gatewaySupportsAccountType = (
+  accountType: PamAccountType,
+  supportedTypes: string[] | undefined
+): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
 
 export const buildSessionGatewayConnectionDetails = (
   accountType: PamAccountType,
@@ -991,9 +1201,11 @@ const accountTypeConnectionStringSchemes = (accountType: PamAccountType): string
   return config?.connectionStringSchemes ? [...config.connectionStringSchemes] : undefined;
 };
 
-// redis can be reached without credentials
+// redis and clickhouse both accept a passwordless user, so an account without one is still launchable
+const CREDENTIAL_OPTIONAL_ACCOUNT_TYPES: PamAccountType[] = [PamAccountType.Redis, PamAccountType.ClickHouse];
+
 export const accountTypeRequiresCredential = (accountType: PamAccountType): boolean =>
-  accountType !== PamAccountType.Redis;
+  !CREDENTIAL_OPTIONAL_ACCOUNT_TYPES.includes(accountType);
 
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;
@@ -1327,6 +1539,21 @@ export const suppliesCredentialSecret = (
       const value = credentials[field.key];
       return typeof value === "string" && value.trim().length > 0;
     });
+};
+
+// Redaction inputs for anything a target echoes back
+export const collectCredentialSecrets = (
+  accountType: PamAccountType,
+  rawCredentials: Record<string, unknown>
+): string[] => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
+  if (!config) return [];
+
+  const credentials = normalizeCredentialAuthMethod(accountType, rawCredentials);
+  return fieldsFromSchema(config.credentials, config.ui)
+    .filter((field) => field.secret)
+    .map((field) => credentials[field.key])
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
 };
 
 export const isCredentialConfigured = (

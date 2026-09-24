@@ -88,7 +88,7 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => !g.isV1 && g.id !== excludeGatewayId) ?? [];
+  const v2Gateways = gateways?.filter((g) => g.id !== excludeGatewayId) ?? [];
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 

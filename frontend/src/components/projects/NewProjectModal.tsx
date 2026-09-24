@@ -192,6 +192,8 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
                 {...field}
                 placeholder="Type your project name"
                 isError={Boolean(error)}
+                autoComplete="off"
+                name="new-project-name"
               />
               {error && <FieldError>{error.message}</FieldError>}
             </Field>
@@ -357,6 +359,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
         </Button>
       </DialogFooter>
       <UpgradePlanModal
+        paywallKey="project.external-kms"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Your current plan does not include access to external KMS. To unlock this feature, please upgrade to Infisical Enterprise plan."

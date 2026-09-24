@@ -56,9 +56,10 @@ const relative = (value?: string | null) =>
 
 type Props = {
   accountId?: string;
+  onBeforeCheck?: () => Promise<boolean>;
 };
 
-export const CredentialHealthSection = ({ accountId }: Props) => {
+export const CredentialHealthSection = ({ accountId, onBeforeCheck }: Props) => {
   const { data: heartbeat, isPending } = useGetPamAccountHeartbeat(accountId);
   const { can } = usePamAccountActions(accountId ?? "", Boolean(accountId));
   const checkNow = useCheckPamAccountHeartbeat();
@@ -74,6 +75,7 @@ export const CredentialHealthSection = ({ accountId }: Props) => {
   const reason = !isHealthy && heartbeat.lastMessage ? heartbeat.lastMessage : null;
 
   const handleCheckNow = async () => {
+    if (onBeforeCheck && !(await onBeforeCheck())) return;
     try {
       await checkNow.mutateAsync({ accountId });
       createNotification({ text: "Credential check complete", type: "success" });

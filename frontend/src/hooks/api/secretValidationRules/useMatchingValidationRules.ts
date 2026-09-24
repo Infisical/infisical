@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import picomatch from "picomatch";
 
 import { useProject } from "@app/context";
 
 import { useListSecretValidationRules } from "./queries";
+import { doesRuleCoverScope } from "./scope";
 import {
   DynamicSecretRuleProvider,
   SecretRotationRuleProvider,
@@ -35,17 +35,14 @@ export const useMatchingValidationRules = ({
   const matchingRules = useMemo(() => {
     if (!environmentSlug || !secretPath) return [];
 
-    const env = currentProject.environments.find((e) => e.slug === environmentSlug);
-    const envId = env?.id;
-
     return rules.filter((rule) => {
       if (!rule.isActive) return false;
       if (rule.type !== type) return false;
-      if (rule.envId && rule.envId !== envId) return false;
-      if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) return false;
+      if (!doesRuleCoverScope(rule, { secretPath, environmentSlugs: [environmentSlug] }))
+        return false;
       return "providers" in rule && rule.providers.includes(provider as never);
     });
-  }, [rules, type, provider, environmentSlug, secretPath, currentProject.environments]);
+  }, [rules, type, provider, environmentSlug, secretPath]);
 
   return matchingRules;
 };

@@ -34,6 +34,7 @@ export type TLastRunData = {
 };
 
 export type TAlertWithChannels = TPkiAlertsV2 & {
+  applicationName?: string | null;
   channels: TChannelResult[];
   lastRunData: TLastRunData | null;
 };
@@ -100,8 +101,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     try {
       const [alert] = (await (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertsV2))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .from(TableName.PkiAlertsV2)
-        .where(`${TableName.PkiAlertsV2}.id`, alertId)) as TPkiAlertsV2[];
+        .leftJoin(TableName.PkiApplication, `${TableName.PkiAlertsV2}.applicationId`, `${TableName.PkiApplication}.id`)
+        .where(`${TableName.PkiAlertsV2}.id`, alertId)) as (TPkiAlertsV2 & { applicationName?: string | null })[];
 
       if (!alert) return null;
 

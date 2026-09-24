@@ -15,7 +15,7 @@ import {
 // Derived from the response schemas so the service and the route contract cannot drift
 export type TSanitizedIdentityAuthTemplate = Omit<
   TIdentityAuthTemplates,
-  "templateFields" | "authMethod" | "gatewayId" | "gatewayV2Id" | "gatewayPoolId"
+  "templateFields" | "authMethod" | "gatewayV2Id" | "gatewayPoolId"
 > &
   (
     | {

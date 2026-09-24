@@ -25,6 +25,9 @@
   "thumbnails": {
     "appearance": "light"
   },
+  "icons": {
+    "library": "lucide"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -42,23 +45,32 @@
         "tab": "Get started",
         "pages": [
           "documentation/getting-started/overview",
+          "documentation/getting-started/quickstarts",
           "documentation/getting-started/introduction",
+          "documentation/getting-started/set-up-with-ai",
+          "documentation/platform/external-migrations/overview",
+          "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Concepts",
+            "group": "Use cases",
             "pages": [
-              "documentation/getting-started/concepts/deployment-models",
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/client-integrations",
-              "documentation/getting-started/concepts/audit-logs"
+              "documentation/getting-started/choose-a-product/secrets-management/overview",
+              "documentation/getting-started/choose-a-product/secret-scanning",
+              "documentation/getting-started/choose-a-product/pki",
+              "documentation/getting-started/choose-a-product/kms",
+              "documentation/getting-started/choose-a-product/pam",
+              "documentation/getting-started/choose-a-product/agent-vault"
             ]
           },
           {
-            "group": "Migrate to Infisical",
+            "group": "Understand the platform",
             "pages": [
-              "documentation/platform/external-migrations/overview",
-              "documentation/platform/external-migrations/doppler",
-              "documentation/platform/external-migrations/vault"
+              "documentation/getting-started/concepts/platform-hierarchy",
+              "documentation/getting-started/concepts/platform-iam",
+              "documentation/getting-started/concepts/audit-logs",
+              "documentation/getting-started/concepts/app-connections",
+              "documentation/getting-started/concepts/networking",
+              "documentation/getting-started/concepts/internals",
+              "documentation/getting-started/concepts/contributing"
             ]
           }
         ]
@@ -68,7 +80,7 @@
         "menu": [
           {
             "item": "Secrets Management",
-            "icon": "vault",
+            "icon": "key",
             "pages": [
               "documentation/platform/secrets-mgmt/overview",
               {
@@ -87,7 +99,15 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing"
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Migrate to Infisical",
+                    "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
+                    "pages": [
+                      "documentation/platform/external-migrations/doppler",
+                      "documentation/platform/external-migrations/vault"
+                    ]
+                  }
                 ]
               },
               {
@@ -410,11 +430,6 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  {
-                    "group": "Agent Vault",
-                    "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
                   }
                 ]
               }
@@ -449,7 +464,7 @@
           },
           {
             "item": "Certificate Management",
-            "icon": "file-certificate",
+            "icon": "file-key",
             "pages": [
               "documentation/platform/pki/overview",
               {
@@ -636,7 +651,7 @@
           },
           {
             "item": "KMS",
-            "icon": "key",
+            "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
               {
@@ -657,7 +672,7 @@
           },
           {
             "item": "Privileged Access Management",
-            "icon": "user-shield",
+            "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
               {
@@ -698,8 +713,11 @@
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/oracledb",
                       "documentation/platform/pam/accounts/mongodb",
                       "documentation/platform/pam/accounts/redis",
+                      "documentation/platform/pam/accounts/snowflake",
+                      "documentation/platform/pam/accounts/clickhouse",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -718,6 +736,7 @@
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
                       "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
                       "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
@@ -747,6 +766,40 @@
                   },
                   "documentation/platform/pam/auditing",
                   "documentation/platform/pam/architecture"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "vault",
+            "tag": "PREVIEW",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Get started",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart",
+                  "documentation/platform/agent-vault/why-agent-vault",
+                  "documentation/platform/agent-vault/how-it-works"
+                ]
+              },
+              {
+                "group": "Agent guides",
+                "pages": [
+                  "documentation/platform/agent-vault/guides/claude-code",
+                  "documentation/platform/agent-vault/guides/codex",
+                  "documentation/platform/agent-vault/guides/opencode"
+                ]
+              },
+              {
+                "group": "Concepts",
+                "pages": [
+                  "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/services",
+                  "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/access-control"
                 ]
               }
             ]
@@ -1039,6 +1092,7 @@
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/ovh",
                   "integrations/app-connections/postgres",
+                  "integrations/app-connections/powerdns",
                   "integrations/app-connections/qovery",
                   "integrations/app-connections/railway",
                   "integrations/app-connections/redis",
@@ -1066,13 +1120,13 @@
           },
           {
             "item": "Networking",
-            "icon": "network-wired",
+            "icon": "network",
             "pages": [
               "documentation/platform/gateways/overview",
+              "documentation/setup/networking",
               {
                 "group": "Gateways",
                 "pages": [
-                  "documentation/setup/networking",
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
                   "documentation/platform/gateways/gateway-pools",
@@ -1175,7 +1229,7 @@
           },
           {
             "item": "Internals",
-            "icon": "diagram-project",
+            "icon": "workflow",
             "pages": [
               "internals/overview",
               {
@@ -1205,7 +1259,7 @@
           },
           {
             "item": "Contributing",
-            "icon": "code-pull-request",
+            "icon": "git-pull-request",
             "pages": [
               "contributing/getting-started/overview",
               {
@@ -1248,10 +1302,14 @@
                     "group": "Core commands",
                     "pages": [
                       "cli/commands/login",
+                      "cli/commands/logout",
+                      "cli/commands/profile",
+                      "cli/commands/org",
                       "cli/commands/init",
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent-vault",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
@@ -1290,13 +1348,17 @@
           },
           {
             "item": "API",
-            "icon": "book-open-lines",
+            "icon": "book-open",
             "pages": [
               "api-reference/overview/introduction",
               {
-                "group": "Overview",
+                "group": "Get started",
                 "pages": [
-                  "api-reference/overview/authentication"
+                  "api-reference/overview/quickstart",
+                  "api-reference/overview/authentication",
+                  "api-reference/overview/pagination",
+                  "api-reference/overview/rate-limits",
+                  "api-reference/overview/errors"
                 ]
               },
               {
@@ -1338,6 +1400,7 @@
                       "api-reference/endpoints/identities/update",
                       "api-reference/endpoints/identities/delete",
                       "api-reference/endpoints/identities/get-by-id",
+                      "api-reference/endpoints/identities/details",
                       "api-reference/endpoints/identities/list",
                       "api-reference/endpoints/identities/search",
                       "api-reference/endpoints/identities/search-count",
@@ -2250,6 +2313,18 @@
                           "api-reference/endpoints/app-connections/postgres/create",
                           "api-reference/endpoints/app-connections/postgres/update",
                           "api-reference/endpoints/app-connections/postgres/delete"
+                        ]
+                      },
+                      {
+                        "group": "PowerDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/powerdns/list",
+                          "api-reference/endpoints/app-connections/powerdns/available",
+                          "api-reference/endpoints/app-connections/powerdns/get-by-id",
+                          "api-reference/endpoints/app-connections/powerdns/get-by-name",
+                          "api-reference/endpoints/app-connections/powerdns/create",
+                          "api-reference/endpoints/app-connections/powerdns/update",
+                          "api-reference/endpoints/app-connections/powerdns/delete"
                         ]
                       },
                       {
@@ -3722,6 +3797,42 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "group": "Secret validation rules",
+                    "pages": [
+                      "api-reference/endpoints/secret-validation-rules/list",
+                      {
+                        "group": "Static secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Dynamic secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Secret rotations",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/list",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/create",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/update",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/delete"
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
@@ -4322,6 +4433,66 @@
                 ]
               },
               {
+                "group": "Agent Vault",
+                "pages": [
+                  {
+                    "group": "Access bundles",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-access-bundles/list",
+                      "api-reference/endpoints/agent-vault-access-bundles/get",
+                      "api-reference/endpoints/agent-vault-access-bundles/create",
+                      "api-reference/endpoints/agent-vault-access-bundles/update",
+                      "api-reference/endpoints/agent-vault-access-bundles/delete"
+                    ]
+                  },
+                  {
+                    "group": "Services",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-services/create",
+                      "api-reference/endpoints/agent-vault-services/update",
+                      "api-reference/endpoints/agent-vault-services/delete"
+                    ]
+                  },
+                  {
+                    "group": "Access bundle members",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-access-bundle-members/list",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/add",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Members",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-members/list",
+                      "api-reference/endpoints/agent-vault-members/list-available",
+                      "api-reference/endpoints/agent-vault-members/add",
+                      "api-reference/endpoints/agent-vault-members/update-role",
+                      "api-reference/endpoints/agent-vault-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Proxies",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-proxies/list",
+                      "api-reference/endpoints/agent-vault-proxies/create",
+                      "api-reference/endpoints/agent-vault-proxies/update",
+                      "api-reference/endpoints/agent-vault-proxies/delete",
+                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
+                      "api-reference/endpoints/agent-vault-proxies/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Sessions",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-sessions/list",
+                      "api-reference/endpoints/agent-vault-sessions/create",
+                      "api-reference/endpoints/agent-vault-sessions/revoke"
+                    ]
+                  }
+                ]
+              },
+              {
                 "group": "KMIP servers",
                 "boost": 0.25,
                 "pages": [
@@ -4368,6 +4539,12 @@
                     "pages": [
                       "api-reference/endpoints/admin/bootstrap-instance"
                     ]
+                  },
+                  {
+                    "group": "Instance",
+                    "pages": [
+                      "api-reference/endpoints/instance/status"
+                    ]
                   }
                 ]
               }
@@ -4375,7 +4552,7 @@
           },
           {
             "item": "SDKs",
-            "icon": "cubes",
+            "icon": "boxes",
             "pages": [
               "sdks/overview",
               {
@@ -4621,6 +4798,70 @@
     }
   },
   "redirects": [
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-users",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-groups",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/list-identities",
+      "destination": "/api-reference/endpoints/agent-vault-members/list"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-users",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-group",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/add-identity",
+      "destination": "/api-reference/endpoints/agent-vault-members/add"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-user-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-group-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/update-identity-role",
+      "destination": "/api-reference/endpoints/agent-vault-members/update-role"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-user",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-group",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-memberships/remove-identity",
+      "destination": "/api-reference/endpoints/agent-vault-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-user",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-group",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/api-reference/endpoints/agent-vault-access-bundle-members/remove-identity",
+      "destination": "/api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+    },
+    {
+      "source": "/ai/model-context-protocol",
+      "destination": "/documentation/getting-started/set-up-with-ai"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"

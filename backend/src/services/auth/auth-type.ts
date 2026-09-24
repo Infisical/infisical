@@ -25,6 +25,7 @@ export enum AuthTokenType {
   GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
   RELAY_ACCESS_TOKEN = "relayAccessToken",
   KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken",
+  AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken",
   ACCOUNT_RECOVERY_TOKEN = "accountRecoveryToken"
 }
 
@@ -47,7 +48,8 @@ export enum AuthMode {
   OAUTH = "oauth",
   GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
   RELAY_ACCESS_TOKEN = "relayAccessToken",
-  KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken"
+  KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken",
+  AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...
@@ -64,7 +66,8 @@ export enum ActorType { // would extend to AWS, Azure, ...
   UNKNOWN_USER = "unknownUser",
   GATEWAY = "gateway",
   RELAY = "relay",
-  KMIP_SERVER = "kmipServer"
+  KMIP_SERVER = "kmipServer",
+  AGENT_VAULT_PROXY = "agentVaultProxy"
 }
 
 export type TGatewayAccessTokenJwtPayload = {
@@ -84,6 +87,13 @@ export type TRelayAccessTokenJwtPayload = {
 export type TKmipServerAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.KMIP_SERVER_ACCESS_TOKEN;
   kmipServerId: string;
+  orgId: string;
+  tokenVersion: number;
+};
+
+export type TAgentVaultProxyAccessTokenJwtPayload = {
+  authTokenType: AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN;
+  agentVaultProxyId: string;
   orgId: string;
   tokenVersion: number;
 };

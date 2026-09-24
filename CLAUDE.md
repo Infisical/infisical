@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make reviewable-api` / `make reviewable-ui` — lint:fix + type:check (run before PRs). Neither checks [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md); review backend changes against it yourself.
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
+- `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/CLAUDE.md` for why running `npm run test:e2e` directly can destroy your dev data.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
@@ -36,7 +37,7 @@ infisical/
 
 - **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
 - **`backend-go/`** — Go API server (partial rewrite), chi + chita framework, raw pgx queries, same PostgreSQL database. See [`backend-go/CLAUDE.md`](backend-go/CLAUDE.md) for architecture, patterns, and commands.
-- **`frontend/`** — React 18 SPA, Vite 6, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
+- **`frontend/`** — React 18 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
@@ -67,7 +68,7 @@ Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm 
 
 **Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike.
 
-It is a floor, not an exhaustive standard: user-understandable error messages and no pointless 500s, explicit validation on every API input, correct pagination when calling third-party APIs, avoiding deadlock conditions on a small connection pool (thread `tx`, keep transactions short), and REST-aligned API interfaces (flag deviations for the author to confirm rather than implementing them silently).
+It is a floor, not an exhaustive standard: user-understandable error messages and no pointless 500s, explicit validation on every API input, correct pagination when calling third-party APIs, avoiding deadlock conditions on a small connection pool (thread `tx`, keep transactions short), REST-aligned API interfaces (flag deviations for the author to confirm rather than implementing them silently), and audit log events an admin can actually read.
 
 That list describes what the guide currently covers; it is **not** a test for whether the guide applies. Do not skip it because a change does not look like one of those topics. Read it, then decide which items are relevant.
 
@@ -78,6 +79,10 @@ That list describes what the guide currently covers; it is **not** a test for wh
 Never write: narration restating the next line; section headers inside a function (`// --- validation ---`); change history (`// Added retry logic`, `// NEW`); references to plans, tickets, PRs, or reviewers; docstrings restating the signature; commented-out code.
 
 Before finishing, delete any comment you added that only says what the code says.
+
+### Product Analytics
+
+Read [`ANALYTICS.md`](ANALYTICS.md) before adding or changing product analytics. Every event has one owning producer: the frontend records UI exposure and intent, the application backend records accepted commands it can establish, and the system of record records durable outcomes. Define stable dimensions, cardinality, firing conditions, and dashboard consumers before implementation.
 
 ### Design System & Voice
 
@@ -91,11 +96,15 @@ If the user wrote or edited the docs prose themselves, don't just accept it. Tel
 
 The style guide covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, the sentence-level writing rules in section 5, and the bolding and UI conventions in section 11.
 
-Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions` report at warning and suggestion level, so they never change the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
+Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It lints only the `.mdx` files the branch touched; `make lint-docs` checks every page. The `Check docs style` GitHub workflow runs that same script, so local and CI agree by construction. Every rule except `Infisical.EmDashes` reports at error level, including `Infisical.UIActions` (click/tap where the verb should be select) and `Infisical.Contractions`, so the run fails if either one reports a finding. `Infisical.EmDashes` reports at warning level and never changes the exit code -- read the printed output, not just the status. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
 
 ### Auth & Permissions
 
 Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/CLAUDE.md` for backend details and `frontend/CLAUDE.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
+
+### Org-Scoped Products
+
+PAM and Agent Vault are products over one implicit project per organization, not projects a user creates. Their URLs are `/organizations/$orgId/<product>/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, their roles are admin or member only, and each has its own metered identities dimension (`pam_identities`, `agent_vault_identities`). When you add a `ProjectType.PAM` arm anywhere, add the Agent Vault arm beside it. See `backend/src/ee/services/pam/CLAUDE.md` and `backend/src/ee/services/agent-vault/CLAUDE.md`.
 
 ### Service Factory + Manual DI (Backend)
 

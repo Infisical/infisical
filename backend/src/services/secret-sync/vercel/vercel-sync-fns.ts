@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { isAxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { VercelEnvironmentType, VercelSyncScope } from "./vercel-sync-enums";
@@ -59,7 +62,7 @@ const getVercelSecretsWithRetries = async (
     );
     return data.envs;
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return await getVercelSecretsWithRetries(secretSync, attempt + 1);
     }
@@ -105,7 +108,7 @@ const getDecryptedVercelSecret = async (
 
     return decryptedSecret as VercelApiSecret;
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return await getDecryptedVercelSecret(secretSync, secret, attempt + 1);
     }
@@ -191,7 +194,7 @@ const deleteSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return await deleteSecret(secretSync, vercelSecret, attempt + 1);
     }
@@ -243,7 +246,7 @@ const createSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return await createSecret(secretSync, secretMap, key, attempt + 1);
     }
@@ -307,7 +310,7 @@ const updateSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return await updateSecret(secretSync, secretMap, vercelSecret, attempt + 1);
     }
@@ -404,7 +407,7 @@ const detachEnvFromProjectSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return detachEnvFromProjectSecret(secretSync, vercelSecret, attempt + 1);
     }
@@ -500,7 +503,7 @@ const listTeamSharedEnvVarsWithRetries = async (
         hasMore = false;
       }
     } catch (error) {
-      if ((error as { response: { status: number } }).response.status === 429 && totalRetries < MAX_RETRIES) {
+      if (isAxiosError(error) && error.response?.status === 429 && totalRetries < MAX_RETRIES) {
         totalRetries += 1;
         // eslint-disable-next-line no-await-in-loop
         await sleep();
@@ -544,7 +547,7 @@ const getDecryptedTeamSharedEnvVar = async (
     );
     return decryptedEnvVar;
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return getDecryptedTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
@@ -648,7 +651,7 @@ const createTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return createTeamSharedEnvVar(secretSync, key, value, attempt + 1);
     }
@@ -729,7 +732,7 @@ const updateTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return updateTeamSharedEnvVar(secretSync, envVar, value, attempt + 1);
     }
@@ -777,7 +780,7 @@ const deleteTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return deleteTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
@@ -861,7 +864,7 @@ const detachTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
       return detachTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
@@ -870,7 +873,8 @@ const detachTeamSharedEnvVar = async (
 };
 
 export const VercelSyncFns = {
-  syncSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
@@ -1031,7 +1035,8 @@ export const VercelSyncFns = {
     return Object.fromEntries(vercelSecrets.map((s) => [s.key, { value: s.value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const sharedEnvVars = await getOwnedTeamSharedEnvVars(secretSync);
 

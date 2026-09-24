@@ -44,7 +44,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -680,6 +680,7 @@ const Form = ({
               <FieldContent>
                 <Combobox
                   modal
+                  isClearable={false}
                   aria-label="Policy type"
                   options={Object.values(PolicyType)}
                   value={value ?? null}
@@ -712,6 +713,8 @@ const Form = ({
                   value={field.value || ""}
                   placeholder="e.g. Production Approvals"
                   isError={Boolean(error)}
+                  autoComplete="off"
+                  name="policy-name"
                 />
                 <FieldError errors={[error]} />
               </FieldContent>
@@ -1024,7 +1027,7 @@ const Form = ({
                 <FieldTitle>Self Approvals</FieldTitle>
                 <FieldDescription>Allow approvers to review their own requests</FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="self-approvals"
                 aria-label="Allow self approvals"
                 variant="project"
@@ -1046,7 +1049,7 @@ const Form = ({
                     When enabled, machine identities can modify secrets without requiring approval
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="bypass-machine-identities"
                   aria-label="Bypass approval for machine identities"
                   variant="project"
@@ -1069,7 +1072,7 @@ const Form = ({
                   Allow certain users to bypass policy in break-glass situations
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="bypass-approvals"
                 aria-label="Allow approval bypass"
                 variant="project"

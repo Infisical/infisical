@@ -4,7 +4,6 @@ import isEqual from "lodash.isequal";
 
 import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -96,9 +95,9 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
 import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
@@ -171,7 +170,6 @@ export type TSecretRotationV2ServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -240,7 +238,6 @@ export const secretRotationV2ServiceFactory = ({
   queueService,
   folderCommitService,
   appConnectionDAL,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
@@ -267,7 +264,7 @@ export const secretRotationV2ServiceFactory = ({
       type: SecretValidationRuleType.SecretRotations,
       provider
     });
-    if (!matched.constraints.length) return undefined;
+    if (!matched.ruleNames.length) return undefined;
     return matched;
   };
 
@@ -620,7 +617,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       passwordValidationContext
@@ -996,7 +992,6 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
         passwordValidationContext
@@ -1340,7 +1335,6 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService,
         gatewayV2Service,
         gatewayPoolService,
         passwordValidationContext
@@ -1666,7 +1660,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService
     );
@@ -2066,7 +2059,6 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService,
       gatewayV2Service,
       gatewayPoolService,
       passwordValidationContext

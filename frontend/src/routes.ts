@@ -369,12 +369,30 @@ const pamRoutes = route("/organizations/$orgId/pam", [
     route("/approval-requests", "pam/PamApprovalRequestsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
 
-    // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-pam.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-pam.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-pam.tsx"),
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx")
+  ])
+]);
+
+const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
+  layout("agent-vault-layout", "agent-vault/layout.tsx", [
+    index("redirects/agent-vault-index-redirect.tsx"),
+    route("/sessions", "agent-vault/AgentVaultSessionsPage/route.tsx"),
+    route("/access-bundles", [
+      index("agent-vault/AgentVaultAccessBundlesPage/route.tsx"),
+      route("/$accessBundleId", "agent-vault/AgentVaultAccessBundleDetailPage/route.tsx")
+    ]),
+    route("/proxies", "agent-vault/AgentVaultProxiesPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-agent-vault.tsx"),
+
+    route("/access-management", "project/AccessControlPage/route-agent-vault.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-agent-vault.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-agent-vault.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-agent-vault.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-agent-vault.tsx")
   ])
 ]);
 
@@ -437,8 +455,9 @@ const organizationRoutes = route("/organizations/$orgId", [
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
   route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
+  route("/shared/new", "public/ShareSecretPage/route.tsx"),
   route("/secret-request/secret/$secretRequestId", "public/ViewSecretRequestByIDPage/route.tsx"),
-  route("/share-secret", "public/ShareSecretPage/route.tsx"),
+  route("/share-secret", "public/ShareSecretPage/legacy-route.tsx"),
   route("/cli-redirect", "auth/CliRedirectPage/route.tsx"),
   middleware("restrict-login-signup.tsx", [
     route("/admin/signup", "admin/SignUpPage/route.tsx"),
@@ -496,7 +515,8 @@ export const routes = rootRoute("root.tsx", [
         certManagerRoutes,
         kmsRoutes,
         secretScanningRoutes,
-        pamRoutes
+        pamRoutes,
+        agentVaultRoutes
       ])
     ])
   ])

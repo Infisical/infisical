@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
@@ -29,17 +30,24 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenRequestError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -218,10 +226,16 @@ export const orgServiceFactory = ({
       { sort: [["createdAt", "desc"]], limit: 1 }
     );
 
+    const agentVaultProjects = await projectDAL.find(
+      { orgId: data.id, type: ProjectType.AgentVault },
+      { sort: [["createdAt", "desc"]], limit: 1 }
+    );
+
     return {
       ...data,
       userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
-      pamProjectId: pamProjects[0]?.id ?? null
+      pamProjectId: pamProjects[0]?.id ?? null,
+      agentVaultProjectId: agentVaultProjects[0]?.id ?? null
     };
   };
 
@@ -674,16 +688,45 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      orgName
+      orgName,
+      blockIfUserHasCreatedOrg
     }: {
       userId?: string;
       orgName: string;
+      // Set by the user-facing create-org endpoint, and only on cloud.
+      blockIfUserHasCreatedOrg?: boolean;
     },
     trx?: Knex
   ) => {
     const createOrg = async (tx: Knex) => {
+      // Serializes concurrent creates so two requests cannot both read a count of zero. Tried rather
+      // than waited on, so the loser answers immediately instead of holding one of the ten pool
+      // connections until the winner commits.
+      if (blockIfUserHasCreatedOrg && userId) {
+        const lock = await tx.raw<{ rows: { lock_acquired: boolean }[] }>(
+          "SELECT pg_try_advisory_xact_lock(?) as lock_acquired",
+          [PgSqlLock.CreateOrganization(userId)]
+        );
+        if (!lock?.rows[0]?.lock_acquired) {
+          throw new ConflictError({
+            message: "Another organization is already being created for your account. Try again in a moment."
+          });
+        }
+
+        const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
+        if (createdOrgs > 0) {
+          throw new ConflictError({
+            message:
+              "You have already created an organization. Ask an administrator of an existing organization to invite you."
+          });
+        }
+      }
+
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
+      const org = await orgDAL.create(
+        { name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`), createdByUserId: userId },
+        tx
+      );
       if (userId) {
         const membership = await orgDAL.createMembership(
           {
@@ -722,6 +765,15 @@ export const orgServiceFactory = ({
         tx
       );
 
+      await bootstrapAgentVaultProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
       return org;
     };
 
@@ -729,8 +781,8 @@ export const orgServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
-    // The PAM bootstrap above seeds the creator as a project member, which changes the pam_identities meter.
     usageMeteringService.emit(organization.id, PamIdentities.key);
+    usageMeteringService.emit(organization.id, AgentVaultIdentities.key);
 
     return organization;
   };
@@ -1290,6 +1342,7 @@ export const orgServiceFactory = ({
     // Removing an org member cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, SecretIdentities.key);
     usageMeteringService.emit(orgId, PamIdentities.key);
+    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 
@@ -1345,6 +1398,7 @@ export const orgServiceFactory = ({
     // Removing org members cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, SecretIdentities.key);
     usageMeteringService.emit(orgId, PamIdentities.key);
+    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     return deletedMemberships;
   };
 

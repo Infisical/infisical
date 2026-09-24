@@ -1,3 +1,17 @@
+## 1.6.0 (Unreleased)
+* Added GCP auth enrollment (`gateway.enrollment.method: gcp`). The gateway proves its identity with a token from the GCP metadata server, so no credential is distributed to the cluster or the VM.
+* Added `gateway.enrollment.gcp.gatewayId`, `gateway.enrollment.gcp.type` and `gateway.enrollment.gcp.serviceAccountKeyFilePath`.
+* Added `extraVolumes` and `extraVolumeMounts`, which are what mount a service account key file for `gateway.enrollment.gcp.type: iam`. Setting `serviceAccountKeyFilePath` without them now fails the render instead of crash-looping the pod on a missing file.
+* Bumped the default CLI image from `0.43.131` to `0.43.134`, the first release containing `--enroll-method=gcp`. Pinning `image.tag` to an older release makes `gateway.enrollment.method: gcp` crash-loop the pod on `unknown flag: --gcp-auth-type`.
+
+## 1.5.0 (September 7, 2026)
+* Added `gateway.listenAddress`, a `host:port` that Infisical dials to reach the gateway, which runs it in direct listen mode instead of connecting out to a relay. Leave it empty for relay mode.
+* The container port and the Service's `targetPort` are both derived from `gateway.listenAddress`, so they cannot drift from the port the gateway binds. A malformed value fails the render.
+* **Breaking:** the Service is created only in direct listen mode. A relay-mode gateway accepts no inbound connections, so the chart no longer creates a Service for one. Relay-mode installs upgrading from 1.4.0 will have their Service removed.
+* **Breaking:** `service.port` now defaults to `""`, meaning the port from `gateway.listenAddress`, rather than `80`. A Service answering on any other port is unreachable at the address registered with Infisical. Set it explicitly to put a different port in front of the gateway.
+* `gateway.relayName` and `gateway.listenAddress` can be set together to run both transports. Infisical then prefers the direct address and falls back to the relay.
+* Bumped the default CLI image from `0.43.123` to `0.43.131`, the first release containing `--listen-address`. Pinning `image.tag` to an older release makes `gateway.listenAddress` crash-loop the pod on `unknown flag: --listen-address`.
+
 ## 1.4.0 (August 6, 2026)
 * Added Kubernetes auth enrollment (`gateway.enrollment.method: kubernetes`). The gateway authenticates with the projected service account token of its own pod, so no enrollment token or cloud credential needs to be distributed to the cluster.
 * Added `gateway.enrollment.kubernetes.gatewayId` and `gateway.enrollment.kubernetes.serviceAccountTokenPath`.
