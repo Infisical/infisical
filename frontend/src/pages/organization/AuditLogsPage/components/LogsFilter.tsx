@@ -1,7 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ListFilter } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -10,9 +9,9 @@ import {
   Badge,
   Button,
   ButtonBadge,
+  Combobox,
   Field,
   FieldError,
-  FilterableSelect,
   IconButton,
   Input,
   Popover,
@@ -80,26 +79,25 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
 
-  const { control, watch, resetField, setValue, handleSubmit, formState } =
-    useForm<TAuditLogFilterFormData>({
-      resolver: zodResolver(auditLogFilterFormSchema),
-      defaultValues: {
-        project: null,
-        environment: null,
-        secretKey: "",
-        secretPath: "",
-        actor: presets?.actorId,
-        eventType: filter?.eventType || [],
-        userAgentType: null
-      },
-      values: {
-        ...filter,
-        environment: filter.environment ?? null,
-        userAgentType: filter.userAgentType ?? null,
-        secretPath: filter.secretPath ?? "",
-        secretKey: filter.secretKey ?? ""
-      }
-    });
+  const { control, watch, setValue, handleSubmit, formState } = useForm<TAuditLogFilterFormData>({
+    resolver: zodResolver(auditLogFilterFormSchema),
+    defaultValues: {
+      project: null,
+      environment: null,
+      secretKey: "",
+      secretPath: "",
+      actor: presets?.actorId,
+      eventType: filter?.eventType || [],
+      userAgentType: null
+    },
+    values: {
+      ...filter,
+      environment: filter.environment ?? null,
+      userAgentType: filter.userAgentType ?? null,
+      secretPath: filter.secretPath ?? "",
+      secretKey: filter.secretKey ?? ""
+    }
+  });
   const selectedEventTypes = watch("eventType") as EventType[] | undefined;
   const selectedProject = project ?? watch("project");
 
@@ -187,18 +185,16 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                 name="eventType"
                 render={({ field }) => (
                   <Field>
-                    <FilterableSelect
+                    <Combobox
+                      aria-label="Events"
+                      clearAriaLabel="Clear events"
                       value={filteredEventTypes.filter((eventType) =>
                         field.value.includes(eventType.value as EventType)
                       )}
-                      isMulti
+                      multiple
                       isClearable
-                      onChange={(options) =>
-                        field.onChange(
-                          (options as MultiValue<(typeof filteredEventTypes)[number]>).map(
-                            (option) => option.value
-                          )
-                        )
+                      onValueChange={(options) =>
+                        field.onChange(options.map((option) => option.value))
                       }
                       placeholder="All events"
                       options={filteredEventTypes}
@@ -220,18 +216,16 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                 name="userAgentType"
                 render={({ field: { onChange, value }, fieldState: { error } }) => (
                   <Field>
-                    <FilterableSelect
+                    <Combobox
+                      aria-label="Source"
+                      clearAriaLabel="Clear source"
                       value={
                         userAgentTypes.find(
                           (userAgentType) => value === (userAgentType.value as UserAgentType)
                         ) ?? null
                       }
                       isClearable
-                      onChange={(option) =>
-                        onChange(
-                          (option as SingleValue<(typeof userAgentTypes)[number]>)?.value ?? null
-                        )
-                      }
+                      onValueChange={(option) => onChange(option?.value ?? null)}
                       placeholder="All sources"
                       options={userAgentTypes}
                       getOptionValue={(option) => option.value}
@@ -258,15 +252,17 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                   name="project"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <Field>
-                      <FilterableSelect
-                        value={value}
+                      <Combobox
+                        aria-label="Project"
+                        clearAriaLabel="Clear project"
+                        value={value ?? null}
                         isClearable
-                        onChange={(e) => {
+                        onValueChange={(e) => {
                           if (e === null) {
                             setValue("secretPath", "");
                             setValue("secretKey", "");
                           }
-                          resetField("environment");
+                          setValue("environment", null, { shouldDirty: true });
                           onChange(e);
                         }}
                         placeholder="All projects"
@@ -305,13 +301,13 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     name="environment"
                     render={({ field: { onChange, value }, fieldState: { error } }) => (
                       <Field>
-                        <FilterableSelect
-                          value={value}
-                          menuPlacement="top"
-                          key={value?.name || "filter-environment"}
+                        <Combobox
+                          aria-label="Environment"
+                          clearAriaLabel="Clear environment"
+                          value={value ?? null}
                           isClearable
                           isDisabled={!selectedProject}
-                          onChange={(e) => onChange(e)}
+                          onValueChange={onChange}
                           placeholder="All environments"
                           options={availableEnvironments.map(({ name, slug }) => ({
                             name,
