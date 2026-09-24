@@ -106,6 +106,7 @@ type ComboboxInputProps = Omit<
 
 type ComboboxSingleValueProps<TOption> = {
   multiple?: false;
+  variant?: "default" | "input-group";
   value?: TOption | null;
 };
 
@@ -779,6 +780,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     isError = false,
     modal = false,
     portalContainer: portalContainerProp,
+    variant = "default",
     className,
     contentClassName,
     onInputValueChange,
@@ -1013,7 +1015,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             <ComboboxPrimitive.Input
               ref={inputRef}
               id={id}
-              data-slot="combobox-input"
+              data-slot={variant === "input-group" ? "input-group-control" : "combobox-input"}
               data-invalid={isError}
               aria-invalid={isError || undefined}
               aria-busy={isLoading || isCreationPending || undefined}
@@ -1063,9 +1065,11 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
                 preventComboboxFormSubmit(event);
               }}
               className={cn(
-                "h-9 w-full rounded-md border border-border bg-transparent py-2 pr-9 pl-2.5 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
-                "hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50",
-                "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+                "h-9 w-full bg-transparent py-2 pr-9 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+                "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
+                variant === "default" &&
+                  "rounded-md border border-border pl-2.5 hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+                variant === "input-group" && "rounded-none border-0 pl-2 shadow-none",
                 !isEditing && value != null && renderValue && "text-transparent",
                 className
               )}

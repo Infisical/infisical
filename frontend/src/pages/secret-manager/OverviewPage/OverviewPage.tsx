@@ -4007,6 +4007,7 @@ const OverviewPageContent = () => {
         environments={userAvailableEnvs}
         visibleEnvs={visibleEnvs}
         projectId={projectId}
+        projectName={currentProject.name}
         projectSlug={projectSlug}
         sourceSecretPath={secretPath}
         secrets={{}}
