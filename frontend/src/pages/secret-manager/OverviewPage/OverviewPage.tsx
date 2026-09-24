@@ -2914,7 +2914,7 @@ const OverviewPageContent = () => {
                   className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
                 >
-                  <TableHeader>
+                  <TableHeader className="[&_th]:font-medium">
                     <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
                       <TableHead
                         className={twMerge(
