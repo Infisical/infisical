@@ -1317,15 +1317,7 @@ export const gatewayV2ServiceFactory = ({
 
   // --- V3 service methods ---
 
-  const renameGateway = async ({
-    orgPermission,
-    gatewayId,
-    name
-  }: {
-    orgPermission: OrgServiceActor;
-    gatewayId: string;
-    name: string;
-  }) => {
+  const $assertCanEditGateway = async (orgPermission: OrgServiceActor, gatewayId: string) => {
     const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
     if (!gateway) {
       throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
@@ -1345,6 +1337,40 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
+    return gateway;
+  };
+
+  // Setting an auth method dials the customer's cluster, so the two halves of an update cannot
+  // share a transaction. Checking the name first means the ordinary rejection lands before the
+  // auth method is committed; the unique violation in renameGateway still covers the race.
+  const assertGatewayNameAvailable = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return;
+
+    const existing = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, name });
+    if (existing && existing.id !== gatewayId) {
+      throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+    }
+  };
+
+  const renameGateway = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
     if (gateway.name === name) return { gateway, previousName: name };
 
     try {
@@ -1523,6 +1549,7 @@ export const gatewayV2ServiceFactory = ({
     // V3
     createGateway,
     renameGateway,
+    assertGatewayNameAvailable,
     connectGateway
   };
 };

@@ -343,6 +343,15 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      // Before the auth method is touched, so the usual rejection leaves nothing applied.
+      if (req.body.name) {
+        await server.services.gatewayV2.assertGatewayNameAvailable({
+          orgPermission: req.permission,
+          gatewayId: req.params.gatewayId,
+          name: req.body.name
+        });
+      }
+
       // Auth first: it is the half that fails, so a rejection cannot leave behind a rename.
       if (req.body.authMethod) {
         const result = await server.services.resourceAuthMethod.setMethod({
