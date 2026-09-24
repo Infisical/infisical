@@ -34,7 +34,7 @@ Each request produces one record:
 | `brokered` | A service matched and its credential went out with the request |
 | `passthrough` | No service matched, or the one that did carries no credential. The request went out untouched |
 | `blocked` | The traffic policy refused the request |
-| `error` | The proxy couldn't reach the upstream, or the session had stopped being valid |
+| `error` | The proxy couldn't reach the upstream |
 
 Request and response bodies, headers, and query strings aren't recorded, because that's where credentials and tokens travel.
 
@@ -92,13 +92,13 @@ Add this CORS rule to the bucket, because your browser is what fetches the recor
 ]
 ```
 
-Use your own instance URL as the allowed origin. Without this rule the settings still save, but every **Activity** tab fails to load. Each time the **AWS Setup** dialog opens, it checks from your browser whether the rule is in place.
+Use your own instance URL as the allowed origin. Without this rule the settings still save, but your browser can't load any session's activity. Each time the **AWS Setup** dialog opens, it checks whether the rule is in place and warns you if it isn't.
 
 Recording starts within one poll interval on every proxy, and covers sessions that are already running.
 
 ## Reading a session's activity
 
-Go to **Sessions** and select a row. The **Activity** tab shows the session's requests, newest first, and marks any host that no access bundle covers.
+Go to **Sessions** and select a row. The **Activity Logs** sheet shows the session's requests, newest first, and marks any host that no access bundle covers.
 
 Filter by outcome or proxy, or search by host, path, method, or service. Filters apply to the requests already loaded, and load older ones if they match too few. Select **Search older requests** to go further back, or set a time range to reach an earlier part of a long session.
 
@@ -112,10 +112,10 @@ A session token works on any enrolled proxy, so several proxies can serve one se
 
 ### Gaps in the timeline
 
-If a record couldn't be kept, the tab says so instead of leaving a silent gap:
+If a record couldn't be kept, the sheet shows a notice instead of leaving a silent gap:
 
-- **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the tab shows how many
-- **Unreadable batch:** if a batch is missing from the bucket, the wrong size, or fails decryption, the tab marks it and shows the rest (select **Retry** if the download failed)
+- **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the sheet shows how many
+- **Unreadable batch:** if a batch is missing from the bucket, the wrong size, or fails decryption, the sheet marks it and shows the rest (select **Retry** if the download failed)
 - **Batch in an old location:** if you changed the bucket or prefix, batches recorded before the change are marked as stored where the project no longer reads
 
 ## Changing where activity is stored

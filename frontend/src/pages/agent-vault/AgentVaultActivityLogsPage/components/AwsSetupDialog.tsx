@@ -77,7 +77,7 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   bucket: string | null;
   keyPrefix: string | null;
-  isCorsMissing?: boolean;
+  corsProbeUrl: string | null;
 };
 
 export const AwsSetupDialog = ({
@@ -85,13 +85,40 @@ export const AwsSetupDialog = ({
   onOpenChange,
   bucket,
   keyPrefix,
-  isCorsMissing = false
+  corsProbeUrl
 }: Props) => {
   const [tab, setTab] = useState<TabValue>("policy");
+  const [hasPickedTab, setHasPickedTab] = useState(false);
+  const [isCorsMissing, setIsCorsMissing] = useState(false);
+
+  const pickTab = (next: TabValue) => {
+    setHasPickedTab(true);
+    setTab(next);
+  };
 
   useEffect(() => {
-    if (isOpen) setTab(isCorsMissing ? "cors" : "policy");
-  }, [isOpen, isCorsMissing]);
+    if (!isOpen) return;
+    setTab("policy");
+    setHasPickedTab(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    setIsCorsMissing(false);
+    if (!isOpen || !corsProbeUrl) return undefined;
+
+    let isCurrent = true;
+    // S3 adds CORS headers even to this probe's 404; fetch rejects only when the rule is missing.
+    fetch(corsProbeUrl, { mode: "cors", credentials: "omit" }).catch(() => {
+      if (isCurrent) setIsCorsMissing(true);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, corsProbeUrl]);
+
+  useEffect(() => {
+    if (isCorsMissing && !hasPickedTab) setTab("cors");
+  }, [isCorsMissing, hasPickedTab]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -105,7 +132,7 @@ export const AwsSetupDialog = ({
         </DialogHeader>
 
         <DialogBody className="space-y-4">
-          <Tabs value={tab} onValueChange={(next) => setTab(next as TabValue)}>
+          <Tabs value={tab} onValueChange={(next) => pickTab(next as TabValue)}>
             <TabsList variant="av">
               <TabsTrigger value="policy">1. IAM Policy</TabsTrigger>
               <TabsTrigger value="cors">2. CORS Rule</TabsTrigger>
@@ -151,7 +178,7 @@ export const AwsSetupDialog = ({
 
         <DialogFooter>
           {tab === "policy" ? (
-            <Button variant="av" type="button" onClick={() => setTab("cors")}>
+            <Button variant="av" type="button" onClick={() => pickTab("cors")}>
               Next
             </Button>
           ) : (

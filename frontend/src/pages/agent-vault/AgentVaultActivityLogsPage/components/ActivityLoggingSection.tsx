@@ -37,9 +37,9 @@ export const ActivityLoggingSection = () => {
   const [awsSetup, setAwsSetup] = useState<{
     bucket: string | null;
     keyPrefix: string | null;
-    isCorsMissing?: boolean;
+    corsProbeUrl: string | null;
   } | null>(null);
-  const { data, isPending } = useGetAgentVaultActivityConfig();
+  const { data, isPending, refetch } = useGetAgentVaultActivityConfig();
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
@@ -47,6 +47,21 @@ export const ActivityLoggingSection = () => {
 
   const config = data?.config;
   const hasDestination = Boolean(config?.bucket);
+  // The probe link is presigned for minutes, so a fresh one is fetched each time the dialog opens.
+  const openAwsSetup = () => {
+    setAwsSetup({
+      bucket: config?.bucket ?? null,
+      keyPrefix: config?.keyPrefix ?? null,
+      corsProbeUrl: null
+    });
+    refetch()
+      .then(({ data: fresh }) => {
+        const corsProbeUrl = fresh?.corsProbeUrl ?? null;
+        setAwsSetup((prev) => prev && { ...prev, corsProbeUrl });
+      })
+      .catch(() => {});
+  };
+
   const connectionName =
     connections?.find((connection) => connection.id === config?.appConnectionId)?.name ?? null;
 
@@ -63,16 +78,7 @@ export const ActivityLoggingSection = () => {
           </CardDescription>
           <CardAction>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                isDisabled={isPending}
-                onClick={() =>
-                  setAwsSetup({
-                    bucket: config?.bucket ?? null,
-                    keyPrefix: config?.keyPrefix ?? null
-                  })
-                }
-              >
+              <Button variant="outline" isDisabled={isPending} onClick={openAwsSetup}>
                 View AWS Setup
               </Button>
               <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
@@ -147,12 +153,12 @@ export const ActivityLoggingSection = () => {
       <ActivityLoggingModal
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSaved={(result, isCorsMissing) => {
+        onSaved={(result) => {
           if (!isAgentVaultRecording(result.config)) return;
           setAwsSetup({
             bucket: result.config.bucket,
             keyPrefix: result.config.keyPrefix,
-            isCorsMissing
+            corsProbeUrl: result.corsProbeUrl
           });
         }}
       />
@@ -162,7 +168,7 @@ export const ActivityLoggingSection = () => {
         onOpenChange={(isOpen) => !isOpen && setAwsSetup(null)}
         bucket={awsSetup?.bucket ?? null}
         keyPrefix={awsSetup?.keyPrefix ?? null}
-        isCorsMissing={awsSetup?.isCorsMissing}
+        corsProbeUrl={awsSetup?.corsProbeUrl ?? null}
       />
     </>
   );

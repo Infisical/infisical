@@ -101,7 +101,7 @@ type FormData = z.infer<ReturnType<typeof buildSchema>>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSaved: (result: TAgentVaultActivityConfigResponse, isCorsMissing: boolean) => void;
+  onSaved: (result: TAgentVaultActivityConfigResponse) => void;
 };
 
 export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) => {
@@ -173,18 +173,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
       });
       createNotification({ text: "Activity logging settings saved", type: "success" });
       onOpenChange(false);
-
-      // S3 adds CORS headers even to this probe's 404; fetch rejects only when the rule is missing.
-      let isCorsMissing = false;
-      if (result.corsProbeUrl) {
-        try {
-          await fetch(result.corsProbeUrl, { mode: "cors", credentials: "omit" });
-        } catch {
-          isCorsMissing = true;
-        }
-      }
-
-      onSaved(result, isCorsMissing);
+      onSaved(result);
     } catch {
       // MutationCache.onError already reports the failure.
     }
