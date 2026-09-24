@@ -39,7 +39,8 @@ export const secretValueTrackingStateFactory = ({ keyStore }: TSecretValueTracki
   };
 
   const isStalled = (state: TBackfillRunState) => {
-    if (state.status === "failed") return true;
+    // A finished run holds the key only to keep its counters readable, so it never blocks a new one.
+    if (state.status === "failed" || state.status === "completed") return true;
     const lastProgress = new Date(state.lastProgressAt).getTime();
     return Number.isNaN(lastProgress) || Date.now() - lastProgress > BACKFILL_STALE_AFTER_MS;
   };

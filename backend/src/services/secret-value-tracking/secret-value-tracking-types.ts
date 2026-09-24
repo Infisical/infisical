@@ -8,7 +8,9 @@ export type TBackfillCursor = {
 export type TBackfillScope = { scope: "org"; orgId: string } | { scope: "project"; projectId: string };
 
 export type TBackfillRunState = {
-  status: "running" | "failed";
+  // "completed" carries the final counters so the UI can show what the run got through. It is never
+  // the answer to "is it done": that is the durable flag, and this key is allowed to expire.
+  status: "running" | "failed" | "completed";
   cursor: TBackfillCursor | null;
   projectsTotal: number;
   projectsDone: number;

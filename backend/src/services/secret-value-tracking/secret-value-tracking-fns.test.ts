@@ -237,3 +237,14 @@ describe("run state shape validation", () => {
     expect(isUsableRunState({ status: "running", projectsTotal: 1, projectsDone: 0, secretsProcessed: 0 })).toBe(false);
   });
 });
+
+describe("a finished run's state", () => {
+  test("a completed state is usable, so its counters survive to the status endpoint", () => {
+    expect(isUsableRunState({ ...running(minutesAgo(1)), status: "completed", cursor: null })).toBe(true);
+  });
+
+  test("the flag stays the durable answer, and the state only supplies the numbers", () => {
+    const completed: TBackfillRunState = { ...running(minutesAgo(1)), status: "completed", cursor: null };
+    expect(resolveRunStatus(completed, true, NOW)).toEqual({ status: JobState.Completed });
+  });
+});

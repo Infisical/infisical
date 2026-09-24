@@ -162,6 +162,28 @@ describe("the backfill job", () => {
     expect(harness.flaggedOrgs).toEqual([ORG_ID]);
   });
 
+  test("a finished run leaves its final counters behind for the UI to show", async () => {
+    const harness = makeHarness({
+      projectIds: ["p1", "p2"],
+      foldersByProject: { p1: ["f1"], p2: ["f2"] },
+      secrets: [
+        { id: "s1", key: "A", folderId: "f1", hasOrgDigest: false },
+        { id: "s2", key: "B", folderId: "f2", hasOrgDigest: false }
+      ]
+    });
+
+    harness.setState(runningState(null));
+    await harness.runChunk();
+
+    // The durable answer to "is it done" is still the flag. These numbers only let the UI show what
+    // the run got through, so they have to survive the run rather than be cleared with the cursor.
+    const finished = harness.getState();
+    expect(finished?.status).toBe("completed");
+    expect(finished?.projectsDone).toBe(2);
+    expect(finished?.secretsProcessed).toBe(2);
+    expect(finished?.cursor).toBeNull();
+  });
+
   test("a cursor on a project deleted since the last chunk carries on with the rest", async () => {
     const harness = makeHarness({
       projectIds: ["p1", "p2"],

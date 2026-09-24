@@ -116,10 +116,9 @@ describe("Org-wide secret value tracking", () => {
     const started = await enable(authToken);
     expect(started.statusCode).toBe(200);
 
-    // Progress counters live in the run's Redis key, which the final chunk deletes, so a completed
-    // run reports zeros rather than its final totals. That is the point of keeping completion on the
-    // durable flag: there is only ever one answer to "is it done".
-    await waitForCompletion(authToken);
+    const finished = await waitForCompletion(authToken);
+    expect(finished.projectsTotal).toBeGreaterThanOrEqual(1);
+    expect(finished.projectsDone).toBeGreaterThanOrEqual(1);
 
     const found = await searchByValue("written-before-tracking", authToken);
     expect(found.statusCode).toBe(200);

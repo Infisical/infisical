@@ -256,7 +256,16 @@ export const secretValueTrackingQueueFactory = ({
 
     if (done) {
       if (scope.scope === "org") await orgDAL.updateById(scope.orgId, { orgWideSecretValueTrackingEnabled: true });
-      await state.clear(scopeId);
+      // Kept rather than cleared, so the UI can show what the run got through. The flag above is
+      // what actually answers "is it done", and this key is free to expire.
+      await state.write(scopeId, {
+        status: "completed",
+        cursor: null,
+        projectsTotal: runState.projectsTotal,
+        projectsDone,
+        secretsProcessed,
+        lastProgressAt: new Date().toISOString()
+      });
       logger.info(
         `SecretValueTrackingBackfill: complete [scopeId=${scopeId}] [projectsDone=${projectsDone}] [secretsProcessed=${secretsProcessed}]`
       );

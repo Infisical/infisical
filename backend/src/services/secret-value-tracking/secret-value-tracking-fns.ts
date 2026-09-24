@@ -126,7 +126,7 @@ export const resolveRunStatus = (
 export const isUsableRunState = (value: unknown): value is TBackfillRunState => {
   const state = value as Partial<TBackfillRunState> | null;
   if (!state || typeof state !== "object") return false;
-  if (state.status !== "running" && state.status !== "failed") return false;
+  if (state.status !== "running" && state.status !== "failed" && state.status !== "completed") return false;
   if (typeof state.lastProgressAt !== "string") return false;
 
   return (["projectsTotal", "projectsDone", "secretsProcessed"] as const).every((field) =>
