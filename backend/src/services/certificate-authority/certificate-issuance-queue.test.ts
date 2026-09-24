@@ -40,7 +40,7 @@ type TJobHandler = (job: {
   opts?: unknown;
 }) => Promise<void>;
 
-const buildQueue = (opts?: { requestCertificateIdOnRead?: string | null }) => {
+const buildQueue = (opts?: { requestCertificateIdOnRead?: string | null; certificateLookupError?: Error }) => {
   let handler: TJobHandler | undefined;
   const queuedEvents: unknown[] = [];
   const attached: unknown[] = [];
@@ -57,7 +57,13 @@ const buildQueue = (opts?: { requestCertificateIdOnRead?: string | null }) => {
     appConnectionDAL: {} as never,
     appConnectionService: {} as never,
     externalCertificateAuthorityDAL: {} as never,
-    certificateDAL: { findById: async () => null, updateById: async () => ({}) } as never,
+    certificateDAL: {
+      findById: async () => {
+        if (opts?.certificateLookupError) throw opts.certificateLookupError;
+        return null;
+      },
+      updateById: async () => ({})
+    } as never,
     projectDAL: { findById: async () => ({ orgId: "org-1" }) } as never,
     kmsService: {} as never,
     certificateBodyDAL: {} as never,
@@ -163,6 +169,28 @@ describe("certificateIssuanceQueueFactory alert events", () => {
         projectId: PROJECT_ID,
         eventType: PkiAlertEventType.RENEWAL,
         applicationId: "app-1"
+      }
+    ]);
+  });
+
+  it("still queues the event when resolving the renewal application scope fails", async () => {
+    const { handler, queuedEvents } = buildQueue({ certificateLookupError: new Error("connection reset") });
+
+    await handler(
+      buildJob({
+        certificateId: ISSUED_CERTIFICATE_ID,
+        certificateRequestId: undefined,
+        isRenewal: true,
+        originalCertificateId: "original-cert"
+      })
+    );
+
+    expect(queuedEvents).toEqual([
+      {
+        certificateId: ISSUED_CERTIFICATE_ID,
+        projectId: PROJECT_ID,
+        eventType: PkiAlertEventType.RENEWAL,
+        applicationId: null
       }
     ]);
   });

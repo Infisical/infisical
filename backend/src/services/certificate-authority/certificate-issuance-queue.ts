@@ -1116,17 +1116,25 @@ export const certificateIssuanceQueueFactory = ({
         `Successfully processed certificate issuance job with [certificateId=${certificateId}] [caId=${caId}]`
       );
 
+      if (!issuedCertificateId) {
+        try {
+          issuedCertificateId =
+            certificateRequestId && certificateRequestDAL
+              ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
+              : certificateId;
+        } catch (lookupErr) {
+          logger.warn(
+            lookupErr,
+            `Failed to resolve issued certificate id [certificateRequestId=${certificateRequestId}] [certificateId=${certificateId}]`
+          );
+        }
+      }
+
       let scopedApplicationId: string | null = data.applicationId ?? null;
       try {
         if (!scopedApplicationId && isRenewal && originalCertificateId) {
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
-        }
-        if (!issuedCertificateId) {
-          issuedCertificateId =
-            certificateRequestId && certificateRequestDAL
-              ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
-              : certificateId;
         }
         if (scopedApplicationId && issuedCertificateId) {
           await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
