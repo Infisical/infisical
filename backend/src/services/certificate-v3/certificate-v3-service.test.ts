@@ -1594,17 +1594,15 @@ describe("CertificateV3Service", () => {
       // The approval branch writes its own request row, and issuance later reads it back.
       it("persists basicConstraints on the request row when an approval policy applies", async () => {
         setupCa(CaType.AWS_PCA);
-        vi.mocked(mockApprovalPolicyDAL.findByProjectId).mockResolvedValue([
-          {
-            id: "approval-policy-1",
-            isActive: true,
-            scopeType: null,
-            scopeId: null,
-            bypassForMachineIdentities: false,
-            maxRequestTtl: null,
-            conditions: { conditions: [{ profileNames: [mockProfile.slug] }] }
-          }
-        ] as any);
+        vi.mocked(mockApprovalPolicyService.matchPolicy).mockResolvedValue({
+          id: "approval-policy-1",
+          isActive: true,
+          scopeType: null,
+          scopeId: null,
+          bypassForMachineIdentities: false,
+          maxRequestTtl: null,
+          conditions: { conditions: [{ profileNames: [mockProfile.slug] }] }
+        } as any);
 
         await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor });
 
