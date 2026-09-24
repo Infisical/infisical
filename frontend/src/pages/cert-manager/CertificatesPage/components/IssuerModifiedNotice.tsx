@@ -1,6 +1,6 @@
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { TIssuerModifiedField } from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
@@ -55,25 +55,19 @@ export const IssuerModifiedNotice = ({ fields }: Props) => {
   if (fields.length === 0) return null;
 
   return (
-    <div className="rounded-md border border-warning/40 bg-warning/10 p-3">
-      <div className="flex items-start gap-2">
-        <FontAwesomeIcon icon={faCircleInfo} className="mt-0.5 text-warning" />
-        <div className="space-y-1 text-sm">
-          <p className="text-foreground">
-            The certificate authority set these values at last issuance.
-          </p>
-          {fields.map((field) => (
-            <p key={field.field} className="text-foreground">
-              {describeIssuerChange(field)}
-            </p>
-          ))}
-          <p className="text-muted">
-            Edit a field above to request a different value, or renew unchanged to let the authority
-            set it again.
-          </p>
-        </div>
-      </div>
-    </div>
+    <Alert variant="warning">
+      <InfoIcon />
+      <AlertTitle>The certificate authority set these values at last issuance.</AlertTitle>
+      <AlertDescription>
+        {fields.map((field) => (
+          <p key={field.field}>{describeIssuerChange(field)}</p>
+        ))}
+        <p>
+          Edit a field above to request a different value, or renew unchanged to let the authority
+          set it again.
+        </p>
+      </AlertDescription>
+    </Alert>
   );
 };
 
@@ -92,10 +86,5 @@ export const IssuerModifiedHint = ({ field }: HintProps) => {
   const requested = formatIssuerValue(field, field.requested);
   const issued = formatIssuerValue(field, field.issued);
 
-  return (
-    <p className="mt-1 text-xs text-warning">
-      <FontAwesomeIcon icon={faCircleInfo} className="mr-1" />
-      {describeIssuerHint(requested, issued)}
-    </p>
-  );
+  return <p className="mt-1 text-xs text-warning">{describeIssuerHint(requested, issued)}</p>;
 };

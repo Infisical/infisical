@@ -331,11 +331,14 @@ export const resolveRenewalAlgorithms = (
   requested: { exists: boolean; keyAlgorithm: string | null; signatureAlgorithm: string | null },
   certificate: { keyAlgorithm?: string | null; signatureAlgorithm?: string | null }
 ): { keyAlgorithm?: CertKeyAlgorithm; signatureAlgorithm?: CertSignatureAlgorithm } => {
-  const source = requested.exists ? requested : certificate;
+  const asked = requested.exists;
 
   return {
-    keyAlgorithm: asKeyAlgorithm(source.keyAlgorithm),
-    signatureAlgorithm: asSignatureAlgorithm(source.signatureAlgorithm)
+    keyAlgorithm:
+      (asked ? asKeyAlgorithm(requested.keyAlgorithm) : undefined) ?? asKeyAlgorithm(certificate.keyAlgorithm),
+    signatureAlgorithm:
+      (asked ? asSignatureAlgorithm(requested.signatureAlgorithm) : undefined) ??
+      asSignatureAlgorithm(certificate.signatureAlgorithm)
   };
 };
 

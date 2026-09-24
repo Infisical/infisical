@@ -22,6 +22,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
@@ -81,6 +82,37 @@ describe("renewal never re-evaluates profile defaults", () => {
         /applyProfileDefaults|profile\.defaults/
       );
     }
+  });
+});
+
+describe("resolveRenewalAlgorithms", () => {
+  const issued = { keyAlgorithm: "RSA_4096", signatureAlgorithm: "RSA-SHA384" };
+  const base = { exists: true, keyAlgorithm: null, signatureAlgorithm: null };
+
+  it("keeps what the request asked for, so a swap by the authority stays visible", () => {
+    expect(
+      resolveRenewalAlgorithms({ ...base, keyAlgorithm: "RSA_2048", signatureAlgorithm: "RSA-SHA256" }, issued)
+    ).toEqual({ keyAlgorithm: CertKeyAlgorithm.RSA_2048, signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256 });
+  });
+
+  it("reads the certificate when the request recorded no algorithm, rather than renewing at the platform default", () => {
+    expect(resolveRenewalAlgorithms(base, issued)).toEqual({
+      keyAlgorithm: CertKeyAlgorithm.RSA_4096,
+      signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA384
+    });
+  });
+
+  it("falls back per field, so one recorded algorithm does not suppress the other", () => {
+    expect(resolveRenewalAlgorithms({ ...base, keyAlgorithm: "RSA_2048" }, issued)).toEqual({
+      keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+      signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA384
+    });
+  });
+
+  it("ignores a legacy value that is not an algorithm this platform can request", () => {
+    expect(
+      resolveRenewalAlgorithms({ ...base, signatureAlgorithm: "RSA_2048" }, { signatureAlgorithm: "RSA_2048" })
+    ).toEqual({ keyAlgorithm: undefined, signatureAlgorithm: undefined });
   });
 });
 

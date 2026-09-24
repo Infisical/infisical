@@ -60,6 +60,11 @@ const deriveTtlFromCertificate = (cert: TCertificate): string => {
   return `${hours}h`;
 };
 
+const SAN_TYPES = new Set<string>(Object.values(CertSubjectAlternativeNameType));
+
+const asSanType = (type: string | undefined): CertSubjectAlternativeNameType | undefined =>
+  type && SAN_TYPES.has(type) ? (type as CertSubjectAlternativeNameType) : undefined;
+
 const resolveSanType = (
   value: string,
   allowedSanTypes: CertSubjectAlternativeNameType[]
@@ -140,8 +145,8 @@ export const buildRenewalFormDefaults = (
     ? buildSeedSubjectAttributes(renewalPreview.request)
     : buildSubjectAttributes(cert),
   subjectAltNames: renewalPreview?.hasOriginatingRequest
-    ? renewalPreview.request.altNames.map(({ value }) => ({
-        type: resolveSanType(value, constraints.allowedSanTypes),
+    ? renewalPreview.request.altNames.map(({ type, value }) => ({
+        type: asSanType(type) ?? resolveSanType(value, constraints.allowedSanTypes),
         value
       }))
     : parseCertificateSans(cert, constraints.allowedSanTypes),
