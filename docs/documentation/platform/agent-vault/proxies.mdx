@@ -233,7 +233,7 @@ Both actions are on the proxy's menu:
 
 | Action | What happens |
 |--------|--------------|
-| **Revoke Access** | The proxy's token stops working right away. Every agent using the proxy loses its credentials, and the proxy answers requests with a 503. The proxy process exits after two failed check-ins in a row (one to two poll intervals) |
+| **Revoke Access** | The proxy's token stops working right away. Every agent using the proxy loses its credentials, and the proxy answers requests with a 503. The proxy process exits after two failed check-ins in a row (one to two [poll intervals](#poll-interval)) |
 | **Delete** | Infisical removes the proxy. If the proxy is running, it stops working and exits the same way as a revoked proxy |
 
 Revoke access if you think the proxy's host is compromised. To bring a revoked proxy back, [re-enroll it](#re-enroll-a-proxy).
