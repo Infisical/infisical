@@ -1,5 +1,6 @@
+import { useState } from "react";
 import FileSaver from "file-saver";
-import { CheckIcon, CopyIcon, DownloadIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, DownloadIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 
 import {
   Dialog,
@@ -23,12 +24,15 @@ type Props = {
 const CertificateSection = ({
   title,
   value,
-  filename
+  filename,
+  isSensitive = false
 }: {
   title: string;
   value: string;
   filename?: string;
+  isSensitive?: boolean;
 }) => {
+  const [isRevealed, setIsRevealed] = useState(false);
   const [copyLabel, isCopied, setCopyLabel] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -38,6 +42,16 @@ const CertificateSection = ({
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-medium text-foreground">{title}</h3>
         <div className="flex items-center gap-1">
+          {isSensitive && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              aria-label={isRevealed ? `Hide ${title}` : `Reveal ${title}`}
+              onClick={() => setIsRevealed((previous) => !previous)}
+            >
+              {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
+            </IconButton>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <IconButton
@@ -77,7 +91,7 @@ const CertificateSection = ({
         </div>
       </div>
       <pre className="max-h-56 overflow-auto rounded-md border border-border bg-container p-3 font-mono text-xs break-all whitespace-pre-wrap text-foreground">
-        {value}
+        {isSensitive && !isRevealed ? "••••••••••••••••" : value}
       </pre>
     </section>
   );
@@ -111,6 +125,7 @@ export const KmipClientCertificateModal = ({ isOpen, onOpenChange, certificate }
               title="Certificate Private Key"
               value={certificate.privateKey}
               filename="private_key.txt"
+              isSensitive
             />
           )}
         </div>
