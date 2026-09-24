@@ -86,6 +86,11 @@ describe("the settings patch", () => {
     { value: "..", why: "the whole prefix is a traversal" },
     { value: "logs/../../etc", why: "a traversal segment in the middle" },
     { value: "logs/../secrets", why: "climbing out of the prefix" },
+    { value: ".", why: "the whole prefix is a current-folder reference" },
+    { value: "./logs", why: "a leading '.' folder, which browsers drop from the download link" },
+    { value: "logs/./agent-vault", why: "a '.' folder in the middle" },
+    { value: "logs/.", why: "a trailing '.' folder" },
+    { value: "/".repeat(2000), why: "longer than any key can be, even though it normalises to nothing" },
     { value: "logs/\u0000", why: "a control character" },
     { value: "team*", why: "an asterisk, which is a wildcard in the suggested IAM policy" },
     { value: `a${"b".repeat(512)}`, why: "longer than the column" }
@@ -93,9 +98,12 @@ describe("the settings patch", () => {
     expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(false);
   });
 
-  test.each(["logs", "logs/agent-vault", "a.b-c_d", ""])("accepts the key prefix %s", (keyPrefix) => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
-  });
+  test.each(["logs", "logs/agent-vault", "a.b-c_d", "", ".hidden/logs", "logs/...", "logs.v2"])(
+    "accepts the key prefix %s",
+    (keyPrefix) => {
+      expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
+    }
+  );
 
   test.each([
     { value: "a".repeat(511), fits: true, why: "511 characters, 512 once the slash is added" },

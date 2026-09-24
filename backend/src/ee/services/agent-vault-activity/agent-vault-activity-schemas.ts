@@ -3,10 +3,12 @@ import { z } from "zod";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
+import { hasTraversalSegment } from "../agent-vault/agent-vault-path-prefix";
 import {
   AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES,
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS,
+  AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_INPUT_LENGTH,
   AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
   AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES,
@@ -16,6 +18,8 @@ import { normalizeKeyPrefix } from "./agent-vault-activity-storage";
 
 const BUCKET_NAME_RULE =
   "Must be 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number";
+
+const KEY_PREFIX_LENGTH_RULE = `May be at most ${AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH} characters, including the trailing slash`;
 
 const IvSchema = z
   .string()
@@ -131,12 +135,10 @@ export const AgentVaultActivityConfigUpdateSchema = z
     keyPrefix: z
       .string()
       .trim()
+      .max(AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_INPUT_LENGTH, KEY_PREFIX_LENGTH_RULE)
       .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "May only contain letters, numbers and ! - _ . ' ( ) /")
-      .refine((v) => !v.split("/").includes(".."), "May not contain '..'")
-      .refine(
-        (v) => normalizeKeyPrefix(v).length <= AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH,
-        `May be at most ${AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH} characters, including the trailing slash`
-      )
+      .refine((v) => !hasTraversalSegment(v), "May not use '.' or '..' as a folder name")
+      .refine((v) => normalizeKeyPrefix(v).length <= AGENT_VAULT_ACTIVITY_MAX_KEY_PREFIX_LENGTH, KEY_PREFIX_LENGTH_RULE)
       .describe(AGENT_VAULT.ACTIVITY.keyPrefix)
   })
   .partial();

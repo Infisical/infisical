@@ -69,7 +69,10 @@ const buildSchema = (hasSavedBucket: boolean) =>
         .string()
         .trim()
         .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "Use only letters, numbers and ! - _ . ' ( ) /")
-        .refine((value) => !value.split("/").includes(".."), "Cannot contain '..'")
+        .refine(
+          (value) => !value.split("/").some((segment) => segment === "." || segment === ".."),
+          "Cannot use '.' or '..' as a folder name"
+        )
         .refine(
           (value) => normalizePrefix(value).length <= 512,
           "At most 512 characters, including the trailing slash"
