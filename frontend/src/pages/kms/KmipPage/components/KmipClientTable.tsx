@@ -15,6 +15,7 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
@@ -141,6 +142,9 @@ export const KmipClientTable = () => {
           KMIP Clients
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms" />
         </CardTitle>
+        <CardDescription>
+          Manage clients that connect to this project&apos;s KMIP server.
+        </CardDescription>
         <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionKmipActions.CreateClients}

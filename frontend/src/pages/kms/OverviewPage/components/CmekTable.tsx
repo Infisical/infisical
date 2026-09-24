@@ -10,9 +10,9 @@ import {
   FileSignatureIcon,
   ImportIcon,
   InfoIcon,
+  KeyIcon,
   LockIcon,
   PencilIcon,
-  PlusIcon,
   RotateCwIcon,
   SearchIcon,
   TrashIcon,
@@ -27,7 +27,6 @@ import { Spinner } from "@app/components/v2";
 import {
   Badge,
   Button,
-  ButtonGroup,
   Card,
   CardAction,
   CardContent,
@@ -329,57 +328,54 @@ export const CmekTable = () => {
           </CardTitle>
           <CardDescription>Manage keys and perform cryptographic operations.</CardDescription>
           <CardAction>
-            <ButtonGroup>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Create}
-                a={ProjectPermissionSub.Cmek}
-              >
-                {(isAllowed) => (
-                  <Tooltip open={!isAllowed ? undefined : false}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        className="rounded-r-none"
-                        variant="project"
-                        onClick={() => handlePopUpOpen("upsertKey", null)}
-                        isDisabled={!isAllowed}
-                      >
-                        <PlusIcon className="mr-2 size-4" />
-                        Add Key
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Access Denied</TooltipContent>
-                  </Tooltip>
-                )}
-              </ProjectPermissionCan>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton variant="project" aria-label="More key options">
-                    <ChevronDownIcon />
-                  </IconButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={ProjectPermissionSub.Cmek}
-                  >
-                    {(isAllowed) => (
-                      <Tooltip open={!isAllowed ? undefined : false}>
-                        <TooltipTrigger className="block w-full">
-                          <DropdownMenuItem
-                            onClick={() => handlePopUpOpen("importKeys")}
-                            isDisabled={!isAllowed}
-                          >
-                            <ImportIcon className="size-4" />
-                            Import Keys
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">Access Restricted</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </ProjectPermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ButtonGroup>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="project">
+                  <ChevronDownIcon />
+                  Add Key
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={ProjectPermissionSub.Cmek}
+                >
+                  {(isAllowed) => (
+                    <Tooltip open={!isAllowed ? undefined : false}>
+                      <TooltipTrigger className="block w-full">
+                        <DropdownMenuItem
+                          onClick={() => handlePopUpOpen("upsertKey", null)}
+                          isDisabled={!isAllowed}
+                        >
+                          <KeyIcon className="size-4" />
+                          Create Key
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Access Restricted</TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={ProjectPermissionSub.Cmek}
+                >
+                  {(isAllowed) => (
+                    <Tooltip open={!isAllowed ? undefined : false}>
+                      <TooltipTrigger className="block w-full">
+                        <DropdownMenuItem
+                          onClick={() => handlePopUpOpen("importKeys")}
+                          isDisabled={!isAllowed}
+                        >
+                          <ImportIcon className="size-4" />
+                          Import Keys
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Access Restricted</TooltipContent>
+                    </Tooltip>
+                  )}
+                </ProjectPermissionCan>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardAction>
         </CardHeader>
         <CardContent>
