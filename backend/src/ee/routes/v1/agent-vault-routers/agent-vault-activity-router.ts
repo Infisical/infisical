@@ -7,6 +7,7 @@ import {
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -26,8 +27,9 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
       response: { 200: AgentVaultActivityResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultActivity.getSessionActivity({
+    handler: async (req, reply) => {
+      addNoCacheHeaders(reply);
+      return server.services.agentVaultActivity.getSessionActivity({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,
@@ -41,6 +43,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
         from: req.query.from,
         to: req.query.to,
         receivedAfter: req.query.receivedAfter
-      })
+      });
+    }
   });
 };

@@ -753,12 +753,13 @@ describe("Agent Vault activity", async () => {
       return { session, proxy };
     };
 
-    test("returns the newest chunks first, each with a presigned url and the key to open them", async () => {
+    test("returns the newest chunks first, each with a presigned url and the key to open them, and is never cached", async () => {
       await configure();
       const { session, proxy } = await seedChunks(3);
 
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
       expect(res.statusCode).toBe(200);
+      expect(res.headers["cache-control"]).toBe("no-store, no-cache, must-revalidate, proxy-revalidate");
 
       const body = JSON.parse(res.payload) as {
         enabled: boolean;
