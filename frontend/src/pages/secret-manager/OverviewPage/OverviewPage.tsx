@@ -302,7 +302,19 @@ const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: OrderByDirection) =>
   `${orderBy}:${orderDirection}`;
 
-const SECRET_RECENCY_SORT_OPTIONS = [
+const SECRET_SORT_OPTIONS = [
+  {
+    label: "Name (A to Z)",
+    Icon: ArrowUpAZIcon,
+    orderBy: DashboardSecretsOrderBy.Name,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Name (Z to A)",
+    Icon: ArrowDownZAIcon,
+    orderBy: DashboardSecretsOrderBy.Name,
+    orderDirection: OrderByDirection.DESC
+  },
   {
     label: "Last Edited (New)",
     Icon: ClockArrowUpIcon,
@@ -328,23 +340,6 @@ const SECRET_RECENCY_SORT_OPTIONS = [
     orderDirection: OrderByDirection.ASC
   }
 ] as const;
-
-const SECRET_NAME_SORT_OPTIONS = [
-  {
-    label: "Name (A to Z)",
-    Icon: ArrowUpAZIcon,
-    orderBy: DashboardSecretsOrderBy.Name,
-    orderDirection: OrderByDirection.ASC
-  },
-  {
-    label: "Name (Z to A)",
-    Icon: ArrowDownZAIcon,
-    orderBy: DashboardSecretsOrderBy.Name,
-    orderDirection: OrderByDirection.DESC
-  }
-] as const;
-
-const SECRET_SORT_OPTIONS = [...SECRET_NAME_SORT_OPTIONS, ...SECRET_RECENCY_SORT_OPTIONS] as const;
 
 const OverviewPageContent = () => {
   const { t } = useTranslation();
@@ -613,25 +608,31 @@ const OverviewPageContent = () => {
       (visibleEnvs.length === 1 ||
         !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
   );
-  const wouldAggregateRecency =
-    orderBy !== DashboardSecretsOrderBy.Name &&
-    visibleEnvs.length > 1 &&
-    (!sortEnvironment || shouldClearSortEnvironment);
+  const isTimestampSort =
+    orderBy === DashboardSecretsOrderBy.CreatedAt || orderBy === DashboardSecretsOrderBy.UpdatedAt;
+  const shouldResetTimestampSort =
+    isTimestampSort && visibleEnvs.length > 1 && (!sortEnvironment || shouldClearSortEnvironment);
 
   useEffect(() => {
     if (shouldClearSortEnvironment) {
       setSortEnvironment(undefined);
     }
 
-    if (wouldAggregateRecency) {
+    if (shouldResetTimestampSort) {
       setOrderBy(DashboardSecretsOrderBy.Name);
       setOrderDirection(OrderByDirection.ASC);
     }
 
-    if (shouldClearSortEnvironment || wouldAggregateRecency) {
+    if (shouldClearSortEnvironment || shouldResetTimestampSort) {
       setPage(1);
     }
-  }, [shouldClearSortEnvironment, wouldAggregateRecency, setOrderBy, setOrderDirection, setPage]);
+  }, [
+    shouldClearSortEnvironment,
+    shouldResetTimestampSort,
+    setOrderBy,
+    setOrderDirection,
+    setPage
+  ]);
 
   const handleSecretSortChange = useCallback(
     (value: string, environment?: string) => {
@@ -922,7 +923,7 @@ const OverviewPageContent = () => {
     isPlaceholderData,
     isFetching: isOverviewFetching
   } = useGetProjectSecretsOverview(overviewQueryParams, {
-    enabled: isProjectV3 && !shouldClearSortEnvironment && !wouldAggregateRecency
+    enabled: isProjectV3 && !shouldClearSortEnvironment && !shouldResetTimestampSort
   });
   const isOverviewPending = isOverviewLoading || isPlaceholderData;
   const showDelayedOverviewSkeleton = useDelayedLoading(isPlaceholderData, {
@@ -2978,9 +2979,10 @@ const OverviewPageContent = () => {
                               }
                               onValueChange={(value) => handleSecretSortChange(value)}
                             >
-                              {(visibleEnvs.length > 1
-                                ? SECRET_NAME_SORT_OPTIONS
-                                : SECRET_SORT_OPTIONS
+                              {SECRET_SORT_OPTIONS.filter(
+                                ({ orderBy: sortField }) =>
+                                  visibleEnvs.length === 1 ||
+                                  sortField === DashboardSecretsOrderBy.Name
                               ).map((option) => (
                                 <DropdownMenuRadioItem
                                   key={getSecretSortValue(option.orderBy, option.orderDirection)}
@@ -3049,7 +3051,10 @@ const OverviewPageContent = () => {
                                           handleSecretSortChange(value, slug)
                                         }
                                       >
-                                        {SECRET_RECENCY_SORT_OPTIONS.map((option) => (
+                                        {SECRET_SORT_OPTIONS.filter(
+                                          ({ orderBy: sortField }) =>
+                                            sortField !== DashboardSecretsOrderBy.Name
+                                        ).map((option) => (
                                           <DropdownMenuRadioItem
                                             key={getSecretSortValue(
                                               option.orderBy,

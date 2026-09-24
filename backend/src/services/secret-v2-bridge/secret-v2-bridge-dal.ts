@@ -18,7 +18,8 @@ import {
 import { OrderByDirection } from "@app/lib/types";
 import type {
   TFindSecretsByFolderIdsFilter,
-  TSecretSortCandidate
+  TSecretSortCandidate,
+  TSecretSortCandidateWithTags
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
@@ -47,7 +48,7 @@ interface TSecretV2DalArg {
   keyStore: TKeyStoreFactory;
 }
 
-type TSecretSortCandidateRow = Omit<TSecretSortCandidate, "tags"> & {
+type TSecretSortCandidateRow = TSecretSortCandidate & {
   tagId: string;
   tagSlug: string;
 };
@@ -743,9 +744,43 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       }
 
       const readDb = tx || db.replicaNode();
-      const matchingSecretsQuery = readDb(TableName.SecretV2)
+      const tagSlugs = filters?.tagSlugs?.filter(Boolean);
+      const matchingSecretIdsQuery = readDb(TableName.SecretV2)
+        // Search and filter joins can match multiple rows, so collapse them before hydrating all candidate tags.
         .distinct(`${TableName.SecretV2}.id`)
-        .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+        .whereIn(`${TableName.SecretV2}.folderId`, folderIds);
+
+      if ((filters?.search && filters.includeTagsInSearch) || tagSlugs?.length) {
+        void matchingSecretIdsQuery
+          .leftJoin(
+            TableName.SecretV2JnTag,
+            `${TableName.SecretV2}.id`,
+            `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+          )
+          .leftJoin(
+            TableName.SecretTag,
+            `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+            `${TableName.SecretTag}.id`
+          );
+      }
+
+      if (filters?.search && filters.includeMetadataInSearch) {
+        void matchingSecretIdsQuery.leftJoin(
+          TableName.ResourceMetadata,
+          `${TableName.SecretV2}.id`,
+          `${TableName.ResourceMetadata}.secretId`
+        );
+      }
+
+      if (filters?.excludeRotatedSecrets) {
+        void matchingSecretIdsQuery.leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        );
+      }
+
+      void matchingSecretIdsQuery
         .where((bd) => {
           if (filters?.search) {
             const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
@@ -769,22 +804,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             .whereNull(`${TableName.SecretV2}.userId`)
             .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
-        .leftJoin(
-          TableName.SecretV2JnTag,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
-        )
-        .leftJoin(
-          TableName.SecretTag,
-          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-          `${TableName.SecretTag}.id`
-        )
-        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
-        .leftJoin(
-          TableName.SecretRotationV2SecretMapping,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretRotationV2SecretMapping}.secretId`
-        )
         .where((qb) => {
           if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
             filters.metadataFilter.forEach((meta) => {
@@ -801,9 +820,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           }
         })
         .where((bd) => {
-          const slugs = filters?.tagSlugs?.filter(Boolean);
-          if (slugs?.length) {
-            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
+          if (tagSlugs?.length) {
+            void bd.whereIn(`${TableName.SecretTag}.slug`, tagSlugs);
           }
         })
         .where((bd) => {
@@ -813,9 +831,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         });
 
       const rows = (await readDb
-        .with("matchingSecrets", matchingSecretsQuery)
+        .with("matchingSecretIds", matchingSecretIdsQuery)
         .from({ secret: TableName.SecretV2 })
-        .join("matchingSecrets", "matchingSecrets.id", "secret.id")
+        .join("matchingSecretIds", "matchingSecretIds.id", "secret.id")
+        // The filtering join above may include only matching tags; rejoin to hydrate every tag used by authorization.
         .leftJoin(TableName.SecretV2JnTag, "secret.id", `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`)
         .leftJoin(
           TableName.SecretTag,
@@ -847,7 +866,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             mapper: ({ tagId: id, tagSlug: slug }) => ({ id, slug })
           }
         ]
-      }) as TSecretSortCandidate[];
+      }) as TSecretSortCandidateWithTags[];
     } catch (error) {
       throw new DatabaseError({ error, name: "get secret sort candidates" });
     }

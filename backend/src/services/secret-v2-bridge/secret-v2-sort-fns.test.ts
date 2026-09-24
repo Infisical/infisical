@@ -1,7 +1,7 @@
 import { OrderByDirection } from "@app/lib/types";
-import { DashboardSecretsOrderBy } from "@app/services/secret/secret-types";
+import { SecretSortField } from "@app/services/secret/secret-types";
 
-import { TSecretSortCandidate } from "./secret-v2-bridge-types";
+import { TSecretSortCandidateWithTags } from "./secret-v2-bridge-types";
 import { selectAuthorizedSecretSortPage } from "./secret-v2-sort-fns";
 
 const candidate = (
@@ -9,8 +9,8 @@ const candidate = (
   key: string,
   folderId: string,
   createdAt: string,
-  tags: TSecretSortCandidate["tags"] = []
-): TSecretSortCandidate => ({
+  tags: TSecretSortCandidateWithTags["tags"] = []
+): TSecretSortCandidateWithTags => ({
   id,
   key,
   folderId,
@@ -29,7 +29,7 @@ describe("selectAuthorizedSecretSortPage", () => {
       ],
       canAccessSecret: ({ id }) => id !== "restricted-new",
       sortFolderIds: ["prod"],
-      orderBy: DashboardSecretsOrderBy.CreatedAt,
+      orderBy: SecretSortField.CreatedAt,
       orderDirection: OrderByDirection.DESC,
       limit: 1
     });
@@ -48,7 +48,7 @@ describe("selectAuthorizedSecretSortPage", () => {
       ],
       canAccessSecret: ({ id }) => id !== "shared-prod",
       sortFolderIds: ["prod"],
-      orderBy: DashboardSecretsOrderBy.UpdatedAt,
+      orderBy: SecretSortField.UpdatedAt,
       orderDirection: OrderByDirection.DESC
     });
 
@@ -65,7 +65,7 @@ describe("selectAuthorizedSecretSortPage", () => {
       ],
       canAccessSecret: () => true,
       sortFolderIds: ["prod"],
-      orderBy: DashboardSecretsOrderBy.CreatedAt,
+      orderBy: SecretSortField.CreatedAt,
       orderDirection: OrderByDirection.ASC
     });
 
@@ -82,7 +82,7 @@ describe("selectAuthorizedSecretSortPage", () => {
       ],
       canAccessSecret: ({ id }) => id !== "hidden",
       sortFolderIds: ["prod"],
-      orderBy: DashboardSecretsOrderBy.CreatedAt,
+      orderBy: SecretSortField.CreatedAt,
       orderDirection: OrderByDirection.DESC,
       offset: 1,
       limit: 1

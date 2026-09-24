@@ -1,13 +1,13 @@
 import { OrderByDirection } from "@app/lib/types";
-import { DashboardSecretsOrderBy } from "@app/services/secret/secret-types";
+import { SecretSortField } from "@app/services/secret/secret-types";
 
-import { TSecretSortCandidate } from "./secret-v2-bridge-types";
+import { TSecretSortCandidateWithTags } from "./secret-v2-bridge-types";
 
 type TSelectAuthorizedSecretSortPage = {
-  candidates: TSecretSortCandidate[];
-  canAccessSecret: (candidate: TSecretSortCandidate) => boolean;
+  candidates: TSecretSortCandidateWithTags[];
+  canAccessSecret: (candidate: TSecretSortCandidateWithTags) => boolean;
   sortFolderIds: string[];
-  orderBy: DashboardSecretsOrderBy.CreatedAt | DashboardSecretsOrderBy.UpdatedAt;
+  orderBy: SecretSortField.CreatedAt | SecretSortField.UpdatedAt;
   orderDirection: OrderByDirection;
   offset?: number;
   limit?: number;

@@ -32,10 +32,10 @@ import {
   SecretMetadataSearchOperator
 } from "@app/services/resource-metadata/resource-metadata-types";
 import {
-  DashboardSecretsOrderBy,
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  SecretsOrderBy
+  SecretsOrderBy,
+  SecretSortField
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -196,8 +196,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).optional().default(0).describe(DASHBOARD.SECRET_OVERVIEW_LIST.offset),
         limit: z.coerce.number().min(1).max(100).optional().default(100).describe(DASHBOARD.SECRET_OVERVIEW_LIST.limit),
         orderBy: z
-          .nativeEnum(DashboardSecretsOrderBy)
-          .default(DashboardSecretsOrderBy.Name)
+          .nativeEnum(SecretSortField)
+          .default(SecretSortField.Name)
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderBy),
         orderDirection: z
           .nativeEnum(OrderByDirection)
@@ -358,14 +358,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      if (orderBy !== DashboardSecretsOrderBy.Name && environments.length > 1 && !sortEnvironment) {
+      const isTimestampSort = orderBy === SecretSortField.CreatedAt || orderBy === SecretSortField.UpdatedAt;
+
+      if (isTimestampSort && environments.length > 1 && !sortEnvironment) {
         throw new BadRequestError({
           message:
             "The 'sortEnvironment' query parameter is required for recency sorting when multiple environments are requested"
         });
       }
 
-      const resourceOrderDirection = orderBy === DashboardSecretsOrderBy.Name ? orderDirection : OrderByDirection.ASC;
+      const resourceOrderDirection = orderBy === SecretSortField.Name ? orderDirection : OrderByDirection.ASC;
 
       const { shouldUseSecretV2Bridge } = await server.services.projectBot.getBotKey(projectId);
 

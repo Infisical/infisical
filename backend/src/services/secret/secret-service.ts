@@ -84,8 +84,8 @@ import {
 import { TSecretQueueFactory } from "./secret-queue";
 import {
   SecretOperations,
-  type SecretOrderBy,
   SecretProtectionType,
+  SecretSortField,
   TAttachSecretTagsDTO,
   TBackFillSecretReferencesDTO,
   TCreateBulkSecretDTO,
@@ -1258,7 +1258,7 @@ export const secretServiceFactory = ({
   }: Omit<TGetSecretsRawDTO, "environment" | "includeImports" | "expandSecretReferences" | "recursive" | "orderBy"> & {
     environments: string[];
     isInternal?: boolean;
-    orderBy?: SecretOrderBy;
+    orderBy?: SecretSortField;
     sortEnvironment?: string;
   }) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);

@@ -62,10 +62,10 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
-  DashboardSecretsOrderBy,
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
-  type SecretOrderBy,
+  SecretsOrderBy,
+  SecretSortField,
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
@@ -113,6 +113,7 @@ import {
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
+  TGetSecretsMultiEnvDTO,
   TGetSecretsRawByFolderMappingsDTO,
   TGetSecretVersionsDTO,
   TMoveSecretsDTO,
@@ -1188,7 +1189,7 @@ export const secretV2BridgeServiceFactory = ({
     const folderIds = folderMappings.map((folderMapping) => folderMapping.folderId);
     const { limit } = filters;
     const timestampOrderBy =
-      filters.orderBy === DashboardSecretsOrderBy.CreatedAt || filters.orderBy === DashboardSecretsOrderBy.UpdatedAt
+      filters.orderBy === SecretSortField.CreatedAt || filters.orderBy === SecretSortField.UpdatedAt
         ? filters.orderBy
         : undefined;
     let isLimitReached = false;
@@ -1236,7 +1237,7 @@ export const secretV2BridgeServiceFactory = ({
               keys: page.orderedKeys,
               limit: undefined,
               offset: undefined,
-              orderBy: DashboardSecretsOrderBy.Name,
+              orderBy: SecretsOrderBy.Name,
               orderDirection: OrderByDirection.ASC
             }
           })
@@ -1328,29 +1329,7 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     isInternal,
     ...params
-  }: Omit<
-    Pick<
-      TGetSecretsDTO,
-      | "actorId"
-      | "actor"
-      | "path"
-      | "projectId"
-      | "actorOrgId"
-      | "actorAuthMethod"
-      | "search"
-      | "tagSlugs"
-      | "orderBy"
-      | "orderDirection"
-      | "limit"
-      | "offset"
-    >,
-    "orderBy"
-  > & {
-    orderBy?: SecretOrderBy;
-    sortEnvironment?: string;
-    environments: string[];
-    isInternal?: boolean;
-  }) => {
+  }: TGetSecretsMultiEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1380,17 +1359,20 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
-    const isRecencySort = params.orderBy && params.orderBy !== DashboardSecretsOrderBy.Name;
-    const recencySortEnvironment = params.sortEnvironment ?? (environments.length === 1 ? environments[0] : undefined);
+    const isTimestampSort =
+      params.orderBy === SecretSortField.CreatedAt || params.orderBy === SecretSortField.UpdatedAt;
+    const timestampSortEnvironment = isTimestampSort
+      ? (params.sortEnvironment ?? (environments.length === 1 ? environments[0] : undefined))
+      : undefined;
 
-    if (isRecencySort && !recencySortEnvironment) {
+    if (isTimestampSort && !timestampSortEnvironment) {
       throw new BadRequestError({
         message: "A sort environment is required for recency sorting when multiple environments are requested"
       });
     }
 
-    const sortFolderIds = recencySortEnvironment
-      ? folders.filter((folder) => folder.environment.slug === recencySortEnvironment).map((folder) => folder.id)
+    const sortFolderIds = timestampSortEnvironment
+      ? folders.filter((folder) => folder.environment.slug === timestampSortEnvironment).map((folder) => folder.id)
       : undefined;
 
     const { secrets } = await getSecretsByFolderMappings(
