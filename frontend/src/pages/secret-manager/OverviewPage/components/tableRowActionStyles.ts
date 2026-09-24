@@ -26,7 +26,8 @@ export const TABLE_ROW_EXPANDED_ICON_CLASS_NAME = `block rotate-90 ${TABLE_ROW_E
 export const TABLE_ROW_ACTIVE_FILTER_CLASS_NAME =
   "[&>td>*]:!filter-none [&>td>[data-table-row-filter-contents]>*]:!filter-none [&>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none";
 
-export const TABLE_ROW_NAME_COLUMN_CLASS_NAME = "min-w-[180px]";
+export const TABLE_ROW_NAME_COLUMN_CLASS_NAME =
+  "w-[var(--name-column-width,180px)] min-w-[180px] max-w-[var(--name-column-width,180px)]";
 
 export const TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME = `${TABLE_ROW_NAME_COLUMN_CLASS_NAME} pl-1`;
 

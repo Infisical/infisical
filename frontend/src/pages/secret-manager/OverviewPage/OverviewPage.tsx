@@ -2560,13 +2560,22 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const element = tableRef.current;
     if (!element) return;
+    const nameHeader = element.querySelector(":scope > table > thead > tr > th:nth-child(2)");
 
     const handleResize = () => {
       setTableWidth(element.clientWidth);
+      if (nameHeader) {
+        element.style.setProperty(
+          "--name-column-width",
+          `${nameHeader.getBoundingClientRect().width}px`
+        );
+      }
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(element);
+    if (nameHeader) resizeObserver.observe(nameHeader);
+    handleResize();
 
     // eslint-disable-next-line consistent-return
     return () => {
