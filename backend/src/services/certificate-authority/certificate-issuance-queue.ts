@@ -520,14 +520,13 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        issuedCertificateId = acmeResult?.id;
-
         if (certificateRequestId && certificateRequestService && acmeResult?.id) {
           try {
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: acmeResult.id
             });
+            issuedCertificateId = acmeResult.id;
 
             // Copy metadata from cert request to newly issued cert
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
@@ -588,14 +587,13 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        issuedCertificateId = azureResult?.certificateId;
-
         if (certificateRequestId && certificateRequestService && azureResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: azureResult.certificateId
             });
+            issuedCertificateId = azureResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -660,14 +658,13 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        issuedCertificateId = adcsResult?.certificateId;
-
         if (certificateRequestId && certificateRequestService && adcsResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: adcsResult.certificateId
             });
+            issuedCertificateId = adcsResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -730,14 +727,13 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        issuedCertificateId = acmResult?.certificateId;
-
         if (certificateRequestId && certificateRequestService && acmResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: acmResult.certificateId
             });
+            issuedCertificateId = acmResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -802,14 +798,13 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        issuedCertificateId = awsPcaResult?.certificateId;
-
         if (certificateRequestId && certificateRequestService && awsPcaResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: awsPcaResult.certificateId
             });
+            issuedCertificateId = awsPcaResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -933,13 +928,12 @@ export const certificateIssuanceQueueFactory = ({
               isRenewal,
               originalCertificateId
             });
-            issuedCertificateId = attachedCertificateId;
-
             if (certificateRequestService) {
               await certificateRequestService.attachCertificateToRequest({
                 certificateRequestId,
                 certificateId: attachedCertificateId
               });
+              issuedCertificateId = attachedCertificateId;
               await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
                 certificateRequestId,
                 certificateId: attachedCertificateId
@@ -1082,14 +1076,13 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        issuedCertificateId = venafiTppResult?.certificateId;
-
         if (certificateRequestId && certificateRequestService && venafiTppResult?.certificateId) {
           try {
             await certificateRequestService.attachCertificateToRequest({
               certificateRequestId,
               certificateId: venafiTppResult.certificateId
             });
+            issuedCertificateId = venafiTppResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
