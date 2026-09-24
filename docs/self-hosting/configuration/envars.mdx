@@ -74,11 +74,11 @@ Example values:
 </ParamField>
 
 <ParamField query="DISABLE_PUBLIC_SECRET_SHARING" type="bool" default="false" optional>
-  If `true`, people who aren't signed in can't create a [shared secret](/documentation/platform/secret-sharing), and the public secret sharing page returns an error. Signed-in users can still share secrets.
+  If `true`, Infisical rejects requests from people who aren't signed in to create a [shared secret](/documentation/platform/secret-sharing). Links to existing shared secrets still work, and signed-in users can still share secrets.
 </ParamField>
 
 <ParamField query="MAX_MACHINE_IDENTITY_TOKEN_AGE" type="string" default="90d" optional>
-  Maximum lifetime of a [machine identity](/documentation/platform/identities/machine-identities) access token. If an identity requests a longer TTL, Infisical issues the token with this lifetime instead. Accepts a duration such as `30d` or `12h`.
+  Maximum lifetime of each [machine identity](/documentation/platform/identities/machine-identities) access token that Infisical issues. If an identity requests a longer TTL, Infisical caps the token at this value. Each renewal issues a new token, so this setting doesn't limit the total lifetime of access across renewals. Accepts a duration such as `30d` or `12h`.
 </ParamField>
 
 <ParamField
