@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useRouteContext } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { IconButton, SecretInput } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useTimedReset } from "@app/hooks";
 
@@ -27,6 +29,7 @@ export const CliRedirectPage = () => {
     initialState: false
   });
   const cliToken = getTerminalCliToken();
+  const { dashboardOrgId } = useRouteContext({ from: "/cli-redirect" });
 
   const copyUrlToClipboard = () => {
     if (cliToken) {
@@ -81,6 +84,13 @@ export const CliRedirectPage = () => {
             <p className="text-light mb-1 text-lg text-muted">
               You&apos;ve successfully logged in to the Infisical CLI
             </p>
+            {dashboardOrgId && (
+              <Button asChild variant="outline" className="mt-6">
+                <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
+                  Open Infisical dashboard
+                </Link>
+              </Button>
+            )}
           </>
         )}
       </AuthPagePanel>

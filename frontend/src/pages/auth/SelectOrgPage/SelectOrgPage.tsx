@@ -295,7 +295,8 @@ export const SelectOrgPage = () => {
         JSON.stringify({
           expiry: formatISO(addSeconds(new Date(), 30)),
           data: window.btoa(JSON.stringify(payload)),
-          callbackPort
+          callbackPort,
+          orgId: targetOrgId
         })
       );
       navigate({ to: "/cli-redirect" });

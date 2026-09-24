@@ -86,7 +86,11 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         hasNoOrg = false;
       }
       if (hasNoOrg) {
-        throw redirect({ to: "/organizations/onboarding", replace: true });
+        throw redirect({
+          to: "/organizations/onboarding",
+          search: { callback_port: search.callback_port },
+          replace: true
+        });
       }
 
       // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
@@ -180,7 +184,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
             JSON.stringify({
               expiry: formatISO(addSeconds(new Date(), 30)),
               data: window.btoa(JSON.stringify(payload)),
-              callbackPort: search.callback_port
+              callbackPort: search.callback_port,
+              orgId: targetOrgId
             })
           );
           throw redirect({ to: "/cli-redirect" });

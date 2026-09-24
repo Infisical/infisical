@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
@@ -33,6 +33,9 @@ enum OnboardingSection {
 export const SignupOnboardingPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { callback_port: callbackPort } = useSearch({
+    from: "/_authenticate/organizations/onboarding"
+  });
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 
@@ -45,6 +48,14 @@ export const SignupOnboardingPage = () => {
   const [createdProjects, setCreatedProjects] = useState<
     Partial<Record<SignupProductType, Project>>
   >({});
+
+  // A CLI login is waiting on the select-org page's token handoff, which also covers MFA; the
+  // agent driving the CLI sets up projects itself, so workspace setup is skipped.
+  const handOffToCli = (targetOrgId: string) =>
+    navigate({
+      to: "/login/select-organization",
+      search: { org_id: targetOrgId, callback_port: callbackPort }
+    });
 
   // Guards against React strict-mode's double-invoke re-running the entry check.
   const hasRun = useRef(false);
@@ -64,6 +75,11 @@ export const SignupOnboardingPage = () => {
         }
 
         const existingOrgId = orgs[0].id;
+        if (callbackPort) {
+          handOffToCli(existingOrgId);
+          return;
+        }
+
         const { isMfaEnabled } = await selectOrganization({ organizationId: existingOrgId });
         if (isMfaEnabled) {
           navigate({
@@ -84,6 +100,11 @@ export const SignupOnboardingPage = () => {
   }, [selectOrganization, navigate]);
 
   const handleOrgNameComplete = (newOrgId: string) => {
+    if (callbackPort) {
+      handOffToCli(newOrgId);
+      return;
+    }
+
     setOrgId(newOrgId);
     setSection(OnboardingSection.ProductSelect);
   };

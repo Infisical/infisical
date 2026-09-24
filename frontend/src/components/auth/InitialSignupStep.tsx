@@ -33,6 +33,7 @@ interface InitialSignupStepProps {
   incrementStep: (email: string, cooldownSeconds: number) => void;
   pendingVerificationEmail?: string;
   onResumeVerification: () => void;
+  callbackPort?: number;
 }
 
 export default function InitialSignupStep({
@@ -40,7 +41,8 @@ export default function InitialSignupStep({
   setEmail,
   incrementStep,
   pendingVerificationEmail,
-  onResumeVerification
+  onResumeVerification,
+  callbackPort
 }: InitialSignupStepProps) {
   const { t } = useTranslation();
   const { config } = useServerConfig();
@@ -114,7 +116,8 @@ export default function InitialSignupStep({
 
   const handleSocialSignup = (method: LoginMethod) => {
     preserveHubSpotUtk();
-    const popup = window.open(`/api/v1/sso/redirect/${method}`);
+    const query = callbackPort ? `?callback_port=${encodeURIComponent(callbackPort)}` : "";
+    const popup = window.open(`/api/v1/sso/redirect/${method}${query}`);
     if (popup) {
       window.close();
     }
@@ -221,6 +224,7 @@ export default function InitialSignupStep({
         <span className="text-label">Already have an account?</span>
         <Link
           to="/login"
+          search={{ callback_port: callbackPort }}
           className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
         >
           Log in
