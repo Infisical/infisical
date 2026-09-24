@@ -239,7 +239,9 @@ export type TSecretScanningFactory<
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
 };
 
-export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
+export type TFindingsPayload = (Pick<TSecretScanningFindingsInsert, "fingerprint" | "severity" | "rule"> & {
+  details: unknown;
+})[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
 
 export type TUpdateSecretScanningFindingDTO = {

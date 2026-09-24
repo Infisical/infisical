@@ -94,5 +94,5 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
   dataSourceType: true,
   resourceType: true,
-  details: true
+  encryptedDetails: true
 });
