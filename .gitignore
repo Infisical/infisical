@@ -85,3 +85,6 @@ __pycache__
 
 # superpowers plan workspaces (ledger, briefs, review packages)
 .superpowers/
+
+# tether workspace
+.tether/
