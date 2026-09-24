@@ -47,6 +47,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  Button,
   DeleteConfirmDialog,
   Dialog,
   DialogContent,
@@ -279,6 +280,7 @@ export const SecretEditTableRow = ({
     handleSubmit,
     control,
     reset,
+    resetField,
     setValue,
     setFocus,
     getFieldState,
@@ -451,6 +453,17 @@ export const SecretEditTableRow = ({
     tags: undefined,
     metadata: undefined
   });
+
+  const handleFieldEscape = (field: "key" | "value") => {
+    resetField(field, {
+      defaultValue: field === "key" ? secretName : originalValueRef.current
+    });
+    if (field === "value" && isBatchMode && hasPendingValueChange) {
+      onBatchRevert?.(environment, secretName);
+      lastAppliedRef.current.value = undefined;
+    }
+    setEditingField(null);
+  };
 
   const areTagsEqual = (a: { id: string; slug: string }[], b: { id: string; slug: string }[]) => {
     if (a.length !== b.length) return false;
@@ -985,14 +998,15 @@ export const SecretEditTableRow = ({
           {pendingKeyName ?? secretName}
         </span>
         {!isPendingDelete && !isImportedSecret && !isManagedSecret && canEditSecretValue && (
-          <button
+          <Button
             type="button"
-            className="text-xs text-accent"
+            variant="link"
+            size="xs"
             onClick={() => enterEdit("key")}
             aria-label={`Edit secret name ${secretName}`}
           >
             Edit
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -1024,7 +1038,7 @@ export const SecretEditTableRow = ({
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 event.preventDefault();
-                handleFormReset();
+                handleFieldEscape("key");
               } else handleEditShortcut(event);
             }}
             onBlur={(e) => {
@@ -1122,7 +1136,7 @@ export const SecretEditTableRow = ({
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
                       event.preventDefault();
-                      handleFormReset();
+                      handleFieldEscape("value");
                     } else handleEditShortcut(event);
                   }}
                 />
