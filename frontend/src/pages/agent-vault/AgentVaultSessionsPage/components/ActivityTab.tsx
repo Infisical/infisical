@@ -628,6 +628,12 @@ export const ActivityTab = ({ session }: Props) => {
             {virtualRows.map((virtualRow) => {
               const record = visible[virtualRow.index] as TAgentVaultActivityRecord;
               const presentation = decisionPresentation(record.decision);
+              const isAddable =
+                canAddService &&
+                !record.service &&
+                (record.decision === AgentVaultActivityDecision.Blocked ||
+                  record.decision === AgentVaultActivityDecision.Passthrough) &&
+                !addedHosts.has(hostPatternFor(record));
               return (
                 <ArrivingRow
                   key={activityRecordKey(record)}
@@ -655,28 +661,6 @@ export const ActivityTab = ({ session }: Props) => {
                     <span className="flex items-center gap-2 text-sm">
                       <ServiceIcon hostPattern={record.host} />
                       {record.host}
-                      {canAddService &&
-                        !record.service &&
-                        (record.decision === AgentVaultActivityDecision.Blocked ||
-                          record.decision === AgentVaultActivityDecision.Passthrough) &&
-                        !addedHosts.has(hostPatternFor(record)) && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="xs"
-                                className="ml-auto"
-                                onClick={() => setServiceHost(hostPatternFor(record))}
-                              >
-                                <CirclePlusIcon />
-                                Add Service
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Add {record.host} to {accessBundle.name}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -690,7 +674,27 @@ export const ActivityTab = ({ session }: Props) => {
                   <TableCell>
                     <Badge variant={presentation.variant}>{presentation.label}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted">{record.service ?? "—"}</TableCell>
+                  <TableCell className={record.service ? undefined : "text-xs text-muted"}>
+                    {isAddable ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => setServiceHost(hostPatternFor(record))}
+                          >
+                            <CirclePlusIcon />
+                            Add Service
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Add {record.host} to {accessBundle.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      (record.service ?? "—")
+                    )}
+                  </TableCell>
                   <TableCell />
                 </ArrivingRow>
               );
