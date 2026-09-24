@@ -195,6 +195,15 @@ export const agentVaultActivityServiceFactory = ({
       throw new BadRequestError({ message: "Chunk is too small to hold the number of records it claims" });
     }
 
+    let activityStorage: TAgentVaultActivityStorage;
+    try {
+      activityStorage = await $getStorage(storage, proxy.orgId);
+    } catch (error) {
+      // A 400 would read to the proxy as a malformed chunk to drop; a connection that can't be used is worth a retry.
+      if (error instanceof BadRequestError) throw new InternalServerError({ message: error.message });
+      throw error;
+    }
+
     const objectKey = buildActivityObjectKey({
       keyPrefix: storage.keyPrefix,
       projectId: proxy.projectId,
@@ -251,7 +260,6 @@ export const agentVaultActivityServiceFactory = ({
       return created;
     });
 
-    const activityStorage = await $getStorage(storage, proxy.orgId);
     const uploadUrl = await activityStorage.presignPut({
       objectKey: row.objectKey,
       ciphertextBytes: row.ciphertextBytes
@@ -371,7 +379,17 @@ export const agentVaultActivityServiceFactory = ({
       return unreadable({ reason: AgentVaultActivityStorageUnavailableReason.NoConnection, message: null });
     }
 
-    const activityStorage = await $getStorage(storage, ctx.actorOrgId);
+    let activityStorage: TAgentVaultActivityStorage;
+    try {
+      activityStorage = await $getStorage(storage, ctx.actorOrgId);
+    } catch (error) {
+      if (!(error instanceof BadRequestError)) throw error;
+      return unreadable({
+        reason: AgentVaultActivityStorageUnavailableReason.ConnectionUnusable,
+        message: isAdmin ? error.message : null
+      });
+    }
+
     const sessionKey = await unwrapActivityKey(
       { projectId, encryptedActivityKey: session.encryptedActivityKey },
       kmsService
@@ -406,18 +424,22 @@ export const agentVaultActivityServiceFactory = ({
         },
         isStorageFull: false,
         corsProbeUrl: null,
+        connectionError: null,
         lastRecordedAt: null
       };
     }
 
     const storage = resolveStorageConfig(config);
     let corsProbeUrl: string | null = null;
+    let connectionError: string | null = null;
     if (storage) {
       try {
         const activityStorage = await $getStorage(storage, ctx.actorOrgId);
         corsProbeUrl = await activityStorage.mintCorsProbeUrl();
       } catch (error) {
-        logger.warn(error, `agentVaultActivity: could not mint CORS probe url [projectId=${projectId}]`);
+        logger.warn(error, `agentVaultActivity: could not use the activity connection [projectId=${projectId}]`);
+        connectionError =
+          error instanceof BadRequestError ? error.message : "Couldn't check the AWS connection. Try again.";
       }
     }
 
@@ -425,6 +447,7 @@ export const agentVaultActivityServiceFactory = ({
       config: toConfigView(config),
       isStorageFull: toCount(config.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
+      connectionError,
       lastRecordedAt: config.lastRecordedAt ?? null
     };
   };
@@ -523,6 +546,7 @@ export const agentVaultActivityServiceFactory = ({
       config: toConfigView(saved),
       isStorageFull: toCount(saved.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
       corsProbeUrl,
+      connectionError: null,
       lastRecordedAt: saved.lastRecordedAt ?? null,
       relocated,
       appConnectionName

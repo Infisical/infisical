@@ -295,6 +295,7 @@ export type TAgentVaultActivityConfigResponse = {
   config: TAgentVaultActivityConfig;
   isStorageFull: boolean;
   corsProbeUrl: string | null;
+  connectionError: string | null;
   lastRecordedAt: string | null;
 };
 

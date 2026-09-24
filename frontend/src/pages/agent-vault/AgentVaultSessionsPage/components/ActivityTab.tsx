@@ -361,9 +361,14 @@ export const ActivityTab = ({ session }: Props) => {
   );
 
   if (!isPending && !isPlaceholderData && !isLoadError && storageUnavailable) {
-    const unreadableDescription = isAdmin
-      ? "Activity logging has no AWS connection, so this session's recorded requests can't be loaded."
-      : "This session's recorded requests aren't available. Ask an admin.";
+    const isConnectionUnusable = storageUnavailable.reason === "connection-unusable";
+    let unreadableDescription = "This session's recorded requests aren't available. Ask an admin.";
+    if (isAdmin) {
+      unreadableDescription = isConnectionUnusable
+        ? (storageUnavailable.message ??
+          "Activity logging's AWS connection can't be used right now.")
+        : "Activity logging has no AWS connection, so this session's recorded requests can't be loaded.";
+    }
 
     return (
       <Empty className="border">
@@ -372,14 +377,17 @@ export const ActivityTab = ({ session }: Props) => {
           <EmptyDescription>{unreadableDescription}</EmptyDescription>
         </EmptyHeader>
         {isAdmin && (
-          <Button variant="av" asChild>
-            <Link
-              to="/organizations/$orgId/agent-vault/activity-logs"
-              params={{ orgId: currentOrg.id }}
-            >
-              Go to Activity Logs
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            {isConnectionUnusable && retryButton}
+            <Button variant="av" asChild>
+              <Link
+                to="/organizations/$orgId/agent-vault/activity-logs"
+                params={{ orgId: currentOrg.id }}
+              >
+                Go to Activity Logs
+              </Link>
+            </Button>
+          </div>
         )}
       </Empty>
     );

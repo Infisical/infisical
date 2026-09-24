@@ -254,6 +254,21 @@ describe("Agent Vault activity", async () => {
       expect((await saveConfig({ enabled: true })).statusCode).toBe(400);
     });
 
+    test("a connection that can't be used says why, on the page and when saving", async () => {
+      expect(
+        (await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" }))
+          .statusCode
+      ).toBe(200);
+      fakeActivityStorage.failsBuildWith("AWS refused to assume the role");
+
+      const read = await inject("GET", "/api/v1/agent-vault/activity/config");
+      expect(JSON.parse(read.payload).connectionError).toBe("AWS refused to assume the role");
+
+      const save = await saveConfig({ keyPrefix: "elsewhere" });
+      expect(save.statusCode).toBe(400);
+      expect(JSON.parse(save.payload).message).toBe("AWS refused to assume the role");
+    });
+
     test("turning logging on without a complete destination names what is missing", async () => {
       const res = await saveConfig({ enabled: true });
       expect(res.statusCode).toBe(400);
@@ -515,6 +530,18 @@ describe("Agent Vault activity", async () => {
 
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: sessionA.id })).toHaveLength(2);
       expect(await testDb("agent_vault_activity_chunks").where({ sessionId: sessionB.id })).toHaveLength(1);
+    });
+
+    test("a connection that can't be used refuses the chunk as retryable and writes no row", async () => {
+      await configure();
+      fakeActivityStorage.failsBuildWith("AWS refused to assume the role");
+      const bundle = await createAccessBundle(`activity-unusable-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`activity-unusable-${Date.now()}`);
+
+      const res = await proxy.postChunk(session.id, chunkBody());
+      expect(res.statusCode).toBe(500);
+      expect(await testDb("agent_vault_activity_chunks").where({ sessionId: session.id })).toHaveLength(0);
     });
 
     test("is refused with the named error while logging is off", async () => {
@@ -1014,6 +1041,26 @@ describe("Agent Vault activity", async () => {
       expect(liveBody.chunks).toEqual([]);
       expect(liveBody.nextReceivedAfter).toBe(since);
       expect(liveBody.storageUnavailable?.reason).toBe("no-connection");
+    });
+
+    test("when the connection can't be used, a session lists what it recorded and says why", async () => {
+      await configure();
+      const { session } = await seedChunks(1);
+      // A successful save empties the storage cache the seeding filled, so the next read builds it again.
+      expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
+      fakeActivityStorage.failsBuildWith("AWS refused to assume the role");
+
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload) as {
+        chunks: { presignedGetUrl: string | null }[];
+        storageUnavailable: { reason: string; message: string | null } | null;
+      };
+      expect(body.storageUnavailable).toEqual({
+        reason: "connection-unusable",
+        message: "AWS refused to assume the role"
+      });
+      expect(body.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
     });
 
     test("a session with no activity comes back empty rather than erroring", async () => {

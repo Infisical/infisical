@@ -1,9 +1,11 @@
+import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
 import { AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
 import { agentVaultActivityServiceFactory } from "./agent-vault-activity-service";
+import { buildActivityStorage } from "./agent-vault-activity-storage";
 
 const CEILING = AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS;
 
@@ -66,6 +68,7 @@ type TOverrides = {
   createThrows?: unknown;
   isReplay?: boolean;
   existingChunk?: unknown;
+  pageRows?: unknown[];
 };
 
 const build = (overrides: TOverrides = {}) => {
@@ -91,7 +94,8 @@ const build = (overrides: TOverrides = {}) => {
       findOne: findChunk,
       updateById: repointChunk,
       transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
-      findForSessionPage: vi.fn(async () => ({ chunks: [], hasMore: false }))
+      findForSessionPage: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false })),
+      findReceivedForSession: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false }))
     } as never,
     agentVaultActivityConfigDAL: {
       findOne: vi.fn(async () => config),
@@ -111,7 +115,10 @@ const build = (overrides: TOverrides = {}) => {
     appConnectionDAL: { findById: vi.fn() } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
     permissionService: {
-      getProjectPermission: vi.fn(async () => ({ permission: {}, hasRole: () => true }))
+      getProjectPermission: vi.fn(async () => ({
+        permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
+        hasRole: () => true
+      }))
     } as never,
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never
   });
@@ -382,6 +389,52 @@ describe("recordChunk: re-sending a chunk", () => {
     const { service, findChunk } = build({ createThrows: other });
     await expect(record(service)).rejects.toThrow();
     expect(findChunk).not.toHaveBeenCalled();
+  });
+});
+
+describe("when the AWS connection can't be used", () => {
+  const unusable = new BadRequestError({ message: "Couldn't use the AWS connection 'prod-logs': AccessDenied" });
+  const storedRow = () => ({
+    ...validChunk(),
+    proxyId: "proxy-1",
+    proxyName: "proxy-one",
+    configVersion: 3,
+    objectKey: "logs/key.json.enc",
+    createdAt: new Date()
+  });
+  const readActivity = (service: ReturnType<typeof build>["service"], receivedAfter?: Date) =>
+    service.getSessionActivity({
+      projectId: "proj-1",
+      ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
+      sessionId: "sess-1",
+      limit: 100,
+      receivedAfter
+    });
+
+  test("a chunk is refused as a retryable 500 before any row is written", async () => {
+    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    const { service, createIfAbsent } = build();
+    await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError", message: unusable.message });
+    expect(createIfAbsent).not.toHaveBeenCalled();
+  });
+
+  test("a read lists the chunks without links and tells an admin why", async () => {
+    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    const { service } = build({ pageRows: [storedRow()] });
+    const page = await readActivity(service);
+    expect(page.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
+    expect(page.sessionKey).toBeNull();
+    expect(page.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
+  });
+
+  test("a live read holds its cursor so nothing is skipped once the connection is back", async () => {
+    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    const { service } = build({ pageRows: [storedRow()] });
+    const since = new Date(Date.now() - 60_000);
+    const page = await readActivity(service, since);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextReceivedAfter).toEqual(since);
+    expect(page.hasMore).toBe(false);
   });
 });
 

@@ -14,15 +14,24 @@ export const ActivityLoggingAlerts = () => {
       return "Activity logging isn't set up. Choose an AWS connection and a bucket to start recording what your agents reach.";
     }
     if (!config?.enabled) {
-      return config?.appConnectionId
-        ? "Recording is switched off. Activity already in the bucket is still readable, but nothing new is being stored."
-        : "Recording is switched off, and without an AWS connection the activity already in the bucket can't be read.";
+      if (!config?.appConnectionId) {
+        return "Recording is switched off, and without an AWS connection the activity already in the bucket can't be read.";
+      }
+      if (data?.connectionError)
+        return "Recording is switched off, so nothing new is being stored.";
+      return "Recording is switched off. Activity already in the bucket is still readable, but nothing new is being stored.";
     }
     return "Recording is on, but the destination is incomplete, so nothing is being written to the bucket.";
   })();
 
   return (
     <>
+      {data?.connectionError && (
+        <Alert variant="danger">
+          <AlertDescription>{data.connectionError}</AlertDescription>
+        </Alert>
+      )}
+
       {data?.isStorageFull && (
         <Alert variant="danger">
           <AlertDescription>

@@ -1,4 +1,5 @@
 import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { STSServiceException } from "@aws-sdk/client-sts";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { TAgentVaultActivityConfigs } from "@app/db/schemas";
@@ -101,8 +102,20 @@ export const buildActivityStorage = async (
     });
   }
 
-  const connection = await decryptAppConnection(raw, kmsService as Parameters<typeof decryptAppConnection>[1]);
-  const { credentials } = await getAwsConnectionConfig(connection as unknown as TAwsConnectionConfig, config.region);
+  let credentials: Awaited<ReturnType<typeof getAwsConnectionConfig>>["credentials"];
+  try {
+    const connection = await decryptAppConnection(raw, kmsService as Parameters<typeof decryptAppConnection>[1]);
+    ({ credentials } = await getAwsConnectionConfig(connection as unknown as TAwsConnectionConfig, config.region));
+  } catch (err) {
+    logger.warn({ err }, `Agent Vault activity could not use its AWS connection [appConnectionId=${raw.id}]`);
+    const reason =
+      err instanceof STSServiceException || err instanceof BadRequestError
+        ? err.message
+        : "Infisical could not load its credentials";
+    throw new BadRequestError({
+      message: `Couldn't use the AWS connection '${raw.name}' for activity logging: ${reason}`
+    });
+  }
 
   const client = new S3Client({
     region: config.region,

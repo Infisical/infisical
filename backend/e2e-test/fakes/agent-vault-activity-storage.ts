@@ -14,6 +14,7 @@ type TFakeState = {
   objects: Map<string, Buffer>;
   validateError: string | null;
   presignError: string | null;
+  buildError: string | null;
   presignedPuts: Map<string, { bucket: string; objectKey: string; ciphertextBytes: number }>;
   presignedGets: Map<string, { bucket: string; objectKey: string }>;
   nextUrlId: number;
@@ -23,6 +24,7 @@ const freshState = (): TFakeState => ({
   objects: new Map(),
   validateError: null,
   presignError: null,
+  buildError: null,
   presignedPuts: new Map(),
   presignedGets: new Map(),
   nextUrlId: 0
@@ -45,6 +47,10 @@ export const fakeActivityStorage = {
 
   failsPresignWith: (message: string | null) => {
     state.presignError = message;
+  },
+
+  failsBuildWith: (message: string | null) => {
+    state.buildError = message;
   },
 
   put: (url: string, body: Buffer) => {
@@ -75,6 +81,7 @@ export const fakeActivityStorage = {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _orgId: string) => {
+  if (state.buildError) return Promise.reject(new BadRequestError({ message: state.buildError }));
   const { bucket, keyPrefix } = config;
 
   const mintUrl = (kind: string) => {
