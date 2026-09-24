@@ -22,15 +22,15 @@ export const AgentVaultActivityChunkCreateSchema = z.object({
   chunkId: z.string().ulid().describe(AGENT_VAULT.ACTIVITY.chunkId),
   startedAt: z.coerce.date().describe(AGENT_VAULT.ACTIVITY.startedAt),
   endedAt: z.coerce.date().describe(AGENT_VAULT.ACTIVITY.endedAt),
-  firstSeq: z.number().int().min(0).describe(AGENT_VAULT.ACTIVITY.firstSeq),
-  lastSeq: z.number().int().min(0).describe(AGENT_VAULT.ACTIVITY.lastSeq),
+  firstSeq: z.number().int().min(0).safe().describe(AGENT_VAULT.ACTIVITY.firstSeq),
+  lastSeq: z.number().int().min(0).safe().describe(AGENT_VAULT.ACTIVITY.lastSeq),
   recordCount: z
     .number()
     .int()
     .min(1)
     .max(AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS)
     .describe(AGENT_VAULT.ACTIVITY.recordCount),
-  droppedCount: z.number().int().min(0).describe(AGENT_VAULT.ACTIVITY.droppedCount),
+  droppedCount: z.number().int().min(0).safe().describe(AGENT_VAULT.ACTIVITY.droppedCount),
   ciphertextBytes: z
     .number()
     .int()

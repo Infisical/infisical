@@ -38,6 +38,8 @@ describe("the chunk create body", () => {
     { field: "recordCount", value: 1.5, why: "not an integer" },
     { field: "droppedCount", value: -1, why: "negative" },
     { field: "firstSeq", value: -1, why: "sequence numbers start at zero" },
+    { field: "lastSeq", value: Number.MAX_SAFE_INTEGER + 2, why: "past what reads back from bigint exactly" },
+    { field: "droppedCount", value: 1e19, why: "past what the bigint column holds" },
     { field: "ciphertextBytes", value: AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES - 1, why: "smaller than '[]' plus a tag" },
     { field: "ciphertextBytes", value: AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES + 1, why: "over the size ceiling" },
     { field: "iv", value: "qrvM3e7/ABEiM0RV=", why: "padded base64 is the wrong width" },
