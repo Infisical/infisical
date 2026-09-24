@@ -37,7 +37,7 @@ export const SecretSearchInput = ({
           <>
             <div className="flex w-full items-center whitespace-nowrap">
               <Tooltip content="Search Options">
-                <Combobox.Button className="button user-select-none relative inline-flex h-[2.42rem] cursor-pointer items-center justify-center rounded-md rounded-r-none border border-border bg-container p-3 font-inter text-sm font-medium text-foreground transition-all duration-100 hover:border-project/50 hover:bg-project/10">
+                <Combobox.Button className="button user-select-none relative inline-flex h-[2.42rem] cursor-pointer items-center justify-center rounded-md rounded-r-none border border-border bg-container p-3 font-sans text-sm font-medium text-foreground transition-all duration-100 hover:border-project/50 hover:bg-project/10">
                   <FontAwesomeIcon
                     icon={faSearch}
                     size="sm"
@@ -46,7 +46,7 @@ export const SecretSearchInput = ({
                   />
                 </Combobox.Button>
               </Tooltip>
-              <div className="relative inline-flex w-full items-center rounded-md rounded-l-none border border-border bg-container font-inter text-muted">
+              <div className="relative inline-flex w-full items-center rounded-md rounded-l-none border border-border bg-container font-sans text-muted">
                 <Combobox.Input
                   onKeyDown={(e) => {
                     if (activeIndex === 0 && e.key === "Enter") setIsOpen(true);
@@ -87,7 +87,7 @@ export const SecretSearchInput = ({
                   onClick={() => setIsOpen(true)}
                   value={value}
                   className={({ active }) =>
-                    `flex w-full cursor-pointer items-start rounded-xs px-4 py-2 font-inter text-sm text-foreground outline-hidden hover:bg-container-hover ${
+                    `flex w-full cursor-pointer items-start rounded-xs px-4 py-2 font-sans text-sm text-foreground outline-hidden hover:bg-container-hover ${
                       active ? "bg-container-hover" : ""
                     }`
                   }

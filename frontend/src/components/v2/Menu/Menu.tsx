@@ -42,7 +42,7 @@ export const MenuItem = <T extends ElementType = "button">({
       type="button"
       role="menuitem"
       className={twMerge(
-        "group relative mt-0.5 box-border flex w-full cursor-pointer items-center rounded-[2px] border-l-2 border-transparent px-2 py-2 font-inter text-sm text-foreground-default transition-all duration-50 hover:bg-surface-hover",
+        "group relative mt-0.5 box-border flex w-full cursor-pointer items-center rounded-[2px] border-l-2 border-transparent px-2 py-2 font-sans text-sm text-foreground-default transition-all duration-50 hover:bg-surface-hover",
         isSelected && "bg-surface-active hover:bg-surface-active",
         isDisabled && "cursor-not-allowed hover:bg-transparent",
         isSelected && variant === "org" && "border-org",

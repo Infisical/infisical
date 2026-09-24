@@ -28,7 +28,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
           <CardTitle className="font-alliance text-3xl leading-tight font-normal">
             Your instance is ready.
           </CardTitle>
-          <CardDescription className="mt-2 max-w-lg font-alliance text-base leading-relaxed">
+          <CardDescription className="mt-2 max-w-lg font-sans text-base leading-relaxed">
             Choose where you want to go next:
           </CardDescription>
         </CardHeader>
@@ -48,7 +48,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <Building2 className="size-5 text-foreground" />
-                  <span className="font-alliance text-base font-medium text-foreground">
+                  <span className="font-sans text-base font-medium text-foreground">
                     Go to dashboard
                   </span>
                 </span>
@@ -67,7 +67,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <ServerCog className="size-5 text-foreground" />
-                  <span className="font-alliance text-base font-medium text-foreground">
+                  <span className="font-sans text-base font-medium text-foreground">
                     Access server console
                   </span>
                 </span>

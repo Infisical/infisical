@@ -61,7 +61,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Trigger
             ref={ref}
             className={twMerge(
-              "inline-flex items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden focus:bg-surface-hover/80 data-placeholder:text-muted",
+              "inline-flex items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-sans text-sm font-normal text-foreground-soft outline-hidden focus:bg-surface-hover/80 data-placeholder:text-muted",
               className,
               isDisabled && "cursor-not-allowed opacity-50"
             )}
@@ -86,7 +86,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             <SelectPrimitive.Content
               side={side}
               className={twMerge(
-                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-border-control bg-surface-base font-inter text-foreground-default shadow-md",
+                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-border-control bg-surface-base font-sans text-foreground-default shadow-md",
                 position === "popper" && "max-h-72",
                 dropdownContainerClassName
               )}

@@ -127,7 +127,7 @@ export default function SignupCompleteStep({
                           aria-hidden
                           className={cn("size-4 shrink-0", destination.iconClassName)}
                         />
-                        <span className="min-w-0 flex-1 pt-0.5 font-alliance text-sm font-normal">
+                        <span className="min-w-0 flex-1 pt-0.5 font-sans text-sm font-normal">
                           {destination.name}
                         </span>
                         <ArrowRight

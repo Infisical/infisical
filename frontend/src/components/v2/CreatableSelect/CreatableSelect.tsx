@@ -34,13 +34,13 @@ export const CreatableSelect = <T,>({
       }}
       components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option }}
       classNames={{
-        container: () => "w-full font-inter",
+        container: () => "w-full font-sans",
         control: ({ isFocused }) =>
           twMerge(
             isFocused
               ? "border-project/50"
               : "border-border-control hover:border-border-cool-emphasis",
-            "w-full rounded-md border bg-surface-base p-0.5 font-inter text-foreground-secondary hover:cursor-pointer"
+            "w-full rounded-md border bg-surface-base p-0.5 font-sans text-foreground-secondary hover:cursor-pointer"
           ),
         placeholder: () => "text-muted text-sm pl-1 py-0.5",
         input: () => "pl-1 py-0.5",
