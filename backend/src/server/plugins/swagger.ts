@@ -14,6 +14,7 @@ import { jsonSchemaTransform } from "./fastify-zod";
 
 const DOCS_ROUTE_PREFIX = "/api/docs";
 const SPEC_CACHE_MAX_AGE_SECONDS = 600;
+const MAX_TAGGED_SPEC_PAYLOADS = 20;
 
 const gzipAsync = promisify(gzip);
 const brotliCompressAsync = promisify(brotliCompress);
@@ -59,9 +60,19 @@ const filterSpecByTag = (spec: OpenApiDocument, tag: ApiDocsTags): OpenApiDocume
   return { ...spec, paths };
 };
 
-const buildSpecPayload = async (fastify: FastifyInstance, format: SpecFormat): Promise<SpecPayload> => {
+const buildSpecPayload = async (
+  fastify: FastifyInstance,
+  format: SpecFormat,
+  tag?: ApiDocsTags
+): Promise<SpecPayload> => {
   const isYaml = format === "yaml";
-  const body = isYaml ? fastify.swagger({ yaml: true }) : JSON.stringify(fastify.swagger());
+  let body: string;
+  if (isYaml) {
+    body = fastify.swagger({ yaml: true });
+  } else {
+    const spec = fastify.swagger() as unknown as OpenApiDocument;
+    body = JSON.stringify(tag ? filterSpecByTag(spec, tag) : spec);
+  }
   const contentType = isYaml ? "application/x-yaml" : "application/json; charset=utf-8";
 
   const identity = Buffer.from(body, "utf8");
@@ -79,6 +90,7 @@ const buildSpecPayload = async (fastify: FastifyInstance, format: SpecFormat): P
   fastify.log.info(
     {
       format,
+      tag,
       identityBytes: identity.byteLength,
       brotliBytes: brotlied.byteLength,
       gzipBytes: gzipped.byteLength
@@ -163,29 +175,30 @@ export const fastifySwagger = fp(async (fastify) => {
     }
   });
 
-  const specPayloads = new Map<SpecFormat, Promise<SpecPayload>>();
+  const specPayloads = new Map<string, Promise<SpecPayload>>();
+  const taggedSpecPayloads = new Map<string, Promise<SpecPayload>>();
 
-  const getSpecPayload = (format: SpecFormat) => {
-    const cached = specPayloads.get(format);
+  const getSpecPayload = (format: SpecFormat, tag?: ApiDocsTags) => {
+    const cache = tag ? taggedSpecPayloads : specPayloads;
+    const key = tag ?? format;
+
+    const cached = cache.get(key);
     if (cached) return cached;
 
-    const pending = buildSpecPayload(fastify, format).catch((err) => {
-      specPayloads.delete(format);
+    const pending = buildSpecPayload(fastify, format, tag).catch((err) => {
+      cache.delete(key);
       throw err;
     });
 
-    specPayloads.set(format, pending);
+    if (tag && cache.size >= MAX_TAGGED_SPEC_PAYLOADS) cache.delete(cache.keys().next().value as string);
+    cache.set(key, pending);
     return pending;
   };
 
   const serveSpec = async (req: FastifyRequest, reply: FastifyReply, format: SpecFormat) => {
     const { tag } = SpecQuerySchema.parse(req.query);
-    if (format === "json" && tag) {
-      await reply.send(filterSpecByTag(fastify.swagger() as unknown as OpenApiDocument, tag));
-      return;
-    }
-
-    const payload = await getSpecPayload(format);
+    // Only the JSON spec is filtered by tag.
+    const payload = await getSpecPayload(format, format === "json" ? tag : undefined);
     const encoding = pickSpecEncoding(req.headers["accept-encoding"]);
 
     void reply

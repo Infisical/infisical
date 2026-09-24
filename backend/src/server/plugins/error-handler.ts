@@ -55,6 +55,7 @@ enum HttpStatusCodes {
 }
 
 const BODY_PARSER_ERRORS = [
+  errorCodes.FST_ERR_CTP_EMPTY_JSON_BODY,
   errorCodes.FST_ERR_CTP_INVALID_JSON_BODY,
   errorCodes.FST_ERR_CTP_INVALID_MEDIA_TYPE,
   errorCodes.FST_ERR_CTP_BODY_TOO_LARGE,
