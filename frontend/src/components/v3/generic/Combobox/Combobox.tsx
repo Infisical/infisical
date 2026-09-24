@@ -435,11 +435,15 @@ const ComboboxList = <TOption,>({
   };
 
   return (
-    <ComboboxPrimitive.List aria-label={ariaLabel} aria-busy={isLoading || undefined}>
+    <ComboboxPrimitive.List
+      aria-label={ariaLabel}
+      aria-busy={isLoading || undefined}
+      className="flex min-h-0 flex-col"
+    >
       <div
         onWheel={(event) => event.stopPropagation()}
         className={cn(
-          "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
+          "min-h-0 thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
           isEmpty && "hidden"
         )}
         style={{ maxHeight }}
@@ -486,7 +490,7 @@ const ComboboxList = <TOption,>({
         </div>
       )}
       {creationItem && (
-        <div className={cn("p-1", (!isEmpty || isLoading) && "border-t border-border")}>
+        <div className={cn("shrink-0 p-1", (!isEmpty || isLoading) && "border-t border-border")}>
           {getOptionGroup ? (
             <ComboboxPrimitive.Group items={[creationItem]}>
               <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
@@ -501,7 +505,7 @@ const ComboboxList = <TOption,>({
 };
 
 const ComboboxListFooter = ({ children }: { children: React.ReactNode }) => (
-  <div className="border-t border-border px-3 py-2 text-xs text-muted">{children}</div>
+  <div className="shrink-0 border-t border-border px-3 py-2 text-xs text-muted">{children}</div>
 );
 
 type ComboboxSelectAllProps = {
@@ -511,7 +515,7 @@ type ComboboxSelectAllProps = {
 };
 
 const ComboboxSelectAll = ({ areAllSelected, optionCount, onToggle }: ComboboxSelectAllProps) => (
-  <div className="border-b border-border p-1">
+  <div className="shrink-0 border-b border-border p-1">
     <button
       type="button"
       // Keep focus on the search input so the popup stays open after toggling.
@@ -568,7 +572,7 @@ const ComboboxPopup = ({
         aria-label={ariaLabel}
         initialFocus={initialFocus}
         className={cn(
-          "text-popover-foreground w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) overflow-hidden rounded-md border border-border bg-popover shadow-md outline-none",
+          "text-popover-foreground flex max-h-[var(--available-height,50dvh)] w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) flex-col overflow-hidden rounded-md border border-border bg-popover shadow-md outline-none",
           "transition-[transform,scale,opacity] duration-100 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
           className
         )}
