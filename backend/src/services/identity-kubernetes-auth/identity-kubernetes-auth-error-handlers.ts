@@ -8,6 +8,7 @@ type ErrorContext = {
   host?: string;
   port?: number;
   kubernetesHost?: string;
+  credentials?: (string | undefined)[];
 };
 
 export enum KubernetesAuthErrorContext {
@@ -112,13 +113,15 @@ export const handleAxiosNetworkError = (
  */
 export const handleAxiosHttpError = (
   err: AxiosError,
-  contextType: KubernetesAuthErrorContext
+  contextType: KubernetesAuthErrorContext,
+  credentials: (string | undefined)[] = []
 ): UnauthorizedError | BadRequestError | null => {
   if (!err.response) {
     return null;
   }
 
-  let message = (err.response.data as { message?: string })?.message;
+  const statusMessage = (err.response.data as { message?: unknown } | undefined)?.message;
+  let message = typeof statusMessage === "string" ? statusMessage : undefined;
   const statusCode = err.response.status;
   const { errorNamePrefix: prefix, default401Message, default403Message } = ERROR_CONTEXT_CONFIGS[contextType];
 
@@ -127,7 +130,7 @@ export const handleAxiosHttpError = (
   }
 
   if (message) {
-    message = redactCredentialsFromText(message);
+    message = redactCredentialsFromText(message, credentials);
   }
 
   if (statusCode === 401) {
@@ -197,7 +200,7 @@ export const handleAxiosError = (
     return networkError;
   }
 
-  const httpError = handleAxiosHttpError(err, contextType);
+  const httpError = handleAxiosHttpError(err, contextType, context.credentials);
   if (httpError) {
     return httpError;
   }

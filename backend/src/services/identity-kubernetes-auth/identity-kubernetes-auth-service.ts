@@ -440,7 +440,11 @@ export const identityKubernetesAuthServiceFactory = ({
               `tokenReviewCallbackRaw: Kubernetes token review request error (request error) [identityId=${identityKubernetesAuth.identityId}] [status=${err.response?.status}] [code=${err.code}]`
             );
 
-            throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.KubernetesApiServer);
+            throw handleAxiosError(
+              err,
+              { host, port, credentials: [tokenReviewerJwt, serviceAccountJwt] },
+              KubernetesAuthErrorContext.KubernetesApiServer
+            );
           }
 
           logger.error(
@@ -501,7 +505,11 @@ export const identityKubernetesAuthServiceFactory = ({
             );
 
             if (err instanceof AxiosError) {
-              throw handleAxiosError(err, { host, port }, KubernetesAuthErrorContext.GatewayProxy);
+              throw handleAxiosError(
+                err,
+                { host, port, credentials: [serviceAccountJwt] },
+                KubernetesAuthErrorContext.GatewayProxy
+              );
             }
 
             if (isKnownError(err)) {

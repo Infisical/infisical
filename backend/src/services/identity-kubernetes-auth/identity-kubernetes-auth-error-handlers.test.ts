@@ -38,4 +38,27 @@ describe("handleAxiosError", () => {
     expect(error.message).not.toContain(JWT);
     expect(error.message).toContain("[REDACTED]");
   });
+
+  it("removes an opaque (non-JWT) credential passed in the context", () => {
+    const opaqueToken = "abcdef.0123456789abcdef";
+    const error = handleAxiosError(
+      clusterError(401, { kind: "Status", message: `bearer token ${opaqueToken} is not valid` }),
+      { host: "https://k8s.example.com", credentials: [opaqueToken, undefined] },
+      KubernetesAuthErrorContext.KubernetesApiServer
+    );
+    expect(error.message).toBe("bearer token [REDACTED] is not valid");
+  });
+
+  it.each([
+    [401, "Token reviewer JWT is invalid or expired"],
+    [403, "Token reviewer JWT does not have permission"],
+    [400, "Kubernetes returned HTTP 400"]
+  ])("falls back to the default message when a %i body has a non-string message", (status, expected) => {
+    const error = handleAxiosError(
+      clusterError(status, { kind: "Status", message: { detail: "Denied" } }),
+      { host: "https://k8s.example.com" },
+      KubernetesAuthErrorContext.KubernetesApiServer
+    );
+    expect(error.message).toContain(expected);
+  });
 });
