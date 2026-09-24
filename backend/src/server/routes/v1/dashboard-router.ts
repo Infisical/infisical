@@ -1735,7 +1735,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           // support ending partial path match
           return (
-            isInSecretSearchScope(folderPath, searchPath, secretPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
+            isInSecretSearchScope(folderPath, searchPath, secretPath) &&
+            folderName.toLowerCase().startsWith(searchName.toLowerCase())
           );
         }
 
