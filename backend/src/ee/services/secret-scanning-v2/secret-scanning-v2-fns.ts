@@ -342,7 +342,7 @@ export const toFindingDetails = (finding: SecretMatch): unknown =>
     Tags: finding.Tags,
     RuleID: finding.RuleID,
     Fingerprint: finding.Fingerprint,
-    Link: finding.Link ?? finding.Attributes?.url ?? ""
+    Link: finding.Link ?? finding.Attributes?.url
   });
 
 export const scanGitRepositoryAndGetFindings = async (

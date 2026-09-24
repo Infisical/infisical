@@ -193,18 +193,16 @@ export const SecretScanningFindingRow = ({
               <GenericFieldLabel label="End Line">{details.endLine}</GenericFieldLabel>
               <GenericFieldLabel label="Start Column">{details.startColumn}</GenericFieldLabel>
               <GenericFieldLabel label="End Column">{details.endColumn}</GenericFieldLabel>
-              {details.link && (
-                <GenericFieldLabel className="col-span-full" label="Link">
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="cursor-pointer text-label underline underline-offset-2 hover:text-foreground"
-                    href={details.link}
-                  >
-                    {details.link}
-                  </a>
-                </GenericFieldLabel>
-              )}
+              <GenericFieldLabel className="col-span-full" label="Link">
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cursor-pointer text-label underline underline-offset-2 hover:text-foreground"
+                  href={details.link}
+                >
+                  {details.link}
+                </a>
+              </GenericFieldLabel>
               <div className="col-span-full flex items-center border-t border-border-strong" />
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningFindingActions.Update}
