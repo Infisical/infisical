@@ -2777,13 +2777,11 @@ const OverviewPageContent = () => {
                     onToggleTag={handleToggleTag}
                     onClearTags={handleClearTags}
                   />
-                  <div className="hidden @min-[20rem]/card-header:block">
-                    <DownloadEnvButton
-                      secretPath={secretPath}
-                      environments={visibleEnvs}
-                      projectId={projectId}
-                    />
-                  </div>
+                  <DownloadEnvButton
+                    secretPath={secretPath}
+                    environments={visibleEnvs}
+                    projectId={projectId}
+                  />
                 </>
               )}
             </div>
