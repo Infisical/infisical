@@ -40,6 +40,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOciAuthDALFactory } from "./identity-oci-auth-dal";
+import { getOciSignerUserOcid } from "./identity-oci-auth-fns";
 import {
   TAttachOciAuthDTO,
   TGetOciAuthDTO,
@@ -111,6 +112,26 @@ export const identityOciAuthServiceFactory = ({
       if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
         throw new BadRequestError({
           message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
+        });
+      }
+
+      const signerUserOcid = getOciSignerUserOcid(headers.authorization);
+      if (!signerUserOcid) {
+        throw new BadRequestError({
+          message:
+            "Invalid OCI signature: the authorization header must be signed by an OCI user API key (keyId in the form <tenancy-ocid>/<user-ocid>/<fingerprint>)."
+        });
+      }
+
+      if (signerUserOcid !== userOcid) {
+        throw new UnauthorizedError({
+          message: "Access denied: the OCI user that signed the request does not match the provided user OCID.",
+          detail: {
+            reasonCode: "signer_mismatch",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
         });
       }
 

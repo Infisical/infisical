@@ -68,6 +68,15 @@ Use `@app/lib/analytics` for new frontend product analytics. Define the event an
 
 Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It defines naming, ownership between frontend and backend producers, property cardinality and privacy rules, and lifecycle semantics. Frontend events describe UI exposure and intent; decisive product outcomes belong to backend telemetry so web activity is not double-counted against CLI, machine identity, or other clients.
 
+#### PostHog feature flags and A/B tests
+
+- Put each experiment in `src/components/analytics/experiments/<experiment>/`, with its flag key, typed variants, assignment hook, and focused Vitest coverage kept together. Shared lifecycle code belongs in `src/lib/analytics/experiments/`.
+- Resolve PostHog flags through `resolveFeatureFlagVariant`. It performs a fresh lookup after flags load and owns timeout, error fallback, late-callback suppression, unsubscribe, and unmount cancellation. Set exposure-event behavior deliberately, and persist only values that the experiment resolver recognizes as real assignments.
+- Define the eligible population before initializing PostHog. Excluded flows must not request the flag or emit the experiment conversion. An eligible user who completes after assignment fails can be attributed as `unassigned`; an ineligible user must not be counted.
+- Keep an assignment sticky for the full conversion path, including redirects or region changes. Register dedicated conversion events and typed properties in `@app/lib/analytics`; do not reuse a broader event with different semantics or default unenrolled users into the control cohort.
+- Allow forced variants only in local development or pull-request previews. Production cloud domains must use PostHog assignment, and self-hosted instances must not initialize cloud experiments.
+- Create the PostHog flag and experiment as inactive drafts. Validate variant keys, exposure, conversion events, and metrics against a preview deployment before anyone launches the experiment separately from the code rollout.
+
 ### State Management
 
 - **Server state**: TanStack React Query (query key factories in each API domain)
