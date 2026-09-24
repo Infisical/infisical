@@ -21,6 +21,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
@@ -127,14 +128,18 @@ export const SessionDetailSheet = ({ session, isPending = false }: Props) => {
                   })}
                 </div>
                 <div className="flex flex-col items-end gap-3">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <SessionStatusBadge status={session.status} />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{expiryDetail}</TooltipContent>
-                  </Tooltip>
+                  {session.status === AgentVaultSessionStatus.Revoked ? (
+                    <SessionStatusBadge status={session.status} />
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <SessionStatusBadge status={session.status} />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{expiryDetail}</TooltipContent>
+                    </Tooltip>
+                  )}
                   <Detail className="items-end">
                     <DetailLabel>Created</DetailLabel>
                     <DetailValue>
