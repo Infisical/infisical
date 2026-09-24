@@ -209,9 +209,9 @@ hostile input: it must never be able to erase or hide its own records.
   `configVersion`, which orphans earlier history.
 - **App connections are the one CASL subject the admin role carries**, because the shared
   `AppConnectionsTable` reads CASL, not the role. Everything else here is `hasRole(Admin)`.
-- **Every by-id route under `/agent-vault/app-connections/aws/*` 404s unless the connection's `projectId`
-  matches.** `findAppConnectionById` authorizes the actor, not the scope, so without it a delete here could
-  reach an org connection Secret Sync uses.
+- **Every by-id route under `/agent-vault/app-connections/aws/*` passes `findAppConnectionById` a `scope`**,
+  so a connection outside Agent Vault is a 404 before any permission or app check. Without it a delete here
+  could reach an org connection Secret Sync uses, and a 403 or 400 would confirm the id exists.
 
 ## The CLI
 

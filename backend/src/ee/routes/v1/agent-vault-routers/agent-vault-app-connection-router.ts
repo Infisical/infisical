@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
-import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -31,27 +30,19 @@ const AgentVaultAwsConnectionCreateSchema = ValidateAwsConnectionCredentialsSche
 );
 
 export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodProvider) => {
-  // findAppConnectionById authorizes the actor but not the scope; without this an org-level connection could
-  // be edited or deleted through these routes. 404, not 403, so ids outside Agent Vault are not confirmed.
+  // Scoped lookup: without it an org-level connection could be edited or deleted through these routes, and a
+  // permission or app refusal would confirm that an id outside Agent Vault exists.
   const $findAgentVaultConnection = async (req: {
     params: { connectionId: string };
     permission: Parameters<typeof server.services.appConnection.findAppConnectionById>[2];
     internalAgentVaultProjectId: string;
-  }) => {
-    const appConnection = (await server.services.appConnection.findAppConnectionById(
+  }) =>
+    (await server.services.appConnection.findAppConnectionById(
       AppConnection.AWS,
       req.params.connectionId,
-      req.permission
+      req.permission,
+      { projectId: req.internalAgentVaultProjectId }
     )) as TAwsConnection;
-
-    if (appConnection.projectId !== req.internalAgentVaultProjectId) {
-      throw new NotFoundError({
-        message: `Could not find an Agent Vault AWS Connection with ID '${req.params.connectionId}'. Organization-level connections are managed under App Connections.`
-      });
-    }
-
-    return appConnection;
-  };
 
   server.route({
     method: "GET",
@@ -312,11 +303,7 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
         req.permission
       );
 
-      const appConnection = (await server.services.appConnection.findAppConnectionById(
-        AppConnection.AWS,
-        connectionId,
-        req.permission
-      )) as TAwsConnection;
+      const appConnection = await $findAgentVaultConnection(req);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

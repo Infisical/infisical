@@ -21,6 +21,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
@@ -1311,6 +1312,36 @@ describe("Agent Vault V1 Router", async () => {
 
       const survived = await inject("GET", `/api/v1/app-connections/aws/${orgConnectionId}`);
       expect(survived.statusCode).toBe(200);
+
+      const missingId = crypto.randomUUID();
+      const outOfScope = await inject("GET", byId(orgConnectionId));
+      const missing = await inject("GET", byId(missingId));
+      expect(outOfScope.json().message.replace(orgConnectionId, "<id>")).toBe(
+        missing.json().message.replace(missingId, "<id>")
+      );
+
+      const [otherApp] = (await testDb("app_connections")
+        .insert({
+          name: `av-scope-gh-${Date.now()}`,
+          app: AppConnection.GitHub,
+          method: "pat",
+          encryptedCredentials: Buffer.from("never-decrypted"),
+          orgId: seedData1.organization.id
+        })
+        .returning("id")) as { id: string }[];
+      try {
+        expect((await inject("GET", byId(otherApp.id))).statusCode).toBe(404);
+      } finally {
+        await testDb("app_connections").where({ id: otherApp.id }).delete();
+      }
+
+      const member = await createMemberIdentity(`av-scope-member-${Date.now()}`);
+      try {
+        expect((await member.as("GET", byId(orgConnectionId))).statusCode).toBe(404);
+        expect((await member.as("GET", byId(ownConnection.id))).statusCode).toBe(403);
+      } finally {
+        await member.cleanup();
+      }
 
       expect((await inject("GET", byId(ownConnection.id))).statusCode).toBe(200);
       expect(

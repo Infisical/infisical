@@ -388,10 +388,17 @@ export const appConnectionServiceFactory = ({
     );
   };
 
-  const findAppConnectionById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const findAppConnectionById = async (
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor,
+    scope?: { projectId: string }
+  ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
