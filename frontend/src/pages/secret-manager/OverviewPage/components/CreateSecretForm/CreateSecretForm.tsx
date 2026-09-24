@@ -521,7 +521,7 @@ export const CreateSecretForm = ({
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         onKeyDown={(event) => {
-                          if (event.key === "Tab" && !event.shiftKey) {
+                          if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
                             event.preventDefault();
                             generateButtonRefs.current[index]?.focus();
                           }
