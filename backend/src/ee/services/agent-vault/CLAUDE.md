@@ -173,93 +173,39 @@ header" is the name in every layer; unqualified "header" means the credential's 
 
 ## Activity
 
-Per-session log of every request that reached the proxy: method, host, path, status, decision. Metadata
-only, never bodies or headers, and never the query string (the proxy builds the path from
-`EscapedPath()`, so that one is true by construction).
+Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
+hostile input: it must never be able to erase or hide its own records.
 
-- **A customer S3 bucket is required.** There is no Postgres payload path and no second provider: an
-  org without an AWS app connection cannot use the feature, and the tab says so. Infisical stores an
-  index row per chunk; the bytes go straight from proxy to bucket and back to the browser.
-- **Records are batched into chunks**, 1000 records or 60s, whichever comes first. One chunk is one S3
-  object and one row. Per-request rows would be millions.
-- **Size is bounded at every hop, because the agent controls its own records.** The proxy caps method,
-  port and path, and seals at 4 MiB against the server's 8 MiB limit; a chunk the server refuses anyway
-  counts as dropped on the session's next chunk. A read page stops at about 16 MiB (one chunk over at
-  most) as well as its record budget, and the viewer stops loading, live polling included, at about
-  64 MiB opened. These are loose bounds by design: each is checked as data lands, not before a request.
-- **Two keys, do not confuse them.** The project data key (`KmsDataKey.SecretManager`, the same one
-  protecting service credentials) wraps a per-session 32-byte activity key stored on the session row.
-  Only the session key leaves the backend: to the proxy at resolve, to the browser at playback.
-- **The key is minted at session create, always**, even while logging is off, so turning it on covers
-  running sessions. A session minted before this shipped has no key and resolves with
-  `activity.enabled = false` forever; there is no backfill.
-- **Resolve sends the key once, not every poll.** The proxy reports `hasActivityKey`, and unwrapping is
-  what forces the project-data-key derivation the resolve path otherwise avoids. The config row is read
-  on every resolve, so turning logging off reaches a running proxy within one poll.
-- **Chunk ids are ULIDs minted by the proxy**, unique per session, not globally. A proxy-side counter
-  would reset on every cache eviction and then collide for the rest of the session's life. They sort by
-  time, so the read cursor is a plain `chunkId <` comparison.
-- **Live views read by arrival, not by chunk id.** `receivedAfter` returns chunks by our `createdAt`,
-  because a proxy whose clock runs behind, or one draining a backlog, mints ids that sort among old
-  chunks. Each response's `nextReceivedAfter` points `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS` behind the
-  read (uncommitted inserts, replica lag), so repeats are expected and dropped by chunk id. `createdAt` is
-  millisecond precision so that cursor survives a JavaScript `Date`. The sheet loads history pages once
-  and polls only this read, so nothing under the reader moves and a poll costs one request.
-- **The config's `appConnectionId` blocks deleting its connection**, deferred like every other product's
-  connection link (`20260603120100_defer-app-connection-fks`) so an org delete is checked at commit. The
-  shared delete names activity logging in its refusal. Freeing the connection means switching it, or
-  detaching it (`appConnectionId: null`, only with recording off), which keeps the bucket and prefix.
-- **A save re-checks the connection whenever it puts it to a new use** (a different connection, bucket,
-  region or prefix, or recording turned on), because the check is what asks whether this caller may use
-  those credentials. Never on a save that only turns recording off, so an unusable connection cannot
-  stop anyone switching it off.
-- **`agent_vault_activity_chunks.proxyId` has no foreign key, deliberately.** It is an input to the
-  encryption AAD, so `SET NULL` on proxy deletion would make every chunk that proxy wrote permanently
-  undecryptable. `proxyName` is denormalised for the same reason.
-- **The AAD is `SHA-256("{projectId}|{sessionId}|{proxyId}|{chunkId}|v1")`**, and the sealed layout is
-  AES-256-GCM with a 12-byte IV and the tag appended. Implemented in the Go proxy and in the browser;
-  Infisical seals and opens nothing, so the reference vector lives in
-  `agent-vault-activity-crypto.test.ts` and both implementations are checked against it.
-- **The write endpoint inserts the row, then returns a presigned PUT.** Row before object, so a failed
-  upload is a visible gap rather than a silent one; re-POSTing the same chunk id replays idempotently.
-  The presign runs after commit: no network under the config row's lock. The PUT is create-only
-  (`If-None-Match: *` signed in), so a replay can finish an upload but never replace a stored chunk; the
-  proxy reads S3's 412 as "already uploaded".
-- **The org ceiling counts chunks, not records** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`, in the
-  activity constants): what costs us is one index row per chunk, and a chunk holds 1 to 1000 records.
-  It is **not customer-facing**: not an env var, not in the docs, the config response reports only
-  `isStorageFull` (which drives the Activity Logs alert, the red nav dot and the Sessions banner), and
-  every message says only that activity logging "has reached its limit" and to contact support.
-  Nothing frees room under it, so an org that reaches it stays there until the constant is raised,
-  which is the point at which somebody should ask why it was reached. At the wall the endpoint refuses
-  rather than dropping the oldest, because drop-oldest is an evidence-eviction primitive. The counter
-  is moved with `UPDATE ... SET x = x + 1`, never read-modify-write.
-- **Infisical never deletes activity.** A session that recorded any is kept for good, because its row
-  holds the key that decrypts it and its chunk rows cascade with it; `pruneRetiredBefore` skips it.
-  Nothing deletes from the customer's bucket either, so the policy asks for no `s3:DeleteObject`, and
-  the save-time write check overwrites one fixed key rather than cleaning up after itself. A customer
-  who wants shorter retention adds an S3 lifecycle rule; the date is in the object key for that.
-- **Changing the bucket or prefix bumps `configVersion` and orphans prior history**, which the UI
-  detects and reports rather than presigning URLs that 404. Swapping the connection or the region does
-  not bump: those leave every object exactly where it is.
-- The Activity Logs surface (storage config plus the product's app connections) is admin-only by
-  `hasRole(Admin)`, as everything else here is. No new CASL subject.
-- **`lastRecordedAt` is a column on the config row, stamped by `recordStoredChunk`** in the same locked
-  UPDATE that counts the chunk, and only when the chunk's `configVersion` is still current. A
-  relocating save clears it, so it never reports a destination as working on the strength of chunks
-  written to the previous one. Stored rather than derived: a `MAX(createdAt)` over chunk rows scanned
-  the project's whole history on every sidebar load.
-- **App connections are the one CASL subject the admin role carries.** Agent Vault holds its own
-  AWS connections alongside the org's, and the shared `AppConnectionsTable` reads
-  `ProjectPermissionSub.AppConnections` off CASL rather than the role, so the grant is what keeps
-  its buttons live. The admin/member split still comes from `hasRole`; the member set grants
-  nothing. `listAppConnectionOptions` offers AWS alone here, so a picker with no allowlist entry
-  renders empty rather than offering apps nothing consumes.
-- **`/agent-vault/app-connections/aws/*` exists because the generic routes take a `projectId` this
-  product has no public one of.** Its handlers inject `internalAgentVaultProjectId` and reuse the
-  shared service, audit and telemetry events verbatim. Every by-id route re-reads the connection and
-  404s unless its `projectId` matches: `findAppConnectionById` authorizes the actor but says nothing
-  about scope, so without that check a delete here would reach an org connection Secret Sync uses.
+- **A customer S3 bucket is required**; there is no Postgres payload path. Infisical stores one index row per
+  chunk (up to 1000 records) and seals or opens nothing; the bytes go proxy to bucket to browser.
+- **Two keys.** The project data key (`KmsDataKey.SecretManager`) wraps a per-session activity key on the
+  session row, and only the session key leaves the backend. It is minted at session create even while logging
+  is off; sessions minted before this shipped have none and never record.
+- **The AAD is `SHA-256("{projectId}|{sessionId}|{proxyId}|{chunkId}|v1")`**, sealed AES-256-GCM with a 12-byte
+  IV and the tag appended. The Go proxy and the browser are both checked against the vector in
+  `agent-vault-activity-crypto.test.ts`. It is also why `agent_vault_activity_chunks.proxyId` has no FK:
+  `SET NULL` would make that proxy's chunks undecryptable.
+- **Size is capped at every hop**: the proxy seals at 4 MiB against the server's 8 MiB, and reads stop at a
+  byte budget as well as a record one. A chunk the server refuses counts as dropped on the next one.
+- **Write inserts the row, commits, then presigns a create-only PUT** (`If-None-Match: *`). Row first so a
+  failed upload is a visible gap, presign after commit so no network runs under the config row lock,
+  create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
+- **History pages order and cursor on `chunkId`** (a ULID, unique per session); split them and pages drop
+  chunks. Live polling reads by our `createdAt` instead (`receivedAfter`, overlapping by
+  `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS`), so repeats are expected and deduped by chunk id.
+- **The org ceiling counts chunks** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`) and is internal: no env var, no
+  docs, and the API reports only `isStorageFull`. At the limit writes are refused, never drop-oldest, which
+  would be an evidence-eviction primitive.
+- **Infisical never deletes activity.** Sessions that recorded any skip the retention prune (their row holds
+  the key), and nothing deletes from the bucket, so the policy asks for no `s3:DeleteObject`.
+- **A save re-checks the connection whenever it puts it to a new use** (connection, bucket, region, prefix, or
+  recording turned on), never on a save that only turns recording off. Changing bucket or prefix bumps
+  `configVersion`, which orphans earlier history.
+- **App connections are the one CASL subject the admin role carries**, because the shared
+  `AppConnectionsTable` reads CASL, not the role. Everything else here is `hasRole(Admin)`.
+- **Every by-id route under `/agent-vault/app-connections/aws/*` 404s unless the connection's `projectId`
+  matches.** `findAppConnectionById` authorizes the actor, not the scope, so without it a delete here could
+  reach an org connection Secret Sync uses.
 
 ## The CLI
 

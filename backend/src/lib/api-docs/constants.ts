@@ -4364,7 +4364,7 @@ export const AGENT_VAULT = {
     createdAt: "When the proxy was registered."
   },
   ACTIVITY: {
-    chunkId: "The ID of the activity chunk, a ULID minted by the proxy. Unique per session and ordered by time.",
+    chunkId: "The ID of the activity chunk, a ULID that is unique per session and sorts by time.",
     proxyId: "The ID of the proxy that recorded the chunk.",
     proxyName: "The name the proxy had when it recorded the chunk.",
     startedAt: "When the first request in the chunk was recorded.",
@@ -4373,9 +4373,9 @@ export const AGENT_VAULT = {
     lastSeq: "The sequence number of the last record in the chunk, counted per proxy.",
     recordCount: "How many records the chunk holds.",
     droppedCount:
-      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused. A gap in the sequence numbers.",
+      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused.",
     configVersion:
-      "The version of the project's storage configuration the chunk was written under. A chunk written under an earlier version lives in a bucket or under a prefix that is no longer configured.",
+      "The version of the storage configuration the chunk was written under. An earlier version means the chunk is in a bucket or prefix that is no longer configured.",
     ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialisation vector, base64 encoded.",
     objectKey: "Where the encrypted chunk lives in the configured bucket.",
@@ -4383,18 +4383,16 @@ export const AGENT_VAULT = {
     presignedGetUrl:
       "A presigned URL to GET the encrypted chunk from. Null when the chunk was written under an earlier storage configuration and is no longer reachable.",
     expiresInSeconds: "How long the presigned URL stays valid.",
-    sessionKey:
-      "The session's activity key, base64 encoded. Decrypts every chunk in this response. Held only for the life of the view.",
+    sessionKey: "The session's activity key, base64 encoded. Decrypts every chunk in this response.",
     nextCursor:
       "Pass as `before` to fetch the next, older page. Null when there are no older chunks, and always null when reading with `receivedAfter`.",
     hasMore:
-      "Whether more chunks are waiting past this response: older ones for a page, or later arrivals when reading with `receivedAfter`, in which case call again straight away with `nextReceivedAfter`.",
+      "Whether more chunks are available: older ones for a page, or later arrivals when reading with `receivedAfter`.",
     nextReceivedAfter:
-      "Pass as `receivedAfter` on the next read. When `hasMore` is false it points a little earlier than this read, so chunks still being written are not missed; when `hasMore` is true it points at the last chunk returned, so the next read carries on from there. Either way the next read can return chunks you already hold, which you drop by `chunkId`.",
+      "Pass as `receivedAfter` on the next read. The next read can return chunks you already hold, so drop repeats by `chunkId`.",
     receivedAfter:
-      "Return the chunks received at or after this time, oldest received first, instead of a page going back through the session. Pass the `nextReceivedAfter` of the previous response. A chunk that arrives late, from a proxy that was offline or whose clock runs behind, still comes back here, where it would sort among old chunks in a page. Cannot be combined with `before`, `from` or `to`.",
-    limit:
-      "Roughly how many activity records to return. Chunks are returned whole, so a page holds at least this many records unless the session has no more, and the count stays comparable whatever the agent's pace.",
+      "Return the chunks received at or after this time, oldest first, instead of a page going back through the session. Pass the `nextReceivedAfter` of the previous response. Cannot be combined with `before`, `from` or `to`.",
+    limit: "Roughly how many activity records to return. Chunks are returned whole, so a page can hold more.",
     from: "Only return chunks holding records at or after this time. A chunk that overlaps the window is included whole.",
     to: "Only return chunks holding records at or before this time. A chunk that overlaps the window is included whole.",
     before: "Return only chunks older than this chunk ID.",
@@ -4406,13 +4404,12 @@ export const AGENT_VAULT = {
     region: "The region the bucket lives in.",
     keyPrefix:
       "An optional prefix every object key is written under. `logs`, `/logs` and `logs/` are all saved as `logs/`. Letters, numbers and `! - _ . * ' ( ) /` only, with no `..` segment, up to 512 characters including the trailing slash.",
-    corsProbeUrl:
-      "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
+    corsProbeUrl: "A presigned URL the browser fetches to check that the bucket allows cross-origin reads.",
     isStorageFull:
       "Whether activity logging has reached its limit for this organization. Contact Infisical support to raise it.",
     hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again.",
     lastRecordedAt:
-      "When a record last landed in the bucket currently configured. Null when nothing has been recorded there yet, including right after the destination changed."
+      "When a record last landed in the currently configured bucket. Null when nothing has been recorded there yet."
   },
   SESSION: {
     sessionId: "The ID of the session.",
