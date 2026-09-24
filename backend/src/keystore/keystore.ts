@@ -19,6 +19,7 @@ export const PgSqlLock = {
   EmailDomainCreationLock: () => pgAdvisoryLockHashText(`org-email-domain-creation`),
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
+  CreateOrganization: (userId: string) => pgAdvisoryLockHashText(`create-organization:${userId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
@@ -69,8 +70,7 @@ export const KeyStorePrefixes = {
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
-  SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
-    `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
+  SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,

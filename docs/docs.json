@@ -717,6 +717,7 @@
                       "documentation/platform/pam/accounts/mongodb",
                       "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/snowflake",
+                      "documentation/platform/pam/accounts/clickhouse",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -1301,6 +1302,9 @@
                     "group": "Core commands",
                     "pages": [
                       "cli/commands/login",
+                      "cli/commands/logout",
+                      "cli/commands/profile",
+                      "cli/commands/org",
                       "cli/commands/init",
                       "cli/commands/run",
                       "cli/commands/secrets",
@@ -1348,9 +1352,13 @@
             "pages": [
               "api-reference/overview/introduction",
               {
-                "group": "Overview",
+                "group": "Get started",
                 "pages": [
-                  "api-reference/overview/authentication"
+                  "api-reference/overview/quickstart",
+                  "api-reference/overview/authentication",
+                  "api-reference/overview/pagination",
+                  "api-reference/overview/rate-limits",
+                  "api-reference/overview/errors"
                 ]
               },
               {
@@ -1392,6 +1400,7 @@
                       "api-reference/endpoints/identities/update",
                       "api-reference/endpoints/identities/delete",
                       "api-reference/endpoints/identities/get-by-id",
+                      "api-reference/endpoints/identities/details",
                       "api-reference/endpoints/identities/list",
                       "api-reference/endpoints/identities/search",
                       "api-reference/endpoints/identities/search-count",
@@ -4456,6 +4465,7 @@
                     "group": "Members",
                     "pages": [
                       "api-reference/endpoints/agent-vault-members/list",
+                      "api-reference/endpoints/agent-vault-members/list-available",
                       "api-reference/endpoints/agent-vault-members/add",
                       "api-reference/endpoints/agent-vault-members/update-role",
                       "api-reference/endpoints/agent-vault-members/revoke"
@@ -4528,6 +4538,12 @@
                     "group": "Admin",
                     "pages": [
                       "api-reference/endpoints/admin/bootstrap-instance"
+                    ]
+                  },
+                  {
+                    "group": "Instance",
+                    "pages": [
+                      "api-reference/endpoints/instance/status"
                     ]
                   }
                 ]

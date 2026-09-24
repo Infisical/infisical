@@ -696,7 +696,13 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: string;
+    deletionAllowedReason: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 

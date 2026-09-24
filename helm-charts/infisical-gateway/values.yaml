@@ -1,6 +1,6 @@
 image:
   repository: infisical/cli
-  tag: "0.43.131"
+  tag: "0.43.134"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
@@ -17,7 +17,7 @@ gateway:
   domain: ""
 
   enrollment:
-    # Enrollment method: "token", "aws", or "kubernetes".
+    # Enrollment method: "token", "aws", "gcp", or "kubernetes".
     # Leave empty to use the legacy machine identity flow (env vars from secret.name).
     method: ""
 
@@ -34,6 +34,17 @@ gateway:
     aws:
       # Required when method=aws. Gateway ID from the Infisical UI.
       gatewayId: ""
+
+    # GCP enrollment settings (method=gcp)
+    gcp:
+      # Required when method=gcp. Gateway ID from the Infisical UI.
+      gatewayId: ""
+      # "gce" reads an identity token from the metadata server (covers GKE workload identity),
+      # "iam" signs one through the IAM Credentials API. Empty means "gce".
+      type: ""
+      # Only for type=iam without workload identity. Path to a service account key file that you
+      # mount into the container with extraVolumes and extraVolumeMounts.
+      serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
     kubernetes:
@@ -63,7 +74,7 @@ gateway:
 
 # Persistent storage for the gateway (credentials and session recordings).
 # Required when enrollment.method=token so credentials survive pod restarts.
-# Optional when enrollment.method=aws or enrollment.method=kubernetes, since both re-authenticate
+# Optional when enrollment.method is aws, gcp or kubernetes, since all three re-authenticate
 # on every start.
 # For legacy machine-identity installs (no enrollment.method), persistence only takes effect
 # when existingClaim is provided.
@@ -136,6 +147,18 @@ extraEnvFrom: []
 # -- Extra arguments appended to the gateway container command
 extraArgs: []
 #  - --log-level=debug
+
+# -- Additional volumes to attach to the gateway pod
+extraVolumes: []
+#  - name: gcp-service-account-key
+#    secret:
+#      secretName: gcp-service-account-key
+
+# -- Additional volume mounts for the gateway container
+extraVolumeMounts: []
+#  - name: gcp-service-account-key
+#    mountPath: /var/secrets/gcp
+#    readOnly: true
 
 # -- Extra Kubernetes manifests to deploy with this chart
 extraObjects: []

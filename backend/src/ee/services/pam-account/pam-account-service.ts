@@ -75,7 +75,9 @@ import {
 } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  ACCOUNT_TYPE_CONFIGS,
   applyForcedFields,
+  gatewaySupportsAccountType,
   getAccountAccessibilityIssues,
   hasRevealableCredential,
   isCredentialConfigured,
@@ -87,6 +89,7 @@ import {
   sanitizeCredentials,
   suppliesCredentialSecret,
   type TSshInternalMetadata,
+  type TSupportedAccountType,
   validateConnectionDetails,
   validateCredentials
 } from "./pam-account-schemas";
@@ -614,9 +617,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return true;
     }
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
-    if (!test) return false;
-
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: effectiveGatewayId,
@@ -626,6 +626,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (!gatewayId) {
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
+
+    const attachedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
+    const capabilities = attachedGateway?.capabilities as { supported_account_types?: string[] } | null;
+    if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types)) {
+      throw new BadRequestError({
+        message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ${ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType].name} accounts. Update the gateway, then try again.`
+      });
+    }
+
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
+    if (!test) return false;
 
     const result = await testConnectionWithGateway(
       test.host,

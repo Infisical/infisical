@@ -56,12 +56,14 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretImportSecretRow } from "./SecretImportSecretRow";
 
 type ImportedSecretData = {
@@ -90,6 +92,8 @@ type Props = {
   index: number;
   secretImport?: TSecretImport;
   isVisible?: boolean;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 export const SecretImportTableRow = ({
@@ -106,7 +110,9 @@ export const SecretImportTableRow = ({
   importedSecrets,
   index,
   secretImport,
-  isVisible
+  isVisible,
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
@@ -259,6 +265,17 @@ export const SecretImportTableRow = ({
       }
     }
   }, [searchFilter, filteredImportedSecrets.length]);
+
+  useEffect(() => {
+    onActivityChange(activityId, isExpanded);
+  }, [activityId, isExpanded, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   useEffect(() => {
     if (
@@ -753,7 +770,12 @@ export const SecretImportTableRow = ({
       <TableRow
         ref={isSingleEnvView ? (sortableRef as React.Ref<HTMLTableRowElement>) : undefined}
         onClick={handleRowClick}
-        className={twMerge(groupClassName, "hover:z-10", isDragging && "opacity-50")}
+        className={twMerge(
+          groupClassName,
+          "hover:z-10",
+          isExpanded && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+          isDragging && "opacity-50"
+        )}
         {...rowHoverProps}
       >
         <TableCell
@@ -881,7 +903,10 @@ export const SecretImportTableRow = ({
       {isExpanded &&
         !isAnyDragging &&
         (isSingleEnvView ? (
-          <TableRow key={`expanded-import-row-${index}`} className="border-0 hover:bg-transparent">
+          <TableRow
+            key={`expanded-import-row-${index}`}
+            className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+          >
             <TableCell colSpan={totalCols} className="border-0 p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
@@ -892,7 +917,9 @@ export const SecretImportTableRow = ({
             </TableCell>
           </TableRow>
         ) : (
-          <TableRow className="border-0 hover:bg-transparent">
+          <TableRow
+            className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+          >
             <TableCell colSpan={totalCols} className="border-0 p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
