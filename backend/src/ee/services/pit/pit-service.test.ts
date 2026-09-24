@@ -19,7 +19,7 @@ const buildService = ({ commitFolderId = "folder-1" }: { commitFolderId?: string
       fromVersion: "1"
     }
   ]);
-  const findEnv = vi.fn().mockResolvedValue({ id: "env-prod" });
+  const findEnv = vi.fn().mockResolvedValue({ id: "env-prod", slug: "prod" });
   const service = pitServiceFactory({
     folderCommitService: {
       getLatestCommit: vi.fn().mockResolvedValue({ id: "latest-commit" }),
@@ -46,7 +46,7 @@ describe("compareCommitChanges", () => {
   test("checks secret versions against the absolute path of the commit's folder", async () => {
     const { service, getChangeVersions } = buildService();
 
-    const diffs = await service.compareCommitChanges({
+    const { diffs } = await service.compareCommitChanges({
       actor: ActorType.USER,
       actorId: "user-1",
       actorOrgId: "org-1",
@@ -75,10 +75,10 @@ describe("compareCommitChanges", () => {
     expect(diffs[0]?.folderPath).toBe("/app/backend");
   });
 
-  test("resolves the environment from the commit", async () => {
+  test("resolves the environment and folder path from the commit", async () => {
     const { service, findEnv } = buildService();
 
-    await service.compareCommitChanges({
+    const { environment, folderPath } = await service.compareCommitChanges({
       actor: ActorType.USER,
       actorId: "user-1",
       actorOrgId: "org-1",
@@ -90,6 +90,8 @@ describe("compareCommitChanges", () => {
     });
 
     expect(findEnv).toHaveBeenCalledWith({ projectId: "project-1", id: "env-prod" });
+    expect(environment).toBe("prod");
+    expect(folderPath).toBe("/app/backend");
   });
 
   test("rejects a commit that belongs to a different folder", async () => {

@@ -298,6 +298,14 @@ export const pitServiceFactory = ({
       throw new NotFoundError({ message: "Latest commit not found" });
     }
 
+    const folderData = await folderService.getFolderById({
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      id: folderId
+    });
+
     let diffs;
     if (deepRollback) {
       diffs = await folderCommitService.deepCompareFolder({
@@ -306,14 +314,6 @@ export const pitServiceFactory = ({
         projectId
       });
     } else {
-      const folderData = await folderService.getFolderById({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        id: folderId
-      });
-
       diffs = [
         {
           folderId: folderData.id,
@@ -360,7 +360,7 @@ export const pitServiceFactory = ({
       }
     }
 
-    return diffs;
+    return { diffs, environment: env.slug, folderPath: folderData.path };
   };
 
   const rollbackToCommit = async ({
