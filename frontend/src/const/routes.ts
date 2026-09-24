@@ -421,6 +421,7 @@ export const ROUTE_PATHS = Object.freeze({
     )
   },
   Public: {
+    ShareSecretPage: setRoute("/shared/new", "/shared/new"),
     ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId"),
     ViewSecretRequestByIDPage: setRoute(
       "/secret-request/secret/$secretRequestId",
