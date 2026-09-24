@@ -1,25 +1,39 @@
 import { Controller, useForm } from "react-hook-form";
-import { faCopy, faInfoCircle, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleHelpIcon, CopyIcon, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
-  FormLabel,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
   Input,
-  Modal,
-  ModalClose,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
-import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import {
+  certKeyAlgorithms,
+  certKeyAlgorithmToNameMap,
+  isPqcAlgorithm
+} from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGenerateKmipClientCertificate } from "@app/hooks/api/kmip";
 import { KmipClientCertificate, TKmipClient } from "@app/hooks/api/kmip/types";
@@ -119,45 +133,44 @@ const KmipClientCertificateForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleKmipClientSubmit)}>
+    <form onSubmit={handleSubmit(handleKmipClientSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
         name="requestMethod"
         render={({ field: { onChange, value } }) => (
-          <FormControl
-            label={
-              <FormLabel
-                label="Request Method"
-                icon={
-                  <Tooltip
-                    content={
-                      <div className="space-y-2">
-                        <p>
-                          <strong>Managed:</strong> Infisical generates and manages the private key
-                          for you.
-                        </p>
-                        <p>
-                          <strong>CSR:</strong> Provide your own Certificate Signing Request. Use
-                          this when your device (e.g., Dell iDRAC) generates its own private key.
-                        </p>
-                      </div>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              />
-            }
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => onChange(val as RequestMethod)}
-              className="w-full"
-            >
-              <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
-              <SelectItem value={RequestMethod.CSR}>Certificate Signing Request (CSR)</SelectItem>
+          <Field>
+            <div className="flex items-center gap-2">
+              <FieldLabel htmlFor="kmip-cert-method">Request Method</FieldLabel>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="About request methods">
+                    <CircleHelpIcon className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="max-w-72 space-y-2">
+                    <p>
+                      <strong>Managed:</strong> Infisical generates and manages the private key for
+                      you.
+                    </p>
+                    <p>
+                      <strong>CSR:</strong> Provide your own Certificate Signing Request. Use this
+                      when your device (e.g., Dell iDRAC) generates its own private key.
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Select value={value} onValueChange={(val) => onChange(val as RequestMethod)}>
+              <SelectTrigger id="kmip-cert-method" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
+                <SelectItem value={RequestMethod.CSR}>Certificate Signing Request (CSR)</SelectItem>
+              </SelectContent>
             </Select>
-          </FormControl>
+          </Field>
         )}
       />
 
@@ -165,9 +178,22 @@ const KmipClientCertificateForm = ({
         control={control}
         name="ttl"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="TTL" isError={Boolean(error)} errorText={error?.message} isRequired>
-            <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-          </FormControl>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="kmip-cert-ttl">
+              TTL{" "}
+              <span aria-hidden className="text-danger">
+                *
+              </span>
+            </FieldLabel>
+            <Input
+              {...field}
+              id="kmip-cert-ttl"
+              placeholder="2 days, 1d, 2h, 1y, ..."
+              aria-required
+              isError={Boolean(error)}
+            />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
 
@@ -176,28 +202,28 @@ const KmipClientCertificateForm = ({
           control={control}
           name="keyAlgorithm"
           defaultValue={CertKeyAlgorithm.RSA_2048}
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-            <FormControl
-              label="Key Algorithm"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              helperText="This defines the key algorithm to use for signing the client certificate."
-            >
-              <Select
-                defaultValue={field.value}
-                {...field}
-                onValueChange={(e) => onChange(e)}
-                className="w-full"
-              >
-                {certKeyAlgorithms
-                  .filter(({ value }) => !isPqcAlgorithm(value))
-                  .map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
-                    </SelectItem>
-                  ))}
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="kmip-cert-algorithm">Key Algorithm</FieldLabel>
+              <Select value={value} onValueChange={onChange}>
+                <SelectTrigger id="kmip-cert-algorithm" className="w-full" isError={Boolean(error)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {certKeyAlgorithms
+                    .filter(({ value: algorithm }) => !isPqcAlgorithm(algorithm))
+                    .map(({ label, value: algorithm }) => (
+                      <SelectItem value={String(algorithm || "")} key={label}>
+                        {certKeyAlgorithmToNameMap[algorithm] || label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldDescription>
+                This defines the key algorithm used to sign the client certificate.
+              </FieldDescription>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
       )}
@@ -208,14 +234,18 @@ const KmipClientCertificateForm = ({
             control={control}
             name="csr"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Certificate Signing Request (CSR)"
-                isRequired
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-cert-csr">
+                  Certificate Signing Request (CSR){" "}
+                  <span aria-hidden className="text-danger">
+                    *
+                  </span>
+                </FieldLabel>
                 <TextArea
                   {...field}
+                  id="kmip-cert-csr"
+                  aria-required
+                  isError={Boolean(error)}
                   spellCheck={false}
                   placeholder={
                     "-----BEGIN CERTIFICATE REQUEST-----\n" +
@@ -225,14 +255,15 @@ const KmipClientCertificateForm = ({
                   rows={8}
                   className="w-full font-mono text-xs"
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
 
           {kmipClient && (
-            <div className="mt-4 rounded-md border border-border-control bg-surface-hover p-4">
-              <div className="mb-3 flex items-center text-sm font-medium text-foreground-secondary">
-                <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
+            <div className="rounded-md border border-border bg-container p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+                <InfoIcon className="size-4" />
                 Certificate Subject Values
               </div>
               <p className="mb-3 text-xs text-label">
@@ -241,32 +272,38 @@ const KmipClientCertificateForm = ({
                 below.
               </p>
               <div className="space-y-2">
-                <div className="flex items-center justify-between rounded bg-surface-active px-3 py-2">
+                <div className="flex items-center justify-between gap-2 rounded bg-card px-3 py-2">
                   <div>
                     <div className="text-xs text-muted">CN (Common Name) = KMIP Client ID</div>
-                    <div className="font-mono text-sm text-foreground">{kmipClient.id}</div>
+                    <div className="font-mono text-sm break-all text-foreground">
+                      {kmipClient.id}
+                    </div>
                   </div>
                   <IconButton
-                    ariaLabel="Copy Client ID"
-                    variant="plain"
+                    aria-label="Copy Client ID"
+                    variant="ghost"
                     size="sm"
+                    type="button"
                     onClick={() => handleCopyToClipboard(kmipClient.id, "Client ID")}
                   >
-                    <FontAwesomeIcon icon={faCopy} />
+                    <CopyIcon />
                   </IconButton>
                 </div>
-                <div className="flex items-center justify-between rounded bg-surface-active px-3 py-2">
+                <div className="flex items-center justify-between gap-2 rounded bg-card px-3 py-2">
                   <div>
                     <div className="text-xs text-muted">OU (Organizational Unit) = Project ID</div>
-                    <div className="font-mono text-sm text-foreground">{kmipClient.projectId}</div>
+                    <div className="font-mono text-sm break-all text-foreground">
+                      {kmipClient.projectId}
+                    </div>
                   </div>
                   <IconButton
-                    ariaLabel="Copy Project ID"
-                    variant="plain"
+                    aria-label="Copy Project ID"
+                    variant="ghost"
                     size="sm"
+                    type="button"
                     onClick={() => handleCopyToClipboard(kmipClient.projectId, "Project ID")}
                   >
-                    <FontAwesomeIcon icon={faCopy} />
+                    <CopyIcon />
                   </IconButton>
                 </div>
               </div>
@@ -279,22 +316,16 @@ const KmipClientCertificateForm = ({
         </>
       )}
 
-      <div className="mt-8 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {requestMethod === RequestMethod.CSR ? "Sign Certificate" : "Generate Certificate"}
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
             Cancel
           </Button>
-        </ModalClose>
-      </div>
+        </DialogClose>
+        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {requestMethod === RequestMethod.CSR ? "Sign Certificate" : "Generate Certificate"}
+        </Button>
+      </DialogFooter>
     </form>
   );
 };
@@ -306,14 +337,23 @@ export const CreateKmipClientCertificateModal = ({
   displayNewClientCertificate
 }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="KMIP client certificate">
-        <KmipClientCertificateForm
-          onComplete={() => onOpenChange(false)}
-          displayNewClientCertificate={displayNewClientCertificate}
-          kmipClient={kmipClient}
-        />
-      </ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>KMIP Client Certificate</DialogTitle>
+          <DialogDescription>
+            Generate a private key or sign a certificate signing request for this client.
+          </DialogDescription>
+        </DialogHeader>
+        {isOpen && (
+          <KmipClientCertificateForm
+            key={kmipClient?.id}
+            onComplete={() => onOpenChange(false)}
+            displayNewClientCertificate={displayNewClientCertificate}
+            kmipClient={kmipClient}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
