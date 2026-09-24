@@ -50,6 +50,7 @@ import {
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
+  GATEWAY_IDENTITY_URI_PREFIX,
   GATEWAY_ROUTING_INFO_OID,
   GatewayTransport,
   PAM_INFO_OID
@@ -720,7 +721,8 @@ export const gatewayV2ServiceFactory = ({
     const subjectAlternativeNames: x509.JsonGeneralName[] = [
       { type: "dns", value: "localhost" },
       { type: "ip", value: "127.0.0.1" },
-      { type: "ip", value: "::1" }
+      { type: "ip", value: "::1" },
+      { type: "url", value: `${GATEWAY_IDENTITY_URI_PREFIX}${gateway.id}` }
     ];
     if (gateway.directAddress) {
       const { host } = parseDirectAddress(gateway.directAddress);

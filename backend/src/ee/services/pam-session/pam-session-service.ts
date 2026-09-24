@@ -782,6 +782,7 @@ export const pamSessionServiceFactory = ({
       metadata,
       sessionDurationMs,
       accessMethod: PamAccessMethod.Cli,
+      gatewayId: certs.gatewayId,
       relayHost: certs.relayHost,
       directAddress: certs.directAddress,
       relayClientCertificate: certs.relay?.clientCertificate,

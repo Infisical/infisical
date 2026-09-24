@@ -3,6 +3,7 @@ import tls from "node:tls";
 
 import forge from "node-forge";
 
+import { GATEWAY_IDENTITY_URI_PREFIX } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 
 import { setupGatewayProxy } from "./gateway-v2";
@@ -96,16 +97,20 @@ type TFakeRelay = {
  * carries a second, inner TLS server. That nesting is the part under test, because a tunnel is only
  * "open" from the gateway's point of view once the inner handshake completes.
  */
-const startFakeRelay = async (): Promise<TFakeRelay> => {
+const startFakeRelay = async ({ gatewayIdentity }: { gatewayIdentity?: string } = {}): Promise<TFakeRelay> => {
   const port = await freePort();
   const relayHost = `127.0.0.1:${port}`;
-  const serverCert = issue({
-    subject: "relay",
-    altNames: [
-      { type: 2, value: "127.0.0.1" },
-      { type: 7, ip: "127.0.0.1" }
-    ]
-  });
+  const altNames: TAltName[] = [
+    { type: 2, value: "127.0.0.1" },
+    { type: 7, ip: "127.0.0.1" }
+  ];
+  const serverCert = issue({ subject: "relay", altNames });
+  const gatewayCert = gatewayIdentity
+    ? issue({
+        subject: "gateway",
+        altNames: [...altNames, { type: 6, value: `${GATEWAY_IDENTITY_URI_PREFIX}${gatewayIdentity}` }]
+      })
+    : serverCert;
 
   let opened = 0;
   let closed = 0;
@@ -119,7 +124,7 @@ const startFakeRelay = async (): Promise<TFakeRelay> => {
       const inner = new tls.TLSSocket(outer, {
         isServer: true,
         key: keyPem,
-        cert: serverCert,
+        cert: gatewayCert,
         ca: caPem,
         requestCert: true,
         rejectUnauthorized: false,
@@ -306,6 +311,41 @@ describe("setupGatewayProxy", () => {
       await expect(connectAndEcho(server.port)).resolves.toBe("ping");
       await server.cleanup();
 
+      await drainChannels(1);
+    });
+  });
+
+  describe("verifying which gateway answered", () => {
+    let relay: TFakeRelay | undefined;
+
+    afterEach(async () => {
+      await relay?.close();
+      relay = undefined;
+    });
+
+    test("accepts the gateway its certificate names", async () => {
+      relay = await startFakeRelay({ gatewayIdentity: GATEWAY_ID });
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      await expect(connectAndEcho(server.port)).resolves.toBe("ping");
+
+      await server.cleanup();
+      await drainChannels(1);
+    });
+
+    test("rejects a gateway whose certificate names a different gateway", async () => {
+      relay = await startFakeRelay({ gatewayIdentity: "22222222-2222-2222-2222-222222222222" });
+      await expect(setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true })).rejects.toThrow(
+        `The connection reached a gateway other than '${GATEWAY_ID}'`
+      );
+      expect(tracker.channelOpened).not.toHaveBeenCalled();
+    });
+
+    test("still accepts a certificate issued before gateway identities existed", async () => {
+      relay = await startFakeRelay();
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      await expect(connectAndEcho(server.port)).resolves.toBe("ping");
+
+      await server.cleanup();
       await drainChannels(1);
     });
   });
