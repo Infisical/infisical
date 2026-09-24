@@ -4,6 +4,7 @@ import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertTriangleIcon,
+  CircleHelpIcon,
   InfoIcon,
   PlusIcon,
   TrashIcon,
@@ -408,7 +409,7 @@ export const CreateSecretForm = ({
       onSubmit={submitForm}
       onKeyDown={handleFormKeyDown}
       noValidate
-      className="flex flex-1 flex-col overflow-hidden"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
         {secretFields.map((secretField, index) => {
@@ -497,7 +498,7 @@ export const CreateSecretForm = ({
                 name={`secrets.${index}.value`}
                 render={({ field }) => (
                   <Field className="grid grid-cols-[1fr_auto]">
-                    <div className="flex items-center">
+                    <div className="flex items-end">
                       <FieldLabel htmlFor={`create-secret-${index}-value`}>
                         Value
                         <Tooltip>
@@ -525,7 +526,7 @@ export const CreateSecretForm = ({
                     <div className="col-start-2 row-start-1 flex items-center">
                       <PasswordGenerator
                         trigger={
-                          <Button variant="neutral" size="xs">
+                          <Button variant="ghost" size="xs">
                             Generate
                           </Button>
                         }
@@ -623,12 +624,29 @@ export const CreateSecretForm = ({
                         name={`secrets.${index}.skipMultilineEncoding`}
                         render={({ field }) => (
                           <Field orientation="horizontal">
-                            <FieldLabel
-                              htmlFor={`create-secret-${index}-multiline-encoding`}
-                              className="cursor-pointer"
-                            >
-                              Enable Multiline Encoding
-                            </FieldLabel>
+                            <div className="flex flex-1 items-center gap-1.5">
+                              <FieldLabel
+                                htmlFor={`create-secret-${index}-multiline-encoding`}
+                                className="cursor-pointer"
+                              >
+                                Enable Multiline Encoding
+                              </FieldLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label="About multiline encoding"
+                                    className="text-muted hover:text-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                                  >
+                                    <CircleHelpIcon className="size-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  When enabled, newlines in secret values are escaped as \n for
+                                  environment variable output.
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
                             <Toggle
                               id={`create-secret-${index}-multiline-encoding`}
                               variant="project"
@@ -645,34 +663,9 @@ export const CreateSecretForm = ({
                           <FieldContent>
                             <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4">
                               {metadata.length === 0 && (
-                                <div className="flex flex-col items-center gap-2 py-2">
-                                  <p className="text-center text-sm text-muted">
-                                    No metadata entries.
-                                  </p>
-                                  <Button
-                                    variant="ghost"
-                                    size="xs"
-                                    type="button"
-                                    onClick={() =>
-                                      setValue(
-                                        `secrets.${index}.metadata`,
-                                        [
-                                          {
-                                            id: crypto.randomUUID(),
-                                            key: "",
-                                            value: "",
-                                            isEncrypted:
-                                              currentProject?.enforceEncryptedSecretManagerSecretMetadata ??
-                                              false
-                                          }
-                                        ],
-                                        { shouldDirty: true }
-                                      )
-                                    }
-                                  >
-                                    <PlusIcon className="size-4" /> Add Entry
-                                  </Button>
-                                </div>
+                                <p className="py-2 text-center text-sm text-muted">
+                                  No metadata entries.
+                                </p>
                               )}
                               {metadata.map((metadataEntry, metadataIndex) => (
                                 <div key={metadataEntry.id} className="flex items-start gap-3">
@@ -785,14 +778,11 @@ export const CreateSecretForm = ({
                                   </IconButton>
                                 </div>
                               ))}
-                            </div>
-
-                            {metadata.length > 0 && (
                               <Button
                                 variant="ghost"
                                 size="xs"
                                 type="button"
-                                className="mt-2"
+                                className={metadata.length === 0 ? "mx-auto" : ""}
                                 onClick={() =>
                                   setValue(
                                     `secrets.${index}.metadata`,
@@ -814,7 +804,7 @@ export const CreateSecretForm = ({
                                 <PlusIcon className="mr-1 size-4" />
                                 Add Entry
                               </Button>
-                            )}
+                            </div>
                             <FieldDescription>
                               Encrypted Metadata will not be searchable via the UI or API.
                             </FieldDescription>
