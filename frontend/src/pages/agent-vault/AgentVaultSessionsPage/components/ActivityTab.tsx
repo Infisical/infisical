@@ -133,6 +133,8 @@ export const ActivityTab = ({ session }: Props) => {
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
+  // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
   const canAddService = isAdmin && Boolean(accessBundle?.id);
   const [serviceHost, setServiceHost] = useState<string | null>(null);
