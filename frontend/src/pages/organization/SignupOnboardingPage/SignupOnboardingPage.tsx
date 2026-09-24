@@ -49,8 +49,6 @@ export const SignupOnboardingPage = () => {
     Partial<Record<SignupProductType, Project>>
   >({});
 
-  // A CLI login is waiting on the select-org page's token handoff, which also covers MFA; the
-  // agent driving the CLI sets up projects itself, so workspace setup is skipped.
   const handOffToCli = (targetOrgId: string) =>
     navigate({
       to: "/login/select-organization",
