@@ -200,7 +200,7 @@ export const CreateSecretForm = ({
     () => projectTags?.map((el) => ({ label: el.slug, value: el.id })) ?? [],
     [projectTags]
   );
-  const [tagSearches, setTagSearches] = useState<Record<number, string>>({});
+  const [tagSearches, setTagSearches] = useState<Record<string, string>>({});
 
   const secretKeyInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const selectedEnvironments = watch("environments");
@@ -374,7 +374,7 @@ export const CreateSecretForm = ({
 
   const createWsTag = useCreateWsTag();
 
-  const createNewTag = async (slug: string, index: number) => {
+  const createNewTag = async (slug: string, index: number, secretFieldId: string) => {
     if (!canCreateTags) return;
     const parsedSlug = slugSchema().safeParse(slug);
     if (!parsedSlug.success) return;
@@ -387,7 +387,7 @@ export const CreateSecretForm = ({
     setValue(`secrets.${index}.tags`, [...currentTags, { label: newTag.slug, value: newTag.id }], {
       shouldDirty: true
     });
-    setTagSearches((current) => ({ ...current, [index]: "" }));
+    setTagSearches((current) => ({ ...current, [secretFieldId]: "" }));
   };
 
   const submitForm = handleSubmit(handleFormSubmit);
@@ -414,7 +414,7 @@ export const CreateSecretForm = ({
         {secretFields.map((secretField, index) => {
           const secretKey = watch(`secrets.${index}.key`);
           const metadata = watch(`secrets.${index}.metadata`) ?? [];
-          const tagSlug = tagSearches[index]?.trim() ?? "";
+          const tagSlug = tagSearches[secretField.id]?.trim() ?? "";
           const canCreateTag =
             canCreateTags &&
             slugSchema().safeParse(tagSlug).success &&
@@ -586,7 +586,10 @@ export const CreateSecretForm = ({
                                   value={field.value ?? []}
                                   onValueChange={field.onChange}
                                   onInputValueChange={(search) =>
-                                    setTagSearches((current) => ({ ...current, [index]: search }))
+                                    setTagSearches((current) => ({
+                                      ...current,
+                                      [secretField.id]: search
+                                    }))
                                   }
                                   getOptionLabel={(option) => option.label}
                                   getOptionValue={(option) => option.value}
@@ -601,7 +604,7 @@ export const CreateSecretForm = ({
                                         variant="ghost"
                                         size="sm"
                                         className="w-full justify-start"
-                                        onClick={() => createNewTag(tagSlug, index)}
+                                        onClick={() => createNewTag(tagSlug, index, secretField.id)}
                                       >
                                         <PlusIcon className="size-3" />
                                         Create tag &ldquo;{tagSlug}&rdquo;
