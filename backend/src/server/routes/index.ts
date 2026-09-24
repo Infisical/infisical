@@ -3721,7 +3721,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    pkiAlertV2Queue
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
