@@ -15,6 +15,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.uuid("appConnectionId");
       t.foreign("appConnectionId").references("id").inTable(TableName.AppConnection).deferrable("deferred");
+      t.index(["appConnectionId"]);
 
       t.string("bucket", 255);
       t.string("region", 32);
