@@ -88,7 +88,7 @@ export const KmipClientCertificateModal = ({ isOpen, onOpenChange, certificate }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>KMIP Client Certificate</DialogTitle>
         </DialogHeader>

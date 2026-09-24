@@ -253,7 +253,7 @@ const KmipClientCertificateForm = ({
                     "-----END CERTIFICATE REQUEST-----"
                   }
                   rows={8}
-                  className="w-full font-mono text-xs"
+                  className="font-mono"
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>
@@ -338,7 +338,7 @@ export const CreateKmipClientCertificateModal = ({
 }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>KMIP Client Certificate</DialogTitle>
           <DialogDescription>

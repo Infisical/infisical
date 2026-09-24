@@ -136,7 +136,6 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
         <FieldLabel htmlFor="kmip-client-description">Description (optional)</FieldLabel>
         <TextArea
           id="kmip-client-description"
-          className="min-h-32"
           {...register("description")}
           isError={Boolean(errors.description)}
         />
@@ -201,7 +200,7 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
 export const KmipClientModal = ({ isOpen, onOpenChange, kmipClient }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{kmipClient ? "Update" : "Add"} KMIP Client</DialogTitle>
           <DialogDescription>
