@@ -255,8 +255,7 @@ export const pitServiceFactory = ({
     commitId,
     folderId,
     environment,
-    deepRollback,
-    secretPath
+    deepRollback
   }: {
     actor: ActorType;
     actorId: string;
@@ -316,7 +315,7 @@ export const pitServiceFactory = ({
         {
           folderId: folderData.id,
           folderName: folderData.name,
-          folderPath: secretPath,
+          folderPath: folderData.path,
           changes: await folderCommitService.compareFolderStates({
             targetCommitId: commitId,
             currentCommitId: latestCommit.id
