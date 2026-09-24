@@ -110,7 +110,18 @@ describe("the settings patch", () => {
     expect(AgentVaultActivityConfigUpdateSchema.safeParse({ region: "moon-base-1" }).success).toBe(false);
   });
 
-  test("rejects a bucket name that could not be one", () => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ bucket: "ab" }).success).toBe(false);
+  test.each([
+    { value: "ab", why: "shorter than 3 characters" },
+    { value: "a".repeat(64), why: "longer than 63 characters" },
+    { value: "My-Bucket", why: "uppercase letters" },
+    { value: "my_bucket", why: "an underscore" },
+    { value: "-bucket", why: "a leading hyphen" },
+    { value: "bucket.", why: "a trailing dot" }
+  ])("rejects a bucket name with $why", ({ value }) => {
+    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ bucket: value }).success).toBe(false);
+  });
+
+  test.each(["activity-bucket", "a.b-c", "a".repeat(63)])("accepts the bucket name %s", (bucket) => {
+    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ bucket }).success).toBe(true);
   });
 });

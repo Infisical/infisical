@@ -51,6 +51,8 @@ const CREATE_CONNECTION = "_create";
 
 const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
+const S3_BUCKET_NAME = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+
 const normalizePrefix = (value: string | null | undefined) => {
   const trimmed = (value ?? "").trim().replace(/^\/+|\/+$/g, "");
   return trimmed ? `${trimmed}/` : "";
@@ -87,11 +89,12 @@ const buildSchema = (hasSavedBucket: boolean) =>
         });
       } else if (length === 0 && values.enabled) {
         ctx.addIssue({ code: "custom", path: ["bucket"], message: "Recording needs a bucket" });
-      } else if (length > 0 && length < 3) {
+      } else if (length > 0 && !S3_BUCKET_NAME.test(values.bucket)) {
         ctx.addIssue({
           code: "custom",
           path: ["bucket"],
-          message: "Bucket names are at least 3 characters"
+          message:
+            "Use 3 to 63 lowercase letters, numbers, dots or hyphens, starting and ending with a letter or number"
         });
       }
     });
@@ -159,7 +162,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
   const typedBucket = bucket.trim();
   const willRelocate =
     Boolean(data?.config.bucket) &&
-    ((typedBucket.length >= 3 && typedBucket !== data?.config.bucket) ||
+    ((S3_BUCKET_NAME.test(typedBucket) && typedBucket !== data?.config.bucket) ||
       normalizePrefix(keyPrefix) !== normalizePrefix(data?.config.keyPrefix));
 
   const onSubmit = async (values: FormData) => {

@@ -14,6 +14,9 @@ import {
 } from "./agent-vault-activity-constants";
 import { normalizeKeyPrefix } from "./agent-vault-activity-storage";
 
+const BUCKET_NAME_RULE =
+  "Must be 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number";
+
 const IvSchema = z
   .string()
   .regex(/^[A-Za-z0-9+/]{16}$/, "Must be 12 bytes of unpadded base64")
@@ -118,7 +121,12 @@ export const AgentVaultActivityConfigUpdateSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.configEnabled),
     appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.ACTIVITY.appConnectionId),
-    bucket: z.string().trim().min(3).max(255).describe(AGENT_VAULT.ACTIVITY.bucket),
+    bucket: z
+      .string()
+      .trim()
+      .max(63, BUCKET_NAME_RULE)
+      .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, BUCKET_NAME_RULE)
+      .describe(AGENT_VAULT.ACTIVITY.bucket),
     region: z.nativeEnum(AWSRegion).describe(AGENT_VAULT.ACTIVITY.region),
     keyPrefix: z
       .string()
