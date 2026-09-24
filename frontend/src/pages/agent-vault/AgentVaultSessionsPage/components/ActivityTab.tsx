@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { AlertTriangleIcon, SearchIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Alert,
   AlertAction,
@@ -645,7 +646,8 @@ export const ActivityTab = ({ session }: Props) => {
                   )}
                   <TableCell className="font-mono text-xs">{record.method}</TableCell>
                   <TableCell>
-                    <span className="flex items-center gap-1 text-sm">
+                    <span className="flex items-center gap-2 text-sm">
+                      <ServiceIcon hostPattern={record.host} />
                       {record.host}
                       {!bundleHosts.has(record.host) && (
                         <Tooltip>
