@@ -15,7 +15,10 @@ type TPkiAlertV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
   pkiAlertV2Service: Pick<TPkiAlertV2ServiceFactory, "sendAlertNotifications" | "sendEventNotifications">;
-  pkiAlertV2DAL: Pick<TPkiAlertV2DALFactory, "findByProjectId" | "findMatchingCertificates" | "getDistinctProjectIds">;
+  pkiAlertV2DAL: Pick<
+    TPkiAlertV2DALFactory,
+    "findByProjectId" | "findMatchingCertificates" | "getDistinctProjectIds" | "primaryNode"
+  >;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "findRecentlyAlertedCertificates">;
 };
 
@@ -208,10 +211,14 @@ export const pkiAlertV2QueueServiceFactory = ({
   }) => {
     const { certificateId, projectId, eventType, applicationId } = payload;
 
-    const alerts = await pkiAlertV2DAL.findByProjectId(projectId, {
-      eventType,
-      enabled: true
-    });
+    const alerts = await pkiAlertV2DAL.findByProjectId(
+      projectId,
+      {
+        eventType,
+        enabled: true
+      },
+      pkiAlertV2DAL.primaryNode()
+    );
 
     if (alerts.length === 0) return;
 
@@ -221,11 +228,18 @@ export const pkiAlertV2QueueServiceFactory = ({
 
     for (const alert of matchingAlerts) {
       try {
-        await pkiAlertV2Service.sendEventNotifications(alert.id, [certificateId], eventType);
-        logger.info(
-          { alertId: alert.id, alertName: alert.name, certificateId, eventType },
-          "Sent PKI event notification"
-        );
+        const result = await pkiAlertV2Service.sendEventNotifications(alert.id, [certificateId], eventType);
+        if (result.sent) {
+          logger.info(
+            { alertId: alert.id, alertName: alert.name, certificateId, eventType },
+            "Sent PKI event notification"
+          );
+        } else {
+          logger.info(
+            { alertId: alert.id, alertName: alert.name, certificateId, eventType, reason: result.reason },
+            "Skipped PKI event notification"
+          );
+        }
       } catch (error) {
         logger.error({ alertId: alert.id, certificateId, eventType, error }, "Failed to process PKI event alert");
       }

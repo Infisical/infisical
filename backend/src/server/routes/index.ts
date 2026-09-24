@@ -3563,7 +3563,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     licenseService,
     telemetryService,
-    keyStore
+    keyStore,
+    pkiAlertV2Queue
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3798,7 +3799,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     digicertFns: digicertCaFns,
     projectDAL,
-    telemetryService
+    telemetryService,
+    pkiAlertV2Queue
   });
 
   const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
@@ -3821,7 +3823,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     godaddyFns: godaddyCaFns,
     projectDAL,
-    telemetryService
+    telemetryService,
+    pkiAlertV2Queue
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
