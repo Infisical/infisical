@@ -569,7 +569,7 @@ export const netScalerPkiSyncFactory = ({
           }
 
           if (canRemoveCertificates) {
-            const certKeysToRemove = new Set<string>();
+            const removalCandidates = new Set<string>();
 
             for (const syncRecord of existingSyncRecords) {
               if (
@@ -577,29 +577,25 @@ export const netScalerPkiSyncFactory = ({
                 !activeExternalIdentifiers.has(syncRecord.externalIdentifier) &&
                 existingCertKeyNames.has(syncRecord.externalIdentifier)
               ) {
-                certKeysToRemove.add(syncRecord.externalIdentifier);
+                removalCandidates.add(syncRecord.externalIdentifier);
               }
             }
 
             if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
               const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
 
-              const patternCandidates = [...existingCertKeyNames].filter(
-                (certKeyName) =>
-                  managedCertNamePattern.test(certKeyName) &&
-                  !activeExternalIdentifiers.has(certKeyName) &&
-                  !certKeysToRemove.has(certKeyName)
-              );
-              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
-                patternCandidates,
-                pkiSync.id
-              );
-              for (const certKeyName of patternCandidates) {
-                if (!ownedByOtherSync.has(certKeyName)) {
-                  certKeysToRemove.add(certKeyName);
+              for (const certKeyName of existingCertKeyNames) {
+                if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
+                  removalCandidates.add(certKeyName);
                 }
               }
             }
+
+            const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
+              [...removalCandidates],
+              pkiSync.id
+            );
+            const certKeysToRemove = [...removalCandidates].filter((certKeyName) => !ownedByOtherSync.has(certKeyName));
 
             for (const certKeyName of certKeysToRemove) {
               try {

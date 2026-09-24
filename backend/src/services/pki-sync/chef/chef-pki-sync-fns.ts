@@ -376,25 +376,19 @@ export const chefPkiSyncFactory = ({
     let failedRemovals: Array<{ name: string; error: string }> = [];
 
     if (canRemoveCertificates) {
-      const itemsToRemove: string[] = [];
-
       const trackedExternalIds = new Set(
         existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
       );
       const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
 
-      const patternCandidates: string[] = [];
-      Object.keys(chefDataBagItems).forEach((itemName) => {
-        if (activeExternalIdentifiers.has(itemName)) return;
-        if (trackedExternalIds.has(itemName)) {
-          itemsToRemove.push(itemName);
-        } else if (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync)) {
-          patternCandidates.push(itemName);
-        }
-      });
-
-      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(patternCandidates, pkiSync.id);
-      itemsToRemove.push(...patternCandidates.filter((itemName) => !ownedByOtherSync.has(itemName)));
+      const removalCandidates = Object.keys(chefDataBagItems).filter(
+        (itemName) =>
+          !activeExternalIdentifiers.has(itemName) &&
+          (trackedExternalIds.has(itemName) ||
+            (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync)))
+      );
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(removalCandidates, pkiSync.id);
+      const itemsToRemove = removalCandidates.filter((itemName) => !ownedByOtherSync.has(itemName));
 
       if (itemsToRemove.length > 0) {
         const removalPromises = itemsToRemove.map(async (itemName) => {

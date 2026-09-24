@@ -77,7 +77,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
   ): Promise<Set<string>> => {
     try {
       if (externalIdentifiers.length === 0) return new Set();
-      const docs = (await (tx || db.replicaNode())(TableName.CertificateSync)
+      const docs = (await (tx || db)(TableName.CertificateSync)
         .whereIn("externalIdentifier", externalIdentifiers)
         .andWhereNot({ pkiSyncId: excludePkiSyncId })
         .select("externalIdentifier")) as Array<{ externalIdentifier: string | null }>;

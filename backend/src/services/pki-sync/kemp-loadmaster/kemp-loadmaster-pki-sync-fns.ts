@@ -617,6 +617,7 @@ export const kempLoadMasterPkiSyncFactory = ({
 
     const identifiersToRemove = new Set<string>();
     if (canRemoveCertificates) {
+      const removalCandidates = new Set<string>();
       for (const syncRecord of existingSyncRecords) {
         if (
           syncRecord.externalIdentifier &&
@@ -624,7 +625,7 @@ export const kempLoadMasterPkiSyncFactory = ({
           existingCertNames.has(syncRecord.externalIdentifier) &&
           !(syncRecord.certificateId && managedCertificateIds.has(syncRecord.certificateId))
         ) {
-          identifiersToRemove.add(syncRecord.externalIdentifier);
+          removalCandidates.add(syncRecord.externalIdentifier);
         }
       }
 
@@ -632,18 +633,24 @@ export const kempLoadMasterPkiSyncFactory = ({
       // this run so a failed upload is not treated as an orphan.
       if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
         const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
-        const patternCandidates = [...existingCertNames].filter(
-          (certName) =>
+        for (const certName of existingCertNames) {
+          if (
             managedCertNamePattern.test(certName) &&
             !activeIdentifiers.has(certName) &&
-            !attemptedIdentifiers.has(certName) &&
-            !identifiersToRemove.has(certName)
-        );
-        const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(patternCandidates, pkiSync.id);
-        for (const certName of patternCandidates) {
-          if (!ownedByOtherSync.has(certName)) {
-            identifiersToRemove.add(certName);
+            !attemptedIdentifiers.has(certName)
+          ) {
+            removalCandidates.add(certName);
           }
+        }
+      }
+
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
+        [...removalCandidates],
+        pkiSync.id
+      );
+      for (const identifier of removalCandidates) {
+        if (!ownedByOtherSync.has(identifier)) {
+          identifiersToRemove.add(identifier);
         }
       }
 

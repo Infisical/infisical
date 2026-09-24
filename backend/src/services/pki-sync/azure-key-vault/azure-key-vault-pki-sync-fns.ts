@@ -441,27 +441,35 @@ export const azureKeyVaultPkiSyncFactory = ({
     const certificatesToRemove: string[] = [];
 
     if (canRemoveCertificates) {
+      const removalCandidates = new Set<string>();
       existingSyncRecords.forEach((syncRecord) => {
-        if (syncRecord.externalIdentifier && !activeExternalIdentifiers.has(syncRecord.externalIdentifier)) {
-          if (vaultCertificates[syncRecord.externalIdentifier]) {
-            certificatesToRemove.push(syncRecord.externalIdentifier);
-          }
+        if (
+          syncRecord.externalIdentifier &&
+          !activeExternalIdentifiers.has(syncRecord.externalIdentifier) &&
+          vaultCertificates[syncRecord.externalIdentifier]
+        ) {
+          removalCandidates.add(syncRecord.externalIdentifier);
         }
       });
 
       if (!certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema)) {
-        const patternCandidates = Object.keys(vaultCertificates).filter(
-          (certificateName) =>
+        Object.keys(vaultCertificates).forEach((certificateName) => {
+          if (
             isInfisicalManagedCertificate(certificateName, pkiSync) &&
-            !existingSyncRecords.some((record) => record.externalIdentifier === certificateName) &&
-            !activeExternalIdentifiers.has(certificateName) &&
-            !certificatesToRemove.includes(certificateName)
-        );
-        const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(patternCandidates, pkiSync.id);
-        certificatesToRemove.push(
-          ...patternCandidates.filter((certificateName) => !ownedByOtherSync.has(certificateName))
-        );
+            !activeExternalIdentifiers.has(certificateName)
+          ) {
+            removalCandidates.add(certificateName);
+          }
+        });
       }
+
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
+        [...removalCandidates],
+        pkiSync.id
+      );
+      certificatesToRemove.push(
+        ...[...removalCandidates].filter((certificateName) => !ownedByOtherSync.has(certificateName))
+      );
     }
 
     // Upload certificates to Azure Key Vault with rate limiting

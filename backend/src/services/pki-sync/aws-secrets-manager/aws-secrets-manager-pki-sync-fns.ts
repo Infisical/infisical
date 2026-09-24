@@ -442,15 +442,13 @@ export const awsSecretsManagerPkiSyncFactory = ({
       const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
 
       const orphanedSecretNames = Object.keys(existingSecrets).filter(
-        (secretName) => !activeExternalIdentifiers.has(secretName)
+        (secretName) =>
+          !activeExternalIdentifiers.has(secretName) && (allowPatternCleanup || trackedExternalIds.has(secretName))
       );
-      const untrackedSecretNames = allowPatternCleanup
-        ? orphanedSecretNames.filter((secretName) => !trackedExternalIds.has(secretName))
-        : [];
-      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(untrackedSecretNames, pkiSync.id);
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(orphanedSecretNames, pkiSync.id);
 
       for (const secretName of orphanedSecretNames) {
-        if (trackedExternalIds.has(secretName) || (allowPatternCleanup && !ownedByOtherSync.has(secretName))) {
+        if (!ownedByOtherSync.has(secretName)) {
           try {
             await withRateLimitRetry(
               () =>
