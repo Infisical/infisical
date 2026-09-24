@@ -30,12 +30,19 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenRequestError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -681,16 +688,45 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      orgName
+      orgName,
+      blockIfUserHasCreatedOrg
     }: {
       userId?: string;
       orgName: string;
+      // Set by the user-facing create-org endpoint, and only on cloud.
+      blockIfUserHasCreatedOrg?: boolean;
     },
     trx?: Knex
   ) => {
     const createOrg = async (tx: Knex) => {
+      // Serializes concurrent creates so two requests cannot both read a count of zero. Tried rather
+      // than waited on, so the loser answers immediately instead of holding one of the ten pool
+      // connections until the winner commits.
+      if (blockIfUserHasCreatedOrg && userId) {
+        const lock = await tx.raw<{ rows: { lock_acquired: boolean }[] }>(
+          "SELECT pg_try_advisory_xact_lock(?) as lock_acquired",
+          [PgSqlLock.CreateOrganization(userId)]
+        );
+        if (!lock?.rows[0]?.lock_acquired) {
+          throw new ConflictError({
+            message: "Another organization is already being created for your account. Try again in a moment."
+          });
+        }
+
+        const createdOrgs = await orgDAL.countJoinedRootOrgsCreatedByUserId(userId, tx);
+        if (createdOrgs > 0) {
+          throw new ConflictError({
+            message:
+              "You have already created an organization. Ask an administrator of an existing organization to invite you."
+          });
+        }
+      }
+
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
+      const org = await orgDAL.create(
+        { name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`), createdByUserId: userId },
+        tx
+      );
       if (userId) {
         const membership = await orgDAL.createMembership(
           {

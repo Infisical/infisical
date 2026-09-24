@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ActivityIcon,
-  AsteriskIcon,
   ChevronDownIcon,
   EditIcon,
+  EyeIcon,
   HandshakeIcon,
   InfoIcon,
   LoaderCircleIcon,
@@ -51,8 +51,12 @@ import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
 type Props = {
   secretRotationName: string;
@@ -69,6 +73,8 @@ type Props = {
   onViewGeneratedCredentials: (secretRotation: TSecretRotationV2) => void;
   onDelete: (secretRotation: TSecretRotationV2) => void;
   onCheckActiveCredentials: (secretRotation: TSecretRotationV2) => Promise<void> | void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 const shouldShowReconciliationButton = (secretRotation: TSecretRotationV2) =>
@@ -94,7 +100,9 @@ export const SecretRotationTableRow = ({
   onViewGeneratedCredentials,
   onDelete,
   onReconcile,
-  onCheckActiveCredentials
+  onCheckActiveCredentials,
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
@@ -119,6 +127,17 @@ export const SecretRotationTableRow = ({
   const singleEnvRotation = isSingleEnvView
     ? getSecretRotationByName(singleEnvSlug, secretRotationName)
     : undefined;
+
+  useEffect(() => {
+    onActivityChange(activityId, isExpanded);
+  }, [activityId, isExpanded, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   const renderActionButtons = (secretRotation: TSecretRotationV2) => {
     const { environment, folder } = secretRotation;
@@ -190,7 +209,7 @@ export const SecretRotationTableRow = ({
                   isDisabled={!isAllowed}
                   onClick={() => onViewGeneratedCredentials(secretRotation)}
                 >
-                  <AsteriskIcon />
+                  <EyeIcon />
                 </IconButton>
               </TooltipTrigger>
               <TooltipContent>View Generated Credentials</TooltipContent>
@@ -321,7 +340,10 @@ export const SecretRotationTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(
+          "group hover:z-10",
+          (isExpanded || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+        )}
       >
         <TableCell
           className={twMerge(
@@ -439,7 +461,9 @@ export const SecretRotationTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow className="border-0 hover:bg-transparent">
+        <TableRow
+          className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+        >
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
@@ -449,8 +473,10 @@ export const SecretRotationTableRow = ({
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className="w-full">Environment</TableHead>
-                    <TableHead variant="action" className="w-px" />
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
+                    <TableHead className="w-full" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -471,10 +497,12 @@ export const SecretRotationTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell colSpan={2}>
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
+                            {envName}
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full flex-wrap items-center">
-                              <span>{envName}</span>
-                              <Badge variant="neutral" className="mx-2.5">
+                              <Badge variant="neutral">
                                 <ProviderIcon
                                   icon={image}
                                   style={{

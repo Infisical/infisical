@@ -634,7 +634,7 @@ const CopySecretsSession = ({
                               : undefined
                           }
                           onValueChange={(environment) => {
-                            setSourceEnvironmentSlug(environment.slug);
+                            setSourceEnvironmentSlug(environment?.slug ?? "");
                             setSelection(null);
                           }}
                         />
@@ -707,7 +707,7 @@ const CopySecretsSession = ({
                           getOptionLabel={({ name }) => name}
                           getOptionValue={({ slug }) => slug}
                           onValueChange={(environment) =>
-                            setDestinationEnvironmentSlug(environment.slug)
+                            setDestinationEnvironmentSlug(environment?.slug ?? "")
                           }
                         />
                       </Field>

@@ -54,8 +54,12 @@ import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActio
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -112,6 +116,8 @@ type Props = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -139,19 +145,37 @@ export const SecretTableRow = ({
   isBatchMode,
   onBatchRevert,
   isSelectionDisabled,
-  onCopySecret
+  onCopySecret,
+  activityId,
+  onActivityChange
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
+  const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
+  const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
+  const isRowActive = isSingleEnvView
+    ? isSingleEnvBaseActive || isSingleEnvOverrideActive
+    : isFormExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
+
+  useEffect(() => {
+    onActivityChange(activityId, isRowActive);
+  }, [activityId, isRowActive, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   // Pre-compute single-env data
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -272,7 +296,12 @@ export const SecretTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
-        className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
+        className={twMerge(
+          "group hover:z-10",
+          (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
+            TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+          pendingActionRowClass(singleEnvPendingAction)
+        )}
       >
         <TableCell
           className={twMerge(
@@ -400,6 +429,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onExpandedChange={setIsSingleEnvBaseActive}
           />
         ) : (
           <TableCell
@@ -477,7 +507,13 @@ export const SecretTableRow = ({
         )}
         {environments.length > 1 &&
           environments.map(({ slug }, i) => {
-            if (isFormExpanded) return <TableCell className="border-b-0 bg-container-hover" />;
+            if (isFormExpanded)
+              return (
+                <TableCell
+                  key={`sec-overview-${slug}-${i + 1}-expanded`}
+                  className="border-b-0 bg-container-hover"
+                />
+              );
 
             const secret = getSecretByKey(slug, secretKey);
 
@@ -508,7 +544,12 @@ export const SecretTableRow = ({
           })}
       </TableRow>
       {isSingleEnvView && singleEnvShowOverride && (
-        <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+        <TableRow
+          className={twMerge(
+            "group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]",
+            (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+          )}
+        >
           <TableCell>
             <GitBranchIcon className="text-override" />
           </TableCell>
@@ -518,7 +559,7 @@ export const SecretTableRow = ({
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            {secretKey}
+            <span>{secretKey}</span>
           </TableCell>
           <TableCell>
             <SecretOverrideRow
@@ -545,6 +586,7 @@ export const SecretTableRow = ({
               onSecretCreate={onSecretCreate}
               onSecretUpdate={onSecretUpdate}
               onSecretDelete={onSecretDelete}
+              onActiveChange={setIsSingleEnvOverrideActive}
             />
           </TableCell>
         </TableRow>
@@ -565,7 +607,9 @@ export const SecretTableRow = ({
         </Dialog>
       )}
       {!isSingleEnvView && isFormExpanded && (
-        <TableRow className="border-0 hover:bg-transparent">
+        <TableRow
+          className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+        >
           <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
@@ -577,7 +621,7 @@ export const SecretTableRow = ({
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className="w-px min-w-40 lg:min-w-64 xl:min-w-80"
+                      className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
@@ -631,11 +675,10 @@ export const SecretTableRow = ({
                           />
                           <TableCell
                             isTruncatable
-                            className={
-                              hasOverride
-                                ? "border-l border-b-border/50 border-l-override"
-                                : undefined
-                            }
+                            className={twMerge(
+                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+                              hasOverride && "border-l border-b-border/50 border-l-override"
+                            )}
                           >
                             <div className="flex h-8 items-center space-x-2">
                               <Tooltip disableHoverableContent>

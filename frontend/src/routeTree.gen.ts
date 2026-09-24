@@ -13,12 +13,13 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './pages/root'
+import { Route as publicShareSecretPageLegacyRouteImport } from './pages/public/ShareSecretPage/legacy-route'
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
-import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as indexImport } from './pages/index'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
+import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
 import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInvitePage/route'
 import { Route as authRequestNewInvitePageRouteImport } from './pages/auth/RequestNewInvitePage/route'
 import { Route as authEmailNotVerifiedPageRouteImport } from './pages/auth/EmailNotVerifiedPage/route'
@@ -412,6 +413,13 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManager
 
 // Create/Update Routes
 
+const publicShareSecretPageLegacyRouteRoute =
+  publicShareSecretPageLegacyRouteImport.update({
+    id: '/share-secret',
+    path: '/share-secret',
+    getParentRoute: () => rootRoute,
+  } as any)
+
 const middlewaresRestrictLoginSignupRoute =
   middlewaresRestrictLoginSignupImport.update({
     id: '/_restrict-login-signup',
@@ -422,14 +430,6 @@ const middlewaresAuthenticateRoute = middlewaresAuthenticateImport.update({
   id: '/_authenticate',
   getParentRoute: () => rootRoute,
 } as any)
-
-const publicShareSecretPageRouteRoute = publicShareSecretPageRouteImport.update(
-  {
-    id: '/share-secret',
-    path: '/share-secret',
-    getParentRoute: () => rootRoute,
-  } as any,
-)
 
 const authCliRedirectPageRouteRoute = authCliRedirectPageRouteImport.update({
   id: '/cli-redirect',
@@ -467,6 +467,14 @@ const middlewaresInjectOrgDetailsRoute =
     id: '/_inject-org-details',
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any)
+
+const publicShareSecretPageRouteRoute = publicShareSecretPageRouteImport.update(
+  {
+    id: '/shared/new',
+    path: '/shared/new',
+    getParentRoute: () => rootRoute,
+  } as any,
+)
 
 const authSignUpInvitePageRouteRoute = authSignUpInvitePageRouteImport.update({
   id: '/signupinvite',
@@ -2673,13 +2681,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authCliRedirectPageRouteImport
       parentRoute: typeof rootRoute
     }
-    '/share-secret': {
-      id: '/share-secret'
-      path: '/share-secret'
-      fullPath: '/share-secret'
-      preLoaderRoute: typeof publicShareSecretPageRouteImport
-      parentRoute: typeof rootRoute
-    }
     '/_authenticate': {
       id: '/_authenticate'
       path: ''
@@ -2692,6 +2693,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof middlewaresRestrictLoginSignupImport
+      parentRoute: typeof rootRoute
+    }
+    '/share-secret': {
+      id: '/share-secret'
+      path: '/share-secret'
+      fullPath: '/share-secret'
+      preLoaderRoute: typeof publicShareSecretPageLegacyRouteImport
       parentRoute: typeof rootRoute
     }
     '/_authenticate/password-setup': {
@@ -2735,6 +2743,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signupinvite'
       preLoaderRoute: typeof authSignUpInvitePageRouteImport
       parentRoute: typeof middlewaresRestrictLoginSignupImport
+    }
+    '/shared/new': {
+      id: '/shared/new'
+      path: '/shared/new'
+      fullPath: '/shared/new'
+      preLoaderRoute: typeof publicShareSecretPageRouteImport
+      parentRoute: typeof rootRoute
     }
     '/_authenticate/_inject-org-details': {
       id: '/_authenticate/_inject-org-details'
@@ -6073,14 +6088,15 @@ const middlewaresRestrictLoginSignupRouteWithChildren =
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
-  '/share-secret': typeof publicShareSecretPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
+  '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/password-setup': typeof authPasswordSetupPageRouteRoute
   '/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
   '/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
+  '/shared/new': typeof publicShareSecretPageRouteRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
@@ -6361,14 +6377,15 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
-  '/share-secret': typeof publicShareSecretPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
+  '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/password-setup': typeof authPasswordSetupPageRouteRoute
   '/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
   '/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
+  '/shared/new': typeof publicShareSecretPageRouteRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
@@ -6623,15 +6640,16 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
-  '/share-secret': typeof publicShareSecretPageRouteRoute
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
+  '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
   '/_authenticate/password-setup': typeof authPasswordSetupPageRouteRoute
   '/_restrict-login-signup/account-recovery': typeof authAccountRecoveryEmailPageRouteRoute
   '/_restrict-login-signup/account-recovery-reset': typeof authAccountRecoveryResetPageRouteRoute
   '/_restrict-login-signup/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
   '/_restrict-login-signup/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
+  '/shared/new': typeof publicShareSecretPageRouteRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
   '/_restrict-login-signup/login': typeof RestrictLoginSignupLoginRouteWithChildren
@@ -6924,14 +6942,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cli-redirect'
-    | '/share-secret'
     | ''
+    | '/share-secret'
     | '/password-setup'
     | '/account-recovery'
     | '/account-recovery-reset'
     | '/email-not-verified'
     | '/requestnewinvite'
     | '/signupinvite'
+    | '/shared/new'
     | '/personal-settings'
     | '/login'
     | '/signup'
@@ -7211,14 +7230,15 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cli-redirect'
-    | '/share-secret'
     | ''
+    | '/share-secret'
     | '/password-setup'
     | '/account-recovery'
     | '/account-recovery-reset'
     | '/email-not-verified'
     | '/requestnewinvite'
     | '/signupinvite'
+    | '/shared/new'
     | '/personal-settings'
     | '/login'
     | '/signup'
@@ -7471,15 +7491,16 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cli-redirect'
-    | '/share-secret'
     | '/_authenticate'
     | '/_restrict-login-signup'
+    | '/share-secret'
     | '/_authenticate/password-setup'
     | '/_restrict-login-signup/account-recovery'
     | '/_restrict-login-signup/account-recovery-reset'
     | '/_restrict-login-signup/email-not-verified'
     | '/_restrict-login-signup/requestnewinvite'
     | '/_restrict-login-signup/signupinvite'
+    | '/shared/new'
     | '/_authenticate/_inject-org-details'
     | '/_authenticate/personal-settings'
     | '/_restrict-login-signup/login'
@@ -7771,9 +7792,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   indexRoute: typeof indexRoute
   authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
-  publicShareSecretPageRouteRoute: typeof publicShareSecretPageRouteRoute
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
+  publicShareSecretPageLegacyRouteRoute: typeof publicShareSecretPageLegacyRouteRoute
+  publicShareSecretPageRouteRoute: typeof publicShareSecretPageRouteRoute
   publicViewSecretRequestByIDPageRouteRoute: typeof publicViewSecretRequestByIDPageRouteRoute
   publicViewSharedSecretByIDPageRouteRoute: typeof publicViewSharedSecretByIDPageRouteRoute
 }
@@ -7781,10 +7803,11 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
   authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
-  publicShareSecretPageRouteRoute: publicShareSecretPageRouteRoute,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
     middlewaresRestrictLoginSignupRouteWithChildren,
+  publicShareSecretPageLegacyRouteRoute: publicShareSecretPageLegacyRouteRoute,
+  publicShareSecretPageRouteRoute: publicShareSecretPageRouteRoute,
   publicViewSecretRequestByIDPageRouteRoute:
     publicViewSecretRequestByIDPageRouteRoute,
   publicViewSharedSecretByIDPageRouteRoute:
@@ -7803,9 +7826,10 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/cli-redirect",
-        "/share-secret",
         "/_authenticate",
         "/_restrict-login-signup",
+        "/share-secret",
+        "/shared/new",
         "/secret-request/secret/$secretRequestId",
         "/shared/secret/$secretId"
       ]
@@ -7815,9 +7839,6 @@ export const routeTree = rootRoute
     },
     "/cli-redirect": {
       "filePath": "auth/CliRedirectPage/route.tsx"
-    },
-    "/share-secret": {
-      "filePath": "public/ShareSecretPage/route.tsx"
     },
     "/_authenticate": {
       "filePath": "middlewares/authenticate.tsx",
@@ -7844,6 +7865,9 @@ export const routeTree = rootRoute
         "/_restrict-login-signup/admin/signup"
       ]
     },
+    "/share-secret": {
+      "filePath": "public/ShareSecretPage/legacy-route.tsx"
+    },
     "/_authenticate/password-setup": {
       "filePath": "auth/PasswordSetupPage/route.tsx",
       "parent": "/_authenticate"
@@ -7867,6 +7891,9 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/signupinvite": {
       "filePath": "auth/SignUpInvitePage/route.tsx",
       "parent": "/_restrict-login-signup"
+    },
+    "/shared/new": {
+      "filePath": "public/ShareSecretPage/route.tsx"
     },
     "/_authenticate/_inject-org-details": {
       "filePath": "middlewares/inject-org-details.tsx",
