@@ -73,6 +73,14 @@ Example values:
   check automatically.
 </ParamField>
 
+<ParamField query="DISABLE_PUBLIC_SECRET_SHARING" type="bool" default="false" optional>
+  If `true`, people who aren't signed in can't create a [shared secret](/documentation/platform/secret-sharing), and the public secret sharing page returns an error. Signed-in users can still share secrets.
+</ParamField>
+
+<ParamField query="MAX_MACHINE_IDENTITY_TOKEN_AGE" type="string" default="90d" optional>
+  Maximum lifetime of a [machine identity](/documentation/platform/identities/machine-identities) access token. If an identity requests a longer TTL, Infisical issues the token with this lifetime instead. Accepts a duration such as `30d` or `12h`.
+</ParamField>
+
 <ParamField
   query="ALLOW_INTERNAL_IP_CONNECTIONS"
   type="bool"
@@ -509,7 +517,7 @@ Without email configuration, Infisical's core functions like sign-up/login and s
   Email address to be used for sending emails
 </ParamField>
 
-<ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
+<ParamField query="SMTP_FROM_NAME" type="string" default="Infisical" optional>
   Name label to be used in From field (e.g. Team)
 </ParamField>
 
@@ -972,7 +980,7 @@ You can configure third-party app connections for re-use across Infisical Projec
 <ParamField
   query="SECRET_SCANNING_GIT_APP_SLUG"
   type="string"
-  default="none"
+  default="infisical-radar"
   optional
 >
   The slug of your GitHub App.
