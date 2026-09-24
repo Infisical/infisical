@@ -1,4 +1,7 @@
-import { advanceCursor, needsBackfill } from "./secret-value-tracking-fns";
+import { JobState } from "@app/queue/queue-service";
+
+import { advanceCursor, needsBackfill, resolveRunStatus } from "./secret-value-tracking-fns";
+import { TBackfillRunState } from "./secret-value-tracking-types";
 
 const PROJECTS = ["p1", "p2"];
 const FOLDERS = { p1: ["f1", "f2"], p2: ["f3"] };
@@ -147,5 +150,58 @@ describe("needsBackfill", () => {
     expect(needsBackfill({ secretValueBlindIndex: null, secretValueOrgBlindIndex: null, encryptedValue: null })).toBe(
       false
     );
+  });
+});
+
+const NOW = new Date("2026-09-24T12:00:00.000Z");
+const minutesAgo = (n: number) => new Date(NOW.getTime() - n * 60_000).toISOString();
+
+const running = (lastProgressAt: string): TBackfillRunState => ({
+  status: "running",
+  cursor: null,
+  projectsTotal: 3,
+  projectsDone: 1,
+  secretsProcessed: 10,
+  lastProgressAt
+});
+
+describe("resolveRunStatus", () => {
+  test("the flag being set means completed, whatever the key says", () => {
+    expect(resolveRunStatus(running(minutesAgo(1)), true, NOW)).toEqual({ status: JobState.Completed });
+  });
+
+  test("no key and no flag means the backfill was never run", () => {
+    expect(resolveRunStatus(null, false, NOW)).toEqual({ status: JobState.NotFound });
+  });
+
+  test("a run that progressed recently is pending", () => {
+    expect(resolveRunStatus(running(minutesAgo(1)), false, NOW)).toEqual({ status: JobState.Pending });
+  });
+
+  test("a recorded failure reports its error", () => {
+    expect(
+      resolveRunStatus({ ...running(minutesAgo(1)), status: "failed", error: "kms unavailable" }, false, NOW)
+    ).toEqual({ status: JobState.Failed, message: "kms unavailable" });
+  });
+
+  test("a run with no progress for longer than the window is stalled", () => {
+    const result = resolveRunStatus(running(minutesAgo(30)), false, NOW);
+    expect(result.status).toBe(JobState.Failed);
+    expect(result.message).toMatch(/stopped responding/i);
+  });
+
+  // The boundary must be decisive rather than flapping between running and stalled.
+  test("exactly at the staleness boundary the run still counts as pending", () => {
+    expect(resolveRunStatus(running(minutesAgo(15)), false, NOW)).toEqual({ status: JobState.Pending });
+  });
+
+  test("one second past the boundary the run is stalled", () => {
+    const justPast = new Date(NOW.getTime() - (15 * 60_000 + 1000)).toISOString();
+    expect(resolveRunStatus(running(justPast), false, NOW).status).toBe(JobState.Failed);
+  });
+
+  // An unreadable timestamp must not throw into the status endpoint.
+  test("an unparseable lastProgressAt reads as stalled rather than throwing", () => {
+    expect(resolveRunStatus({ ...running(""), lastProgressAt: "not-a-date" }, false, NOW).status).toBe(JobState.Failed);
   });
 });

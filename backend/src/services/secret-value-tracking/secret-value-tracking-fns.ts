@@ -1,4 +1,13 @@
-import { TAdvanceCursorInput, TAdvanceCursorResult, TBackfillCursor } from "./secret-value-tracking-types";
+import { JobState } from "@app/queue/queue-service";
+
+import {
+  TAdvanceCursorInput,
+  TAdvanceCursorResult,
+  TBackfillCursor,
+  TBackfillRunState
+} from "./secret-value-tracking-types";
+
+export const BACKFILL_STALE_AFTER_MS = 15 * 60 * 1000;
 
 const startOfFolder = (projectId: string, folderId: string): TBackfillCursor => ({
   projectId,
@@ -81,3 +90,25 @@ export const needsBackfill = (row: {
   secretValueOrgBlindIndex?: string | null;
   encryptedValue?: Buffer | null;
 }) => Boolean(row.encryptedValue) && (!row.secretValueBlindIndex || !row.secretValueOrgBlindIndex);
+
+// Completion lives on the durable flag rather than in the run state, so a key that outlives a
+// finished run can never contradict it.
+export const resolveRunStatus = (
+  state: TBackfillRunState | null,
+  flagEnabled: boolean,
+  now: Date
+): { status: JobState; message?: string } => {
+  if (flagEnabled) return { status: JobState.Completed };
+  if (!state) return { status: JobState.NotFound };
+  if (state.status === "failed") return { status: JobState.Failed, message: state.error ?? "Unknown error" };
+
+  const lastProgress = new Date(state.lastProgressAt).getTime();
+  if (Number.isNaN(lastProgress) || now.getTime() - lastProgress > BACKFILL_STALE_AFTER_MS) {
+    return {
+      status: JobState.Failed,
+      message: "The backfill stopped responding. Start it again to resume from where it left off."
+    };
+  }
+
+  return { status: JobState.Pending };
+};
