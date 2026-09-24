@@ -6,6 +6,7 @@ import {
   applyForcedFields,
   buildPamAccountTypeMetadata,
   collectCredentialSecrets,
+  gatewaySupportsAccountType,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
@@ -20,7 +21,13 @@ import {
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
   const metadata = buildPamAccountTypeMetadata(
-    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH, PamAccountType.Redis])
+    new Set([
+      PamAccountType.Postgres,
+      PamAccountType.MySQL,
+      PamAccountType.SSH,
+      PamAccountType.Redis,
+      PamAccountType.ClickHouse
+    ])
   );
   const byType = new Map(metadata.map((m) => [m.type, m]));
 
@@ -164,6 +171,44 @@ describe("buildPamAccountTypeMetadata", () => {
 
     expect(fieldByKey(oracle!.credentialFields, "username")).toMatchObject({ required: true, secret: false });
     expect(fieldByKey(oracle!.credentialFields, "password")).toMatchObject({ widget: "password", secret: true });
+  });
+
+  test("derives ClickHouse connection and credential fields from the schema", () => {
+    const clickhouse = byType.get(PamAccountType.ClickHouse);
+    expect(clickhouse).toBeDefined();
+    expect(clickhouse?.name).toBe("ClickHouse");
+    expect(clickhouse?.supportsWebAccess).toBe(true);
+
+    expect(clickhouse?.connectionFields.map((f) => f.key)).toEqual([
+      "host",
+      "port",
+      "database",
+      "sslEnabled",
+      "sslRejectUnauthorized",
+      "sslCertificate"
+    ]);
+
+    expect(fieldByKey(clickhouse!.connectionFields, "port")).toMatchObject({
+      widget: "number",
+      required: true,
+      defaultValue: 8123
+    });
+    expect(fieldByKey(clickhouse!.connectionFields, "database")).toMatchObject({
+      required: true,
+      defaultValue: "default"
+    });
+
+    expect(fieldByKey(clickhouse!.credentialFields, "username")).toMatchObject({
+      widget: "text",
+      required: true,
+      secret: false,
+      defaultValue: "default"
+    });
+    expect(fieldByKey(clickhouse!.credentialFields, "password")).toMatchObject({
+      widget: "password",
+      secret: true,
+      required: false
+    });
   });
 
   test("derives Redis connection and credential fields from the schema", () => {
@@ -499,5 +544,22 @@ describe("suppliesCredentialSecret", () => {
     expect(suppliesCredentialSecret(PamAccountType.SSH, { authMethod: "certificate", username: "pamuser" })).toBe(
       false
     );
+  });
+});
+
+describe("gatewaySupportsAccountType", () => {
+  test("a gateway that reports nothing is not held to anything", () => {
+    expect(gatewaySupportsAccountType(PamAccountType.ClickHouse, undefined)).toBe(true);
+    expect(gatewaySupportsAccountType(PamAccountType.Postgres, undefined)).toBe(true);
+  });
+
+  test("a reported list decides for every type", () => {
+    expect(gatewaySupportsAccountType(PamAccountType.ClickHouse, ["postgres", "clickhouse"])).toBe(true);
+    expect(gatewaySupportsAccountType(PamAccountType.ClickHouse, ["postgres"])).toBe(false);
+    expect(gatewaySupportsAccountType(PamAccountType.Postgres, ["clickhouse"])).toBe(false);
+  });
+
+  test("Windows AD is proxied over the Windows protocol, so that is what a gateway reports", () => {
+    expect(gatewaySupportsAccountType(PamAccountType.WindowsAd, ["windows"])).toBe(true);
   });
 });

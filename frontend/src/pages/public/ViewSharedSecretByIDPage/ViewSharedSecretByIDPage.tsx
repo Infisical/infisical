@@ -4,9 +4,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
 import { Card, CardContent, CardHeader, CardTitle, PageLoader } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
@@ -259,7 +257,7 @@ export const ViewSharedSecretByIDPage = () => {
             }}
           >
             <h1 className="mb-5 text-lg font-semibold" style={{ color: brandingTheme?.textColor }}>
-              View shared secret
+              View Shared Secret
             </h1>
             {secretContent}
           </div>
@@ -270,22 +268,29 @@ export const ViewSharedSecretByIDPage = () => {
 
   // Default: Infisical auth page layout
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
-      <AuthPageBackground />
+    <>
       <Helmet>
         <title>Securely Share Secrets | Infisical</title>
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <AuthPageHeader />
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <Card className="w-full max-w-xl">
-          <CardHeader>
-            <CardTitle>View shared secret</CardTitle>
-          </CardHeader>
-          <CardContent>{secretContent}</CardContent>
-        </Card>
-      </div>
-      <AuthPageFooter />
-    </div>
+      <AuthPageLayout variant="focused" contentClassName="max-w-xl">
+        <div className="flex flex-col items-center">
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>View Shared Secret</CardTitle>
+            </CardHeader>
+            <CardContent>{secretContent}</CardContent>
+          </Card>
+          <a
+            href={ROUTE_PATHS.Public.ShareSecretPage.path}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 text-xs text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          >
+            Share your own secret
+          </a>
+        </div>
+      </AuthPageLayout>
+    </>
   );
 };

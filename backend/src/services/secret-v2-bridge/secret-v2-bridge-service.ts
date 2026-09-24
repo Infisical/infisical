@@ -1049,17 +1049,22 @@ export const secretV2BridgeServiceFactory = ({
         }
       );
 
+      // deleting a shared secret cascades to every user's personal override, so the row to return must be
+      // picked by id instead of trusting the order the delete happened to return rows in
+      const deletedSecretRow = deletedSecret.find((el) => el.id === secretToDelete.id);
+      if (!deletedSecretRow) throw new NotFoundError({ message: "Secret not found" });
+
       return reshapeBridgeSecret(
         projectId,
         environment,
         secretPath,
         {
-          ...deletedSecret[0],
-          value: deletedSecret[0].encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedValue }).toString()
+          ...deletedSecretRow,
+          value: deletedSecretRow.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecretRow.encryptedValue }).toString()
             : "",
-          comment: deletedSecret[0].encryptedComment
-            ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
+          comment: deletedSecretRow.encryptedComment
+            ? secretManagerDecryptor({ cipherTextBlob: deletedSecretRow.encryptedComment }).toString()
             : ""
         },
         secretValueHidden,
@@ -3939,6 +3944,10 @@ export const secretV2BridgeServiceFactory = ({
         secretTags: secret.tags.map((i) => i.slug)
       })
     );
+
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
+    }
 
     if (secretVersion.isRedacted) {
       throw new BadRequestError({ message: `Secret version with ID '${versionId}' is already redacted` });

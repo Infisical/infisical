@@ -2,9 +2,40 @@ import { isIP } from "node:net";
 
 import RE2 from "re2";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 const SCHEME_PREFIX = "^https?://";
+const MAX_STATUS_FIELD_LOG_LENGTH = 1024;
+const JWT_FINGERPRINT_LENGTH = 12;
+
+export const getJwtFingerprintForLog = (jwt?: string) =>
+  jwt ? crypto.nativeCrypto.createHash("sha256").update(jwt).digest("hex").slice(0, JWT_FINGERPRINT_LENGTH) : undefined;
+
+const JWT_LIKE_REGEX = new RE2("eyJ[A-Za-z0-9_-]{8,}(?:\\.[A-Za-z0-9_-]*){0,2}", "g");
+
+export const redactCredentialsFromText = (text: string, secrets: (string | undefined)[] = []) =>
+  secrets
+    .reduce<string>((acc, secret) => (secret ? acc.split(secret).join("[REDACTED]") : acc), text)
+    .replace(JWT_LIKE_REGEX, "[REDACTED]");
+
+const toStatusFieldForLog = (value: unknown, secrets: (string | undefined)[]) => {
+  if (typeof value !== "string") return undefined;
+  const scrubbed = redactCredentialsFromText(value, secrets);
+  return scrubbed.length > MAX_STATUS_FIELD_LOG_LENGTH
+    ? `${scrubbed.slice(0, MAX_STATUS_FIELD_LOG_LENGTH)}...[truncated]`
+    : scrubbed;
+};
+
+export const getKubernetesStatusForLog = (
+  data: unknown,
+  secrets: (string | undefined)[] = []
+): { reason?: string; message?: string } => {
+  if (typeof data === "string") return { message: toStatusFieldForLog(data, secrets) };
+  if (!data || typeof data !== "object") return {};
+  const { reason, message } = data as { reason?: unknown; message?: unknown };
+  return { reason: toStatusFieldForLog(reason, secrets), message: toStatusFieldForLog(message, secrets) };
+};
 
 // The stored host may omit a scheme. URL parsing, SSRF validation and Axios all need one.
 export const withKubernetesHostScheme = (kubernetesHost: string) =>
