@@ -2752,7 +2752,7 @@ const OverviewPageContent = () => {
             </div>
             <ResourceSearchInput
               key={secretPath}
-              className="col-start-1 row-start-2 min-w-0 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1"
+              className="col-start-1 row-start-3 min-w-0 @min-[20rem]/card-header:row-start-2 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1"
               value={searchFilter}
               tags={tags}
               onChange={setSearchFilter}
@@ -2762,7 +2762,7 @@ const OverviewPageContent = () => {
             />
             {userAvailableEnvs.length > 0 && (
               <>
-                <div className="col-start-2 row-start-2 @min-[48rem]/card-header:col-start-3 @min-[48rem]/card-header:row-start-1">
+                <div className="col-start-2 row-start-3 @min-[20rem]/card-header:row-start-2 @min-[48rem]/card-header:col-start-3 @min-[48rem]/card-header:row-start-1">
                   <ResourceFilter
                     rowTypeFilter={filter}
                     onToggleRowType={handleToggleRowType}
@@ -2772,14 +2772,14 @@ const OverviewPageContent = () => {
                     onClearTags={handleClearTags}
                   />
                 </div>
-                <div className="col-start-3 row-start-2 @min-[48rem]/card-header:col-start-4 @min-[48rem]/card-header:row-start-1">
+                <div className="col-start-3 row-start-3 @min-[20rem]/card-header:row-start-2 @min-[48rem]/card-header:col-start-4 @min-[48rem]/card-header:row-start-1">
                   <DownloadEnvButton
                     secretPath={secretPath}
                     environments={visibleEnvs}
                     projectId={projectId}
                   />
                 </div>
-                <div className="col-start-3 row-start-1 justify-self-end @min-[48rem]/card-header:col-start-5">
+                <div className="col-start-3 row-start-2 justify-self-end @min-[20rem]/card-header:row-start-1 @min-[48rem]/card-header:col-start-5">
                   <AddResourceButtons {...addResourceButtonsProps} />
                 </div>
               </>
