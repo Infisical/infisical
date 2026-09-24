@@ -57,7 +57,7 @@ import {
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
-import { IssuerModifiedHint, IssuerModifiedNotice } from "./IssuerModifiedNotice";
+import { IssuerModifiedNotice } from "./IssuerModifiedNotice";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { RequestCustomExtensionsField } from "./RequestCustomExtensionsField";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
@@ -259,10 +259,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     useGetCertificateRenewalPreview(isOpen && certificateId ? certificateId : "");
   const hasOriginatingRequest = renewalPreview?.hasOriginatingRequest ?? false;
   const issuerModifiedFields = renewalPreview?.issuerModifiedFields ?? [];
-  const issuerModifiedByField = useMemo(
-    () => new Map(issuerModifiedFields.map((entry) => [entry.field, entry])),
-    [issuerModifiedFields]
-  );
 
   const { data: profile } = useGetCertificateProfileById({
     profileId: certificate?.profileId ?? ""
@@ -491,6 +487,16 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   const subjectIssuerChanges = useMemo(
     () => issuerModifiedFields.filter((entry) => SUBJECT_ISSUER_FIELDS.has(entry.field)),
     [issuerModifiedFields]
+  );
+
+  const optionsIssuerChanges = useMemo(
+    () =>
+      issuerModifiedFields.filter(
+        (entry) =>
+          !SUBJECT_ISSUER_FIELDS.has(entry.field) &&
+          (entry.field === "keyAlgorithm" || !isExternalTemplateProfile)
+      ),
+    [issuerModifiedFields, isExternalTemplateProfile]
   );
 
   const [isSeeded, setIsSeeded] = useState(false);
@@ -794,10 +800,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 : "Select key algorithm"
             }
           />
-          {!isExternalTemplateProfile && (
-            <IssuerModifiedHint field={issuerModifiedByField.get("signatureAlgorithm")} />
-          )}
-          <IssuerModifiedHint field={issuerModifiedByField.get("keyAlgorithm")} />
 
           {!isExternalTemplateProfile && (
             <div className="mt-4 space-y-6">
@@ -809,7 +811,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                   options={selectableKeyUsages}
                   requiredUsages={constraints.requiredKeyUsages}
                 />
-                <IssuerModifiedHint field={issuerModifiedByField.get("keyUsages")} />
               </div>
               <div>
                 <KeyUsageSection
@@ -819,7 +820,6 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                   options={selectableExtendedKeyUsages}
                   requiredUsages={constraints.requiredExtendedKeyUsages}
                 />
-                <IssuerModifiedHint field={issuerModifiedByField.get("extendedKeyUsages")} />
               </div>
               {constraints.templateAllowsCA && (
                 <BasicConstraintsField
@@ -835,6 +835,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               )}
             </div>
           )}
+          <IssuerModifiedNotice fields={optionsIssuerChanges} />
         </div>
       )}
     </CertificateWizardSheet>

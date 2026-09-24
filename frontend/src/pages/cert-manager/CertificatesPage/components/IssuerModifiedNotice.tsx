@@ -57,34 +57,12 @@ export const IssuerModifiedNotice = ({ fields }: Props) => {
   return (
     <Alert variant="warning">
       <InfoIcon />
-      <AlertTitle>The certificate authority set these values at last issuance.</AlertTitle>
+      <AlertTitle>Additional values set by the certificate authority</AlertTitle>
       <AlertDescription>
         {fields.map((field) => (
           <p key={field.field}>{describeIssuerChange(field)}</p>
         ))}
-        <p>
-          Edit a field above to request a different value, or renew unchanged to let the authority
-          set it again.
-        </p>
       </AlertDescription>
     </Alert>
   );
-};
-
-const describeIssuerHint = (requested: string, issued: string) => {
-  if (!issued) return `The certificate authority omitted ${requested} at last issuance.`;
-  return `The certificate authority set ${issued} at last issuance.`;
-};
-
-type HintProps = {
-  field?: TIssuerModifiedField;
-};
-
-export const IssuerModifiedHint = ({ field }: HintProps) => {
-  if (!field) return null;
-
-  const requested = formatIssuerValue(field, field.requested);
-  const issued = formatIssuerValue(field, field.issued);
-
-  return <p className="mt-1 text-xs text-warning">{describeIssuerHint(requested, issued)}</p>;
 };
