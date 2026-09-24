@@ -199,7 +199,7 @@ A custom header's value can include a [substitution](#substitutions) placeholder
 
 Instead of attaching headers to an agent's request, you can configure your service to use substitution instead.
 
-With a substitution, the agent sends its request with a placeholder credential, such as a fake API token. Then, the proxy replaces the placeholder with the real value before forwarding the request. For example, an agent configured with `__GITHUB_PAT__` as its GitHub token sends:
+With a substitution, you give the agent a placeholder instead of the real credential, such as a fake API token. The agent sends the placeholder in its requests, and the proxy replaces it with the real value before forwarding each request. For example, if you set the agent's GitHub token to `__GITHUB_PAT__`, the agent sends:
 
 ```text
 Authorization: Bearer __GITHUB_PAT__
@@ -228,6 +228,13 @@ Substitutions work with every credential type, including pass-through.
   </Step>
   <Step>
     Under **Replace In**, select where the proxy looks for the placeholder: **URL Path**, **Query String**, **Headers**, or **Body**.
+  </Step>
+  <Step>
+    In the agent's environment or configuration, set the credential to the placeholder, such as `GITHUB_TOKEN=__GITHUB_PAT__`. Infisical doesn't set the placeholder for you.
+
+    <Tip>
+    Some tools check a token's format before they send it. If the agent's tool does, make the placeholder match the format of the real key, such as `ghp_` followed by 36 characters for a GitHub token.
+    </Tip>
   </Step>
 </Steps>
 

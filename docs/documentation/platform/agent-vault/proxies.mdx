@@ -139,7 +139,7 @@ Exception hosts behave differently from hosts that are covered by services:
 
 - **Credentials:** The proxy never attaches a credential to requests to an exception host
 - **Ports:** An exception with no port matches the host on every port, while a [service's host pattern](/documentation/platform/agent-vault/services#default-port) with no port only matches port `443`
-- **Interception:** The proxy still decrypts requests to an exception host, and only skips blocking them
+- **Interception:** The proxy still decrypts requests to an exception host, but doesn't block them
 - **Scope:** An exception applies to every agent that uses the proxy
 
 <Tip>
@@ -158,7 +158,7 @@ If the proxy can't reach Infisical:
 
 ## Certificate trust
 
-The proxy decrypts HTTPS traffic to attach the credential, so each agent has to trust the proxy's certificate authority (CA). Every proxy has its own CA.
+The proxy decrypts HTTPS traffic to attach the credential, so each agent has to trust the proxy's certificate authority (CA). Each proxy generates its own self-signed CA when it enrolls.
 
 <Tabs>
   <Tab title="With the CLI">
