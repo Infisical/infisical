@@ -660,8 +660,8 @@ export const CreateSecretForm = ({
                       <FieldGroup>
                         <Field>
                           <FieldLabel>Metadata</FieldLabel>
-                          <FieldContent className="gap-2">
-                            <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4">
+                          <FieldContent>
+                            <div className="mb-1.5 flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4">
                               {metadata.length === 0 && (
                                 <p className="py-2 text-center text-sm text-muted">
                                   No metadata entries.
