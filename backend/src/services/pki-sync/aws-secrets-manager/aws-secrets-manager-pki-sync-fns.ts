@@ -52,11 +52,10 @@ const isInfisicalManagedCertificate = (secretName: string, pkiSync: TPkiSyncWith
   const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
-  if (certificateNameSchema) {
-    return matchesCertificateNameSchema(secretName, certificateNameSchema);
-  }
-
-  return secretName.startsWith(AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);
+  return matchesCertificateNameSchema(
+    secretName,
+    certificateNameSchema || AWS_SECRETS_MANAGER_PKI_SYNC_DEFAULTS.DEFAULT_CERTIFICATE_NAME_SCHEMA
+  );
 };
 
 const parseErrorMessage = (error: unknown): string => {
@@ -110,6 +109,7 @@ type TAwsSecretsManagerPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
   >;
 };
 
@@ -441,12 +441,16 @@ export const awsSecretsManagerPkiSyncFactory = ({
       );
       const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
 
-      for (const [secretName] of Object.entries(existingSecrets)) {
-        if (!activeExternalIdentifiers.has(secretName)) {
-          if (!allowPatternCleanup && !trackedExternalIds.has(secretName)) {
-            // eslint-disable-next-line no-continue
-            continue;
-          }
+      const orphanedSecretNames = Object.keys(existingSecrets).filter(
+        (secretName) => !activeExternalIdentifiers.has(secretName)
+      );
+      const untrackedSecretNames = allowPatternCleanup
+        ? orphanedSecretNames.filter((secretName) => !trackedExternalIds.has(secretName))
+        : [];
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(untrackedSecretNames, pkiSync.id);
+
+      for (const secretName of orphanedSecretNames) {
+        if (trackedExternalIds.has(secretName) || (allowPatternCleanup && !ownedByOtherSync.has(secretName))) {
           try {
             await withRateLimitRetry(
               () =>

@@ -46,6 +46,7 @@ type TKempLoadMasterPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -631,12 +632,16 @@ export const kempLoadMasterPkiSyncFactory = ({
       // this run so a failed upload is not treated as an orphan.
       if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
         const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
-        for (const certName of existingCertNames) {
-          if (
+        const patternCandidates = [...existingCertNames].filter(
+          (certName) =>
             managedCertNamePattern.test(certName) &&
             !activeIdentifiers.has(certName) &&
-            !attemptedIdentifiers.has(certName)
-          ) {
+            !attemptedIdentifiers.has(certName) &&
+            !identifiersToRemove.has(certName)
+        );
+        const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(patternCandidates, pkiSync.id);
+        for (const certName of patternCandidates) {
+          if (!ownedByOtherSync.has(certName)) {
             identifiersToRemove.add(certName);
           }
         }

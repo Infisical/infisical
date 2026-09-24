@@ -45,6 +45,7 @@ type TNetScalerPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -583,8 +584,18 @@ export const netScalerPkiSyncFactory = ({
             if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
               const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
 
-              for (const certKeyName of existingCertKeyNames) {
-                if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
+              const patternCandidates = [...existingCertKeyNames].filter(
+                (certKeyName) =>
+                  managedCertNamePattern.test(certKeyName) &&
+                  !activeExternalIdentifiers.has(certKeyName) &&
+                  !certKeysToRemove.has(certKeyName)
+              );
+              const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
+                patternCandidates,
+                pkiSync.id
+              );
+              for (const certKeyName of patternCandidates) {
+                if (!ownedByOtherSync.has(certKeyName)) {
                   certKeysToRemove.add(certKeyName);
                 }
               }

@@ -61,6 +61,7 @@ type TAzureKeyVaultPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
 };
@@ -449,21 +450,17 @@ export const azureKeyVaultPkiSyncFactory = ({
       });
 
       if (!certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema)) {
-        Object.keys(vaultCertificates).forEach((certificateName) => {
-          const isInfisicalManaged = isInfisicalManagedCertificate(certificateName, pkiSync);
-
-          if (isInfisicalManaged) {
-            const isTrackedInSyncRecords = existingSyncRecords.some(
-              (record) => record.externalIdentifier === certificateName
-            );
-
-            const isInActiveSet = activeExternalIdentifiers.has(certificateName);
-
-            if (!isTrackedInSyncRecords && !isInActiveSet && !certificatesToRemove.includes(certificateName)) {
-              certificatesToRemove.push(certificateName);
-            }
-          }
-        });
+        const patternCandidates = Object.keys(vaultCertificates).filter(
+          (certificateName) =>
+            isInfisicalManagedCertificate(certificateName, pkiSync) &&
+            !existingSyncRecords.some((record) => record.externalIdentifier === certificateName) &&
+            !activeExternalIdentifiers.has(certificateName) &&
+            !certificatesToRemove.includes(certificateName)
+        );
+        const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(patternCandidates, pkiSync.id);
+        certificatesToRemove.push(
+          ...patternCandidates.filter((certificateName) => !ownedByOtherSync.has(certificateName))
+        );
       }
     }
 
