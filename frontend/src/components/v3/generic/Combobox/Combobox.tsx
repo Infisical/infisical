@@ -426,20 +426,24 @@ const ComboboxListFooter = ({ children }: { children: React.ReactNode }) => (
 
 type ComboboxCreateButtonProps<TOption> = {
   creation: ComboboxCreationConfig<TOption>;
+  buttonRef: React.Ref<HTMLButtonElement>;
   inputValue: string;
   canCreate: boolean;
   isCreationPending: boolean;
   creationError: { error: unknown; inputValue: string } | null;
   onCreate: () => void;
+  onBackToInput: () => void;
 };
 
 const ComboboxCreateButton = <TOption,>({
   creation,
+  buttonRef,
   inputValue,
   canCreate,
   isCreationPending,
   creationError,
-  onCreate
+  onCreate,
+  onBackToInput
 }: ComboboxCreateButtonProps<TOption>) => {
   const inlineCreation = isInlineCreationConfig(creation) ? creation : undefined;
   const hasCreationError = Boolean(inlineCreation && creationError?.inputValue === inputValue);
@@ -452,11 +456,18 @@ const ComboboxCreateButton = <TOption,>({
   return (
     <div className="border-t border-border p-1">
       <button
+        ref={buttonRef}
         type="button"
         data-slot="combobox-create-button"
         disabled={!canCreate || creation.isDisabled || creation.isPending || isCreationPending}
         onMouseDown={(event) => event.preventDefault()}
         onClick={onCreate}
+        onKeyDown={(event) => {
+          if (event.key === "Tab" && event.shiftKey) {
+            event.preventDefault();
+            onBackToInput();
+          }
+        }}
         className={cn(
           COMBOBOX_ROW_CLASS,
           "w-full px-2 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:bg-transparent"
@@ -792,6 +803,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     ...inputProps
   } = props;
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const createButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const selectedLabel = value == null ? "" : getOptionLabel(value);
@@ -911,6 +923,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
       setOpen(false);
       dialogCreation.open(creationInput);
     } else {
+      inputRef.current?.focus();
       createOption(creationInput);
     }
   };
@@ -1011,6 +1024,21 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
 
                 if (
                   !event.defaultPrevented &&
+                  event.key === "Tab" &&
+                  !event.shiftKey &&
+                  open &&
+                  creationInput &&
+                  !creation?.isDisabled &&
+                  !creation?.isPending &&
+                  !isCreationPending
+                ) {
+                  event.preventDefault();
+                  createButtonRef.current?.focus();
+                  return;
+                }
+
+                if (
+                  !event.defaultPrevented &&
                   value != null &&
                   !isEditingRef.current &&
                   ((event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) ||
@@ -1086,11 +1114,13 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             {creation && (
               <ComboboxCreateButton
                 creation={creation}
+                buttonRef={createButtonRef}
                 inputValue={createInputValue}
                 canCreate={Boolean(creationInput)}
                 isCreationPending={isCreationPending}
                 creationError={creationError}
                 onCreate={handleCreate}
+                onBackToInput={() => inputRef.current?.focus()}
               />
             )}
             {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
@@ -1153,6 +1183,7 @@ const MultipleCombobox = <TOption,>({
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const createButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
@@ -1279,6 +1310,7 @@ const MultipleCombobox = <TOption,>({
       setOpen(false);
       dialogCreation.open(creationInput);
     } else {
+      inputRef.current?.focus();
       createOption(creationInput);
     }
   };
@@ -1435,6 +1467,20 @@ const MultipleCombobox = <TOption,>({
                 placeholder={value.length === 0 ? placeholder : undefined}
                 onKeyDown={(event) => {
                   onKeyDown?.(event);
+                  if (
+                    !event.defaultPrevented &&
+                    event.key === "Tab" &&
+                    !event.shiftKey &&
+                    open &&
+                    creationInput &&
+                    !creation?.isDisabled &&
+                    !creation?.isPending &&
+                    !isCreationPending
+                  ) {
+                    event.preventDefault();
+                    createButtonRef.current?.focus();
+                    return;
+                  }
                   preventComboboxFormSubmit(event);
                 }}
                 className={COMBOBOX_CHIPS_INPUT_CLASS}
@@ -1475,11 +1521,13 @@ const MultipleCombobox = <TOption,>({
             {creation && (
               <ComboboxCreateButton
                 creation={creation}
+                buttonRef={createButtonRef}
                 inputValue={createInputValue}
                 canCreate={Boolean(creationInput)}
                 isCreationPending={isCreationPending}
                 creationError={creationError}
                 onCreate={handleCreate}
+                onBackToInput={() => inputRef.current?.focus()}
               />
             )}
             {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}

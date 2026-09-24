@@ -1739,8 +1739,9 @@ export const GroupedRemoteCreation: Story = {
     await userEvent.clear(input);
     await userEvent.type(input, "remote-created");
     const createButton = canvas.getByRole("button", { name: 'Create "remote-created"' });
-    createButton.focus();
+    await userEvent.tab();
     await expect(createButton).toHaveFocus();
+    await expect(input).toHaveAttribute("aria-expanded", "true");
     await userEvent.keyboard("{Enter}");
     await expect(canvas.getByRole("button", { name: "Remove remote-created" })).toBeInTheDocument();
     await expect(input).toHaveValue("");
