@@ -15,7 +15,9 @@ const buildDAL = () => {
     whereRaw: [] as unknown[][],
     // Calls made inside a `.where((builder) => ...)` group.
     groupedWhereNull: [] as unknown[],
-    groupedOrWhere: [] as unknown[][]
+    groupedOrWhere: [] as unknown[][],
+    // Calls made on the subquery passed to `.whereNotExists(...)`.
+    notExists: [] as { from: unknown; whereRaw: unknown[][] }[]
   };
 
   const group = {
@@ -48,6 +50,23 @@ const buildDAL = () => {
     },
     whereRaw: (...args: unknown[]) => {
       calls.whereRaw.push(args);
+      return chain;
+    },
+    whereNotExists: (cb: (sub: unknown) => void) => {
+      const entry = { from: undefined as unknown, whereRaw: [] as unknown[][] };
+      const sub = {
+        select: () => sub,
+        from: (table: unknown) => {
+          entry.from = table;
+          return sub;
+        },
+        whereRaw: (...args: unknown[]) => {
+          entry.whereRaw.push(args);
+          return sub;
+        }
+      };
+      cb(sub);
+      calls.notExists.push(entry);
       return chain;
     },
     orderByRaw: () => chain,
@@ -147,6 +166,21 @@ describe("identity credential alert dal", () => {
     expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.authMethod`, IdentityAuthMethod.TOKEN_AUTH]);
     expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.isAccessTokenRevoked`, false]);
     expect(calls.where).toContainEqual([`${TableName.IdentityAccessToken}.accessTokenTTL`, ">", 0]);
+  });
+
+  test("a Token Auth scan skips tokens revoked through a per-token revocation marker", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findExpiringTokenAuthTokens(scanArgs);
+
+    // POST /auth/token/revoke only writes the marker and leaves isAccessTokenRevoked false, so the
+    // flag alone would keep alerting on a token nobody can use until it expires.
+    expect(calls.notExists).toContainEqual({
+      from: TableName.IdentityAccessTokenRevocation,
+      whereRaw: [
+        ["?? = ??::uuid", [`${TableName.IdentityAccessTokenRevocation}.id`, `${TableName.IdentityAccessToken}.id`]]
+      ]
+    });
   });
 
   test("a Token Auth token expires at its creation time plus its clamped stored TTL, not its max TTL", async () => {

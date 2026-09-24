@@ -116,6 +116,16 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())(TableName.IdentityAccessToken)
         .where(`${TableName.IdentityAccessToken}.authMethod`, IdentityAuthMethod.TOKEN_AUTH)
         .where(`${TableName.IdentityAccessToken}.isAccessTokenRevoked`, false)
+        .whereNotExists(
+          (sub) =>
+            void sub
+              .select(db.raw("1"))
+              .from(TableName.IdentityAccessTokenRevocation)
+              .whereRaw("?? = ??::uuid", [
+                `${TableName.IdentityAccessTokenRevocation}.id`,
+                `${TableName.IdentityAccessToken}.id`
+              ])
+        )
         .where(`${TableName.IdentityAccessToken}.accessTokenTTL`, ">", 0)
         .whereRaw(`${expiresAtSql} > ?::timestamptz`, [asOf])
         .whereRaw(`${expiresAtSql} <= ?::timestamptz + ?::interval + ?::interval`, [
