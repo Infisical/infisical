@@ -2,7 +2,10 @@ import { join } from "path";
 
 import { ProjectMembershipRole, TSecretScanningFindings } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { createTempFolder, deleteTempFolder } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import {
+  createTempFolder,
+  deleteTempFolder
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
