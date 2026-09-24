@@ -84,6 +84,9 @@ export const SecretOverrideRow = ({
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditingValue, setIsEditingValue] = useState(false);
+  const [savedOverrideValue, setSavedOverrideValue] = useState<string | null>(null);
+
+  useEffect(() => setSavedOverrideValue(null), [idOverride, valueOverride]);
 
   const fetchOverrideValueParams = {
     environment,
@@ -106,9 +109,9 @@ export const SecretOverrideRow = ({
   const isFetchingOverrideValue = canFetchOverrideValue && isPendingOverrideValue;
   let previewOverrideValue = "EMPTY";
   if (isFetchingOverrideValue) previewOverrideValue = HIDDEN_SECRET_VALUE;
-  else if (overrideValueData?.valueOverride || valueOverride) {
+  else if (savedOverrideValue !== null || valueOverride || overrideValueData?.valueOverride) {
     previewOverrideValue = isVisible
-      ? (overrideValueData?.valueOverride ?? valueOverride ?? "")
+      ? (savedOverrideValue ?? valueOverride ?? overrideValueData?.valueOverride ?? "")
       : HIDDEN_SECRET_VALUE;
   }
 
@@ -139,7 +142,9 @@ export const SecretOverrideRow = ({
       onCreatingOverrideChange(false);
       reset({ value: null });
     } else {
-      reset({ value: overrideValueData?.valueOverride ?? (valueOverride || null) });
+      reset({
+        value: savedOverrideValue ?? valueOverride ?? overrideValueData?.valueOverride ?? null
+      });
     }
   };
 
@@ -173,6 +178,7 @@ export const SecretOverrideRow = ({
           type: SecretType.Personal,
           secretId: idOverride
         });
+        setSavedOverrideValue(value);
       }
     }
     reset({ value });
