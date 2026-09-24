@@ -1055,7 +1055,12 @@ export const secretFolderServiceFactory = ({
 
     const folders = await folderDAL.findByEnvsDeep({ parentIds: parentFolders.map((parent) => parent.id) });
 
-    return folders;
+    // findByEnvsDeep paths are relative to the walk root, which is the resolved secretPath
+    const rootPath = parentFolders[0].path;
+    return folders.map((folder) => ({
+      ...folder,
+      path: folder.path === "/" ? rootPath : rootPath === "/" ? folder.path : `${rootPath}${folder.path}`
+    }));
   };
 
   const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor) => {
