@@ -1952,7 +1952,7 @@ export const SecretEditTableRow = ({
               }}
               isPending={isEditing}
             >
-              Save changes
+              Save Changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
