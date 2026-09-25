@@ -91,6 +91,14 @@ infisical:
     type: ClusterIP
     # -- Optional node port for service when using NodePort type
     nodePort: ""
+    # -- Port the service listens on. The ingress backends and the auto-bootstrap
+    # -- job follow this value.
+    port: 8080
+    # -- Pod port the service forwards to. Defaults to 8080, the port the Infisical
+    # -- container listens on, and should stay there unless a sidecar (e.g. a
+    # -- TLS-terminating proxy injected via `infisical.extraContainers`) fronts the
+    # -- Infisical container on a different port.
+    targetPort: ""
 
   # -- Extra environment variables to set on the Infisical container. Useful for setting variables like NODE_EXTRA_CA_CERTS.
   # -- Example:
