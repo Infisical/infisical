@@ -20,7 +20,6 @@ const twMerge = extendTailwindMerge({
         "button-sm",
         "button-md",
         "button-lg",
-        "row-sm",
         "row-md",
         "table-header",
         "table-row"

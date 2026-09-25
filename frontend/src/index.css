@@ -242,7 +242,7 @@
  * Icons: xs for badges/compact buttons, sm for standard buttons, md for rows and controls,
  * lg for prominent standalone icons, and xl for large icon controls.
  * Heights: badge minimums are 18px; compact/default controls are 28/32/36/40px; menu
- * rows are 28px or 36px; table headers and rows are 30px and 40px.
+ * rows are 36px; table headers and rows are 30px and 40px.
  * Local composition spacing should continue to use Tailwind's standard gap/padding utilities.
  */
 @theme {
@@ -261,7 +261,6 @@
   --spacing-button-sm: var(--spacing-control-sm);
   --spacing-button-md: var(--spacing-control-md);
   --spacing-button-lg: var(--spacing-control-lg);
-  --spacing-row-sm: calc(var(--spacing) * 7);
   --spacing-row-md: calc(var(--spacing) * 9);
   --spacing-table-header: calc(var(--spacing) * 7.5);
   --spacing-table-row: calc(var(--spacing) * 10);
