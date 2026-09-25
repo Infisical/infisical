@@ -20,7 +20,8 @@ const validChunk = {
   recordCount: 42,
   droppedCount: 0,
   ciphertextBytes: 4096,
-  iv: "qrvM3e7/ABEiM0RV"
+  iv: "qrvM3e7/ABEiM0RV",
+  ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 };
 
 describe("the chunk create body", () => {
@@ -44,7 +45,23 @@ describe("the chunk create body", () => {
     { field: "ciphertextBytes", value: AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES + 1, why: "over the size ceiling" },
     { field: "iv", value: "qrvM3e7/ABEiM0RV=", why: "padded base64 is the wrong width" },
     { field: "iv", value: "qrvM3e7/ABEiM0R", why: "15 characters is not 12 bytes" },
-    { field: "iv", value: "qrvM3e7-ABEiM0RV", why: "url-safe base64 is a different alphabet" }
+    { field: "iv", value: "qrvM3e7-ABEiM0RV", why: "url-safe base64 is a different alphabet" },
+    {
+      field: "ciphertextSha256",
+      value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+      why: "padded base64 is the wrong width"
+    },
+    {
+      field: "ciphertextSha256",
+      value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuF",
+      why: "42 characters is not 32 bytes"
+    },
+    {
+      field: "ciphertextSha256",
+      value: "47DEQpj8HBSa-/TImW-5JCeuQeRkm5NMpJWZG3hSuFU",
+      why: "url-safe base64 is a different alphabet"
+    },
+    { field: "ciphertextSha256", value: undefined, why: "every chunk carries its digest" }
   ])("rejects $field: $why", ({ field, value }) => {
     expect(AgentVaultActivityChunkCreateSchema.safeParse({ ...validChunk, [field]: value }).success).toBe(false);
   });

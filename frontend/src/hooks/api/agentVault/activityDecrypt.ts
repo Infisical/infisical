@@ -146,6 +146,12 @@ const openChunk = async (
 
   if (body.byteLength !== chunk.ciphertextBytes) return gapFor(chunk, "size");
 
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", body));
+  const expected = base64ToBytes(chunk.ciphertextSha256);
+  if (digest.length !== expected.length || digest.some((byte, i) => byte !== expected[i])) {
+    return gapFor(chunk, "altered");
+  }
+
   let plaintext: ArrayBuffer;
   try {
     plaintext = await crypto.subtle.decrypt(

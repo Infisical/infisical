@@ -132,6 +132,7 @@ const nextChunkId = () => {
 };
 
 const CHUNK_BYTES = 1024;
+const CHUNK_SHA256 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU";
 
 const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   chunkId: nextChunkId(),
@@ -143,6 +144,7 @@ const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   droppedCount: 0,
   ciphertextBytes: CHUNK_BYTES,
   iv: "qrvM3e7/ABEiM0RV",
+  ciphertextSha256: CHUNK_SHA256,
   ...overrides
 });
 
@@ -616,6 +618,7 @@ describe("Agent Vault activity", async () => {
       { why: "the record count is over the slice size", patch: { recordCount: 1001 } },
       { why: "the record count is zero", patch: { recordCount: 0 } },
       { why: "the IV is the wrong width", patch: { iv: "short" } },
+      { why: "the digest is not a SHA-256", patch: { ciphertextSha256: "short" } },
       { why: "the ciphertext is smaller than an empty sealed array", patch: { ciphertextBytes: 4 } }
     ])("rejects a malformed chunk when $why", async ({ patch }) => {
       await configure();
@@ -719,11 +722,18 @@ describe("Agent Vault activity", async () => {
         enabled: boolean;
         sessionKey: string;
         projectId: string;
-        chunks: { chunkId: string; proxyId: string; presignedGetUrl: string | null; recordCount: number }[];
+        chunks: {
+          chunkId: string;
+          proxyId: string;
+          presignedGetUrl: string | null;
+          recordCount: number;
+          ciphertextSha256: string;
+        }[];
         nextCursor: string | null;
       };
 
       expect(body.enabled).toBe(true);
+      expect(body.chunks.every((chunk) => chunk.ciphertextSha256 === CHUNK_SHA256)).toBe(true);
       expect(body.projectId).toBe(projectId);
       expect(Buffer.from(body.sessionKey, "base64")).toHaveLength(32);
       expect(body.chunks).toHaveLength(3);
@@ -970,6 +980,19 @@ describe("Agent Vault activity", async () => {
 
       expect((await saveConfig({ keyPrefix: "other" })).statusCode).toBe(200);
       expect(fakeActivityStorage.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
+    });
+
+    test("a key copied from another session is refused rather than handed out", async () => {
+      await configure();
+      const { session } = await seedChunks(1);
+      const other = await mintSession((await createAccessBundle(`activity-other-${Date.now()}`)).name);
+
+      const { encryptedActivityKey } = await testDb("agent_vault_sessions").where({ id: other.id }).first();
+      await testDb("agent_vault_sessions").where({ id: session.id }).update({ encryptedActivityKey });
+
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
+      expect(res.statusCode).toBe(500);
+      expect(res.payload).not.toContain("sessionKey");
     });
 
     test("turning logging off still serves what was already written", async () => {

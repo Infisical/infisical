@@ -24,6 +24,7 @@ export const AgentVaultActivityChunksSchema = z.object({
   objectKey: z.string(),
   ciphertextBytes: z.number(),
   iv: z.string(),
+  ciphertextSha256: z.string(),
   createdAt: z.date()
 });
 

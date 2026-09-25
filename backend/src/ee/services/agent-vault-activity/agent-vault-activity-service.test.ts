@@ -56,7 +56,8 @@ const validChunk = () => ({
   recordCount: 42,
   droppedCount: 0,
   ciphertextBytes: 4096,
-  iv: "qrvM3e7/ABEiM0RV"
+  iv: "qrvM3e7/ABEiM0RV",
+  ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 });
 
 type TOverrides = {

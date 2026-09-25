@@ -60,6 +60,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("objectKey", 1024).notNullable();
       t.integer("ciphertextBytes").notNullable();
       t.string("iv", 24).notNullable();
+      t.string("ciphertextSha256", 43).notNullable();
 
       // Millisecond precision: createdAt is a cursor that round-trips through a JS Date, which drops microseconds.
       t.timestamp("createdAt", { useTz: true, precision: 3 }).notNullable().defaultTo(knex.fn.now());

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAgentVaultSessions } from "@app/db/schemas";
+import { TableName, TAgentVaultSessions, TAgentVaultSessionsInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
@@ -309,5 +309,17 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore };
+  // The id is chosen by the caller because the activity key is wrapped with it before the row exists.
+  const createWithId = async (data: TAgentVaultSessionsInsert & { id: string }, tx?: Knex) => {
+    try {
+      const [session] = await (tx || db)(TableName.AgentVaultSession)
+        .insert(data as never)
+        .returning("*");
+      return session;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create Agent Vault session" });
+    }
+  };
+
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore, createWithId };
 };

@@ -5,6 +5,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -94,11 +95,16 @@ export const agentVaultSessionServiceFactory = ({
     const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
     const { token, tokenHash } = generateSessionToken();
 
-    const encryptedActivityKey = await wrapActivityKey({ projectId, activityKey: generateActivityKey() }, kmsService);
+    const sessionId = crypto.nativeCrypto.randomUUID();
+    const encryptedActivityKey = await wrapActivityKey(
+      { projectId, sessionId, activityKey: generateActivityKey() },
+      kmsService
+    );
 
     const session = await agentVaultSessionDAL.transaction(async (tx) => {
-      const created = await agentVaultSessionDAL.create(
+      const created = await agentVaultSessionDAL.createWithId(
         {
+          id: sessionId,
           projectId,
           userId: actor.type === ActorType.USER ? actor.id : null,
           identityId: actor.type === ActorType.IDENTITY ? actor.id : null,

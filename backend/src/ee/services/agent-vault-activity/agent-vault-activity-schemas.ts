@@ -26,6 +26,11 @@ const IvSchema = z
   .regex(/^[A-Za-z0-9+/]{16}$/, "Must be 12 bytes of unpadded base64")
   .describe(AGENT_VAULT.ACTIVITY.iv);
 
+const CiphertextSha256Schema = z
+  .string()
+  .regex(/^[A-Za-z0-9+/]{43}$/, "Must be a SHA-256 digest as unpadded base64")
+  .describe(AGENT_VAULT.ACTIVITY.ciphertextSha256);
+
 export const AgentVaultActivityChunkCreateSchema = z.object({
   chunkId: z.string().ulid().describe(AGENT_VAULT.ACTIVITY.chunkId),
   startedAt: z.coerce.date().describe(AGENT_VAULT.ACTIVITY.startedAt),
@@ -45,7 +50,8 @@ export const AgentVaultActivityChunkCreateSchema = z.object({
     .min(AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES)
     .max(AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES)
     .describe(AGENT_VAULT.ACTIVITY.ciphertextBytes),
-  iv: IvSchema
+  iv: IvSchema,
+  ciphertextSha256: CiphertextSha256Schema
 });
 
 export const AgentVaultActivityChunkCreateResponseSchema = z.object({
@@ -80,6 +86,7 @@ export const AgentVaultActivityChunkViewSchema = z.object({
   droppedCount: z.number().describe(AGENT_VAULT.ACTIVITY.droppedCount),
   ciphertextBytes: z.number().describe(AGENT_VAULT.ACTIVITY.ciphertextBytes),
   iv: z.string().describe(AGENT_VAULT.ACTIVITY.iv),
+  ciphertextSha256: z.string().describe(AGENT_VAULT.ACTIVITY.ciphertextSha256),
   presignedGetUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.presignedGetUrl)
 });
 

@@ -125,6 +125,7 @@ export const agentVaultActivityServiceFactory = ({
     droppedCount: toCount(row.droppedCount),
     ciphertextBytes: row.ciphertextBytes,
     iv: row.iv,
+    ciphertextSha256: row.ciphertextSha256,
     presignedGetUrl
   });
 
@@ -405,7 +406,7 @@ export const agentVaultActivityServiceFactory = ({
     }
 
     const sessionKey = await unwrapActivityKey(
-      { projectId, encryptedActivityKey: session.encryptedActivityKey },
+      { projectId, sessionId, encryptedActivityKey: session.encryptedActivityKey },
       kmsService
     );
 

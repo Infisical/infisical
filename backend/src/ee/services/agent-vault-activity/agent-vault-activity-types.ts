@@ -14,6 +14,7 @@ export type TAgentVaultActivityChunkInput = {
   droppedCount: number;
   ciphertextBytes: number;
   iv: string;
+  ciphertextSha256: string;
 };
 
 export type TRecordChunkDTO = {

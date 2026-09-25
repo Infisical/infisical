@@ -87,6 +87,7 @@ describe("decryptActivityPage", () => {
         droppedCount: 0,
         ciphertextBytes: 64,
         iv: "qrvM3e7/ABEiM0RV",
+        ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU",
         presignedGetUrl: "https://bucket.example/chunk"
       }
     ],
@@ -130,5 +131,12 @@ describe("decryptActivityPage", () => {
       }),
       { reason: "fetch", downloads: 2 }
     );
+  });
+
+  it("tells an object changed after upload apart from one that fails to decrypt, and doesn't download it again", async () => {
+    assert.deepEqual(await openTwice(async () => new Response(new Uint8Array(64))), {
+      reason: "altered",
+      downloads: 1
+    });
   });
 });

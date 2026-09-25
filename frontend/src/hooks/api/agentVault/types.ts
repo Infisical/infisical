@@ -320,6 +320,7 @@ export type TAgentVaultActivityChunk = {
   droppedCount: number;
   ciphertextBytes: number;
   iv: string;
+  ciphertextSha256: string;
   presignedGetUrl: string | null;
 };
 
@@ -356,6 +357,7 @@ export type TAgentVaultActivityGapReason =
   | "missing"
   | "refused"
   | "size"
+  | "altered"
   | "gcm"
   | "json"
   | "mismatch"

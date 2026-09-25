@@ -27,6 +27,7 @@ import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/a
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultActivityConfigDALFactory } from "../agent-vault-activity/agent-vault-activity-config-dal";
+import { openActivityKey } from "../agent-vault-activity/agent-vault-activity-secrets";
 import { resolveStorageConfig } from "../agent-vault-activity/agent-vault-activity-storage";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
@@ -463,7 +464,10 @@ export const agentVaultProxyServiceFactory = ({
         enabled: activityEnabled,
         sessionKey:
           activityKeyNeeded && session.encryptedActivityKey
-            ? decryptor!({ cipherTextBlob: session.encryptedActivityKey }).toString("base64")
+            ? openActivityKey({
+                sessionId: session.id,
+                payload: decryptor!({ cipherTextBlob: session.encryptedActivityKey })
+              }).toString("base64")
             : null,
         projectId: session.projectId
       }

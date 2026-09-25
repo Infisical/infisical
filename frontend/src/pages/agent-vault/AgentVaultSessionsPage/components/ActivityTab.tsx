@@ -107,6 +107,7 @@ const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
   missing: "No longer in the bucket",
   refused: "The bucket refused the download",
   size: "The stored object is the wrong size",
+  altered: "Changed after it was uploaded",
   gcm: "Could not be decrypted",
   json: "The decrypted contents were not readable",
   mismatch: "Its records don't match the proxy and batch that sent them"

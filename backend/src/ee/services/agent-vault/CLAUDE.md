@@ -205,6 +205,12 @@ hostile input: it must never be able to erase or hide its own records.
 - **Each chunk stores the bucket it was written to**, and a read presigns only chunks in the current bucket,
   by their stored key (which carries the prefix), so switching back to an earlier bucket makes its history
   readable again. A re-sent chunk is moved to the current bucket and key.
+- **Each chunk carries `ciphertextSha256`**, set by the proxy at seal time and checked in the browser before
+  decrypting, so an object edited in the bucket reads as changed, not as a decryption failure.
+- **The wrapped session key carries `sha256(sessionId|v1)` in front of the key**, because the KMS wrap takes
+  no context. Every unwrap goes through `openActivityKey`, including resolve, which shares its decryptor, so
+  a key copied onto another session's row is refused rather than handed out. The session id is minted
+  before the insert (`createWithId`) so the key can be wrapped with it.
 - **App connections are the one CASL subject the admin role carries**, because the shared
   `AppConnectionsTable` reads CASL, not the role. Everything else here is `hasRole(Admin)`.
 - **Every by-id route under `/agent-vault/app-connections/aws/*` passes `findAppConnectionById` a `scope`**,

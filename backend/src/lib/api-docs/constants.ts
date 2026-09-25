@@ -4376,6 +4376,8 @@ export const AGENT_VAULT = {
       "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused or switched off.",
     ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialisation vector, base64 encoded.",
+    ciphertextSha256:
+      "The SHA-256 of the encrypted chunk, unpadded base64. The browser checks the downloaded object against it before decrypting.",
     objectKey: "Where the encrypted chunk lives in the configured bucket.",
     uploadUrl: "A presigned URL to PUT the encrypted chunk to. Accepts exactly ciphertextBytes bytes.",
     presignedGetUrl:
