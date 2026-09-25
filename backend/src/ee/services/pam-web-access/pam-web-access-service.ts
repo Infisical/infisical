@@ -186,14 +186,6 @@ export const pamWebAccessServiceFactory = ({
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
-    const webAccessBlocked = webAccessUnavailableReason(
-      account.accountType as PamAccountType,
-      await decrypt(account.projectId, account.encryptedConnectionDetails)
-    );
-    if (webAccessBlocked) {
-      throw new BadRequestError({ message: webAccessBlocked });
-    }
-
     const policy = resolveAccessControls(account.templatePolicies);
     const { requiresApproval } = policy;
 
@@ -238,6 +230,12 @@ export const pamWebAccessServiceFactory = ({
     enforceRecordingConfig(account);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+
+    const webAccessBlocked = webAccessUnavailableReason(account.accountType as PamAccountType, connectionDetails);
+    if (webAccessBlocked) {
+      throw new BadRequestError({ message: webAccessBlocked });
+    }
+
     const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
     const trimmedReason = reason?.trim() || null;

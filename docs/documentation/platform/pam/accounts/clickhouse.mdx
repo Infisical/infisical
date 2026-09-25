@@ -15,7 +15,7 @@ Either interface can be turned off on the server. Set whichever ports it serves 
 - A ClickHouse user for Infisical to connect as.
 - At least one of the two interfaces enabled on the target. Both are on by default in a stock ClickHouse configuration: `http_port` is 8123 and `tcp_port` is 9000. The TLS ports are `https_port` 8443 and `tcp_port_secure` 9440, and ClickHouse Cloud exposes both.
 - Both interfaces share the same `<openSSL><server>` certificate, so one SSL setting covers them. A server with TLS on one interface and not the other isn't supported.
-- A [gateway](/documentation/platform/gateways/overview) that can reach those ports. A gateway that predates ClickHouse support refuses the session with a version error.
+- A [gateway](/documentation/platform/gateways/overview) that can reach those ports. Saving the account fails if the gateway predates ClickHouse support, and setting a **Native Port** fails if it predates native-protocol support. Update the gateway, or leave the native port empty to use HTTP only.
 
 ## Creating an account
 
@@ -60,7 +60,7 @@ GRANT SELECT ON analytics.* TO pam_service;
 
 Every session opens on the account's **Database**, whatever a client asks for. That is a starting point, not a limit: a session can still read any database the user has a grant on, and Web Access lists them all. Scope the grants, not the **Database** field.
 
-Sessions connect with the user's default roles. The gateway drops the `role` URL parameter, which would otherwise activate a role with no statement to record, so use `SET ROLE` instead and it's recorded like any other statement.
+Sessions connect with the user's default roles. Over HTTP the gateway drops the `role` URL parameter, which would otherwise activate a role with no statement to record, so use `SET ROLE` instead and it's recorded like any other statement.
 
 Command blocking matches the text of each statement, so a statement that builds SQL at runtime can run something a pattern would otherwise reject. Use ClickHouse grants for restrictions that have to hold.
 
@@ -133,7 +133,7 @@ A server that serves only the native protocol works with native clients. Set the
 
 `clickhouse-client`, Python's `clickhouse-driver` and `clickhouse-go` speak to the session's port directly and need nothing special.
 
-**Everything that speaks HTTP needs the server to have an HTTP port.** That includes Web Access, JDBC tools such as DBeaver and DataGrip, `clickhouse-connect` and ODBC. Web Access is greyed out on such an account, and the other clients fail when they connect. Give the account an HTTP port if you need any of them.
+Nothing translates HTTP into the native protocol, so every HTTP client needs the server to have an HTTP port. That includes Web Access, JDBC tools such as DBeaver and DataGrip, `clickhouse-connect` and ODBC. Web Access is greyed out on such an account, and the other clients fail when they connect. Give the account an HTTP port if you need any of them.
 
 ## Next steps
 

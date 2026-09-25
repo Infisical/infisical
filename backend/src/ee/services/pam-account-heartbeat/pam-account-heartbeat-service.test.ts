@@ -23,13 +23,13 @@ vi.mock("@app/ee/services/gateway-v2/gateway-v2-fns", () => ({
   testBuiltConnectionWithGateway: (...args: unknown[]) => gatewayBuiltTestConnection(...args)
 }));
 
-// The heartbeat takes the built test whole; unwrap it so the existing per-argument expectations still apply.
-gatewayBuiltTestConnection.mockImplementation(
-  (built: unknown, gatewayId: unknown, service: unknown, timeoutMs: unknown, signal: unknown) => {
-    const t = built as { host: string; port: number; request: unknown; additionalPorts?: number[] };
-    return gatewayTestConnection(t.host, t.port, gatewayId, service, t.request, timeoutMs, signal, t.additionalPorts);
-  }
-);
+const builtTest = (call = 0) =>
+  gatewayBuiltTestConnection.mock.calls[call][0] as {
+    host: string;
+    port: number;
+    request: Record<string, unknown>;
+    additionalPorts?: number[];
+  };
 
 const blobOf = (data: Record<string, unknown>) => Buffer.from(JSON.stringify(data));
 
@@ -105,7 +105,7 @@ describe("heartbeat: Windows", () => {
     const result = await service.checkScheduledAccount("acc-win");
 
     expect(testCredential).toHaveBeenCalledTimes(1);
-    expect(gatewayTestConnection).not.toHaveBeenCalled();
+    expect(gatewayBuiltTestConnection).not.toHaveBeenCalled();
     expect(result?.status).toBe(PamHeartbeatStatus.Healthy);
     expect(updateById).toHaveBeenCalledWith(
       "acc-win",
@@ -199,8 +199,8 @@ describe("heartbeat: SSH certificate", () => {
   });
 
   test("mints a short-lived certificate and logs in with it", async () => {
-    gatewayTestConnection.mockReset();
-    gatewayTestConnection.mockResolvedValue({ ok: true });
+    gatewayBuiltTestConnection.mockReset();
+    gatewayBuiltTestConnection.mockResolvedValue({ ok: true });
 
     const { SshCertKeyAlgorithm, createSshKeyPair } = await import("@app/lib/ssh");
     const { publicKey, privateKey } = await createSshKeyPair(SshCertKeyAlgorithm.ED25519);
@@ -231,7 +231,7 @@ describe("heartbeat: SSH certificate", () => {
     const result = await service.checkScheduledAccount("acc-ssh");
 
     expect(result?.status).toBe(PamHeartbeatStatus.Healthy);
-    const [, , , , request] = gatewayTestConnection.mock.calls[0];
+    const { request } = builtTest();
     expect(request).toMatchObject({ mode: "ssh", authMethod: PamSshAuthMethod.Certificate, username: "ubuntu" });
     expect((request as { certificate?: string }).certificate).toBeTruthy();
   });

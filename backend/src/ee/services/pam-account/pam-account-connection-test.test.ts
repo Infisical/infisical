@@ -272,6 +272,9 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
       sslEnabled: false
     });
     expect(result?.port).toBe(8123);
+    // These are the ports the gateway's certificate authorises, so a probe it is asked to run is refused
+    // without them.
+    expect(result?.additionalPorts).toEqual([8123, 9000]);
   });
 
   test("a native-only account targets the native port and sends no HTTP port", async () => {
@@ -291,6 +294,7 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
     expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
     expect(result?.port).toBe(9440);
     expect(result?.request).toMatchObject({ nativePort: 9440, sslEnabled: true });
+    expect(result?.additionalPorts).toEqual([9440]);
     expect(wireKeys(result!.request)).not.toContain("httpPort");
   });
 
@@ -304,6 +308,7 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
 
     expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
     expect(result?.request).toMatchObject({ httpPort: 8123 });
+    expect(result?.additionalPorts).toEqual([8123]);
     expect(wireKeys(result!.request)).not.toContain("nativePort");
   });
 });

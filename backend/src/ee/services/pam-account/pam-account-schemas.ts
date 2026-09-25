@@ -616,6 +616,10 @@ export const ACCOUNT_TYPE_CONFIGS = {
       .refine((v) => v.port !== undefined || v.nativePort !== undefined, {
         message: "Set the HTTP port, the native port, or both",
         path: ["port"]
+      })
+      .refine((v) => v.port === undefined || v.port !== v.nativePort, {
+        message: "The HTTP and native ports must differ",
+        path: ["nativePort"]
       }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -631,8 +635,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       },
       nativePort: {
         label: "Native Port",
-        // No default: the edit form seeds defaults over stored details, so every existing HTTP-only
-        // account would silently gain a native port on its next save.
+        // No default: a native port is the server operator's choice, not something a new account assumes.
         tooltip:
           "The native TCP port, usually 9000 for plain TCP or 9440 with SSL. clickhouse-client and other native drivers need it. Leave it empty if the server only serves HTTP."
       },
