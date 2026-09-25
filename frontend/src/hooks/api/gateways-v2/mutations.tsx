@@ -70,14 +70,16 @@ export const useUpdateGateway = () => {
   return useMutation({
     mutationFn: async ({
       gatewayId,
+      name,
       authMethod
     }: {
       gatewayId: string;
+      name?: string;
       authMethod?: SettableAuthMethodInput;
     }) => {
       const { data } = await apiRequest.patch<TGatewayV2WithAuthMethod>(
         `/api/v3/gateways/${gatewayId}`,
-        { authMethod }
+        { name, authMethod }
       );
       return data;
     },
