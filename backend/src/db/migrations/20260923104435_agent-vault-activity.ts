@@ -62,8 +62,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("iv", 24).notNullable();
       t.string("ciphertextSha256", 43).notNullable();
 
-      // Millisecond precision: createdAt is a cursor that round-trips through a JS Date, which drops microseconds.
-      t.timestamp("createdAt", { useTz: true, precision: 3 }).notNullable().defaultTo(knex.fn.now());
+      t.timestamps(true, true, true);
 
       t.unique(["sessionId", "chunkId"]);
 
@@ -71,6 +70,8 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["sessionId", "createdAt"]);
       t.index(["projectId"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.AgentVaultActivityChunk);
   }
 
   if (await knex.schema.hasTable(TableName.AgentVaultSession)) {
@@ -93,6 +94,7 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultActivityChunk);
   await knex.schema.dropTableIfExists(TableName.AgentVaultActivityChunk);
 
   await dropOnUpdateTrigger(knex, TableName.AgentVaultActivityConfig);

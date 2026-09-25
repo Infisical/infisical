@@ -25,7 +25,8 @@ export const AgentVaultActivityChunksSchema = z.object({
   ciphertextBytes: z.number(),
   iv: z.string(),
   ciphertextSha256: z.string(),
-  createdAt: z.date()
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TAgentVaultActivityChunks = z.infer<typeof AgentVaultActivityChunksSchema>;
