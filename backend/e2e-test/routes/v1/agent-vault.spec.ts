@@ -9,7 +9,10 @@ import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
-import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
+import {
+  AGENT_VAULT_MAX_PROXIES_PER_ORG,
+  agentVaultProxyServiceFactory
+} from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
@@ -213,6 +216,14 @@ const createAccessBundle = async (name: string) => {
 };
 
 describe("Agent Vault V1 Router", async () => {
+  // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
+  beforeEach(async () => {
+    const project = await testDb("projects")
+      .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
+      .first();
+    if (project) await testDb("agent_vault_proxies").where({ projectId: project.id }).del();
+  });
+
   test("resolving the project bootstraps it empty, and an org admin joins through grant-admin-access", async () => {
     const res = await inject("GET", "/api/v1/agent-vault/project");
     expect(res.statusCode).toBe(200);
@@ -1958,6 +1969,17 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("proxies", async () => {
+    test("an org can hold AGENT_VAULT_MAX_PROXIES_PER_ORG proxies, and the next create is refused", async () => {
+      for (let i = 0; i < AGENT_VAULT_MAX_PROXIES_PER_ORG; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        expect((await inject("POST", "/api/v1/agent-vault/proxies", { name: `cap-${i}` })).statusCode).toBe(200);
+      }
+
+      const refused = await inject("POST", "/api/v1/agent-vault/proxies", { name: "cap-over" });
+      expect(refused.statusCode).toBe(400);
+      expect(JSON.parse(refused.payload).message).toContain(`up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies`);
+    });
+
     test("a create that omits the settings gets the documented defaults", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "settings-defaults" });
       expect(created.statusCode).toBe(200);

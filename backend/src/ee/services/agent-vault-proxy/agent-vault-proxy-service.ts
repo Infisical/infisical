@@ -7,6 +7,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -48,6 +49,8 @@ import {
   TUpdateProxyDTO
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory } from "./agent-vault-resolve-dal";
+
+export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
 
 // Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
@@ -179,6 +182,15 @@ export const agentVaultProxyServiceFactory = ({
 
     const create = () =>
       agentVaultProxyDAL.transaction(async (tx) => {
+        // Serialised per project so two creates at once can't both slip under the cap.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultProxy(projectId)]);
+        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_ORG) {
+          throw new BadRequestError({
+            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies per organization. Delete one you no longer use to add another.`
+          });
+        }
+
         const created = await agentVaultProxyDAL.create(
           {
             projectId,

@@ -195,6 +195,8 @@ describe("Agent Vault activity", async () => {
     fakeActivityStorage.reset();
     await testDb("agent_vault_activity_chunks").where({ projectId }).del();
     await testDb("agent_vault_activity_configs").where({ projectId }).del();
+    // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
+    await testDb("agent_vault_proxies").where({ projectId }).del();
   });
 
   describe("settings", () => {
