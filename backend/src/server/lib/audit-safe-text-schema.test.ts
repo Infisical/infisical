@@ -61,12 +61,22 @@ describe("auditSafeText composition", () => {
 describe("routes that feed audit metadata keep the wrapper", () => {
   const read = (relative: string) => readFileSync(path.join(__dirname, "../..", relative), "utf8");
 
-  test("identity names are wrapped and stay single-line", () => {
-    const source = read("server/routes/v1/identity-router.ts");
-    const wrapped = source.match(/name: auditSafeText\(/g) ?? [];
+  // Every route that creates or renames an identity: the org and project routers take the same name
+  // the legacy router does, and the web app creates project identities through the project router.
+  test.each([
+    "server/routes/v1/identity-router.ts",
+    "server/routes/v1/org-identity-router.ts",
+    "server/routes/v1/project-identity-router.ts"
+  ])("%s wraps identity names and keeps them single-line", (file) => {
+    const nameLines = read(file)
+      .split("\n")
+      .filter((line) => line.trimStart().startsWith("name: auditSafeText("));
 
-    expect(wrapped.length).toBeGreaterThanOrEqual(2); // create and update, and any route added later
-    expect(source).not.toMatch(/name: auditSafeText\([^)]*\), \{ allowMultiline: true \}/);
+    expect(nameLines.length).toBeGreaterThanOrEqual(2); // create and update, and any route added later
+    nameLines.forEach((line) => {
+      expect(line).toContain(".max(255)");
+      expect(line).not.toContain("allowMultiline");
+    });
   });
 
   test.each([

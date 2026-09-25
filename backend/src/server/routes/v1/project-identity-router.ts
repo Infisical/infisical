@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -57,7 +58,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
         projectId: z.string().trim().describe("The ID of the project to create the identity in")
       }),
       body: z.object({
-        name: z.string().trim().min(1).describe(IDENTITIES.CREATE.name),
+        name: auditSafeText(z.string().trim().min(1).max(255)).describe(IDENTITIES.CREATE.name),
         hasDeleteProtection: z.boolean().default(false).describe(IDENTITIES.CREATE.hasDeleteProtection),
         metadata: z.array(metadataSchema).optional().describe(IDENTITIES.CREATE.metadata),
         roles: z
@@ -151,7 +152,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
-        name: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.name),
+        name: auditSafeText(z.string().trim().min(1).max(255)).optional().describe(IDENTITIES.UPDATE.name),
         hasDeleteProtection: z.boolean().optional().describe(IDENTITIES.UPDATE.hasDeleteProtection),
         metadata: z.array(metadataSchema).optional().describe(IDENTITIES.UPDATE.metadata)
       }),
