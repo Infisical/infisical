@@ -417,7 +417,6 @@ export const secretScanningV2QueueServiceFactory = ({
             const batchFindings = await scanGitRepositoryAndGetFindings(
               scanPath,
               join(tempFolder, `findings-${index}.json`),
-              undefined,
               batch
             );
 

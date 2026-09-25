@@ -279,16 +279,8 @@ export const planCommitBatches = async ({
   return { totalCommits, batches, resumed: resumableIndex >= 0 };
 };
 
-export async function scanDirectory(
-  inputPath: string,
-  outputPath: string,
-  configPath?: string,
-  logOpts?: string
-): Promise<void> {
+export async function scanDirectory(inputPath: string, outputPath: string, logOpts?: string): Promise<void> {
   const args = ["scan", "--exit-code=77", "-r", outputPath];
-  if (configPath) {
-    args.push("-c", configPath);
-  }
   if (logOpts) {
     args.push(`--log-opts=${logOpts}`);
   }
@@ -327,11 +319,10 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
 export const scanGitRepositoryAndGetFindings = async (
   scanPath: string,
   findingsPath: string,
-  configPath?: string,
   batch?: TCommitBatch
 ): TGetFindingsPayload => {
   const logOpts = batch ? buildCommitBatchLogOpts(batch) : COMMIT_LOG_OPTS;
-  await scanDirectory(scanPath, findingsPath, configPath, logOpts);
+  await scanDirectory(scanPath, findingsPath, logOpts);
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 

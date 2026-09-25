@@ -183,7 +183,7 @@ export type TSecretScanningFactoryGetFullScanPath<T extends TSecretScanningDataS
 export type TSecretScanningFactoryGetDiffScanFindingsPayload<
   T extends TSecretScanningDataSourceWithConnection,
   P extends TQueueSecretScanningResourceDiffScan["payload"]
-> = (parameters: { dataSource: T; resourceName: string; payload: P; configPath?: string }) => Promise<TFindingsPayload>;
+> = (parameters: { dataSource: T; resourceName: string; payload: P }) => Promise<TFindingsPayload>;
 
 export type TSecretScanningDataSourceRaw = NonNullable<
   Awaited<ReturnType<TSecretScanningV2DALFactory["dataSources"]["findById"]>>
