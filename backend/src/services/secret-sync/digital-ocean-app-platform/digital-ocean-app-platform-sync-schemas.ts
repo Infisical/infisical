@@ -11,6 +11,10 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
+export const DIGITAL_OCEAN_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+export const DIGITAL_OCEAN_ENV_KEY_RULE =
+  "DigitalOcean environment variable names must start with a letter or underscore and contain only letters, digits and underscores (no hyphens).";
+
 const DigitalOceanAppPlatformSyncDestinationConfigSchema = z.object({
   appId: z.string().min(1, "Account ID is required").max(255, "Account ID must be less than 255 characters"),
   appName: z.string().min(1, "Account Name is required").max(255, "Account Name must be less than 255 characters")

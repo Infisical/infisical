@@ -83,7 +83,7 @@ class DigitalOceanAppPlatformPublicClient {
     const response = await this.getApp(connection, appId);
     const existing = response.spec.envs || [];
 
-    const variables = existing.filter((v) => input.find((i) => i.key === v.key));
+    const variables = existing.filter((v) => !input.some((i) => i.key === v.key));
 
     return this.client.put(
       `/apps/${appId}`,
