@@ -11,6 +11,7 @@ import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   customExtensionLabelSchema,
+  customExtensionRequestSchema,
   customExtensionValueSchema,
   domainComponentSchema,
   MAX_DOMAIN_COMPONENTS,
@@ -259,13 +260,5 @@ export const certificateRequestSchema = z.object({
     .optional(),
   signatureAlgorithm: z.string().trim().min(1, "Signature algorithm cannot be empty").optional(),
   keyAlgorithm: z.string().trim().min(1, "Key algorithm cannot be empty").optional(),
-  customExtensions: z
-    .array(
-      z.object({
-        oid: certificateExtensionOidSchema,
-        value: customExtensionValueSchema.optional(),
-        critical: z.boolean().optional()
-      })
-    )
-    .optional()
+  customExtensions: z.array(customExtensionRequestSchema).optional()
 });

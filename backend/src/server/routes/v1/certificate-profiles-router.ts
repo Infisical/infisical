@@ -13,13 +13,12 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
-  certificateExtensionOidSchema,
   CertKeyAlgorithm,
   CertKeyUsageType,
   CertSignatureAlgorithm,
   CertSubjectAlternativeNameType,
   customExtensionLabelSchema,
-  customExtensionValueSchema,
+  customExtensionRequestSchema,
   domainComponentsSchema,
   MAX_CUSTOM_EXTENSIONS_PER_PROFILE,
   pkiDescriptionSchema,
@@ -39,14 +38,7 @@ const SubjectAltNameDefaultsSchema = z
   .optional();
 
 const CustomExtensionDefaultsSchema = z
-  .array(
-    z.object({
-      oid: certificateExtensionOidSchema,
-      label: customExtensionLabelSchema.optional(),
-      critical: z.boolean().optional(),
-      value: customExtensionValueSchema.optional()
-    })
-  )
+  .array(customExtensionRequestSchema.extend({ label: customExtensionLabelSchema.optional() }))
   .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
   .optional();
 

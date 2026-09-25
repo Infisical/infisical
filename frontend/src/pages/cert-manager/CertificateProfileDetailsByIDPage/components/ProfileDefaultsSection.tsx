@@ -59,9 +59,15 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
 
   const hasBasicConstraints = Boolean(defaults?.basicConstraints);
 
+  const hasCustomExtensions = Boolean(defaults?.customExtensions?.length);
+
   if (
     !defaults ||
-    (!hasSubjectDefaults && !hasCryptoDefaults && !hasKeyUsages && !hasBasicConstraints)
+    (!hasSubjectDefaults &&
+      !hasCryptoDefaults &&
+      !hasKeyUsages &&
+      !hasBasicConstraints &&
+      !hasCustomExtensions)
   ) {
     return (
       <Card className="w-full">

@@ -53,6 +53,11 @@ export enum CertExtendedKeyUsage {
   ANY_PURPOSE = "any_purpose"
 }
 
+export enum CertExtensionValueEncoding {
+  TEXT = "text",
+  DER = "der"
+}
+
 export enum CertificateRenewalKeySource {
   New = "new",
   Reuse = "reuse",

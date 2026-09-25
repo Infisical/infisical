@@ -1,3 +1,5 @@
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
@@ -349,6 +351,8 @@ export enum CertExtensionCriticality {
 }
 
 const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
+const BASE64_PADDING_PATTERN = /=+$/;
+const stripBase64Padding = (value: string) => value.replace(BASE64_PADDING_PATTERN, "");
 const OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
 const SID_PATTERN = /^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$/;
 const TEMPLATE_INFORMATION_PATTERN = new RegExp(
@@ -410,8 +414,30 @@ export const getPresetExtensionCriticality = (oid: string): CertExtensionCritica
 
 export const isPresetExtensionOid = (oid: string) => Boolean(getCustomExtensionPreset(oid));
 
+export const ISSUER_GENERATED_EXTENSION_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "Signed certificate timestamps",
+  "1.3.6.1.4.1.11129.2.4.3": "Precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamps",
+  "1.3.101.75": "Certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "CA version",
+  "1.3.6.1.4.1.311.21.2": "Previous CA certificate hash"
+};
+
+export { CertExtensionValueEncoding };
+
+export const CUSTOM_EXTENSION_VALUE_ENCODINGS = [
+  { value: CertExtensionValueEncoding.TEXT, label: "Text" },
+  { value: CertExtensionValueEncoding.DER, label: "DER" }
+];
+
+export const isIssuerGeneratedExtensionOid = (oid: string) =>
+  Object.prototype.hasOwnProperty.call(ISSUER_GENERATED_EXTENSION_LABELS, oid);
+
 export const customExtensionLabelFor = (oid: string, label?: string | null) =>
-  label?.trim() || getCustomExtensionPreset(oid)?.label || oid;
+  label?.trim() ||
+  getCustomExtensionPreset(oid)?.label ||
+  ISSUER_GENERATED_EXTENSION_LABELS[oid] ||
+  oid;
 
 export const validateCustomExtensionValue = (oid: string, value: string): string | null => {
   const preset = getCustomExtensionPreset(oid);
@@ -423,6 +449,197 @@ export const validateCustomExtensionValue = (oid: string, value: string): string
 
 export const getCustomExtensionValuePlaceholder = (oid: string) =>
   getCustomExtensionPreset(oid)?.placeholder ?? "Value";
+
+const ASN1_STRING_TAGS = new Set([
+  0x0c, 0x12, 0x13, 0x14, 0x15, 0x16, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e
+]);
+
+const toDerBytes = (base64Value: string): Uint8Array | null => {
+  try {
+    const binary = atob(base64Value);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+};
+
+const decodeDerString = (tag: number, body: Uint8Array): string | null => {
+  if (tag === 0x1e) {
+    let decoded = "";
+    for (let index = 0; index + 1 < body.length; index += 2) {
+      // eslint-disable-next-line no-bitwise
+      decoded += String.fromCharCode((body[index] << 8) | body[index + 1]);
+    }
+    return decoded;
+  }
+
+  if (ASN1_STRING_TAGS.has(tag)) return new TextDecoder().decode(body);
+
+  if (tag === 0x04) {
+    const octets = new TextDecoder().decode(body);
+    // eslint-disable-next-line no-control-regex
+    return /^[\x20-\x7e]+$/.test(octets) ? octets : null;
+  }
+
+  return null;
+};
+
+export const collectDerTextValues = (base64Value: string): string[] => {
+  const bytes = toDerBytes(base64Value);
+  if (!bytes) return [];
+
+  const found: string[] = [];
+  const walk = (slice: Uint8Array) => {
+    let offset = 0;
+    while (offset + 2 <= slice.length) {
+      const tag = slice[offset];
+      let length = slice[offset + 1];
+      let headerLength = 2;
+
+      // eslint-disable-next-line no-bitwise
+      if (length & 0x80) {
+        // eslint-disable-next-line no-bitwise
+        const count = length & 0x7f;
+        if (count === 0 || count > 4 || offset + 2 + count > slice.length) return;
+        length = 0;
+        for (let index = 0; index < count; index += 1) {
+          // eslint-disable-next-line no-bitwise
+          length = (length << 8) | slice[offset + 2 + index];
+        }
+        headerLength = 2 + count;
+      }
+
+      const start = offset + headerLength;
+      const end = start + length;
+      if (end > slice.length) return;
+
+      const body = slice.slice(start, end);
+      // eslint-disable-next-line no-bitwise
+      if (tag & 0x20) {
+        walk(body);
+      } else {
+        const text = decodeDerString(tag, body);
+        if (text !== null) found.push(text);
+      }
+
+      offset = end;
+    }
+  };
+
+  walk(bytes);
+  return found;
+};
+
+const readDerValueLength = (bytes: Uint8Array, offset: number): { end: number } | null => {
+  if (offset + 2 > bytes.length) return null;
+
+  let length = bytes[offset + 1];
+  let headerLength = 2;
+
+  // eslint-disable-next-line no-bitwise
+  if (length & 0x80) {
+    // eslint-disable-next-line no-bitwise
+    const count = length & 0x7f;
+    if (count === 0 || count > 4 || offset + 2 + count > bytes.length) return null;
+    length = 0;
+    for (let index = 0; index < count; index += 1) {
+      // eslint-disable-next-line no-bitwise
+      length = (length << 8) | bytes[offset + 2 + index];
+    }
+    headerLength = 2 + count;
+  }
+
+  const end = offset + headerLength + length;
+  if (end > bytes.length) return null;
+
+  // eslint-disable-next-line no-bitwise
+  if (bytes[offset] & 0x20) {
+    let inner = offset + headerLength;
+    while (inner < end) {
+      const child = readDerValueLength(bytes, inner);
+      if (!child || child.end > end) return null;
+      inner = child.end;
+    }
+    if (inner !== end) return null;
+  }
+
+  return { end };
+};
+
+export const validateCustomExtensionDerValue = (value: string): string | null => {
+  const bytes = toDerBytes(value.trim());
+  if (!bytes?.length) return "Value must be base64-encoded DER";
+
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  if (stripBase64Padding(btoa(binary)) !== stripBase64Padding(value.trim())) {
+    return "Value must be base64-encoded DER";
+  }
+
+  if (bytes.length > MAX_CUSTOM_EXTENSION_VALUE_BYTES) {
+    return `Value cannot exceed ${MAX_CUSTOM_EXTENSION_VALUE_BYTES} bytes`;
+  }
+
+  const parsed = readDerValueLength(bytes, 0);
+  if (!parsed || parsed.end !== bytes.length) {
+    return "Value must be a single DER-encoded ASN.1 value";
+  }
+
+  return null;
+};
+
+export const decodeDerTextValue = (base64Value: string): string | null => {
+  let bytes: Uint8Array;
+  try {
+    const binary = atob(base64Value);
+    bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+
+  if (bytes.length < 2) return null;
+
+  const tag = bytes[0];
+  let length = bytes[1];
+  let offset = 2;
+
+  // eslint-disable-next-line no-bitwise
+  if (length & 0x80) {
+    // eslint-disable-next-line no-bitwise
+    const count = length & 0x7f;
+    if (count === 0 || count > 4 || bytes.length < 2 + count) return null;
+    length = 0;
+    for (let index = 0; index < count; index += 1) {
+      // eslint-disable-next-line no-bitwise
+      length = (length << 8) | bytes[2 + index];
+    }
+    offset = 2 + count;
+  }
+
+  if (offset + length !== bytes.length || !ASN1_STRING_TAGS.has(tag)) return null;
+
+  const body = bytes.slice(offset);
+  if (tag === 0x1e) {
+    let decoded = "";
+    for (let index = 0; index + 1 < body.length; index += 2) {
+      // eslint-disable-next-line no-bitwise
+      decoded += String.fromCharCode((body[index] << 8) | body[index + 1]);
+    }
+    return decoded;
+  }
+
+  return new TextDecoder().decode(body);
+};
+
+export const getCustomExtensionValuePlaceholderFor = (
+  oid: string,
+  encoding?: CertExtensionValueEncoding
+) =>
+  encoding === CertExtensionValueEncoding.DER
+    ? "Base64-encoded DER, for example MAMCAQU="
+    : getCustomExtensionValuePlaceholder(oid);
 
 export type TCustomExtensionRow = {
   oid: string;

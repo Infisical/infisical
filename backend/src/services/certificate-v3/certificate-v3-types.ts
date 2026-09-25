@@ -2,6 +2,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
+  CertExtensionValueEncoding,
   CertificateRequestStatus,
   CertKeyAlgorithm,
   CertKeyUsageType,
@@ -166,6 +167,7 @@ export type TRenewalAttributes = {
   customExtensions?: Array<{
     oid: string;
     value?: string;
+    valueEncoding?: CertExtensionValueEncoding;
     critical?: boolean;
   }>;
 };

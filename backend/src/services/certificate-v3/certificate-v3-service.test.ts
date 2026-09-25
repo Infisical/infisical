@@ -23,6 +23,7 @@ import { CaStatus, CaType } from "@app/services/certificate-authority/certificat
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   CertExtendedKeyUsageType,
+  CertExtensionValueEncoding,
   CertificateIssuanceOperation,
   CertIncludeType,
   CertKeyUsageType,
@@ -2608,6 +2609,65 @@ describe("CertificateV3Service", () => {
         },
         {}
       );
+    });
+
+    describe("custom extensions", () => {
+      const TEXT_OID = "1.3.6.1.4.1.99999.7.1";
+      const MUST_STAPLE_OID = "1.3.6.1.5.5.7.1.24";
+      const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
+
+      const storedCustomExtensions = [
+        { oid: TEXT_OID, value: "DAhvcHMtcHJvZA==", critical: false },
+        { oid: MUST_STAPLE_OID, value: "MAMCAQU=", critical: false },
+        { oid: SCT_LIST_OID, value: "BAIAQg==", critical: false }
+      ];
+
+      const renewAgainst = async (externalCaType: CaType | null) => {
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
+          ...mockOriginalCert,
+          customExtensions: storedCustomExtensions
+        } as any);
+        vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({
+          id: "secret-123",
+          certId: "cert-123"
+        } as any);
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+          ...mockCA,
+          externalCa: externalCaType ? { id: "ext-ca-1", type: externalCaType } : undefined
+        } as any);
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy as any);
+        vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        } as any);
+
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
+
+        return vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mock.calls.at(-1)?.[1];
+      };
+
+      it("carries text and binary extensions forward and leaves the transparency one behind", async () => {
+        const request = await renewAgainst(null);
+
+        expect(request?.customExtensions).toEqual([
+          { oid: TEXT_OID, value: "ops-prod", critical: false, carried: true },
+          {
+            oid: MUST_STAPLE_OID,
+            value: "MAMCAQU=",
+            valueEncoding: CertExtensionValueEncoding.DER,
+            critical: false,
+            carried: true
+          }
+        ]);
+      });
+
+      it("carries nothing to an authority that cannot emit custom extensions", async () => {
+        const request = await renewAgainst(CaType.DIGICERT);
+
+        expect(request?.customExtensions).toEqual([]);
+      });
     });
 
     it("preserves CA basicConstraints when renewing a CA certificate", async () => {

@@ -67,6 +67,7 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
 import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import {
   CertPolicyState,
@@ -110,7 +111,8 @@ const certificateDefaultsSchema = z
           oid: z.string(),
           label: z.string().optional(),
           critical: z.boolean().optional(),
-          value: z.string().optional()
+          value: z.string().optional(),
+          valueEncoding: z.nativeEnum(CertExtensionValueEncoding).optional()
         })
       )
       .optional(),
@@ -446,7 +448,8 @@ const convertFormToDefaults = (
         oid: extension.oid.trim(),
         ...(extension.label?.trim() && { label: extension.label.trim() }),
         ...(extension.critical !== undefined && { critical: extension.critical }),
-        ...(extension.value?.trim() && { value: extension.value.trim() })
+        ...(extension.value?.trim() && { value: extension.value.trim() }),
+        ...(extension.valueEncoding && { valueEncoding: extension.valueEncoding })
       }));
     if (declared.length > 0) result.customExtensions = declared;
   }

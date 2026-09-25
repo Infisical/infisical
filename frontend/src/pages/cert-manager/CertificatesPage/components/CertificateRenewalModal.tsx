@@ -32,6 +32,7 @@ import {
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
+  CertExtensionValueEncoding,
   CertificateIssuerKind,
   CertificateRenewalKeySource
 } from "@app/hooks/api/certificates/enums";
@@ -99,7 +100,12 @@ const formSchema = z
     extendedKeyUsages: z.record(z.boolean().optional()).default({}),
     customExtensions: z
       .array(
-        z.object({ oid: z.string().trim(), value: z.string(), critical: z.boolean().optional() })
+        z.object({
+          oid: z.string().trim(),
+          value: z.string(),
+          valueEncoding: z.nativeEnum(CertExtensionValueEncoding).optional(),
+          critical: z.boolean().optional()
+        })
       )
       .default([])
   })
@@ -500,7 +506,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       attributes: buildRenewalRequestAttributes({
         formData,
         constraints,
-        isExternalTemplateProfile
+        isExternalTemplateProfile,
+        caSupportsCustomExtensions,
+        policyRules: policyData?.customExtensions
       })
     });
 

@@ -73,6 +73,12 @@ Reuse is available for certificates issued with an Infisical-managed key pair. A
   Changing the common name can affect [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) that select certificates by name. Check any sync attached to the certificate before renaming it.
 </Warning>
 
+### Custom extensions
+
+A renewal starts from the extensions on the current certificate. A value is text, or base64-encoded DER for anything that isn't text, such as OCSP must-staple, which reaches the certificate byte for byte.
+
+Certificate Transparency timestamps and the ADCS CA version and previous certificate hash are left out, because the authority issuing the renewal writes its own. An authority that doesn't accept custom extensions at all, DigiCert for example, issues the renewal without them and refuses a request that asks for one.
+
 ### Permissions
 
 Renewing a certificate as it stands needs only permission to issue from its certificate profile. Changing any of the properties above additionally needs **Edit** on certificates, so a role scoped to issuance alone can keep certificates current without being able to alter what they contain.
@@ -132,6 +138,8 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
     ```
 
     `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
+
+    `valueEncoding` says how to read a custom extension's `value`: `text` by default, or `der` for base64 that reaches the certificate byte for byte, as in `{ "oid": "1.3.6.1.5.5.7.1.24", "value": "MAMCAQU=", "valueEncoding": "der" }` for OCSP must-staple.
 
     A request with no body renews the certificate as it is with a new key pair, so existing automation keeps working unchanged.
 

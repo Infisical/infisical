@@ -1,5 +1,9 @@
 import { TCertificateProfileDefaults } from "@app/hooks/api/certificateProfiles/types";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import {
+  CertExtendedKeyUsage,
+  CertExtensionValueEncoding,
+  CertKeyUsage
+} from "@app/hooks/api/certificates/enums";
 import { TUnifiedCertificateIssuanceDTO } from "@app/hooks/api/certificates/types";
 import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -12,7 +16,12 @@ type ManagedFormData = Extract<FormData, { requestMethod: "managed" }>;
 type ManagedIssuanceRequest = Omit<TUnifiedCertificateIssuanceDTO, "attributes"> & {
   attributes: NonNullable<TUnifiedCertificateIssuanceDTO["attributes"]> & {
     basicConstraints?: { isCA: boolean; pathLength?: number };
-    customExtensions?: { oid: string; value: string; critical?: boolean }[];
+    customExtensions?: {
+      oid: string;
+      value: string;
+      valueEncoding?: CertExtensionValueEncoding;
+      critical?: boolean;
+    }[];
   };
 };
 
@@ -120,6 +129,7 @@ export const buildManagedRequest = ({
     .map((entry) => ({
       oid: entry.oid.trim(),
       value: entry.value.trim(),
+      ...(entry.valueEncoding && { valueEncoding: entry.valueEncoding }),
       ...(entry.critical !== undefined && { critical: entry.critical })
     }));
   if (suppliedExtensions.length) {

@@ -20,6 +20,7 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
+  CertExtensionValueEncoding,
   certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
@@ -97,7 +98,12 @@ interface CertificateRequestForService {
     isCA: boolean;
     pathLength?: number;
   };
-  customExtensions?: Array<{ oid: string; value?: string; critical?: boolean }>;
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    valueEncoding?: CertExtensionValueEncoding;
+    critical?: boolean;
+  }>;
 }
 
 const validateTtlAndDateFields = (data: {
