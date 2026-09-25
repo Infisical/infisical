@@ -74,7 +74,6 @@ describe("decryptActivityPage", () => {
     enabled: true,
     sessionKey: btoa("\0".repeat(32)),
     projectId: "project-1",
-    configVersion: 1,
     chunks: [
       {
         chunkId,
@@ -86,7 +85,6 @@ describe("decryptActivityPage", () => {
         lastSeq: 0,
         recordCount: 1,
         droppedCount: 0,
-        configVersion: 1,
         ciphertextBytes: 64,
         iv: "qrvM3e7/ABEiM0RV",
         presignedGetUrl: "https://bucket.example/chunk"

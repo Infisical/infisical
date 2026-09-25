@@ -288,7 +288,6 @@ export type TAgentVaultActivityConfig = {
   bucket: string | null;
   region: string | null;
   keyPrefix: string | null;
-  configVersion: number;
 };
 
 export type TAgentVaultActivityConfigResponse = {
@@ -319,7 +318,6 @@ export type TAgentVaultActivityChunk = {
   lastSeq: number;
   recordCount: number;
   droppedCount: number;
-  configVersion: number;
   ciphertextBytes: number;
   iv: string;
   presignedGetUrl: string | null;
@@ -329,7 +327,6 @@ export type TAgentVaultActivityPage = {
   enabled: boolean;
   sessionKey: string | null;
   projectId: string;
-  configVersion: number;
   chunks: TAgentVaultActivityChunk[];
   nextCursor: string | null;
   hasMore: boolean;

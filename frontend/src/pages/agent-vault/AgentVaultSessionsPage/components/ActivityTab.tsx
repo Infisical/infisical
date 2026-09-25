@@ -102,7 +102,7 @@ const decisionPresentation = (decision: AgentVaultActivityDecision) =>
   DECISION_PRESENTATION[decision] ?? { label: decision || "Unknown", variant: "neutral" as const };
 
 const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
-  repointed: "Stored in a bucket or prefix this project no longer uses",
+  repointed: "Stored in a bucket this project no longer uses",
   fetch: "Could not be read from the bucket",
   missing: "No longer in the bucket",
   refused: "The bucket refused the download",

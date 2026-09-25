@@ -199,7 +199,7 @@ describe("Agent Vault activity", async () => {
         config: Record<string, unknown>;
         corsProbeUrl: string | null;
       };
-      expect(body.config).toMatchObject({ enabled: false, bucket: null, appConnectionId: null, configVersion: 1 });
+      expect(body.config).toMatchObject({ enabled: false, bucket: null, appConnectionId: null });
       expect(body.corsProbeUrl).toBeNull();
       expect(body).toMatchObject({ isStorageFull: false });
       expect(body).not.toHaveProperty("usage");
@@ -303,8 +303,7 @@ describe("Agent Vault activity", async () => {
       expect(JSON.parse(whileOff.payload).config).toMatchObject({
         enabled: false,
         appConnectionId: null,
-        bucket: BUCKET,
-        configVersion: 1
+        bucket: BUCKET
       });
     });
 
@@ -328,25 +327,6 @@ describe("Agent Vault activity", async () => {
       } finally {
         await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.AWS });
       }
-    });
-
-    test("moving the bucket bumps configVersion; changing the region or the connection does not", async () => {
-      await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
-
-      const sameSpot = await saveConfig({ region: "us-west-2" });
-      expect(JSON.parse(sameSpot.payload).config.configVersion).toBe(1);
-
-      const movedPrefix = await saveConfig({ keyPrefix: "other" });
-      expect(JSON.parse(movedPrefix.payload).config.configVersion).toBe(2);
-
-      const movedBucket = await saveConfig({ bucket: "second-bucket" });
-      expect(JSON.parse(movedBucket.payload).config.configVersion).toBe(3);
     });
 
     test("a patch leaves out what it does not name", async () => {
@@ -484,14 +464,12 @@ describe("Agent Vault activity", async () => {
       fakeActivityStorage.put(resent.uploadUrl, stored);
 
       const row = await testDb("agent_vault_activity_chunks").where({ sessionId: session.id }).first();
+      expect(row.bucket).toBe(movedBucket);
       expect(row.objectKey).toMatch(/^moved\//);
       expect(fakeActivityStorage.objectKeys(movedBucket)).toEqual([row.objectKey]);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
-      const [only] = (
-        JSON.parse(read.payload) as { chunks: { configVersion: number; presignedGetUrl: string | null }[] }
-      ).chunks;
-      expect(only.configVersion).toBe(2);
+      const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string | null }[] }).chunks;
       expect(fakeActivityStorage.get(only.presignedGetUrl as string)).toEqual(stored);
     });
 
@@ -970,20 +948,28 @@ describe("Agent Vault activity", async () => {
       expect(res.statusCode).toBe(400);
     });
 
-    test("a chunk written before the destination moved is reported unreachable rather than presigned", async () => {
+    const readLink = async (sessionId: string) => {
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/activity`);
+      return (JSON.parse(res.payload) as { chunks: { presignedGetUrl: string | null }[] }).chunks[0].presignedGetUrl;
+    };
+
+    test("a chunk in a bucket the project no longer uses is not presigned, and is again once the bucket is switched back", async () => {
       await configure();
       const { session } = await seedChunks(1);
 
       expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(200);
+      expect(await readLink(session.id)).toBeNull();
 
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/activity`);
-      const body = JSON.parse(res.payload) as {
-        configVersion: number;
-        chunks: { configVersion: number; presignedGetUrl: string | null }[];
-      };
-      expect(body.configVersion).toBe(2);
-      expect(body.chunks[0].configVersion).toBe(1);
-      expect(body.chunks[0].presignedGetUrl).toBeNull();
+      expect((await saveConfig({ bucket: BUCKET })).statusCode).toBe(200);
+      expect(fakeActivityStorage.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
+    });
+
+    test("a chunk keeps its link after only the prefix changes", async () => {
+      await configure();
+      const { session } = await seedChunks(1);
+
+      expect((await saveConfig({ keyPrefix: "other" })).statusCode).toBe(200);
+      expect(fakeActivityStorage.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
     });
 
     test("turning logging off still serves what was already written", async () => {

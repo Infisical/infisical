@@ -116,13 +116,15 @@ If a record couldn't be kept, the sheet shows a notice instead of leaving a sile
 
 - **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the sheet shows how many
 - **Unreadable batch:** if a batch is missing from the bucket, the bucket refuses the download, or the batch is the wrong size or fails decryption, the sheet marks the batch and shows the rest (select **Retry** to try a missing, refused, or failed download again)
-- **Batch in an old location:** if you changed the bucket or prefix, batches recorded before the change are marked as stored where the project no longer reads
+- **Batch in another bucket:** if you changed the bucket, batches recorded before the change are marked as stored in a bucket the project no longer uses, and become readable again if you switch back
 
 ## Changing where activity is stored
 
 Rotating the AWS connection's credentials, or correcting the region, keeps every record readable. Rotate the connection rather than moving the bucket.
 
-Changing the bucket or the key prefix copies nothing, and everything recorded before the change can no longer be read in Infisical. The objects stay where they were, so you can still reach them with your own tooling.
+Changing the bucket copies nothing, so everything recorded before the change can't be read in Infisical until you switch back to that bucket. The objects stay where they were, so you can still reach them with your own tooling.
+
+Changing only the key prefix keeps earlier records readable, as long as the AWS connection can still read the old prefix. The [IAM policy](#setting-up-storage) on this page covers only the current prefix.
 
 ## Retention
 

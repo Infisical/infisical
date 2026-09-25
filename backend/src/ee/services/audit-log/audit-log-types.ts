@@ -6315,7 +6315,6 @@ interface AgentVaultActivityConfigUpdateEvent {
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
-    configVersion: number;
     relocated: boolean;
   };
 }

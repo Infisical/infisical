@@ -201,8 +201,10 @@ hostile input: it must never be able to erase or hide its own records.
 - **Infisical never deletes activity.** Sessions that recorded any skip the retention prune (their row holds
   the key), and nothing deletes from the bucket, so the policy asks for no `s3:DeleteObject`.
 - **A save re-checks the connection whenever it puts it to a new use** (connection, bucket, region, prefix, or
-  recording turned on), never on a save that only turns recording off. Changing bucket or prefix bumps
-  `configVersion`, which orphans earlier history.
+  recording turned on), never on a save that only turns recording off.
+- **Each chunk stores the bucket it was written to**, and a read presigns only chunks in the current bucket,
+  by their stored key (which carries the prefix), so switching back to an earlier bucket makes its history
+  readable again. A re-sent chunk is moved to the current bucket and key.
 - **App connections are the one CASL subject the admin role carries**, because the shared
   `AppConnectionsTable` reads CASL, not the role. Everything else here is `hasRole(Admin)`.
 - **Every by-id route under `/agent-vault/app-connections/aws/*` passes `findAppConnectionById` a `scope`**,

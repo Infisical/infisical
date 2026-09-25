@@ -4374,8 +4374,6 @@ export const AGENT_VAULT = {
     recordCount: "How many records the chunk holds.",
     droppedCount:
       "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused or switched off.",
-    configVersion:
-      "The version of the storage configuration the chunk was written under. An earlier version means the chunk is in a bucket or prefix that is no longer configured.",
     ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialisation vector, base64 encoded.",
     objectKey: "Where the encrypted chunk lives in the configured bucket.",

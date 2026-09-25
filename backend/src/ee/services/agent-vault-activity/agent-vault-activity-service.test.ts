@@ -5,7 +5,7 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
 import { AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
 import { agentVaultActivityServiceFactory } from "./agent-vault-activity-service";
-import { buildActivityStorage } from "./agent-vault-activity-storage";
+import { buildActivityObjectKey, buildActivityStorage } from "./agent-vault-activity-storage";
 
 const CEILING = AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS;
 
@@ -44,7 +44,6 @@ const enabledConfig = () => ({
   bucket: "my-bucket",
   region: "us-east-1",
   keyPrefix: "logs",
-  configVersion: 3,
   storedChunkCount: 0
 });
 
@@ -140,6 +139,19 @@ const build = (overrides: TOverrides = {}) => {
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
   service.recordChunk({ proxyId: PROXY.id, sessionId: "sess-1", chunk });
 
+const atCurrentDestination = (chunk: ReturnType<typeof validChunk>) => ({
+  ...chunk,
+  bucket: "my-bucket",
+  objectKey: buildActivityObjectKey({
+    keyPrefix: "logs",
+    projectId: "proj-1",
+    sessionId: "sess-1",
+    proxyId: PROXY.id,
+    startedAt: chunk.startedAt,
+    chunkId: chunk.chunkId
+  })
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -157,7 +169,7 @@ describe("recordChunk: who is allowed to write", () => {
     expect(String(values.objectKey)).toMatch(
       /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5ABCDEFGHJKMNPQRSTVWXYZ\.json\.enc$/
     );
-    expect(values.configVersion).toBe(3);
+    expect(values.bucket).toBe("my-bucket");
     expect(values.proxyName).toBe("proxy-one");
     expect(values.projectId).toBe("proj-1");
   });
@@ -334,14 +346,13 @@ describe("recordChunk: the organization ceiling", () => {
 
 describe("recordChunk: re-sending a chunk", () => {
   test("replays the stored row and does not count the records twice", async () => {
-    const existing = {
-      ...validChunk(),
-      objectKey: "logs/proj-1/sess-1/proxy-1/2026-09-16/01K5ABCDEFGHJKMNPQRSTVWXYZ.json.enc",
-      ciphertextBytes: 4096
-    };
-    const { service, recordStoredChunk, findChunk } = build({ isReplay: true, existingChunk: existing });
+    const chunk = validChunk();
+    const { service, recordStoredChunk, findChunk } = build({
+      isReplay: true,
+      existingChunk: atCurrentDestination(chunk)
+    });
 
-    const result = await record(service);
+    const result = await record(service, chunk);
 
     expect(result.chunkId).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
@@ -353,45 +364,43 @@ describe("recordChunk: re-sending a chunk", () => {
   });
 
   test("presigns against the stored row's size, not the resent body's claim", async () => {
-    const { service } = build({
-      isReplay: true,
-      existingChunk: { ...validChunk(), objectKey: "stored/key.json.enc", ciphertextBytes: 999 }
-    });
-    await record(service);
-    expect(presignPut).toHaveBeenCalledWith({ objectKey: "stored/key.json.enc", ciphertextBytes: 999 });
+    const chunk = validChunk();
+    const existing = { ...atCurrentDestination(chunk), ciphertextBytes: 999 };
+    const { service } = build({ isReplay: true, existingChunk: existing });
+    await record(service, chunk);
+    expect(presignPut).toHaveBeenCalledWith({ objectKey: existing.objectKey, ciphertextBytes: 999 });
   });
 
-  test("a chunk re-sent after the destination moved is pointed at the current one before it is presigned", async () => {
+  test("a chunk re-sent after the destination moved is moved to the current bucket and key before it is presigned", async () => {
     const { service, repointChunk } = build({
       isReplay: true,
-      existingChunk: { ...validChunk(), id: "row-1", configVersion: 2, objectKey: "old/key.json.enc" }
+      existingChunk: { ...validChunk(), id: "row-1", bucket: "old-bucket", objectKey: "old/key.json.enc" }
     });
     await record(service);
 
     const [id, values] = repointChunk.mock.calls[0];
     expect(id).toBe("row-1");
-    expect(values.configVersion).toBe(3);
+    expect(values.bucket).toBe("my-bucket");
     expect(String(values.objectKey)).toMatch(
       /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01K5[^/]+\.json\.enc$/
     );
     expect(presignPut).toHaveBeenCalledWith({ objectKey: values.objectKey, ciphertextBytes: 4096 });
   });
 
-  test("never points a row at an older destination, so a lagging config read cannot strand it", async () => {
-    const { service, repointChunk } = build({
-      isReplay: true,
-      existingChunk: { ...validChunk(), configVersion: 4, objectKey: "newer/key.json.enc" }
-    });
-    await record(service);
+  test("a chunk re-sent to the destination it is already at is left alone", async () => {
+    const chunk = validChunk();
+    const existing = atCurrentDestination(chunk);
+    const { service, repointChunk } = build({ isReplay: true, existingChunk: existing });
+    await record(service, chunk);
 
     expect(repointChunk).not.toHaveBeenCalled();
-    expect(presignPut).toHaveBeenCalledWith({ objectKey: "newer/key.json.enc", ciphertextBytes: 4096 });
+    expect(presignPut).toHaveBeenCalledWith({ objectKey: existing.objectKey, ciphertextBytes: 4096 });
   });
 
   test("a chunk id another proxy recorded is refused before the row is touched", async () => {
     const { service, repointChunk, recordStoredChunk } = build({
       isReplay: true,
-      existingChunk: { ...validChunk(), proxyId: "proxy-2", configVersion: 2, objectKey: "theirs/key.json.enc" }
+      existingChunk: { ...validChunk(), proxyId: "proxy-2", bucket: "old-bucket", objectKey: "theirs/key.json.enc" }
     });
 
     await expect(record(service)).rejects.toMatchObject({
@@ -424,7 +433,7 @@ describe("when the AWS connection can't be used", () => {
     ...validChunk(),
     proxyId: "proxy-1",
     proxyName: "proxy-one",
-    configVersion: 3,
+    bucket: "my-bucket",
     objectKey: "logs/key.json.enc",
     createdAt: new Date()
   });

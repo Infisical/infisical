@@ -123,7 +123,6 @@ export const agentVaultActivityServiceFactory = ({
     lastSeq: toCount(row.lastSeq),
     recordCount: row.recordCount,
     droppedCount: toCount(row.droppedCount),
-    configVersion: row.configVersion,
     ciphertextBytes: row.ciphertextBytes,
     iv: row.iv,
     presignedGetUrl
@@ -134,8 +133,7 @@ export const agentVaultActivityServiceFactory = ({
     appConnectionId: config.appConnectionId ?? null,
     bucket: config.bucket ?? null,
     region: config.region ?? null,
-    keyPrefix: config.keyPrefix ?? null,
-    configVersion: config.configVersion
+    keyPrefix: config.keyPrefix ?? null
   });
 
   const isIngestEnabled = (config?: TAgentVaultActivityConfigs) =>
@@ -232,7 +230,7 @@ export const agentVaultActivityServiceFactory = ({
           projectId: proxy.projectId,
           proxyId,
           proxyName: proxy.name,
-          configVersion: config.configVersion,
+          bucket: storage.bucket,
           objectKey
         },
         tx
@@ -249,14 +247,9 @@ export const agentVaultActivityServiceFactory = ({
         if (existing.proxyId !== proxyId) {
           throw new ConflictError({ message: "This chunk ID was already recorded by another proxy" });
         }
-        // A proxy only re-sends a chunk it never confirmed uploading, so after a move it belongs at the new
-        // destination. Forward only: a lagging config read must not send a row back to an old one.
-        if (existing.configVersion < config.configVersion) {
-          return agentVaultActivityChunkDAL.updateById(
-            existing.id,
-            { configVersion: config.configVersion, objectKey },
-            tx
-          );
+        // A proxy only re-sends a chunk it never confirmed uploading, so after a move it belongs at the new destination.
+        if (existing.bucket !== storage.bucket || existing.objectKey !== objectKey) {
+          return agentVaultActivityChunkDAL.updateById(existing.id, { bucket: storage.bucket, objectKey }, tx);
         }
         return existing;
       }
@@ -324,7 +317,6 @@ export const agentVaultActivityServiceFactory = ({
       enabled: false,
       sessionKey: null,
       projectId,
-      configVersion: config?.configVersion ?? 1,
       chunks: [],
       nextCursor: null,
       hasMore: false,
@@ -356,12 +348,12 @@ export const agentVaultActivityServiceFactory = ({
     const continuation = { hasMore, nextReceivedAfter };
 
     if (!rows.length) {
-      return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
+      return { ...empty, ...continuation, enabled: isIngestEnabled(config) };
     }
 
     if (!session.encryptedActivityKey) {
       logger.warn(`agentVaultActivity: session has chunks but no activity key [sessionId=${sessionId}]`);
-      return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
+      return { ...empty, ...continuation, enabled: isIngestEnabled(config) };
     }
 
     // The current name, so a renamed proxy reads the same across its history; a deleted one keeps its stored name.
@@ -374,7 +366,6 @@ export const agentVaultActivityServiceFactory = ({
     const page = {
       enabled: isIngestEnabled(config),
       projectId,
-      configVersion: config.configVersion,
       nextCursor: hasMore && !receivedAfter ? rows[rows.length - 1].chunkId : null,
       ...continuation
     };
@@ -423,7 +414,7 @@ export const agentVaultActivityServiceFactory = ({
         toChunkView(
           row,
           proxyNameOf(row),
-          row.configVersion === config.configVersion ? await activityStorage.presignGet(row.objectKey) : null
+          row.bucket === config.bucket ? await activityStorage.presignGet(row.objectKey) : null
         )
       )
     );
@@ -443,8 +434,7 @@ export const agentVaultActivityServiceFactory = ({
           appConnectionId: null,
           bucket: null,
           region: null,
-          keyPrefix: null,
-          configVersion: 1
+          keyPrefix: null
         },
         isStorageFull: false,
         corsProbeUrl: null,
@@ -483,8 +473,7 @@ export const agentVaultActivityServiceFactory = ({
       appConnectionId: null,
       bucket: null,
       region: null,
-      keyPrefix: null,
-      configVersion: 1
+      keyPrefix: null
     };
 
     const next = {
@@ -532,7 +521,7 @@ export const agentVaultActivityServiceFactory = ({
       }
     }
 
-    // Both sides normalised: a stored null prefix and a saved "" must not read as a move and bump configVersion.
+    // Both sides normalised: a stored null prefix and a saved "" must not read as a move.
     const relocated =
       Boolean(existing) &&
       (next.bucket !== (current.bucket ?? null) ||
@@ -546,11 +535,7 @@ export const agentVaultActivityServiceFactory = ({
 
     let saved: TAgentVaultActivityConfigs;
     if (existing) {
-      // Incremented in the UPDATE rather than from the read, so two saves that both move the bucket get two versions.
-      saved = await agentVaultActivityConfigDAL.updateById(existing.id, {
-        ...values,
-        ...(relocated ? { $incr: { configVersion: 1 } } : {})
-      });
+      saved = await agentVaultActivityConfigDAL.updateById(existing.id, values);
     } else {
       try {
         saved = await agentVaultActivityConfigDAL.create(values);

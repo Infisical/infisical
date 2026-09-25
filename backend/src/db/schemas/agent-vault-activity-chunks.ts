@@ -20,7 +20,7 @@ export const AgentVaultActivityChunksSchema = z.object({
   lastSeq: z.coerce.number(),
   recordCount: z.number(),
   droppedCount: z.coerce.number().default(0),
-  configVersion: z.number(),
+  bucket: z.string(),
   objectKey: z.string(),
   ciphertextBytes: z.number(),
   iv: z.string(),

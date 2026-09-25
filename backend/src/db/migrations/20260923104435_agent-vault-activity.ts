@@ -21,8 +21,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("region", 32);
       t.string("keyPrefix", 512);
 
-      t.integer("configVersion").notNullable().defaultTo(1);
-
       t.bigint("storedChunkCount").notNullable().defaultTo(0);
 
       t.timestamps(true, true, true);
@@ -57,7 +55,7 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("recordCount").notNullable();
       t.bigint("droppedCount").notNullable().defaultTo(0);
 
-      t.integer("configVersion").notNullable();
+      t.string("bucket", 255).notNullable();
 
       t.string("objectKey", 1024).notNullable();
       t.integer("ciphertextBytes").notNullable();

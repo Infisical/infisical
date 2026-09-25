@@ -78,7 +78,6 @@ export const AgentVaultActivityChunkViewSchema = z.object({
   lastSeq: z.number().describe(AGENT_VAULT.ACTIVITY.lastSeq),
   recordCount: z.number().describe(AGENT_VAULT.ACTIVITY.recordCount),
   droppedCount: z.number().describe(AGENT_VAULT.ACTIVITY.droppedCount),
-  configVersion: z.number().describe(AGENT_VAULT.ACTIVITY.configVersion),
   ciphertextBytes: z.number().describe(AGENT_VAULT.ACTIVITY.ciphertextBytes),
   iv: z.string().describe(AGENT_VAULT.ACTIVITY.iv),
   presignedGetUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.presignedGetUrl)
@@ -88,7 +87,6 @@ export const AgentVaultActivityResponseSchema = z.object({
   enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
   sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey),
   projectId: z.string().describe("The project the session belongs to. Part of the decryption context."),
-  configVersion: z.number().describe(AGENT_VAULT.ACTIVITY.configVersion),
   chunks: AgentVaultActivityChunkViewSchema.array(),
   nextCursor: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.nextCursor),
   hasMore: z.boolean().describe(AGENT_VAULT.ACTIVITY.hasMore),
@@ -109,8 +107,7 @@ export const AgentVaultActivityConfigViewSchema = z.object({
   appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.ACTIVITY.appConnectionId),
   bucket: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.bucket),
   region: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.region),
-  keyPrefix: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.keyPrefix),
-  configVersion: z.number().describe(AGENT_VAULT.ACTIVITY.configVersion)
+  keyPrefix: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.keyPrefix)
 });
 
 export const AgentVaultActivityConfigResponseSchema = z.object({
