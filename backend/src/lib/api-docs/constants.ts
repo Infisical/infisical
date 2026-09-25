@@ -4383,7 +4383,7 @@ export const AGENT_VAULT = {
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
     presignedGetUrl:
-      "The URL to download the chunk from. Null if the chunk is in a bucket activity logging no longer uses, or if `activity.storageUnavailable` is set.",
+      "The URL to download the chunk from. Null if the chunk is in a bucket session logging no longer uses, or if `activity.storageUnavailable` is set.",
     expiresInSeconds: "The number of seconds before the URL expires.",
     sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
     storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
@@ -4413,7 +4413,7 @@ export const AGENT_VAULT = {
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
-    isStorageFull: "Whether your organization has reached its activity storage limit.",
+    isStorageFull: "Whether your organization has reached its session logging storage limit.",
     hasActivityKey: "Whether the proxy already has this session's activity key. If true, the key isn't returned again."
   },
 
