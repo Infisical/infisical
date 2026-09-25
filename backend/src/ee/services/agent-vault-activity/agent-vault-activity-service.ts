@@ -41,6 +41,7 @@ import {
   AgentVaultActivityErrorName,
   AgentVaultActivityStorageUnavailableReason
 } from "./agent-vault-activity-constants";
+import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-activity-cursor";
 import { unwrapActivityKey } from "./agent-vault-activity-secrets";
 import {
   buildActivityObjectKey,
@@ -50,12 +51,14 @@ import {
   TAgentVaultActivityStorage
 } from "./agent-vault-activity-storage";
 import {
+  TActivityLoggingDTO,
   TAgentVaultActivityStorageUnavailable,
-  TGetActivityConfigDTO,
-  TGetSessionActivityDTO,
+  TListSessionActivityDTO,
   TRecordChunkDTO,
   TResolvedActivityStorageConfig,
-  TUpdateActivityConfigDTO
+  TSessionActivityScope,
+  TTailSessionActivityDTO,
+  TUpdateActivityLoggingSettingsDTO
 } from "./agent-vault-activity-types";
 
 type TAgentVaultActivityServiceFactoryDep = {
@@ -129,7 +132,7 @@ export const agentVaultActivityServiceFactory = ({
     presignedGetUrl
   });
 
-  const toConfigView = (config: TAgentVaultActivityConfigs) => ({
+  const toSettingsView = (config: TAgentVaultActivityConfigs) => ({
     enabled: config.enabled,
     appConnectionId: config.appConnectionId ?? null,
     bucket: config.bucket ?? null,
@@ -140,7 +143,7 @@ export const agentVaultActivityServiceFactory = ({
   const isIngestEnabled = (config?: TAgentVaultActivityConfigs) =>
     Boolean(config?.enabled && resolveStorageConfig(config));
 
-  const $requireAdmin = async ({ projectId, ctx }: TGetActivityConfigDTO) => {
+  const $requireAdmin = async ({ projectId, ctx }: TActivityLoggingDTO) => {
     const { isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     if (!isAdmin) {
       throw new ForbiddenRequestError({
@@ -277,25 +280,7 @@ export const agentVaultActivityServiceFactory = ({
     };
   };
 
-  const getSessionActivity = async ({
-    projectId,
-    ctx,
-    sessionId,
-    limit,
-    before,
-    from,
-    to,
-    receivedAfter
-  }: TGetSessionActivityDTO) => {
-    const readAt = Date.now();
-
-    if (receivedAfter && (before || from || to)) {
-      throw new BadRequestError({
-        message:
-          "receivedAfter reads what arrived since an earlier read, so it cannot be combined with before, from or to"
-      });
-    }
-
+  const $loadSessionActivity = async ({ projectId, ctx, sessionId }: TSessionActivityScope) => {
     const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
@@ -310,51 +295,31 @@ export const agentVaultActivityServiceFactory = ({
     }
 
     const config = await agentVaultActivityConfigDAL.findOne({ projectId });
-    const storage = config ? resolveStorageConfig(config) : null;
+    return { session, config, isAdmin };
+  };
 
-    const caughtUpTo = new Date(readAt - AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS);
-
-    const empty = {
-      enabled: false,
+  const $openActivity = async ({
+    projectId,
+    ctx,
+    sessionId,
+    session,
+    config,
+    isAdmin,
+    rows
+  }: TSessionActivityScope &
+    Awaited<ReturnType<typeof $loadSessionActivity>> & { rows: TAgentVaultActivityChunks[] }) => {
+    const unreadActivity = {
+      enabled: isIngestEnabled(config),
       sessionKey: null,
       projectId,
-      chunks: [],
-      nextCursor: null,
-      hasMore: false,
-      nextReceivedAfter: caughtUpTo,
       storageUnavailable: null
     };
 
-    if (!config) return empty;
-
-    const { chunks: rows, hasMore } = receivedAfter
-      ? await agentVaultActivityChunkDAL.findReceivedForSession({
-          sessionId,
-          receivedAfter,
-          recordBudget: limit,
-          byteBudget: AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
-          maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS
-        })
-      : await agentVaultActivityChunkDAL.findForSessionPage({
-          sessionId,
-          recordBudget: limit,
-          byteBudget: AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
-          maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
-          before,
-          from,
-          to
-        });
-
-    const nextReceivedAfter = receivedAfter && hasMore ? rows[rows.length - 1].createdAt : caughtUpTo;
-    const continuation = { hasMore, nextReceivedAfter };
-
-    if (!rows.length) {
-      return { ...empty, ...continuation, enabled: isIngestEnabled(config) };
-    }
+    if (!config || !rows.length) return { activity: unreadActivity, chunks: [], isReadable: true };
 
     if (!session.encryptedActivityKey) {
       logger.warn(`agentVaultActivity: session has chunks but no activity key [sessionId=${sessionId}]`);
-      return { ...empty, ...continuation, enabled: isIngestEnabled(config) };
+      return { activity: unreadActivity, chunks: [], isReadable: true };
     }
 
     // The current name, so a renamed proxy reads the same across its history; a deleted one keeps its stored name.
@@ -364,32 +329,13 @@ export const agentVaultActivityServiceFactory = ({
     );
     const proxyNameOf = (row: TAgentVaultActivityChunks) => currentProxyNames.get(row.proxyId) ?? row.proxyName;
 
-    const page = {
-      enabled: isIngestEnabled(config),
-      projectId,
-      nextCursor: hasMore && !receivedAfter ? rows[rows.length - 1].chunkId : null,
-      ...continuation
-    };
+    const unreadable = (storageUnavailable: TAgentVaultActivityStorageUnavailable) => ({
+      activity: { ...unreadActivity, storageUnavailable },
+      chunks: rows.map((row) => toChunkView(row, proxyNameOf(row), null)),
+      isReadable: false
+    });
 
-    // A live read holds its cursor rather than skipping past rows it could not hand links for, so they still
-    // arrive once the connection is back.
-    const unreadable = (storageUnavailable: TAgentVaultActivityStorageUnavailable) =>
-      receivedAfter
-        ? {
-            ...page,
-            sessionKey: null,
-            chunks: [],
-            hasMore: false,
-            nextReceivedAfter: receivedAfter,
-            storageUnavailable
-          }
-        : {
-            ...page,
-            sessionKey: null,
-            chunks: rows.map((row) => toChunkView(row, proxyNameOf(row), null)),
-            storageUnavailable
-          };
-
+    const storage = resolveStorageConfig(config);
     if (!storage) {
       return unreadable({ reason: AgentVaultActivityStorageUnavailableReason.NoConnection, message: null });
     }
@@ -420,36 +366,93 @@ export const agentVaultActivityServiceFactory = ({
       )
     );
 
-    return { ...page, sessionKey: sessionKey.toString("base64"), chunks, storageUnavailable: null };
+    return {
+      activity: { ...unreadActivity, sessionKey: sessionKey.toString("base64") },
+      chunks,
+      isReadable: true
+    };
   };
 
-  const getActivityConfig = async ({ projectId, ctx }: TGetActivityConfigDTO) => {
+  const $caughtUpTo = (readAt: number) => new Date(readAt - AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS);
+
+  const listSessionActivity = async ({ limit, before, from, to, ...scope }: TListSessionActivityDTO) => {
+    const readAt = Date.now();
+    const loaded = await $loadSessionActivity(scope);
+
+    const { chunks: rows, hasMore } = loaded.config
+      ? await agentVaultActivityChunkDAL.findForSessionPage({
+          sessionId: scope.sessionId,
+          recordBudget: limit,
+          byteBudget: AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
+          maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS,
+          before,
+          from,
+          to
+        })
+      : { chunks: [], hasMore: false };
+
+    const { activity, chunks } = await $openActivity({ ...scope, ...loaded, rows });
+
+    return {
+      activity,
+      chunks,
+      nextCursor: hasMore && chunks.length ? encodeHistoryCursor(rows[rows.length - 1].chunkId) : null,
+      liveCursor: encodeTailCursor($caughtUpTo(readAt))
+    };
+  };
+
+  const tailSessionActivity = async ({ limit, receivedAfter, ...scope }: TTailSessionActivityDTO) => {
+    const readAt = Date.now();
+    const since = receivedAfter ?? $caughtUpTo(readAt);
+    const loaded = await $loadSessionActivity(scope);
+
+    const { chunks: rows, hasMore } = loaded.config
+      ? await agentVaultActivityChunkDAL.findReceivedForSession({
+          sessionId: scope.sessionId,
+          receivedAfter: since,
+          recordBudget: limit,
+          byteBudget: AGENT_VAULT_ACTIVITY_MAX_PAGE_BYTES,
+          maxChunks: AGENT_VAULT_ACTIVITY_MAX_PAGE_CHUNKS
+        })
+      : { chunks: [], hasMore: false };
+
+    const { activity, chunks, isReadable } = await $openActivity({ ...scope, ...loaded, rows });
+
+    // Holding the cursor rather than skipping rows it could not hand links for, so they still arrive once
+    // the connection is back.
+    if (!isReadable) {
+      return { activity, chunks: [], nextCursor: encodeTailCursor(since), hasMore: false };
+    }
+
+    return {
+      activity,
+      chunks,
+      nextCursor: encodeTailCursor(hasMore ? rows[rows.length - 1].createdAt : $caughtUpTo(readAt)),
+      hasMore
+    };
+  };
+
+  const getActivityLoggingSettings = async ({ projectId, ctx }: TActivityLoggingDTO) => {
     await $requireAdmin({ projectId, ctx });
 
     const config = await agentVaultActivityConfigDAL.findOne({ projectId });
+    return {
+      settings: config
+        ? toSettingsView(config)
+        : { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null }
+    };
+  };
 
-    if (!config) {
-      return {
-        config: {
-          enabled: false,
-          appConnectionId: null,
-          bucket: null,
-          region: null,
-          keyPrefix: null
-        },
-        isStorageFull: false,
-        corsProbeUrl: null,
-        connectionError: null
-      };
-    }
+  const getActivityLoggingHealth = async ({ projectId, ctx }: TActivityLoggingDTO) => {
+    await $requireAdmin({ projectId, ctx });
 
-    const storage = resolveStorageConfig(config);
-    let corsProbeUrl: string | null = null;
+    const config = await agentVaultActivityConfigDAL.findOne({ projectId });
+    const storage = config ? resolveStorageConfig(config) : null;
+
     let connectionError: string | null = null;
     if (storage) {
       try {
-        const activityStorage = await $getStorage(storage, ctx.actorOrgId);
-        corsProbeUrl = await activityStorage.mintCorsProbeUrl();
+        await $getStorage(storage, ctx.actorOrgId);
       } catch (error) {
         logger.warn(error, `agentVaultActivity: could not use the activity connection [projectId=${projectId}]`);
         connectionError =
@@ -458,14 +461,35 @@ export const agentVaultActivityServiceFactory = ({
     }
 
     return {
-      config: toConfigView(config),
-      isStorageFull: toCount(config.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
-      corsProbeUrl,
-      connectionError
+      health: {
+        isStorageFull: config ? toCount(config.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS : false,
+        connectionError
+      }
     };
   };
 
-  const updateActivityConfig = async ({ projectId, ctx, actor, ...patch }: TUpdateActivityConfigDTO) => {
+  const getActivityLoggingCorsProbe = async ({ projectId, ctx }: TActivityLoggingDTO) => {
+    await $requireAdmin({ projectId, ctx });
+
+    const config = await agentVaultActivityConfigDAL.findOne({ projectId });
+    const storage = config ? resolveStorageConfig(config) : null;
+    if (!storage) return { probe: null };
+
+    const activityStorage = await $getStorage(storage, ctx.actorOrgId);
+    return {
+      probe: {
+        url: await activityStorage.mintCorsProbeUrl(),
+        expiresInSeconds: AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS
+      }
+    };
+  };
+
+  const updateActivityLoggingSettings = async ({
+    projectId,
+    ctx,
+    actor,
+    ...patch
+  }: TUpdateActivityLoggingSettingsDTO) => {
     await $requireAdmin({ projectId, ctx });
 
     const existing = await agentVaultActivityConfigDAL.findByProjectIdFromPrimary(projectId);
@@ -550,8 +574,6 @@ export const agentVaultActivityServiceFactory = ({
 
     storageCache.clear();
 
-    const corsProbeUrl = activityStorage ? await activityStorage.mintCorsProbeUrl() : null;
-
     let appConnectionName: string | null = null;
     if (validatedConnection) {
       appConnectionName = validatedConnection.name;
@@ -559,15 +581,16 @@ export const agentVaultActivityServiceFactory = ({
       appConnectionName = (await appConnectionDAL.findById(saved.appConnectionId))?.name ?? null;
     }
 
-    return {
-      config: toConfigView(saved),
-      isStorageFull: toCount(saved.storedChunkCount) >= AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS,
-      corsProbeUrl,
-      connectionError: null,
-      relocated,
-      appConnectionName
-    };
+    return { settings: toSettingsView(saved), relocated, appConnectionName };
   };
 
-  return { recordChunk, getSessionActivity, getActivityConfig, updateActivityConfig };
+  return {
+    recordChunk,
+    listSessionActivity,
+    tailSessionActivity,
+    getActivityLoggingSettings,
+    getActivityLoggingHealth,
+    getActivityLoggingCorsProbe,
+    updateActivityLoggingSettings
+  };
 };

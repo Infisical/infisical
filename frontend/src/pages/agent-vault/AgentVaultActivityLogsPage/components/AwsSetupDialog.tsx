@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   Alert,
@@ -17,6 +18,11 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
+import {
+  agentVaultKeys,
+  useGetAgentVaultActivityLoggingCorsProbe
+} from "@app/hooks/api/agentVault";
 
 export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
   const prefix = keyPrefix.replace(/^\/+|\/+$/g, "");
@@ -77,16 +83,14 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   bucket: string | null;
   keyPrefix: string | null;
-  corsProbeUrl: string | null;
 };
 
-export const AwsSetupDialog = ({
-  isOpen,
-  onOpenChange,
-  bucket,
-  keyPrefix,
-  corsProbeUrl
-}: Props) => {
+export const AwsSetupDialog = ({ isOpen, onOpenChange, bucket, keyPrefix }: Props) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  const probe = useGetAgentVaultActivityLoggingCorsProbe(isOpen);
+  // The dialog stays mounted while closed, so a link from an earlier open must not be probed again.
+  const corsProbeUrl = isOpen && !probe.isFetching ? (probe.data?.url ?? null) : null;
   const [tab, setTab] = useState<TabValue>("policy");
   const [hasPickedTab, setHasPickedTab] = useState(false);
   const [isCorsMissing, setIsCorsMissing] = useState(false);
@@ -97,7 +101,12 @@ export const AwsSetupDialog = ({
   };
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      queryClient.removeQueries({
+        queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id)
+      });
+      return;
+    }
     setTab("policy");
     setHasPickedTab(false);
   }, [isOpen]);

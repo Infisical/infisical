@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
 import { AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS, AgentVaultActivityErrorName } from "./agent-vault-activity-constants";
+import { encodeTailCursor } from "./agent-vault-activity-cursor";
 import { agentVaultActivityServiceFactory } from "./agent-vault-activity-service";
 import { buildActivityObjectKey, buildActivityStorage } from "./agent-vault-activity-storage";
 
@@ -438,14 +439,15 @@ describe("when the AWS connection can't be used", () => {
     objectKey: "logs/key.json.enc",
     createdAt: new Date()
   });
-  const readActivity = (service: ReturnType<typeof build>["service"], receivedAfter?: Date) =>
-    service.getSessionActivity({
-      projectId: "proj-1",
-      ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
-      sessionId: "sess-1",
-      limit: 100,
-      receivedAfter
-    });
+  const scope = {
+    projectId: "proj-1",
+    ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
+    sessionId: "sess-1",
+    limit: 100
+  };
+  const readActivity = (service: ReturnType<typeof build>["service"]) => service.listSessionActivity(scope);
+  const tailActivity = (service: ReturnType<typeof build>["service"], receivedAfter: Date) =>
+    service.tailSessionActivity({ ...scope, receivedAfter });
 
   test("a chunk is refused as a retryable 500 before any row is written", async () => {
     vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
@@ -458,8 +460,8 @@ describe("when the AWS connection can't be used", () => {
     vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ pageRows: [storedRow()] });
     const page = await readActivity(service);
-    expect(page.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
-    expect(page.sessionKey).toBeNull();
+    expect(page.activity.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
+    expect(page.activity.sessionKey).toBeNull();
     expect(page.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
   });
 
@@ -467,9 +469,9 @@ describe("when the AWS connection can't be used", () => {
     vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ pageRows: [storedRow()] });
     const since = new Date(Date.now() - 60_000);
-    const page = await readActivity(service, since);
+    const page = await tailActivity(service, since);
     expect(page.chunks).toEqual([]);
-    expect(page.nextReceivedAfter).toEqual(since);
+    expect(page.nextCursor).toBe(encodeTailCursor(since));
     expect(page.hasMore).toBe(false);
   });
 
@@ -488,12 +490,12 @@ describe("when the AWS connection can't be used", () => {
   });
 });
 
-describe("updateActivityConfig: when the connection is checked again", () => {
+describe("updateActivityLoggingSettings: when the connection is checked again", () => {
   const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
   const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 
   const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
-    service.updateActivityConfig({ projectId: "proj-1", ctx, actor, ...patch });
+    service.updateActivityLoggingSettings({ projectId: "proj-1", ctx, actor, ...patch });
 
   test.each([
     { use: "a different connection", patch: { appConnectionId: "5c6fd1a9-3c89-4a64-9e5f-6b7cfe0f1a2b" } },
@@ -546,14 +548,14 @@ describe("the storage cache", () => {
   });
 });
 
-describe("updateActivityConfig: two first saves at once", () => {
+describe("updateActivityLoggingSettings: two first saves at once", () => {
   test("the one that loses reads as a clash to retry, not a server error", async () => {
     const { service } = build({
       config: undefined,
       configCreateThrows: new DatabaseError({ error: { code: "23505" }, name: "create" })
     });
     await expect(
-      service.updateActivityConfig({
+      service.updateActivityLoggingSettings({
         projectId: "proj-1",
         ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
         actor: { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never,

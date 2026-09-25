@@ -4496,8 +4496,15 @@
                     "group": "Activity logs",
                     "pages": [
                       "api-reference/endpoints/agent-vault-activity/get-session-activity",
-                      "api-reference/endpoints/agent-vault-activity/get-settings",
-                      "api-reference/endpoints/agent-vault-activity/update-settings"
+                      "api-reference/endpoints/agent-vault-activity/tail-session-activity"
+                    ]
+                  },
+                  {
+                    "group": "Settings",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-settings/get-activity-logging",
+                      "api-reference/endpoints/agent-vault-settings/update-activity-logging",
+                      "api-reference/endpoints/agent-vault-settings/get-activity-logging-health"
                     ]
                   },
                   {

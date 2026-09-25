@@ -282,7 +282,7 @@ export type TAgentVaultProxySettingsDTO = {
   pollInterval?: number;
 };
 
-export type TAgentVaultActivityConfig = {
+export type TAgentVaultActivityLoggingSettings = {
   enabled: boolean;
   appConnectionId: string | null;
   bucket: string | null;
@@ -290,17 +290,20 @@ export type TAgentVaultActivityConfig = {
   keyPrefix: string | null;
 };
 
-export type TAgentVaultActivityConfigResponse = {
-  config: TAgentVaultActivityConfig;
+export type TAgentVaultActivityLoggingHealth = {
   isStorageFull: boolean;
-  corsProbeUrl: string | null;
   connectionError: string | null;
 };
 
-export const isAgentVaultRecording = (config: TAgentVaultActivityConfig) =>
-  Boolean(config.enabled && config.appConnectionId && config.bucket && config.region);
+export type TAgentVaultActivityLoggingCorsProbe = {
+  url: string;
+  expiresInSeconds: number;
+} | null;
 
-export type TUpdateAgentVaultActivityConfigDTO = {
+export const isAgentVaultRecording = (settings: TAgentVaultActivityLoggingSettings) =>
+  Boolean(settings.enabled && settings.appConnectionId && settings.bucket && settings.region);
+
+export type TUpdateAgentVaultActivityLoggingSettingsDTO = {
   enabled?: boolean;
   appConnectionId?: string | null;
   bucket?: string;
@@ -324,18 +327,29 @@ export type TAgentVaultActivityChunk = {
   presignedGetUrl: string | null;
 };
 
-export type TAgentVaultActivityPage = {
+export type TAgentVaultActivity = {
   enabled: boolean;
   sessionKey: string | null;
   projectId: string;
-  chunks: TAgentVaultActivityChunk[];
-  nextCursor: string | null;
-  hasMore: boolean;
-  nextReceivedAfter: string;
   storageUnavailable: {
     reason: "no-connection" | "connection-unusable";
     message: string | null;
   } | null;
+};
+
+export type TAgentVaultActivityPage = {
+  activity: TAgentVaultActivity;
+  chunks: TAgentVaultActivityChunk[];
+};
+
+export type TAgentVaultActivityHistoryPage = TAgentVaultActivityPage & {
+  nextCursor: string | null;
+  liveCursor: string;
+};
+
+export type TAgentVaultActivityTailPage = TAgentVaultActivityPage & {
+  nextCursor: string;
+  hasMore: boolean;
 };
 
 export type TAgentVaultActivityRecord = {
@@ -387,6 +401,8 @@ export type TAgentVaultDecryptedChunk = {
   arrivedAt: number | null;
 };
 
-export type TAgentVaultDecryptedActivityPage = TAgentVaultActivityPage & {
+export type TAgentVaultDecryptedActivityPage<
+  P extends TAgentVaultActivityPage = TAgentVaultActivityPage
+> = P & {
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };

@@ -107,6 +107,7 @@ export enum ApiDocsTags {
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
   AgentVaultActivity = "Agent Vault Activity",
+  AgentVaultSettings = "Agent Vault Settings",
   AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
@@ -4390,18 +4391,21 @@ export const AGENT_VAULT = {
     storageUnavailableReason:
       "`no-connection` when activity logging has no AWS connection, `connection-unusable` when Infisical could not use it.",
     storageUnavailableMessage: "Why the connection could not be used. Only returned to administrators.",
-    nextCursor:
-      "Pass as `before` to fetch the next, older page. Null when there are no older chunks, and always null when reading with `receivedAfter`.",
-    hasMore:
-      "Whether more chunks are available: older ones for a page, or later arrivals when reading with `receivedAfter`.",
-    nextReceivedAfter:
-      "Pass as `receivedAfter` on the next read. The next read can return chunks you already hold, so drop repeats by `chunkId`.",
-    receivedAfter:
-      "Return the chunks received at or after this time, oldest first, instead of a page going back through the session. Pass the `nextReceivedAfter` of the previous response. Cannot be combined with `before`, `from` or `to`.",
+    activity:
+      "The session's activity context: what a caller needs to decrypt the chunks, and whether they can be read.",
+    projectId: "The project the session belongs to. Part of the decryption context.",
+    historyCursor:
+      "Leave out for the newest page. Pass the `nextCursor` of the previous response to fetch the next, older page.",
+    historyNextCursor: "Pass as `cursor` to fetch the next, older page. Null when there are no older chunks.",
+    liveCursor: "Pass as `cursor` to the activity tail endpoint to follow the session live from this read onwards.",
+    tailCursor:
+      "Where to continue from: the `liveCursor` of a history read, or the `nextCursor` of the previous tail read. Leave out to start from now.",
+    tailNextCursor: "Pass as `cursor` on the next tail read.",
+    tailHasMore:
+      "True when more chunks are already waiting, so call again straight away. False when you are caught up.",
     limit: "Roughly how many activity records to return. Chunks are returned whole, so a page can hold more.",
     from: "Only return chunks holding records at or after this time. A chunk that overlaps the window is included whole.",
     to: "Only return chunks holding records at or before this time. A chunk that overlaps the window is included whole.",
-    before: "Return only chunks older than this chunk ID.",
     enabled: "Whether activity logging is on for this project.",
     configEnabled:
       "Turn activity logging on or off. Turning it off stops new records being accepted; it deletes nothing.",

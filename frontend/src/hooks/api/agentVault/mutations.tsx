@@ -10,7 +10,7 @@ import {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundle,
-  TAgentVaultActivityConfigResponse,
+  TAgentVaultActivityLoggingSettings,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultEnrollment,
@@ -24,7 +24,7 @@ import {
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TUpdateAgentVaultAccessBundleDTO,
-  TUpdateAgentVaultActivityConfigDTO,
+  TUpdateAgentVaultActivityLoggingSettingsDTO,
   TUpdateAgentVaultServiceDTO
 } from "./types";
 
@@ -362,21 +362,26 @@ export const useRevokeAgentVaultMembers = () => {
   });
 };
 
-export const useUpdateAgentVaultActivityConfig = () => {
+export const useUpdateAgentVaultActivityLoggingSettings = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: TUpdateAgentVaultActivityConfigDTO) => {
-      const { data } = await apiRequest.patch<TAgentVaultActivityConfigResponse>(
-        "/api/v1/agent-vault/activity/config",
+    mutationFn: async (params: TUpdateAgentVaultActivityLoggingSettingsDTO) => {
+      const { data } = await apiRequest.patch<{ settings: TAgentVaultActivityLoggingSettings }>(
+        "/api/v1/agent-vault/settings/activity-logging",
         params
       );
-      return data;
+      return data.settings;
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(agentVaultKeys.activityConfig(currentOrg.id), data);
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.activityConfig(currentOrg.id) });
+    onSuccess: (settings) => {
+      queryClient.setQueryData(agentVaultKeys.activityLogging(currentOrg.id), settings);
+      queryClient.removeQueries({
+        queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id)
+      });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.activityLoggingHealth(currentOrg.id)
+      });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
     }
   });

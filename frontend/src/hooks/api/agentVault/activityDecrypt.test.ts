@@ -71,9 +71,12 @@ describe("recordsMatchChunk", () => {
 describe("decryptActivityPage", () => {
   const chunkId = "01K5ABCDEFGHJKMNPQRSTVWXYZ";
   const page: TAgentVaultActivityPage = {
-    enabled: true,
-    sessionKey: btoa("\0".repeat(32)),
-    projectId: "project-1",
+    activity: {
+      enabled: true,
+      sessionKey: btoa("\0".repeat(32)),
+      projectId: "project-1",
+      storageUnavailable: null
+    },
     chunks: [
       {
         chunkId,
@@ -90,11 +93,7 @@ describe("decryptActivityPage", () => {
         ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU",
         presignedGetUrl: "https://bucket.example/chunk"
       }
-    ],
-    nextCursor: null,
-    hasMore: false,
-    nextReceivedAfter: record.ts,
-    storageUnavailable: null
+    ]
   };
 
   afterEach(() => {

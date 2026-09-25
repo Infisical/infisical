@@ -14,8 +14,11 @@ import { AgentVaultMemberType } from "./enums";
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
-  TAgentVaultActivityConfigResponse,
-  TAgentVaultActivityPage,
+  TAgentVaultActivityHistoryPage,
+  TAgentVaultActivityLoggingCorsProbe,
+  TAgentVaultActivityLoggingHealth,
+  TAgentVaultActivityLoggingSettings,
+  TAgentVaultActivityTailPage,
   TAgentVaultDecryptedActivityPage,
   TAgentVaultMember,
   TAgentVaultProductActor,
@@ -74,7 +77,12 @@ export const agentVaultKeys = {
   availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId), params] as const,
-  activityConfig: (orgId: string) => [...agentVaultKeys.all(orgId), "activity-config"] as const,
+  activityLogging: (orgId: string) =>
+    [...agentVaultKeys.all(orgId), "settings", "activity-logging"] as const,
+  activityLoggingHealth: (orgId: string) =>
+    [...agentVaultKeys.activityLogging(orgId), "health"] as const,
+  activityLoggingCorsProbe: (orgId: string) =>
+    [...agentVaultKeys.activityLogging(orgId), "cors-probe"] as const,
   sessionActivity: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
     [...agentVaultKeys.sessions(orgId), sessionId, "activity", range ?? {}] as const,
   sessionActivityLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
@@ -216,18 +224,52 @@ export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {})
   });
 };
 
-export const useGetAgentVaultActivityConfig = (enabled = true) => {
+export const useGetAgentVaultActivityLoggingSettings = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.activityConfig(currentOrg.id),
+    queryKey: agentVaultKeys.activityLogging(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TAgentVaultActivityConfigResponse>(
-        "/api/v1/agent-vault/activity/config"
+      const { data } = await apiRequest.get<{ settings: TAgentVaultActivityLoggingSettings }>(
+        "/api/v1/agent-vault/settings/activity-logging"
       );
-      return data;
+      return data.settings;
     },
     enabled
+  });
+};
+
+export const useGetAgentVaultActivityLoggingHealth = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.activityLoggingHealth(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ health: TAgentVaultActivityLoggingHealth }>(
+        "/api/v1/agent-vault/settings/activity-logging/health"
+      );
+      return data.health;
+    },
+    enabled
+  });
+};
+
+export const useGetAgentVaultActivityLoggingCorsProbe = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.activityLoggingCorsProbe(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ probe: TAgentVaultActivityLoggingCorsProbe }>(
+        "/api/v1/agent-vault/settings/activity-logging/cors-probe"
+      );
+      return data.probe;
+    },
+    enabled,
+    // The link is presigned for minutes, so every open fetches a fresh one.
+    staleTime: 0,
+    gcTime: 0,
+    retry: false
   });
 };
 
@@ -262,6 +304,7 @@ export const useGetAgentVaultSessionActivity = (
 
   const range = { from: from?.toISOString(), to: to?.toISOString() };
   const url = `/api/v1/agent-vault/sessions/${sessionId}/activity`;
+  const tailUrl = `${url}/tail`;
 
   // Reset during render so neither query fetches a new session into the old one's cache.
   const chunkCache = useRef<TAgentVaultActivityChunkCache | null>(null);
@@ -275,10 +318,10 @@ export const useGetAgentVaultSessionActivity = (
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
       const cache = chunkCache.current as TAgentVaultActivityChunkCache;
-      const { data } = await apiRequest.get<TAgentVaultActivityPage>(url, {
+      const { data } = await apiRequest.get<TAgentVaultActivityHistoryPage>(url, {
         params: {
           limit: ACTIVITY_PAGE_RECORDS,
-          ...(pageParam ? { before: pageParam } : {}),
+          ...(pageParam ? { cursor: pageParam } : {}),
           ...(range.from ? { from: range.from } : {}),
           ...(range.to ? { to: range.to } : {})
         },
@@ -294,31 +337,32 @@ export const useGetAgentVaultSessionActivity = (
     gcTime: 0
   });
 
-  const receivedFrom = history.isPlaceholderData
-    ? undefined
-    : history.data?.pages[0]?.nextReceivedAfter;
+  const liveFrom = history.isPlaceholderData ? undefined : history.data?.pages[0]?.liveCursor;
   const liveKey = agentVaultKeys.sessionActivityLive(currentOrg.id, sessionId ?? "", range);
 
   const live = useQuery({
     queryKey: liveKey,
-    enabled: enabled && isLive && Boolean(sessionId) && Boolean(receivedFrom),
+    enabled: enabled && isLive && Boolean(sessionId) && Boolean(liveFrom),
     queryFn: async ({ signal }) => {
       const cache = chunkCache.current as TAgentVaultActivityChunkCache;
-      let arrived = queryClient.getQueryData<TAgentVaultDecryptedActivityPage>(liveKey);
-      let receivedAfter = arrived?.nextReceivedAfter ?? receivedFrom;
+      let arrived =
+        queryClient.getQueryData<TAgentVaultDecryptedActivityPage<TAgentVaultActivityTailPage>>(
+          liveKey
+        );
+      let cursor = arrived?.nextCursor ?? liveFrom;
       let hasMore = true;
       for (let read = 0; hasMore && read < ACTIVITY_LIVE_MAX_READS; read += 1) {
         // eslint-disable-next-line no-await-in-loop
-        const { data } = await apiRequest.get<TAgentVaultActivityPage>(url, {
-          params: { limit: ACTIVITY_LIVE_RECORDS, receivedAfter },
+        const { data } = await apiRequest.get<TAgentVaultActivityTailPage>(tailUrl, {
+          params: { limit: ACTIVITY_LIVE_RECORDS, cursor },
           signal
         });
         // eslint-disable-next-line no-await-in-loop
         arrived = mergeActivityPages(arrived, await decryptActivityPage(data, cache, signal));
-        receivedAfter = data.nextReceivedAfter;
+        cursor = data.nextCursor;
         ({ hasMore } = data);
       }
-      return arrived as TAgentVaultDecryptedActivityPage;
+      return arrived as TAgentVaultDecryptedActivityPage<TAgentVaultActivityTailPage>;
     },
     refetchInterval: ACTIVITY_LIVE_POLL_MS,
     staleTime: 0,

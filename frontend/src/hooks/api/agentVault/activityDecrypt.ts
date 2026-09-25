@@ -201,16 +201,16 @@ export const createActivityChunkCache = (sessionId: string) => {
 
 export type TAgentVaultActivityChunkCache = ReturnType<typeof createActivityChunkCache>;
 
-export const decryptActivityPage = async (
-  page: TAgentVaultActivityPage,
+export const decryptActivityPage = async <P extends TAgentVaultActivityPage>(
+  page: P,
   cache: TAgentVaultActivityChunkCache,
   signal?: AbortSignal
-): Promise<TAgentVaultDecryptedActivityPage> => {
+): Promise<TAgentVaultDecryptedActivityPage<P>> => {
   const decrypted: Record<string, TAgentVaultDecryptedChunk> = {};
-  const { sessionKey } = page;
+  const { sessionKey } = page.activity;
   if (!sessionKey || !page.chunks.length) {
     // Rows that could not be opened have not been shown, so the load that finally opens them is the first one.
-    if (!page.storageUnavailable) cache.settle();
+    if (!page.activity.storageUnavailable) cache.settle();
     return { ...page, decrypted };
   }
 
@@ -221,7 +221,7 @@ export const decryptActivityPage = async (
     cache.keys.set(sessionKey, keyPromise);
   }
   const key = await keyPromise.catch(() => null);
-  const context = { projectId: page.projectId, sessionId: cache.sessionId };
+  const context = { projectId: page.activity.projectId, sessionId: cache.sessionId };
   const opened: string[] = [];
 
   await Promise.all(
@@ -252,10 +252,10 @@ export const decryptActivityPage = async (
   return { ...page, decrypted };
 };
 
-export const mergeActivityPages = (
-  previous: TAgentVaultDecryptedActivityPage | undefined,
-  page: TAgentVaultDecryptedActivityPage
-): TAgentVaultDecryptedActivityPage => {
+export const mergeActivityPages = <P extends TAgentVaultActivityPage>(
+  previous: TAgentVaultDecryptedActivityPage<P> | undefined,
+  page: TAgentVaultDecryptedActivityPage<P>
+): TAgentVaultDecryptedActivityPage<P> => {
   if (!previous) return page;
   const reread = new Set(page.chunks.map((chunk) => chunk.chunkId));
   return {

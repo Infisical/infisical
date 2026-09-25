@@ -19,7 +19,7 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import { useGetAgentVaultActivityConfig } from "@app/hooks/api/agentVault";
+import { useGetAgentVaultActivityLoggingSettings } from "@app/hooks/api/agentVault";
 import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
@@ -36,30 +36,16 @@ export const ActivityLoggingSection = () => {
   const [awsSetup, setAwsSetup] = useState<{
     bucket: string | null;
     keyPrefix: string | null;
-    corsProbeUrl: string | null;
   } | null>(null);
-  const { data, isPending, refetch } = useGetAgentVaultActivityConfig();
+  const { data: config, isPending } = useGetAgentVaultActivityLoggingSettings();
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
   );
 
-  const config = data?.config;
   const hasDestination = Boolean(config?.bucket);
-  // The probe link is presigned for minutes, so a fresh one is fetched each time the dialog opens.
-  const openAwsSetup = () => {
-    setAwsSetup({
-      bucket: config?.bucket ?? null,
-      keyPrefix: config?.keyPrefix ?? null,
-      corsProbeUrl: null
-    });
-    refetch()
-      .then(({ data: fresh }) => {
-        const corsProbeUrl = fresh?.corsProbeUrl ?? null;
-        setAwsSetup((prev) => prev && { ...prev, corsProbeUrl });
-      })
-      .catch(() => {});
-  };
+  const openAwsSetup = () =>
+    setAwsSetup({ bucket: config?.bucket ?? null, keyPrefix: config?.keyPrefix ?? null });
 
   const connectionName =
     connections?.find((connection) => connection.id === config?.appConnectionId)?.name ?? null;
@@ -81,7 +67,7 @@ export const ActivityLoggingSection = () => {
                 View AWS Setup
               </Button>
               <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
-                {!data || hasDestination ? "Configure" : "Set Up Logging"}
+                {!config || hasDestination ? "Configure" : "Set Up Logging"}
               </Button>
             </div>
           </CardAction>
@@ -144,13 +130,9 @@ export const ActivityLoggingSection = () => {
       <ActivityLoggingModal
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSaved={(result) => {
-          if (!isAgentVaultRecording(result.config)) return;
-          setAwsSetup({
-            bucket: result.config.bucket,
-            keyPrefix: result.config.keyPrefix,
-            corsProbeUrl: result.corsProbeUrl
-          });
+        onSaved={(settings) => {
+          if (!isAgentVaultRecording(settings)) return;
+          setAwsSetup({ bucket: settings.bucket, keyPrefix: settings.keyPrefix });
         }}
       />
 
@@ -159,7 +141,6 @@ export const ActivityLoggingSection = () => {
         onOpenChange={(isOpen) => !isOpen && setAwsSetup(null)}
         bucket={awsSetup?.bucket ?? null}
         keyPrefix={awsSetup?.keyPrefix ?? null}
-        corsProbeUrl={awsSetup?.corsProbeUrl ?? null}
       />
     </>
   );

@@ -14,6 +14,7 @@ import {
   AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES,
   AgentVaultActivityStorageUnavailableReason
 } from "./agent-vault-activity-constants";
+import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-activity-cursor";
 import { normalizeKeyPrefix } from "./agent-vault-activity-storage";
 
 const BUCKET_NAME_RULE =
@@ -60,18 +61,24 @@ export const AgentVaultActivityChunkCreateResponseSchema = z.object({
   expiresInSeconds: z.number().describe(AGENT_VAULT.ACTIVITY.expiresInSeconds)
 });
 
-export const AgentVaultActivityQuerySchema = z.object({
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS)
-    .default(AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS)
-    .describe(AGENT_VAULT.ACTIVITY.limit),
-  before: z.string().ulid().optional().describe(AGENT_VAULT.ACTIVITY.before),
+const ActivityLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(AGENT_VAULT_ACTIVITY_MAX_PAGE_RECORDS)
+  .default(AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_RECORDS)
+  .describe(AGENT_VAULT.ACTIVITY.limit);
+
+export const AgentVaultActivityHistoryQuerySchema = z.object({
+  limit: ActivityLimitSchema,
+  cursor: HistoryCursorSchema.optional().describe(AGENT_VAULT.ACTIVITY.historyCursor),
   from: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.from),
-  to: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.to),
-  receivedAfter: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.receivedAfter)
+  to: z.coerce.date().optional().describe(AGENT_VAULT.ACTIVITY.to)
+});
+
+export const AgentVaultActivityTailQuerySchema = z.object({
+  limit: ActivityLimitSchema,
+  cursor: TailCursorSchema.optional().describe(AGENT_VAULT.ACTIVITY.tailCursor)
 });
 
 export const AgentVaultActivityChunkViewSchema = z.object({
@@ -90,26 +97,38 @@ export const AgentVaultActivityChunkViewSchema = z.object({
   presignedGetUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.presignedGetUrl)
 });
 
-export const AgentVaultActivityResponseSchema = z.object({
-  enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
-  sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey),
-  projectId: z.string().describe("The project the session belongs to. Part of the decryption context."),
+const AgentVaultActivitySchema = z
+  .object({
+    enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
+    sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey),
+    projectId: z.string().describe(AGENT_VAULT.ACTIVITY.projectId),
+    storageUnavailable: z
+      .object({
+        reason: z
+          .nativeEnum(AgentVaultActivityStorageUnavailableReason)
+          .describe(AGENT_VAULT.ACTIVITY.storageUnavailableReason),
+        message: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.storageUnavailableMessage)
+      })
+      .nullable()
+      .describe(AGENT_VAULT.ACTIVITY.storageUnavailable)
+  })
+  .describe(AGENT_VAULT.ACTIVITY.activity);
+
+export const AgentVaultActivityHistoryResponseSchema = z.object({
+  activity: AgentVaultActivitySchema,
   chunks: AgentVaultActivityChunkViewSchema.array(),
-  nextCursor: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.nextCursor),
-  hasMore: z.boolean().describe(AGENT_VAULT.ACTIVITY.hasMore),
-  nextReceivedAfter: z.date().describe(AGENT_VAULT.ACTIVITY.nextReceivedAfter),
-  storageUnavailable: z
-    .object({
-      reason: z
-        .nativeEnum(AgentVaultActivityStorageUnavailableReason)
-        .describe(AGENT_VAULT.ACTIVITY.storageUnavailableReason),
-      message: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.storageUnavailableMessage)
-    })
-    .nullable()
-    .describe(AGENT_VAULT.ACTIVITY.storageUnavailable)
+  nextCursor: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.historyNextCursor),
+  liveCursor: z.string().describe(AGENT_VAULT.ACTIVITY.liveCursor)
 });
 
-export const AgentVaultActivityConfigViewSchema = z.object({
+export const AgentVaultActivityTailResponseSchema = z.object({
+  activity: AgentVaultActivitySchema,
+  chunks: AgentVaultActivityChunkViewSchema.array(),
+  nextCursor: z.string().describe(AGENT_VAULT.ACTIVITY.tailNextCursor),
+  hasMore: z.boolean().describe(AGENT_VAULT.ACTIVITY.tailHasMore)
+});
+
+export const AgentVaultActivityLoggingSettingsSchema = z.object({
   enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.configEnabled),
   appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.ACTIVITY.appConnectionId),
   bucket: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.bucket),
@@ -117,14 +136,27 @@ export const AgentVaultActivityConfigViewSchema = z.object({
   keyPrefix: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.keyPrefix)
 });
 
-export const AgentVaultActivityConfigResponseSchema = z.object({
-  config: AgentVaultActivityConfigViewSchema,
-  isStorageFull: z.boolean().describe(AGENT_VAULT.ACTIVITY.isStorageFull),
-  corsProbeUrl: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl),
-  connectionError: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.connectionError)
+export const AgentVaultActivityLoggingSettingsResponseSchema = z.object({
+  settings: AgentVaultActivityLoggingSettingsSchema
 });
 
-export const AgentVaultActivityConfigUpdateSchema = z
+export const AgentVaultActivityLoggingHealthResponseSchema = z.object({
+  health: z.object({
+    isStorageFull: z.boolean().describe(AGENT_VAULT.ACTIVITY.isStorageFull),
+    connectionError: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.connectionError)
+  })
+});
+
+export const AgentVaultActivityLoggingCorsProbeResponseSchema = z.object({
+  probe: z
+    .object({
+      url: z.string().describe(AGENT_VAULT.ACTIVITY.corsProbeUrl),
+      expiresInSeconds: z.number().describe(AGENT_VAULT.ACTIVITY.expiresInSeconds)
+    })
+    .nullable()
+});
+
+export const AgentVaultActivityLoggingSettingsUpdateSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.configEnabled),
     appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.ACTIVITY.appConnectionId),

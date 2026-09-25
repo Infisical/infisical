@@ -23,23 +23,32 @@ export type TRecordChunkDTO = {
   chunk: TAgentVaultActivityChunkInput;
 };
 
-export type TGetSessionActivityDTO = {
+export type TSessionActivityScope = {
   projectId: string;
   ctx: TAgentVaultActorContext;
   sessionId: string;
+};
+
+type TSessionActivityDTO = TSessionActivityScope & {
   limit: number;
+};
+
+export type TListSessionActivityDTO = TSessionActivityDTO & {
   before?: string;
   from?: Date;
   to?: Date;
+};
+
+export type TTailSessionActivityDTO = TSessionActivityDTO & {
   receivedAfter?: Date;
 };
 
-export type TGetActivityConfigDTO = {
+export type TActivityLoggingDTO = {
   projectId: string;
   ctx: TAgentVaultActorContext;
 };
 
-export type TUpdateActivityConfigDTO = TGetActivityConfigDTO & {
+export type TUpdateActivityLoggingSettingsDTO = TActivityLoggingDTO & {
   actor: OrgServiceActor;
   enabled?: boolean;
   appConnectionId?: string | null;

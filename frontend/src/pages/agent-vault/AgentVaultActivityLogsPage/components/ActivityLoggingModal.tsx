@@ -36,10 +36,10 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import { APP_CONNECTION_MAP, AWS_REGIONS } from "@app/helpers/appConnections";
 import { useDiscardChangesGuard, usePopUp } from "@app/hooks";
 import {
-  useGetAgentVaultActivityConfig,
-  useUpdateAgentVaultActivityConfig
+  useGetAgentVaultActivityLoggingSettings,
+  useUpdateAgentVaultActivityLoggingSettings
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultActivityConfigResponse } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultActivityLoggingSettings } from "@app/hooks/api/agentVault/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
@@ -112,18 +112,18 @@ type FormData = z.infer<ReturnType<typeof buildSchema>>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSaved: (result: TAgentVaultActivityConfigResponse) => void;
+  onSaved: (settings: TAgentVaultActivityLoggingSettings) => void;
 };
 
 export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { data } = useGetAgentVaultActivityConfig();
+  const { data: settings } = useGetAgentVaultActivityLoggingSettings();
   const { data: connections, isPending: isLoadingConnections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
   );
-  const updateConfig = useUpdateAgentVaultActivityConfig();
+  const updateConfig = useUpdateAgentVaultActivityLoggingSettings();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addConnection"] as const);
 
   const {
@@ -133,28 +133,28 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
     setValue,
     watch,
     formState: { isSubmitting, isDirty }
-  } = useForm<FormData>({ resolver: zodResolver(buildSchema(Boolean(data?.config.bucket))) });
+  } = useForm<FormData>({ resolver: zodResolver(buildSchema(Boolean(settings?.bucket))) });
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
   useEffect(() => {
-    if (!isOpen || !data) return;
+    if (!isOpen || !settings) return;
 
     reset({
-      enabled: data.config.bucket ? data.config.enabled : true,
-      appConnectionId: data.config.appConnectionId ?? NO_CONNECTION,
-      bucket: data.config.bucket ?? "",
-      region: data.config.region ?? AWS_REGIONS[0].slug,
-      keyPrefix: data.config.keyPrefix ?? ""
+      enabled: settings.bucket ? settings.enabled : true,
+      appConnectionId: settings.appConnectionId ?? NO_CONNECTION,
+      bucket: settings.bucket ?? "",
+      region: settings.region ?? AWS_REGIONS[0].slug,
+      keyPrefix: settings.keyPrefix ?? ""
     });
-  }, [isOpen, data, reset]);
+  }, [isOpen, settings, reset]);
 
   const bucket = watch("bucket") ?? "";
   const keyPrefix = watch("keyPrefix") ?? "";
   const isEnabled = watch("enabled");
   const isDetaching =
-    watch("appConnectionId") === NO_CONNECTION && Boolean(data?.config.appConnectionId);
+    watch("appConnectionId") === NO_CONNECTION && Boolean(settings?.appConnectionId);
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
@@ -169,9 +169,9 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
 
   const typedBucket = bucket.trim();
   const willRelocate =
-    Boolean(data?.config.bucket) &&
-    ((S3_BUCKET_NAME.test(typedBucket) && typedBucket !== data?.config.bucket) ||
-      normalizePrefix(keyPrefix) !== normalizePrefix(data?.config.keyPrefix));
+    Boolean(settings?.bucket) &&
+    ((S3_BUCKET_NAME.test(typedBucket) && typedBucket !== settings?.bucket) ||
+      normalizePrefix(keyPrefix) !== normalizePrefix(settings?.keyPrefix));
 
   const onSubmit = async (values: FormData) => {
     try {
@@ -374,8 +374,8 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                   <AlertDescription>
                     <p>
                       Everything already recorded stays in{" "}
-                      <span className="font-mono">{data?.config.bucket}</span>, where Infisical can
-                      no longer read it. To rotate credentials, update the AWS connection instead of
+                      <span className="font-mono">{settings?.bucket}</span>, where Infisical can no
+                      longer read it. To rotate credentials, update the AWS connection instead of
                       moving the bucket.
                     </p>
                   </AlertDescription>

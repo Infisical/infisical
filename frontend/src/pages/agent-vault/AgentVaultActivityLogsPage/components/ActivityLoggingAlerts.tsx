@@ -1,13 +1,16 @@
 import { Alert, AlertDescription } from "@app/components/v3";
-import { useGetAgentVaultActivityConfig } from "@app/hooks/api/agentVault";
+import {
+  useGetAgentVaultActivityLoggingHealth,
+  useGetAgentVaultActivityLoggingSettings
+} from "@app/hooks/api/agentVault";
 import { isAgentVaultRecording } from "@app/hooks/api/agentVault/types";
 
 export const ActivityLoggingAlerts = () => {
-  const { data, isPending } = useGetAgentVaultActivityConfig();
+  const { data: config, isPending: isSettingsPending } = useGetAgentVaultActivityLoggingSettings();
+  const { data: health, isPending: isHealthPending } = useGetAgentVaultActivityLoggingHealth();
 
-  const config = data?.config;
   const hasDestination = Boolean(config?.bucket);
-  const isRecording = data ? isAgentVaultRecording(data.config) : false;
+  const isRecording = config ? isAgentVaultRecording(config) : false;
 
   const notRecordingReason = (() => {
     if (!hasDestination) {
@@ -17,7 +20,8 @@ export const ActivityLoggingAlerts = () => {
       if (!config?.appConnectionId) {
         return "Activity logging is off, and without an AWS connection the activity already in the bucket can't be read.";
       }
-      if (data?.connectionError) return "Activity logging is off, so nothing new is being stored.";
+      if (health?.connectionError)
+        return "Activity logging is off, so nothing new is being stored.";
       return "Activity logging is off. Activity already in the bucket is still readable, but nothing new is being stored.";
     }
     return "Activity logging is enabled, but Storage isn't complete, so nothing is being written to the bucket.";
@@ -25,13 +29,13 @@ export const ActivityLoggingAlerts = () => {
 
   return (
     <>
-      {data?.connectionError && (
+      {health?.connectionError && (
         <Alert variant="danger">
-          <AlertDescription>{data.connectionError}</AlertDescription>
+          <AlertDescription>{health.connectionError}</AlertDescription>
         </Alert>
       )}
 
-      {data?.isStorageFull && (
+      {health?.isStorageFull && (
         <Alert variant="danger">
           <AlertDescription>
             Activity logging has reached its limit for this organization. Contact Infisical support.
@@ -39,7 +43,7 @@ export const ActivityLoggingAlerts = () => {
         </Alert>
       )}
 
-      {!isPending && !isRecording && (
+      {!isSettingsPending && !isHealthPending && !isRecording && (
         <Alert variant="warning">
           <AlertDescription>{notRecordingReason}</AlertDescription>
         </Alert>

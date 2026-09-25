@@ -200,10 +200,11 @@ export const ActivityTab = ({ session }: Props) => {
   const droppedTotal = drops.reduce((total, drop) => total + drop.droppedCount, 0);
   const isLoadError = isError && !data;
 
-  const isEnabled = pages?.[0]?.enabled ?? false;
+  const isEnabled = pages?.[0]?.activity.enabled ?? false;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
   const storageUnavailable =
-    data?.pages.find((page) => page.storageUnavailable)?.storageUnavailable ?? null;
+    data?.pages.find((page) => page.activity.storageUnavailable)?.activity.storageUnavailable ??
+    null;
 
   const seenProxies = useRef(new Map<string, string>());
   if (seenProxiesSessionId.current !== session.id) {
@@ -267,7 +268,8 @@ export const ActivityTab = ({ session }: Props) => {
     hasBrowserFilter && Boolean(hasNextPage) && !isTruncated && searched >= allowance.until;
 
   const lastPage = data?.pages[data.pages.length - 1];
-  const searchedBackTo = lastPage?.nextCursor ? chunkIdTime(lastPage.nextCursor) : null;
+  const oldestChunkId = lastPage?.nextCursor ? lastPage.chunks.at(-1)?.chunkId : undefined;
+  const searchedBackTo = oldestChunkId ? chunkIdTime(oldestChunkId) : null;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({

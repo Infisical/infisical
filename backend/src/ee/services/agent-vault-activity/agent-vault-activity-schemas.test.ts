@@ -5,10 +5,12 @@ import {
   AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS,
   AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES
 } from "./agent-vault-activity-constants";
+import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-activity-cursor";
 import {
   AgentVaultActivityChunkCreateSchema,
-  AgentVaultActivityConfigUpdateSchema,
-  AgentVaultActivityQuerySchema
+  AgentVaultActivityHistoryQuerySchema,
+  AgentVaultActivityLoggingSettingsUpdateSchema,
+  AgentVaultActivityTailQuerySchema
 } from "./agent-vault-activity-schemas";
 
 const validChunk = {
@@ -72,31 +74,71 @@ describe("the chunk create body", () => {
   });
 });
 
-describe("the activity page query", () => {
+describe("the activity history query", () => {
   test("defaults to 1000 records and no cursor", () => {
-    expect(AgentVaultActivityQuerySchema.parse({})).toEqual({ limit: 1000, before: undefined });
+    expect(AgentVaultActivityHistoryQuerySchema.parse({})).toEqual({ limit: 1000, cursor: undefined });
   });
 
   test("coerces a querystring limit, which always arrives as a string", () => {
-    expect(AgentVaultActivityQuerySchema.parse({ limit: "25" }).limit).toBe(25);
+    expect(AgentVaultActivityHistoryQuerySchema.parse({ limit: "25" }).limit).toBe(25);
   });
 
   test.each([0, 5001, -1])("rejects a limit of %s", (limit) => {
-    expect(AgentVaultActivityQuerySchema.safeParse({ limit }).success).toBe(false);
+    expect(AgentVaultActivityHistoryQuerySchema.safeParse({ limit }).success).toBe(false);
   });
 
-  test("rejects a cursor that is not a chunk id", () => {
-    expect(AgentVaultActivityQuerySchema.safeParse({ before: "yesterday" }).success).toBe(false);
+  test("reads a cursor back as the chunk to page before", () => {
+    const cursor = encodeHistoryCursor("01K5ABCDEFGHJKMNPQRSTVWXYZ");
+    expect(AgentVaultActivityHistoryQuerySchema.parse({ cursor }).cursor).toBe("01K5ABCDEFGHJKMNPQRSTVWXYZ");
+  });
+
+  test.each(["yesterday", Buffer.from('{"v":1,"m":"h","id":"not-a-ulid"}').toString("base64url")])(
+    "rejects a cursor it did not issue: %s",
+    (cursor) => {
+      expect(AgentVaultActivityHistoryQuerySchema.safeParse({ cursor }).success).toBe(false);
+    }
+  );
+
+  test("says where a tail cursor belongs", () => {
+    const result = AgentVaultActivityHistoryQuerySchema.safeParse({ cursor: encodeTailCursor(new Date()) });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/activity tail endpoint/);
+  });
+});
+
+describe("the activity tail query", () => {
+  test("starts from now when no cursor is given", () => {
+    expect(AgentVaultActivityTailQuerySchema.parse({})).toEqual({ limit: 1000, cursor: undefined });
+  });
+
+  test("reads a cursor back as the time to continue from", () => {
+    const at = new Date("2026-09-25T10:00:00.123Z");
+    expect(AgentVaultActivityTailQuerySchema.parse({ cursor: encodeTailCursor(at) }).cursor).toEqual(at);
+  });
+
+  test.each(["yesterday", Buffer.from('{"v":1,"m":"t","at":"soon"}').toString("base64url")])(
+    "rejects a cursor it did not issue: %s",
+    (cursor) => {
+      expect(AgentVaultActivityTailQuerySchema.safeParse({ cursor }).success).toBe(false);
+    }
+  );
+
+  test("says where a history cursor belongs", () => {
+    const result = AgentVaultActivityTailQuerySchema.safeParse({
+      cursor: encodeHistoryCursor("01K5ABCDEFGHJKMNPQRSTVWXYZ")
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/session activity endpoint/);
   });
 });
 
 describe("the settings patch", () => {
   test("every field is optional, so an empty patch is valid", () => {
-    expect(AgentVaultActivityConfigUpdateSchema.parse({})).toEqual({});
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.parse({})).toEqual({});
   });
 
   test("accepts null for the connection, which detaches it", () => {
-    expect(AgentVaultActivityConfigUpdateSchema.parse({ appConnectionId: null }).appConnectionId).toBeNull();
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.parse({ appConnectionId: null }).appConnectionId).toBeNull();
   });
 
   test.each([
@@ -112,13 +154,13 @@ describe("the settings patch", () => {
     { value: "team*", why: "an asterisk, which is a wildcard in the suggested IAM policy" },
     { value: `a${"b".repeat(512)}`, why: "longer than the column" }
   ])("rejects a key prefix: $why", ({ value }) => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(false);
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(false);
   });
 
   test.each(["logs", "logs/agent-vault", "a.b-c_d", "", ".hidden/logs", "logs/...", "logs.v2"])(
     "accepts the key prefix %s",
     (keyPrefix) => {
-      expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
+      expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
     }
   );
 
@@ -128,11 +170,11 @@ describe("the settings patch", () => {
     { value: `/${"a".repeat(511)}/`, fits: true, why: "a leading slash, which is dropped" },
     { value: "a".repeat(512), fits: false, why: "512 characters, 513 once the slash is added" }
   ])("a key prefix of $why is accepted: $fits", ({ value, fits }) => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(fits);
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(fits);
   });
 
   test("rejects a region that is not an AWS region", () => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ region: "moon-base-1" }).success).toBe(false);
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ region: "moon-base-1" }).success).toBe(false);
   });
 
   test.each([
@@ -143,10 +185,10 @@ describe("the settings patch", () => {
     { value: "-bucket", why: "a leading hyphen" },
     { value: "bucket.", why: "a trailing dot" }
   ])("rejects a bucket name with $why", ({ value }) => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ bucket: value }).success).toBe(false);
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ bucket: value }).success).toBe(false);
   });
 
   test.each(["activity-bucket", "a.b-c", "a".repeat(63)])("accepts the bucket name %s", (bucket) => {
-    expect(AgentVaultActivityConfigUpdateSchema.safeParse({ bucket }).success).toBe(true);
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ bucket }).success).toBe(true);
   });
 });

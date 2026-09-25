@@ -192,11 +192,12 @@ hostile input: it must never be able to erase or hide its own records.
   create-only so a replay cannot replace a stored chunk (the proxy reads 412 as already uploaded).
 - **A session keeps accepting late chunks for a day after it ends**: revoked, expired, or its owner deleted
   (read from `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
-- **History pages order and cursor on `chunkId`** (a ULID, unique per session); split them and pages drop
-  chunks. Live polling reads by our `createdAt` instead (`receivedAfter`, overlapping by
-  `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS`), so repeats are expected and deduped by chunk id.
+- **History (`/activity`) orders and cursors on `chunkId`** (a ULID, unique per session); split them and pages
+  drop chunks. The tail (`/activity/tail`) reads by our `createdAt` instead, overlapping by
+  `AGENT_VAULT_ACTIVITY_RECEIVE_OVERLAP_MS`, so repeats are expected and deduped by chunk id. Both cursors are
+  opaque and mode-tagged (`agent-vault-activity-cursor.ts`); a history read hands out `liveCursor` to start a tail.
 - **The org ceiling counts chunks** (`AGENT_VAULT_ACTIVITY_MAX_STORED_CHUNKS`) and is internal: no env var, no
-  docs, and the API reports only `isStorageFull`. At the limit writes are refused, never drop-oldest, which
+  docs, and the API reports only `isStorageFull` (on `/settings/activity-logging/health`). At the limit writes are refused, never drop-oldest, which
   would be an evidence-eviction primitive.
 - **Infisical never deletes activity.** Sessions that recorded any skip the retention prune (their row holds
   the key), and nothing deletes from the bucket, so the policy asks for no `s3:DeleteObject`.

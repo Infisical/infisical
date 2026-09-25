@@ -69,7 +69,8 @@ import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
-  useGetAgentVaultActivityConfig,
+  useGetAgentVaultActivityLoggingHealth,
+  useGetAgentVaultActivityLoggingSettings,
   useGetAgentVaultSession,
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
@@ -133,7 +134,8 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
-  const { data: activityConfig } = useGetAgentVaultActivityConfig(isAdmin);
+  const { data: activityLogging } = useGetAgentVaultActivityLoggingSettings(isAdmin);
+  const { data: activityLoggingHealth } = useGetAgentVaultActivityLoggingHealth(isAdmin);
 
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -180,15 +182,18 @@ export const AgentVaultSessionsPage = () => {
         description="Create sessions that let your agents reach the services in an access bundle."
       />
 
-      {activityConfig?.isStorageFull && isAgentVaultRecording(activityConfig.config) && (
-        <Alert variant="danger">
-          <AlertDescription>
-            Activity logging has reached its limit for this organization. Contact Infisical support.
-          </AlertDescription>
-        </Alert>
-      )}
+      {activityLoggingHealth?.isStorageFull &&
+        activityLogging &&
+        isAgentVaultRecording(activityLogging) && (
+          <Alert variant="danger">
+            <AlertDescription>
+              Activity logging has reached its limit for this organization. Contact Infisical
+              support.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {activityConfig && !isAgentVaultRecording(activityConfig.config) && (
+      {activityLogging && !isAgentVaultRecording(activityLogging) && (
         <Alert variant="warning">
           <AlertDescription>
             <p>
