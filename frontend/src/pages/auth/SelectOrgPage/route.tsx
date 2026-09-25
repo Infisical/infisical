@@ -187,6 +187,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
               callbackPort: search.callback_port
             })
           );
+          setAuthToken(result.token);
           throw redirect({ to: "/cli-redirect", search: { org_id: targetOrgId } });
         }
 

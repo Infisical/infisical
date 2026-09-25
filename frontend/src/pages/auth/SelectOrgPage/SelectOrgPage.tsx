@@ -298,6 +298,7 @@ export const SelectOrgPage = () => {
           callbackPort
         })
       );
+      setAuthToken(token);
       navigate({ to: "/cli-redirect", search: { org_id: targetOrgId } });
     } else {
       setAuthToken(token);
