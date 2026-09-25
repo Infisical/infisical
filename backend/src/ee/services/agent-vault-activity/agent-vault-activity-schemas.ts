@@ -71,7 +71,7 @@ export const AgentVaultActivityQuerySchema = z.object({
 export const AgentVaultActivityChunkViewSchema = z.object({
   chunkId: z.string().describe(AGENT_VAULT.ACTIVITY.chunkId),
   proxyId: z.string().describe(AGENT_VAULT.ACTIVITY.proxyId),
-  proxyName: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.proxyName),
+  proxyName: z.string().describe(AGENT_VAULT.ACTIVITY.proxyName),
   startedAt: z.date().describe(AGENT_VAULT.ACTIVITY.startedAt),
   endedAt: z.date().describe(AGENT_VAULT.ACTIVITY.endedAt),
   firstSeq: z.number().describe(AGENT_VAULT.ACTIVITY.firstSeq),

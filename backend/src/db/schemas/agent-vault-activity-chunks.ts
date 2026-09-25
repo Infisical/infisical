@@ -13,7 +13,7 @@ export const AgentVaultActivityChunksSchema = z.object({
   sessionId: z.string().uuid(),
   projectId: z.string(),
   proxyId: z.string(),
-  proxyName: z.string().nullable().optional(),
+  proxyName: z.string(),
   startedAt: z.date(),
   endedAt: z.date(),
   firstSeq: z.coerce.number(),

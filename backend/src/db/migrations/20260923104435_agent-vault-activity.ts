@@ -46,7 +46,7 @@ export async function up(knex: Knex): Promise<void> {
       // Deliberately not a foreign key: proxyId is part of the encryption AAD, so a SET NULL on proxy
       // deletion would make every chunk that proxy wrote undecryptable.
       t.string("proxyId", 36).notNullable();
-      t.string("proxyName", 64);
+      t.string("proxyName", 64).notNullable();
 
       t.timestamp("startedAt", { useTz: true }).notNullable();
       t.timestamp("endedAt", { useTz: true }).notNullable();

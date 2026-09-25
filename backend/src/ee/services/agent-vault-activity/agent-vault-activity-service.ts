@@ -62,7 +62,7 @@ type TAgentVaultActivityServiceFactoryDep = {
   agentVaultActivityChunkDAL: TAgentVaultActivityChunkDALFactory;
   agentVaultActivityConfigDAL: TAgentVaultActivityConfigDALFactory;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findOne">;
-  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg">;
+  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "find">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -113,10 +113,10 @@ export const agentVaultActivityServiceFactory = ({
 
   const toCount = (value: number | string) => Number(value);
 
-  const toChunkView = (row: TAgentVaultActivityChunks, presignedGetUrl: string | null) => ({
+  const toChunkView = (row: TAgentVaultActivityChunks, proxyName: string, presignedGetUrl: string | null) => ({
     chunkId: row.chunkId,
     proxyId: row.proxyId,
-    proxyName: row.proxyName ?? null,
+    proxyName,
     startedAt: row.startedAt,
     endedAt: row.endedAt,
     firstSeq: toCount(row.firstSeq),
@@ -364,6 +364,13 @@ export const agentVaultActivityServiceFactory = ({
       return { ...empty, ...continuation, enabled: isIngestEnabled(config), configVersion: config.configVersion };
     }
 
+    // The current name, so a renamed proxy reads the same across its history; a deleted one keeps its stored name.
+    const proxyIds = [...new Set(rows.map((row) => row.proxyId))];
+    const currentProxyNames = new Map(
+      (await agentVaultProxyDAL.find({ projectId, $in: { id: proxyIds } })).map((proxy) => [proxy.id, proxy.name])
+    );
+    const proxyNameOf = (row: TAgentVaultActivityChunks) => currentProxyNames.get(row.proxyId) ?? row.proxyName;
+
     const page = {
       enabled: isIngestEnabled(config),
       projectId,
@@ -384,7 +391,12 @@ export const agentVaultActivityServiceFactory = ({
             nextReceivedAfter: receivedAfter,
             storageUnavailable
           }
-        : { ...page, sessionKey: null, chunks: rows.map((row) => toChunkView(row, null)), storageUnavailable };
+        : {
+            ...page,
+            sessionKey: null,
+            chunks: rows.map((row) => toChunkView(row, proxyNameOf(row), null)),
+            storageUnavailable
+          };
 
     if (!storage) {
       return unreadable({ reason: AgentVaultActivityStorageUnavailableReason.NoConnection, message: null });
@@ -410,6 +422,7 @@ export const agentVaultActivityServiceFactory = ({
       rows.map(async (row) =>
         toChunkView(
           row,
+          proxyNameOf(row),
           row.configVersion === config.configVersion ? await activityStorage.presignGet(row.objectKey) : null
         )
       )

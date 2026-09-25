@@ -212,7 +212,7 @@ export const ActivityTab = ({ session }: Props) => {
   (pages ?? []).forEach((page) =>
     page.chunks.forEach((chunk) => {
       if (!seenProxies.current.has(chunk.proxyId)) {
-        seenProxies.current.set(chunk.proxyId, chunk.proxyName ?? chunk.proxyId);
+        seenProxies.current.set(chunk.proxyId, chunk.proxyName);
       }
     })
   );
@@ -549,7 +549,7 @@ export const ActivityTab = ({ session }: Props) => {
               {gaps.slice(0, 5).map((gap) => (
                 <span key={gap.chunkId}>
                   {gap.recordCount} {gap.recordCount === 1 ? "request" : "requests"} from{" "}
-                  {gap.proxyName ?? gap.proxyId} around{" "}
+                  {seenProxies.current.get(gap.proxyId) ?? gap.proxyName} around{" "}
                   {format(new Date(gap.startedAt), "MMM d, h:mm a")} cannot be shown.{" "}
                   {GAP_EXPLANATION[gap.reason]}.
                 </span>
@@ -656,7 +656,7 @@ export const ActivityTab = ({ session }: Props) => {
                   </TableCell>
                   {proxies.length > 1 && (
                     <TableCell className="text-xs text-muted">
-                      {proxies.find((proxy) => proxy.id === record.proxyId)?.name ?? record.proxyId}
+                      {seenProxies.current.get(record.proxyId)}
                     </TableCell>
                   )}
                   <TableCell className="font-mono text-xs">{record.method}</TableCell>

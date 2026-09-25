@@ -69,6 +69,7 @@ type TOverrides = {
   isReplay?: boolean;
   existingChunk?: unknown;
   pageRows?: unknown[];
+  proxies?: unknown[];
   connection?: unknown;
   configCreateThrows?: unknown;
 };
@@ -119,7 +120,8 @@ const build = (overrides: TOverrides = {}) => {
       findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
     } as never,
     agentVaultProxyDAL: {
-      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
+      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY)),
+      find: vi.fn(async () => overrides.proxies ?? [PROXY])
     } as never,
     appConnectionDAL: { findById: findConnection } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
@@ -459,6 +461,20 @@ describe("when the AWS connection can't be used", () => {
     expect(page.chunks).toEqual([]);
     expect(page.nextReceivedAfter).toEqual(since);
     expect(page.hasMore).toBe(false);
+  });
+
+  test("a read names each chunk's proxy by its current name", async () => {
+    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    const { service } = build({ pageRows: [storedRow()], proxies: [{ ...PROXY, name: "proxy-renamed" }] });
+    const page = await readActivity(service);
+    expect(page.chunks.map((chunk) => chunk.proxyName)).toEqual(["proxy-renamed"]);
+  });
+
+  test("a read falls back to the stored name once the proxy is deleted", async () => {
+    vi.mocked(buildActivityStorage).mockRejectedValueOnce(unusable);
+    const { service } = build({ pageRows: [storedRow()], proxies: [] });
+    const page = await readActivity(service);
+    expect(page.chunks.map((chunk) => chunk.proxyName)).toEqual(["proxy-one"]);
   });
 });
 

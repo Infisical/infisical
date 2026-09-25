@@ -4366,7 +4366,7 @@ export const AGENT_VAULT = {
   ACTIVITY: {
     chunkId: "The ID of the activity chunk, a ULID that is unique per session and sorts by time.",
     proxyId: "The ID of the proxy that recorded the chunk.",
-    proxyName: "The name the proxy had when it recorded the chunk.",
+    proxyName: "The proxy's current name, or the name it had when it recorded the chunk if it has since been deleted.",
     startedAt: "When the first request in the chunk was recorded.",
     endedAt: "When the last request in the chunk was recorded.",
     firstSeq: "The sequence number of the first record in the chunk, counted per proxy.",

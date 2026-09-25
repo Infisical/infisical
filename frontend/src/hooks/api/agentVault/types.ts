@@ -312,7 +312,7 @@ export type TUpdateAgentVaultActivityConfigDTO = {
 export type TAgentVaultActivityChunk = {
   chunkId: string;
   proxyId: string;
-  proxyName: string | null;
+  proxyName: string;
   startedAt: string;
   endedAt: string;
   firstSeq: number;
@@ -367,7 +367,7 @@ export type TAgentVaultActivityGapReason =
 export type TAgentVaultActivityGap = {
   chunkId: string;
   proxyId: string;
-  proxyName: string | null;
+  proxyName: string;
   startedAt: string;
   reason: TAgentVaultActivityGapReason;
   recordCount: number;
@@ -376,7 +376,7 @@ export type TAgentVaultActivityGap = {
 export type TAgentVaultActivityDrop = {
   chunkId: string;
   proxyId: string;
-  proxyName: string | null;
+  proxyName: string;
   startedAt: string;
   droppedCount: number;
 };
