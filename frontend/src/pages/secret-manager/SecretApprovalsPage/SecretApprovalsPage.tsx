@@ -7,6 +7,7 @@ import { Badge, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@ap
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
+import { PolicyType } from "@app/hooks/api/policies/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
@@ -20,7 +21,7 @@ enum TabSection {
 }
 
 export const SecretApprovalsPage = () => {
-  const [openAddPolicy, setOpenAddPolicy] = useState(false);
+  const [openAddPolicy, setOpenAddPolicy] = useState<PolicyType | null>(null);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -75,8 +76,8 @@ export const SecretApprovalsPage = () => {
     });
   };
 
-  const configurePolicy = () => {
-    setOpenAddPolicy(true);
+  const configurePolicy = (policyType: PolicyType) => {
+    setOpenAddPolicy(policyType);
     updateSelectedTab(TabSection.Policies);
   };
 
@@ -110,20 +111,22 @@ export const SecretApprovalsPage = () => {
             <TabsTrigger value={TabSection.Policies}>Policies</TabsTrigger>
           </TabsList>
           <TabsContent value={TabSection.SecretApprovalRequests}>
-            <SecretApprovalRequest onConfigurePolicies={configurePolicy} />
+            <SecretApprovalRequest
+              onConfigurePolicies={() => configurePolicy(PolicyType.ChangePolicy)}
+            />
           </TabsContent>
           <TabsContent value={TabSection.ResourceApprovalRequests}>
             <AccessApprovalRequest
               projectId={projectId}
               projectSlug={projectSlug}
-              onConfigurePolicies={configurePolicy}
+              onConfigurePolicies={() => configurePolicy(PolicyType.AccessPolicy)}
             />
           </TabsContent>
           <TabsContent value={TabSection.Policies}>
             <ApprovalPolicyList
               projectId={projectId}
               openAddPolicy={openAddPolicy}
-              onAddPolicyOpened={() => setOpenAddPolicy(false)}
+              onAddPolicyOpened={() => setOpenAddPolicy(null)}
             />
           </TabsContent>
         </Tabs>

@@ -83,7 +83,7 @@ import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModa
 
 interface IProps {
   projectId: string;
-  openAddPolicy: boolean;
+  openAddPolicy: PolicyType | null;
   onAddPolicyOpened: () => void;
 }
 
@@ -149,6 +149,7 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
 };
 
 export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened }: IProps) => {
+  const [initialPolicyType, setInitialPolicyType] = useState<PolicyType>();
   const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
     "deletePolicy",
@@ -164,6 +165,7 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
     if (subscription && !subscription.secretApproval) {
       handlePopUpOpen("upgradePlan");
     } else {
+      setInitialPolicyType(openAddPolicy);
       handlePopUpOpen("policyForm");
     }
     onAddPolicyOpened();
@@ -351,6 +353,7 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
                         handlePopUpOpen("upgradePlan");
                         return;
                       }
+                      setInitialPolicyType(undefined);
                       handlePopUpOpen("policyForm");
                     }}
                     variant="project"
@@ -566,6 +569,7 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
                           if (subscription && !subscription.secretApproval) {
                             handlePopUpOpen("upgradePlan");
                           } else {
+                            setInitialPolicyType(undefined);
                             handlePopUpOpen("policyForm");
                           }
                         }}
@@ -604,6 +608,8 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
         </CardContent>
       </Card>
       <AccessPolicyForm
+        key={initialPolicyType ?? "default"}
+        initialPolicyType={initialPolicyType}
         projectId={currentProject.id}
         projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
