@@ -105,7 +105,9 @@ export const ecdsaRawRsToDer = (raw: Buffer): Buffer => {
   const rTlv = Buffer.concat([Buffer.from([0x02, rPadded.length]), rPadded]);
   const sTlv = Buffer.concat([Buffer.from([0x02, sPadded.length]), sPadded]);
   const seqBody = Buffer.concat([rTlv, sTlv]);
-  return Buffer.concat([Buffer.from([0x30, seqBody.length]), seqBody]);
+  const seqHeader =
+    seqBody.length <= 0x7f ? Buffer.from([0x30, seqBody.length]) : Buffer.from([0x30, 0x81, seqBody.length]);
+  return Buffer.concat([seqHeader, seqBody]);
 };
 
 export const bufferToArrayBuffer = (buf: Buffer): ArrayBuffer => {

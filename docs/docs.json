@@ -599,7 +599,8 @@
                         "pages": [
                           "documentation/platform/pki/ca/private-ca",
                           "documentation/platform/pki/ca/ca-renewal",
-                          "documentation/platform/pki/ca/crl-distribution"
+                          "documentation/platform/pki/ca/crl-distribution",
+                          "documentation/platform/pki/ca/ocsp"
                         ]
                       },
                       {

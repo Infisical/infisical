@@ -73,6 +73,7 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
@@ -161,6 +162,7 @@ type TCertificateServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
+  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -195,7 +197,8 @@ export const certificateServiceFactory = ({
   usageCounterDAL,
   keyStore,
   usageMeteringService,
-  hsmConnectorService
+  hsmConnectorService,
+  internalCertificateAuthorityDAL
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -742,16 +745,24 @@ export const certificateServiceFactory = ({
     }
 
     const revokedAt = new Date();
-    await certificateDAL.update(
-      {
-        id: cert.id
-      },
-      {
-        status: CertStatus.REVOKED,
-        revokedAt,
-        revocationReason: revocationReasonToCrlCode(revocationReason)
+    const revokedCertId = cert.id;
+    await certificateDAL.transaction(async (tx) => {
+      await certificateDAL.update(
+        {
+          id: revokedCertId
+        },
+        {
+          status: CertStatus.REVOKED,
+          revokedAt,
+          revocationReason: revocationReasonToCrlCode(revocationReason)
+        },
+        tx
+      );
+
+      if (!ca.externalCa?.id) {
+        await internalCertificateAuthorityDAL.update({ caId: ca.id }, { $incr: { ocspGeneration: 1 } }, tx);
       }
-    );
+    });
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);

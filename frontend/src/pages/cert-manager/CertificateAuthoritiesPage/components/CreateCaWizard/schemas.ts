@@ -58,6 +58,7 @@ export const caWizardSchema = z
     keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).default(CertKeyAlgorithm.ECDSA_P256),
     notAfter: z.string().trim().default(""),
     maxPathLength: z.string().default("-1"),
+    isOcspEnabled: z.boolean().default(false),
     disableManagedCrlDistributionPointUrl: z.boolean().default(false),
     crlDistributionPointUrls: distributionPointUrlsSchema.default([])
   })

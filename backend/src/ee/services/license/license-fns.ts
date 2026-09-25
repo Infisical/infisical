@@ -118,6 +118,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiScep: false,
   pkiPqc: false,
   caCrl: true,
+  pkiOcsp: false,
   pkiEnterpriseCaIntegrations: false,
   pkiExternalIntermediateCa: false,
   pkiDiscovery: false,

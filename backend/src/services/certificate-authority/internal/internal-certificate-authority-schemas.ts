@@ -38,6 +38,7 @@ type TInternalCertificateAuthorityConfiguration = {
   activeCaCertId?: string | null;
   crlDistributionPointUrls?: string[];
   disableManagedCrlDistributionPointUrl?: boolean;
+  isOcspEnabled?: boolean;
 };
 
 export const InternalCertificateAuthorityConfigurationSchema = z
@@ -82,7 +83,8 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .boolean()
       .optional()
       .default(false)
-      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
+    isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
   })
   .refine(
     (data) => {
@@ -116,7 +118,8 @@ export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   disableManagedCrlDistributionPointUrl: z
     .boolean()
     .optional()
-    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl)
+    .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.disableManagedCrlDistributionPointUrl),
+  isOcspEnabled: z.boolean().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.isOcspEnabled)
 });
 
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
