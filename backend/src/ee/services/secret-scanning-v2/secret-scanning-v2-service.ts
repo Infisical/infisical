@@ -791,15 +791,7 @@ export const secretScanningV2ServiceFactory = ({
       projectId
     });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    return findings.map(({ encryptedDetails, ...finding }) => ({
-      ...finding,
-      details: JSON.parse(decryptor({ cipherTextBlob: encryptedDetails }).toString()) as unknown
-    })) as TSecretScanningFinding[];
+    return findings as TSecretScanningFinding[];
   };
 
   const updateSecretScanningFindingById = async (
@@ -840,20 +832,7 @@ export const secretScanningV2ServiceFactory = ({
       status
     });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: finding.projectId
-    });
-
-    const { encryptedDetails, ...rest } = updatedFinding;
-
-    return {
-      finding: {
-        ...rest,
-        details: JSON.parse(decryptor({ cipherTextBlob: encryptedDetails }).toString()) as unknown
-      } as TSecretScanningFinding,
-      projectId: finding.projectId
-    };
+    return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };
   };
 
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {

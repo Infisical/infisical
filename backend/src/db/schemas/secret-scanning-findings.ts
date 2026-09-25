@@ -5,8 +5,6 @@
 
 import { z } from "zod";
 
-import { zodBuffer } from "@app/lib/zod";
-
 import { TImmutableDBKeys } from "./models";
 
 export const SecretScanningFindingsSchema = z.object({
@@ -20,11 +18,11 @@ export const SecretScanningFindingsSchema = z.object({
   status: z.string().default("unresolved"),
   remarks: z.string().nullable().optional(),
   fingerprint: z.string(),
+  details: z.unknown(),
   projectId: z.string(),
   scanId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  encryptedDetails: zodBuffer
+  updatedAt: z.date()
 });
 
 export type TSecretScanningFindings = z.infer<typeof SecretScanningFindingsSchema>;

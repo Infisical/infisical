@@ -25,7 +25,6 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -314,11 +313,6 @@ export const secretScanningV2QueueServiceFactory = ({
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
-      const { encryptor: findingsEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId: dataSource.projectId
-      });
-
       const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
         kmsService,
         appConnectionDAL
@@ -364,9 +358,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
           if (batchFindings.length) {
             await secretScanningV2DAL.findings.upsert(
-              batchFindings.map(({ details, ...finding }) => ({
+              batchFindings.map((finding) => ({
                 ...finding,
-                encryptedDetails: findingsEncryptor({ plainText: Buffer.from(JSON.stringify(details)) }).cipherTextBlob,
                 projectId: dataSource.projectId,
                 dataSourceName: dataSource.name,
                 dataSourceType: dataSource.type,
@@ -705,20 +698,13 @@ export const secretScanningV2QueueServiceFactory = ({
         configPath
       });
 
-      const { encryptor: findingsEncryptor, decryptor: findingsDecryptor } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: dataSource.projectId
-        });
-
       const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
 
         if (findingsPayload.length) {
           findings = await secretScanningV2DAL.findings.upsert(
-            findingsPayload.map(({ details, ...finding }) => ({
+            findingsPayload.map((finding) => ({
               ...finding,
-              encryptedDetails: findingsEncryptor({ plainText: Buffer.from(JSON.stringify(details)) }).cipherTextBlob,
               projectId: dataSource.projectId,
               dataSourceName: dataSource.name,
               dataSourceType: dataSource.type,
@@ -754,9 +740,7 @@ export const secretScanningV2QueueServiceFactory = ({
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
       if (newFindings.length) {
-        const details = JSON.parse(
-          findingsDecryptor({ cipherTextBlob: newFindings[0].encryptedDetails }).toString()
-        ) as TSecretScanningFinding["details"];
+        const finding = newFindings[0] as TSecretScanningFinding;
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -767,8 +751,8 @@ export const secretScanningV2QueueServiceFactory = ({
             dataSource,
             numberOfSecrets: newFindings.length,
             scanId,
-            authorName: details.author,
-            authorEmail: details.email
+            authorName: finding?.details?.author,
+            authorEmail: finding?.details?.email
           },
           { jobId: `secret-scanning-notification-${scanId}` }
         );

@@ -326,7 +326,22 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
 
 export const toFindingDetails = (finding: SecretMatch): unknown =>
   titleCaseToCamelCase({
-    ...finding,
+    Description: finding.Description,
+    StartLine: finding.StartLine,
+    EndLine: finding.EndLine,
+    StartColumn: finding.StartColumn,
+    EndColumn: finding.EndColumn,
+    File: finding.File,
+    SymlinkFile: finding.SymlinkFile,
+    Commit: finding.Commit,
+    Entropy: finding.Entropy,
+    Author: finding.Author,
+    Email: finding.Email,
+    Date: finding.Date,
+    Message: finding.Message,
+    Tags: finding.Tags,
+    RuleID: finding.RuleID,
+    Fingerprint: finding.Fingerprint,
     Link: finding.Attributes?.url ?? ""
   });
 
