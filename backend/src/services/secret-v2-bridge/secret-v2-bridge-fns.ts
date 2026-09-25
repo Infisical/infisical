@@ -499,46 +499,132 @@ export const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
   return map;
 };
 
+const GENERATE_PATHS_MAX_DEPTH = 20;
+const GENERATE_PATHS_MAX_LOGGED_FOLDER_IDS = 5;
+
+// Depth-first pre-order: each folder, then its subtree, in children order.
 export const generatePaths = (
   map: FolderMap,
   parentId: string = "null",
   basePath: string = "",
   currentDepth: number = 0
 ): { path: string; folderId: string }[] => {
-  const children = map[parentId || "null"] || [];
-  let paths: { path: string; folderId: string }[] = [];
+  const paths: { path: string; folderId: string }[] = [];
+  const depthLimitedFolderIds: string[] = [];
+  let depthLimitedFolderCount = 0;
 
-  children.forEach((child) => {
-    // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
-    const isRootFolder = child.name === "root" && !child.parentId;
+  const visit = (visitParentId: string, visitBasePath: string, depth: number) => {
+    const children = map[visitParentId || "null"] || [];
 
-    // Form the current path based on the base path and the current child
-    // eslint-disable-next-line no-nested-ternary
-    const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
+    for (const child of children) {
+      // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
+      const isRootFolder = child.name === "root" && !child.parentId;
 
-    // Add the current path
-    paths.push({
-      path: currPath,
-      folderId: child.id
-    });
+      const currPath =
+        // eslint-disable-next-line no-nested-ternary
+        visitBasePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${visitBasePath}/${child.name}`;
 
-    // We make sure that the recursion depth doesn't exceed 20.
-    // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
-    if (currentDepth >= 20) {
-      logger.info(`generatePaths: Recursion depth exceeded 20, breaking out of recursion [map=${JSON.stringify(map)}]`);
-      return;
+      paths.push({
+        path: currPath,
+        folderId: child.id
+      });
+
+      // Circuit breaker: a parentId cycle in the folder data would otherwise recurse forever.
+      if (depth >= GENERATE_PATHS_MAX_DEPTH) {
+        if (map[child.id]?.length) {
+          depthLimitedFolderCount += 1;
+          if (depthLimitedFolderIds.length < GENERATE_PATHS_MAX_LOGGED_FOLDER_IDS) {
+            depthLimitedFolderIds.push(child.id);
+          }
+        }
+      } else {
+        visit(child.id, currPath, depth + 1);
+      }
     }
-    // Recursively generate paths for children, passing down the formatted path
-    const childPaths = generatePaths(map, child.id, currPath, currentDepth + 1);
-    paths = paths.concat(
-      childPaths.map((p) => ({
-        path: p.path,
-        folderId: p.folderId
-      }))
+  };
+
+  visit(parentId, basePath, currentDepth);
+
+  if (depthLimitedFolderCount > 0) {
+    logger.info(
+      `generatePaths: Recursion depth exceeded ${GENERATE_PATHS_MAX_DEPTH}, skipping deeper folders [depthLimitedFolderCount=${depthLimitedFolderCount}] [pathCount=${paths.length}] [sampleFolderIds=${depthLimitedFolderIds.join(",")}]`
     );
-  });
+  }
 
   return paths;
+};
+
+type TExpandableSecret = {
+  secretKey: string;
+  secretPath: string;
+  secretValue: string;
+  skipMultilineEncoding?: boolean | null;
+};
+
+export type TSecretReferenceExpansionError = { path: string; error: string };
+
+// Expands every secret's value in place and returns one entry per failed expansion, tagged with the
+// secret's path.
+export const expandSecretReferencesGroupedByPath = async <T extends TExpandableSecret>({
+  secrets,
+  environment,
+  expandSecretReferences
+}: {
+  secrets: T[];
+  environment: string;
+  expandSecretReferences: (input: {
+    value?: string;
+    secretPath: string;
+    environment: string;
+    skipMultilineEncoding?: boolean | null;
+    secretKey: string;
+  }) => Promise<string | undefined>;
+}): Promise<TSecretReferenceExpansionError[]> => {
+  const secretsGroupByPath = groupBy(secrets, (i) => i.secretPath);
+  // One key list shared by the promise fan-out and the error mapping, so result indexes always line up.
+  const groupedPaths = Object.keys(secretsGroupByPath);
+
+  const settledPromises = await Promise.allSettled(
+    groupedPaths.map((groupedPath) =>
+      Promise.allSettled(
+        secretsGroupByPath[groupedPath].map(async (secret) => {
+          const expandedSecretValue = await expandSecretReferences({
+            value: secret.secretValue,
+            secretPath: groupedPath,
+            environment,
+            skipMultilineEncoding: secret.skipMultilineEncoding,
+            secretKey: secret.secretKey
+          });
+          // eslint-disable-next-line no-param-reassign
+          secret.secretValue = expandedSecretValue || "";
+        })
+      )
+    )
+  );
+
+  const errors: TSecretReferenceExpansionError[] = [];
+  settledPromises.forEach((outerResult, outerIndex) => {
+    const groupedPath = groupedPaths[outerIndex];
+
+    if (outerResult.status === "rejected") {
+      errors.push({
+        path: groupedPath,
+        error: `Failed to process secret group: ${outerResult.reason}`
+      });
+      return;
+    }
+
+    outerResult.value.forEach((innerResult) => {
+      if (innerResult.status === "rejected") {
+        errors.push({
+          path: groupedPath,
+          error: (innerResult.reason as Error).message
+        });
+      }
+    });
+  });
+
+  return errors;
 };
 
 type TRecursivelyFetchSecretsFromFoldersArg = {

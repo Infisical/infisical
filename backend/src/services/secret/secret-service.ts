@@ -1454,11 +1454,13 @@ export const secretServiceFactory = ({
     tagSlugs = [],
     throwOnMissingReadValuePermission = true,
     ifNoneMatch,
+    abortSignal,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const result = await secretV2BridgeService.getSecrets({
+        abortSignal,
         projectId,
         expandSecretReferences,
         personalOverridesBehavior,

@@ -8,6 +8,7 @@ import { AcmeError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
+  ClientClosedRequestError,
   ConflictError,
   CryptographyError,
   DatabaseError,
@@ -50,7 +51,9 @@ enum HttpStatusCodes {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   InternalServerError = 500,
   GatewayTimeout = 504,
-  TooManyRequests = 429
+  TooManyRequests = 429,
+  // Non-standard (nginx convention). The client is gone, so this only reaches logs and metrics.
+  ClientClosedRequest = 499
 }
 
 export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider) => {
@@ -73,6 +76,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     // avoid stack serialization; keep full-stack logging for unexpected / server errors.
     const isExpectedClientError =
       error instanceof BadRequestError ||
+      error instanceof ClientClosedRequestError ||
       error instanceof NotFoundError ||
       error instanceof ConflictError ||
       error instanceof UnauthorizedError ||
@@ -218,6 +222,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name,
         details: error.details
+      });
+    } else if (error instanceof ClientClosedRequestError) {
+      void res.status(HttpStatusCodes.ClientClosedRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.ClientClosedRequest,
+        message: error.message,
+        error: error.name
       });
     } else if (error instanceof ConflictError) {
       void res

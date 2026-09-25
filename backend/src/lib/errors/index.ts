@@ -36,6 +36,22 @@ export class GatewayTimeoutError extends Error {
   }
 }
 
+// Thrown to stop work for a request whose client has already disconnected. No one receives the response.
+export class ClientClosedRequestError extends Error {
+  name: string;
+
+  constructor({ message }: { message?: string } = {}) {
+    super(message || "The client closed the connection before the request completed");
+    this.name = "ClientClosedRequestError";
+  }
+}
+
+export const throwIfClientDisconnected = (signal?: AbortSignal) => {
+  if (signal?.aborted) {
+    throw new ClientClosedRequestError();
+  }
+};
+
 export class UnauthorizedError extends Error {
   name: string;
 

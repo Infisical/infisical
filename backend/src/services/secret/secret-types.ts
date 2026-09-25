@@ -244,6 +244,7 @@ export type TGetSecretsRawDTO = {
   includeMetadataInSearch?: boolean;
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
+  abortSignal?: AbortSignal;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {

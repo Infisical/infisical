@@ -9,7 +9,6 @@ import {
   SecretType,
   TableName,
   TSecretBlindIndexes,
-  TSecretFolders,
   TSecrets
 } from "@app/db/schemas";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
@@ -20,12 +19,13 @@ import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
+  buildHierarchy,
   fnSecretBulkInsert as fnSecretV2BridgeBulkInsert,
-  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate
+  fnSecretBulkUpdate as fnSecretV2BridgeBulkUpdate,
+  generatePaths
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -83,67 +83,6 @@ type TGetPathsDTO = {
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string | undefined;
   };
-};
-
-// Introduce a new interface for mapping parent IDs to their children
-interface FolderMap {
-  [parentId: string]: TSecretFolders[];
-}
-const buildHierarchy = (folders: TSecretFolders[]): FolderMap => {
-  const map: FolderMap = {};
-  map.null = []; // Initialize mapping for root directory
-
-  folders.forEach((folder) => {
-    const parentId = folder.parentId || "null";
-    if (!map[parentId]) {
-      map[parentId] = [];
-    }
-    map[parentId].push(folder);
-  });
-
-  return map;
-};
-
-const generatePaths = (
-  map: FolderMap,
-  parentId: string = "null",
-  basePath: string = "",
-  currentDepth: number = 0
-): { path: string; folderId: string }[] => {
-  const children = map[parentId || "null"] || [];
-  let paths: { path: string; folderId: string }[] = [];
-
-  children.forEach((child) => {
-    // Determine if this is the root folder of the environment. If no parentId is present and the name is root, it's the root folder
-    const isRootFolder = child.name === "root" && !child.parentId;
-
-    // Form the current path based on the base path and the current child
-    // eslint-disable-next-line no-nested-ternary
-    const currPath = basePath === "" ? (isRootFolder ? "/" : `/${child.name}`) : `${basePath}/${child.name}`;
-
-    // Add the current path
-    paths.push({
-      path: currPath,
-      folderId: child.id
-    });
-
-    // We make sure that the recursion depth doesn't exceed 20.
-    // We do this to create "circuit break", basically to ensure that we can't encounter any potential memory leaks.
-    if (currentDepth >= 20) {
-      logger.info(`generatePaths: Recursion depth exceeded 20, breaking out of recursion [map=${JSON.stringify(map)}]`);
-      return;
-    }
-    // Recursively generate paths for children, passing down the formatted path
-    const childPaths = generatePaths(map, child.id, currPath, currentDepth + 1);
-    paths = paths.concat(
-      childPaths.map((p) => ({
-        path: p.path,
-        folderId: p.folderId
-      }))
-    );
-  });
-
-  return paths;
 };
 
 export const recursivelyGetSecretPaths = ({

@@ -3815,7 +3815,8 @@ const syncSecretsCloudflarePages = async ({
   ]);
 
   if (getSecretsRes) {
-    const toDeleteKeys = Object.keys(getSecretsRes).filter((key) => !Object.keys(secrets).includes(key));
+    const secretKeys = new Set(Object.keys(secrets));
+    const toDeleteKeys = Object.keys(getSecretsRes).filter((key) => !secretKeys.has(key));
     const toDeleteEntries: [string, null][] = toDeleteKeys.map((key) => [key, null]);
     secretEntries = [...secretEntries, ...toDeleteEntries];
   }
@@ -3899,8 +3900,9 @@ const syncSecretsCloudflareWorkers = async ({
   // get deleted secrets list
   const deletedSecretKeys: string[] = [];
   if (getSecretsRes) {
+    const secretKeys = new Set(Object.keys(secrets));
     getSecretsRes.forEach((secretRes) => {
-      if (!Object.keys(secrets).includes(secretRes.name)) {
+      if (!secretKeys.has(secretRes.name)) {
         deletedSecretKeys.push(secretRes.name);
       }
     });
