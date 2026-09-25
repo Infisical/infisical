@@ -38,7 +38,10 @@ export const azureDnsInsertTxtRecord = async (
   } = connection;
 
   validateAzureDnsZoneResourceId(hostedZoneId);
-  const relativeRecordName = getAzureDnsRelativeRecordName(hostedZoneId, recordName);
+  const relativeRecordName = getAzureDnsRelativeRecordName(
+    hostedZoneId,
+    recordName,
+  );
 
   try {
     const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
@@ -81,7 +84,10 @@ export const azureDnsDeleteTxtRecord = async (
   } = connection;
 
   validateAzureDnsZoneResourceId(hostedZoneId);
-  const relativeRecordName = getAzureDnsRelativeRecordName(hostedZoneId, recordName);
+  const relativeRecordName = getAzureDnsRelativeRecordName(
+    hostedZoneId,
+    recordName,
+  );
 
   try {
     const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
