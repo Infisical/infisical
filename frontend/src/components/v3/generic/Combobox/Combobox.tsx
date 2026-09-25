@@ -1441,11 +1441,11 @@ const MultipleCombobox = <TOption,>({
               (isCreationActive() || isDialogCreationActiveRef.current)
             )
               return;
-            setSearch(nextValue);
             if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+              updateSearch(nextValue);
               clearCreationError();
-              onSearchChange?.(nextValue);
-              onInputValueChange?.(nextValue);
+            } else {
+              setSearch(nextValue);
             }
           }}
           itemToStringLabel={(item) =>
