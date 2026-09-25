@@ -39,6 +39,9 @@ export const keyUsageDefaultOption: Record<
   [KmsKeyUsage.GENERATE_VERIFY_MAC]: HmacAlgorithm.HMAC_SHA_256
 };
 
+export const formatKmsKeyAlgorithm = (algorithm: string): string =>
+  algorithm.replaceAll("_", "-").toUpperCase();
+
 export const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
   if (cmek?.algorithm?.startsWith("ML_DSA")) {
     return cmek.algorithm as unknown as SigningAlgorithm;

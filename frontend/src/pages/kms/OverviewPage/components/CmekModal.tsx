@@ -29,7 +29,7 @@ import {
   Toggle
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
-import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
+import { formatKmsKeyAlgorithm, keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
   AsymmetricKeyAlgorithm,
@@ -239,7 +239,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                                 disabled={isDisabled}
                               >
                                 <div className="flex items-center gap-2">
-                                  <span>{value.replaceAll("-", " ")}</span>
+                                  <span>{formatKmsKeyAlgorithm(value)}</span>
                                   {isDisabled && <Badge variant="info">Enterprise</Badge>}
                                   {isLegacyHmac && <Badge variant="warning">Legacy</Badge>}
                                 </div>
