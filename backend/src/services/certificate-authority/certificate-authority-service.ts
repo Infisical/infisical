@@ -83,7 +83,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
-import { rethrowCaDeleteError } from "./certificate-authority-fns";
+import { assertNoCertificateProfilesUsingCa, rethrowCaDeleteError } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
 import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -155,7 +155,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById" | "findByIdWithConfigs">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId" | "findById" | "findByIdWithConfigs">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
@@ -945,6 +945,8 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
+
     await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
@@ -1176,6 +1178,8 @@ export const certificateAuthorityServiceFactory = ({
         message: "External certificate authority cannot be deleted"
       });
     }
+
+    await assertNoCertificateProfilesUsingCa(certificateProfileDAL, certificateAuthority.id, certificateAuthority.name);
 
     await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
