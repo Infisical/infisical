@@ -387,18 +387,9 @@ export type TAgentVaultActivityGap = {
   recordCount: number;
 };
 
-export type TAgentVaultActivityDrop = {
-  chunkId: string;
-  proxyId: string;
-  proxyName: string;
-  startedAt: string;
-  droppedCount: number;
-};
-
 export type TAgentVaultDecryptedChunk = {
   records: TAgentVaultActivityRecord[];
   gap: TAgentVaultActivityGap | null;
-  drop: TAgentVaultActivityDrop | null;
   arrivedAt: number | null;
 };
 

@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import {
   TAgentVaultActivityChunk,
-  TAgentVaultActivityDrop,
   TAgentVaultActivityGap,
   TAgentVaultActivityGapReason,
   TAgentVaultActivityPage,
@@ -70,17 +69,6 @@ export const recordsMatchChunk = (
       record.seq <= chunk.lastSeq
   );
 
-const dropFor = (chunk: TAgentVaultActivityChunk): TAgentVaultActivityDrop | null =>
-  chunk.droppedCount > 0
-    ? {
-        chunkId: chunk.chunkId,
-        proxyId: chunk.proxyId,
-        proxyName: chunk.proxyName,
-        startedAt: chunk.startedAt,
-        droppedCount: chunk.droppedCount
-      }
-    : null;
-
 const gapFor = (
   chunk: TAgentVaultActivityChunk,
   reason: TAgentVaultActivityGapReason
@@ -94,7 +82,6 @@ const gapFor = (
     reason,
     recordCount: chunk.recordCount
   },
-  drop: dropFor(chunk),
   arrivedAt: null
 });
 
@@ -170,7 +157,6 @@ const openChunk = async (
     return {
       records,
       gap: null,
-      drop: dropFor(chunk),
       arrivedAt: null
     };
   } catch {
@@ -261,7 +247,6 @@ export const mergeActivityPages = <P extends TAgentVaultActivityPage>(
 export type TAgentVaultActivityTimeline = {
   records: TAgentVaultActivityRecord[];
   gaps: TAgentVaultActivityGap[];
-  drops: TAgentVaultActivityDrop[];
   arrivals: Map<string, number>;
   isTruncated: boolean;
   isOverByteBudget: boolean;
@@ -290,7 +275,6 @@ export const useAgentVaultActivityTimeline = (
 
     const records: TAgentVaultActivityRecord[] = [];
     const gaps: TAgentVaultActivityGap[] = [];
-    const drops: TAgentVaultActivityDrop[] = [];
     const arrivals = new Map<string, number>();
     let loadedBytes = 0;
 
@@ -302,7 +286,6 @@ export const useAgentVaultActivityTimeline = (
         result.records.forEach((record) => arrivals.set(activityRecordKey(record), arrivedAt));
       }
       if (result.gap) gaps.push(result.gap);
-      if (result.drop) drops.push(result.drop);
     });
 
     const times = new Map<TAgentVaultActivityRecord, number>();
@@ -318,7 +301,6 @@ export const useAgentVaultActivityTimeline = (
     return {
       records: records.slice(0, AGENT_VAULT_ACTIVITY_MAX_RECORDS),
       gaps,
-      drops,
       arrivals,
       isTruncated: records.length > AGENT_VAULT_ACTIVITY_MAX_RECORDS || isOverByteBudget,
       isOverByteBudget

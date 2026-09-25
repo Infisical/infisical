@@ -283,12 +283,11 @@ export const ActivityTab = ({ session }: Props) => {
     if (!data) return undefined;
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
-  const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget } =
+  const { records, gaps, arrivals, isTruncated, isOverByteBudget } =
     useAgentVaultActivityTimeline(pages);
   if (isOverByteBudget && !isPlaceholderData && !isLivePausedForBudget) {
     setBudgetLatch({ scope: liveScope, isOver: true });
   }
-  const droppedTotal = drops.reduce((total, drop) => total + drop.droppedCount, 0);
   const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.activity.enabled ?? false;
@@ -680,13 +679,6 @@ export const ActivityTab = ({ session }: Props) => {
             )}
           </AlertDescription>
         </Alert>
-      )}
-
-      {droppedTotal > 0 && (
-        <div className="rounded-md border border-border bg-container px-3 py-2 text-xs text-muted">
-          {droppedTotal.toLocaleString()} {droppedTotal === 1 ? "request was" : "requests were"} not
-          recorded.
-        </div>
       )}
 
       {visible.length === 0 ? (
