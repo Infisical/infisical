@@ -4,7 +4,7 @@ import { describe, it } from "vitest";
 import { AgentVaultActivityDecision } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultActivityRecord } from "@app/hooks/api/agentVault/types";
 
-import { chunkIdTime, findRowShift } from "./ActivityTab.utils";
+import { chunkIdTime, findRowShift, groupActivityGaps } from "./ActivityTab.utils";
 
 const record = (seq: number): TAgentVaultActivityRecord => ({
   ts: new Date(Date.UTC(2026, 8, 23, 10, 0, 0, seq)).toISOString(),
@@ -58,5 +58,31 @@ describe("chunkIdTime", () => {
 
   it("reads a lowercase id the same way", () => {
     assert.equal(chunkIdTime("01arz3ndektsv4rrffq69g5fav").getTime(), 1469922850259);
+  });
+});
+
+describe("groupActivityGaps", () => {
+  const gap = (reason: "gcm" | "missing", recordCount: number, chunkId: string) => ({
+    chunkId,
+    proxyId: "proxy-1",
+    proxyName: "proxy",
+    startedAt: "2026-09-24T13:17:00.000Z",
+    reason,
+    recordCount
+  });
+
+  it("adds up the requests for each reason, in the order the reasons first appear", () => {
+    assert.deepEqual(
+      groupActivityGaps([
+        gap("gcm", 10, "a"),
+        gap("gcm", 11, "b"),
+        gap("missing", 3, "c"),
+        gap("gcm", 21, "d")
+      ]),
+      [
+        { reason: "gcm", recordCount: 42 },
+        { reason: "missing", recordCount: 3 }
+      ]
+    );
   });
 });

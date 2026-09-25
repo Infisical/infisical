@@ -67,7 +67,7 @@ import {
 } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
-import { chunkIdTime, findRowShift, httpStatusLabel } from "./ActivityTab.utils";
+import { chunkIdTime, findRowShift, groupActivityGaps, httpStatusLabel } from "./ActivityTab.utils";
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 
 const ALL_PROXIES = "all";
@@ -130,16 +130,28 @@ const decisionPresentation = (decision: AgentVaultActivityDecision) =>
     icon: CircleHelpIcon
   };
 
-const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, string> = {
-  repointed: "Stored in a bucket this project no longer uses",
-  fetch: "Could not be read from the bucket",
-  missing: "No longer in the bucket",
-  refused: "The bucket refused the download",
-  size: "The stored object is the wrong size",
-  altered: "Changed after it was uploaded",
-  gcm: "Could not be decrypted",
-  json: "The decrypted contents were not readable",
-  mismatch: "Its records don't match the proxy and batch that sent them"
+const GAP_EXPLANATION: Record<TAgentVaultActivityGapReason, { one: string; many: string }> = {
+  repointed: {
+    one: "is stored in a bucket this project no longer uses",
+    many: "are stored in a bucket this project no longer uses"
+  },
+  fetch: { one: "could not be read from the bucket", many: "could not be read from the bucket" },
+  missing: { one: "is no longer in the bucket", many: "are no longer in the bucket" },
+  refused: { one: "was refused by the bucket", many: "were refused by the bucket" },
+  size: { one: "is stored at the wrong size", many: "are stored at the wrong size" },
+  altered: {
+    one: "was changed after it was uploaded",
+    many: "were changed after they were uploaded"
+  },
+  gcm: { one: "could not be decrypted", many: "could not be decrypted" },
+  json: {
+    one: "was decrypted but could not be read",
+    many: "were decrypted but could not be read"
+  },
+  mismatch: {
+    one: "doesn't match the proxy and batch that sent it",
+    many: "don't match the proxy and batch that sent them"
+  }
 };
 
 const statusTone = (status: number) => {
@@ -656,15 +668,12 @@ export const ActivityTab = ({ session }: Props) => {
           <TriangleAlertIcon />
           <AlertDescription>
             <div className="flex flex-col gap-1">
-              {gaps.slice(0, 5).map((gap) => (
-                <span key={gap.chunkId}>
-                  {gap.recordCount} {gap.recordCount === 1 ? "request" : "requests"} from{" "}
-                  {seenProxies.current.get(gap.proxyId) ?? gap.proxyName} around{" "}
-                  {format(new Date(gap.startedAt), "MMM d, h:mm a")} cannot be shown.{" "}
-                  {GAP_EXPLANATION[gap.reason]}.
+              {groupActivityGaps(gaps).map(({ reason, recordCount }) => (
+                <span key={reason}>
+                  {recordCount.toLocaleString()} {recordCount === 1 ? "request" : "requests"}{" "}
+                  {GAP_EXPLANATION[reason][recordCount === 1 ? "one" : "many"]}.
                 </span>
               ))}
-              {gaps.length > 5 && <span>and {gaps.length - 5} more.</span>}
             </div>
             {gaps.some((gap) => isRetryableActivityGap(gap.reason)) && (
               <AlertAction>{retryButton}</AlertAction>

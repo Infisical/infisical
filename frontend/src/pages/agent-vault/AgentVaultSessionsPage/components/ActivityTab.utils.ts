@@ -1,5 +1,9 @@
 import { activityRecordKey } from "@app/hooks/api/agentVault/activityDecrypt";
-import { TAgentVaultActivityRecord } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultActivityGap,
+  TAgentVaultActivityGapReason,
+  TAgentVaultActivityRecord
+} from "@app/hooks/api/agentVault/types";
 
 export const findRowShift = (
   before: TAgentVaultActivityRecord[],
@@ -89,3 +93,11 @@ export const chunkIdTime = (chunkId: string) =>
       0
     )
   );
+
+export const groupActivityGaps = (gaps: TAgentVaultActivityGap[]) => {
+  const byReason = new Map<TAgentVaultActivityGapReason, number>();
+  gaps.forEach((gap) =>
+    byReason.set(gap.reason, (byReason.get(gap.reason) ?? 0) + gap.recordCount)
+  );
+  return [...byReason].map(([reason, recordCount]) => ({ reason, recordCount }));
+};
