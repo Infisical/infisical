@@ -87,6 +87,7 @@ export const KeyStorePrefixes = {
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
+  SpiffeKidMissRefresh: (configId: string) => `spiffe-kid-miss-refresh:${configId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
