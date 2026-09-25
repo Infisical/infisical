@@ -37,6 +37,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
         status?: string | null | undefined;
         config?: unknown;
         statusDetails?: string | null | undefined;
+        encryptedLeaseData?: Buffer | null | undefined;
       }
     | undefined
   >;

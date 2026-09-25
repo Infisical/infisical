@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -8,7 +7,7 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretLeaseSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -43,7 +42,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          lease: DynamicSecretLeasesSchema,
+          lease: SanitizedDynamicSecretLeaseSchema,
           dynamicSecret: SanitizedDynamicSecretSchema,
           data: z.unknown()
         })
@@ -126,7 +125,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          lease: DynamicSecretLeasesSchema
+          lease: SanitizedDynamicSecretLeaseSchema
         })
       }
     },
@@ -218,7 +217,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          lease: DynamicSecretLeasesSchema
+          lease: SanitizedDynamicSecretLeaseSchema
         })
       }
     },
@@ -297,7 +296,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       response: {
         200: z.object({
-          lease: DynamicSecretLeasesSchema.extend({
+          lease: SanitizedDynamicSecretLeaseSchema.extend({
             dynamicSecret: SanitizedDynamicSecretSchema
           })
         })
