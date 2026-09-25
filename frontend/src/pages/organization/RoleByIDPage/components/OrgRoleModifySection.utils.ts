@@ -213,7 +213,8 @@ const secretsManagementInsightsPermissionSchema = z
     z.object({
       [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
       [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
-      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional()
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues]: z.boolean().optional()
     })
   )
   .optional();
@@ -960,6 +961,12 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
         label: "Delete Report",
         description: "Delete secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+        label: "Search All Secret Values",
+        description:
+          "Find secrets that share a value in any project, including projects the user isn't a member of"
       }
     ]
   },
