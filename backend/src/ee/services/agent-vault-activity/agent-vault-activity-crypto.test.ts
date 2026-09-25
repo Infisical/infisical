@@ -4,17 +4,8 @@ import { describe, expect, test } from "vitest";
 
 const AAD_VERSION = "v1";
 
-const buildAad = ({
-  projectId,
-  sessionId,
-  proxyId,
-  chunkId
-}: {
-  projectId: string;
-  sessionId: string;
-  proxyId: string;
-  chunkId: string;
-}) => crypto.createHash("sha256").update(`${projectId}|${sessionId}|${proxyId}|${chunkId}|${AAD_VERSION}`).digest();
+const buildAad = ({ sessionId, chunkId }: { sessionId: string; chunkId: string }) =>
+  crypto.createHash("sha256").update(`${sessionId}|${chunkId}|${AAD_VERSION}`).digest();
 
 const seal = (key: Buffer, iv: Buffer, aad: Buffer, plaintext: Buffer) => {
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
@@ -32,9 +23,7 @@ const open = (key: Buffer, iv: Buffer, aad: Buffer, sealed: Buffer) => {
 };
 
 const CONTEXT = {
-  projectId: "proj-1",
   sessionId: "sess-1",
-  proxyId: "proxy-1",
   chunkId: "01K5ABCDEFGHJKMNPQRSTVWXYZ"
 };
 
@@ -69,14 +58,11 @@ describe("the sealed chunk wire contract", () => {
     expect(seal(KEY, IV, buildAad(CONTEXT), plaintext)).toHaveLength(plaintext.length + 16);
   });
 
-  test.each(["projectId", "sessionId", "proxyId", "chunkId"] as const)(
-    "a chunk cannot be replayed under a different %s",
-    (field) => {
-      const sealed = seal(KEY, IV, buildAad(CONTEXT), Buffer.from(JSON.stringify(RECORDS)));
-      const wrongAad = buildAad({ ...CONTEXT, [field]: "somewhere-else" });
-      expect(() => open(KEY, IV, wrongAad, sealed)).toThrow();
-    }
-  );
+  test.each(["sessionId", "chunkId"] as const)("a chunk cannot be replayed under a different %s", (field) => {
+    const sealed = seal(KEY, IV, buildAad(CONTEXT), Buffer.from(JSON.stringify(RECORDS)));
+    const wrongAad = buildAad({ ...CONTEXT, [field]: "somewhere-else" });
+    expect(() => open(KEY, IV, wrongAad, sealed)).toThrow();
+  });
 
   test("a tampered byte fails the tag rather than decoding to something else", () => {
     const sealed = seal(KEY, IV, buildAad(CONTEXT), Buffer.from(JSON.stringify(RECORDS)));
@@ -84,14 +70,14 @@ describe("the sealed chunk wire contract", () => {
     expect(() => open(KEY, IV, buildAad(CONTEXT), sealed)).toThrow();
   });
 
-  // Go's TestSealMatchesNodeVector and the browser decrypt path both use these exact bytes.
+  // Go's TestSealMatchesNodeVector and the browser's decryptActivityPage test both use these exact bytes.
   test("matches the pinned vector the Go proxy and the browser are checked against", () => {
-    expect(buildAad(CONTEXT).toString("hex")).toBe("ba75c71ef714535e84246066ca0a34685c42a03a130dd92fe1d795ad40908a7c");
+    expect(buildAad(CONTEXT).toString("hex")).toBe("0bc4c5b3d6ea7cd6bfc440da46d6ce9b73f17c5efa64e90e88373ee8ba09a837");
     expect(IV.toString("base64").replace(/=+$/, "")).toBe("qrvM3e7/ABEiM0RV");
 
     const sealed = seal(KEY, IV, buildAad(CONTEXT), Buffer.from(JSON.stringify(RECORDS)));
     expect(sealed.toString("base64")).toBe(
-      "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCvav2ddgiSoqXrTvwiXaUgv"
+      "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCu64JVIU0dTBbrrs+2AuZxL"
     );
   });
 });

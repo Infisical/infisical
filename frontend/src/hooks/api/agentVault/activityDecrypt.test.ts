@@ -74,7 +74,6 @@ describe("decryptActivityPage", () => {
     activity: {
       enabled: true,
       sessionKey: btoa("\0".repeat(32)),
-      projectId: "project-1",
       storageUnavailable: null
     },
     chunks: [
@@ -137,5 +136,42 @@ describe("decryptActivityPage", () => {
       reason: "altered",
       downloads: 1
     });
+  });
+
+  // The pinned vector from agent-vault-activity-crypto.test.ts and Go's TestSealMatchesNodeVector.
+  it("opens a chunk sealed with the pinned vector", async () => {
+    const sealed = Uint8Array.from(
+      atob(
+        "PLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCu64JVIU0dTBbrrs+2AuZxL"
+      ),
+      (char) => char.charCodeAt(0)
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(sealed))
+    );
+    const vectorPage: TAgentVaultActivityPage = {
+      activity: {
+        enabled: true,
+        sessionKey: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+        storageUnavailable: null
+      },
+      chunks: [
+        {
+          ...page.chunks[0],
+          startedAt: "2026-09-16T10:31:04.221Z",
+          endedAt: "2026-09-16T10:31:04.221Z",
+          firstSeq: 1,
+          lastSeq: 1,
+          ciphertextBytes: sealed.length,
+          ciphertextSha256: "zAJPi40E84EYY5c5Ru/eFd89CdaUv/c147qBlQjf8V8"
+        }
+      ]
+    };
+
+    const result = await decryptActivityPage(vectorPage, createActivityChunkCache("sess-1"));
+
+    assert.equal(result.decrypted[chunkId].gap, null);
+    assert.equal(result.decrypted[chunkId].records[0].path, "/zen");
   });
 });

@@ -571,10 +571,9 @@ describe("Agent Vault activity", async () => {
       const first = await proxy.resolve(session.token, false);
       expect(first.statusCode, first.payload).toBe(200);
       const firstBody = JSON.parse(first.payload) as {
-        activity: { enabled: boolean; sessionKey: string | null; projectId: string };
+        activity: { enabled: boolean; sessionKey: string | null };
       };
       expect(firstBody.activity.enabled).toBe(true);
-      expect(firstBody.activity.projectId).toBe(projectId);
       expect(Buffer.from(firstBody.activity.sessionKey!, "base64")).toHaveLength(32);
 
       const second = await proxy.resolve(session.token, true);
@@ -591,7 +590,7 @@ describe("Agent Vault activity", async () => {
 
       const res = await proxy.resolve(session.token, false);
       expect(res.statusCode, res.payload).toBe(200);
-      expect(JSON.parse(res.payload).activity).toMatchObject({ enabled: false, sessionKey: null, projectId });
+      expect(JSON.parse(res.payload).activity).toMatchObject({ enabled: false, sessionKey: null });
     });
 
     test("turning logging off reaches a running proxy on its next poll", async () => {
@@ -737,7 +736,7 @@ describe("Agent Vault activity", async () => {
       expect(res.headers["cache-control"]).toBe("no-store, no-cache, must-revalidate, proxy-revalidate");
 
       const body = JSON.parse(res.payload) as {
-        activity: { enabled: boolean; sessionKey: string; projectId: string };
+        activity: { enabled: boolean; sessionKey: string };
         chunks: {
           chunkId: string;
           proxyId: string;
@@ -750,7 +749,6 @@ describe("Agent Vault activity", async () => {
 
       expect(body.activity.enabled).toBe(true);
       expect(body.chunks.every((chunk) => chunk.ciphertextSha256 === CHUNK_SHA256)).toBe(true);
-      expect(body.activity.projectId).toBe(projectId);
       expect(Buffer.from(body.activity.sessionKey, "base64")).toHaveLength(32);
       expect(body.chunks).toHaveLength(3);
       expect(body.chunks.every((chunk) => chunk.proxyId === proxy.id)).toBe(true);

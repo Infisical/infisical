@@ -4391,7 +4391,6 @@ export const AGENT_VAULT = {
       "`no-connection` if session logging has no AWS connection, or `connection-unusable` if Infisical can't use the AWS connection.",
     storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
     activity: "The session details you need to read the chunks.",
-    projectId: "The ID of the project the session belongs to. Needed to decrypt each chunk.",
     historyCursor: "The `nextCursor` from the previous response. Leave it out to get the newest page.",
     historyNextCursor: "The cursor for the next, older page. Null if there are no older chunks.",
     liveCursor:

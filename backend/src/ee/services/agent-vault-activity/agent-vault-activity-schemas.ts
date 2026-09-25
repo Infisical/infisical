@@ -97,7 +97,6 @@ const AgentVaultActivitySchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
     sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey),
-    projectId: z.string().describe(AGENT_VAULT.ACTIVITY.projectId),
     storageUnavailable: z
       .object({
         reason: z

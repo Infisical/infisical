@@ -41,8 +41,8 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId", 36).notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
-      // Deliberately not a foreign key: proxyId is part of the encryption AAD, so a SET NULL on proxy
-      // deletion would make every chunk that proxy wrote undecryptable.
+      // Deliberately not a foreign key: every sealed record carries its proxyId and the browser checks it
+      // against this column, so a SET NULL on proxy deletion would make every chunk that proxy wrote unreadable.
       t.string("proxyId", 36).notNullable();
       t.string("proxyName", 64).notNullable();
 

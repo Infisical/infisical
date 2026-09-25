@@ -480,8 +480,7 @@ export const agentVaultProxyServiceFactory = ({
                 sessionId: session.id,
                 payload: decryptor!({ cipherTextBlob: session.encryptedActivityKey })
               }).toString("base64")
-            : null,
-        projectId: session.projectId
+            : null
       }
     };
   };

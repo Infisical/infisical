@@ -133,7 +133,7 @@ The API returns a session's logs as chunks. A chunk is one encrypted batch of [r
     Check that the SHA-256 digest of the downloaded bytes, as base64 without padding, matches `ciphertextSha256`. If the digests differ, the chunk was changed after the proxy uploaded it.
   </Step>
   <Step>
-    Decrypt the chunk with AES-256-GCM. The key is `activity.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<projectId>|<sessionId>|<proxyId>|<chunkId>|v1`, where `projectId` is `activity.projectId`. The last 16 bytes of the chunk are the authentication tag.
+    Decrypt the chunk with AES-256-GCM. The key is `activity.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
   </Step>
   <Step>
     Parse the decrypted bytes as JSON. Each chunk holds an array of records.
@@ -160,9 +160,7 @@ for (const chunk of chunks) {
   const digest = createHash("sha256").update(body).digest("base64").replace(/=+$/, "");
   if (digest !== chunk.ciphertextSha256) throw new Error(`Chunk ${chunk.chunkId} was changed`);
 
-  const aad = createHash("sha256")
-    .update(`${activity.projectId}|${sessionId}|${chunk.proxyId}|${chunk.chunkId}|v1`)
-    .digest();
+  const aad = createHash("sha256").update(`${sessionId}|${chunk.chunkId}|v1`).digest();
   const decipher = createDecipheriv(
     "aes-256-gcm",
     Buffer.from(activity.sessionKey, "base64"),

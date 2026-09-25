@@ -181,10 +181,11 @@ hostile input: it must never be able to erase or hide its own records.
 - **Two keys.** The project data key (`KmsDataKey.SecretManager`) wraps a per-session activity key on the
   session row, and only the session key leaves the backend. It is minted at session create even while logging
   is off; sessions minted before this shipped have none and never record.
-- **The AAD is `SHA-256("{projectId}|{sessionId}|{proxyId}|{chunkId}|v1")`**, sealed AES-256-GCM with a 12-byte
-  IV and the tag appended. The Go proxy and the browser are both checked against the vector in
-  `agent-vault-activity-crypto.test.ts`. It is also why `agent_vault_activity_chunks.proxyId` has no FK:
-  `SET NULL` would make that proxy's chunks undecryptable.
+- **The AAD is `SHA-256("{sessionId}|{chunkId}|v1")`**, sealed AES-256-GCM with a 12-byte IV and the tag
+  appended. Nothing more is needed: keys are per session and `(sessionId, chunkId)` is unique. The Go proxy and
+  the browser are both checked against the vector in `agent-vault-activity-crypto.test.ts`.
+  `agent_vault_activity_chunks.proxyId` has no FK because the browser checks each record's `proxyId` against it,
+  so `SET NULL` would make that proxy's chunks unreadable.
 - **Size is capped at every hop**: the proxy seals at 4 MiB against the server's 8 MiB, and reads stop at a
   byte budget as well as a record one. A chunk the server refuses counts as dropped on the next one.
 - **Write inserts the row, commits, then presigns a create-only PUT** (`If-None-Match: *`). Row first so a

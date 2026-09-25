@@ -31,15 +31,11 @@ const base64ToBytes = (value: string) => {
 };
 
 // Must byte-match the AAD the Go proxy seals each chunk with.
-const buildAad = async (parts: {
-  projectId: string;
-  sessionId: string;
-  proxyId: string;
-  chunkId: string;
-}) => {
-  const source = `${parts.projectId}|${parts.sessionId}|${parts.proxyId}|${parts.chunkId}|${AAD_VERSION}`;
-  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
-};
+const buildAad = async (sessionId: string, chunkId: string) =>
+  crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${sessionId}|${chunkId}|${AAD_VERSION}`)
+  );
 
 const ActivityRecordsSchema = z.array(
   z.object({
@@ -123,7 +119,7 @@ const withTimeout = (signal: AbortSignal | undefined, ms: number) => {
 const openChunk = async (
   chunk: TAgentVaultActivityChunk,
   key: CryptoKey,
-  context: { projectId: string; sessionId: string },
+  sessionId: string,
   signal?: AbortSignal
 ): Promise<TAgentVaultDecryptedChunk> => {
   if (!chunk.presignedGetUrl) return gapFor(chunk, "repointed");
@@ -158,11 +154,7 @@ const openChunk = async (
       {
         name: "AES-GCM",
         iv: base64ToBytes(chunk.iv),
-        additionalData: await buildAad({
-          ...context,
-          proxyId: chunk.proxyId,
-          chunkId: chunk.chunkId
-        })
+        additionalData: await buildAad(sessionId, chunk.chunkId)
       },
       key,
       body
@@ -221,7 +213,6 @@ export const decryptActivityPage = async <P extends TAgentVaultActivityPage>(
     cache.keys.set(sessionKey, keyPromise);
   }
   const key = await keyPromise.catch(() => null);
-  const context = { projectId: page.activity.projectId, sessionId: cache.sessionId };
   const opened: string[] = [];
 
   await Promise.all(
@@ -231,7 +222,9 @@ export const decryptActivityPage = async <P extends TAgentVaultActivityPage>(
         decrypted[chunk.chunkId] = known;
         return;
       }
-      const result = key ? await openChunk(chunk, key, context, signal) : gapFor(chunk, "gcm");
+      const result = key
+        ? await openChunk(chunk, key, cache.sessionId, signal)
+        : gapFor(chunk, "gcm");
       // Failed downloads stay uncached so the next fetch retries with a freshly presigned URL.
       if (!isRetryableActivityGap(result.gap?.reason)) cache.chunks.set(chunk.chunkId, result);
       decrypted[chunk.chunkId] = result;

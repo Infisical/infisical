@@ -332,7 +332,6 @@ export type TAgentVaultActivityChunk = {
 export type TAgentVaultActivity = {
   enabled: boolean;
   sessionKey: string | null;
-  projectId: string;
   storageUnavailable: {
     reason: "no-connection" | "connection-unusable";
     message: string | null;

@@ -310,7 +310,6 @@ export const agentVaultActivityServiceFactory = ({
     const unreadActivity = {
       enabled: isIngestEnabled(config),
       sessionKey: null,
-      projectId,
       storageUnavailable: null
     };
 
