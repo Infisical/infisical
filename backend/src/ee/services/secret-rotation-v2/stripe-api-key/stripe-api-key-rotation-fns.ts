@@ -174,8 +174,7 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
       ...credentials.filter((_, index) => index === activeIndex)
     ];
 
-    for (const { keyId } of retirementOrder) {
-      // eslint-disable-next-line no-await-in-loop
+    for await (const { keyId } of retirementOrder) {
       await $retireKey(keyId);
     }
 

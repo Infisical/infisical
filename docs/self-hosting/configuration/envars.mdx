@@ -130,14 +130,12 @@ Example values:
 
   Defaults to `false` so an operator-configured forward proxy keeps working.
 
-{/* vale Infisical.Contractions = NO */}
   <Note>
-    Enable this only if your instance does **not** rely on an outbound
+    Enable this only if your instance has **no** outbound
     `HTTP_PROXY` / `HTTPS_PROXY` for egress. When a proxy is in use, the IP pin
     can't extend past the proxy (the proxy resolves the target itself), so
     leaving this off is the correct choice for proxied deployments.
   </Note>
-{/* vale Infisical.Contractions = YES */}
 </ParamField>
 
 <ParamField
@@ -282,14 +280,12 @@ your own `psql` sessions. If you're close to the limit, **lower `DB_POOL_MAX`** 
 connections wastes it. If instead you see queries queueing while your database is idle, the pool is too small
 and raising it is the right move.
 
-{/* vale Infisical.Contractions = NO */}
 <Tip>
   Prefer scaling reads with `DB_READ_REPLICAS` over enlarging the primary pool. A connection pooler such as
   PgBouncer or RDS Proxy is only worth the extra hop and failure domain once instance count alone pushes you
-  near `max_connections`, and note that a pooler in transaction mode does **not** reclaim connections held
+  near `max_connections`, and note that a pooler in transaction mode **never** reclaims connections held
   open inside a transaction.
 </Tip>
-{/* vale Infisical.Contractions = YES */}
 
 <ParamField query="DB_POOL_MIN" type="int" default="0" optional>
   Minimum connections kept open in the primary database pool. `0` lets idle connections close, which is
@@ -970,7 +966,7 @@ You can configure third-party app connections for re-use across Infisical Projec
     </ParamField>
 
     <ParamField query="INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL" type="string" default="none" optional>
-        Overrides the install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key.
+        Leave this unset for a published Stripe App. Infisical builds the install link from the Client ID above, and takes the redirect URI from the address your instance is served on. Set it only when the secret key below is a test-mode or sandbox key, using that mode's install link from the Stripe dashboard.
     </ParamField>
 
     <ParamField query="INF_APP_CONNECTION_STRIPE_SECRET_KEY" type="string" default="none" optional>
