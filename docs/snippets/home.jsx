@@ -1,3 +1,10 @@
+export const AGENT_PROMPT = [
+  "Help me get set up with Infisical for secrets management. Do the following:",
+  "1. Install the Infisical setup skill with `npx skills add Infisical/ai-skills --skill infisical-setup --agent <agent> -y`, replacing `<agent>` with your own name, such as `claude-code`, `cursor`, or `codex`.",
+  "2. Follow the `infisical-setup` skill to install the Infisical CLI, connect this project to Infisical, and import the secrets from any `.env` files here into it. Don't open or read the files yourself.",
+  "3. Suggest the most relevant next steps."
+].join("\n\n");
+
 export const HomeHero = ({ title, description, aside, children }) => (
   <div className="ifx-home__hero">
     <div className="ifx-home__hero-main">
@@ -10,7 +17,8 @@ export const HomeHero = ({ title, description, aside, children }) => (
   </div>
 );
 
-export const HomeSteps = ({ steps }) => {
+export const HomeSteps = ({ steps, panels }) => {
+  const [panel, setPanel] = useState(0);
   const [tab, setTab] = useState(0);
   const [copied, setCopied] = useState(null);
 
@@ -20,8 +28,30 @@ export const HomeSteps = ({ steps }) => {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  // outer panels reset the inner OS-picker state so a switch from one panel to another
+  // doesn't leave the second panel showing the last-clicked tab index of the first
+  const switchPanel = (i) => {
+    setPanel(i);
+    setTab(0);
+  };
+
+  const activePanel = panels ? panels[panel] : null;
+  const activeSteps = activePanel ? activePanel.steps : steps;
+
+  const onPanelKeyDown = (event) => {
+    const offset = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!offset) return;
+    event.preventDefault();
+    const next = (panel + offset + panels.length) % panels.length;
+    switchPanel(next);
+    document.getElementById(`ifx-steps-tab-${next}`)?.focus();
+  };
+
   const commandRow = (command) => (
-    <div key={command} className="ifx-steps__cmd">
+    <div
+      key={command}
+      className={`ifx-steps__cmd${command.includes("\n") ? " ifx-steps__cmd--block" : ""}`}
+    >
       <code className="ifx-steps__code">{command}</code>
       <button
         type="button"
@@ -65,8 +95,35 @@ export const HomeSteps = ({ steps }) => {
 
   return (
     <div className="ifx-steps">
+      {panels ? (
+        <div className="ifx-steps__panels" role="tablist" onKeyDown={onPanelKeyDown}>
+          {panels.map((p, i) => (
+            <button
+              key={p.label}
+              id={`ifx-steps-tab-${i}`}
+              type="button"
+              role="tab"
+              aria-selected={i === panel}
+              aria-controls="ifx-steps-tabpanel"
+              tabIndex={i === panel ? 0 : -1}
+              className={`ifx-steps__panel${i === panel ? " ifx-steps__panel--active" : ""}`}
+              onClick={() => switchPanel(i)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div
+        {...(panels
+          ? { id: "ifx-steps-tabpanel", role: "tabpanel", "aria-labelledby": `ifx-steps-tab-${panel}` }
+          : {})}
+      >
+      {activePanel && activePanel.content ? (
+        <div className="ifx-steps__prose">{activePanel.content}</div>
+      ) : (
       <ol className="ifx-steps__list">
-        {steps.map((step, i) => (
+        {activeSteps.map((step, i) => (
           <li key={i} className="ifx-steps__item">
             <span className="ifx-steps__num">{i + 1}</span>
             {step.label ? (
@@ -105,6 +162,97 @@ export const HomeSteps = ({ steps }) => {
           </li>
         ))}
       </ol>
+      )}
+      </div>
+    </div>
+  );
+};
+
+// PromptBlock renders a copyable AI-agent prompt as prose: paragraphs separated by
+// blank lines, backticked segments as inline code, and a copy button in the corner.
+// The copied payload is the raw markdown source (with backticks intact) so pasting
+// into an agent preserves the code fencing.
+export const PromptBlock = ({ text }) => {
+  const [status, setStatus] = useState(null);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("copied");
+    } catch {
+      setStatus("failed");
+    }
+    setTimeout(() => setStatus(null), 1500);
+  };
+  const paragraphs = text.split("\n\n");
+  return (
+    <div className="ifx-prompt">
+      <div className="ifx-prompt__body">
+        {paragraphs.map((paragraph, i) => (
+          <p key={i} className="ifx-prompt__p">
+            {paragraph.split(/(`[^`]+`)/g).map((segment, j) =>
+              segment.startsWith("`") && segment.endsWith("`") ? (
+                <code key={j} className="ifx-prompt__code">
+                  {segment.slice(1, -1)}
+                </code>
+              ) : (
+                segment
+              )
+            )}
+          </p>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="ifx-prompt__copy"
+        aria-label={status === "failed" ? "Couldn't copy the prompt" : "Copy prompt"}
+        title={status === "failed" ? "Couldn't copy. Select the text and copy it manually." : undefined}
+        onClick={copy}
+      >
+        {status === "failed" ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        ) : status === "copied" ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+        )}
+      </button>
     </div>
   );
 };
