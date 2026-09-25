@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 type SetStateAction<T> = T | ((prevState: T) => T);
 
@@ -38,6 +38,19 @@ const getLocalStorageServerSnapshot = (): never => {
   throw Error("useLocalStorage is a client-only hook");
 };
 
+// localStorage is writable by anything on the origin, so the stored string may not be
+// valid JSON. Parsing happens during render, where a throw takes down the whole page
+// instead of degrading to the initial value.
+const parseStoredValue = <T>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 export const useLocalStorageState = <T>(
   key: string,
   initialValue: T
@@ -50,11 +63,19 @@ export const useLocalStorageState = <T>(
     getLocalStorageServerSnapshot
   );
 
+  // Read through a ref so setState can fall back to the same value the caller sees without
+  // taking initialValue as a dependency — callers commonly pass a fresh literal each render,
+  // which would give setState a new identity every time.
+  const initialValueRef = useRef(initialValue);
+  initialValueRef.current = initialValue;
+
   const setState = useCallback(
     (v: SetStateAction<T>): void => {
       try {
         const nextState =
-          typeof v === "function" ? (v as (prevState: T) => T)(JSON.parse(store || "null")) : v;
+          typeof v === "function"
+            ? (v as (prevState: T) => T)(parseStoredValue(store, initialValueRef.current))
+            : v;
 
         if (nextState === undefined || nextState === null) {
           removeLocalStorageItem(key);
@@ -74,5 +95,5 @@ export const useLocalStorageState = <T>(
     }
   }, [key, initialValue]);
 
-  return [store ? JSON.parse(store) : initialValue, setState];
+  return [parseStoredValue(store, initialValue), setState];
 };
