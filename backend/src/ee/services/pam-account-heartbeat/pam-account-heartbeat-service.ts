@@ -1,5 +1,5 @@
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { testConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
+import { testBuiltConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
@@ -247,14 +247,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.CannotCheck, message: "No gateway is attached to this account" };
     }
 
-    const result = await testConnectionWithGateway(
-      test.host,
-      test.port,
-      gatewayId,
-      gatewayV2Service,
-      test.request,
-      HEARTBEAT_TIMEOUT_MS
-    );
+    const result = await testBuiltConnectionWithGateway(test, gatewayId, gatewayV2Service, HEARTBEAT_TIMEOUT_MS);
 
     if (!result) {
       return { status: PamHeartbeatStatus.CannotCheck, message: "The gateway could not be reached" };

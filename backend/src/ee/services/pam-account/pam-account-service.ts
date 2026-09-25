@@ -29,7 +29,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
+import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessStatus,
@@ -650,16 +650,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
     if (!test) return false;
 
-    const result = await testConnectionWithGateway(
-      test.host,
-      test.port,
-      gatewayId,
-      gatewayV2Service,
-      test.request,
-      CONNECTION_TEST_TIMEOUT_MS,
-      undefined,
-      test.additionalPorts
-    );
+    const result = await testBuiltConnectionWithGateway(test, gatewayId, gatewayV2Service, CONNECTION_TEST_TIMEOUT_MS);
 
     // a null result means the gateway couldn't be reached (offline / pre-protocol) — skip rather than block
     if (result && !result.ok) {

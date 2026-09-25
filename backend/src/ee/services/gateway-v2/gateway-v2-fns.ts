@@ -43,6 +43,26 @@ export const testConnectionWithGateway = async (
   }
 };
 
+// Takes the built test whole, so the ports its certificate must authorise travel with it. Passing them
+// separately meant a caller could omit them and have the gateway refuse a port it was meant to probe.
+export const testBuiltConnectionWithGateway = async (
+  test: { host: string; port: number; request: Record<string, unknown>; additionalPorts?: number[] },
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep,
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<TestConnectionResponse | null> =>
+  testConnectionWithGateway(
+    test.host,
+    test.port,
+    gatewayId,
+    gatewayV2Service,
+    test.request,
+    timeoutMs,
+    signal,
+    test.additionalPorts
+  );
+
 export const rotateSqlCredentialWithGateway = async (
   targetHost: string,
   targetPort: number,
