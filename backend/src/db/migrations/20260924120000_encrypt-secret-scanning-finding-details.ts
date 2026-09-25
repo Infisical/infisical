@@ -36,12 +36,7 @@ const rewriteFindings = async (
   const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
   const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({
-    envConfig,
-    keyStore,
-    db: knex,
-    skipHsmLicenseCheck: true
-  });
+  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const projectKmsCache = createCircularCache<TProjectKms>(25);
 
   let lastId: string | undefined;
@@ -117,14 +112,9 @@ export async function down(knex: Knex): Promise<void> {
 
   if (!(await knex.schema.hasColumn(TableName.SecretScanningFinding, "encryptedDetails"))) return;
 
-  // Findings collected after the up migration carry the detected secret, which must not land in plaintext.
-  await rewriteFindings(knex, "encryptedDetails", (row, projectKms) => {
-    const { secret, match, ...details } = JSON.parse(
-      projectKms.decryptor({ cipherTextBlob: row.encryptedDetails as Buffer }).toString()
-    ) as Record<string, unknown>;
-
-    return { details: JSON.stringify(details) };
-  });
+  await rewriteFindings(knex, "encryptedDetails", (row, projectKms) => ({
+    details: projectKms.decryptor({ cipherTextBlob: row.encryptedDetails as Buffer }).toString()
+  }));
 
   await knex.schema.alterTable(TableName.SecretScanningFinding, (t) => {
     t.jsonb("details").notNullable().alter();
