@@ -1164,6 +1164,17 @@ export const gatewaySupportsAccountType = (
   supportedTypes: string[] | undefined
 ): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
 
+// Web Access speaks HTTP, so an account whose server has no HTTP interface cannot serve it. Returns the
+// reason to show the user, or null when Web Access is fine.
+export const webAccessUnavailableReason = (
+  accountType: PamAccountType,
+  connectionDetails: Record<string, unknown>
+): string | null => {
+  if (accountType !== PamAccountType.ClickHouse) return null;
+  if ((connectionDetails as { port?: number }).port !== undefined) return null;
+  return "Web access needs ClickHouse's HTTP interface. Set an HTTP port on this account, or connect with a native client through the CLI.";
+};
+
 // An absent flag means a gateway too old to report it, which is exactly the case this guards.
 export const gatewaySupportsClickHouseNative = (capabilities: { clickhouseNativeProtocol?: boolean } | null) =>
   Boolean(capabilities?.clickhouseNativeProtocol);

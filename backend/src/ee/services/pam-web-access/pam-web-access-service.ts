@@ -38,7 +38,8 @@ import {
   extractGatewayTarget,
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
-  resolveSelectedHost
+  resolveSelectedHost,
+  webAccessUnavailableReason
 } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { reportPamSessionEnded } from "../pam-session/pam-session-fns";
@@ -183,6 +184,14 @@ export const pamWebAccessServiceFactory = ({
 
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
+    }
+
+    const webAccessBlocked = webAccessUnavailableReason(
+      account.accountType as PamAccountType,
+      await decrypt(account.projectId, account.encryptedConnectionDetails)
+    );
+    if (webAccessBlocked) {
+      throw new BadRequestError({ message: webAccessBlocked });
     }
 
     const policy = resolveAccessControls(account.templatePolicies);

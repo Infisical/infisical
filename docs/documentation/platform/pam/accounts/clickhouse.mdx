@@ -81,7 +81,7 @@ Command blocking matches the text of each statement, so a statement that builds 
 
     ClickHouse has no schema layer inside a database, so the Data Explorer sidebar lists databases where it lists schemas for other account types.
 
-    Web Access works whichever interface the server has. It speaks HTTP, and for a server with HTTP turned off the gateway runs the statement over the native protocol and returns the result. The browser experience is the same, with the two limits described under [Servers with HTTP turned off](#servers-with-http-turned-off).
+    Web Access speaks ClickHouse's HTTP interface, so it needs the account to have an **HTTP Port**. On an account with only a native port it is greyed out, and the CLI is the way in.
 
   </Tab>
   <Tab title="CLI">
@@ -129,17 +129,11 @@ The native protocol has no such limit. A statement arrives in its own packet, se
 
 ## Servers with HTTP turned off
 
-A server that serves only the native protocol works with native clients and with Web Access. Set the **Native Port** and leave **HTTP Port** empty.
+A server that serves only the native protocol works with native clients. Set the **Native Port** and leave **HTTP Port** empty.
 
-Native clients need nothing special: `clickhouse-client`, Python's `clickhouse-driver` and `clickhouse-go` speak to the session's port directly.
+`clickhouse-client`, Python's `clickhouse-driver` and `clickhouse-go` speak to the session's port directly and need nothing special.
 
-**HTTP clients need the server to have an HTTP port.** A ClickHouse account with no HTTP port is a native-only account, and JDBC tools such as DBeaver and DataGrip, along with `clickhouse-connect` and ODBC, can't reach it. They fail when they connect, with a message saying so. Give the account an HTTP port if you need them.
-
-Web Access is the exception, because Infisical controls both ends of it. It speaks HTTP, so the gateway runs each statement over the native protocol and builds the result itself, with ClickHouse formatting the values so every column type keeps working. Three limits apply to Web Access on such an account, and none of them applies to a native client:
-
-- Only a `SELECT`, `WITH` or `EXPLAIN` returns rows. A `SHOW` or `DESCRIBE` has to be run from a native client, or rewritten against `system.tables` and `system.columns`.
-- A statement returning more than 100,000 rows, or more than 64 MB, is refused. Narrow the result, or use a native client.
-- One statement at a time. A semicolon inside a statement is refused, because the native protocol runs a single statement per request.
+**Everything that speaks HTTP needs the server to have an HTTP port.** That includes Web Access, JDBC tools such as DBeaver and DataGrip, `clickhouse-connect` and ODBC. Web Access is greyed out on such an account, and the other clients fail when they connect. Give the account an HTTP port if you need any of them.
 
 ## Next steps
 

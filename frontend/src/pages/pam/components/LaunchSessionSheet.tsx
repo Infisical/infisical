@@ -41,14 +41,19 @@ type LaunchMethod = "browser" | "cli";
 const LaunchTab = ({
   account,
   supportsWebAccess,
+  webAccessUnavailableReason,
   hosts
 }: {
   account: TAccessiblePamAccount;
   supportsWebAccess: boolean;
+  webAccessUnavailableReason: string | null;
   hosts: string[];
 }) => {
   const { currentOrg } = useOrganization();
-  const [method, setMethod] = useState<LaunchMethod>(supportsWebAccess ? "browser" : "cli");
+  const browserDisabled = Boolean(webAccessUnavailableReason);
+  const [method, setMethod] = useState<LaunchMethod>(
+    supportsWebAccess && !browserDisabled ? "browser" : "cli"
+  );
 
   const needsHost = hosts.length > 1;
   const [selectedHost, setSelectedHost] = useState<string | undefined>(
@@ -99,14 +104,25 @@ const LaunchTab = ({
                 onValueChange={(value) => setMethod(value as LaunchMethod)}
                 className="grid-cols-2 gap-3"
               >
-                <FieldLabel htmlFor="launch-browser" variant="pam">
+                <FieldLabel
+                  htmlFor="launch-browser"
+                  variant="pam"
+                  className={browserDisabled ? "cursor-not-allowed opacity-50" : undefined}
+                >
                   <Field orientation="horizontal" className="items-center gap-3">
                     <Globe className="size-5 shrink-0 text-foreground" />
                     <div className="flex-1 text-left">
                       <p className="text-sm font-medium text-foreground">Browser</p>
-                      <p className="text-xs text-muted">Connect directly from your browser.</p>
+                      <p className="text-xs text-muted">
+                        {webAccessUnavailableReason ?? "Connect directly from your browser."}
+                      </p>
                     </div>
-                    <RadioGroupItem id="launch-browser" value="browser" className="sr-only" />
+                    <RadioGroupItem
+                      id="launch-browser"
+                      value="browser"
+                      disabled={browserDisabled}
+                      className="sr-only"
+                    />
                   </Field>
                 </FieldLabel>
                 <FieldLabel htmlFor="launch-cli" variant="pam">
@@ -178,7 +194,8 @@ const LaunchTab = ({
 };
 
 export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => {
-  const { typeMeta, typeName, subtitle, metadata, hosts } = useAccountSheetDetails(account, isOpen);
+  const { typeMeta, typeName, subtitle, metadata, hosts, webAccessUnavailableReason } =
+    useAccountSheetDetails(account, isOpen);
 
   if (!account) return null;
 
@@ -199,7 +216,12 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
           label: "Launch",
           icon: <Rocket className="mr-1.5 size-4" />,
           content: (
-            <LaunchTab account={account} supportsWebAccess={supportsWebAccess} hosts={hosts} />
+            <LaunchTab
+              account={account}
+              supportsWebAccess={supportsWebAccess}
+              webAccessUnavailableReason={webAccessUnavailableReason}
+              hosts={hosts}
+            />
           )
         }
       ]}
