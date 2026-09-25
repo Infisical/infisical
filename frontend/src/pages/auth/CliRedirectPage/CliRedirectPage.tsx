@@ -85,11 +85,13 @@ export const CliRedirectPage = () => {
               You&apos;ve successfully logged in to the Infisical CLI
             </p>
             {dashboardOrgId && (
-              <Button asChild variant="outline" className="mt-6">
-                <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
-                  Open Infisical Dashboard
-                </Link>
-              </Button>
+              <div className="pt-6">
+                <Button asChild variant="outline">
+                  <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
+                    Open Infisical Dashboard
+                  </Link>
+                </Button>
+              </div>
             )}
           </>
         )}
