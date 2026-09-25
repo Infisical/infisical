@@ -745,11 +745,11 @@ export const buildCrlDistributionPointUrls = (
 };
 
 export const assertNoCertificateProfilesUsingCa = async (
-  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "find">,
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">,
   caId: string,
   caName: string
 ) => {
-  const profiles = await certificateProfileDAL.find({ caId });
+  const profiles = await certificateProfileDAL.findByCaId(caId);
   if (profiles.length > 0) {
     const profileNames = profiles.map((profile) => profile.slug || profile.id).join(", ");
 
