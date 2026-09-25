@@ -1658,8 +1658,7 @@ export const secretV2BridgeServiceFactory = ({
       const errors = await expandSecretReferencesGroupedByPath({
         secrets: decryptedSecrets,
         environment,
-        expandSecretReferences,
-        abortSignal
+        expandSecretReferences
       });
       if (errors.length > 0) {
         throw new ForbiddenRequestError({
@@ -1761,10 +1760,9 @@ export const secretV2BridgeServiceFactory = ({
       projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
-      kmsService
+      kmsService,
+      abortSignal
     });
-
-    throwIfClientDisconnected(abortSignal);
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
     const serializedPayload = Buffer.from(JSON.stringify(payload));

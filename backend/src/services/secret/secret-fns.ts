@@ -180,7 +180,9 @@ export const interpolateSecrets = ({
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) return "";
+    throwIfClientDisconnected(abortSignal);
     const secrets = await secretDAL.findByFolderId(folder.id);
+    throwIfClientDisconnected(abortSignal);
 
     const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
       const decryptedSecretKey = crypto.encryption().symmetric().decrypt({

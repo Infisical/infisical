@@ -1,6 +1,7 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -256,7 +257,8 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL,
   kmsService,
   actorOrgId,
-  orgDAL
+  orgDAL,
+  abortSignal
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -282,6 +284,7 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   actorOrgId: string;
+  abortSignal?: AbortSignal;
 }) => {
   const cyclicDetector = new Set();
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
@@ -311,6 +314,7 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
+    throwIfClientDisconnected(abortSignal);
     const { secretImports, depth, parentImportedSecrets, inheritedSecretPath } = stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
@@ -515,7 +519,8 @@ export const fnSecretsV2FromImports = async ({
   }
   /* eslint-enable */
   if (expandSecretReferences) {
-    await Promise.allSettled(
+    throwIfClientDisconnected(abortSignal);
+    const settledImports = await Promise.allSettled(
       processedImports.map((processedImport) => {
         // eslint-disable-next-line
         processedImport.secrets = unique(processedImport.secrets, (i) => i.key);
@@ -535,6 +540,9 @@ export const fnSecretsV2FromImports = async ({
           })
         );
       })
+    );
+    throwIfAnySettledClientClosed(
+      settledImports.flatMap((outerResult) => (outerResult.status === "fulfilled" ? outerResult.value : [outerResult]))
     );
   }
 

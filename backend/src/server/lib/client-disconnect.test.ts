@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import { FastifyReply } from "fastify";
 import { describe, expect, test } from "vitest";
 
-import { ClientClosedRequestError, throwIfClientDisconnected } from "@app/lib/errors";
+import { ClientClosedRequestError, throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 
 import { getClientDisconnectSignal } from "./client-disconnect";
 
@@ -49,5 +49,27 @@ describe("throwIfClientDisconnected", () => {
     const controller = new AbortController();
     controller.abort();
     expect(() => throwIfClientDisconnected(controller.signal)).toThrow(ClientClosedRequestError);
+  });
+});
+
+describe("throwIfAnySettledClientClosed", () => {
+  test("ignores fulfilled results and other rejections", () => {
+    expect(() =>
+      throwIfAnySettledClientClosed([
+        { status: "fulfilled", value: "ok" },
+        { status: "rejected", reason: new Error("permission denied") }
+      ])
+    ).not.toThrow();
+  });
+
+  test("rethrows the disconnect when any task stopped on it", () => {
+    const closed = new ClientClosedRequestError();
+    expect(() =>
+      throwIfAnySettledClientClosed([
+        { status: "fulfilled", value: "ok" },
+        { status: "rejected", reason: new Error("permission denied") },
+        { status: "rejected", reason: closed }
+      ])
+    ).toThrow(closed);
   });
 });

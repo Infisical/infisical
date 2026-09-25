@@ -52,6 +52,17 @@ export const throwIfClientDisconnected = (signal?: AbortSignal) => {
   }
 };
 
+// For Promise.allSettled fan-outs, which swallow rejections: if any task stopped on a disconnect the combined
+// result is partial and must not be used. Checking the results rather than the signal keeps a result that
+// completed just before the client left.
+export const throwIfAnySettledClientClosed = (results: PromiseSettledResult<unknown>[]) => {
+  const closed = results.find(
+    (result): result is PromiseRejectedResult =>
+      result.status === "rejected" && result.reason instanceof ClientClosedRequestError
+  );
+  if (closed) throw closed.reason;
+};
+
 export class UnauthorizedError extends Error {
   name: string;
 

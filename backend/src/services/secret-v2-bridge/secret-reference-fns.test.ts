@@ -103,8 +103,44 @@ describe("expandSecretReferencesFactory", () => {
         secretPath: "/shared"
       })
     ).rejects.toBeInstanceOf(ClientClosedRequestError);
-    // Only the read of the secret being expanded ran; neither referenced folder was loaded.
+    // The folder lookup for the secret being expanded ran; its secrets and the referenced folders were never loaded.
     expect(findBySecretPath).toHaveBeenCalledOnce();
     expect(findBySecretPath).toHaveBeenCalledWith("project", "prod", "/shared", undefined);
+    expect(findByFolderId).not.toHaveBeenCalled();
+  });
+
+  it("does not decrypt a folder whose secrets arrive after the signal aborted", async () => {
+    const { findBySecretPath, findByFolderId } = makeDALs();
+    const controller = new AbortController();
+    const defaultRows = await findByFolderId({ folderId: "folder" });
+    findByFolderId.mockClear();
+    findByFolderId.mockImplementationOnce(async () => {
+      controller.abort();
+      return defaultRows;
+    });
+    const decryptSecretValue = vi.fn((value?: Buffer | null) => value?.toString());
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue,
+      canExpandValue: vi.fn(() => true),
+      abortSignal: controller.signal
+    });
+
+    const expansions = Array.from({ length: 5 }, (_, index) =>
+      expandSecretReferences({
+        secretKey: `KEY_${index}`,
+        value: `\${SOURCE}`,
+        environment: "prod",
+        secretPath: "/shared"
+      })
+    );
+
+    // Every expansion shares the one folder load, so all of them stop instead of seeing an empty folder.
+    const results = await Promise.allSettled(expansions);
+    expect(results.every((r) => r.status === "rejected" && r.reason instanceof ClientClosedRequestError)).toBe(true);
+    expect(findByFolderId).toHaveBeenCalledOnce();
+    expect(decryptSecretValue).not.toHaveBeenCalled();
   });
 });

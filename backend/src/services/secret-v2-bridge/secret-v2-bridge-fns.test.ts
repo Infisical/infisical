@@ -282,17 +282,15 @@ describe("expandSecretReferencesGroupedByPath", () => {
   });
 
   test("throws ClientClosedRequestError instead of reporting expansions cut short by a disconnect", async () => {
-    const controller = new AbortController();
     const secrets = [makeSecret("/a", "A1"), makeSecret("/b", "B1")];
 
     await expect(
       expandSecretReferencesGroupedByPath({
         secrets,
         environment: "dev",
-        abortSignal: controller.signal,
-        expandSecretReferences: async () => {
-          controller.abort();
-          throw new ClientClosedRequestError();
+        expandSecretReferences: async ({ secretKey }) => {
+          if (secretKey === "B1") throw new ClientClosedRequestError();
+          throw new Error(`cannot expand ${secretKey}`);
         }
       })
     ).rejects.toBeInstanceOf(ClientClosedRequestError);
