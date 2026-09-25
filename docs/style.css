@@ -537,16 +537,20 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
 }
 
 .ifx-steps__prose {
-  min-height: 11rem;
+  display: flex;
+  flex-direction: column;
+  height: 11rem;
   font-size: 0.9375rem;
   color: #171718;
   line-height: 1.55;
 }
 
 .ifx-prompt {
-  --prompt-lines: 5;
   position: relative;
-  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   padding: 0.75rem 2.5rem 0.75rem 0.875rem;
   background-color: #fbfbfa;
   border: 1px solid #ebebeb;
@@ -557,10 +561,8 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
 }
 
 .ifx-prompt__body {
-  /* fallback for browsers without `lh` (pre Chrome 111 / Firefox 120 / Safari 16.4):
-     approximates 1lh as font-size * line-height. */
-  max-height: calc(var(--prompt-lines) * 0.8125rem * 1.55);
-  max-height: calc(var(--prompt-lines) * 1lh);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
