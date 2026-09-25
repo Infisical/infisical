@@ -24,7 +24,8 @@ export enum NotificationType {
   PKI_ALERT_CHANNEL_FAILED = "pki-alert-channel-failed",
   CREDENTIAL_ROTATION_FAILED = "credential-rotation-failed",
   AUDIT_LOG_MIGRATION_RECOMMENDED = "audit-log-migration-recommended",
-  NATIVE_INTEGRATION_DEPRECATED = "native-integration-deprecated"
+  NATIVE_INTEGRATION_DEPRECATED = "native-integration-deprecated",
+  LEGACY_PKI_DEPRECATED = "legacy-pki-deprecated"
 }
 
 export interface TCreateUserNotificationDTO {

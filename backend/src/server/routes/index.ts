@@ -403,6 +403,8 @@ import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-e
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { legacyPkiDeprecationDALFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-dal";
+import { legacyPkiDeprecationQueueFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-queue";
 import { licenseClientFactory } from "@app/services/license-client";
 import {
   buildMeteredFeatures,
@@ -1740,6 +1742,7 @@ export const registerRoutes = async (
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
+  const legacyPkiDeprecationDAL = legacyPkiDeprecationDALFactory(db);
   const pkiSyncDAL = pkiSyncDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
   const pkiDiscoveryConfigDAL = pkiDiscoveryConfigDALFactory(db);
@@ -3061,6 +3064,17 @@ export const registerRoutes = async (
     cronJob
   });
 
+  const legacyPkiDeprecationQueue = legacyPkiDeprecationQueueFactory({
+    legacyPkiDeprecationDAL,
+    orgDAL,
+    projectMembershipDAL,
+    smtpService,
+    notificationService,
+    keyStore,
+    queueService,
+    cronJob
+  });
+
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
     cronJob,
     pkiAlertService
@@ -4199,6 +4213,7 @@ export const registerRoutes = async (
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
   integrationDeprecationQueue.init();
+  legacyPkiDeprecationQueue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
   digicertCaQueue.init();

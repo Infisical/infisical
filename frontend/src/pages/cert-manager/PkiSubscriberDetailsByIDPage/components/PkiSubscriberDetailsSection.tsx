@@ -16,6 +16,7 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -44,6 +45,7 @@ type TCertificateDetails = {
 
 export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }: Props) => {
   const { permission } = useProjectPermission();
+  const { currentProject } = useProject();
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -52,7 +54,8 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
 
   const { data: pkiSubscriber } = useGetPkiSubscriber(
     {
-      subscriberName
+      subscriberName,
+      projectId: currentProject.id
     },
     {
       refetchInterval: 30_000
