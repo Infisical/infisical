@@ -83,6 +83,7 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { rethrowCaDeleteError } from "./certificate-authority-fns";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
 import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -944,7 +945,7 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
       usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
@@ -1176,7 +1177,7 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id).catch(rethrowCaDeleteError);
 
     if (type === CaType.INTERNAL) {
       usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);

@@ -82,6 +82,7 @@ import {
   getCaCertChains,
   getCaSigner,
   keyAlgorithmToAlgCfg,
+  rethrowCaDeleteError,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
 } from "../certificate-authority-fns";
@@ -749,7 +750,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
-    await certificateAuthorityDAL.deleteById(ca.id);
+    await certificateAuthorityDAL.deleteById(ca.id).catch(rethrowCaDeleteError);
 
     return expandInternalCa(ca);
   };

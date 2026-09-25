@@ -4,7 +4,8 @@ import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
@@ -740,4 +741,22 @@ export const buildCrlDistributionPointUrls = (
     acc.push(trimmed);
     return acc;
   }, []);
+};
+
+export const rethrowCaDeleteError = (error: unknown): never => {
+  if (error instanceof DatabaseError) {
+    const { code, constraint } = error.error as { code?: string; constraint?: string };
+    if (code === DatabaseErrorCode.ForeignKeyViolation) {
+      if (constraint === "pki_certificate_profiles_caid_foreign") {
+        throw new BadRequestError({
+          message:
+            "Cannot delete this CA because certificate profiles are associated with it. Delete those certificate profiles first."
+        });
+      }
+      throw new BadRequestError({
+        message: "Cannot delete this CA because it is referenced by another resource"
+      });
+    }
+  }
+  throw error;
 };
