@@ -17,10 +17,8 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-activity-constants";
 import { TResolvedActivityStorageConfig } from "./agent-vault-activity-types";
 
-export const normalizeKeyPrefix = (keyPrefix?: string | null) => {
-  const trimmed = (keyPrefix ?? "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
-  return trimmed ? `${trimmed}/` : "";
-};
+export const withKeyPrefix = (keyPrefix: string | null | undefined, key: string) =>
+  keyPrefix ? `${keyPrefix}/${key}` : key;
 
 export const buildActivityObjectKey = ({
   keyPrefix,
@@ -38,7 +36,7 @@ export const buildActivityObjectKey = ({
   chunkId: string;
 }) => {
   const day = startedAt.toISOString().slice(0, 10);
-  return `${normalizeKeyPrefix(keyPrefix)}${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`;
+  return withKeyPrefix(keyPrefix, `${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`);
 };
 
 export const resolveStorageConfig = (
@@ -134,7 +132,7 @@ export const buildActivityStorage = async (
       expiresIn: AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS
     });
 
-  const mintCorsProbeUrl = async () => presignGet(`${normalizeKeyPrefix(keyPrefix)}.cors-probe`);
+  const mintCorsProbeUrl = async () => presignGet(withKeyPrefix(keyPrefix, ".cors-probe"));
 
   const validate = async () => {
     try {
@@ -146,7 +144,7 @@ export const buildActivityStorage = async (
       });
     }
 
-    const testKey = `${normalizeKeyPrefix(keyPrefix)}.test/write-check`;
+    const testKey = withKeyPrefix(keyPrefix, ".test/write-check");
     try {
       await client.send(
         new PutObjectCommand({

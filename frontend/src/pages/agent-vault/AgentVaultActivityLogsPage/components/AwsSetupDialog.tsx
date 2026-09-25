@@ -25,8 +25,7 @@ import {
 } from "@app/hooks/api/agentVault";
 
 export const iamPolicyFor = (bucket: string, keyPrefix: string) => {
-  const prefix = keyPrefix.replace(/^\/+|\/+$/g, "");
-  const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${prefix ? `${prefix}/` : ""}*`;
+  const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${keyPrefix ? `${keyPrefix}/` : ""}*`;
   return JSON.stringify(
     {
       Version: "2012-10-17",

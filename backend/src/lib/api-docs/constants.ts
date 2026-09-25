@@ -4414,7 +4414,7 @@ export const AGENT_VAULT = {
       "The S3 bucket activity is stored in. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
     region: "The region the bucket lives in.",
     keyPrefix:
-      "An optional prefix every object key is written under. `logs`, `/logs` and `logs/` are all saved as `logs/`. Letters, numbers and `! - _ . ' ( ) /` only, with no `.` or `..` folder, up to 512 characters including the trailing slash.",
+      "An optional prefix every object key is written under, saved as sent. Folder names separated by single slashes, with no slash at the start or end, like `logs/agent-vault`. Letters, numbers and `! - _ . ' ( ) /` only, with no `.` or `..` folder, up to 512 characters.",
     corsProbeUrl: "A presigned URL the browser fetches to check that the bucket allows cross-origin reads.",
     connectionError:
       "Why Infisical could not use the configured AWS connection, for example because AWS refused to let it assume its role. Null when it could, or when there is nothing to check.",

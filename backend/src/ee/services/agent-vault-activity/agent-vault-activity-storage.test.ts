@@ -8,7 +8,6 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import {
   buildActivityObjectKey,
   buildActivityStorage,
-  normalizeKeyPrefix,
   presignActivityPut,
   resolveStorageConfig
 } from "./agent-vault-activity-storage";
@@ -22,22 +21,6 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
   getAwsConnectionConfig: vi.fn()
 }));
-
-describe("normalizeKeyPrefix", () => {
-  test.each([
-    { input: undefined, expected: "", why: "unset" },
-    { input: null, expected: "", why: "null" },
-    { input: "", expected: "", why: "empty" },
-    { input: "   ", expected: "", why: "whitespace only" },
-    { input: "logs", expected: "logs/", why: "a trailing slash is added" },
-    { input: "logs/", expected: "logs/", why: "an existing trailing slash is not doubled" },
-    { input: "/logs", expected: "logs/", why: "a leading slash is dropped" },
-    { input: "/logs///", expected: "logs/", why: "repeated slashes on both ends" },
-    { input: "a/b/c", expected: "a/b/c/", why: "interior slashes are left alone" }
-  ])("$why", ({ input, expected }) => {
-    expect(normalizeKeyPrefix(input)).toBe(expected);
-  });
-});
 
 describe("buildActivityObjectKey", () => {
   const base = {

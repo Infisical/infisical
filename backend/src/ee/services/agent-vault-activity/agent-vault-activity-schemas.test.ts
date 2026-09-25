@@ -149,10 +149,13 @@ describe("the settings patch", () => {
     { value: "./logs", why: "a leading '.' folder, which browsers drop from the download link" },
     { value: "logs/./agent-vault", why: "a '.' folder in the middle" },
     { value: "logs/.", why: "a trailing '.' folder" },
-    { value: "/".repeat(2000), why: "longer than any key can be, even though it normalises to nothing" },
+    { value: "/logs", why: "a slash at the start" },
+    { value: "logs/", why: "a slash at the end" },
+    { value: "logs//agent-vault", why: "an empty folder between two slashes" },
+    { value: "/", why: "only a slash" },
     { value: "logs/\u0000", why: "a control character" },
     { value: "team*", why: "an asterisk, which is a wildcard in the suggested IAM policy" },
-    { value: `a${"b".repeat(512)}`, why: "longer than the column" }
+    { value: "a".repeat(513), why: "longer than 512 characters" }
   ])("rejects a key prefix: $why", ({ value }) => {
     expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(false);
   });
@@ -164,13 +167,8 @@ describe("the settings patch", () => {
     }
   );
 
-  test.each([
-    { value: "a".repeat(511), fits: true, why: "511 characters, 512 once the slash is added" },
-    { value: `${"a".repeat(511)}/`, fits: true, why: "512 characters that already end in the slash" },
-    { value: `/${"a".repeat(511)}/`, fits: true, why: "a leading slash, which is dropped" },
-    { value: "a".repeat(512), fits: false, why: "512 characters, 513 once the slash is added" }
-  ])("a key prefix of $why is accepted: $fits", ({ value, fits }) => {
-    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(fits);
+  test("accepts a key prefix of exactly 512 characters", () => {
+    expect(AgentVaultActivityLoggingSettingsUpdateSchema.safeParse({ keyPrefix: "a".repeat(512) }).success).toBe(true);
   });
 
   test("rejects a region that is not an AWS region", () => {

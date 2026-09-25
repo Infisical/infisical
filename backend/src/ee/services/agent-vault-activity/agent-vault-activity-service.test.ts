@@ -520,14 +520,14 @@ describe("updateActivityLoggingSettings: when the connection is checked again", 
     expect(validateConnection).not.toHaveBeenCalled();
   });
 
-  test("skips it when the save leaves the destination as it was, however the prefix is spelled", async () => {
+  test("skips it when the save leaves the destination as it was", async () => {
     const { service, validateConnection } = build();
     await save(service, {
       enabled: true,
       appConnectionId: "conn-1",
       bucket: "my-bucket",
       region: "us-east-1",
-      keyPrefix: "/logs/"
+      keyPrefix: "logs"
     });
     expect(validateConnection).not.toHaveBeenCalled();
   });

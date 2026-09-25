@@ -53,11 +53,6 @@ const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
 const S3_BUCKET_NAME = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
 
-const normalizePrefix = (value: string | null | undefined) => {
-  const trimmed = (value ?? "").trim().replace(/^\/+|\/+$/g, "");
-  return trimmed ? `${trimmed}/` : "";
-};
-
 const buildSchema = (hasSavedBucket: boolean) =>
   z
     .object({
@@ -68,15 +63,15 @@ const buildSchema = (hasSavedBucket: boolean) =>
       keyPrefix: z
         .string()
         .trim()
-        .max(1024, "At most 512 characters, including the trailing slash")
+        .max(512, "At most 512 characters")
         .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "Use only letters, numbers and ! - _ . ' ( ) /")
+        .refine(
+          (value) => value === "" || value.split("/").every(Boolean),
+          "Use folder names separated by single slashes, with no slash at the start or end"
+        )
         .refine(
           (value) => !value.split("/").some((segment) => segment === "." || segment === ".."),
           "Cannot use '.' or '..' as a folder name"
-        )
-        .refine(
-          (value) => normalizePrefix(value).length <= 512,
-          "At most 512 characters, including the trailing slash"
         )
     })
     .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
@@ -171,7 +166,7 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
   const willRelocate =
     Boolean(settings?.bucket) &&
     ((S3_BUCKET_NAME.test(typedBucket) && typedBucket !== settings?.bucket) ||
-      normalizePrefix(keyPrefix) !== normalizePrefix(settings?.keyPrefix));
+      keyPrefix.trim() !== (settings?.keyPrefix ?? ""));
 
   const onSubmit = async (values: FormData) => {
     try {

@@ -46,7 +46,6 @@ import { unwrapActivityKey } from "./agent-vault-activity-secrets";
 import {
   buildActivityObjectKey,
   buildActivityStorage,
-  normalizeKeyPrefix,
   resolveStorageConfig,
   TAgentVaultActivityStorage
 } from "./agent-vault-activity-storage";
@@ -506,7 +505,7 @@ export const agentVaultActivityServiceFactory = ({
       appConnectionId: patch.appConnectionId === undefined ? (current.appConnectionId ?? null) : patch.appConnectionId,
       bucket: patch.bucket ?? current.bucket ?? null,
       region: patch.region ?? current.region ?? null,
-      keyPrefix: patch.keyPrefix === undefined ? (current.keyPrefix ?? null) : normalizeKeyPrefix(patch.keyPrefix)
+      keyPrefix: patch.keyPrefix === undefined ? (current.keyPrefix ?? null) : patch.keyPrefix || null
     };
 
     // Any new use of the connection is revalidated, destination changes included, or an admin who may not use
@@ -515,7 +514,7 @@ export const agentVaultActivityServiceFactory = ({
       next.appConnectionId !== current.appConnectionId ||
       next.bucket !== (current.bucket ?? null) ||
       next.region !== (current.region ?? null) ||
-      normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix) ||
+      next.keyPrefix !== (current.keyPrefix ?? null) ||
       (next.enabled && !current.enabled);
     const validatedConnection =
       next.appConnectionId && usesConnectionAnew
@@ -546,11 +545,8 @@ export const agentVaultActivityServiceFactory = ({
       }
     }
 
-    // Both sides normalised: a stored null prefix and a saved "" must not read as a move.
     const relocated =
-      Boolean(existing) &&
-      (next.bucket !== (current.bucket ?? null) ||
-        normalizeKeyPrefix(next.keyPrefix) !== normalizeKeyPrefix(current.keyPrefix));
+      Boolean(existing) && (next.bucket !== (current.bucket ?? null) || next.keyPrefix !== (current.keyPrefix ?? null));
 
     const storage = next.enabled ? resolveStorageConfig(next) : null;
     const activityStorage = storage ? await buildActivityStorage(storage, ctx.actorOrgId, $storageDeps) : null;

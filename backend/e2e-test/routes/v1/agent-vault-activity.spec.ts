@@ -228,7 +228,7 @@ describe("Agent Vault activity", async () => {
       expect(res.statusCode, res.payload).toBe(200);
 
       const body = JSON.parse(res.payload) as { settings: Record<string, unknown> };
-      expect(body.settings).toMatchObject({ enabled: true, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs/" });
+      expect(body.settings).toMatchObject({ enabled: true, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
 
       const probe = await inject("GET", `${SETTINGS_URL}/cors-probe`);
       expect(probe.statusCode).toBe(200);
@@ -355,18 +355,23 @@ describe("Agent Vault activity", async () => {
       });
 
       const off = await saveConfig({ enabled: false });
-      expect(JSON.parse(off.payload).settings).toMatchObject({ enabled: false, bucket: BUCKET, keyPrefix: "logs/" });
+      expect(JSON.parse(off.payload).settings).toMatchObject({ enabled: false, bucket: BUCKET, keyPrefix: "logs" });
     });
 
-    test("the key prefix is normalised, so two spellings of one prefix are one destination", async () => {
-      const res = await saveConfig({
+    test("the key prefix is saved as typed, and one with a slash at either end is refused", async () => {
+      const saved = await saveConfig({
         enabled: true,
         appConnectionId: connectionId,
         bucket: BUCKET,
         region: "us-east-1",
-        keyPrefix: "/logs/"
+        keyPrefix: "logs/agent-vault"
       });
-      expect(JSON.parse(res.payload).settings.keyPrefix).toBe("logs/");
+      expect(JSON.parse(saved.payload).settings.keyPrefix).toBe("logs/agent-vault");
+
+      const refused = await Promise.all(
+        ["/logs", "logs/", "logs//agent-vault"].map((keyPrefix) => saveConfig({ keyPrefix }))
+      );
+      expect(refused.map((res) => res.statusCode)).toEqual([422, 422, 422]);
     });
 
     test("a non-admin member cannot read or change the settings", async () => {

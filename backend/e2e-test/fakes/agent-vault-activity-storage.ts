@@ -3,12 +3,12 @@ import { BadRequestError } from "@app/lib/errors";
 import type * as RealStorage from "../../src/ee/services/agent-vault-activity/agent-vault-activity-storage";
 import {
   buildActivityObjectKey,
-  normalizeKeyPrefix,
-  resolveStorageConfig
+  resolveStorageConfig,
+  withKeyPrefix
 } from "../../src/ee/services/agent-vault-activity/agent-vault-activity-storage";
 import type { TResolvedActivityStorageConfig } from "../../src/ee/services/agent-vault-activity/agent-vault-activity-types";
 
-export { buildActivityObjectKey, normalizeKeyPrefix, resolveStorageConfig };
+export { buildActivityObjectKey, resolveStorageConfig, withKeyPrefix };
 
 type TFakeState = {
   objects: Map<string, Buffer>;
@@ -106,7 +106,7 @@ export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _or
 
     mintCorsProbeUrl: () => {
       const url = mintUrl("cors-probe");
-      state.presignedGets.set(url, { bucket, objectKey: `${normalizeKeyPrefix(keyPrefix)}.cors-probe` });
+      state.presignedGets.set(url, { bucket, objectKey: withKeyPrefix(keyPrefix, ".cors-probe") });
       return Promise.resolve(url);
     },
 
@@ -121,11 +121,11 @@ export const buildActivityStorage = (config: TResolvedActivityStorageConfig, _or
 
 export const assertFakeMatchesRealStorage: Pick<
   typeof RealStorage,
-  "buildActivityObjectKey" | "normalizeKeyPrefix" | "resolveStorageConfig"
+  "buildActivityObjectKey" | "resolveStorageConfig" | "withKeyPrefix"
 > = {
   buildActivityObjectKey,
-  normalizeKeyPrefix,
-  resolveStorageConfig
+  resolveStorageConfig,
+  withKeyPrefix
 };
 
 export const assertFakeStorageShapeMatches: {
