@@ -491,7 +491,7 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   .ifx-home__hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
     column-gap: 5rem;
-    align-items: center;
+    align-items: start;
   }
 }
 
@@ -1459,7 +1459,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 @media (min-width: 1024px) {
   .ifx-home__hero-aside {
-    align-self: center;
+    padding-top: 1.25rem;
   }
 }
 

@@ -38,6 +38,15 @@ export const HomeSteps = ({ steps, panels }) => {
   const activePanel = panels ? panels[panel] : null;
   const activeSteps = activePanel ? activePanel.steps : steps;
 
+  const onPanelKeyDown = (event) => {
+    const offset = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!offset) return;
+    event.preventDefault();
+    const next = (panel + offset + panels.length) % panels.length;
+    switchPanel(next);
+    document.getElementById(`ifx-steps-tab-${next}`)?.focus();
+  };
+
   const commandRow = (command) => (
     <div
       key={command}
@@ -87,11 +96,16 @@ export const HomeSteps = ({ steps, panels }) => {
   return (
     <div className="ifx-steps">
       {panels ? (
-        <div className="ifx-steps__panels">
+        <div className="ifx-steps__panels" role="tablist" onKeyDown={onPanelKeyDown}>
           {panels.map((p, i) => (
             <button
               key={p.label}
+              id={`ifx-steps-tab-${i}`}
               type="button"
+              role="tab"
+              aria-selected={i === panel}
+              aria-controls="ifx-steps-tabpanel"
+              tabIndex={i === panel ? 0 : -1}
               className={`ifx-steps__panel${i === panel ? " ifx-steps__panel--active" : ""}`}
               onClick={() => switchPanel(i)}
             >
@@ -100,6 +114,11 @@ export const HomeSteps = ({ steps, panels }) => {
           ))}
         </div>
       ) : null}
+      <div
+        {...(panels
+          ? { id: "ifx-steps-tabpanel", role: "tabpanel", "aria-labelledby": `ifx-steps-tab-${panel}` }
+          : {})}
+      >
       {activePanel && activePanel.content ? (
         <div className="ifx-steps__prose">{activePanel.content}</div>
       ) : (
@@ -144,60 +163,7 @@ export const HomeSteps = ({ steps, panels }) => {
         ))}
       </ol>
       )}
-    </div>
-  );
-};
-
-// Standalone copiable code block for use in prose contexts (panel `content`).
-// Owns its own copied state so it can render outside HomeSteps' scope.
-export const CopyBlock = ({ text }) => {
-  const [copied, setCopied] = useState(false);
-  const isBlock = text.includes("\n");
-  const copy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  return (
-    <div className={`ifx-steps__cmd${isBlock ? " ifx-steps__cmd--block" : ""}`}>
-      <code className="ifx-steps__code">{text}</code>
-      <button
-        type="button"
-        className="ifx-steps__copy"
-        aria-label={`Copy: ${text.slice(0, 40)}`}
-        onClick={copy}
-      >
-        {copied ? (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-        ) : (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-          </svg>
-        )}
-      </button>
+      </div>
     </div>
   );
 };
@@ -207,11 +173,15 @@ export const CopyBlock = ({ text }) => {
 // The copied payload is the raw markdown source (with backticks intact) so pasting
 // into an agent preserves the code fencing.
 export const PromptBlock = ({ text }) => {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const [status, setStatus] = useState(null);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("copied");
+    } catch {
+      setStatus("failed");
+    }
+    setTimeout(() => setStatus(null), 1500);
   };
   const paragraphs = text.split("\n\n");
   return (
@@ -234,10 +204,25 @@ export const PromptBlock = ({ text }) => {
       <button
         type="button"
         className="ifx-prompt__copy"
-        aria-label="Copy prompt"
+        aria-label={status === "failed" ? "Couldn't copy the prompt" : "Copy prompt"}
+        title={status === "failed" ? "Couldn't copy. Select the text and copy it manually." : undefined}
         onClick={copy}
       >
-        {copied ? (
+        {status === "failed" ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        ) : status === "copied" ? (
           <svg
             width="14"
             height="14"
