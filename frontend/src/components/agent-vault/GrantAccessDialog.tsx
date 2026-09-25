@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Field,
   FieldContent,
+  FieldDescription,
   FieldLabel
 } from "@app/components/v3";
 import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
@@ -67,6 +68,8 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
       })),
     [data]
   );
+
+  const isListTruncated = (data?.totalCount ?? 0) > options.length;
 
   const handleAdd = async () => {
     try {
@@ -165,6 +168,11 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
                 );
               }}
             />
+            {isListTruncated && (
+              <FieldDescription>
+                Search by name to find members that are not listed.
+              </FieldDescription>
+            )}
           </FieldContent>
         </Field>
 
