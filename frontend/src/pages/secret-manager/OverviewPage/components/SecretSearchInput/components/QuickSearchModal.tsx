@@ -7,14 +7,7 @@ import {
   useRef,
   useState
 } from "react";
-import {
-  BracesIcon,
-  FingerprintIcon,
-  FolderIcon,
-  KeyIcon,
-  RefreshCw,
-  SearchIcon
-} from "lucide-react";
+import { FingerprintIcon, FolderIcon, KeyIcon, RefreshCw, SearchIcon } from "lucide-react";
 
 import {
   Button,
@@ -27,8 +20,6 @@ import {
   Field,
   FieldDescription,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -203,7 +194,6 @@ const Content = ({
   // When at least one condition is complete, it "takes over" the results from the free-text search.
   const [metadataConditions, setMetadataConditions] = useState<MetadataSearchCondition[]>([]);
   const [metadataMatch, setMetadataMatch] = useState<MetadataMatchType>("all");
-  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const conditionIdRef = useRef(0);
 
   const createCondition = (): MetadataSearchCondition => {
@@ -221,6 +211,17 @@ const Content = ({
     [metadataConditions]
   );
   const isMetadataMode = activeConditions.length > 0;
+
+  useEffect(() => {
+    if (isMetadataMode) {
+      setShowFilter({
+        [RowType.Secret]: true,
+        [RowType.Folder]: false,
+        [RowType.DynamicSecret]: false,
+        [RowType.SecretRotation]: false
+      });
+    }
+  }, [isMetadataMode]);
 
   const [debouncedConditions] = useDebounce(activeConditions);
 
@@ -377,11 +378,10 @@ const Content = ({
     0
   );
 
-  // metadata search only supports secrets, so fully reset it (conditions, builder, match)
+  // metadata search only supports secrets, so clear its conditions and match mode
   // whenever it should no longer apply
   const resetMetadataSearch = () => {
     setMetadataConditions([]);
-    setIsBuilderOpen(false);
     setMetadataMatch("all");
   };
 
@@ -401,14 +401,6 @@ const Content = ({
     });
   };
 
-  const handleOpenMetadata = () => {
-    handleChangeResourceTypes(
-      QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) => type === RowType.Secret)
-    );
-    setIsBuilderOpen(true);
-    setMetadataConditions((prev) => (prev.length ? prev : [createCondition()]));
-  };
-
   const handleAddCondition = () => {
     setMetadataConditions((prev) => [...prev, createCondition()]);
   };
@@ -420,7 +412,6 @@ const Content = ({
     handleChangeResourceTypes(
       QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) => type === RowType.Secret)
     );
-    setIsBuilderOpen(true);
     setMetadataConditions((prev) => {
       const key = metadataKey.trim();
       const value = metadataValue.trim();
@@ -456,11 +447,6 @@ const Content = ({
 
   const handleClearMetadata = () => {
     setMetadataConditions([]);
-  };
-
-  // closing the builder discards the conditions so a metadata filter never stays active while hidden
-  const handleCloseBuilder = () => {
-    resetMetadataSearch();
   };
 
   const activeFilterCount =
@@ -601,7 +587,7 @@ const Content = ({
         id="quick-search-filters"
         role="complementary"
         aria-labelledby="quick-search-filters-heading"
-        className="flex max-h-[45dvh] min-h-0 shrink-0 flex-col rounded-lg bg-card ring-1 ring-border ring-inset md:max-h-none md:w-94"
+        className="flex max-h-[45dvh] min-h-0 shrink-0 flex-col rounded-lg bg-card ring-1 ring-border select-none ring-inset md:max-h-none md:w-94 [&_input]:select-text"
       >
         <h3 id="quick-search-filters-heading" className="sr-only">
           Search filters
@@ -649,30 +635,38 @@ const Content = ({
                 : "Select one environment to choose a folder."}
             </FieldDescription>
           </Field>
-          <FieldSet className="gap-3">
-            <FieldLegend variant="label">Resource Types</FieldLegend>
-            {QUICK_SEARCH_RESOURCE_TYPES.map((option) => (
-              <Field key={option.type} orientation="horizontal">
-                <Checkbox
-                  id={`quick-search-type-${option.type}`}
-                  isChecked={showFilter[option.type as ResourceType]}
-                  onCheckedChange={(checked) =>
-                    handleChangeResourceTypes(
-                      QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
-                        type === option.type ? checked === true : showFilter[type as ResourceType]
+          <div
+            role="group"
+            aria-labelledby="quick-search-resource-types-label"
+            className="flex flex-col gap-3"
+          >
+            <FieldLabel asChild>
+              <span id="quick-search-resource-types-label">Resource Types</span>
+            </FieldLabel>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+              {QUICK_SEARCH_RESOURCE_TYPES.map((option) => (
+                <Field key={option.type} orientation="horizontal">
+                  <Checkbox
+                    id={`quick-search-type-${option.type}`}
+                    isChecked={showFilter[option.type as ResourceType]}
+                    onCheckedChange={(checked) =>
+                      handleChangeResourceTypes(
+                        QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
+                          type === option.type ? checked === true : showFilter[type as ResourceType]
+                        )
                       )
-                    )
-                  }
-                />
-                <FieldLabel htmlFor={`quick-search-type-${option.type}`}>
-                  <span className="flex items-center gap-2 [&_svg]:size-4">
-                    {option.icon}
-                    {option.label}
-                  </span>
-                </FieldLabel>
-              </Field>
-            ))}
-          </FieldSet>
+                    }
+                  />
+                  <FieldLabel htmlFor={`quick-search-type-${option.type}`}>
+                    <span className="flex items-center gap-2 [&_svg]:size-4">
+                      {option.icon}
+                      {option.label}
+                    </span>
+                  </FieldLabel>
+                </Field>
+              ))}
+            </div>
+          </div>
           <Field>
             <FieldLabel htmlFor="quick-search-tags">Tags</FieldLabel>
             <Combobox
@@ -695,8 +689,11 @@ const Content = ({
               emptyMessage="No tags found."
             />
           </Field>
-          <div className="border-t border-border pt-4">
-            {isBuilderOpen ? (
+          <div className="flex flex-col gap-2">
+            <FieldLabel asChild>
+              <span>Metadata</span>
+            </FieldLabel>
+            <div className="rounded-md border border-border bg-container p-4">
               <SecretMetadataSearchBuilder
                 conditions={metadataConditions}
                 match={metadataMatch}
@@ -705,14 +702,8 @@ const Content = ({
                 onUpdateCondition={handleUpdateCondition}
                 onRemoveCondition={handleRemoveCondition}
                 onClear={handleClearMetadata}
-                onClose={handleCloseBuilder}
               />
-            ) : (
-              <Button variant="outline" size="sm" className="w-full" onClick={handleOpenMetadata}>
-                <BracesIcon />
-                Add Metadata Filter
-              </Button>
-            )}
+            </div>
           </div>
         </ScrollableContent>
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-2">
