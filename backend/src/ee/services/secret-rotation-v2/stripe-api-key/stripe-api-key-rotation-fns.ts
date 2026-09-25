@@ -136,6 +136,16 @@ export const stripeApiKeyRotationFactory: TRotationFactory<
         withIdempotencyKey(getStripeAppRequestConfig(accountId))
       ));
     } catch (error) {
+      // Stripe rejects connect_permissions on an account that is not a Connect platform, without
+      // naming the parameter at fault, and nothing we can read off the account says whether it is
+      // one. So the rejection carries the likely cause. Only a 400 qualifies: the auth and
+      // availability failures have their own remedy and keep it.
+      if (connectPermissions?.length && getStripeErrorStatus(error) === 400) {
+        throw new BadRequestError({
+          message: `Stripe rejected the API key for account '${accountId}': ${getStripeErrorMessage(error)}. If this Stripe account is not a Connect platform, remove the Connect permissions from this rotation and try again.`
+        });
+      }
+
       return throwStripeApiKeyManagementError(accountId, error);
     }
 

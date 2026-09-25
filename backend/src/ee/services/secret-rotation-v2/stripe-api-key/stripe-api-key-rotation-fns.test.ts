@@ -50,16 +50,19 @@ const UNUSED_DEPENDENCIES = [{}, {}, {}, {}] as unknown as [
 
 // The factory reads these four fields of the rotation row and nothing else, so the rest of the row
 // is left off rather than filled with placeholders that would read as though they mattered.
-const rotation = (activeIndex: number) =>
+const rotation = (activeIndex: number, connectPermissions: string[]) =>
   ({
     connection: { id: "connection-id", credentials: { accountId: "acct_123" } },
-    parameters: { permissions: ["customer_read"], connectPermissions: [] },
+    parameters: { permissions: ["customer_read"], connectPermissions },
     secretsMapping: { apiKey: "STRIPE_API_KEY" },
     activeIndex
   }) as unknown as TStripeApiKeyRotationWithConnection;
 
-const makeFactory = ({ activeIndex = 0 }: { activeIndex?: number } = {}) =>
-  stripeApiKeyRotationFactory(rotation(activeIndex), ...UNUSED_DEPENDENCIES);
+const makeFactory = ({
+  activeIndex = 0,
+  connectPermissions = []
+}: { activeIndex?: number; connectPermissions?: string[] } = {}) =>
+  stripeApiKeyRotationFactory(rotation(activeIndex, connectPermissions), ...UNUSED_DEPENDENCIES);
 
 const isCreate = (url: string) => url.endsWith("/v2/iam/api_keys");
 const isExpire = (url: string) => url.endsWith("/expire");
@@ -274,6 +277,34 @@ describe("stripeApiKeyRotationFactory", () => {
 
       expect(calls).toEqual(["expire:mk_one", "expire:mk_two", "lookup:mk_two"]);
       expect(commitWithoutCredentials).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("connect permissions", () => {
+    // Nothing readable on the account says whether it is a Connect platform, so a rejected create
+    // is the only place a user learns that Connect permissions were the problem.
+    it("names Connect permissions as the likely cause when Stripe rejects the create", async () => {
+      postMock.mockRejectedValue(httpError(400, "Invalid permissions"));
+
+      await expect(makeFactory({ connectPermissions: ["customer_read"] }).issueCredentials(commit)).rejects.toThrow(
+        /not a Connect platform, remove the Connect permissions/
+      );
+    });
+
+    it("leaves a rejection alone when no Connect permissions were sent", async () => {
+      postMock.mockRejectedValue(httpError(400, "Invalid permissions"));
+
+      await expect(makeFactory().issueCredentials(commit)).rejects.toThrow(
+        /Infisical cannot manage API keys on Stripe account/
+      );
+    });
+
+    it("keeps the reinstall remedy when the failure is an authorization one", async () => {
+      postMock.mockRejectedValue(httpError(403, "app removed"));
+
+      await expect(makeFactory({ connectPermissions: ["customer_read"] }).issueCredentials(commit)).rejects.toThrow(
+        /reinstall it and reconnect/
+      );
     });
   });
 
