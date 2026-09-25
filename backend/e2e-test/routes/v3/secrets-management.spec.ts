@@ -177,12 +177,10 @@ describe("Secrets management", () => {
       expect(await searchByValue("case-sensitive-valu", authToken)).toEqual([]);
     });
 
-    // Whitespace is part of the value, not decoration around it, so the search hashes what it was
-    // given and never trims it. Note the asymmetry with writes: the secret write API has always
-    // trimmed surrounding whitespace off a submitted value (see secretValue in v4/secret-router.ts),
-    // so a value typed with padding is stored, and therefore found, under its trimmed form. Inner
-    // whitespace survives both sides.
-    test("whitespace counts as part of the value", async () => {
+    // Whitespace inside a value is part of it. Whitespace around one is not: the secret write API
+    // has always trimmed it off a submitted value, and the search applies the same transform, so a
+    // value is looked for in the form it was stored rather than the form it was typed.
+    test("inner whitespace is part of the value, surrounding whitespace is not", async () => {
       await createSecretV2({
         workspaceId: projectId,
         environmentSlug: ENV,
@@ -204,13 +202,13 @@ describe("Secrets management", () => {
         authToken
       });
 
-      // The search does not trim its own input, so padding the query stops it matching.
-      expect(await searchByValue(" padded-value ", authToken)).toEqual([]);
-      expect(await searchByValue("  padded-value  ", authToken)).toEqual([]);
-
-      const found = await searchByValue("padded-value", authToken);
-      expect(found).toHaveLength(1);
-      expect(found[0].key).toBe("PADDED");
+      // Stored trimmed, and found whether or not the caller pastes the padding back.
+      for (const query of ["padded-value", " padded-value ", "  padded-value  "]) {
+        // eslint-disable-next-line no-await-in-loop
+        const found = await searchByValue(query, authToken);
+        expect(found).toHaveLength(1);
+        expect(found[0].key).toBe("PADDED");
+      }
     });
 
     test("a rotated value stops being found and the new one starts", async () => {

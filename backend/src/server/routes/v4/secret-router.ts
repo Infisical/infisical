@@ -7,7 +7,7 @@ import { ApiDocsTags, RAW_SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { secretsLimit } from "@app/server/config/rateLimiter";
 import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -1633,7 +1633,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/search-by-value",
     config: {
-      rateLimit: writeLimit
+      rateLimit: secretsLimit
     },
     schema: {
       hide: false,
@@ -1644,7 +1644,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       security: [{ bearerAuth: [] }],
       body: z
         .object({
-          secretValue: z.string().min(1).max(10_000).describe("The secret value to look for."),
+          // The same transform the write path applies, so a value is searched for in the form it was
+          // actually stored in rather than the form it was typed in.
+          secretValue: z
+            .string()
+            .min(1)
+            .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+            .describe("The secret value to look for."),
           scope: z
             .nativeEnum(SecretValueSearchScope)
             .default(SecretValueSearchScope.Organization)

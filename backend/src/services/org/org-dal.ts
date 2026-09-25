@@ -670,7 +670,13 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const create = async (dto: TOrganizationsInsert, tx?: Knex) => {
     try {
-      const [organization] = await (tx || db)(TableName.Organization).insert(dto).returning("*");
+      // An org created by this code has carried the org-scoped secret value digest on every secret
+      // it will ever write, so it is complete by construction and needs no backfill. The column
+      // defaults to false so that an org created by an older replica mid-deploy, whose writes carry
+      // no digest, is not wrongly marked complete.
+      const [organization] = await (tx || db)(TableName.Organization)
+        .insert({ orgWideSecretValueTrackingEnabled: true, ...dto })
+        .returning("*");
       return organization;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create organization" });

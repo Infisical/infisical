@@ -51,11 +51,10 @@ export const secretValueTrackingServiceFactory = ({
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
 
-    if (org.orgWideSecretValueTrackingEnabled) {
-      throw new BadRequestError({
-        message: "Org-wide secret value tracking is already enabled for this organization"
-      });
-    }
+    // Deliberately not refused when the flag is already set. Several ordinary operations can put an
+    // unindexed row back into a completed org (a rollback to a version predating the digest, an
+    // environment restored after the walk passed it), and without a re-run the only repair is SQL.
+    // The walk skips rows that already carry both digests, so a redundant run costs a read pass.
 
     // Projects are counted so progress can be reported as "project M of N". Secrets deliberately are
     // not: counting them is expensive on exactly the organizations where progress matters, and the
@@ -128,10 +127,6 @@ export const secretValueTrackingServiceFactory = ({
 
   const enableForProject = async (dto: TProjectPermission) => {
     const project = await $assertProjectSettingsEdit(dto);
-
-    if (project.secretBlindIndexEnabled) {
-      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
-    }
 
     const claimed = await state.claim(project.id, 1);
     if (!claimed) {

@@ -108,6 +108,9 @@ export const resolveRunStatus = (
   if (flagEnabled) return { status: JobState.Completed };
   if (!state) return { status: JobState.NotFound };
   if (state.status === "failed") return { status: JobState.Failed, message: state.error ?? "Unknown error" };
+  // A completed state with the flag off is a run whose result was undone or never landed. It needs
+  // another run, so saying "pending" would leave a caller waiting for one that is not coming.
+  if (state.status === "completed") return { status: JobState.NotFound };
 
   const lastProgress = new Date(state.lastProgressAt).getTime();
   if (Number.isNaN(lastProgress) || now.getTime() - lastProgress > BACKFILL_STALE_AFTER_MS) {

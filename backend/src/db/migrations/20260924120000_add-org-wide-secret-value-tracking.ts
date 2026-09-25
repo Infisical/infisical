@@ -7,16 +7,13 @@ export async function up(knex: Knex): Promise<void> {
     const hasColumn = await knex.schema.hasColumn(TableName.Organization, "orgWideSecretValueTrackingEnabled");
     if (!hasColumn) {
       await knex.schema.alterTable(TableName.Organization, (t) => {
-        t.boolean("orgWideSecretValueTrackingEnabled").defaultTo(true).notNullable();
+        t.boolean("orgWideSecretValueTrackingEnabled").defaultTo(false).notNullable();
       });
 
-      // Organizations that already exist hold secrets written before the org-scoped digest, so they
-      // are incomplete until their backfill runs. Only organizations created from here on carry it
-      // on every secret they ever write.
-      //
-      // Raw rather than a typed update: the generated schema is regenerated from the database this
-      // migration has not yet been applied to, so a typed update cannot compile when it first runs.
-      await knex.raw(`UPDATE ?? SET "orgWideSecretValueTrackingEnabled" = false`, [TableName.Organization]);
+      // The column defaults to false rather than true, and org creation opts a new org in
+      // explicitly. During a rolling deploy the old replicas keep serving after this migration runs,
+      // and every secret they write carries no org digest, so an org they create is not complete
+      // however new it is. A database default cannot tell the two apart; the application code can.
     }
   }
 }

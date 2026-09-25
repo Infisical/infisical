@@ -200,6 +200,10 @@ export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServ
 /*
  * This service is a bridge from our old architecture towards the new architecture
  */
+// One value genuinely can sit in thousands of places in a large org, and the caller is chasing a
+// leak rather than paginating, so the answer is bounded and the response says when it was cut off.
+const SECRET_VALUE_SEARCH_LIMIT = 1000;
+
 export const secretV2BridgeServiceFactory = ({
   secretDAL,
   projectDAL,
@@ -4053,35 +4057,27 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    if (dto.scope === SecretValueSearchScope.Project) {
-      const [project] = await projectDAL.find({
-        id: dto.projectId,
-        orgId: actor.orgId,
-        type: ProjectType.SecretManager
-      });
-      if (!project)
-        throw new NotFoundError({ message: `Secrets management project with ID '${dto.projectId}' not found` });
+    const candidates =
+      dto.scope === SecretValueSearchScope.Project
+        ? await projectDAL.find({ id: dto.projectId, orgId: actor.orgId, type: ProjectType.SecretManager })
+        : await projectDAL.find({ orgId: actor.orgId, type: ProjectType.SecretManager });
+
+    if (dto.scope === SecretValueSearchScope.Project && !candidates.length) {
+      throw new NotFoundError({ message: `Secrets management project with ID '${dto.projectId}' not found` });
     }
 
-    // Every project in an org shares the org data key, so one digest answers for all of them.
-    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: actor.orgId, kmsService });
-    const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(dto.secretValue));
-
-    const matches = await secretDAL.findSecretsWithMatchingValue({
-      orgId: actor.orgId,
-      projectId: dto.scope === SecretValueSearchScope.Project ? dto.projectId : undefined,
-      secretValueDigest
-    });
-    if (!matches.length) return { secrets: [] };
-
-    const readableProjectIds = new Set<string>();
+    // Resolving what the caller may see BEFORE the search, rather than filtering matches after, is
+    // what keeps this from being an oracle: a value held only in projects they cannot read costs the
+    // same work, and takes the same time, as a value held nowhere. It also bounds the query, which
+    // would otherwise fan out across every project in the org for a value like "true".
+    const readableProjectIds: string[] = [];
     await Promise.all(
-      [...new Set(matches.map((match) => match.projectId))].map(async (projectId) => {
+      candidates.map(async (project) => {
         try {
           const { permission } = await permissionService.getProjectPermission({
             actor: actor.type,
             actorId: actor.id,
-            projectId,
+            projectId: project.id,
             actorAuthMethod: actor.authMethod,
             actorOrgId: actor.orgId,
             actionProjectType: ActionProjectType.SecretManager
@@ -4089,16 +4085,29 @@ export const secretV2BridgeServiceFactory = ({
           // DescribeSecret, not a read of the value: this answers where a value the caller already has
           // is used, so the permission that matters is whether they may know the secret exists.
           if (permission.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets)) {
-            readableProjectIds.add(projectId);
+            readableProjectIds.push(project.id);
           }
-        } catch {
-          // No membership in that project. A value the actor cannot see the location of is simply absent
-          // from their results rather than an error, so one inaccessible project does not fail the search.
+        } catch (error) {
+          // Only a refusal means "not a member, so this project is simply absent from their results".
+          // Anything else is an infrastructure failure, and answering "your value is used nowhere"
+          // because the database was busy is the one answer this feature must never give.
+          if (!(error instanceof ForbiddenRequestError) && !(error instanceof NotFoundError)) throw error;
         }
       })
     );
 
-    const visible = matches.filter((match) => readableProjectIds.has(match.projectId));
+    if (!readableProjectIds.length) return { secrets: [] };
+
+    // Every project in an org shares the org data key, so one digest answers for all of them.
+    const { generateOrgLevelBlindIndex } = await createOrgSecretBlindIndexer({ orgId: actor.orgId, kmsService });
+    const secretValueDigest = await generateOrgLevelBlindIndex(Buffer.from(dto.secretValue));
+
+    const visible = await secretDAL.findSecretsWithMatchingValue({
+      orgId: actor.orgId,
+      projectIds: readableProjectIds,
+      secretValueDigest,
+      limit: SECRET_VALUE_SEARCH_LIMIT
+    });
     if (!visible.length) return { secrets: [] };
 
     const pathsByProject = await Promise.all(

@@ -1520,24 +1520,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
-  // Finds every secret holding the given value, either across an organization or within one of its
-  // projects. Matching is on the org-scoped digest in both cases, so the two scopes agree on which
-  // rows are searchable. The caller is responsible for dropping the projects the actor cannot read
-  // before returning anything.
+  // Finds secrets holding the given value within the given projects. The caller narrows those to
+  // what the actor may read BEFORE calling, so an unreadable project costs nothing here and cannot
+  // be inferred from how long this takes.
   const findSecretsWithMatchingValue = async (
     {
       orgId,
-      projectId,
-      secretValueDigest
+      projectIds,
+      secretValueDigest,
+      limit
     }: {
       orgId: string;
-      projectId?: string;
+      projectIds: string[];
       secretValueDigest: string;
+      limit: number;
     },
     tx?: Knex
   ) => {
     try {
-      let query = (tx || db.replicaNode())(TableName.SecretV2)
+      const query = (tx || db.replicaNode())(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
@@ -1556,9 +1557,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           db.ref("name").withSchema(TableName.Project).as("projectName")
         );
 
-      if (projectId) query = query.where(`${TableName.Project}.id`, projectId);
-
-      return await query;
+      return await query.whereIn(`${TableName.Project}.id`, projectIds).limit(limit);
     } catch (error) {
       throw new DatabaseError({ error, name: "findSecretsWithMatchingValue" });
     }

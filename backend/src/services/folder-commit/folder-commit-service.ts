@@ -30,6 +30,7 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -218,6 +219,8 @@ const buildDefaultCommitMessage = (changes: TCommitResourceChangeDTO[]) => {
   const summary = segments.join(", ");
   return `${summary.charAt(0).toUpperCase()}${summary.slice(1)}`;
 };
+
+type TBlindIndexRepairer = (version: TSecretVersionsV2) => Promise<TSecretVersionsV2> | TSecretVersionsV2;
 
 export const folderCommitServiceFactory = ({
   folderCommitDAL,
@@ -1014,11 +1017,33 @@ export const folderCommitServiceFactory = ({
   /**
    * Process secret changes when applying folder state differences
    */
+  // A version row written before the org-scoped digest existed carries none, and a rollback copies a
+  // version's digests onto the live secret. Left alone that puts an unindexed row back into a
+  // project the org has already been told is fully searchable, and nothing would ever fix it.
+  const $buildBlindIndexRepairer = async (projectId: string, tx?: Knex): Promise<TBlindIndexRepairer> => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) return (version) => version;
+
+    const [{ decryptor }, blindIndexer] = await Promise.all([
+      kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx),
+      createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, tx })
+    ]);
+
+    return async (version) => {
+      if (!version.encryptedValue) return version;
+      if (version.secretValueBlindIndex && version.secretValueOrgBlindIndex) return version;
+
+      const value = decryptor({ cipherTextBlob: version.encryptedValue });
+      return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
+    };
+  };
+
   const processSecretChanges = async (
     changes: ResourceChange[],
     secretVersions: Record<string, TSecretVersionsV2>,
     actorInfo: ActorInfo,
     folderId: string,
+    repairBlindIndexes: TBlindIndexRepairer,
     tx?: Knex
   ) => {
     const commitChanges = [];
@@ -1040,9 +1065,11 @@ export const folderCommitServiceFactory = ({
     const latestVersionsMap = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, secretIds, tx);
 
     for (const change of secretChanges) {
-      const secretVersion = secretVersions[change.id];
+      const storedVersion = secretVersions[change.id];
       // eslint-disable-next-line no-continue
-      if (!secretVersion) continue;
+      if (!storedVersion) continue;
+      // eslint-disable-next-line no-await-in-loop
+      const secretVersion = await repairBlindIndexes(storedVersion);
 
       // Get the latest version from our batch result
       const latestVersion = latestVersionsMap[secretVersion.secretId];
@@ -1253,6 +1280,7 @@ export const folderCommitServiceFactory = ({
     projectId,
     reconstructNewFolders,
     reconstructUpToCommit,
+    repairBlindIndexes,
     step = 0,
     tx
   }: {
@@ -1262,6 +1290,7 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     reconstructNewFolders: boolean;
     reconstructUpToCommit?: string;
+    repairBlindIndexes: TBlindIndexRepairer;
     step: number;
     tx?: Knex;
   }): Promise<StateChangeResult> => {
@@ -1323,6 +1352,7 @@ export const folderCommitServiceFactory = ({
                       actorInfo,
                       folderId: change.id,
                       projectId,
+                      repairBlindIndexes,
                       reconstructNewFolders,
                       reconstructUpToCommit,
                       step: step + 1,
@@ -1421,7 +1451,7 @@ export const folderCommitServiceFactory = ({
 
     // Process changes in parallel
     const [secretCommitChanges, folderCommitChanges] = await Promise.all([
-      processSecretChanges(differences, secretVersions, actorInfo, folderId, tx),
+      processSecretChanges(differences, secretVersions, actorInfo, folderId, repairBlindIndexes, tx),
       processFolderChanges(differences, folderVersions)
     ]);
 
@@ -1465,13 +1495,19 @@ export const folderCommitServiceFactory = ({
     reconstructUpToCommit?: string;
     tx?: Knex;
   }): Promise<StateChangeResult> => {
+    // Resolved here, before any transaction is opened, because it reaches the KMS: an org on an
+    // external provider would otherwise put a network call between BEGIN and COMMIT.
+    const repairBlindIndexes = await $buildBlindIndexRepairer(params.projectId, params.tx);
+
     // If a transaction was provided, use it directly
     if (params.tx) {
-      return applyFolderStateDifferencesFn({ ...params, step: 0 });
+      return applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, step: 0 });
     }
 
     // Otherwise, start a new transaction
-    return folderCommitDAL.transaction((newTx) => applyFolderStateDifferencesFn({ ...params, tx: newTx, step: 0 }));
+    return folderCommitDAL.transaction((newTx) =>
+      applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, tx: newTx, step: 0 })
+    );
   };
 
   /**

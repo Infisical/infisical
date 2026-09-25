@@ -248,3 +248,12 @@ describe("a finished run's state", () => {
     expect(resolveRunStatus(completed, true, NOW)).toEqual({ status: JobState.Completed });
   });
 });
+
+describe("a completed state without the flag", () => {
+  // The flag is the truth. A leftover completed state whose flag is off means the work was undone
+  // or never landed, so it needs a run, not a spinner waiting for one that is not coming.
+  test("reports that no run is in progress rather than pending", () => {
+    const completed: TBackfillRunState = { ...running(minutesAgo(1)), status: "completed", cursor: null };
+    expect(resolveRunStatus(completed, false, NOW)).toEqual({ status: JobState.NotFound });
+  });
+});

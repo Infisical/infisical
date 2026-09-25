@@ -1,7 +1,9 @@
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
-import { createSecretV2 } from "e2e-test/testUtils/secrets";
+import { createSecretV2, updateSecretV2 } from "e2e-test/testUtils/secrets";
+import jwt from "jsonwebtoken";
 
-import { SecretType, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, SecretType, TableName } from "@app/db/schemas";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 const ENV = "dev";
 
@@ -55,6 +57,27 @@ const makeOrgIncomplete = async (orgId: string) => {
     .update({ secretValueOrgBlindIndex: null });
 };
 
+const listCommits = async (authToken: string, projectId: string) => {
+  const res = await testServer.inject({
+    method: "GET",
+    url: `/api/v1/pit/commits?environment=${ENV}&path=%2F&projectId=${projectId}`,
+    headers: { authorization: `Bearer ${authToken}` }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json();
+};
+
+const rollbackTo = async (authToken: string, projectId: string, commitId: string, folderId: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v1/pit/commits/${commitId}/rollback`,
+    headers: { authorization: `Bearer ${authToken}` },
+    body: { folderId, environment: ENV, projectId, deepRollback: false, message: "rollback under test" }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json();
+};
+
 const waitForCompletion = async (authToken: string, timeoutMs = 30_000) => {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -89,10 +112,14 @@ describe("Org-wide secret value tracking", () => {
 
   test("an organization created after this shipped is already tracking", async () => {
     expect((await status(authToken)).status).toBe("completed");
+  });
 
-    const res = await enable(authToken);
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toMatch(/already enabled/i);
+  // Re-running a completed backfill is the repair path for every way an unindexed row can get back
+  // into a finished org, so it has to be accepted rather than refused as "already enabled".
+  test("a completed organization can run the backfill again", async () => {
+    expect((await enable(authToken)).statusCode).toBe(200);
+    await waitForCompletion(authToken);
+    expect((await status(authToken)).status).toBe("completed");
   });
 
   test("searching by value refuses while tracking is off, and works once the backfill completes", async () => {
@@ -159,6 +186,131 @@ describe("Org-wide secret value tracking", () => {
     rows.forEach((row) => expect(row.secretValueOrgBlindIndex).toEqual(expect.any(String)));
     // Two different values must not collide on one digest.
     expect(new Set(rows.map((row) => row.secretValueOrgBlindIndex)).size).toBe(2);
+  });
+
+  // Version rows written before the org digest existed carry none, and a rollback copies a version's
+  // digests straight onto the live secret. Without repair that silently puts an unindexed row back
+  // into a project the org has already been told is fully searchable.
+  test("rolling back to a version written before the org digest existed still leaves the secret findable", async () => {
+    const value = `rolled-back-${Date.now()}`;
+
+    await createSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      key: "ROLLED_BACK",
+      value,
+      authToken
+    });
+    const { commits } = await listCommits(authToken, projectId);
+    const target = commits[0];
+
+    await updateSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      key: "ROLLED_BACK",
+      value: "some-other-value",
+      authToken
+    });
+
+    // Every version row predating the migration looks like this.
+    await testDb(TableName.SecretVersionV2).update({ secretValueOrgBlindIndex: null });
+
+    await rollbackTo(authToken, projectId, target.id, target.folderId);
+
+    const found = await searchByValue(value, authToken);
+    expect(found.statusCode).toBe(200);
+    expect(found.json().secrets.map((s: { key: string }) => s.key)).toEqual(["ROLLED_BACK"]);
+  });
+
+  // The security-critical branch: the search reports WHERE a value is used, so a hit in a project the
+  // caller cannot read must never reach them, even inside their own organization.
+  test("a member who cannot read a project does not see its hits", async () => {
+    const shared = `cross-project-${Date.now()}`;
+
+    const secondProjectRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/projects",
+      headers: { authorization: `Bearer ${authToken}` },
+      body: { projectName: `value-tracking-second-${Date.now()}` }
+    });
+    expect(secondProjectRes.statusCode).toBe(200);
+    const secondProjectId = secondProjectRes.json().project.id as string;
+
+    await createSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      key: "IN_READABLE",
+      value: shared,
+      authToken
+    });
+    await createSecretV2({
+      workspaceId: secondProjectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      key: "IN_UNREADABLE",
+      value: shared,
+      authToken
+    });
+
+    // A member of the org with no project membership at all.
+    const username = `value-tracking-outsider-${Date.now()}@example.com`;
+    const [user] = await testDb(TableName.Users)
+      .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+      .returning("*");
+    const [orgMembership] = await testDb(TableName.Membership)
+      .insert({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgId,
+        actorUserId: user.id,
+        status: OrgMembershipStatus.Accepted,
+        isActive: true
+      })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: orgMembership.id,
+      role: OrgMembershipRole.Member
+    });
+    const [tokenVersion] = await testDb(TableName.AuthTokenSession)
+      .insert({
+        userId: user.id,
+        ip: "127.0.0.1",
+        userAgent: "test",
+        accessVersion: 1,
+        refreshVersion: 1,
+        lastUsed: new Date()
+      })
+      .returning("*");
+
+    // Signed with jsonwebtoken directly rather than through the crypto wrapper: that module is a
+    // singleton the spec worker has not initialised, and this only needs the same claims the test
+    // environment mints for the seeded user.
+    const outsiderToken = jwt.sign(
+      {
+        authTokenType: AuthTokenType.ACCESS_TOKEN,
+        userId: user.id,
+        tokenVersionId: tokenVersion.id,
+        authMethod: AuthMethod.EMAIL,
+        organizationId: orgId,
+        accessVersion: 1
+      },
+      process.env.AUTH_SECRET as string,
+      { expiresIn: "1h" }
+    );
+
+    const owner = await searchByValue(shared, authToken);
+    expect(
+      owner
+        .json()
+        .secrets.map((s: { key: string }) => s.key)
+        .sort()
+    ).toEqual(["IN_READABLE", "IN_UNREADABLE"]);
+
+    const outsider = await searchByValue(shared, outsiderToken);
+    expect(outsider.statusCode).toBe(200);
+    expect(outsider.json().secrets).toEqual([]);
   });
 
   test("a second enable while a run is moving is refused", async () => {

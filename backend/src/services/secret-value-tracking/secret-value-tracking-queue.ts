@@ -103,6 +103,16 @@ export const secretValueTrackingQueueFactory = ({
       return;
     }
 
+    // A chunk whose run has since been recorded failed or completed belongs to a chain that has been
+    // superseded. Carrying on would walk a cursor another chain now owns, and a finished run's null
+    // cursor would restart the whole scope.
+    if (runState.status !== "running") {
+      logger.info(
+        `SecretValueTrackingBackfill: run is ${runState.status}, dropping superseded chunk [scopeId=${scopeId}]`
+      );
+      return;
+    }
+
     const { orgId, projectIds } = await $resolveProjectIds(scope);
     if (!orgId) {
       logger.info(`SecretValueTrackingBackfill: scope no longer exists [scopeId=${scopeId}]`);
@@ -123,7 +133,9 @@ export const secretValueTrackingQueueFactory = ({
 
     const $foldersOf = async (projectId: string) => {
       if (!foldersByProject[projectId]) {
-        const folders = await folderDAL.findByProjectId(projectId);
+        // Soft-deleted environments are included: the delete is reversible, so leaving their rows
+        // unindexed and then flagging the org complete breaks the moment one is restored.
+        const folders = await folderDAL.findByProjectId(projectId, undefined, true);
         foldersByProject[projectId] = folders.map((folder) => folder.id).sort();
       }
       return foldersByProject[projectId];
@@ -283,8 +295,14 @@ export const secretValueTrackingQueueFactory = ({
 
   queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
     const scopeId = job?.data ? scopeIdOf(resolveScope(job.data)) : undefined;
-    logger.error(err, `SecretValueTrackingBackfill: failed [scopeId=${scopeId}]`);
+    logger.error(err, `SecretValueTrackingBackfill: chunk failed [scopeId=${scopeId}]`);
     if (!scopeId) return;
+
+    // BullMQ raises this on every failed attempt, not only the last. Recording a failure while a
+    // retry is still queued would let the enable guard hand the scope to a second chain, and the two
+    // would then share one cursor.
+    const attemptsAllowed = job?.opts?.attempts ?? 1;
+    if ((job?.attemptsMade ?? 0) < attemptsAllowed) return;
 
     // Recording the failure is what lets the status endpoint answer immediately, rather than making
     // the user wait out the staleness window.

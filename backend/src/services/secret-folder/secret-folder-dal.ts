@@ -304,11 +304,14 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   };
 
   // special query for project migration
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
+  //
+  // `includeSoftDeletedEnvs` exists for the secret value tracking backfill. An environment's
+  // soft-delete is reversible, so skipping its folders and then declaring the organization fully
+  // indexed leaves unindexed rows behind the moment it is restored.
+  const findByProjectId = async (projectId: string, tx?: Knex, includeSoftDeletedEnvs = false) => {
     try {
-      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+      const query = (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .where({ projectId })
@@ -319,7 +322,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("version").withSchema(TableName.Project).as("projectVersion")
         );
-      return folders;
+
+      return await (includeSoftDeletedEnvs ? query : query.whereNull(`${TableName.Environment}.deleteAfter`));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id" });
     }
