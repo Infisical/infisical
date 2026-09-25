@@ -277,45 +277,4 @@ export const registerAgentVaultAppConnectionRouter = async (server: FastifyZodPr
       return { appConnection };
     }
   });
-
-  server.route({
-    method: "POST",
-    url: "/aws/:connectionId/rotate-credentials",
-    config: { rateLimit: writeLimit },
-    schema: {
-      hide: false,
-      operationId: "rotateAgentVaultAwsAppConnectionCredentials",
-      description: "Rotate the credentials of an AWS Connection scoped to this organization's Agent Vault",
-      tags: [ApiDocsTags.AgentVaultAppConnections],
-      params: z.object({
-        connectionId: z.string().uuid().describe(AppConnections.ROTATE_CREDENTIALS(AppConnection.AWS).connectionId)
-      }),
-      response: { 200: z.object({ appConnection: SanitizedAwsConnectionSchema }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { connectionId } = req.params;
-
-      await $findAgentVaultConnection(req);
-
-      await server.services.appConnection.triggerCredentialRotation(
-        { app: AppConnection.AWS, connectionId },
-        req.permission
-      );
-
-      const appConnection = await $findAgentVaultConnection(req);
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS,
-          metadata: { connectionId, connectionName: appConnection.name }
-        }
-      });
-
-      return { appConnection };
-    }
-  });
 };

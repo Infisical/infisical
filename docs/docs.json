@@ -4507,8 +4507,7 @@
                       "api-reference/endpoints/agent-vault-app-connections/get",
                       "api-reference/endpoints/agent-vault-app-connections/create",
                       "api-reference/endpoints/agent-vault-app-connections/update",
-                      "api-reference/endpoints/agent-vault-app-connections/delete",
-                      "api-reference/endpoints/agent-vault-app-connections/rotate-credentials"
+                      "api-reference/endpoints/agent-vault-app-connections/delete"
                     ]
                   }
                 ]
