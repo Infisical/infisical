@@ -332,6 +332,7 @@
                       "documentation/platform/secret-rotation/openai-service-account",
                       "documentation/platform/secret-rotation/openrouter-api-key",
                       "documentation/platform/secret-rotation/salesforce-oauth-credentials",
+                      "documentation/platform/secret-rotation/stripe-api-key",
                       "documentation/platform/secret-rotation/supabase-api-key"
                     ]
                   },
@@ -1102,6 +1103,7 @@
                   "integrations/app-connections/servicenow",
                   "integrations/app-connections/snowflake",
                   "integrations/app-connections/spacelift",
+                  "integrations/app-connections/stripe",
                   "integrations/app-connections/supabase",
                   "integrations/app-connections/teamcity",
                   "integrations/app-connections/terraform-cloud",
@@ -2400,6 +2402,18 @@
                         ]
                       },
                       {
+                        "group": "Stripe",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/stripe/list",
+                          "api-reference/endpoints/app-connections/stripe/available",
+                          "api-reference/endpoints/app-connections/stripe/get-by-id",
+                          "api-reference/endpoints/app-connections/stripe/get-by-name",
+                          "api-reference/endpoints/app-connections/stripe/create",
+                          "api-reference/endpoints/app-connections/stripe/update",
+                          "api-reference/endpoints/app-connections/stripe/delete"
+                        ]
+                      },
+                      {
                         "group": "Supabase",
                         "pages": [
                           "api-reference/endpoints/app-connections/supabase/list",
@@ -3106,6 +3120,19 @@
                           "api-reference/endpoints/secret-rotations/supabase-api-key/list",
                           "api-reference/endpoints/secret-rotations/supabase-api-key/rotate-secrets",
                           "api-reference/endpoints/secret-rotations/supabase-api-key/update"
+                        ]
+                      },
+                      {
+                        "group": "Stripe API key",
+                        "pages": [
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/create",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/delete",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/get-by-id",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/get-by-name",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/get-generated-credentials-by-id",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/list",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/rotate-secrets",
+                          "api-reference/endpoints/secret-rotations/stripe-api-key/update"
                         ]
                       },
                       {

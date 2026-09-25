@@ -632,6 +632,11 @@ const envSchema = z
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Stripe App Connection
+    INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_SECRET_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -1137,6 +1142,25 @@ export const overwriteSchema: {
       {
         key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
         description: "The Client Secret of your Heroku application."
+      }
+    ]
+  },
+  stripe: {
+    name: "Stripe",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Stripe app."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL",
+        description:
+          "Optional. Overrides the Stripe App Marketplace install link, which is otherwise derived from the Client ID above. Set it to the test-mode or sandbox link from the Stripe dashboard when the secret key below is not a live-mode key."
+      },
+      {
+        key: "INF_APP_CONNECTION_STRIPE_SECRET_KEY",
+        description:
+          "The secret API key of the Stripe account that owns your Stripe app. Infisical authenticates as this account and names the customer's account with Stripe-Context."
       }
     ]
   },

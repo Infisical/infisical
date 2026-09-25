@@ -181,6 +181,7 @@ import { snowflakeConnectionService } from "./snowflake/snowflake-connection-ser
 import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
+import { stripeConnectionService, ValidateStripeConnectionCredentialsSchema } from "./stripe";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -307,7 +308,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
-  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema
+  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -908,6 +910,28 @@ export const appConnectionServiceFactory = ({
 
       if (!updatedCredentials)
         throw new BadRequestError({ message: "Unable to validate connection - check credentials" });
+
+      // A Stripe connection is bound to the account its API keys live in. Letting a reconnect point
+      // it at a different account would strand every key a rotation already generated: Stripe answers
+      // a delete for an unknown key with a 404, which rotation reads as already retired, so the keys
+      // in the original account stay live with no way to revoke them through Infisical.
+      if (app === AppConnection.Stripe) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        });
+
+        const existingAccountId = (existingCredentials as { accountId?: string }).accountId;
+        const updatedAccountId = (updatedCredentials as { accountId?: string }).accountId;
+
+        if (existingAccountId && updatedAccountId !== existingAccountId) {
+          throw new BadRequestError({
+            message: `This connection is bound to Stripe account ${existingAccountId}, but the app was authorized on account ${updatedAccountId}. Reconnect using the same account, or create a new connection for ${updatedAccountId}.`
+          });
+        }
+      }
     }
 
     try {
@@ -1398,6 +1422,7 @@ export const appConnectionServiceFactory = ({
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
+    stripe: stripeConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),

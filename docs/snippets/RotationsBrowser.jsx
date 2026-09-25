@@ -240,6 +240,15 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Stripe API Key",
+      slug: "stripe-api-key",
+      path: "/documentation/platform/secret-rotation/stripe-api-key",
+      description:
+        "Learn how to automatically rotate Stripe restricted API keys.",
+      category: "SaaS",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Snowflake User Key Pair",
       slug: "snowflake-user-key-pair",
       path: "/documentation/platform/secret-rotation/snowflake-user-key-pair",

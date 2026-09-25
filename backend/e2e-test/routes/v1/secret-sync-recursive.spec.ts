@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
+import { createAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { addIdentityToProject, createIdentityActor, grantIdentityFolderAccess } from "e2e-test/testUtils/identities";
 import {
-  createAwsAppConnection,
   createSecretSync,
   expectDestinationUnchanged,
   getSecretSync,

@@ -1,0 +1,120 @@
+---
+title: "Stripe API key"
+description: "Learn how to automatically rotate Stripe restricted API keys."
+---
+
+<Note>
+  **Rotation Type: Dual-Phase**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Note>
+
+Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/keys#limit-access-with-restricted-api-keys) on the interval you set, so your applications always have a working credential without a manual key swap. A few things about how it behaves are worth knowing before you set it up.
+
+- **The generated value is a restricted key (`rk_...`), never a secret key (`sk_...`).** If anything downstream checks the credential's prefix, check it against `rk_`.
+- **Infisical never touches the key you already have.** Rotation only creates and retires the keys it generates itself. Your original Stripe key keeps working until you manually delete it in the Stripe dashboard, once you've confirmed your applications are reading the rotated secret.
+- **Retiring a key doesn't kill it instantly.** When a key is due for retirement, Infisical expires it through Stripe, but Stripe decides when that expiration takes effect. A retired key can keep authenticating requests for a short window afterward, so don't build anything that assumes the old key stops working the moment rotation runs.
+
+## Prerequisites
+
+- Create a [Stripe Connection](/integrations/app-connections/stripe). That connection is used to create and expire restricted API keys on your behalf during rotation.
+- Your Stripe account must have access to the [Managed API Keys API](https://docs.stripe.com/api-keys), which Stripe currently offers as a private preview.
+
+## Create a Stripe API key rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secrets Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+
+        ![Secrets Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **Stripe API Key** option.
+
+        3. Configure the rotation behavior, then select **Next**.
+
+        - **Stripe Connection** - The connection that will create and expire restricted API keys during rotation.
+        - **Rotation Interval** - The interval, in days, after which a rotation is triggered.
+        - **Rotate At** - The local time of day when rotation runs once the interval has elapsed.
+        - **Auto-Rotation Enabled** - Whether to rotate automatically on the interval. Turn off to rotate only manually or pause rotation.
+
+        4. Set the Stripe API key parameters, then select **Next**.
+
+        - **Permissions** - The permissions granted to the generated key. Stripe's Managed API Keys API has no wildcard for "all access", so a key with full access is one where every permission in the list is selected individually. If you already have an active Stripe API key with the permissions you want, you can select it from **Copy permissions from an existing key** instead of selecting them by hand.
+
+        <Note>
+          Connect permissions, which apply when the generated key acts on behalf of a connected account under [Stripe Connect](https://docs.stripe.com/connect), have no field in the Infisical UI yet. Set them through the [API](/api-reference/endpoints/secret-rotations/stripe-api-key/create) instead.
+        </Note>
+
+        5. Specify the secret name that the rotated API key will be mapped to. Then select **Next**.
+
+        - **API Key** - The name of the secret in Infisical where the generated restricted key's value will be stored.
+
+        6. Give your rotation a name and description (optional). Then select **Next**.
+
+        - **Name** - A slug-friendly name for this rotation configuration.
+        - **Description** (optional) - Notes about this rotation.
+
+        7. Review your configuration, then select **Create Secret Rotation**.
+
+        8. Your **Stripe API Key** rotation is created. The current restricted key is available as a secret at the mapped path. Each rotation creates a new key, expires the key from two rotations ago, then switches the active secret to the new key, so two keys are always valid at once for zero-downtime rotation.
+
+        <Note>
+          Infisical only ever expires the keys it created. Your account's existing keys, including any key you were using before you set up this rotation, are left alone.
+        </Note>
+    </Tab>
+    <Tab title="API">
+        To create a Stripe API Key rotation, call the [Create Stripe API Key Rotation](/api-reference/endpoints/secret-rotations/stripe-api-key/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+          --url https://us.infisical.com/api/v2/secret-rotations/stripe-api-key \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "name": "my-stripe-rotation",
+            "projectId": "<project-id>",
+            "description": "Stripe API key rotation",
+            "connectionId": "<stripe-connection-id>",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+              "hours": 0,
+              "minutes": 0
+            },
+            "parameters": {
+              "permissions": ["charge_read", "charge_write", "customer_read", "customer_write"]
+            },
+            "secretsMapping": {
+              "apiKey": "STRIPE_API_KEY"
+            }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "secretRotation": {
+            "id": "<rotation-id>",
+            "name": "my-stripe-rotation",
+            "description": "Stripe API key rotation",
+            "secretsMapping": {
+              "apiKey": "STRIPE_API_KEY"
+            },
+            "isAutoRotationEnabled": true,
+            "activeIndex": 0,
+            "connectionId": "<stripe-connection-id>",
+            "rotationInterval": 30,
+            "rotateAtUtc": { "hours": 0, "minutes": 0 },
+            "type": "stripe-api-key",
+            "parameters": {
+              "permissions": ["charge_read", "charge_write", "customer_read", "customer_write"]
+            }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

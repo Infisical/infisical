@@ -88,6 +88,7 @@ import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
+import { StripeConnectionForm } from "./StripeConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
@@ -254,6 +255,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <OnePassConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Heroku:
         return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
+      case AppConnection.Stripe:
+        return <StripeConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.HasuraCloud:
         return <HasuraCloudConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Render:
@@ -524,6 +527,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       case AppConnection.Heroku:
         return (
           <HerokuConnectionForm
+            onSubmit={onSubmit}
+            appConnection={appConnection}
+            projectId={appConnection.projectId}
+          />
+        );
+      case AppConnection.Stripe:
+        return (
+          <StripeConnectionForm
             onSubmit={onSubmit}
             appConnection={appConnection}
             projectId={appConnection.projectId}

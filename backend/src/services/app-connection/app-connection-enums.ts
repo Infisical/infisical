@@ -83,7 +83,8 @@ export enum AppConnection {
   NutanixPrismCentral = "nutanix-prism-central",
   PowerDns = "powerdns",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Stripe = "stripe"
 }
 
 export enum AWSRegion {

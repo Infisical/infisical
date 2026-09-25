@@ -30,35 +30,6 @@ type TSecretSyncRecord = {
 
 const TERMINAL_STATUSES: string[] = [SecretSyncStatus.Succeeded, SecretSyncStatus.Failed];
 
-export const createAwsAppConnection = async (dto: { name: string; authToken: string }) => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: `/api/v1/app-connections/aws`,
-    headers: { authorization: `Bearer ${dto.authToken}` },
-    body: {
-      name: dto.name,
-      method: "access-key",
-      credentials: {
-        accessKeyId: "AKIAFAKEACCESSKEYID",
-        secretAccessKey: "fake-secret-access-key"
-      }
-    }
-  });
-
-  expect(res.statusCode).toBe(200);
-  return res.json().appConnection.id as string;
-};
-
-export const deleteAppConnection = async (dto: { connectionId: string; authToken: string }) => {
-  const res = await testServer.inject({
-    method: "DELETE",
-    url: `/api/v1/app-connections/aws/${dto.connectionId}`,
-    headers: { authorization: `Bearer ${dto.authToken}` }
-  });
-
-  expect(res.statusCode).toBe(200);
-};
-
 export const createSecretSync = async (dto: {
   name: string;
   projectId: string;
