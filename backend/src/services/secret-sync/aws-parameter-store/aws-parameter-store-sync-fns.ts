@@ -111,7 +111,7 @@ const getParametersByPath = async (
         parameters.Parameters.forEach((parameter) => {
           if (parameter.Name) {
             // no leading slash if path is '/'
-            const secKey = fullPath.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
+            const secKey = parameter.Name.substring(path.length);
             awsParameterStoreSecretsRecord[secKey] = parameter;
           }
         });
@@ -171,7 +171,7 @@ const getParameterMetadataByPath = async (
         parameters.Parameters.forEach((parameter) => {
           if (parameter.Name) {
             // no leading slash if path is '/'
-            const secKey = fullPath.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
+            const secKey = parameter.Name.substring(path.length);
             awsParameterStoreMetadataRecord[secKey] = parameter;
           }
         });
