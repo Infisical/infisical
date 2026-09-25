@@ -11,6 +11,7 @@ import {
 
 import {
   Badge,
+  Button,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import {
 import { cn } from "../../utils";
 import {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,
@@ -264,6 +266,64 @@ export const WithFooter: Story = {
       </TableFooter>
     </Table>
   )
+};
+
+function AttachedFooterRender() {
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <div>
+      <Table hasAttachedFooter>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Event</TableHead>
+            <TableHead>Timestamp</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Secret read</TableCell>
+            <TableCell>Today</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <TableAttachedFooter>
+        {hasMore ? (
+          <Button
+            variant="ghost"
+            size="lg"
+            isFullWidth
+            isPending={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              window.setTimeout(() => {
+                setIsLoading(false);
+                setHasMore(false);
+              }, 1000);
+            }}
+          >
+            Load More
+          </Button>
+        ) : (
+          <span className="text-xs text-muted">End of logs</span>
+        )}
+      </TableAttachedFooter>
+    </div>
+  );
+}
+
+export const WithAttachedFooter: Story = {
+  name: "Example: With Attached Footer",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `TableAttachedFooter` as a sibling after `Table` for a full-width load-more action or a completion message. Set `hasAttachedFooter` on `Table` to join their borders; unlike `TableFooter`, this action stays outside the table's horizontal scroll area."
+      }
+    }
+  },
+  render: () => <AttachedFooterRender />
 };
 
 export const WithSelection: Story = {

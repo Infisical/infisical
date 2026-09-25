@@ -27,6 +27,7 @@ import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission
 } from "@app/context";
 import { useGetPkiSubscriberCertificates } from "@app/hooks/api";
@@ -45,12 +46,14 @@ const PER_PAGE_INIT = 25;
 
 export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen }: Props) => {
   const { permission } = useProjectPermission();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
   const { data, isPending } = useGetPkiSubscriberCertificates(
     {
       subscriberName,
+      projectId: currentProject.id,
       offset: (page - 1) * perPage,
       limit: perPage
     },

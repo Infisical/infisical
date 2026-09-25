@@ -2739,53 +2739,57 @@ const OverviewPageContent = () => {
       />
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="flex min-w-0 flex-wrap items-center gap-2 md:flex-nowrap">
-                <div className="max-w-full shrink-0">
-                  <EnvironmentSelect
-                    selectedEnvs={filteredEnvs}
-                    setSelectedEnvs={setFilteredEnvs}
-                    isDisabled={
-                      isBatchModeActive &&
-                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                    }
-                  />
-                </div>
-                <ResourceSearchInput
-                  key={secretPath}
-                  className="max-w-2xl min-w-0 flex-1 basis-48"
-                  value={searchFilter}
-                  tags={tags}
-                  onChange={setSearchFilter}
-                  onSelectResult={({ search }) => setSearchFilter(search)}
-                  environments={userAvailableEnvs}
-                  projectId={currentProject?.id}
-                />
-                {userAvailableEnvs.length > 0 && (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <ResourceFilter
-                      rowTypeFilter={filter}
-                      onToggleRowType={handleToggleRowType}
-                      tags={tags}
-                      selectedTagSlugs={tagFilter}
-                      onToggleTag={handleToggleTag}
-                      onClearTags={handleClearTags}
-                    />
-                    <DownloadEnvButton
-                      secretPath={secretPath}
-                      environments={visibleEnvs}
-                      projectId={projectId}
-                    />
-                  </div>
-                )}
-              </div>
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 @min-[48rem]/card-header:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <div className="col-start-1 row-start-1 min-w-0">
+              <EnvironmentSelect
+                selectedEnvs={filteredEnvs}
+                setSelectedEnvs={setFilteredEnvs}
+                isDisabled={
+                  isBatchModeActive &&
+                  (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                }
+              />
+            </div>
+            <div
+              className={`col-span-2 flex min-w-0 items-center gap-2 @min-[48rem]/card-header:col-span-1 @min-[48rem]/card-header:col-start-2 @min-[48rem]/card-header:row-start-1 ${
+                userAvailableEnvs.length > 0
+                  ? "row-start-3 @min-[15rem]/card-header:row-start-2"
+                  : "row-start-2"
+              }`}
+            >
+              <ResourceSearchInput
+                key={secretPath}
+                className="min-w-0 flex-1"
+                value={searchFilter}
+                tags={tags}
+                onChange={setSearchFilter}
+                onSelectResult={({ search }) => setSearchFilter(search)}
+                environments={userAvailableEnvs}
+                projectId={currentProject?.id}
+              />
               {userAvailableEnvs.length > 0 && (
-                <div className="flex justify-end">
-                  <AddResourceButtons {...addResourceButtonsProps} />
-                </div>
+                <>
+                  <ResourceFilter
+                    rowTypeFilter={filter}
+                    onToggleRowType={handleToggleRowType}
+                    tags={tags}
+                    selectedTagSlugs={tagFilter}
+                    onToggleTag={handleToggleTag}
+                    onClearTags={handleClearTags}
+                  />
+                  <DownloadEnvButton
+                    secretPath={secretPath}
+                    environments={visibleEnvs}
+                    projectId={projectId}
+                  />
+                </>
               )}
             </div>
+            {userAvailableEnvs.length > 0 && (
+              <div className="col-start-2 row-start-2 justify-self-end @min-[15rem]/card-header:row-start-1 @min-[48rem]/card-header:col-start-3">
+                <AddResourceButtons {...addResourceButtonsProps} />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="min-w-0">
@@ -3555,7 +3559,7 @@ const OverviewPageContent = () => {
         open={popUp.addSecretsInAllEnvs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretsInAllEnvs", isOpen)}
       >
-        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-lg">
+        <SheetContent className="flex h-full min-h-0 flex-col gap-y-0 overflow-hidden sm:max-w-lg">
           <SheetHeader className="border-b">
             <SheetTitle>Create Secret</SheetTitle>
           </SheetHeader>

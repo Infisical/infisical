@@ -79,7 +79,7 @@ export const CertificateWizardSheet = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0 p-0">
         <SheetHeader className="border-b border-border">
           <div className="flex w-full items-start gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">

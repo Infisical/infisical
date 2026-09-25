@@ -18,7 +18,7 @@ export const auditLogFilterFormSchema = z.object({
   environment: z.object({ name: z.string(), slug: z.string() }).optional().nullable(),
   eventType: z.nativeEnum(EventType).array(),
   actor: z.string().optional(),
-  userAgentType: z.nativeEnum(UserAgentType).optional(),
+  userAgentType: z.nativeEnum(UserAgentType).nullish(),
   secretPath: z.string().optional(),
   secretKey: z.string().optional(),
   page: z.coerce.number().optional(),

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
 
 import {
@@ -69,6 +69,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     Partial<Record<SignupProductType, Project>>
   >({});
   const navigate = useNavigate();
+  const { callback_port: callbackPort } = useSearch({ from: "/_restrict-login-signup" });
   const { data: serverDetails } = useFetchServerStatus();
   const { t } = useTranslation();
   const { config } = useServerConfig();
@@ -144,6 +145,18 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       return;
     }
 
+    if (callbackPort) {
+      if (newOrgId) {
+        navigate({
+          to: "/login/select-organization",
+          search: { org_id: newOrgId, callback_port: callbackPort }
+        });
+      } else {
+        navigate({ to: "/organizations/onboarding", search: { callback_port: callbackPort } });
+      }
+      return;
+    }
+
     if (newOrgId) {
       setOrgId(newOrgId);
     }
@@ -174,6 +187,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
             incrementStep={handleEmailComplete}
             pendingVerificationEmail={pendingEmailVerification?.email}
             onResumeVerification={handleResumeEmailVerification}
+            callbackPort={callbackPort}
           />
         );
       case SignupSection.VerifyCode:
@@ -246,6 +260,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           <span className="text-label">Already have an account?</span>
           <Link
             to="/login"
+            search={{ callback_port: callbackPort }}
             className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
           >
             Log in

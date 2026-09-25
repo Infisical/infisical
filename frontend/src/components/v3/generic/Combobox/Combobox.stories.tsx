@@ -1164,6 +1164,10 @@ export const InlineCreation: Story = {
     const tagsInput = canvas.getByRole("combobox", { name: "Tags" });
 
     await userEvent.click(environmentInput);
+    await expect(canvas.getByRole("option", { name: "Create" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
     await userEvent.type(environmentInput, "prod");
     await expect(canvas.getByRole("option", { name: "Production" })).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("option", { name: 'Create "prod"' }));
@@ -1191,6 +1195,7 @@ export const InlineCreation: Story = {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "The tag could not be created"
     );
+    await expect(canvas.queryByText("No options found.")).not.toBeInTheDocument();
   }
 };
 
@@ -1399,13 +1404,13 @@ export const ValidatedCreation: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "member@example.com");
     await expect(
-      canvas.queryByRole("option", { name: 'Use member email "member@example.com"' })
-    ).not.toBeInTheDocument();
+      canvas.getByRole("option", { name: 'Use member email "member@example.com"' })
+    ).toHaveAttribute("aria-disabled", "true");
     await userEvent.clear(input);
     await userEvent.type(input, "new.member@example.com");
     await expect(
       canvas.getByRole("option", { name: 'Use member email "new.member@example.com"' })
-    ).toBeInTheDocument();
+    ).not.toHaveAttribute("aria-disabled", "true");
   }
 };
 
@@ -1749,7 +1754,7 @@ export const GroupedRemoteCreation: Story = {
     docs: {
       description: {
         story:
-          "Creation composes with grouped, caller-filtered multi-select results. The internal Create item stays outside domain groups and Select All counts only real options, and successful creation resets the caller-owned query so refreshed results remain visible."
+          "Creation composes with grouped, caller-filtered multi-select results. The fixed Create footer stays outside domain groups and Select All counts only real options, and successful creation resets the caller-owned query so refreshed results remain visible."
       }
     }
   },
@@ -1761,16 +1766,21 @@ export const GroupedRemoteCreation: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "prod");
     await expect(canvas.getByRole("button", { name: "Select All (1)" })).toBeInTheDocument();
-    await expect(canvas.getByRole("option", { name: 'Create "prod"' })).toBeInTheDocument();
+    await expect(canvas.getByRole("option", { name: 'Create "prod"' })).not.toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
     await userEvent.click(canvas.getByRole("button", { name: "Select All (1)" }));
     await expect(canvas.getByRole("button", { name: "Remove production" })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: "Remove prod" })).not.toBeInTheDocument();
 
     await userEvent.clear(input);
     await userEvent.type(input, "remote-created");
+    await expect(canvas.queryByText("No options found.")).not.toBeInTheDocument();
     const createOption = canvas.getByRole("option", { name: 'Create "remote-created"' });
     await userEvent.keyboard("{ArrowDown}");
     await expect(createOption).toHaveAttribute("data-highlighted");
+    await expect(input).toHaveAttribute("aria-expanded", "true");
     await userEvent.keyboard("{Enter}");
     await expect(canvas.getByRole("button", { name: "Remove remote-created" })).toBeInTheDocument();
     await expect(input).toHaveValue("");

@@ -418,8 +418,9 @@ export const certificateIssuanceQueueFactory = ({
     };
 
     // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
-    // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
+    // must not be reported as issued.
     let certificateExistsAfterThisJob = true;
+    let issuedCertificateId: string | undefined;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -525,6 +526,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmeResult.id
             });
+            issuedCertificateId = acmeResult.id;
 
             // Copy metadata from cert request to newly issued cert
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
@@ -591,6 +593,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: azureResult.certificateId
             });
+            issuedCertificateId = azureResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -661,6 +664,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: adcsResult.certificateId
             });
+            issuedCertificateId = adcsResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -729,6 +733,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: acmResult.certificateId
             });
+            issuedCertificateId = acmResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -799,6 +804,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: awsPcaResult.certificateId
             });
+            issuedCertificateId = awsPcaResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -922,12 +928,12 @@ export const certificateIssuanceQueueFactory = ({
               isRenewal,
               originalCertificateId
             });
-
             if (certificateRequestService) {
               await certificateRequestService.attachCertificateToRequest({
                 certificateRequestId,
                 certificateId: attachedCertificateId
               });
+              issuedCertificateId = attachedCertificateId;
               await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
                 certificateRequestId,
                 certificateId: attachedCertificateId
@@ -1076,6 +1082,7 @@ export const certificateIssuanceQueueFactory = ({
               certificateRequestId,
               certificateId: venafiTppResult.certificateId
             });
+            issuedCertificateId = venafiTppResult.certificateId;
 
             await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
               certificateRequestId,
@@ -1109,16 +1116,11 @@ export const certificateIssuanceQueueFactory = ({
       );
 
       let scopedApplicationId: string | null = data.applicationId ?? null;
-      let issuedCertificateId: string | null | undefined;
       try {
         if (!scopedApplicationId && isRenewal && originalCertificateId) {
           const orig = await certificateDAL.findById(originalCertificateId);
           scopedApplicationId = orig?.applicationId ?? null;
         }
-        issuedCertificateId =
-          certificateRequestId && certificateRequestDAL
-            ? (await certificateRequestDAL.findById(certificateRequestId))?.certificateId
-            : certificateId;
         if (scopedApplicationId && issuedCertificateId) {
           await certificateDAL.updateById(issuedCertificateId, { applicationId: scopedApplicationId });
         }
@@ -1187,12 +1189,16 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       try {
-        await pkiAlertV2Queue?.queueCertificateEvent({
-          certificateId,
-          projectId: ca.projectId,
-          eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
-          applicationId: scopedApplicationId
-        });
+        // The job's certificateId is an order id minted before issuance, not a certificate row, so the
+        // alert has to target the certificate the CA actually produced.
+        if (certificateExistsAfterThisJob && issuedCertificateId) {
+          await pkiAlertV2Queue?.queueCertificateEvent({
+            certificateId: issuedCertificateId,
+            projectId: ca.projectId,
+            eventType: isRenewal ? PkiAlertEventType.RENEWAL : PkiAlertEventType.ISSUANCE,
+            applicationId: scopedApplicationId
+          });
+        }
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
       }

@@ -128,7 +128,7 @@ export const CreateDynamicSecretForm = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={(open) => !open && requestClose()}>
-        <SheetContent className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4 sm:max-w-[1500px]">
+        <SheetContent size="form" className="flex h-full max-h-full flex-col gap-y-0 p-0">
           {content}
         </SheetContent>
       </Sheet>

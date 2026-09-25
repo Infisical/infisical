@@ -390,7 +390,7 @@ export const IdentitySpiffeAuthForm = ({
                     <TextArea
                       {...field}
                       id="trustBundleBundle"
-                      placeholder="Paste SPIRE JWKS JSON"
+                      placeholder="Paste the output of spire-server bundle show -format spiffe"
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>

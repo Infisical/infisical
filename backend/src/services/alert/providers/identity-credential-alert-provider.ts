@@ -31,7 +31,11 @@ import {
   TFindDueTargetsInput,
   TFindTargetsByIdsInput
 } from "../alert-types";
-import { TExpiringUaClientSecret, TIdentityCredentialAlertDALFactory } from "./identity-credential-alert-dal";
+import {
+  TExpiringTokenAuthToken,
+  TExpiringUaClientSecret,
+  TIdentityCredentialAlertDALFactory
+} from "./identity-credential-alert-dal";
 
 export { IDENTITY_AUTH_METHOD_CHANGED_EVENT, IDENTITY_AUTHENTICATION_RESOURCE_TYPE };
 
@@ -121,10 +125,9 @@ const IdentityCredentialConditionSchema = z.object({
 
 const DAILY_REPEAT_DEDUP_WINDOW_HOURS = 20;
 
-type TExpiringCredentialTarget = {
-  kind: "expiring-credential";
-  credentialType: "ua-client-secret";
-} & TExpiringUaClientSecret;
+type TExpiringCredentialTarget =
+  | ({ kind: "expiring-credential"; credentialType: "ua-client-secret" } & TExpiringUaClientSecret)
+  | ({ kind: "expiring-credential"; credentialType: "token-auth-token" } & TExpiringTokenAuthToken);
 
 type TAuthMethodChangeTarget = {
   kind: "auth-method-change";
@@ -168,8 +171,14 @@ const severityFor = (targets: TExpiringCredentialTarget[]): TAlertSeverity => {
 };
 
 const CREDENTIAL_TYPE_LABEL: Record<TExpiringCredentialTarget["credentialType"], string> = {
-  "ua-client-secret": "Universal Auth Client Secret"
+  "ua-client-secret": "Universal Auth Client Secret",
+  "token-auth-token": "Token Auth Access Token"
 };
+
+const credentialName = (target: TExpiringCredentialTarget): string =>
+  target.credentialType === "ua-client-secret"
+    ? target.description || target.clientSecretPrefix
+    : target.name || target.id;
 
 export type TIdentityCredentialAlertProviderDep = {
   identityCredentialAlertDAL: TIdentityCredentialAlertDALFactory;
@@ -232,20 +241,34 @@ export const identityCredentialAlertProviderFactory = ({
   const findDueTargets = async (input: TFindDueTargetsInput): Promise<TIdentityCredentialTarget[]> => {
     const { alertBefore } = IdentityCredentialConditionSchema.parse(input.condition);
 
-    const uaSecrets = await identityCredentialAlertDAL.findExpiringUaClientSecrets({
+    const scan = {
       orgId: input.orgId,
       projectId: input.projectId,
       identityId: input.resourceId,
       alertBeforeInterval: `${alertBeforeDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf
-    });
+    };
 
-    return uaSecrets.map((secret) => ({
-      kind: "expiring-credential" as const,
-      credentialType: "ua-client-secret" as const,
-      ...secret
-    }));
+    const [uaSecrets, tokenAuthTokens] = await Promise.all([
+      identityCredentialAlertDAL.findExpiringUaClientSecrets(scan),
+      identityCredentialAlertDAL.findExpiringTokenAuthTokens(scan)
+    ]);
+
+    const targets: TExpiringCredentialTarget[] = [
+      ...uaSecrets.map((secret) => ({
+        kind: "expiring-credential" as const,
+        credentialType: "ua-client-secret" as const,
+        ...secret
+      })),
+      ...tokenAuthTokens.map((token) => ({
+        kind: "expiring-credential" as const,
+        credentialType: "token-auth-token" as const,
+        ...token
+      }))
+    ];
+
+    return targets.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
   };
 
   const resolveActorLabel = async (orgId: string, actorType: ActorType, actorId?: string): Promise<string> => {
@@ -360,7 +383,7 @@ export const identityCredentialAlertProviderFactory = ({
         id: targetId(target),
         title: target.identityName,
         fields: [
-          { label: "Secret Name", value: target.description || target.clientSecretPrefix },
+          { label: "Secret Name", value: credentialName(target) },
           { label: "Secret Type", value: CREDENTIAL_TYPE_LABEL[target.credentialType] },
           { label: "Expires", value: formatUtcDate(target.expiresAt) }
         ]
