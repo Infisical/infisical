@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -20,6 +20,7 @@ enum TabSection {
 }
 
 export const SecretApprovalsPage = () => {
+  const [openAddPolicy, setOpenAddPolicy] = useState(false);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -74,6 +75,11 @@ export const SecretApprovalsPage = () => {
     });
   };
 
+  const configurePolicy = () => {
+    setOpenAddPolicy(true);
+    updateSelectedTab(TabSection.Policies);
+  };
+
   return (
     <div>
       <Helmet>
@@ -104,15 +110,21 @@ export const SecretApprovalsPage = () => {
             <TabsTrigger value={TabSection.Policies}>Policies</TabsTrigger>
           </TabsList>
           <TabsContent value={TabSection.SecretApprovalRequests}>
-            <SecretApprovalRequest
-              onConfigurePolicies={() => updateSelectedTab(TabSection.Policies)}
-            />
+            <SecretApprovalRequest onConfigurePolicies={configurePolicy} />
           </TabsContent>
           <TabsContent value={TabSection.ResourceApprovalRequests}>
-            <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
+            <AccessApprovalRequest
+              projectId={projectId}
+              projectSlug={projectSlug}
+              onConfigurePolicies={configurePolicy}
+            />
           </TabsContent>
           <TabsContent value={TabSection.Policies}>
-            <ApprovalPolicyList projectId={projectId} />
+            <ApprovalPolicyList
+              projectId={projectId}
+              openAddPolicy={openAddPolicy}
+              onAddPolicyOpened={() => setOpenAddPolicy(false)}
+            />
           </TabsContent>
         </Tabs>
       </div>

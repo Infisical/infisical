@@ -635,7 +635,7 @@ const Form = ({
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="flex flex-1 flex-col gap-4 overflow-hidden"
+      className="flex flex-1 flex-col overflow-hidden"
     >
       <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
         {hasApproverOptionsError && (
