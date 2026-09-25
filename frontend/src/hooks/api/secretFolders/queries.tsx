@@ -29,7 +29,9 @@ export const folderQueryKeys = {
   getSecretFolders: ({ projectId, environment, path }: TGetProjectFoldersDTO) =>
     ["secret-folders", { projectId, environment, path }] as const,
   getProjectEnvironmentsFolders: (projectId: string) =>
-    ["secret-folders", "environment", projectId] as const
+    ["secret-folders", "environment", projectId] as const,
+  getProjectEnvironmentFolders: (projectId: string, environment: string) =>
+    [...folderQueryKeys.getProjectEnvironmentsFolders(projectId), environment] as const
 };
 
 const fetchProjectFolders = async (projectId: string, environment: string, path = "/") => {
@@ -64,6 +66,19 @@ export const useListProjectEnvironmentsFolders = (
       return data;
     },
     ...options
+  });
+
+export const useListProjectEnvironmentFolders = (projectId: string, environment?: string) =>
+  useQuery({
+    queryKey: folderQueryKeys.getProjectEnvironmentFolders(projectId, environment ?? ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TProjectEnvironmentsFolders>(
+        `/api/v1/projects/${projectId}/environment-folder-tree`,
+        { params: { environment } }
+      );
+      return data;
+    },
+    enabled: Boolean(projectId && environment)
   });
 
 export const useGetProjectFolders = ({
