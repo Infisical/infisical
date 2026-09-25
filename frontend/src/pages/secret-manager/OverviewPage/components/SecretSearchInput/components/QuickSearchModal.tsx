@@ -7,7 +7,14 @@ import {
   useRef,
   useState
 } from "react";
-import { FingerprintIcon, FolderIcon, KeyIcon, RefreshCw, SearchIcon } from "lucide-react";
+import {
+  FingerprintIcon,
+  FolderIcon,
+  KeyIcon,
+  ListFilterIcon,
+  RefreshCw,
+  SearchIcon
+} from "lucide-react";
 
 import {
   Button,
@@ -26,10 +33,13 @@ import {
   Pagination,
   ScrollableContent,
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
   Skeleton,
   Table,
   TableBody,
@@ -176,6 +186,10 @@ const Content = ({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(QUICK_SEARCH_PER_PAGE_OPTIONS[0]);
   const [filterTags, setFilterTags] = useState<Record<string, boolean>>({});
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>([]);
   const [folderPath, setFolderPath] = useState("/");
   const environmentSlugs = selectedEnvironments.length
@@ -192,9 +206,21 @@ const Content = ({
 
   // Metadata search: a structured key/value condition builder backed by /secrets-by-metadata.
   // When at least one condition is complete, it "takes over" the results from the free-text search.
-  const [metadataConditions, setMetadataConditions] = useState<MetadataSearchCondition[]>([]);
+  const [metadataConditions, setMetadataConditions] = useState<MetadataSearchCondition[]>([
+    { id: "cond-1", key: "", value: "", operator: SecretMetadataSearchOperator.Is }
+  ]);
   const [metadataMatch, setMetadataMatch] = useState<MetadataMatchType>("all");
-  const conditionIdRef = useRef(0);
+  const conditionIdRef = useRef(1);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setIsFiltersOpen(false);
+    };
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const createCondition = (): MetadataSearchCondition => {
     conditionIdRef.current += 1;
@@ -381,7 +407,7 @@ const Content = ({
   // metadata search only supports secrets, so clear its conditions and match mode
   // whenever it should no longer apply
   const resetMetadataSearch = () => {
-    setMetadataConditions([]);
+    setMetadataConditions([createCondition()]);
     setMetadataMatch("all");
   };
 
@@ -421,6 +447,15 @@ const Content = ({
 
       if (alreadyApplied) return prev;
 
+      const emptyCondition = prev.find(
+        (condition) => !condition.key.trim() && !condition.value.trim()
+      );
+      if (emptyCondition) {
+        return prev.map((condition) =>
+          condition.id === emptyCondition.id ? { ...condition, key, value } : condition
+        );
+      }
+
       return [
         ...prev,
         {
@@ -442,11 +477,13 @@ const Content = ({
   };
 
   const handleRemoveCondition = (id: string) => {
-    setMetadataConditions((prev) => prev.filter((condition) => condition.id !== id));
+    setMetadataConditions((prev) =>
+      prev[0].id === id ? prev : prev.filter((condition) => condition.id !== id)
+    );
   };
 
   const handleClearMetadata = () => {
-    setMetadataConditions([]);
+    resetMetadataSearch();
   };
 
   const activeFilterCount =
@@ -455,6 +492,14 @@ const Content = ({
     Number(Object.keys(filterTags).length > 0) +
     Number(!Object.values(showFilter).every(Boolean)) +
     activeConditions.length;
+
+  let folderHelpText = "Select one environment to choose a folder.";
+  if (folderEnvironment) {
+    folderHelpText =
+      folderPath === "/"
+        ? "Choose a folder to narrow the search."
+        : "Includes subfolders. Clear to search all folders.";
+  }
 
   const handleResetFilters = () => {
     setSelectedEnvironments([]);
@@ -581,140 +626,142 @@ const Content = ({
     );
   }
 
+  const filtersPanel = (
+    <div
+      id="quick-search-filters"
+      role="complementary"
+      aria-labelledby="quick-search-filters-heading"
+      className={`flex min-h-0 flex-col bg-card select-none [&_input]:select-text ${
+        isMobile ? "flex-1" : "shrink-0 rounded-lg ring-1 ring-border ring-inset md:w-94"
+      }`}
+    >
+      <h3 id="quick-search-filters-heading" className="sr-only">
+        Search filters
+      </h3>
+      <ScrollableContent
+        aria-label="Filter options"
+        outline={false}
+        maxHeight="100%"
+        containerClassName="min-h-0 flex-1"
+        contentClassName="flex flex-col gap-5 p-4"
+      >
+        {environments.length > 1 && (
+          <Field>
+            <FieldLabel htmlFor="quick-search-environments">Environments</FieldLabel>
+            <Combobox
+              id="quick-search-environments"
+              multiple
+              options={environments}
+              value={environments.filter((env) => selectedEnvironments.includes(env.slug))}
+              onValueChange={(options) => {
+                setSelectedEnvironments(options.map((env) => env.slug));
+                setFolderPath("/");
+              }}
+              getOptionValue={(env) => env.slug}
+              getOptionLabel={(env) => env.name}
+              placeholder="All environments"
+              searchPlaceholder="Find environments..."
+              searchAriaLabel="Find environments"
+              clearAriaLabel="Clear environment filters"
+            />
+          </Field>
+        )}
+        <Field>
+          <FieldLabel htmlFor="quick-search-folder-path">Folder Path</FieldLabel>
+          <QuickSearchFolderPicker
+            key={folderEnvironment ?? "all"}
+            projectId={projectId}
+            environment={folderEnvironment}
+            value={folderPath}
+            onChange={setFolderPath}
+          />
+          <FieldDescription id="quick-search-folder-help">{folderHelpText}</FieldDescription>
+        </Field>
+        <div
+          role="group"
+          aria-labelledby="quick-search-resource-types-label"
+          className="flex flex-col gap-3"
+        >
+          <FieldLabel asChild>
+            <span id="quick-search-resource-types-label">Resource Types</span>
+          </FieldLabel>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+            {QUICK_SEARCH_RESOURCE_TYPES.map((option) => (
+              <Field key={option.type} orientation="horizontal">
+                <Checkbox
+                  id={`quick-search-type-${option.type}`}
+                  isChecked={showFilter[option.type as ResourceType]}
+                  onCheckedChange={(checked) =>
+                    handleChangeResourceTypes(
+                      QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
+                        type === option.type ? checked === true : showFilter[type as ResourceType]
+                      )
+                    )
+                  }
+                />
+                <FieldLabel htmlFor={`quick-search-type-${option.type}`}>
+                  <span className="flex items-center gap-2 [&_svg]:size-4">
+                    {option.icon}
+                    {option.label}
+                  </span>
+                </FieldLabel>
+              </Field>
+            ))}
+          </div>
+        </div>
+        <Field>
+          <FieldLabel htmlFor="quick-search-tags">Tags</FieldLabel>
+          <Combobox
+            id="quick-search-tags"
+            multiple
+            options={tags ?? []}
+            value={(tags ?? []).filter((tag) => filterTags[tag.slug])}
+            onValueChange={(options) => {
+              setFilterTags(Object.fromEntries(options.map((tag) => [tag.slug, true])));
+              if (options.length > 0) {
+                setShowFilter((previous) => ({ ...previous, [RowType.Secret]: true }));
+              }
+            }}
+            getOptionValue={(tag) => tag.slug}
+            getOptionLabel={(tag) => tag.slug}
+            placeholder="Any tag"
+            searchPlaceholder="Find tags..."
+            searchAriaLabel="Find tags"
+            clearAriaLabel="Clear tag filters"
+            emptyMessage="No tags found."
+          />
+        </Field>
+        <div className="flex flex-col gap-2">
+          <FieldLabel asChild>
+            <span>Metadata</span>
+          </FieldLabel>
+          <div className="rounded-md border border-border bg-container p-4">
+            <SecretMetadataSearchBuilder
+              conditions={metadataConditions}
+              match={metadataMatch}
+              onChangeMatch={setMetadataMatch}
+              onAddCondition={handleAddCondition}
+              onUpdateCondition={handleUpdateCondition}
+              onRemoveCondition={handleRemoveCondition}
+              onClear={handleClearMetadata}
+            />
+          </div>
+        </div>
+      </ScrollableContent>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-2">
+        <span className="text-xs text-accent">
+          {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"}
+        </span>
+        <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+          Reset Filters
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:flex-row">
-      <div
-        id="quick-search-filters"
-        role="complementary"
-        aria-labelledby="quick-search-filters-heading"
-        className="flex max-h-[45dvh] min-h-0 shrink-0 flex-col rounded-lg bg-card ring-1 ring-border select-none ring-inset md:max-h-none md:w-94 [&_input]:select-text"
-      >
-        <h3 id="quick-search-filters-heading" className="sr-only">
-          Search filters
-        </h3>
-        <ScrollableContent
-          aria-label="Filter options"
-          outline={false}
-          maxHeight="100%"
-          containerClassName="min-h-0 flex-1"
-          contentClassName="flex flex-col gap-5 p-4"
-        >
-          {environments.length > 1 && (
-            <Field>
-              <FieldLabel htmlFor="quick-search-environments">Environments</FieldLabel>
-              <Combobox
-                id="quick-search-environments"
-                multiple
-                options={environments}
-                value={environments.filter((env) => selectedEnvironments.includes(env.slug))}
-                onValueChange={(options) => {
-                  setSelectedEnvironments(options.map((env) => env.slug));
-                  setFolderPath("/");
-                }}
-                getOptionValue={(env) => env.slug}
-                getOptionLabel={(env) => env.name}
-                placeholder="All environments"
-                searchPlaceholder="Find environments..."
-                searchAriaLabel="Find environments"
-                clearAriaLabel="Clear environment filters"
-              />
-            </Field>
-          )}
-          <Field>
-            <FieldLabel htmlFor="quick-search-folder-path">Folder Path</FieldLabel>
-            <QuickSearchFolderPicker
-              key={folderEnvironment ?? "all"}
-              projectId={projectId}
-              environment={folderEnvironment}
-              value={folderPath}
-              onChange={setFolderPath}
-            />
-            <FieldDescription id="quick-search-folder-help">
-              {folderEnvironment
-                ? "Includes subfolders. Choose / to search all folders."
-                : "Select one environment to choose a folder."}
-            </FieldDescription>
-          </Field>
-          <div
-            role="group"
-            aria-labelledby="quick-search-resource-types-label"
-            className="flex flex-col gap-3"
-          >
-            <FieldLabel asChild>
-              <span id="quick-search-resource-types-label">Resource Types</span>
-            </FieldLabel>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-              {QUICK_SEARCH_RESOURCE_TYPES.map((option) => (
-                <Field key={option.type} orientation="horizontal">
-                  <Checkbox
-                    id={`quick-search-type-${option.type}`}
-                    isChecked={showFilter[option.type as ResourceType]}
-                    onCheckedChange={(checked) =>
-                      handleChangeResourceTypes(
-                        QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
-                          type === option.type ? checked === true : showFilter[type as ResourceType]
-                        )
-                      )
-                    }
-                  />
-                  <FieldLabel htmlFor={`quick-search-type-${option.type}`}>
-                    <span className="flex items-center gap-2 [&_svg]:size-4">
-                      {option.icon}
-                      {option.label}
-                    </span>
-                  </FieldLabel>
-                </Field>
-              ))}
-            </div>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="quick-search-tags">Tags</FieldLabel>
-            <Combobox
-              id="quick-search-tags"
-              multiple
-              options={tags ?? []}
-              value={(tags ?? []).filter((tag) => filterTags[tag.slug])}
-              onValueChange={(options) => {
-                setFilterTags(Object.fromEntries(options.map((tag) => [tag.slug, true])));
-                if (options.length > 0) {
-                  setShowFilter((previous) => ({ ...previous, [RowType.Secret]: true }));
-                }
-              }}
-              getOptionValue={(tag) => tag.slug}
-              getOptionLabel={(tag) => tag.slug}
-              placeholder="Any tag"
-              searchPlaceholder="Find tags..."
-              searchAriaLabel="Find tags"
-              clearAriaLabel="Clear tag filters"
-              emptyMessage="No tags found."
-            />
-          </Field>
-          <div className="flex flex-col gap-2">
-            <FieldLabel asChild>
-              <span>Metadata</span>
-            </FieldLabel>
-            <div className="rounded-md border border-border bg-container p-4">
-              <SecretMetadataSearchBuilder
-                conditions={metadataConditions}
-                match={metadataMatch}
-                onChangeMatch={setMetadataMatch}
-                onAddCondition={handleAddCondition}
-                onUpdateCondition={handleUpdateCondition}
-                onRemoveCondition={handleRemoveCondition}
-                onClear={handleClearMetadata}
-              />
-            </div>
-          </div>
-        </ScrollableContent>
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-2">
-          <span className="text-xs text-accent">
-            {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"}
-          </span>
-          <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-            Reset Filters
-          </Button>
-        </div>
-      </div>
+      {!isMobile && filtersPanel}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
         <InputGroup className="shrink-0">
           <InputGroupAddon>
@@ -728,6 +775,42 @@ const Content = ({
             onChange={(e) => setSearch(e.target.value)}
           />
         </InputGroup>
+        {isMobile && (
+          <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="w-fit">
+                <ListFilterIcon />
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-full max-w-sm gap-0 p-0"
+              onEscapeKeyDown={(event) => {
+                if (
+                  (event.currentTarget as HTMLElement | null)?.querySelector(
+                    '[role="combobox"][aria-expanded="true"]'
+                  )
+                ) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+                <SheetDescription>Narrow the search results.</SheetDescription>
+              </SheetHeader>
+              {filtersPanel}
+              <SheetFooter className="border-t">
+                <SheetClose asChild>
+                  <Button variant="project" className="w-full">
+                    Show Results
+                  </Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+        )}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ScrollableContent
             aria-label="Search results"
