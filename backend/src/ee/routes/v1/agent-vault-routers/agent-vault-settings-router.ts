@@ -101,7 +101,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     url: "/activity-logging/health",
     config: { rateLimit: readLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getAgentVaultActivityLoggingHealth",
       description:
         "Gets whether session logging has reached its storage limit, and whether Infisical can use the AWS connection",

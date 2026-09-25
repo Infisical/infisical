@@ -4503,8 +4503,7 @@
                     "group": "Settings",
                     "pages": [
                       "api-reference/endpoints/agent-vault-settings/get-activity-logging",
-                      "api-reference/endpoints/agent-vault-settings/update-activity-logging",
-                      "api-reference/endpoints/agent-vault-settings/get-activity-logging-health"
+                      "api-reference/endpoints/agent-vault-settings/update-activity-logging"
                     ]
                   },
                   {

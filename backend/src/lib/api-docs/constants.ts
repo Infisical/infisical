@@ -4414,8 +4414,7 @@ export const AGENT_VAULT = {
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
-    isStorageFull:
-      "Whether your organization has reached its activity storage limit. If true, new activity is refused until Infisical support raises the limit.",
+    isStorageFull: "Whether your organization has reached its activity storage limit.",
     hasActivityKey: "Whether the proxy already has this session's activity key. If true, the key isn't returned again."
   },
 
