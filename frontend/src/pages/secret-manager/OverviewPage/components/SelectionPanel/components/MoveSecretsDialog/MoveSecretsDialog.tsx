@@ -1552,8 +1552,7 @@ const MultiEnvContent = ({
           }
         />
         <FieldDescription isOpen>
-          To move {moveCopy.noun} between environments, select a single environment before opening
-          Move.
+          This will create one commit per selected environment.
         </FieldDescription>
       </div>
       {Boolean(environmentsToBeSkipped.length) && (
@@ -1693,13 +1692,22 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
   const snapshotRef = useRef(props);
   if (isOpen) snapshotRef.current = props;
   const contentProps = snapshotRef.current;
-  const { folders } = contentProps;
+  const { folders, rotations, secrets, environments } = contentProps;
 
   const isSingleEnvMode = visibleEnvs.length === 1;
   const moveCopy = getMoveSelectionCopy(contentProps);
   let dialogDescription = isSingleEnvMode
     ? `Move the selected ${moveCopy.noun} to another project location.`
     : `Move the selected ${moveCopy.noun} to the same folder location across environments.`;
+  if (
+    !isSingleEnvMode &&
+    Object.keys(secrets).length > 0 &&
+    !Object.keys(folders).length &&
+    !Object.keys(rotations).length
+  ) {
+    const selectedCount = Object.keys(secrets).length;
+    dialogDescription = `Synchronously move ${selectedCount} selected secret${selectedCount === 1 ? "" : "s"} across ${environments.length} environments to the same destination.`;
+  }
   if (hasMoveResults) dialogDescription = "Review what happened in each environment.";
 
   const folderIds = Object.values(folders).flatMap((perEnv) =>
