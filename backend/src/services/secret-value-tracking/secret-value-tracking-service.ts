@@ -1,7 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
@@ -34,7 +37,12 @@ export const secretValueTrackingServiceFactory = ({
       actorOrgId: actor.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    // The permission that grants org-wide secrets insights also grants turning the index on: the
+    // backfill unlocks exactly the reads this permission already allows, and nothing else.
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
 
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
@@ -62,7 +70,10 @@ export const secretValueTrackingServiceFactory = ({
       actorOrgId: actor.orgId,
       scope: OrganizationActionScope.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
 
     const org = await orgDAL.findById(actor.orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });

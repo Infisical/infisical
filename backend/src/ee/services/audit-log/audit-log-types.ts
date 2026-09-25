@@ -713,6 +713,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION = "view-insights-org-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
@@ -5881,6 +5882,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewInsightsOrgSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION;
+  metadata: {
+    groupCount: number;
+  };
+}
+
 interface ViewInsightsSecretsDuplicationEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
   metadata: {
@@ -8264,6 +8272,7 @@ export type Event =
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
+  | ViewInsightsOrgSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent

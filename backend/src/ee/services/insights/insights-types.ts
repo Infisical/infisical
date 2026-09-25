@@ -46,6 +46,12 @@ export type TGetInsightsCountsDTO = {
 
 export type TOrgInsightsDTO = TOrgPermission;
 
+// `refresh` lets the card recompute on demand rather than wait out the cache, which is the whole
+// point of the control that replaced the countdown badge.
+export type TGetOrgSecretsDuplicationDTO = TOrgInsightsDTO & {
+  refresh?: boolean;
+};
+
 export type TGetSecretsProjectWarningsDTO = TOrgInsightsDTO & {
   offset: number;
   limit: number;

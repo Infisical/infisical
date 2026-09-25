@@ -502,6 +502,70 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/secrets/secrets-duplication",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getOrgInsightsSecretsDuplication",
+      description: "Get groups of secrets that share a value anywhere in the organization",
+      security: [{ bearerAuth: [] }],
+      querystring: z.object({
+        refresh: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe("Recompute now instead of answering from the cached result.")
+      }),
+      response: {
+        200: z.object({
+          orgWideSecretValueTrackingEnabled: z.boolean(),
+          groups: z.array(
+            z.object({
+              projectCount: z.number(),
+              locationCount: z.number(),
+              secrets: z.array(
+                z.object({
+                  key: z.string(),
+                  projectId: z.string(),
+                  projectName: z.string(),
+                  environment: z.object({ name: z.string(), slug: z.string() }),
+                  secretPath: z.string()
+                })
+              )
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { result, remainingTTL } = await server.services.insights.getOrgSecretsDuplication({
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        refresh: req.query.refresh
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION,
+          metadata: { groupCount: result.groups.length }
+        }
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:projectId/secrets/secrets-duplication",
     config: { rateLimit: readLimit },
     schema: {

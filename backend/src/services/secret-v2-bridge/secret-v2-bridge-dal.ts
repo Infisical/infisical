@@ -1563,6 +1563,72 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  // The org-wide sibling of findDuplicatedSecretValues. Groups on the org-scoped digest, which is
+  // the only one that can match across projects, and carries the owning project on every row so the
+  // caller can say where each copy lives.
+  const findDuplicatedSecretValuesInOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const scoped = (qb: Knex.QueryBuilder) =>
+        qb
+          .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+          .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+          .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+          .where(`${TableName.Project}.orgId`, orgId)
+          .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+          .whereNull(`${TableName.Project}.deleteAfter`)
+          .whereNull(`${TableName.Environment}.deleteAfter`)
+          .whereNull(`${TableName.SecretV2}.userId`)
+          .whereNotNull(`${TableName.SecretV2}.secretValueOrgBlindIndex`);
+
+      const duplicateDigests = scoped((tx || db.replicaNode())(TableName.SecretV2))
+        .groupBy(`${TableName.SecretV2}.secretValueOrgBlindIndex`)
+        .having(db.raw("count(*) > 1"))
+        .select(`${TableName.SecretV2}.secretValueOrgBlindIndex`);
+
+      const rows = (await scoped((tx || db.replicaNode())(TableName.SecretV2))
+        .whereIn(`${TableName.SecretV2}.secretValueOrgBlindIndex`, duplicateDigests)
+        .select(
+          `${TableName.SecretV2}.key`,
+          `${TableName.SecretV2}.folderId`,
+          `${TableName.SecretV2}.encryptedValue`,
+          `${TableName.SecretV2}.secretValueOrgBlindIndex`,
+          `${TableName.Environment}.slug as environment`,
+          `${TableName.Environment}.name as environmentName`,
+          `${TableName.Project}.id as projectId`,
+          `${TableName.Project}.name as projectName`
+        )
+        .orderBy(`${TableName.SecretV2}.secretValueOrgBlindIndex`)) as {
+        key: string;
+        folderId: string;
+        encryptedValue: Buffer | null;
+        secretValueOrgBlindIndex: string;
+        environment: string;
+        environmentName: string;
+        projectId: string;
+        projectName: string;
+      }[];
+
+      type TOrgDuplicateSecret = Omit<(typeof rows)[number], "secretValueOrgBlindIndex">;
+      const groups: { secrets: TOrgDuplicateSecret[] }[] = [];
+      let currentDigest: string | null = null;
+      let currentGroup: TOrgDuplicateSecret[] = [];
+
+      for (const { secretValueOrgBlindIndex, ...secret } of rows) {
+        if (secretValueOrgBlindIndex !== currentDigest) {
+          if (currentGroup.length > 0) groups.push({ secrets: currentGroup });
+          currentDigest = secretValueOrgBlindIndex;
+          currentGroup = [];
+        }
+        currentGroup.push(secret);
+      }
+      if (currentGroup.length > 0) groups.push({ secrets: currentGroup });
+
+      return groups;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "findDuplicatedSecretValuesInOrg" });
+    }
+  };
+
   const findDuplicatedSecretValues = async (projectId: string, tx?: Knex) => {
     try {
       const duplicateBlindIndexes = (tx || db.replicaNode())(TableName.SecretV2)
@@ -1762,6 +1828,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     countByProject,
     findValueValidationCandidatesByProject,
     findDuplicatedSecretValues,
+    findDuplicatedSecretValuesInOrg,
     findSecretsWithMatchingValue,
     findExistingSecretsWithMatchingValues,
     findOne,
