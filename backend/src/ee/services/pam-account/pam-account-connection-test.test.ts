@@ -9,8 +9,7 @@ import {
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
-// The keys that survive serialization, which is what the gateway actually decodes. An `undefined` property
-// is still a present key in JS, so checking the object directly would not prove the field was omitted.
+// An `undefined` property is still a present key in JS, so only the wire form proves a field was omitted.
 const wireKeys = (request: unknown): string[] => Object.keys(JSON.parse(JSON.stringify(request)) as object);
 
 describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
@@ -292,7 +291,6 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
     expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
     expect(result?.port).toBe(9440);
     expect(result?.request).toMatchObject({ nativePort: 9440, sslEnabled: true });
-    // toMatchObject treats an absent key as undefined, so the wire form is what gets asserted.
     expect(wireKeys(result!.request)).not.toContain("httpPort");
   });
 

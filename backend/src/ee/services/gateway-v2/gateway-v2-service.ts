@@ -351,8 +351,7 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     targetHost,
     targetPort,
-    // Some account types reach one host on more than one port. Naming them all in the signed cert keeps the
-    // gateway from having to trust a port out of the request body.
+    // Named in the signed cert so the gateway need not trust a port out of the request body.
     additionalTargetPorts,
     transport
   }: {
@@ -434,7 +433,7 @@ export const gatewayV2ServiceFactory = ({
     const routingInfo = {
       targetHost,
       targetPort,
-      // A gateway too old to read this ignores it and keeps using targetPort, so adding it is additive.
+      // A gateway too old to read this keeps using targetPort, so adding it is additive.
       ...(allowedPorts.length > 1 ? { targetPorts: allowedPorts } : {})
     };
 

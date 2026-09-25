@@ -109,7 +109,6 @@ export type TestConnectionRequest =
       username: string;
       password?: string;
       database: string;
-      // Either interface can be absent, so each is named rather than inferred from the gateway target.
       httpPort?: number;
       nativePort?: number;
       sslEnabled?: boolean;
@@ -147,7 +146,6 @@ export const buildGatewayConnectionTest = async (
   host: string;
   port: number;
   request: TestConnectionRequest;
-  // Ports the gateway may probe beyond the primary one, so they can be signed into its certificate.
   additionalPorts?: number[];
 } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;

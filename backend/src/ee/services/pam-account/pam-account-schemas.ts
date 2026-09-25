@@ -47,8 +47,7 @@ const boundedOptionalString = (max: number) =>
     .transform((v) => v || undefined)
     .optional();
 
-// Clearing a number input submits an empty string rather than undefined, which a bare .optional() rejects
-// and coercion would read as port 0.
+// Clearing a number input submits "" rather than undefined, which coercion would read as port 0.
 const optionalPort = () =>
   z.preprocess(
     (v) => (v === null || (typeof v === "string" && v.trim() === "") ? undefined : v),
@@ -614,7 +613,6 @@ export const ACCOUNT_TYPE_CONFIGS = {
         sslRejectUnauthorized: z.boolean(),
         sslCertificate: boundedOptionalString(16384)
       })
-      // Either interface can be turned off on the server, but a session needs at least one of them.
       .refine((v) => v.port !== undefined || v.nativePort !== undefined, {
         message: "Set the HTTP port, the native port, or both",
         path: ["port"]
@@ -633,8 +631,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
       },
       nativePort: {
         label: "Native Port",
-        // Deliberately no default: the edit form seeds defaults over stored details, so an existing
-        // HTTP-only account would silently gain a native port the next time anyone edited it.
+        // No default: the edit form seeds defaults over stored details, so every existing HTTP-only
+        // account would silently gain a native port on its next save.
         tooltip:
           "The native TCP port, usually 9000 for plain TCP or 9440 with SSL. clickhouse-client and other native drivers need it. Leave it empty if the server only serves HTTP."
       },
@@ -1082,7 +1080,6 @@ export const extractGatewayTarget = async (
         port: (validated as { host: string; port: number }).port
       };
     case PamAccountType.ClickHouse: {
-      // Either interface can be absent, so the target is whichever one the account actually has.
       const { host, port, nativePort } = validated as { host: string; port?: number; nativePort?: number };
       return { host, port: port ?? nativePort };
     }
@@ -1167,13 +1164,10 @@ export const gatewaySupportsAccountType = (
   supportedTypes: string[] | undefined
 ): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
 
-// A gateway can support ClickHouse accounts and still predate the native protocol, so the account type on
-// its own does not say whether a native port can be served. An absent flag means a gateway too old to
-// report it, which is exactly the case this guards.
+// An absent flag means a gateway too old to report it, which is exactly the case this guards.
 export const gatewaySupportsClickHouseNative = (capabilities: { clickhouseNativeProtocol?: boolean } | null) =>
   Boolean(capabilities?.clickhouseNativeProtocol);
 
-// The connection details name a native port the gateway would have to speak.
 export const requiresClickHouseNative = (
   accountType: PamAccountType,
   connectionDetails: Record<string, unknown>

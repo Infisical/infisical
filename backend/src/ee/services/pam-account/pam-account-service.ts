@@ -640,8 +640,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
-    // Saving a native port against a gateway that cannot speak it would pass this test over HTTP and then
-    // fail every native client at session time, with nothing to point at.
+    // Otherwise this passes over HTTP and every native client fails at session time, with nothing to point at.
     if (requiresClickHouseNative(accountType, connectionDetails) && !gatewaySupportsClickHouseNative(capabilities)) {
       throw new BadRequestError({
         message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ClickHouse's native protocol. Update the gateway, or clear the native port to use this account over HTTP only.`
@@ -992,8 +991,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         nativePort?: number;
       };
       const newConn = effectiveConnectionDetails as { host?: string; port?: number; nativePort?: number };
-      // nativePort is part of the target too: re-pointing it sends the stored credential somewhere new on
-      // the next heartbeat, which is exactly what this flag exists to catch.
+      // Re-pointing nativePort sends the stored credential somewhere new on the next heartbeat.
       if (oldConn.host !== newConn.host || oldConn.port !== newConn.port || oldConn.nativePort !== newConn.nativePort)
         connectionTargetChanged = true;
 

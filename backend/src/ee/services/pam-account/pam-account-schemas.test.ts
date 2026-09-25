@@ -197,17 +197,13 @@ describe("buildPamAccountTypeMetadata", () => {
       required: false,
       defaultValue: 8123
     });
-    // The native port must NOT carry a default: the edit form spreads defaults under the stored details,
-    // so a default would add a native port to every existing HTTP-only account on the next save.
+    // A default would add a native port to every existing HTTP-only account on its next save.
     expect(fieldByKey(clickhouse!.connectionFields, "nativePort")?.defaultValue).toBeUndefined();
-    // A native port is offered by default so clickhouse-client works without anyone choosing a protocol,
-    // and stays optional for a server that only serves HTTP.
     expect(fieldByKey(clickhouse!.connectionFields, "nativePort")).toMatchObject({
       label: "Native Port",
       widget: "number",
       required: false
     });
-    // Both ports are plain always-visible fields: neither is hidden behind a condition on the other.
     expect(fieldByKey(clickhouse!.connectionFields, "port")?.showWhen).toBeUndefined();
     expect(fieldByKey(clickhouse!.connectionFields, "nativePort")?.showWhen).toBeUndefined();
     expect(fieldByKey(clickhouse!.connectionFields, "database")).toMatchObject({
@@ -236,12 +232,10 @@ describe("buildPamAccountTypeMetadata", () => {
       sslRejectUnauthorized: true
     };
 
-    // HTTP disabled on the server: clickhouse-client works, and Web Access is bridged by the gateway.
     expect(validateConnectionDetails(PamAccountType.ClickHouse, { ...base, nativePort: 9000 })).toMatchObject({
       nativePort: 9000
     });
 
-    // Native disabled: JDBC and Web Access work, native drivers are turned away.
     expect(validateConnectionDetails(PamAccountType.ClickHouse, { ...base, port: 8123 })).toMatchObject({
       port: 8123
     });
@@ -276,10 +270,8 @@ describe("buildPamAccountTypeMetadata", () => {
 
     expect(requiresClickHouseNative(PamAccountType.ClickHouse, withNative)).toBe(true);
     expect(requiresClickHouseNative(PamAccountType.ClickHouse, httpOnly)).toBe(false);
-    // Only ClickHouse has two interfaces; no other type should be gated on this.
     expect(requiresClickHouseNative(PamAccountType.Postgres, withNative)).toBe(false);
 
-    // An absent flag means a gateway too old to report it, which is exactly what must be refused.
     expect(gatewaySupportsClickHouseNative(null)).toBe(false);
     expect(gatewaySupportsClickHouseNative({})).toBe(false);
     expect(gatewaySupportsClickHouseNative({ clickhouseNativeProtocol: false })).toBe(false);
