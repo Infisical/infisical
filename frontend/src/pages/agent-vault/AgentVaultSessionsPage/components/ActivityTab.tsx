@@ -294,7 +294,7 @@ export const ActivityTab = ({ session }: Props) => {
     isSearchPaused,
     fetchNextPage
   ]);
-  const columnCount = proxies.length > 1 ? 9 : 8;
+  const columnCount = proxies.length > 1 ? 8 : 7;
   const overflows = rowVirtualizer.getTotalSize() > (rowVirtualizer.scrollRect?.height ?? Infinity);
   const shownBefore = useRef(visible);
   useLayoutEffect(() => {
@@ -505,6 +505,12 @@ export const ActivityTab = ({ session }: Props) => {
             ))}
           </SelectContent>
         </Select>
+        {isLive && (
+          <span className="flex items-center gap-1.5 text-xs text-success">
+            <span aria-hidden className="size-1.5 shrink-0 animate-pulse rounded-full bg-current" />
+            Live
+          </span>
+        )}
       </div>
 
       {isUnreachable && (
@@ -611,18 +617,7 @@ export const ActivityTab = ({ session }: Props) => {
               <TableHead>Path</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Outcome</TableHead>
-              <TableHead>Service</TableHead>
-              <TableHead className="whitespace-nowrap">
-                {isLive && (
-                  <span className="flex items-center gap-1.5 text-success">
-                    <span
-                      aria-hidden
-                      className="size-1.5 shrink-0 animate-pulse rounded-full bg-current"
-                    />
-                    Live
-                  </span>
-                )}
-              </TableHead>
+              <TableHead variant="action" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -636,6 +631,12 @@ export const ActivityTab = ({ session }: Props) => {
                 (record.decision === AgentVaultActivityDecision.Blocked ||
                   record.decision === AgentVaultActivityDecision.Passthrough) &&
                 !addedHosts.has(hostPatternFor(record));
+              const host = (
+                <span className="flex w-fit items-center gap-2 text-sm">
+                  <ServiceIcon hostPattern={record.host} />
+                  {record.host}
+                </span>
+              );
               return (
                 <ArrivingRow
                   key={activityRecordKey(record)}
@@ -660,10 +661,14 @@ export const ActivityTab = ({ session }: Props) => {
                   )}
                   <TableCell className="font-mono text-xs">{record.method}</TableCell>
                   <TableCell>
-                    <span className="flex items-center gap-2 text-sm">
-                      <ServiceIcon hostPattern={record.host} />
-                      {record.host}
-                    </span>
+                    {record.service ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>{host}</TooltipTrigger>
+                        <TooltipContent>{record.service}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      host
+                    )}
                   </TableCell>
                   <TableCell>
                     <span className="block max-w-80 truncate font-mono text-xs" title={record.path}>
@@ -676,12 +681,12 @@ export const ActivityTab = ({ session }: Props) => {
                   <TableCell>
                     <Badge variant={presentation.variant}>{presentation.label}</Badge>
                   </TableCell>
-                  <TableCell className={record.service ? undefined : "text-xs text-muted"}>
-                    {isAddable ? (
+                  <TableCell variant="action">
+                    {isAddable && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="xs"
                             onClick={() => setServiceHost(hostPatternFor(record))}
                           >
@@ -693,11 +698,8 @@ export const ActivityTab = ({ session }: Props) => {
                           Add {record.host} to {accessBundle.name}
                         </TooltipContent>
                       </Tooltip>
-                    ) : (
-                      (record.service ?? "—")
                     )}
                   </TableCell>
-                  <TableCell />
                 </ArrivingRow>
               );
             })}
