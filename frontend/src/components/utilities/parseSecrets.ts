@@ -77,7 +77,12 @@ export const parsePastedEnv = (content: string) =>
 
 export const parseJson = (src: ArrayBuffer | string) => {
   const file = src.toString();
-  const formatedData = JSON.parse(file);
+  let formatedData: unknown;
+  try {
+    formatedData = JSON.parse(file);
+  } catch {
+    throw new Error("Invalid JSON format");
+  }
   const env: Record<string, { value: string; comments: string[] }> = {};
   if (formatedData === null || typeof formatedData !== "object" || Array.isArray(formatedData)) {
     return env;
