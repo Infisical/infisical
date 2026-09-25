@@ -6,50 +6,6 @@ description: "Learn how to configure a Stripe Connection for Infisical."
 
 Infisical supports connecting to Stripe through an installed Stripe App, so it can create and expire restricted API keys on your behalf for [Stripe API key rotation](/documentation/platform/secret-rotation/stripe-api-key).
 
-<Warning>
-  This connection depends on two things only Stripe can grant, so confirm both before you invest time setting it up:
-
-  - The Stripe App used for the connection must hold the `api_key_write` permission, which Stripe grants only after reviewing the app.
-  - Your Stripe account needs access to Stripe's [Managed API Keys API](https://docs.stripe.com/api-keys), which Stripe currently offers as a private preview.
-
-  Without both, installing the app succeeds but rotation can't create keys. If you're on Infisical Cloud, both are already in place. If you're self-hosting, see the setup section below before you start.
-</Warning>
-
-<Accordion title="Self-hosted instance setup">
-  A self-hosted instance needs its own Stripe App, since the `api_key_write` permission and Managed API Keys access are both granted to a specific app rather than shared across every Infisical deployment.
-
-  **Prerequisites:**
-  - A Stripe account you control, to own the app
-  - Self-hosted Infisical instance with a public HTTPS domain
-
-  <Steps>
-    <Step title="Request Stripe App approval">
-      Register a Stripe App and request the `api_key_write` permission for it. Stripe reviews this manually, so expect it to take longer than a typical API key request.
-
-      In the same request (or a follow-up to Stripe support), ask Stripe to enable your account for the Managed API Keys API. It's in private preview, so Stripe has to turn it on for you rather than you turning it on yourself.
-    </Step>
-    <Step title="Set the app's redirect URI">
-      Configure your app's OAuth redirect URI as `https://your-domain.com/organization/app-connections/stripe/oauth/callback`, using your instance's own domain.
-
-      <Note>
-        Stripe requires HTTPS on this URI, with no exception for local development. The URI also has to match what your browser sends exactly, so it must agree with your instance's `SITE_URL` or Stripe rejects the install before you see a consent screen.
-      </Note>
-    </Step>
-    <Step title="Add your Stripe App credentials to Infisical">
-      From the Stripe dashboard, collect your app's **Client ID** and the **secret key** of the Stripe account that owns the app.
-
-      Set the following environment variables on your Infisical instance:
-
-      - `INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID`: The Client ID of your Stripe App.
-      - `INF_APP_CONNECTION_STRIPE_SECRET_KEY`: The secret key of the Stripe account that owns your Stripe App. Infisical authenticates as this account when it manages keys on a connected account's behalf.
-
-      Infisical builds the install link from the Client ID, so a published app needs nothing further. If your secret key is a test-mode or sandbox key, copy that mode's install link from the Stripe dashboard and set it as `INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL`.
-
-      Restart your instance once these are set.
-    </Step>
-  </Steps>
-</Accordion>
-
 ## Setup Stripe connection in Infisical
 
 <Steps>
@@ -59,16 +15,24 @@ Infisical supports connecting to Stripe through an installed Stripe App, so it c
     ![App Connections Tab](/images/app-connections/general/add-connection.png)
   </Step>
   <Step title="Add Connection">
-    Select the **Stripe Connection** option from the connection options modal.
+    Select the **Stripe** option from the connection options modal.
+
+    ![Select Stripe Connection](/images/app-connections/stripe/select-stripe-option.png)
   </Step>
   <Step title="Connect to Stripe">
-    Select **Connect to Stripe**. You'll be redirected to Stripe to install the Infisical app and choose the account Infisical should manage API keys for.
+    Enter a **Name** for the connection, then select **Connect to Stripe**. You'll be redirected to Stripe to install the Infisical app and choose the account Infisical should manage API keys for.
+
+    ![Stripe Connection Form](/images/app-connections/stripe/connection-form.png)
   </Step>
   <Step title="Install and authorize">
     Review the permissions and install the app on the Stripe account you want to connect. Stripe redirects you back to Infisical once you approve it.
+
+    ![Install Stripe App](/images/app-connections/stripe/install-app.png)
   </Step>
   <Step title="Connection created">
     Your **Stripe Connection** is now available for use in your Infisical projects.
+
+    ![Stripe Connection Created](/images/app-connections/stripe/connection-created.png)
   </Step>
 </Steps>
 
