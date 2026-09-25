@@ -22,6 +22,8 @@ import {
   TCmekVerifyResponse,
   TCreateCmek,
   TDeleteCmek,
+  TDeriveSharedSecretKmsDTO,
+  TDeriveSharedSecretKmsResponse,
   TRotateCmek,
   TUpdateCmek
 } from "@app/hooks/api/cmeks/types";
@@ -194,6 +196,19 @@ export const useCmekDecrypt = () => {
         {
           ciphertext
         }
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useCmekDeriveSharedSecret = () => {
+  return useMutation({
+    mutationFn: async ({ kmsId, publicKey }: TDeriveSharedSecretKmsDTO) => {
+      const { data } = await apiRequest.post<TDeriveSharedSecretKmsResponse>(
+        `/api/v1/kms/keys/${kmsId}/derive-shared-secret`,
+        { publicKey: encodeBase64(publicKey) }
       );
 
       return data;

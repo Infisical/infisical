@@ -27,7 +27,9 @@ import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
   AsymmetricKeyAlgorithm,
+  EccNistKeyAlgorithm,
   HmacAlgorithm,
+  KeyAlgorithmEnum,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
   TCmek,
@@ -120,6 +122,13 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
 
   const selectedKeyUsage = watch("keyUsage");
 
+  const keyUsageAlgorithmMap: Record<KmsKeyUsage, KeyAlgorithmEnum> = {
+    [KmsKeyUsage.ENCRYPT_DECRYPT]: SymmetricKeyAlgorithm,
+    [KmsKeyUsage.SIGN_VERIFY]: AsymmetricKeyAlgorithm,
+    [KmsKeyUsage.GENERATE_VERIFY_MAC]: HmacAlgorithm,
+    [KmsKeyUsage.KEY_AGREEMENT]: EccNistKeyAlgorithm
+  };
+
   return (
     <form onSubmit={handleSubmit(handleCreateCmek)}>
       <FormControl
@@ -195,23 +204,9 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                     {Object.entries(AllowedEncryptionKeyAlgorithms)
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                       ?.filter(([_, value]) => {
-                        if (selectedKeyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
-                          return Object.values(SymmetricKeyAlgorithm).includes(
-                            value as unknown as SymmetricKeyAlgorithm
-                          );
-                        }
-                        if (selectedKeyUsage === KmsKeyUsage.SIGN_VERIFY) {
-                          return Object.values(AsymmetricKeyAlgorithm).includes(
-                            value as unknown as AsymmetricKeyAlgorithm
-                          );
-                        }
-                        if (selectedKeyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
-                          return Object.values(HmacAlgorithm).includes(
-                            value as unknown as HmacAlgorithm
-                          );
-                        }
-
-                        return false;
+                        const algorithmEnum = keyUsageAlgorithmMap[selectedKeyUsage];
+                        if (!algorithmEnum) return false;
+                        return Object.values(algorithmEnum).includes(value);
                       })
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                       .map(([_, value]) => {

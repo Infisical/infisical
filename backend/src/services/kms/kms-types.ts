@@ -4,6 +4,8 @@ import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 
+export { EccNistKeyAlgorithm, KeyAgreementAlgorithm } from "@app/lib/crypto/key-agreement/types";
+
 export enum KmsDataKey {
   Organization,
   SecretManager
@@ -18,7 +20,8 @@ export enum KmsType {
 export enum KmsKeyUsage {
   ENCRYPT_DECRYPT = "encrypt-decrypt",
   SIGN_VERIFY = "sign-verify",
-  GENERATE_VERIFY_MAC = "generate-verify-mac"
+  GENERATE_VERIFY_MAC = "generate-verify-mac",
+  KEY_AGREEMENT = "key-agreement"
 }
 
 export type TEncryptWithKmsDataKeyDTO =
@@ -46,6 +49,11 @@ export type TGenerateKMSDTO = {
 export type TEncryptWithKmsDTO = {
   kmsId: string;
   plainText: Buffer;
+};
+
+export type TDeriveSharedSecretKmsDTO = {
+  kmsId: string;
+  publicKey: Buffer;
 };
 
 export type TGetPublicKeyDTO = {
