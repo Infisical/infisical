@@ -225,7 +225,10 @@ export const GitHubSecretScanningFactory = () => {
               Message: commit.message,
               Fingerprint: `${commit.id}:${file.filename}:${finding.RuleID}:${startLine}:${startColumn}`,
               Date: commit.timestamp,
-              Link: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+              Attributes: {
+                ...finding.Attributes,
+                url: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
+              }
             };
           });
 

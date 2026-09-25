@@ -363,7 +363,10 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
             Message: commit.message,
             Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${startColumn}`,
             Date: commit.timestamp,
-            Link: `https://gitlab.com/${resourceName}/blob/${commit.id}/${commitDiff.newPath}#L${startLine}`
+            Attributes: {
+              ...finding.Attributes,
+              url: `https://gitlab.com/${resourceName}/blob/${commit.id}/${commitDiff.newPath}#L${startLine}`
+            }
           };
         });
 

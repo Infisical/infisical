@@ -309,7 +309,10 @@ export const BitbucketSecretScanningFactory = () => {
                 Message: commit.message,
                 Fingerprint: `${commit.hash}:${filePath}:${finding.RuleID}:${startLine}:${startColumn}`,
                 Date: commit.date,
-                Link: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+                Attributes: {
+                  ...finding.Attributes,
+                  url: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+                }
               };
             });
 

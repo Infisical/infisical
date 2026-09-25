@@ -9,7 +9,6 @@ export type SecretMatch = {
   Match: string;
   Secret: string;
   File: string;
-  Link?: string;
   SymlinkFile: string;
   Commit: string;
   Entropy: number;
