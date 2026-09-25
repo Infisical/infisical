@@ -224,7 +224,6 @@ export enum TableName {
   SecretScanningResource = "secret_scanning_resources",
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
-  SecretScanningConfig = "secret_scanning_configs",
 
   Membership = "memberships",
   MembershipRole = "membership_roles",
@@ -355,7 +354,8 @@ export enum TableName {
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
   DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
-  DeprecatedApiKey = "api_keys"
+  DeprecatedApiKey = "api_keys",
+  DeprecatedSecretScanningConfig = "secret_scanning_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

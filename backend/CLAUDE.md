@@ -271,8 +271,7 @@ surfaces it covers:
   privileges, folder grants, project keys, service tokens, and the per-resource equivalents under PAM,
   cert manager, code signing and PKI applications
 - **project settings** — project update and delete, environments, tags, approval policies, webhooks,
-  trusted IPs, secret validation rules, project KMS, blind index, audit log retention, E2EE upgrade,
-  and the secret scanning `configs` routes
+  trusted IPs, secret validation rules, project KMS, blind index, audit log retention, and E2EE upgrade
 
 In practice that means `GET` keeps `AuthMode.OAUTH` and `POST` / `PATCH` / `PUT` / `DELETE` lose it. The
 method is the test because `CODE_QUALITY.md` already requires `GET` to be safe, so it needs no per-route

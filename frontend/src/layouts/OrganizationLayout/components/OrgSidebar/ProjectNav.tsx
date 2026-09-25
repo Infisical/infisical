@@ -23,7 +23,6 @@ import {
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
-  SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
 import { ProjectSubmenuView } from "./SubmenuViews";
@@ -87,8 +86,6 @@ export const ProjectNav = () => {
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
-    if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
-      return SECRET_SCANNING_SETTINGS_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     return null;
