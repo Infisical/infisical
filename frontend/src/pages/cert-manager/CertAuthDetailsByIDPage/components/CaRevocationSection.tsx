@@ -139,15 +139,30 @@ export const CaRevocationSection = ({ caId }: Props) => {
   };
 
   const onEditSubmit = async (values: EditFormData) => {
+    const submittedMirrorUrls = values.crlDistributionPointUrls.map(({ value }) => value);
+    const isMirrorUrlListChanged =
+      submittedMirrorUrls.length !== mirrorUrls.length ||
+      submittedMirrorUrls.some((url, index) => url !== mirrorUrls[index]);
+
+    const changedConfiguration = {
+      ...(values.isOcspEnabled !== isOcspEnabled && { isOcspEnabled: values.isOcspEnabled }),
+      ...(values.disableManagedCrlDistributionPointUrl !==
+        (ca.configuration.disableManagedCrlDistributionPointUrl ?? false) && {
+        disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl
+      }),
+      ...(isMirrorUrlListChanged && { crlDistributionPointUrls: submittedMirrorUrls })
+    };
+
+    if (Object.keys(changedConfiguration).length === 0) {
+      handlePopUpToggle("editRevocation", false);
+      return;
+    }
+
     try {
       await updateCa({
         id: ca.id,
         type: CaType.INTERNAL,
-        configuration: {
-          isOcspEnabled: values.isOcspEnabled,
-          disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl,
-          crlDistributionPointUrls: values.crlDistributionPointUrls.map(({ value }) => value)
-        } as TInternalCertificateAuthority["configuration"]
+        configuration: changedConfiguration as TInternalCertificateAuthority["configuration"]
       });
       createNotification({ text: "Revocation settings updated", type: "success" });
       handlePopUpToggle("editRevocation", false);
