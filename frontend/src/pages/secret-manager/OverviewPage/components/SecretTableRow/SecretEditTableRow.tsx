@@ -1998,7 +1998,9 @@ export const SecretEditTableRow = ({
         >
           {nameInput}
         </TableCell>
-        <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>
+        <TableCell
+          className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}
+        >
           <div data-table-row-filter-contents className="flex w-full flex-col gap-y-2 !filter-none">
             {valueContent}
           </div>
