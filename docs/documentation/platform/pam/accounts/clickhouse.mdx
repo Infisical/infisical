@@ -6,13 +6,16 @@ description: "Add and connect to ClickHouse databases."
 
 ClickHouse accounts let you manage access to a ClickHouse database. Users connect through Web Access or the CLI, and every statement they run is recorded in the [session](/documentation/platform/pam/sessions/overview).
 
-Sessions reach ClickHouse over its HTTP interface, on port 8123 or 8443, rather than the native protocol on 9000. Every request passes through the [gateway](/documentation/platform/gateways/overview) in your own network, and the credential never reaches the client.
+Sessions reach ClickHouse over both of its interfaces: the HTTP interface on port 8123 or 8443, and the native protocol on port 9000 or 9440. A session hands out one local port and detects which one a client is speaking, so you don't have to pick a protocol or run two sessions. Every request passes through the [gateway](/documentation/platform/gateways/overview) in your own network, and the credential never reaches the client.
+
+Either interface can be turned off on the server. Set whichever ports it serves and leave the other empty. An account needs at least one of them.
 
 ## Prerequisites
 
 - A ClickHouse user for Infisical to connect as.
-- The HTTP interface enabled on the target. `http_port` (8123) is on by default in a stock ClickHouse configuration. `https_port` (8443) needs a certificate configured, and is what ClickHouse Cloud exposes.
-- A [gateway](/documentation/platform/gateways/overview) that can reach that port. A gateway that predates ClickHouse support refuses the session with a version error.
+- At least one of the two interfaces enabled on the target. Both are on by default in a stock ClickHouse configuration: `http_port` is 8123 and `tcp_port` is 9000. The TLS ports are `https_port` 8443 and `tcp_port_secure` 9440, and ClickHouse Cloud exposes both.
+- Both interfaces share the same `<openSSL><server>` certificate, so one SSL setting covers them. A server with TLS on one interface and not the other isn't supported.
+- A [gateway](/documentation/platform/gateways/overview) that can reach those ports. A gateway that predates ClickHouse support refuses the session with a version error.
 
 ## Creating an account
 
@@ -28,9 +31,10 @@ Sessions reach ClickHouse over its HTTP interface, on port 8123 or 8443, rather 
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `analytics-prod`) |
     | **Host** | ClickHouse host |
-    | **Port** | The HTTP interface port. 8123 for plain HTTP, 8443 for HTTPS |
+    | **HTTP Port** | The HTTP interface port. 8123 for plain HTTP, 8443 for HTTPS. Leave empty if the server only serves the native protocol |
+    | **Native Port** | The native protocol port. 9000 for plain TCP, 9440 with SSL. Needed by `clickhouse-client` and other native drivers. Leave empty if the server only serves HTTP |
     | **Database** | The database sessions open. Web Access lists the tables inside it |
-    | **SSL Enabled** | Use HTTPS for the connection. Required for port 8443 and for ClickHouse Cloud |
+    | **SSL Enabled** | Use TLS for the connection. Applies to both interfaces, so pair it with ports 8443 and 9440. Required for ClickHouse Cloud |
     | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
     | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
   </Step>
@@ -41,7 +45,7 @@ Sessions reach ClickHouse over its HTTP interface, on port 8123 or 8443, rather 
     | **Password** | The user's password. Leave blank for a user created with `no_password` |
   </Step>
   <Step title="Save">
-    Select **Create**. Infisical signs in to ClickHouse through the gateway and runs one statement to confirm the credential works before saving the account.
+    Select **Create**. Infisical signs in to ClickHouse through the gateway and confirms the credential works before saving the account. Each port you set is checked, and the error names the one that failed.
   </Step>
 </Steps>
 
@@ -66,8 +70,8 @@ Command blocking matches the text of each statement, so a statement that builds 
   <Tab title="Web Access">
     Web Access provides a browser-based interface with two tools:
 
-    - **Data Explorer** — browse tables, view data, filter and sort, export to CSV/JSON
-    - **SQL Editor** — write and run SQL queries
+    - **Data Explorer**: browse tables, view data, filter and sort, export to CSV/JSON
+    - **SQL Editor**: write and run SQL queries
 
     To connect:
 
@@ -77,23 +81,28 @@ Command blocking matches the text of each statement, so a statement that builds 
 
     ClickHouse has no schema layer inside a database, so the Data Explorer sidebar lists databases where it lists schemas for other account types.
 
+    Web Access works whichever interface the server has. It speaks HTTP, and for a server with HTTP turned off the gateway runs the statement over the native protocol and returns the result. The browser experience is the same, with the two limits described under [Servers with HTTP turned off](#servers-with-http-turned-off).
+
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that speaks ClickHouse's HTTP interface on `127.0.0.1`. Connect with TLS off and no certificate to trust, since the hop to the gateway is already an encrypted tunnel. The username and password a client sends are ignored, because the gateway authenticates for you.
+    The CLI starts a local proxy on `127.0.0.1` that serves both of ClickHouse's interfaces on one port. Connect with TLS off and no certificate to trust, since the hop to the gateway is already an encrypted tunnel. The username and password a client sends are ignored, because the gateway authenticates for you.
 
     ```bash
     infisical pam access analytics/clickhouse-prod
     ```
 
-    The command prints the port and a ready-made connection string. JDBC clients such as DBeaver and DataGrip, `clickhouse-connect`, `@clickhouse/client`, and `curl` all speak this interface. `clickhouse-client` and Python's `clickhouse-driver` speak only the native protocol, so they can't use this port.
+    The command prints the port and a ready-made connection string. Point any client at that port and the protocol is detected from the first bytes it sends. Native drivers such as `clickhouse-client`, Python's `clickhouse-driver` and `clickhouse-go` work alongside HTTP clients such as JDBC (DBeaver, DataGrip), `clickhouse-connect`, `@clickhouse/client` and `curl`.
 
     ```bash
+    clickhouse-client --host 127.0.0.1 --port <port>
     curl 'http://127.0.0.1:<port>/?query=SELECT+1'
     ```
 
+    A native client needs the account to have a **Native Port** set. Without one, it is turned away with a message saying so.
+
     **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-    - `--reason <reason>` — provide an access reason (if required by template)
+    - `--port <port>`: use a specific local port (otherwise one is assigned automatically)
+    - `--reason <reason>`: provide an access reason (if required by template)
 
   </Tab>
 </Tabs>
@@ -110,7 +119,27 @@ Every statement a session runs is recorded, along with the outcome of each one, 
 
 The template's **Command Blocking** policy applies to ClickHouse as well: a statement matching one of its patterns is rejected before it reaches ClickHouse, and the rejection is recorded. **Session Log Masking** patterns are applied to the recording before it's written.
 
-Applying that policy means reading the statement first, so on an account that blocks commands a request body over one megabyte is refused, and one compressed with anything other than `gzip` or `deflate` is rejected outright. Send large inserts in smaller batches, or use an account without the policy, where the body streams through and only its first megabyte is recorded.
+On the HTTP interface, applying that policy means reading the statement first, so on an account that blocks commands a request body over one megabyte is refused, and one compressed with anything other than `gzip` or `deflate` is rejected outright. Send large inserts in smaller batches, or use an account without the policy, where the body streams through and only its first megabyte is recorded.
+
+The native protocol has no such limit. A statement arrives in its own packet, separate from any rows that follow, so it's always read in full and an insert's data never counts against the policy or fills the recording.
+
+<Note>
+  Over the native protocol, an `INSERT` that pushes rows from the client is read so that later statements on the same connection stay covered by the policy. A few column types can't be read yet, including `Map` with a non-`String` value, `Tuple`, `JSON` and `Nested`. Inserting into a table that has one of those columns is refused with a message naming the type. Reading those columns is unaffected, and so is inserting over the HTTP interface.
+</Note>
+
+## Servers with HTTP turned off
+
+A server that serves only the native protocol works with native clients and with Web Access. Set the **Native Port** and leave **HTTP Port** empty.
+
+Native clients need nothing special: `clickhouse-client`, Python's `clickhouse-driver` and `clickhouse-go` speak to the session's port directly.
+
+**HTTP clients need the server to have an HTTP port.** A ClickHouse account with no HTTP port is a native-only account, and JDBC tools such as DBeaver and DataGrip, along with `clickhouse-connect` and ODBC, can't reach it. They fail when they connect, with a message saying so. Give the account an HTTP port if you need them.
+
+Web Access is the exception, because Infisical controls both ends of it. It speaks HTTP, so the gateway runs each statement over the native protocol and builds the result itself, with ClickHouse formatting the values so every column type keeps working. Three limits apply to Web Access on such an account, and none of them applies to a native client:
+
+- Only a `SELECT`, `WITH` or `EXPLAIN` returns rows. A `SHOW` or `DESCRIBE` has to be run from a native client, or rewritten against `system.tables` and `system.columns`.
+- A statement returning more than 100,000 rows, or more than 64 MB, is refused. Narrow the result, or use a native client.
+- One statement at a time. A semicolon inside a statement is refused, because the native protocol runs a single statement per request.
 
 ## Next steps
 

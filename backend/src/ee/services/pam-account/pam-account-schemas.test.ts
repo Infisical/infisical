@@ -7,11 +7,13 @@ import {
   buildPamAccountTypeMetadata,
   collectCredentialSecrets,
   gatewaySupportsAccountType,
+  gatewaySupportsClickHouseNative,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema,
   PamFieldDescriptorSchema,
+  requiresClickHouseNative,
   sanitizeCredentials,
   suppliesCredentialSecret,
   validateConnectionDetails,
@@ -182,6 +184,7 @@ describe("buildPamAccountTypeMetadata", () => {
     expect(clickhouse?.connectionFields.map((f) => f.key)).toEqual([
       "host",
       "port",
+      "nativePort",
       "database",
       "sslEnabled",
       "sslRejectUnauthorized",
@@ -189,10 +192,24 @@ describe("buildPamAccountTypeMetadata", () => {
     ]);
 
     expect(fieldByKey(clickhouse!.connectionFields, "port")).toMatchObject({
+      label: "HTTP Port",
       widget: "number",
-      required: true,
+      required: false,
       defaultValue: 8123
     });
+    // The native port must NOT carry a default: the edit form spreads defaults under the stored details,
+    // so a default would add a native port to every existing HTTP-only account on the next save.
+    expect(fieldByKey(clickhouse!.connectionFields, "nativePort")?.defaultValue).toBeUndefined();
+    // A native port is offered by default so clickhouse-client works without anyone choosing a protocol,
+    // and stays optional for a server that only serves HTTP.
+    expect(fieldByKey(clickhouse!.connectionFields, "nativePort")).toMatchObject({
+      label: "Native Port",
+      widget: "number",
+      required: false
+    });
+    // Both ports are plain always-visible fields: neither is hidden behind a condition on the other.
+    expect(fieldByKey(clickhouse!.connectionFields, "port")?.showWhen).toBeUndefined();
+    expect(fieldByKey(clickhouse!.connectionFields, "nativePort")?.showWhen).toBeUndefined();
     expect(fieldByKey(clickhouse!.connectionFields, "database")).toMatchObject({
       required: true,
       defaultValue: "default"
@@ -209,6 +226,64 @@ describe("buildPamAccountTypeMetadata", () => {
       secret: true,
       required: false
     });
+  });
+
+  test("accepts a ClickHouse server that serves only one of its two interfaces", () => {
+    const base = {
+      host: "clickhouse.example.com",
+      database: "analytics",
+      sslEnabled: false,
+      sslRejectUnauthorized: true
+    };
+
+    // HTTP disabled on the server: clickhouse-client works, and Web Access is bridged by the gateway.
+    expect(validateConnectionDetails(PamAccountType.ClickHouse, { ...base, nativePort: 9000 })).toMatchObject({
+      nativePort: 9000
+    });
+
+    // Native disabled: JDBC and Web Access work, native drivers are turned away.
+    expect(validateConnectionDetails(PamAccountType.ClickHouse, { ...base, port: 8123 })).toMatchObject({
+      port: 8123
+    });
+
+    expect(() => validateConnectionDetails(PamAccountType.ClickHouse, base)).toThrow();
+    expect(() => validateConnectionDetails(PamAccountType.ClickHouse, { ...base, port: "", nativePort: "" })).toThrow();
+  });
+
+  test("accepts a ClickHouse account with the native port cleared", () => {
+    const base = {
+      host: "clickhouse.example.com",
+      port: 8123,
+      database: "analytics",
+      sslEnabled: false,
+      sslRejectUnauthorized: true
+    };
+
+    expect(validateConnectionDetails(PamAccountType.ClickHouse, { ...base, nativePort: 9000 })).toMatchObject({
+      nativePort: 9000
+    });
+
+    // Clearing a number input submits an empty string, so an HTTP-only account has to save through it.
+    for (const cleared of ["", "   ", null, undefined]) {
+      const result = validateConnectionDetails(PamAccountType.ClickHouse, { ...base, nativePort: cleared });
+      expect((result as { nativePort?: number }).nativePort).toBeUndefined();
+    }
+  });
+
+  test("a native port needs a gateway that reports the native protocol", () => {
+    const httpOnly = { host: "h", port: 8123, database: "d", sslEnabled: false, sslRejectUnauthorized: true };
+    const withNative = { ...httpOnly, nativePort: 9000 };
+
+    expect(requiresClickHouseNative(PamAccountType.ClickHouse, withNative)).toBe(true);
+    expect(requiresClickHouseNative(PamAccountType.ClickHouse, httpOnly)).toBe(false);
+    // Only ClickHouse has two interfaces; no other type should be gated on this.
+    expect(requiresClickHouseNative(PamAccountType.Postgres, withNative)).toBe(false);
+
+    // An absent flag means a gateway too old to report it, which is exactly what must be refused.
+    expect(gatewaySupportsClickHouseNative(null)).toBe(false);
+    expect(gatewaySupportsClickHouseNative({})).toBe(false);
+    expect(gatewaySupportsClickHouseNative({ clickhouseNativeProtocol: false })).toBe(false);
+    expect(gatewaySupportsClickHouseNative({ clickhouseNativeProtocol: true })).toBe(true);
   });
 
   test("derives Redis connection and credential fields from the schema", () => {

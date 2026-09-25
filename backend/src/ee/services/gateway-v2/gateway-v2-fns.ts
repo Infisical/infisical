@@ -17,7 +17,9 @@ export const testConnectionWithGateway = async (
   gatewayV2Service: TGatewayDep,
   request: Record<string, unknown>,
   timeoutMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  // Ports beyond the primary one that this test is allowed to probe, signed into the client certificate.
+  additionalTargetPorts?: number[]
 ): Promise<TestConnectionResponse | null> => {
   const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
 
@@ -25,7 +27,8 @@ export const testConnectionWithGateway = async (
     const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost: host,
-      targetPort
+      targetPort,
+      additionalTargetPorts
     });
     if (!platform) return null;
 

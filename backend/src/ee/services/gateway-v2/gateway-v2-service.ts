@@ -351,11 +351,15 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     targetHost,
     targetPort,
+    // Some account types reach one host on more than one port. Naming them all in the signed cert keeps the
+    // gateway from having to trust a port out of the request body.
+    additionalTargetPorts,
     transport
   }: {
     gatewayId: string;
     targetHost: string;
     targetPort: number;
+    additionalTargetPorts?: number[];
     transport?: GatewayTransport;
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
@@ -424,9 +428,14 @@ export const gatewayV2ServiceFactory = ({
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
 
+    const allowedPorts = [targetPort, ...(additionalTargetPorts ?? [])].filter(
+      (port, index, ports) => port > 0 && ports.indexOf(port) === index
+    );
     const routingInfo = {
       targetHost,
-      targetPort
+      targetPort,
+      // A gateway too old to read this ignores it and keeps using targetPort, so adding it is additive.
+      ...(allowedPorts.length > 1 ? { targetPorts: allowedPorts } : {})
     };
 
     const routingExtension = new x509.Extension(

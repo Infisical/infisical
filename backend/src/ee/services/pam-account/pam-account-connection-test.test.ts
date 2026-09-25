@@ -9,6 +9,10 @@ import {
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
+// The keys that survive serialization, which is what the gateway actually decodes. An `undefined` property
+// is still a present key in JS, so checking the object directly would not prove the field was omitted.
+const wireKeys = (request: unknown): string[] => Object.keys(JSON.parse(JSON.stringify(request)) as object);
+
 describe("buildGatewayConnectionTest: MSSQL Windows authentication", () => {
   const connectionDetails = {
     host: "sql.corp.example.com",
@@ -240,5 +244,68 @@ describe("buildGatewayConnectionTest: Oracle", () => {
     );
 
     expect(result?.request).toMatchObject({ mode: TestConnectionMode.SQL, dialect: "postgres" });
+  });
+});
+
+describe("buildGatewayConnectionTest: ClickHouse", () => {
+  const connectionDetails = {
+    host: "clickhouse.example.com",
+    port: 8123,
+    database: "analytics",
+    sslEnabled: false,
+    sslRejectUnauthorized: true
+  };
+
+  test("carries the native port so both interfaces are checked before the account saves", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      { ...connectionDetails, nativePort: 9000 },
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
+    expect(result?.request).toMatchObject({
+      httpPort: 8123,
+      nativePort: 9000,
+      username: "default",
+      database: "analytics",
+      sslEnabled: false
+    });
+    expect(result?.port).toBe(8123);
+  });
+
+  test("a native-only account targets the native port and sends no HTTP port", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      {
+        host: "clickhouse.example.com",
+        nativePort: 9440,
+        database: "analytics",
+        sslEnabled: true,
+        sslRejectUnauthorized: true
+      },
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
+    expect(result?.port).toBe(9440);
+    expect(result?.request).toMatchObject({ nativePort: 9440, sslEnabled: true });
+    // toMatchObject treats an absent key as undefined, so the wire form is what gets asserted.
+    expect(wireKeys(result!.request)).not.toContain("httpPort");
+  });
+
+  test("omits the native port when the server only serves HTTP", async () => {
+    const result = await buildGatewayConnectionTest(
+      PamAccountType.ClickHouse,
+      connectionDetails,
+      { username: "default", password: "pw" },
+      ORG_ID
+    );
+
+    expect(result?.request.mode).toBe(TestConnectionMode.ClickHouse);
+    expect(result?.request).toMatchObject({ httpPort: 8123 });
+    expect(wireKeys(result!.request)).not.toContain("nativePort");
   });
 });

@@ -78,6 +78,7 @@ import {
   ACCOUNT_TYPE_CONFIGS,
   applyForcedFields,
   gatewaySupportsAccountType,
+  gatewaySupportsClickHouseNative,
   getAccountAccessibilityIssues,
   hasRevealableCredential,
   isCredentialConfigured,
@@ -86,6 +87,7 @@ import {
   ORACLE_MAX_PASSWORD_LENGTH,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
+  requiresClickHouseNative,
   sanitizeCredentials,
   suppliesCredentialSecret,
   type TSshInternalMetadata,
@@ -628,10 +630,21 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
 
     const attachedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
-    const capabilities = attachedGateway?.capabilities as { supported_account_types?: string[] } | null;
+    const capabilities = attachedGateway?.capabilities as {
+      supported_account_types?: string[];
+      clickhouseNativeProtocol?: boolean;
+    } | null;
     if (!gatewaySupportsAccountType(accountType, capabilities?.supported_account_types)) {
       throw new BadRequestError({
         message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ${ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType].name} accounts. Update the gateway, then try again.`
+      });
+    }
+
+    // Saving a native port against a gateway that cannot speak it would pass this test over HTTP and then
+    // fail every native client at session time, with nothing to point at.
+    if (requiresClickHouseNative(accountType, connectionDetails) && !gatewaySupportsClickHouseNative(capabilities)) {
+      throw new BadRequestError({
+        message: `Gateway '${attachedGateway?.name ?? gatewayId}' does not support ClickHouse's native protocol. Update the gateway, or clear the native port to use this account over HTTP only.`
       });
     }
 
@@ -644,7 +657,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayId,
       gatewayV2Service,
       test.request,
-      CONNECTION_TEST_TIMEOUT_MS
+      CONNECTION_TEST_TIMEOUT_MS,
+      undefined,
+      test.additionalPorts
     );
 
     // a null result means the gateway couldn't be reached (offline / pre-protocol) — skip rather than block
@@ -974,9 +989,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const oldConn = validateConnectionDetails(accountType, existingConnectionDetails) as {
         host?: string;
         port?: number;
+        nativePort?: number;
       };
-      const newConn = effectiveConnectionDetails as { host?: string; port?: number };
-      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) connectionTargetChanged = true;
+      const newConn = effectiveConnectionDetails as { host?: string; port?: number; nativePort?: number };
+      // nativePort is part of the target too: re-pointing it sends the stored credential somewhere new on
+      // the next heartbeat, which is exactly what this flag exists to catch.
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port || oldConn.nativePort !== newConn.nativePort)
+        connectionTargetChanged = true;
 
       const oldUsername = (existingCredentials as { username?: string }).username;
       const newUsername = (effectiveCredentials as { username?: string }).username;
