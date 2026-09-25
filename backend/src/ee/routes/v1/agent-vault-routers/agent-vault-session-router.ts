@@ -106,7 +106,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       operationId: "getAgentVaultSession",
-      description: "Gets an Agent Vault session. Returns 404 if the session doesn't exist or you can't access it.",
+      description: "Gets an Agent Vault session.",
       tags: [ApiDocsTags.AgentVaultSessions],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       response: {

@@ -4365,7 +4365,7 @@ export const AGENT_VAULT = {
     createdAt: "When the proxy was registered."
   },
   ACTIVITY: {
-    chunkId: "The ID of the chunk, a ULID.",
+    chunkId: "The ID of the chunk.",
     proxyId: "The ID of the proxy that uploaded the chunk.",
     proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
     startedAt: "The time of the first record in the chunk.",
@@ -4374,7 +4374,7 @@ export const AGENT_VAULT = {
     lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
     recordCount: "The number of records in the chunk.",
     droppedCount:
-      "The number of records the proxy discarded before this chunk, for example because its buffer was full or session logging was off.",
+      "The number of records the proxy discarded before this chunk, for example because too many requests came in at once or session logging was off.",
     ciphertextBytes: "The size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialization vector for the chunk, as base64.",
     ciphertextSha256:
@@ -4391,7 +4391,7 @@ export const AGENT_VAULT = {
       "`no-connection` if session logging has no AWS connection, or `connection-unusable` if Infisical can't use the AWS connection.",
     storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
     activity: "The session details you need to read the chunks.",
-    projectId: "The ID of the project the session belongs to. Part of the associated data for decrypting each chunk.",
+    projectId: "The ID of the project the session belongs to. Needed to decrypt each chunk.",
     historyCursor: "The `nextCursor` from the previous response. Leave it out to get the newest page.",
     historyNextCursor: "The cursor for the next, older page. Null if there are no older chunks.",
     liveCursor:
@@ -4400,7 +4400,7 @@ export const AGENT_VAULT = {
       "The `liveCursor` from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity), or the `nextCursor` from the previous response. Leave it out to start from now.",
     tailNextCursor: "The cursor for the next call.",
     tailHasMore: "Whether more chunks are waiting. If false, wait a few seconds before the next call.",
-    limit: "The number of records to aim for on each page. A page can hold more, because chunks aren't split.",
+    limit: "About how many records to return. A page can have a few more, since a chunk is never split across pages.",
     from: "Return only chunks with records at or after this time.",
     to: "Return only chunks with records at or before this time.",
     enabled: "Whether session logging is on.",
