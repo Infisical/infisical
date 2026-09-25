@@ -11,8 +11,13 @@ import { registerAgentVaultSettingsRouter } from "./agent-vault-settings-router"
 export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
   await server.register(registerAgentVaultProjectRouter, { prefix: "/project" });
   await server.register(registerAgentVaultAccessBundleRouter, { prefix: "/access-bundles" });
-  await server.register(registerAgentVaultSessionRouter, { prefix: "/sessions" });
-  await server.register(registerAgentVaultActivityRouter, { prefix: "/sessions" });
+  await server.register(
+    async (sessionServer) => {
+      await sessionServer.register(registerAgentVaultSessionRouter);
+      await sessionServer.register(registerAgentVaultActivityRouter);
+    },
+    { prefix: "/sessions" }
+  );
   await server.register(registerAgentVaultSettingsRouter, { prefix: "/settings" });
   await server.register(registerAgentVaultAppConnectionRouter, { prefix: "/app-connections" });
   await server.register(registerAgentVaultProxyRouter, { prefix: "/proxies" });
