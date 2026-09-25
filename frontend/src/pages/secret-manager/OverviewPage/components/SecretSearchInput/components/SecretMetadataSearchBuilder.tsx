@@ -39,34 +39,27 @@ export const SecretMetadataSearchBuilder = ({
 }: Props) => {
   return (
     <div className="flex flex-col gap-3">
-      {conditions.length > 0 && (
-        <div className="flex items-center justify-between gap-2 text-xs text-accent">
-          <span>Match conditions</span>
-          <div
-            role="group"
-            aria-label="Match metadata conditions"
-            className="inline-flex rounded-md border border-border p-0.5"
+      <div
+        role="group"
+        aria-label="Match metadata conditions"
+        className="inline-flex w-fit rounded-md border border-border p-0.5"
+      >
+        {(["all", "any"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={match === option}
+            aria-label={`Match ${option} conditions`}
+            onClick={() => onChangeMatch(option)}
+            className={cn(
+              "h-6 rounded px-2 text-xs font-medium transition-colors",
+              match === option ? "bg-project/15 text-project" : "text-accent hover:text-foreground"
+            )}
           >
-            {(["all", "any"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={match === option}
-                aria-label={`Match ${option} conditions`}
-                onClick={() => onChangeMatch(option)}
-                className={cn(
-                  "h-6 rounded px-2 text-xs font-medium transition-colors",
-                  match === option
-                    ? "bg-project/15 text-project"
-                    : "text-accent hover:text-foreground"
-                )}
-              >
-                {option.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+            {option.toUpperCase()}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-col gap-3">
         {conditions.map((condition, index) => (
           <Fragment key={condition.id}>
@@ -83,15 +76,17 @@ export const SecretMetadataSearchBuilder = ({
                     onChange={(e) => onUpdateCondition(condition.id, { key: e.target.value })}
                   />
                 </Field>
-                <IconButton
-                  variant="ghost"
-                  size="sm"
-                  className="mb-0.5 flex-none text-accent hover:text-danger"
-                  aria-label={`Remove condition ${index + 1}`}
-                  onClick={() => onRemoveCondition(condition.id)}
-                >
-                  <XIcon />
-                </IconButton>
+                {index > 0 && (
+                  <IconButton
+                    variant="ghost"
+                    size="sm"
+                    className="mb-0.5 flex-none text-accent hover:text-danger"
+                    aria-label={`Remove condition ${index + 1}`}
+                    onClick={() => onRemoveCondition(condition.id)}
+                  >
+                    <XIcon />
+                  </IconButton>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="flex h-9 shrink-0 items-center rounded-md border border-border bg-foreground/5 px-3 text-sm text-foreground">
@@ -124,7 +119,7 @@ export const SecretMetadataSearchBuilder = ({
       </div>
 
       <div className="flex items-center justify-between gap-1">
-        <Button variant="neutral" size="sm" onClick={onAddCondition}>
+        <Button variant="ghost" size="sm" onClick={onAddCondition}>
           <PlusIcon />
           Add Condition
         </Button>
