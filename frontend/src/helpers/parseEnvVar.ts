@@ -1,3 +1,7 @@
+/** Applies the project's auto-capitalization preference to a secret key. */
+export const applyKeyCapitalization = (key: string, autoCapitalization: boolean | undefined) =>
+  autoCapitalization ? key.toUpperCase() : key;
+
 /** Extracts the key and value from a passed in env string based on the provided delimiters. */
 export const getKeyValue = (pastedContent: string, delimiters: string[]) => {
   if (!pastedContent) {

@@ -93,6 +93,7 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { applyKeyCapitalization } from "@app/helpers/parseEnvVar";
 import { usePopUp, useTimedReset, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
@@ -965,9 +966,10 @@ export const SecretEditTableRow = ({
             isPendingDelete && "text-danger/75 line-through"
           )}
           onChange={(event) => {
-            const value = currentProject?.autoCapitalization
-              ? event.currentTarget.value.toUpperCase()
-              : event.currentTarget.value;
+            const value = applyKeyCapitalization(
+              event.currentTarget.value,
+              currentProject?.autoCapitalization
+            );
             field.onChange(value);
           }}
           onFocus={() => setIsFieldFocused.on()}

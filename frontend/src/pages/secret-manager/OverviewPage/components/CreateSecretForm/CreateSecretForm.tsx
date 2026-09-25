@@ -49,7 +49,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { getKeyValue } from "@app/helpers/parseEnvVar";
+import { applyKeyCapitalization, getKeyValue } from "@app/helpers/parseEnvVar";
 import {
   useCreateSecretV3,
   useCreateWsTag,
@@ -354,7 +354,7 @@ export const CreateSecretForm = ({
       const parsedEntries = Object.entries(parsedEnv);
       if (parsedEntries.length > 1) {
         const toSecret = ([parsedKey, parsedValue]: (typeof parsedEntries)[number]) => ({
-          key: currentProject.autoCapitalization ? parsedKey.toUpperCase() : parsedKey,
+          key: applyKeyCapitalization(parsedKey, currentProject?.autoCapitalization),
           value: parsedValue.value,
           comment: parsedValue.comments.join("\n"),
           skipMultilineEncoding: false,
@@ -366,7 +366,7 @@ export const CreateSecretForm = ({
         return;
       }
 
-      const keyStr = currentProject.autoCapitalization ? key.toUpperCase() : key;
+      const keyStr = applyKeyCapitalization(key, currentProject?.autoCapitalization);
       setValue(`secrets.${index}.key`, keyStr);
       if (value) {
         setValue(`secrets.${index}.value`, value);
@@ -446,9 +446,10 @@ export const CreateSecretForm = ({
                             id={`create-secret-${index}-key`}
                             value={field.value ?? ""}
                             onChange={(e) => {
-                              const val = currentProject?.autoCapitalization
-                                ? e.target.value.toUpperCase()
-                                : e.target.value;
+                              const val = applyKeyCapitalization(
+                                e.target.value,
+                                currentProject?.autoCapitalization
+                              );
                               field.onChange(val);
                             }}
                             onBlur={field.onBlur}

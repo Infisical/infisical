@@ -18,6 +18,7 @@ import {
   useSecretInputActionShortcuts
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { applyKeyCapitalization } from "@app/helpers/parseEnvVar";
 
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
@@ -175,7 +176,7 @@ export const QuickAddSecretRow = ({
     }
 
     const [parsedKey, parsedSecret] = parsedEntries[0];
-    setKey(currentProject?.autoCapitalization ? parsedKey.toUpperCase() : parsedKey);
+    setKey(applyKeyCapitalization(parsedKey, currentProject?.autoCapitalization));
     setValue(parsedSecret.value);
     setComment(parsedSecret.comments.join("\n"));
     setError(undefined);
@@ -245,9 +246,10 @@ export const QuickAddSecretRow = ({
             value={key}
             onPaste={handlePaste}
             onChange={(event) => {
-              const nextKey = currentProject?.autoCapitalization
-                ? event.currentTarget.value.toUpperCase()
-                : event.currentTarget.value;
+              const nextKey = applyKeyCapitalization(
+                event.currentTarget.value,
+                currentProject?.autoCapitalization
+              );
               setKey(nextKey);
               setError(undefined);
             }}
