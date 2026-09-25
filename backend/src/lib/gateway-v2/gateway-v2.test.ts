@@ -1,10 +1,14 @@
 import net from "node:net";
 import tls from "node:tls";
 
+import * as x509 from "@peculiar/x509";
 import forge from "node-forge";
 
+import { issueGatewayServerCertificate } from "@app/ee/services/gateway-v2/gateway-v2-certificate-fns";
 import { GATEWAY_IDENTITY_URI_PREFIX } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
 
 import { setupGatewayProxy } from "./gateway-v2";
 
@@ -28,8 +32,10 @@ vi.mock("@app/lib/logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
+const config = vi.hoisted(() => ({ isDevelopmentMode: true }));
+
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ isDevelopmentMode: true })
+  getConfig: () => config
 }));
 
 vi.mock("./gateway-load-tracker", () => ({
@@ -97,7 +103,10 @@ type TFakeRelay = {
  * carries a second, inner TLS server. That nesting is the part under test, because a tunnel is only
  * "open" from the gateway's point of view once the inner handshake completes.
  */
-const startFakeRelay = async ({ gatewayIdentity }: { gatewayIdentity?: string } = {}): Promise<TFakeRelay> => {
+const startFakeRelay = async ({
+  gatewayIdentity,
+  gatewayCertificate
+}: { gatewayIdentity?: string; gatewayCertificate?: { cert: string; key: string } } = {}): Promise<TFakeRelay> => {
   const port = await freePort();
   const relayHost = `127.0.0.1:${port}`;
   const altNames: TAltName[] = [
@@ -123,8 +132,8 @@ const startFakeRelay = async ({ gatewayIdentity }: { gatewayIdentity?: string } 
       outer.on("close", () => live.delete(outer));
       const inner = new tls.TLSSocket(outer, {
         isServer: true,
-        key: keyPem,
-        cert: gatewayCert,
+        key: gatewayCertificate?.key ?? keyPem,
+        cert: gatewayCertificate?.cert ?? gatewayCert,
         ca: caPem,
         requestCert: true,
         rejectUnauthorized: false,
@@ -347,6 +356,71 @@ describe("setupGatewayProxy", () => {
 
       await server.cleanup();
       await drainChannels(1);
+    });
+  });
+
+  describe("with a certificate from the production issuer", () => {
+    let relay: TFakeRelay;
+    let productionCaPem: string;
+
+    beforeAll(async () => {
+      const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+      const caKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const caCertificate = await x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber: "01",
+        name: "CN=Gateway Server CA",
+        notBefore: new Date(Date.now() - 60_000),
+        notAfter: new Date(Date.now() + 3_600_000),
+        keys: caKeys,
+        signingAlgorithm: alg,
+        extensions: [new x509.BasicConstraintsExtension(true, undefined, true)]
+      });
+      productionCaPem = caCertificate.toString("pem");
+
+      const { certificate, privateKey } = await issueGatewayServerCertificate({
+        orgId: "org",
+        gateway: { id: GATEWAY_ID },
+        caCertificate,
+        caPrivateKey: caKeys.privateKey
+      });
+      relay = await startFakeRelay({
+        gatewayCertificate: {
+          cert: certificate.toString("pem"),
+          key: privateKey.export({ format: "pem", type: "pkcs8" }).toString()
+        }
+      });
+    });
+
+    afterAll(async () => {
+      await relay.close();
+    });
+
+    beforeEach(() => {
+      config.isDevelopmentMode = false;
+    });
+
+    afterEach(() => {
+      config.isDevelopmentMode = true;
+    });
+
+    const argsExpecting = (gatewayId: string) => {
+      const args = argsFor(relay.relayHost);
+      return { ...args, gatewayId, gateway: { ...args.gateway, serverCertificateChain: productionCaPem } };
+    };
+
+    test("accepts the gateway it was issued to", async () => {
+      const server = await setupGatewayProxy({ ...argsExpecting(GATEWAY_ID), eager: true, longLived: true });
+      await expect(connectAndEcho(server.port)).resolves.toBe("ping");
+
+      await server.cleanup();
+      await drainChannels(1);
+    });
+
+    test("rejects it when a different gateway was expected", async () => {
+      const otherGatewayId = "22222222-2222-2222-2222-222222222222";
+      await expect(setupGatewayProxy({ ...argsExpecting(otherGatewayId), eager: true })).rejects.toThrow(
+        `The connection reached a gateway other than '${otherGatewayId}'`
+      );
     });
   });
 });
