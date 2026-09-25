@@ -56,7 +56,7 @@ export const registerAgentVaultActivityRouter = async (server: FastifyZodProvide
       hide: false,
       operationId: "tailAgentVaultSessionActivity",
       description:
-        "Lists the chunks of a session's activity that Infisical received after a cursor, oldest first. The same chunk can appear in more than one response, so skip any `chunkId` you've already read. The chunks decrypt the same way as the ones from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity).",
+        "Lists a session's new activity since your last call, oldest first. The same chunk can appear in more than one response, so skip any `chunkId` you've already read. The chunks decrypt the same way as the ones from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity).",
       tags: [ApiDocsTags.AgentVaultActivity],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultActivityTailQuerySchema,

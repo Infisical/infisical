@@ -4374,7 +4374,7 @@ export const AGENT_VAULT = {
     lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
     recordCount: "The number of records in the chunk.",
     droppedCount:
-      "The number of records the proxy discarded before this chunk, for example because too many requests came in at once or session logging was off.",
+      "The number of requests the proxy couldn't record just before this chunk, for example because too many requests came in at once or session logging was off.",
     ciphertextBytes: "The size of the encrypted chunk, in bytes.",
     iv: "The AES-GCM initialization vector for the chunk, as base64.",
     ciphertextSha256:
@@ -4383,7 +4383,7 @@ export const AGENT_VAULT = {
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
     presignedGetUrl:
-      "The URL to download the chunk from. Null if the chunk is in a bucket other than the current one, or if `activity.storageUnavailable` is set.",
+      "The URL to download the chunk from. Null if the chunk is in a bucket activity logging no longer uses, or if `activity.storageUnavailable` is set.",
     expiresInSeconds: "The number of seconds before the URL expires.",
     sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
     storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
@@ -4391,19 +4391,19 @@ export const AGENT_VAULT = {
       "`no-connection` if session logging has no AWS connection, or `connection-unusable` if Infisical can't use the AWS connection.",
     storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
     activity: "The session details you need to read the chunks.",
-    historyCursor: "The `nextCursor` from the previous response. Leave it out to get the newest page.",
-    historyNextCursor: "The cursor for the next, older page. Null if there are no older chunks.",
+    historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest activity.",
+    historyNextCursor: "Pass this as `cursor` to get older activity. Null when there's nothing older.",
     liveCursor:
-      "The cursor to pass to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity) to get activity that arrives after this response.",
+      "Pass this to [the endpoint that tails session activity](/api-reference/endpoints/agent-vault-activity/tail-session-activity) to get new activity as it arrives.",
     tailCursor:
-      "The `liveCursor` from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity), or the `nextCursor` from the previous response. Leave it out to start from now.",
-    tailNextCursor: "The cursor for the next call.",
-    tailHasMore: "Whether more chunks are waiting. If false, wait a few seconds before the next call.",
-    limit: "About how many records to return. A page can have a few more, since a chunk is never split across pages.",
+      "The `liveCursor` from [the endpoint that lists session activity](/api-reference/endpoints/agent-vault-activity/get-session-activity), or the `nextCursor` from your last call. Leave it out to start from now.",
+    tailNextCursor: "Pass this as `cursor` on your next call.",
+    tailHasMore: "Whether more activity is ready now. If false, wait a few seconds before calling again.",
+    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
     from: "Return only chunks with records at or after this time.",
     to: "Return only chunks with records at or before this time.",
     enabled: "Whether session logging is on.",
-    configEnabled: "Whether session logging is on. Turning it off stops recording, and deletes nothing.",
+    configEnabled: "Whether session logging is on. Turning it off stops recording but keeps what's already recorded.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
