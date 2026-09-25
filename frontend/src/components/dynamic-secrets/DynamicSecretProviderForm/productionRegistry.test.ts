@@ -9,9 +9,9 @@ import { DYNAMIC_SECRET_PROVIDER_PICKER_ORDER } from "./registry";
 describe("dynamicSecretProviderRegistry", () => {
   it("composes every provider exactly once in product picker order", () => {
     assert.deepEqual(dynamicSecretProviderRegistry.providers, DYNAMIC_SECRET_PROVIDER_PICKER_ORDER);
-    assert.equal(dynamicSecretProviderRegistry.definitions.length, 27);
-    assert.equal(new Set(dynamicSecretProviderRegistry.providers).size, 27);
-    assert.equal(Object.values(DynamicSecretProviders).length, 27);
+    assert.equal(dynamicSecretProviderRegistry.definitions.length, 28);
+    assert.equal(new Set(dynamicSecretProviderRegistry.providers).size, 28);
+    assert.equal(Object.values(DynamicSecretProviders).length, 28);
   });
 
   it("preserves provider labels and documentation slugs", () => {
