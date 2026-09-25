@@ -1,13 +1,4 @@
-import { JobState } from "@app/queue/queue-service";
-
-import {
-  TAdvanceCursorInput,
-  TAdvanceCursorResult,
-  TBackfillCursor,
-  TBackfillRunState
-} from "./secret-value-tracking-types";
-
-export const BACKFILL_STALE_AFTER_MS = 15 * 60 * 1000;
+import { TAdvanceCursorInput, TAdvanceCursorResult, TBackfillCursor } from "./secret-value-tracking-types";
 
 const startOfFolder = (projectId: string, folderId: string): TBackfillCursor => ({
   projectId,
@@ -97,42 +88,3 @@ export const needsBackfill = (row: {
   secretValueOrgBlindIndex?: string | null;
   encryptedValue?: Buffer | null;
 }) => Boolean(row.encryptedValue) && (!row.secretValueBlindIndex || !row.secretValueOrgBlindIndex);
-
-// Completion lives on the durable flag rather than in the run state, so a key that outlives a
-// finished run can never contradict it.
-export const resolveRunStatus = (
-  state: TBackfillRunState | null,
-  flagEnabled: boolean,
-  now: Date
-): { status: JobState; message?: string } => {
-  if (flagEnabled) return { status: JobState.Completed };
-  if (!state) return { status: JobState.NotFound };
-  if (state.status === "failed") return { status: JobState.Failed, message: state.error ?? "Unknown error" };
-  // A completed state with the flag off is a run whose result was undone or never landed. It needs
-  // another run, so saying "pending" would leave a caller waiting for one that is not coming.
-  if (state.status === "completed") return { status: JobState.NotFound };
-
-  const lastProgress = new Date(state.lastProgressAt).getTime();
-  if (Number.isNaN(lastProgress) || now.getTime() - lastProgress > BACKFILL_STALE_AFTER_MS) {
-    return {
-      status: JobState.Failed,
-      message: "The backfill stopped responding. Start it again to resume from where it left off."
-    };
-  }
-
-  return { status: JobState.Pending };
-};
-
-// The status endpoint answers from this, so a payload it cannot use has to read as "no run in
-// progress" rather than reach the response schema. The counters matter as much as the timestamp:
-// a non-numeric one becomes NaN, which `z.number()` rejects, turning a graceful degrade into a 500.
-export const isUsableRunState = (value: unknown): value is TBackfillRunState => {
-  const state = value as Partial<TBackfillRunState> | null;
-  if (!state || typeof state !== "object") return false;
-  if (state.status !== "running" && state.status !== "failed" && state.status !== "completed") return false;
-  if (typeof state.lastProgressAt !== "string") return false;
-
-  return (["projectsTotal", "projectsDone", "secretsProcessed"] as const).every((field) =>
-    Number.isFinite(state[field])
-  );
-};

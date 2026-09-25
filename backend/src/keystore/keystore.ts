@@ -179,10 +179,6 @@ export const KeyStorePrefixes = {
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
-  // Holds a secret value tracking backfill's transient state. Completion is the durable flag on the
-  // organization, so nothing here needs to outlive the run.
-  SecretValueTrackingBackfill: (scopeId: string) => `secret-value-tracking-backfill:${scopeId}` as const,
-
   // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
   // one slot for the multi-key upsert/delete scripts.
   WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
@@ -252,7 +248,6 @@ export const KeyStoreTtls = {
   EmailDispatchCooldownInSeconds: 60, // 1 minute
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
-  SecretValueTrackingBackfillInSeconds: 172800, // 2 days, long enough to resume a run someone retries the next day
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours

@@ -1,16 +1,14 @@
-import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { initLogger } from "@app/lib/logger";
 
 import { secretValueTrackingQueueFactory } from "./secret-value-tracking-queue";
-import { TBackfillRunState } from "./secret-value-tracking-types";
 
 const ORG_ID = "org-1";
 
 type TFakeSecret = { id: string; key: string; folderId: string; hasOrgDigest: boolean };
 
-// Drives the real job handler over in-memory fakes. The e2e suite cannot reach this layer: it runs
-// one project whose secrets fit in a single chunk, so every bug that only shows on a resumed chunk
-// or at a project boundary is invisible to it.
+// Drives the real job handler over in-memory fakes. The e2e suite runs one project with a handful
+// of secrets, so anything that only shows at a project boundary, or across many projects, is
+// invisible to it.
 const makeHarness = ({
   projectIds,
   foldersByProject,
@@ -20,37 +18,25 @@ const makeHarness = ({
   foldersByProject: Record<string, string[]>;
   secrets?: TFakeSecret[];
 }) => {
-  const store = new Map<string, string>();
   const queued: { payload: unknown; opts: Record<string, unknown> }[] = [];
   const flaggedProjects: string[] = [];
   const flaggedOrgs: string[] = [];
   const folderReads: string[] = [];
+  const progress: { projectsTotal: number; projectsDone: number; secretsProcessed: number }[] = [];
   let rows = [...secrets];
-  let handler: (job: { data: unknown }) => Promise<void> = async () => {};
+  let handler: (job: {
+    data: unknown;
+    updateProgress: (p: unknown) => Promise<void>;
+  }) => Promise<void> = async () => {};
 
-  const keyStore = {
-    getItemPrimary: async (key: string) => store.get(key) ?? null,
-    setItemWithExpiry: async (key: string, _ttl: number | string, value: string | number | Buffer) => {
-      store.set(key, String(value));
-      return "OK" as const;
-    },
-    setItemWithExpiryNX: async (key: string, _ttl: number | string, value: string | number | Buffer) => {
-      if (store.has(key)) return null;
-      store.set(key, String(value));
-      return "OK" as const;
-    },
-    deleteItem: async (key: string) => {
-      store.delete(key);
-      return 1;
-    },
-    deleteItems: async () => 0
-  };
+  const keyStore = { deleteItems: async () => 0 };
 
   const queueService = {
-    start: (_name: unknown, jobHandler: (job: { data: unknown }) => Promise<void>) => {
+    start: (_name: unknown, jobHandler: typeof handler) => {
       handler = jobHandler;
     },
     listen: () => {},
+    getJob: async () => undefined,
     queue: async (_name: unknown, _job: unknown, payload: unknown, opts: Record<string, unknown>) => {
       queued.push({ payload, opts });
     }
@@ -106,32 +92,23 @@ const makeHarness = ({
     } as never
   });
 
-  const stateKey = KeyStorePrefixes.SecretValueTrackingBackfill(ORG_ID);
-
   return {
     factory,
     queued,
     flaggedProjects,
     flaggedOrgs,
     folderReads,
+    progress,
     rowsNow: () => rows,
-    setState: (state: TBackfillRunState) => store.set(stateKey, JSON.stringify(state)),
-    getState: () => {
-      const raw = store.get(stateKey);
-      return raw ? (JSON.parse(raw) as TBackfillRunState) : null;
-    },
-    runChunk: () => handler({ data: { scope: "org", orgId: ORG_ID } })
+    run: () =>
+      handler({
+        data: { scope: "org", orgId: ORG_ID },
+        updateProgress: async (p) => {
+          progress.push(p as { projectsTotal: number; projectsDone: number; secretsProcessed: number });
+        }
+      })
   };
 };
-
-const runningState = (cursor: TBackfillRunState["cursor"]): TBackfillRunState => ({
-  status: "running",
-  cursor,
-  projectsTotal: 2,
-  projectsDone: 0,
-  secretsProcessed: 0,
-  lastProgressAt: new Date().toISOString()
-});
 
 describe("the backfill job", () => {
   // The job logs its own lifecycle, and the unit environment boots no server to initialise it.
@@ -139,30 +116,75 @@ describe("the backfill job", () => {
     initLogger();
   });
 
-  test("a chunk resuming inside one project still reaches the org's other projects", async () => {
+  test("one run covers every project in the org", async () => {
     const harness = makeHarness({
-      projectIds: ["p1", "p2"],
-      foldersByProject: { p1: ["f1"], p2: ["f2"] },
+      projectIds: ["p1", "p2", "p3"],
+      foldersByProject: { p1: ["f1"], p2: ["f2"], p3: ["f3"] },
       secrets: [
-        { id: "s1", key: "A", folderId: "f1", hasOrgDigest: true },
-        { id: "s2", key: "B", folderId: "f2", hasOrgDigest: false }
+        { id: "s1", key: "A", folderId: "f1", hasOrgDigest: false },
+        { id: "s2", key: "B", folderId: "f2", hasOrgDigest: false },
+        { id: "s3", key: "C", folderId: "f3", hasOrgDigest: false }
       ]
     });
 
-    // A resumed chunk: the cursor is already inside p1, exactly as the previous chunk left it.
-    harness.setState(runningState({ projectId: "p1", folderId: "f1", key: "A", id: "s1" }));
+    await harness.run();
 
-    await harness.runChunk();
-
-    // The bug this pins: the resumed chunk saw only p1's folders, read every later project as
-    // empty, stopped at the p1 boundary and flagged the org complete with s2 still unindexed.
-    expect(harness.rowsNow().find((row) => row.id === "s2")?.hasOrgDigest).toBe(true);
-    expect(harness.flaggedProjects).toEqual(["p1", "p2"]);
-    // Both projects really are done here, so flagging the org is right.
+    expect(harness.rowsNow().every((row) => row.hasOrgDigest)).toBe(true);
+    expect(harness.flaggedProjects).toEqual(["p1", "p2", "p3"]);
     expect(harness.flaggedOrgs).toEqual([ORG_ID]);
   });
 
-  test("a finished run leaves its final counters behind for the UI to show", async () => {
+  test("a row that already carries both digests is left alone", async () => {
+    const harness = makeHarness({
+      projectIds: ["p1"],
+      foldersByProject: { p1: ["f1"] },
+      secrets: [
+        { id: "done", key: "A", folderId: "f1", hasOrgDigest: true },
+        { id: "todo", key: "B", folderId: "f1", hasOrgDigest: false }
+      ]
+    });
+
+    await harness.run();
+
+    // Only the one that needed work is counted, which is what makes a re-run cheap.
+    expect(harness.progress.at(-1)?.secretsProcessed).toBe(1);
+  });
+
+  test("a project that has been deleted does not stop the walk", async () => {
+    const harness = makeHarness({
+      projectIds: ["p1", "p2"],
+      foldersByProject: { p1: [], p2: ["f2"] },
+      secrets: [{ id: "s2", key: "B", folderId: "f2", hasOrgDigest: false }]
+    });
+
+    await harness.run();
+
+    expect(harness.rowsNow().find((row) => row.id === "s2")?.hasOrgDigest).toBe(true);
+    expect(harness.flaggedOrgs).toEqual([ORG_ID]);
+  });
+
+  test("a project with no folders at all is skipped rather than flagged", async () => {
+    const harness = makeHarness({
+      projectIds: ["empty", "p2"],
+      foldersByProject: { empty: [], p2: ["f2"] },
+      secrets: [{ id: "s2", key: "B", folderId: "f2", hasOrgDigest: false }]
+    });
+
+    await harness.run();
+
+    expect(harness.flaggedProjects).toEqual(["p2"]);
+  });
+
+  test("an org with nothing in it still finishes and is flagged", async () => {
+    const harness = makeHarness({ projectIds: ["p1"], foldersByProject: { p1: ["f1"] }, secrets: [] });
+
+    await harness.run();
+
+    expect(harness.flaggedOrgs).toEqual([ORG_ID]);
+    expect(harness.progress.at(-1)?.secretsProcessed).toBe(0);
+  });
+
+  test("progress is reported as the walk goes, not only at the end", async () => {
     const harness = makeHarness({
       projectIds: ["p1", "p2"],
       foldersByProject: { p1: ["f1"], p2: ["f2"] },
@@ -172,75 +194,11 @@ describe("the backfill job", () => {
       ]
     });
 
-    harness.setState(runningState(null));
-    await harness.runChunk();
+    await harness.run();
 
-    // The durable answer to "is it done" is still the flag. These numbers only let the UI show what
-    // the run got through, so they have to survive the run rather than be cleared with the cursor.
-    const finished = harness.getState();
-    expect(finished?.status).toBe("completed");
-    expect(finished?.projectsDone).toBe(2);
-    expect(finished?.secretsProcessed).toBe(2);
-    expect(finished?.cursor).toBeNull();
-  });
-
-  test("a cursor on a project deleted since the last chunk carries on with the rest", async () => {
-    const harness = makeHarness({
-      projectIds: ["p1", "p2"],
-      foldersByProject: { p1: ["f1"], p2: ["f2"] },
-      secrets: [{ id: "s2", key: "B", folderId: "f2", hasOrgDigest: false }]
-    });
-
-    harness.setState(runningState({ projectId: "gone", folderId: "gone-folder", key: "", id: "" }));
-
-    await harness.runChunk();
-
-    expect(harness.flaggedProjects).not.toContain("gone");
-    expect(harness.rowsNow().find((row) => row.id === "s2")?.hasOrgDigest).toBe(true);
-  });
-
-  test("a project's folders are only read when the walk reaches it", async () => {
-    const harness = makeHarness({
-      projectIds: ["p1", "p2", "p3"],
-      foldersByProject: { p1: ["f1"], p2: ["f2"], p3: ["f3"] },
-      secrets: [{ id: "s1", key: "A", folderId: "f1", hasOrgDigest: false }]
-    });
-
-    harness.setState(runningState({ projectId: "p1", folderId: "f1", key: "", id: "" }));
-    await harness.runChunk();
-
-    // Every project is reached in this run, but each is read once rather than all up front.
-    expect(harness.folderReads.filter((id) => id === "p1")).toHaveLength(1);
-  });
-
-  test("a run over many empty folders checkpoints instead of querying without bound", async () => {
-    const folders = Array.from({ length: 5000 }, (_, i) => `empty-${i}`);
-    const harness = makeHarness({
-      projectIds: ["p1"],
-      foldersByProject: { p1: folders },
-      secrets: []
-    });
-
-    harness.setState(runningState(null));
-    await harness.runChunk();
-
-    // Empty folders read no rows, so a chunk bounded only on rows would walk all 5000 in one job.
-    expect(harness.queued).toHaveLength(1);
-    expect(harness.getState()?.cursor).not.toBeNull();
-    // Work remains, so nothing may claim the org is searchable yet.
-    expect(harness.flaggedOrgs).toEqual([]);
-  });
-
-  test("a queued chunk asks for retries so one transient failure does not kill the chain", async () => {
-    const harness = makeHarness({
-      projectIds: ["p1"],
-      foldersByProject: { p1: Array.from({ length: 5000 }, (_, i) => `empty-${i}`) },
-      secrets: []
-    });
-
-    harness.setState(runningState(null));
-    await harness.runChunk();
-
-    expect(harness.queued[0].opts.attempts).toBeGreaterThan(1);
+    // BullMQ reads these as the heartbeat that tells a working job from a stalled one, so a long
+    // walk has to report more than once.
+    expect(harness.progress.length).toBeGreaterThan(1);
+    expect(harness.progress.at(-1)).toEqual({ projectsTotal: 2, projectsDone: 2, secretsProcessed: 2 });
   });
 });

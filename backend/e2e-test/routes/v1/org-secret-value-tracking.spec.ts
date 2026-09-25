@@ -93,6 +93,21 @@ const waitForCompletion = async (authToken: string, timeoutMs = 30_000) => {
   }
 };
 
+// A backfill is refused while one is already in flight for the same scope, so a test that drives a
+// run to completion cannot share an organization with the next one: the previous job may still be
+// finishing when the next enable arrives, and would swallow it. Each such test gets its own.
+const withOwnOrg = async (
+  name: string,
+  body: (ctx: Awaited<ReturnType<typeof createIsolatedOrgAndProject>>) => Promise<void>
+) => {
+  const ctx = await createIsolatedOrgAndProject(name);
+  try {
+    await body(ctx);
+  } finally {
+    await ctx.cleanup();
+  }
+};
+
 describe("Org-wide secret value tracking", () => {
   // The walk is a queue round trip per chunk, so it takes longer than the 5s default.
   vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -116,77 +131,77 @@ describe("Org-wide secret value tracking", () => {
 
   // Re-running a completed backfill is the repair path for every way an unindexed row can get back
   // into a finished org, so it has to be accepted rather than refused as "already enabled".
-  test("a completed organization can run the backfill again", async () => {
-    expect((await enable(authToken)).statusCode).toBe(200);
-    await waitForCompletion(authToken);
-    expect((await status(authToken)).status).toBe("completed");
-  });
+  test("a completed organization can run the backfill again", async () =>
+    withOwnOrg("org-value-tracking-rerun", async (ctx) => {
+      expect((await enable(ctx.authToken)).statusCode).toBe(200);
+      await waitForCompletion(ctx.authToken);
+      expect((await status(ctx.authToken)).status).toBe("completed");
+    }));
 
-  test("searching by value refuses while tracking is off, and works once the backfill completes", async () => {
-    await createSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENV,
-      secretPath: "/",
-      key: "PREDATES_TRACKING",
-      value: "written-before-tracking",
-      authToken
-    });
+  test("searching by value refuses while tracking is off, and works once the backfill completes", async () =>
+    withOwnOrg("org-value-tracking-search", async (ctx) => {
+      await createSecretV2({
+        workspaceId: ctx.projectId,
+        environmentSlug: ENV,
+        secretPath: "/",
+        key: "PREDATES_TRACKING",
+        value: "written-before-tracking",
+        authToken: ctx.authToken
+      });
 
-    await makeOrgIncomplete(orgId);
+      await makeOrgIncomplete(ctx.orgId);
 
-    const refused = await searchByValue("written-before-tracking", authToken);
-    expect(refused.statusCode).toBe(400);
-    expect(refused.json().message).toMatch(/org-wide secret value tracking/i);
+      const refused = await searchByValue("written-before-tracking", ctx.authToken);
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json().message).toMatch(/org-wide secret value tracking/i);
 
-    expect((await status(authToken)).status).toBe("not-found");
+      expect((await enable(ctx.authToken)).statusCode).toBe(200);
 
-    const started = await enable(authToken);
-    expect(started.statusCode).toBe(200);
+      const finished = await waitForCompletion(ctx.authToken);
+      expect(finished.projectsTotal).toBeGreaterThanOrEqual(1);
+      expect(finished.projectsDone).toBeGreaterThanOrEqual(1);
 
-    const finished = await waitForCompletion(authToken);
-    expect(finished.projectsTotal).toBeGreaterThanOrEqual(1);
-    expect(finished.projectsDone).toBeGreaterThanOrEqual(1);
-
-    const found = await searchByValue("written-before-tracking", authToken);
-    expect(found.statusCode).toBe(200);
-    expect(found.json().secrets.map((s: { key: string }) => s.key)).toEqual(["PREDATES_TRACKING"]);
-  });
+      const found = await searchByValue("written-before-tracking", ctx.authToken);
+      expect(found.statusCode).toBe(200);
+      expect(found.json().secrets.map((secret: { key: string }) => secret.key)).toEqual(["PREDATES_TRACKING"]);
+    }));
 
   // The (key, id) cursor exists for this: the unique index on (key, folderId) is partial on
-  // type = 'shared', so a personal override shares a key with the shared secret in its folder and a
+  // type = 'shared', so a personal override shares a key with the shared secret beside it and a
   // key-only cursor would walk past one of them.
-  test("a personal override sharing a key with a shared secret is backfilled too", async () => {
-    await createSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENV,
-      secretPath: "/",
-      key: "SHARED_AND_PERSONAL",
-      value: "the-shared-value",
-      authToken
-    });
-    await createSecretV2({
-      workspaceId: projectId,
-      environmentSlug: ENV,
-      secretPath: "/",
-      key: "SHARED_AND_PERSONAL",
-      value: "the-personal-value",
-      type: SecretType.Personal,
-      authToken
-    });
+  test("a personal override sharing a key with a shared secret is backfilled too", async () =>
+    withOwnOrg("org-value-tracking-personal", async (ctx) => {
+      await createSecretV2({
+        workspaceId: ctx.projectId,
+        environmentSlug: ENV,
+        secretPath: "/",
+        key: "SHARED_AND_PERSONAL",
+        value: "the-shared-value",
+        authToken: ctx.authToken
+      });
+      await createSecretV2({
+        workspaceId: ctx.projectId,
+        environmentSlug: ENV,
+        secretPath: "/",
+        key: "SHARED_AND_PERSONAL",
+        value: "the-personal-value",
+        type: SecretType.Personal,
+        authToken: ctx.authToken
+      });
 
-    await makeOrgIncomplete(orgId);
-    expect((await enable(authToken)).statusCode).toBe(200);
-    await waitForCompletion(authToken);
+      await makeOrgIncomplete(ctx.orgId);
+      expect((await enable(ctx.authToken)).statusCode).toBe(200);
+      await waitForCompletion(ctx.authToken);
 
-    const rows = await testDb(TableName.SecretV2)
-      .where({ key: "SHARED_AND_PERSONAL" })
-      .select("id", "type", "secretValueOrgBlindIndex");
+      const rows = await testDb(TableName.SecretV2)
+        .where({ key: "SHARED_AND_PERSONAL" })
+        .select("id", "type", "secretValueOrgBlindIndex");
 
-    expect(rows).toHaveLength(2);
-    rows.forEach((row) => expect(row.secretValueOrgBlindIndex).toEqual(expect.any(String)));
-    // Two different values must not collide on one digest.
-    expect(new Set(rows.map((row) => row.secretValueOrgBlindIndex)).size).toBe(2);
-  });
+      expect(rows).toHaveLength(2);
+      rows.forEach((row) => expect(row.secretValueOrgBlindIndex).toEqual(expect.any(String)));
+      // Two different values must not collide on one digest.
+      expect(new Set(rows.map((row) => row.secretValueOrgBlindIndex)).size).toBe(2);
+    }));
 
   // Version rows written before the org digest existed carry none, and a rollback copies a version's
   // digests straight onto the live secret. Without repair that silently puts an unindexed row back
@@ -313,17 +328,16 @@ describe("Org-wide secret value tracking", () => {
     expect(outsider.json().secrets).toEqual([]);
   });
 
-  test("a second enable while a run is moving is refused", async () => {
-    await makeOrgIncomplete(orgId);
+  test("a second enable while a run is moving does not start a second walk", async () =>
+    withOwnOrg("org-value-tracking-double", async (ctx) => {
+      await makeOrgIncomplete(ctx.orgId);
 
-    expect((await enable(authToken)).statusCode).toBe(200);
+      expect((await enable(ctx.authToken)).statusCode).toBe(200);
+      // Accepted rather than refused: one job id per scope means the second enable is absorbed by
+      // the run already in flight instead of starting a competing one.
+      expect((await enable(ctx.authToken)).statusCode).toBe(200);
 
-    const second = await enable(authToken);
-    // Either the first run is still moving, so the guard refuses, or it already finished, in which
-    // case the flag refuses instead. Both are a 400 and both are correct.
-    expect(second.statusCode).toBe(400);
-    expect(second.json().message).toMatch(/already (running|enabled)/i);
-
-    await waitForCompletion(authToken);
-  });
+      await waitForCompletion(ctx.authToken);
+      expect((await status(ctx.authToken)).status).toBe("completed");
+    }));
 });

@@ -2338,7 +2338,6 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     projectDAL,
-    keyStore,
     secretValueTrackingQueue
   });
 
