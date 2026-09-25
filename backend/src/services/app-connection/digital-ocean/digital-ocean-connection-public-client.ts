@@ -83,7 +83,9 @@ class DigitalOceanAppPlatformPublicClient {
     const response = await this.getApp(connection, appId);
     const existing = response.spec.envs || [];
 
-    const variables = existing.filter((v) => !input.some((i) => i.key === v.key));
+    // delete variables that are not in the input (for reference, this deletes only the variables managed by Infisical)
+    const inputKeys = new Set(input.map((i) => i.key));
+    const variables = existing.filter((v) => !inputKeys.has(v.key));
 
     return this.client.put(
       `/apps/${appId}`,
