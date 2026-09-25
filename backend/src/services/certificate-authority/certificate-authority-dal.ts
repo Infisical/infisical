@@ -413,11 +413,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
-  const primaryNode = () => db.primaryNode();
-
   return {
     ...caOrm,
-    primaryNode,
     findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa,

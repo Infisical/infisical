@@ -2947,7 +2947,6 @@ export const registerRoutes = async (
     certificateCleanupConfigDAL,
     certificateDAL,
     certificateRequestDAL,
-    internalCertificateAuthorityDAL,
     auditLogService,
     telemetryService
   });

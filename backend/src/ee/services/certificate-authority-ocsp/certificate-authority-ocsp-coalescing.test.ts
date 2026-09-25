@@ -87,7 +87,6 @@ const buildHarness = async () => {
 
   const service = certificateAuthorityOcspServiceFactory({
     certificateAuthorityDAL: {
-      primaryNode: vi.fn(() => undefined),
       findByIdWithAssociatedCa: vi.fn(async () => ({
         id: caId,
         projectId: "project-1",

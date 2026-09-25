@@ -46,7 +46,7 @@ export const writeLimit: RateLimitOptions = {
 export const ocspLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
-  max: 6000,
+  max: 600,
   keyGenerator: (req) => req.realIp
 };
 

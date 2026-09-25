@@ -32,25 +32,27 @@ Load balancers, VPN concentrators, and mutual TLS gateways often check OCSP whil
 
 ## Enable OCSP
 
+On the Enterprise plan, OCSP is on by default for every internal CA you create. You can turn it off while creating the CA, in the **Distribution** step, or at any time afterwards. Enable it yourself for a CA created before you had the plan, or one where it was turned off.
+
 <Tabs>
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Open the CA">
         Go to **Certificate Authorities** and select the internal CA.
       </Step>
-      <Step title="Edit the OCSP card">
-        Select the pencil icon on the **OCSP** card.
+      <Step title="Edit the Revocation card">
+        Select the pencil icon on the **Revocation** card.
       </Step>
       <Step title="Turn OCSP on">
         Turn on **Enable OCSP**, then select **Save**.
       </Step>
       <Step title="Copy the responder URL">
-        The **OCSP** card now shows the responder URL. Certificates issued from this point carry it.
+        The **Revocation** card now shows the responder URL. Certificates issued from this point carry it.
       </Step>
     </Steps>
   </Tab>
   <Tab title="API">
-    Set `isOcspEnabled` under `configuration` when you create or update an internal CA.
+    Set `isOcspEnabled` under `configuration` when you create or update an internal CA. If you leave it out when creating a CA, it's enabled on the Enterprise plan and disabled otherwise. Leaving it out of an update keeps the current setting.
 
     ### Enable on an existing CA
 
@@ -104,22 +106,6 @@ certificate.pem: good
 	This Update: Sep 21 13:29:42 2026 GMT
 	Next Update: Sep 21 14:29:42 2026 GMT
 ```
-
-## OCSP stapling
-
-OCSP stapling allows a server to include the OCSP response for its own certificate in the TLS handshake, so clients receive the revocation status without querying the responder themselves.
-
-Stapling is optional and is configured on the server that presents the certificate, not in Infisical. Enabling it reduces handshake latency and keeps connections working during a brief responder outage.
-
-```nginx
-ssl_stapling on;
-ssl_stapling_verify on;
-resolver 1.1.1.1 8.8.8.8 valid=300s;
-```
-
-<Note>
-  Stapling only applies to certificates a server presents. When a server validates a client certificate, such as in mutual TLS, stapling doesn't apply and each check queries the responder directly.
-</Note>
 
 ## Limitations
 

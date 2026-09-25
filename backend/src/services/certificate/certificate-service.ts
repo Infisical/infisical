@@ -522,13 +522,7 @@ export const certificateServiceFactory = ({
           );
         }
 
-        const removed = await certificateDAL.deleteById(cert.id, tx);
-
-        if (cert.caId) {
-          await internalCertificateAuthorityDAL.update({ caId: cert.caId }, { $incr: { ocspGeneration: 1 } }, tx);
-        }
-
-        return removed;
+        return certificateDAL.deleteById(cert.id, tx);
       });
     } catch (err) {
       const innerError = err instanceof DatabaseError ? (err.error as { code?: string; constraint?: string }) : null;

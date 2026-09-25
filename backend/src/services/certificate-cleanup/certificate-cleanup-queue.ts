@@ -10,7 +10,6 @@ import { QueueJobs } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
 import { PostHogEventTypes } from "../telemetry/telemetry-types";
@@ -23,7 +22,6 @@ type TCertificateCleanupQueueFactoryDep = {
   certificateCleanupConfigDAL: TCertificateCleanupConfigDALFactory;
   certificateDAL: Pick<TCertificateDALFactory, "delete">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "delete">;
-  internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -36,7 +34,6 @@ export const certificateCleanupQueueFactory = ({
   certificateCleanupConfigDAL,
   certificateDAL,
   certificateRequestDAL,
-  internalCertificateAuthorityDAL,
   auditLogService,
   telemetryService
 }: TCertificateCleanupQueueFactoryDep) => {
@@ -119,18 +116,7 @@ export const certificateCleanupQueueFactory = ({
         try {
           const deleted = await certificateCleanupConfigDAL.transaction(async (tx) => {
             await certificateRequestDAL.delete({ $in: { certificateId: idsToDelete } }, tx);
-            const removed = await certificateDAL.delete({ $in: { id: idsToDelete } }, tx);
-
-            const caIds = [...new Set(removed.map((cert) => cert.caId).filter(Boolean))] as string[];
-            if (caIds.length > 0) {
-              await internalCertificateAuthorityDAL.update(
-                { $in: { caId: caIds } },
-                { $incr: { ocspGeneration: 1 } },
-                tx
-              );
-            }
-
-            return removed;
+            return certificateDAL.delete({ $in: { id: idsToDelete } }, tx);
           });
           deletedCount += deleted.length;
 

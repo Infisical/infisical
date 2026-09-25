@@ -51,7 +51,7 @@ import {
 } from "./certificate-authority-ocsp-types";
 
 type TCertificateAuthorityOcspServiceFactoryDep = {
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "primaryNode">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
@@ -189,7 +189,7 @@ export const certificateAuthorityOcspServiceFactory = ({
 
   const $resolveAuthoritativeCa = async (caId: string, entries: TParsedOcspRequestEntry[]) => {
     const ca = await certificateAuthorityDAL
-      .findByIdWithAssociatedCa(caId, certificateAuthorityDAL.primaryNode())
+      .findByIdWithAssociatedCa(caId, certificateDAL.primaryNode())
       .catch((error) => {
         if (error instanceof NotFoundError) return null;
         throw error;
