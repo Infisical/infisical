@@ -1,14 +1,17 @@
 /* eslint-disable no-continue, no-await-in-loop */
 import * as x509 from "@peculiar/x509";
+import * as asn1js from "asn1js";
+import { Certificate, ContentInfo, SignedData } from "pkijs";
 import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { createAdcsHttpClient } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
-import { splitPemChain } from "@app/services/certificate/certificate-fns";
+import { constructPemChainFromCerts, splitPemChain } from "@app/services/certificate/certificate-fns";
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_POLL_ATTEMPTS = 120;
+const MAX_ADCS_CA_RENEWALS = 100;
 
 // Pre-compiled regex patterns
 const RE_NON_BASE64 = new RE2("[^A-Za-z0-9+/=\\s]", "g");
@@ -54,44 +57,144 @@ const REQUEST_ID_PATTERNS = [
   new RE2("requestid[:\\s]*(\\d+)", "i")
 ];
 
-/**
- * Fetch the issuing CA certificate from ADCS web enrollment.
- * Uses the /certsrv/certnew.cer endpoint which returns an X.509 certificate,
- * NOT the .p7b endpoint which returns a PKCS#7 container that cannot be
- * parsed as individual X.509 certs.
- */
-const fetchAdcsCaChain = async (adcsClient: ReturnType<typeof createAdcsHttpClient>): Promise<string> => {
-  const caCertResponse = await adcsClient.get("/certsrv/certnew.cer?ReqID=CACert&Renewal=0&Enc=b64", {
-    Accept: "application/pkix-cert,application/x-x509-ca-cert,*/*"
-  });
+const RE_N_RENEWALS = new RE2("var\\s+nRenewals\\s*=\\s*(\\d+)\\s*;", "i");
+const RE_PEM_MARKER = new RE2("-----(BEGIN|END)[^-]*-----", "g");
 
-  const caCertData: string = caCertResponse.data;
+type TAdcsClient = {
+  get: (endpoint: string, additionalHeaders?: Record<string, string>) => Promise<{ data: unknown }>;
+};
 
-  // Already PEM-formatted
-  if (caCertData.includes("-----BEGIN CERTIFICATE-----")) {
-    const pemCert = caCertData.trim();
-    // Validate it's actually parseable as X.509 (throws on invalid input)
-    // eslint-disable-next-line no-new
-    new x509.X509Certificate(pemCert);
-    return pemCert;
+const parseAdcsCertificateResponse = (data: string): x509.X509Certificate => {
+  if (data.includes("-----BEGIN CERTIFICATE-----")) {
+    return new x509.X509Certificate(data.trim());
   }
 
-  // Raw base64 — convert to PEM
-  let cleanData = caCertData.trim();
-  cleanData = cleanData.replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
-
+  const cleanData = data.trim().replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
   if (cleanData.length < 100) {
     throw new BadRequestError({ message: "Failed to retrieve CA certificate from ADCS: response too short" });
   }
 
-  const formatted = cleanData.replace(RE_BASE64_WRAP, "$1\n").trim();
-  const pemCert = `-----BEGIN CERTIFICATE-----\n${formatted}\n-----END CERTIFICATE-----`;
+  return new x509.X509Certificate(Buffer.from(cleanData, "base64"));
+};
 
-  // Validate it's actually parseable as X.509 (throws on invalid input)
-  // eslint-disable-next-line no-new
-  new x509.X509Certificate(pemCert);
+const parseAdcsPkcs7Response = (data: string): x509.X509Certificate[] => {
+  const cleanData = data.replace(RE_PEM_MARKER, "").replace(RE_NON_BASE64, "").replace(RE_WHITESPACE, "");
+  const der = Buffer.from(cleanData, "base64");
 
-  return pemCert;
+  const asn1 = asn1js.fromBER(der);
+  if (asn1.offset === -1) {
+    throw new BadRequestError({ message: "Failed to parse the CA certificate chain from ADCS: invalid DER encoding" });
+  }
+
+  const contentInfo = new ContentInfo({ schema: asn1.result });
+  if (contentInfo.contentType !== "1.2.840.113549.1.7.2") {
+    throw new BadRequestError({
+      message: "Failed to parse the CA certificate chain from ADCS: expected PKCS#7 SignedData"
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const signedData = new SignedData({ schema: contentInfo.content });
+
+  return (signedData.certificates ?? []).flatMap((item) =>
+    item instanceof Certificate ? [new x509.X509Certificate(item.toSchema().toBER(false))] : []
+  );
+};
+
+/**
+ * certcarc.asp publishes the index of the CA's current certificate as nRenewals; renewal N is
+ * fetched with certnew.cer?ReqID=CACert&Renewal=N, where 0 is the CA's original certificate.
+ * When the page cannot be fetched at all, only renewal 0 is tried, which still cannot select
+ * a stale certificate because every candidate is verified against the issued certificate.
+ */
+export const getAdcsRenewalCount = async (adcsClient: TAdcsClient): Promise<number> => {
+  let html: string;
+  try {
+    const response = await adcsClient.get("/certsrv/certcarc.asp", { Accept: "text/html,*/*" });
+    html = String(response.data);
+  } catch (error) {
+    logger.warn(
+      { error },
+      "ADCS: failed to read certcarc.asp, only the original CA certificate (Renewal=0) will be tried"
+    );
+    return 0;
+  }
+
+  const match = html.match(RE_N_RENEWALS);
+  if (!match?.[1]) {
+    throw new BadRequestError({
+      message: "Failed to determine the current CA certificate from ADCS: certcarc.asp did not report nRenewals"
+    });
+  }
+
+  const renewalCount = parseInt(match[1], 10);
+  if (!Number.isSafeInteger(renewalCount) || renewalCount > MAX_ADCS_CA_RENEWALS) {
+    throw new BadRequestError({
+      message: `Failed to determine the current CA certificate from ADCS: certcarc.asp reported ${match[1]} renewals, expected at most ${MAX_ADCS_CA_RENEWALS}`
+    });
+  }
+
+  return renewalCount;
+};
+
+const isIssuedBy = async (issuedCert: x509.X509Certificate, caCert: x509.X509Certificate) => {
+  try {
+    return await issuedCert.verify({ publicKey: caCert, signatureOnly: true });
+  } catch (error) {
+    logger.warn(
+      { error, caSubject: caCert.subject },
+      "ADCS: could not verify the issued certificate against a CA certificate"
+    );
+    return false;
+  }
+};
+
+/**
+ * Fetch the chain of the CA certificate that issued `issuedCertificate` from ADCS web enrollment,
+ * issuing CA first. A CA renewed with a new key keeps every previous certificate available, so
+ * renewals are tried newest first and each candidate is verified against the issued certificate.
+ * The chain comes from certnew.p7b; when it cannot be fetched or parsed only the issuing CA
+ * certificate is returned.
+ */
+export const fetchAdcsCaChain = async (adcsClient: TAdcsClient, issuedCertificate: string): Promise<string> => {
+  const issuedCert = new x509.X509Certificate(issuedCertificate);
+  const renewalCount = await getAdcsRenewalCount(adcsClient);
+
+  for (let renewal = renewalCount; renewal >= 0; renewal -= 1) {
+    let caCert: x509.X509Certificate;
+    try {
+      const response = await adcsClient.get(`/certsrv/certnew.cer?ReqID=CACert&Renewal=${renewal}&Enc=b64`, {
+        Accept: "application/pkix-cert,application/x-x509-ca-cert,*/*"
+      });
+      caCert = parseAdcsCertificateResponse(String(response.data));
+    } catch (error) {
+      logger.warn({ error, renewal }, "ADCS: failed to fetch CA certificate for renewal index");
+      continue;
+    }
+
+    if (!(await isIssuedBy(issuedCert, caCert))) {
+      continue;
+    }
+
+    let chain: x509.X509Certificate[] = [];
+    try {
+      const response = await adcsClient.get(`/certsrv/certnew.p7b?ReqID=CACert&Renewal=${renewal}&Enc=b64`, {
+        Accept: "application/x-pkcs7-certificates,application/pkcs7-mime,*/*"
+      });
+      chain = parseAdcsPkcs7Response(String(response.data));
+    } catch (error) {
+      logger.warn(
+        { error, renewal },
+        "ADCS: failed to fetch CA certificate chain, storing the issuing CA certificate only"
+      );
+    }
+
+    return constructPemChainFromCerts([caCert, ...chain.filter((cert) => !cert.equal(caCert))]);
+  }
+
+  throw new BadRequestError({
+    message: `None of the ${renewalCount + 1} CA certificate(s) published by ADCS issued the certificate. Verify that the ADCS URL points at the CA that signed the request.`
+  });
 };
 
 export const submitCsrToAdcs = async (params: {
@@ -178,7 +281,7 @@ export const submitCsrToAdcs = async (params: {
   }
 
   if (status === "issued" && certificate) {
-    const certificateChain = await fetchAdcsCaChain(adcsClient);
+    const certificateChain = await fetchAdcsCaChain(adcsClient, certificate);
     return { certificate, certificateChain };
   }
 
@@ -214,7 +317,7 @@ export const submitCsrToAdcs = async (params: {
       // Certificate in PEM format
       if (certData.includes("-----BEGIN CERTIFICATE-----")) {
         const polledCert = certData.trim();
-        const certificateChain = await fetchAdcsCaChain(adcsClient);
+        const certificateChain = await fetchAdcsCaChain(adcsClient, polledCert);
         return { certificate: polledCert, certificateChain };
       }
 
@@ -232,7 +335,7 @@ export const submitCsrToAdcs = async (params: {
       // Validate the PEM (throws on invalid input)
       // eslint-disable-next-line no-new
       new x509.X509Certificate(pemCert);
-      const certificateChain = await fetchAdcsCaChain(adcsClient);
+      const certificateChain = await fetchAdcsCaChain(adcsClient, pemCert);
       return { certificate: pemCert, certificateChain };
     } catch (error) {
       if (error instanceof BadRequestError) {
