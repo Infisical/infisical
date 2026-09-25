@@ -437,6 +437,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
   [EventType.IMPORT_VAULT_SECRETS]: "Import Vault secrets",
   [EventType.GATEWAY_CREATE]: "Create gateway",
+  [EventType.GATEWAY_UPDATE]: "Update gateway",
+  [EventType.GATEWAY_DELETE]: "Delete gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
   [EventType.GATEWAY_CONNECT]: "Gateway connect",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",

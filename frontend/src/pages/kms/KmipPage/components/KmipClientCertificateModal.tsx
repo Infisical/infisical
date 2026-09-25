@@ -1,6 +1,19 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import { useState } from "react";
+import FileSaver from "file-saver";
+import { CheckIcon, CopyIcon, DownloadIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useTimedReset } from "@app/hooks";
 import { KmipClientCertificate } from "@app/hooks/api/kmip/types";
-import { CertificateContent } from "@app/pages/cert-manager/CertificatesPage/components/CertificateContent";
 
 type Props = {
   isOpen: boolean;
@@ -8,12 +21,115 @@ type Props = {
   certificate: KmipClientCertificate;
 };
 
-export const KmipClientCertificateModal = ({ isOpen, onOpenChange, certificate }: Props) => {
+const CertificateSection = ({
+  title,
+  value,
+  filename,
+  isSensitive = false
+}: {
+  title: string;
+  value: string;
+  filename?: string;
+  isSensitive?: boolean;
+}) => {
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [copyLabel, isCopied, setCopyLabel] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="KMIP client certificate">
-        <CertificateContent {...certificate} />
-      </ModalContent>
-    </Modal>
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-medium text-foreground">{title}</h3>
+        <div className="flex items-center gap-1">
+          {isSensitive && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              aria-label={isRevealed ? `Hide ${title}` : `Reveal ${title}`}
+              onClick={() => setIsRevealed((previous) => !previous)}
+            >
+              {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
+            </IconButton>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="sm"
+                aria-label={`Copy ${title}`}
+                onClick={() => {
+                  navigator.clipboard.writeText(value);
+                  setCopyLabel("Copied");
+                }}
+              >
+                {isCopied ? <CheckIcon /> : <CopyIcon />}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{copyLabel}</TooltipContent>
+          </Tooltip>
+          {filename && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Download ${title}`}
+                  onClick={() =>
+                    FileSaver.saveAs(
+                      new Blob([value], { type: "text/plain;charset=utf-8" }),
+                      filename
+                    )
+                  }
+                >
+                  <DownloadIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Download</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+      <pre className="max-h-56 overflow-auto rounded-md border border-border bg-container p-3 font-mono text-xs break-all whitespace-pre-wrap text-foreground">
+        {isSensitive && !isRevealed ? "••••••••••••••••" : value}
+      </pre>
+    </section>
+  );
+};
+
+export const KmipClientCertificateModal = ({ isOpen, onOpenChange, certificate }: Props) => {
+  if (!certificate) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>KMIP Client Certificate</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-5">
+          <CertificateSection title="Serial Number" value={certificate.serialNumber} />
+          <CertificateSection
+            title="Certificate Body"
+            value={certificate.certificate}
+            filename="cert.pem"
+          />
+          {certificate.certificateChain && (
+            <CertificateSection
+              title="Certificate Chain"
+              value={certificate.certificateChain}
+              filename="chain.pem"
+            />
+          )}
+          {certificate.privateKey && (
+            <CertificateSection
+              title="Certificate Private Key"
+              value={certificate.privateKey}
+              filename="private_key.txt"
+              isSensitive
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };

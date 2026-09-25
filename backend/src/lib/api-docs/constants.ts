@@ -2277,6 +2277,15 @@ export const CERTIFICATES = {
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
+  RENEWAL_PREVIEW: {
+    id: "The ID of the certificate to preview a renewal for.",
+    hasOriginatingRequest:
+      "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    request:
+      "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
+    issuerModifiedFields:
+      "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
+  },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
@@ -4026,6 +4035,7 @@ export const GATEWAYS = {
       "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `gcp` carries the GCP token type and service account/project/zone allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
+    name: "New name for the gateway. Renaming does not affect the gateway's ID, so resources referencing it keep working.",
     authMethod:
       "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },

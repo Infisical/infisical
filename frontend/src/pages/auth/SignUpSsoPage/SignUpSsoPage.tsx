@@ -32,6 +32,7 @@ export const SignupSsoPage = () => {
   const navigate = useNavigate();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SignUpSsoPage.id });
   const token = search.token as string;
+  const callbackPort = search.callback_port;
 
   const [code, setCode] = useState("");
 
@@ -80,7 +81,12 @@ export const SignupSsoPage = () => {
     // workspace, so org setup doesn't apply; keep sending them straight in.
     const userOrgs = await fetchOrganizations();
     if (userOrgs.length > 0) {
-      if (organizationId) {
+      if (callbackPort) {
+        navigate({
+          to: "/login/select-organization",
+          search: { org_id: organizationId, callback_port: callbackPort }
+        });
+      } else if (organizationId) {
         navigate({
           to: "/organizations/$orgId/projects",
           params: { orgId: organizationId }
@@ -97,7 +103,7 @@ export const SignupSsoPage = () => {
     }
     captureSignupCompleted("sso");
 
-    navigate({ to: "/organizations/onboarding" });
+    navigate({ to: "/organizations/onboarding", search: { callback_port: callbackPort } });
   };
 
   const handleResendCode = async () => {
@@ -120,7 +126,9 @@ export const SignupSsoPage = () => {
     <AuthPageLayout
       headerAction={
         <Button asChild variant="outline" size="sm">
-          <Link to="/login">Log In</Link>
+          <Link to="/login" search={{ callback_port: callbackPort }}>
+            Log In
+          </Link>
         </Button>
       }
     >

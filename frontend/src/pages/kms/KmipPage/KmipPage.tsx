@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ProjectPermissionKmipActions, ProjectPermissionSub } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -16,8 +16,8 @@ export const KmipPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "KMS" })}</title>
       </Helmet>
-      <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto flex flex-col bg-page text-foreground">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={ProjectType.KMS}
             title="KMIP"

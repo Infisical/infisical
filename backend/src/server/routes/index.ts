@@ -2,7 +2,6 @@ import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
-import { CronJob } from "cron";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
@@ -215,6 +214,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
+import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
@@ -403,6 +403,8 @@ import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-e
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { legacyPkiDeprecationDALFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-dal";
+import { legacyPkiDeprecationQueueFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-queue";
 import { licenseClientFactory } from "@app/services/license-client";
 import {
   buildMeteredFeatures,
@@ -1740,6 +1742,7 @@ export const registerRoutes = async (
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
+  const legacyPkiDeprecationDAL = legacyPkiDeprecationDALFactory(db);
   const pkiSyncDAL = pkiSyncDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
   const pkiDiscoveryConfigDAL = pkiDiscoveryConfigDALFactory(db);
@@ -3061,6 +3064,17 @@ export const registerRoutes = async (
     cronJob
   });
 
+  const legacyPkiDeprecationQueue = legacyPkiDeprecationQueueFactory({
+    legacyPkiDeprecationDAL,
+    orgDAL,
+    projectMembershipDAL,
+    smtpService,
+    notificationService,
+    keyStore,
+    queueService,
+    cronJob
+  });
+
   const dailyExpiringPkiItemAlert = dailyExpiringPkiItemAlertQueueServiceFactory({
     cronJob,
     pkiAlertService
@@ -3499,6 +3513,7 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateTemplateDAL,
+    certificateProfileDAL,
     certificateAuthorityQueue,
     certificateDAL,
     certificateBodyDAL,
@@ -3554,6 +3569,7 @@ export const registerRoutes = async (
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
+    certificateProfileDAL,
     certificateRequestDAL,
     resourceMetadataDAL,
     gatewayV2Service,
@@ -3563,7 +3579,8 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     licenseService,
     telemetryService,
-    keyStore
+    keyStore,
+    pkiAlertV2Queue
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3721,7 +3738,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    pkiAlertV2Queue
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
@@ -3798,7 +3816,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     digicertFns: digicertCaFns,
     projectDAL,
-    telemetryService
+    telemetryService,
+    pkiAlertV2Queue
   });
 
   const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
@@ -3821,7 +3840,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     godaddyFns: godaddyCaFns,
     projectDAL,
-    telemetryService
+    telemetryService,
+    pkiAlertV2Queue
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
@@ -4193,6 +4213,7 @@ export const registerRoutes = async (
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
   integrationDeprecationQueue.init();
+  legacyPkiDeprecationQueue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
   digicertCaQueue.init();
@@ -4399,7 +4420,7 @@ export const registerRoutes = async (
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
   // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
   // running them would serve stale config rather than shed background work.
-  const cronJobs: CronJob[] = [];
+  const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
     if (rateLimitSyncJob) {

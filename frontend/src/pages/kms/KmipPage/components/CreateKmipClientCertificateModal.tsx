@@ -1,25 +1,39 @@
 import { Controller, useForm } from "react-hook-form";
-import { faCopy, faInfoCircle, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleHelpIcon, CopyIcon, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
-  FormLabel,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
   Input,
-  Modal,
-  ModalClose,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
-import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import {
+  certKeyAlgorithms,
+  certKeyAlgorithmToNameMap,
+  isPqcAlgorithm
+} from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGenerateKmipClientCertificate } from "@app/hooks/api/kmip";
 import { KmipClientCertificate, TKmipClient } from "@app/hooks/api/kmip/types";
@@ -119,182 +133,208 @@ const KmipClientCertificateForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleKmipClientSubmit)}>
-      <Controller
-        control={control}
-        name="requestMethod"
-        render={({ field: { onChange, value } }) => (
-          <FormControl
-            label={
-              <FormLabel
-                label="Request Method"
-                icon={
-                  <Tooltip
-                    content={
-                      <div className="space-y-2">
-                        <p>
-                          <strong>Managed:</strong> Infisical generates and manages the private key
-                          for you.
-                        </p>
-                        <p>
-                          <strong>CSR:</strong> Provide your own Certificate Signing Request. Use
-                          this when your device (e.g., Dell iDRAC) generates its own private key.
-                        </p>
-                      </div>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              />
-            }
-          >
-            <Select
-              value={value}
-              onValueChange={(val) => onChange(val as RequestMethod)}
-              className="w-full"
-            >
-              <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
-              <SelectItem value={RequestMethod.CSR}>Certificate Signing Request (CSR)</SelectItem>
-            </Select>
-          </FormControl>
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="ttl"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="TTL" isError={Boolean(error)} errorText={error?.message} isRequired>
-            <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-          </FormControl>
-        )}
-      />
-
-      {requestMethod === RequestMethod.MANAGED && (
+    <form onSubmit={handleSubmit(handleKmipClientSubmit)} className="flex min-h-0 flex-1 flex-col">
+      <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
         <Controller
           control={control}
-          name="keyAlgorithm"
-          defaultValue={CertKeyAlgorithm.RSA_2048}
-          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-            <FormControl
-              label="Key Algorithm"
-              errorText={error?.message}
-              isError={Boolean(error)}
-              helperText="This defines the key algorithm to use for signing the client certificate."
-            >
-              <Select
-                defaultValue={field.value}
-                {...field}
-                onValueChange={(e) => onChange(e)}
-                className="w-full"
-              >
-                {certKeyAlgorithms
-                  .filter(({ value }) => !isPqcAlgorithm(value))
-                  .map(({ label, value }) => (
-                    <SelectItem value={String(value || "")} key={label}>
-                      {label}
-                    </SelectItem>
-                  ))}
+          name="requestMethod"
+          render={({ field: { onChange, value } }) => (
+            <Field>
+              <div className="flex items-center gap-2">
+                <FieldLabel htmlFor="kmip-cert-method">Request Method</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" aria-label="About request methods">
+                      <CircleHelpIcon className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-72 space-y-2">
+                      <p>
+                        <strong>Managed:</strong> Infisical generates and manages the private key
+                        for you.
+                      </p>
+                      <p>
+                        <strong>CSR:</strong> Provide your own Certificate Signing Request. Use this
+                        when your device (e.g., Dell iDRAC) generates its own private key.
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Select value={value} onValueChange={(val) => onChange(val as RequestMethod)}>
+                <SelectTrigger id="kmip-cert-method" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
+                  <SelectItem value={RequestMethod.CSR}>
+                    Certificate Signing Request (CSR)
+                  </SelectItem>
+                </SelectContent>
               </Select>
-            </FormControl>
+            </Field>
           )}
         />
-      )}
 
-      {requestMethod === RequestMethod.CSR && (
-        <>
+        <Controller
+          control={control}
+          name="ttl"
+          render={({ field, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="kmip-cert-ttl">
+                TTL{" "}
+                <span aria-hidden className="text-danger">
+                  *
+                </span>
+              </FieldLabel>
+              <Input
+                {...field}
+                id="kmip-cert-ttl"
+                placeholder="2 days, 1d, 2h, 1y, ..."
+                aria-required
+                isError={Boolean(error)}
+              />
+              <FieldError>{error?.message}</FieldError>
+            </Field>
+          )}
+        />
+
+        {requestMethod === RequestMethod.MANAGED && (
           <Controller
             control={control}
-            name="csr"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Certificate Signing Request (CSR)"
-                isRequired
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <TextArea
-                  {...field}
-                  spellCheck={false}
-                  placeholder={
-                    "-----BEGIN CERTIFICATE REQUEST-----\n" +
-                    "MIIByDCCAU4CAQAwfjELMAkGA1UEBhMCVVMx...\n" +
-                    "-----END CERTIFICATE REQUEST-----"
-                  }
-                  rows={8}
-                  className="w-full font-mono text-xs"
-                />
-              </FormControl>
+            name="keyAlgorithm"
+            defaultValue={CertKeyAlgorithm.RSA_2048}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-cert-algorithm">Key Algorithm</FieldLabel>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger
+                    id="kmip-cert-algorithm"
+                    className="w-full"
+                    isError={Boolean(error)}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {certKeyAlgorithms
+                      .filter(({ value: algorithm }) => !isPqcAlgorithm(algorithm))
+                      .map(({ label, value: algorithm }) => (
+                        <SelectItem value={String(algorithm || "")} key={label}>
+                          {certKeyAlgorithmToNameMap[algorithm] || label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  This defines the key algorithm used to sign the client certificate.
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
+        )}
 
-          {kmipClient && (
-            <div className="mt-4 rounded-md border border-border-control bg-surface-hover p-4">
-              <div className="mb-3 flex items-center text-sm font-medium text-foreground-secondary">
-                <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
-                Certificate Subject Values
-              </div>
-              <p className="mb-3 text-xs text-label">
-                The signed certificate will use these fixed values for CN and OU. If your device
-                requires you to specify subject values when generating the CSR, use the values
-                below.
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between rounded bg-surface-active px-3 py-2">
-                  <div>
-                    <div className="text-xs text-muted">CN (Common Name) = KMIP Client ID</div>
-                    <div className="font-mono text-sm text-foreground">{kmipClient.id}</div>
-                  </div>
-                  <IconButton
-                    ariaLabel="Copy Client ID"
-                    variant="plain"
-                    size="sm"
-                    onClick={() => handleCopyToClipboard(kmipClient.id, "Client ID")}
-                  >
-                    <FontAwesomeIcon icon={faCopy} />
-                  </IconButton>
-                </div>
-                <div className="flex items-center justify-between rounded bg-surface-active px-3 py-2">
-                  <div>
-                    <div className="text-xs text-muted">OU (Organizational Unit) = Project ID</div>
-                    <div className="font-mono text-sm text-foreground">{kmipClient.projectId}</div>
-                  </div>
-                  <IconButton
-                    ariaLabel="Copy Project ID"
-                    variant="plain"
-                    size="sm"
-                    onClick={() => handleCopyToClipboard(kmipClient.projectId, "Project ID")}
-                  >
-                    <FontAwesomeIcon icon={faCopy} />
-                  </IconButton>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-muted">
-                Note: Any O (Organization), L (Locality), ST (State), or C (Country) values in your
-                CSR will be included in the certificate.
-              </p>
-            </div>
-          )}
-        </>
-      )}
+        {requestMethod === RequestMethod.CSR && (
+          <>
+            <Controller
+              control={control}
+              name="csr"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="kmip-cert-csr">
+                    Certificate Signing Request (CSR){" "}
+                    <span aria-hidden className="text-danger">
+                      *
+                    </span>
+                  </FieldLabel>
+                  <TextArea
+                    {...field}
+                    id="kmip-cert-csr"
+                    aria-required
+                    isError={Boolean(error)}
+                    spellCheck={false}
+                    placeholder={
+                      "-----BEGIN CERTIFICATE REQUEST-----\n" +
+                      "MIIByDCCAU4CAQAwfjELMAkGA1UEBhMCVVMx...\n" +
+                      "-----END CERTIFICATE REQUEST-----"
+                    }
+                    rows={8}
+                    className="font-mono"
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
 
-      <div className="mt-8 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {requestMethod === RequestMethod.CSR ? "Sign Certificate" : "Generate Certificate"}
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
+            {kmipClient && (
+              <div className="rounded-md border border-border bg-container p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+                  <InfoIcon className="size-4" />
+                  Certificate Subject Values
+                </div>
+                <p className="mb-3 text-xs text-label">
+                  The signed certificate will use these fixed values for CN and OU. If your device
+                  requires you to specify subject values when generating the CSR, use the values
+                  below.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 rounded bg-card px-3 py-2">
+                    <div>
+                      <div className="text-xs text-muted">CN (Common Name) = KMIP Client ID</div>
+                      <div className="font-mono text-sm break-all text-foreground">
+                        {kmipClient.id}
+                      </div>
+                    </div>
+                    <IconButton
+                      aria-label="Copy Client ID"
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => handleCopyToClipboard(kmipClient.id, "Client ID")}
+                    >
+                      <CopyIcon />
+                    </IconButton>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 rounded bg-card px-3 py-2">
+                    <div>
+                      <div className="text-xs text-muted">
+                        OU (Organizational Unit) = Project ID
+                      </div>
+                      <div className="font-mono text-sm break-all text-foreground">
+                        {kmipClient.projectId}
+                      </div>
+                    </div>
+                    <IconButton
+                      aria-label="Copy Project ID"
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => handleCopyToClipboard(kmipClient.projectId, "Project ID")}
+                    >
+                      <CopyIcon />
+                    </IconButton>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-muted">
+                  Note: Any O (Organization), L (Locality), ST (State), or C (Country) values in
+                  your CSR will be included in the certificate.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <SheetFooter className="justify-end border-t">
+        <SheetClose asChild>
+          <Button variant="ghost" type="button">
             Cancel
           </Button>
-        </ModalClose>
-      </div>
+        </SheetClose>
+        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {requestMethod === RequestMethod.CSR ? "Sign Certificate" : "Generate Certificate"}
+        </Button>
+      </SheetFooter>
     </form>
   );
 };
@@ -306,14 +346,33 @@ export const CreateKmipClientCertificateModal = ({
   displayNewClientCertificate
 }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="KMIP client certificate">
-        <KmipClientCertificateForm
-          onComplete={() => onOpenChange(false)}
-          displayNewClientCertificate={displayNewClientCertificate}
-          kmipClient={kmipClient}
-        />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent
+        onOpenAutoFocus={(event) => {
+          const ttlInput = (event.currentTarget as HTMLElement).querySelector<HTMLInputElement>(
+            "#kmip-cert-ttl"
+          );
+          if (ttlInput) {
+            event.preventDefault();
+            ttlInput.focus();
+          }
+        }}
+      >
+        <SheetHeader>
+          <SheetTitle>KMIP Client Certificate</SheetTitle>
+          <SheetDescription>
+            Generate a private key or sign a certificate signing request for this client.
+          </SheetDescription>
+        </SheetHeader>
+        {isOpen && (
+          <KmipClientCertificateForm
+            key={kmipClient?.id}
+            onComplete={() => onOpenChange(false)}
+            displayNewClientCertificate={displayNewClientCertificate}
+            kmipClient={kmipClient}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };
