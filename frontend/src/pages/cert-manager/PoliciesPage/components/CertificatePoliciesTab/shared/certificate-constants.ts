@@ -350,6 +350,7 @@ export enum CertExtensionCriticality {
 
 const MAX_CUSTOM_EXTENSION_VALUE_BYTES = 2048;
 const OID_PATTERN_SOURCE = "[0-2](\\.(0|[1-9][0-9]{0,14})){1,20}";
+const TLS_FEATURE_PATTERN = /^[0-9]{1,5}(,[0-9]{1,5})*$/;
 const SID_PATTERN = /^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$/;
 const TEMPLATE_INFORMATION_PATTERN = new RegExp(
   `^(${OID_PATTERN_SOURCE}):(0|[1-9][0-9]{0,4})(\\.(0|[1-9][0-9]{0,4}))?$`
@@ -364,6 +365,15 @@ export const CUSTOM_EXTENSION_PRESETS: Record<
     validate: (value: string) => string | null;
   }
 > = {
+  "1.3.6.1.5.5.7.1.24": {
+    critical: false,
+    label: "TLS feature (must-staple)",
+    placeholder: "5",
+    validate: (value) =>
+      TLS_FEATURE_PATTERN.test(value)
+        ? null
+        : "Value must be a comma-separated list of TLS feature numbers, for example 5 for OCSP must-staple"
+  },
   "1.3.6.1.4.1.311.25.2": {
     critical: false,
     label: "AD SID security extension",
@@ -410,8 +420,25 @@ export const getPresetExtensionCriticality = (oid: string): CertExtensionCritica
 
 export const isPresetExtensionOid = (oid: string) => Boolean(getCustomExtensionPreset(oid));
 
+// Mirrored by ISSUER_GENERATED_CERT_EXTENSION_OID_LABELS in the backend's certificate-constants.ts,
+// which does the real filtering. Add an OID to one and the two disagree.
+export const ISSUER_GENERATED_EXTENSION_LABELS: Record<string, string> = {
+  "1.3.6.1.4.1.11129.2.4.2": "Signed certificate timestamps",
+  "1.3.6.1.4.1.11129.2.4.3": "Precertificate poison",
+  "1.3.6.1.4.1.11129.2.4.5": "OCSP signed certificate timestamps",
+  "1.3.101.75": "Certificate transparency information",
+  "1.3.6.1.4.1.311.21.1": "CA version",
+  "1.3.6.1.4.1.311.21.2": "Previous CA certificate hash"
+};
+
+export const isIssuerGeneratedExtensionOid = (oid: string) =>
+  Object.prototype.hasOwnProperty.call(ISSUER_GENERATED_EXTENSION_LABELS, oid);
+
 export const customExtensionLabelFor = (oid: string, label?: string | null) =>
-  label?.trim() || getCustomExtensionPreset(oid)?.label || oid;
+  label?.trim() ||
+  getCustomExtensionPreset(oid)?.label ||
+  ISSUER_GENERATED_EXTENSION_LABELS[oid] ||
+  oid;
 
 export const validateCustomExtensionValue = (oid: string, value: string): string | null => {
   const preset = getCustomExtensionPreset(oid);

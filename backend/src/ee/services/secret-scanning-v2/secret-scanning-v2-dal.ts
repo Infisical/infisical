@@ -437,17 +437,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
         .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretScanningScan}.scanningStartedAt`, "<", startedBefore)
-            // Rows written before `scanningStartedAt` existed, or by a pod still running an older
-            // image mid-deploy, fall back to their creation time so they're reaped too.
-            .orWhere((nullStartedAt) => {
-              void nullStartedAt
-                .whereNull(`${TableName.SecretScanningScan}.scanningStartedAt`)
-                .andWhere(`${TableName.SecretScanningScan}.createdAt`, "<", startedBefore);
-            });
-        })
+        // A batched full scan outlives any single scan timeout, so what is being measured is time
+        // since the scan last made progress, not time since it started. `progressUpdatedAt` is
+        // stamped as each commit batch is persisted; rows written before it existed, or by a pod
+        // still running an older image mid-deploy, fall back to the start and then the creation
+        // time so they're reaped too.
+        .whereRaw(`COALESCE(??, ??, ??) < ?`, [
+          `${TableName.SecretScanningScan}.progressUpdatedAt`,
+          `${TableName.SecretScanningScan}.scanningStartedAt`,
+          `${TableName.SecretScanningScan}.createdAt`,
+          startedBefore
+        ])
         .join(
           TableName.SecretScanningResource,
           `${TableName.SecretScanningResource}.id`,
@@ -486,6 +486,26 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Counts the findings this scan was the first to discover, which is the number the scan's own
+   * detail view shows. It is read back from the database rather than accumulated in the handler
+   * because a full scan persists its findings batch by batch and can be retried or resumed by
+   * another worker: whatever an in-memory counter holds covers only the batches that one attempt
+   * happened to run.
+   *
+   * Read from the primary, not a replica: the caller counts immediately after writing the last
+   * batch, so replication lag would report a total short of what it just stored.
+   */
+  const countFindingsByScanId = async (scanId: string, tx?: Knex) => {
+    try {
+      const [result] = await (tx || db)(TableName.SecretScanningFinding).where({ scanId }).count({ count: "*" });
+
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Scan ID - Secret Scanning Finding" });
+    }
+  };
+
   return {
     dataSources: {
       ...dataSourceOrm,
@@ -507,7 +527,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       findByDataSourceId: findScansByDataSourceId,
       findStuck: findStuckScans
     },
-    findings: findingOrm,
+    findings: {
+      ...findingOrm,
+      countByScanId: countFindingsByScanId
+    },
     configs: configOrm
   };
 };

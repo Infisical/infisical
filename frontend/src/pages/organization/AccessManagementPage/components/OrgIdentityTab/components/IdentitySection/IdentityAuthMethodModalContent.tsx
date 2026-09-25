@@ -411,6 +411,7 @@ export const IdentityAuthMethodModalContent = ({
                 value={selectedAuthMethod}
                 options={authMethodOptions}
                 isDisabled={isSelectedAuthAlreadyConfigured}
+                isClearable={false}
                 isError={Boolean(error)}
                 isOptionDisabled={({ isConfigured }) => isConfigured}
                 getOptionLabel={({ label }) => label}

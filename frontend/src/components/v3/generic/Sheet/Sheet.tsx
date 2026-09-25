@@ -49,11 +49,13 @@ function SheetContent({
   className,
   children,
   side = "right",
+  size,
   onPointerDownOutside,
   onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
+  size?: "form" | "wide" | "workspace";
 }) {
   return (
     <SheetPortal>
@@ -84,6 +86,9 @@ function SheetContent({
             "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-2",
           side === "bottom" &&
             "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom-full data-[state=open]:slide-in-from-bottom-2",
+          (side === "right" || side === "left") && size === "form" && "w-full sm:max-w-3xl",
+          (side === "right" || side === "left") && size === "wide" && "sm:max-w-[1100px]",
+          (side === "right" || side === "left") && size === "workspace" && "sm:max-w-[1500px]",
           className
         )}
         {...props}

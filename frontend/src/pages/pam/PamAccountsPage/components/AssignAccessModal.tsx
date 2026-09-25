@@ -400,6 +400,7 @@ export const AssignAccessModal = ({
                 id="pam-assign-access-role"
                 value={selectedRole}
                 options={resourceRoles ?? []}
+                isClearable={false}
                 onValueChange={(opt) => setRoleSlug(opt.slug)}
                 getOptionValue={(opt) => opt.slug}
                 getOptionLabel={(opt) => opt.name}

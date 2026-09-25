@@ -91,18 +91,18 @@ describe("secret scanning timeouts", () => {
   });
 
   describe("stuck scan threshold", () => {
-    test("leaves room for a clone, a scan and the fixed overhead", () => {
+    test("leaves room for a clone, a scan, the commit enumeration and the fixed overhead", () => {
       const result = parse({ SECRET_SCANNING_CLONE_TIMEOUT: "10m", SECRET_SCANNING_SCAN_TIMEOUT: "20m" });
 
       expect(result.success).toBe(true);
-      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(35 * 60 * 1000);
+      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(40 * 60 * 1000);
     });
 
     test("tracks the defaults", () => {
       const result = parse({});
 
       expect(result.success).toBe(true);
-      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(25 * 60 * 1000);
+      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(30 * 60 * 1000);
     });
 
     test("tracks the legacy variables the same way", () => {
@@ -111,7 +111,7 @@ describe("secret scanning timeouts", () => {
       const result = parse({});
 
       expect(result.success).toBe(true);
-      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(75 * 60 * 1000);
+      if (result.success) expect(getSecretScanningStuckScanTimeout(result.data)).toBe(80 * 60 * 1000);
     });
   });
 });

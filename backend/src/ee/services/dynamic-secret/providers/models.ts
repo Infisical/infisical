@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
-import { SshCertKeyAlgorithm } from "@app/lib/ssh";
+import { SSH_CERT_KEY_ALGORITHMS, SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
@@ -975,14 +975,16 @@ export const DynamicSecretTailscaleSchema = z
 
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
-  keyAlgorithm: z.nativeEnum(SshCertKeyAlgorithm).default(SshCertKeyAlgorithm.ED25519)
+  keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519),
+  caKeyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519)
 });
 
 export const SshStoredSchema = z.object({
   caPrivateKey: z.string(),
   caPublicKey: z.string(),
   principals: z.array(z.string().trim().min(1)).min(1),
-  keyAlgorithm: z.nativeEnum(SshCertKeyAlgorithm)
+  keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS),
+  caKeyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519)
 });
 
 export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readonly string[]> = {
@@ -1068,6 +1070,13 @@ export type TDynamicProviderCreateMetadata = {
   };
 };
 
+export type TDynamicProviderValidateMetadata = {
+  projectId: string;
+  previousInputs?: object;
+  defaultTTL?: string;
+  maxTTL?: string | null;
+};
+
 export type TDynamicProviderFns = {
   create: (arg: {
     inputs: unknown;
@@ -1079,7 +1088,7 @@ export type TDynamicProviderFns = {
     config?: TDynamicSecretLeaseConfig;
   }) => Promise<{ entityId: string; data: unknown }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
-  validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
+  validateProviderInputs: (inputs: object, metadata: TDynamicProviderValidateMetadata) => Promise<unknown>;
   revoke: (
     inputs: unknown,
     entityId: string,

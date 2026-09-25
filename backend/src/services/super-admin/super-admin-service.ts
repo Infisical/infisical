@@ -1,5 +1,3 @@
-import { CronJob } from "cron";
-
 import {
   AccessScope,
   IdentityAuthMethod,
@@ -22,6 +20,7 @@ import {
   overwriteSchema,
   validateOverrides
 } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
@@ -1272,11 +1271,11 @@ export const superAdminServiceFactory = ({
     // initial sync upon startup
     await $syncAdminIntegrationConfig();
 
-    // sync admin integrations config every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncAdminIntegrationConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "admin-integration-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncAdminIntegrationConfig
+    });
   };
 
   const initializeEnvConfigSync = async () => {
@@ -1284,11 +1283,11 @@ export const superAdminServiceFactory = ({
 
     await $syncEnvConfig();
 
-    // sync every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncEnvConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "env-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncEnvConfig
+    });
   };
 
   const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {

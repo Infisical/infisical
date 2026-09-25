@@ -48,17 +48,18 @@ type Props = {
   projectId?: string;
   resourceId?: string;
   alert?: TAlert;
+  unavailableEventTypes?: AlertEventType[];
   onComplete: () => void;
   onCancel: () => void;
 };
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Secret expiration alert",
+  [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
 const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Client secret expiration alert",
+  [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
 const DEFAULT_EVENT_TYPE = AlertEventType.IdentityAuthenticationExpiry;
@@ -78,13 +79,17 @@ const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
 });
 
-const buildFormDefaults = (alert: TAlert | undefined, defaultName: string): TAlertForm => {
+const buildFormDefaults = (
+  alert: TAlert | undefined,
+  defaultEventType: AlertEventType,
+  defaultName: string
+): TAlertForm => {
   if (!alert) {
     return {
       name: defaultName,
       description: "",
       resourceType: AlertResourceType.IdentityAuthentication,
-      eventType: DEFAULT_EVENT_TYPE,
+      eventType: defaultEventType,
       alertBeforeDays: DEFAULT_ALERT_BEFORE_DAYS,
       dailyReminder: false,
       enabled: true,
@@ -106,18 +111,29 @@ const buildFormDefaults = (alert: TAlert | undefined, defaultName: string): TAle
   };
 };
 
-export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }: Props) => {
+export const AlertForm = ({
+  projectId,
+  resourceId,
+  alert,
+  unavailableEventTypes = [],
+  onComplete,
+  onCancel
+}: Props) => {
   const isEditing = Boolean(alert);
   const scopeVariant = useScopeVariant();
   const isAgentVault = scopeVariant === "av";
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
+  const defaultEventType =
+    Object.values(AlertEventType).find((eventType) => !unavailableEventTypes.includes(eventType)) ??
+    DEFAULT_EVENT_TYPE;
 
   const formMethods = useForm<TAlertForm>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: buildFormDefaults(
       alert,
-      isAgentVault ? "" : DEFAULT_ALERT_NAMES[DEFAULT_EVENT_TYPE]
+      defaultEventType,
+      isAgentVault ? "" : DEFAULT_ALERT_NAMES[defaultEventType]
     )
   });
 
@@ -239,7 +255,11 @@ export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }
                     </SelectTrigger>
                     <SelectContent position="popper">
                       {Object.values(AlertEventType).map((eventType) => (
-                        <SelectItem key={eventType} value={eventType}>
+                        <SelectItem
+                          key={eventType}
+                          value={eventType}
+                          disabled={!isEditing && unavailableEventTypes.includes(eventType)}
+                        >
                           {ALERT_EVENT_TYPE_LABELS[eventType]}
                         </SelectItem>
                       ))}
@@ -316,7 +336,7 @@ export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }
                   isError={Boolean(errors.alertBeforeDays)}
                   {...register("alertBeforeDays", { valueAsNumber: true })}
                 />
-                <span>days before a client secret expires</span>
+                <span>days before a credential expires</span>
               </div>
               <FieldError errors={[errors.alertBeforeDays]} />
               <Controller

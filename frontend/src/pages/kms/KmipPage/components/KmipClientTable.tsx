@@ -1,41 +1,49 @@
 import {
-  faArrowDown,
-  faArrowUp,
-  faArrowUpRightFromSquare,
-  faCertificate,
-  faEdit,
-  faEllipsis,
-  faMagnifyingGlass,
-  faPlus,
-  faTrash,
-  faUser
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { motion } from "motion/react";
+  ChevronDownIcon,
+  FileBadgeIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
-  Spinner,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionKmipActions,
   ProjectPermissionSub,
@@ -112,12 +120,6 @@ export const KmipClientTable = () => {
     "upgradePlan"
   ] as const);
 
-  const handleSort = () => {
-    setOrderDirection((prev) =>
-      prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
-    );
-  };
-
   const cannotEditKmipClient = permission.cannot(
     ProjectPermissionKmipActions.UpdateClients,
     ProjectPermissionSub.Kmip
@@ -134,40 +136,23 @@ export const KmipClientTable = () => {
   );
 
   return (
-    <motion.div
-      key="kmip-clients-tab"
-      transition={{ duration: 0.15 }}
-      initial={{ opacity: 0, translateX: 30 }}
-      animate={{ opacity: 1, translateX: 0 }}
-      exit={{ opacity: 0, translateX: 30 }}
-    >
-      <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-xl font-medium whitespace-nowrap text-foreground">KMIP Clients</p>
-          <div className="flex w-full justify-end pr-4">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/documentation/platform/kms"
-            >
-              <span className="flex w-max cursor-pointer items-center rounded-md border border-border-strong bg-surface-active px-4 py-2 text-foreground-secondary duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground-inverse">
-                Documentation{" "}
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.06rem] ml-1 text-xs"
-                />
-              </span>
-            </a>
-          </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          KMIP Clients
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms" />
+        </CardTitle>
+        <CardDescription>
+          Manage clients that connect to this project&apos;s KMIP server.
+        </CardDescription>
+        <CardAction>
           <ProjectPermissionCan
             I={ProjectPermissionKmipActions.CreateClients}
             a={ProjectPermissionSub.Kmip}
           >
             {(isAllowed) => (
               <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                variant="project"
                 onClick={() => {
                   if (subscription && !subscription.kmip) {
                     handlePopUpOpen("upgradePlan", {
@@ -180,175 +165,200 @@ export const KmipClientTable = () => {
                 }}
                 isDisabled={!isAllowed}
               >
+                <PlusIcon />
                 Add KMIP Client
               </Button>
             )}
           </ProjectPermissionCan>
-        </div>
-        <Input
-          containerClassName="mb-4"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search clients by name..."
-        />
-        <TableContainer>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <InputGroup className="mb-4">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search clients by name..."
+            aria-label="Search KMIP clients by name"
+          />
+        </InputGroup>
+        {!isPending && kmipClients.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {debouncedSearch.trim()
+                  ? "No KMIP clients match your search"
+                  : "No KMIP clients yet"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {debouncedSearch.trim()
+                  ? "Try a different search term."
+                  : "Add a KMIP client to grant access to your KMS project."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
           <Table>
-            <THead>
-              <Tr className="h-14">
-                <Th>
-                  <div className="flex items-center">
-                    Name
-                    <IconButton
-                      variant="plain"
-                      className="ml-2"
-                      ariaLabel="sort"
-                      onClick={handleSort}
-                    >
-                      <FontAwesomeIcon
-                        icon={orderDirection === OrderByDirection.DESC ? faArrowUp : faArrowDown}
-                      />
-                    </IconButton>
-                  </div>
-                </Th>
-                <Th>Description</Th>
-                <Th>Permissions</Th>
-                <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={3} innerKey="project-kmip-clients" />}
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  sortDirection={
+                    orderDirection === OrderByDirection.ASC ? "ascending" : "descending"
+                  }
+                  onSortChange={(direction) =>
+                    setOrderDirection(
+                      direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC
+                    )
+                  }
+                >
+                  Name
+                  <ChevronDownIcon
+                    className={orderDirection === OrderByDirection.DESC ? "rotate-180" : undefined}
+                  />
+                </TableHead>
+                <TableHead>
+                  <TableHeadLabel>Description</TableHeadLabel>
+                </TableHead>
+                <TableHead>
+                  <TableHeadLabel>Permissions</TableHeadLabel>
+                </TableHead>
+                <TableHead variant="action">
+                  {isFetching && !isPending ? (
+                    <span className="sr-only">Refreshing clients</span>
+                  ) : null}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending &&
+                [0, 1, 2].map((row) => (
+                  <TableRow key={row}>
+                    {[0, 1, 2, 3].map((cell) => (
+                      <TableCell key={cell}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
               {!isPending &&
                 kmipClients.length > 0 &&
                 kmipClients.map((kmipClient) => {
                   const { name, id, description, permissions } = kmipClient;
 
                   return (
-                    <Tr className="group h-10 hover:bg-surface-hover" key={`st-v3-${id}`}>
-                      <Td>{name}</Td>
-                      <Td className="max-w-80 break-all">{description}</Td>
-                      <Td className="max-w-40">{[permissions.join(", ")]}</Td>
-                      <Td className="flex justify-end">
+                    <TableRow key={id}>
+                      <TableCell>{name}</TableCell>
+                      <TableCell className="max-w-80 break-all">
+                        {description?.trim() || <span className="text-muted italic">none</span>}
+                      </TableCell>
+                      <TableCell className="max-w-40">
+                        {permissions.length ? permissions.join(", ") : "—"}
+                      </TableCell>
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
-                              variant="plain"
-                              colorSchema="primary"
-                              className="ml-4 p-0 data-[state=open]:text-project"
-                              ariaLabel="More options"
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Options for ${name}`}
                             >
-                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                              <MoreHorizontalIcon />
                             </IconButton>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="min-w-[160px]">
-                            <Tooltip
-                              content={
-                                cannotGenerateKmipClientCertificate ? "Access Restricted" : ""
-                              }
-                              position="left"
-                            >
-                              <div>
+                          <DropdownMenuContent align="end">
+                            <Tooltip open={cannotGenerateKmipClientCertificate ? undefined : false}>
+                              <TooltipTrigger asChild>
                                 <DropdownMenuItem
                                   onClick={() =>
                                     handlePopUpOpen("generateKmipClientCert", kmipClient)
                                   }
-                                  icon={<FontAwesomeIcon icon={faCertificate} />}
-                                  iconPos="left"
                                   isDisabled={cannotGenerateKmipClientCertificate}
+                                  isDisabledFocusable={cannotGenerateKmipClientCertificate}
                                 >
+                                  <FileBadgeIcon />
                                   Generate Certificate
                                 </DropdownMenuItem>
-                              </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Access Restricted</TooltipContent>
                             </Tooltip>
-                            <Tooltip
-                              content={cannotEditKmipClient ? "Access Restricted" : ""}
-                              position="left"
-                            >
-                              <div>
+                            <Tooltip open={cannotEditKmipClient ? undefined : false}>
+                              <TooltipTrigger asChild>
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("upsertKmipClient", kmipClient)}
-                                  icon={<FontAwesomeIcon icon={faEdit} />}
-                                  iconPos="left"
                                   isDisabled={cannotEditKmipClient}
+                                  isDisabledFocusable={cannotEditKmipClient}
                                 >
+                                  <PencilIcon />
                                   Edit KMIP Client
                                 </DropdownMenuItem>
-                              </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Access Restricted</TooltipContent>
                             </Tooltip>
-                            <Tooltip
-                              content={cannotDeleteKmipClient ? "Access Restricted" : ""}
-                              position="left"
-                            >
-                              <div>
+                            <Tooltip open={cannotDeleteKmipClient ? undefined : false}>
+                              <TooltipTrigger asChild>
                                 <DropdownMenuItem
                                   onClick={() => handlePopUpOpen("deleteKmipClient", kmipClient)}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  iconPos="left"
                                   isDisabled={cannotDeleteKmipClient}
+                                  isDisabledFocusable={cannotDeleteKmipClient}
+                                  variant="danger"
                                 >
+                                  <TrashIcon />
                                   Delete KMIP Client
                                 </DropdownMenuItem>
-                              </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">Access Restricted</TooltipContent>
                             </Tooltip>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </Td>
-                    </Tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-            </TBody>
+            </TableBody>
           </Table>
-          {!isPending && totalCount > 0 && (
-            <Pagination
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={handlePerPageChange}
-            />
-          )}
-          {!isPending && kmipClients.length === 0 && (
-            <EmptyState
-              title={
-                debouncedSearch.trim().length > 0
-                  ? "No KMIP clients match search filter"
-                  : "No KMIP clients have been added to this project"
-              }
-              icon={faUser}
-            />
-          )}
-        </TableContainer>
-        <DeleteKmipClientModal
-          isOpen={popUp.deleteKmipClient.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipClient", isOpen)}
-          kmipClient={popUp.deleteKmipClient.data as TKmipClient}
-        />
-        <KmipClientModal
-          isOpen={popUp.upsertKmipClient.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upsertKmipClient", isOpen)}
-          kmipClient={popUp.upsertKmipClient.data as TKmipClient | null}
-        />
-        <CreateKmipClientCertificateModal
-          isOpen={popUp.generateKmipClientCert.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("generateKmipClientCert", isOpen)}
-          kmipClient={popUp.generateKmipClientCert.data as TKmipClient | null}
-          displayNewClientCertificate={(certificate) =>
-            handlePopUpOpen("displayKmipClientCert", certificate)
-          }
-        />
-        <KmipClientCertificateModal
-          isOpen={popUp.displayKmipClientCert.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("displayKmipClientCert", isOpen)}
-          certificate={popUp.displayKmipClientCert.data}
-        />
-        <UpgradePlanModal
-          paywallKey="kms.kmip-client"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not include access to KMIP. To unlock this feature, please upgrade to Infisical Enterprise plan."
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        />
-      </div>
-    </motion.div>
+        )}
+        {!isPending && totalCount > 0 && (
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
+          />
+        )}
+      </CardContent>
+      <DeleteKmipClientModal
+        isOpen={popUp.deleteKmipClient.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipClient", isOpen)}
+        kmipClient={popUp.deleteKmipClient.data as TKmipClient}
+      />
+      <KmipClientModal
+        isOpen={popUp.upsertKmipClient.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upsertKmipClient", isOpen)}
+        kmipClient={popUp.upsertKmipClient.data as TKmipClient | null}
+      />
+      <CreateKmipClientCertificateModal
+        isOpen={popUp.generateKmipClientCert.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("generateKmipClientCert", isOpen)}
+        kmipClient={popUp.generateKmipClientCert.data as TKmipClient | null}
+        displayNewClientCertificate={(certificate) =>
+          handlePopUpOpen("displayKmipClientCert", certificate)
+        }
+      />
+      <KmipClientCertificateModal
+        isOpen={popUp.displayKmipClientCert.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("displayKmipClientCert", isOpen)}
+        certificate={popUp.displayKmipClientCert.data}
+      />
+      <UpgradePlanModal
+        paywallKey="kms.kmip-client"
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Your current plan does not include access to KMIP. To unlock this feature, please upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+      />
+    </Card>
   );
 };

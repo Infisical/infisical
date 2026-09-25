@@ -65,7 +65,7 @@ export const getSingleSelectedProjectId = (selectedProjects: { id: string }[]) =
 type Props = {
   inputId?: string;
   value?: TProjectRoleOption | null;
-  onChange: (value: TProjectRoleOption) => void;
+  onChange: (value: TProjectRoleOption | null) => void;
   isError?: boolean;
   selectedProjects: { id: string }[];
   fixedRoles?: TProjectRoleOption[];

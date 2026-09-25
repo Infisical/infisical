@@ -520,7 +520,7 @@ const MyProjectsForType = ({
     return (
       <Card
         key={workspace.id}
-        className={`group relative h-full cursor-pointer bg-container transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        className={`group relative h-full cursor-pointer transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
       >
         <CardHeader>
           <div className="flex min-w-0 items-start gap-3">
@@ -585,7 +585,7 @@ const MyProjectsForType = ({
       projectsViewMode === ProjectsViewMode.GRID ? (
         <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {Array.apply(0, Array(3)).map((_x, i) => (
-            <Card key={`workspace-cards-loading-${i + 1}`} className="h-full bg-container">
+            <Card key={`workspace-cards-loading-${i + 1}`} className="h-full">
               <CardHeader>
                 <div className="flex items-start gap-3">
                   <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-surface-active" />

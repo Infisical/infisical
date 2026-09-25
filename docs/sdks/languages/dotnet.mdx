@@ -320,6 +320,14 @@ Secret deletedSecret = await sdk.Secrets().DeleteAsync(options);
 
 ### `Pki().Subscribers()`
 
+<Warning>
+  PKI subscribers are being removed on December 15, 2026. Until the .NET SDK supports
+  [certificate applications](/documentation/platform/pki/applications/overview), issue certificates
+  by calling the [application API
+  endpoints](/documentation/platform/pki/applications/enrollment-methods/api) directly. Certificates
+  you've already issued stay valid.
+</Warning>
+
 The `Pki().Subscribers()` sub-class is used to programmatically interact with the Infisical PKI product line. Currently only issuing new certificates and retrieving the latest certificate bundle from a subscriber is supported. More widespread support for the PKI product is coming to the .NET SDK in the near future.
 
 

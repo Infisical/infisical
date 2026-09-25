@@ -10,7 +10,12 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -55,8 +60,8 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
   };
 
   return (
-    <Card className="max-h-full">
-      <CardHeader className="border-b">
+    <Card className="max-h-full min-w-0">
+      <CardHeader>
         <CardTitle>Sync Logs</CardTitle>
         {subscription.auditLogs && (
           <CardDescription>
@@ -97,11 +102,13 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg bg-surface-raised text-sm text-foreground-secondary">
-            <div className="flex flex-col items-center gap-4 py-20">
-              <FingerprintIcon className="size-8" />
-              <p>
-                Please{" "}
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FingerprintIcon />
+              </EmptyMedia>
+              <EmptyTitle>Audit logs require an upgrade</EmptyTitle>
+              <EmptyDescription>
                 {subscription && subscription.slug !== null ? (
                   <Link
                     to="/organizations/$orgId/billing"
@@ -109,12 +116,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <a
-                      className="cursor-pointer underline transition-all hover:text-foreground-inverse"
-                      target="_blank"
-                    >
-                      upgrade your subscription
-                    </a>
+                    Upgrade your subscription
                   </Link>
                 ) : (
                   <a
@@ -122,18 +124,13 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <a
-                      className="cursor-pointer underline transition-all hover:text-foreground-inverse"
-                      target="_blank"
-                    >
-                      upgrade your subscription
-                    </a>
+                    Upgrade your subscription
                   </a>
                 )}{" "}
                 to view sync logs.
-              </p>
-            </div>
-          </div>
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </CardContent>
     </Card>

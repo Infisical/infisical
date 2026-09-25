@@ -42,7 +42,11 @@ import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-co
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
+import {
+  TAwsAuthMethodConfig,
+  TGcpAuthMethodConfig,
+  TKubernetesAuthMethodConfig
+} from "../resource-auth-method/resource-auth-method-types";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -1055,7 +1059,11 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: { pkcs11?: boolean; sessionLogMaskingBuiltInDetection?: boolean };
+    capabilities?: {
+      pkcs11?: boolean;
+      sessionLogMaskingBuiltInDetection?: boolean;
+      supported_account_types?: string[];
+    };
   }) => {
     const nextCapabilities = capabilities ?? {};
 
@@ -1313,6 +1321,74 @@ export const gatewayV2ServiceFactory = ({
 
   // --- V3 service methods ---
 
+  const $assertCanEditGateway = async (orgPermission: OrgServiceActor, gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: orgPermission.orgId });
+    if (!gateway) {
+      throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.EditGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    return gateway;
+  };
+
+  // Setting an auth method dials the customer's cluster, so the two halves of an update cannot
+  // share a transaction. Checking the name first means the ordinary rejection lands before the
+  // auth method is committed; the unique violation in renameGateway still covers the race.
+  const assertGatewayNameAvailable = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return;
+
+    const existing = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, name });
+    if (existing && existing.id !== gatewayId) {
+      throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+    }
+  };
+
+  const renameGateway = async ({
+    orgPermission,
+    gatewayId,
+    name
+  }: {
+    orgPermission: OrgServiceActor;
+    gatewayId: string;
+    name: string;
+  }) => {
+    const gateway = await $assertCanEditGateway(orgPermission, gatewayId);
+    if (gateway.name === name) return { gateway, previousName: name };
+
+    try {
+      const renamed = await gatewayV2DAL.updateById(gateway.id, { name });
+      return { gateway: renamed, previousName: gateway.name };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({ message: `A gateway named "${name}" already exists` });
+      }
+
+      throw err;
+    }
+  };
+
   const createGateway = async ({
     orgId,
     actorId,
@@ -1328,6 +1404,7 @@ export const gatewayV2ServiceFactory = ({
     name: string;
     authMethod:
       | { method: "aws"; config: TAwsAuthMethodConfig }
+      | { method: "gcp"; config: TGcpAuthMethodConfig }
       | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
       | { method: "token" };
   }) => {
@@ -1475,6 +1552,8 @@ export const gatewayV2ServiceFactory = ({
     enrollGateway,
     // V3
     createGateway,
+    renameGateway,
+    assertGatewayNameAvailable,
     connectGateway
   };
 };

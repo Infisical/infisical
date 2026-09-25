@@ -11,6 +11,7 @@ import {
 
 import {
   Badge,
+  Button,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import {
 import { cn } from "../../utils";
 import {
   Table,
+  TableAttachedFooter,
   TableBody,
   TableCaption,
   TableCell,
@@ -87,6 +89,8 @@ const identities: Identity[] = [
  * structure, a `<ul>` of `Item`s is usually a better fit.
  *
  * Useful per-cell flags:
+ * - **`sticky`** on `TableHeader` pins the header while scrolling a table
+ *   with a height-constrained container (`containerClassName="max-h-40"`).
  * - **`isTruncatable`** on `TableHead` / `TableCell` clips long content with
  *   ellipsis instead of letting the column blow out the row width.
  * - **`data-state="selected"`** on a `TableRow` paints the selected highlight
@@ -143,6 +147,40 @@ export const Default: Story = {
       </TableHeader>
       <TableBody>
         {identities.slice(0, 4).map((id) => (
+          <TableRow key={id.name}>
+            <TableCell className="font-medium">{id.name}</TableCell>
+            <TableCell>{id.role}</TableCell>
+            <TableCell>
+              <Badge variant="success">Active</Badge>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const StickyHeader: Story = {
+  name: "Example: Sticky Header",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set `sticky` on `TableHeader` and constrain the table container height with `containerClassName`. The header stays visible while the rows scroll; by default, headers are not sticky."
+      }
+    }
+  },
+  render: () => (
+    <Table containerClassName="max-h-40">
+      <TableHeader sticky>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {identities.map((id) => (
           <TableRow key={id.name}>
             <TableCell className="font-medium">{id.name}</TableCell>
             <TableCell>{id.role}</TableCell>
@@ -228,6 +266,64 @@ export const WithFooter: Story = {
       </TableFooter>
     </Table>
   )
+};
+
+function AttachedFooterRender() {
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <div>
+      <Table hasAttachedFooter>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Event</TableHead>
+            <TableHead>Timestamp</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Secret read</TableCell>
+            <TableCell>Today</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <TableAttachedFooter>
+        {hasMore ? (
+          <Button
+            variant="ghost"
+            size="lg"
+            isFullWidth
+            isPending={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              window.setTimeout(() => {
+                setIsLoading(false);
+                setHasMore(false);
+              }, 1000);
+            }}
+          >
+            Load More
+          </Button>
+        ) : (
+          <span className="text-xs text-muted">End of logs</span>
+        )}
+      </TableAttachedFooter>
+    </div>
+  );
+}
+
+export const WithAttachedFooter: Story = {
+  name: "Example: With Attached Footer",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `TableAttachedFooter` as a sibling after `Table` for a full-width load-more action or a completion message. Set `hasAttachedFooter` on `Table` to join their borders; unlike `TableFooter`, this action stays outside the table's horizontal scroll area."
+      }
+    }
+  },
+  render: () => <AttachedFooterRender />
 };
 
 export const WithSelection: Story = {

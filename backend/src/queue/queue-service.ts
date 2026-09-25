@@ -130,7 +130,8 @@ export enum QueueName {
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
-  IntegrationDeprecationNotice = "integration-deprecation-notice"
+  IntegrationDeprecationNotice = "integration-deprecation-notice",
+  LegacyPkiDeprecationNotice = "legacy-pki-deprecation-notice"
 }
 
 export enum QueueJobs {
@@ -220,7 +221,8 @@ export enum QueueJobs {
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
-  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice",
+  SendLegacyPkiDeprecationNotice = "send-legacy-pki-deprecation-notice"
 }
 
 export enum JobState {
@@ -634,6 +636,11 @@ export type TQueueJobTypes = {
     // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
     payload: { orgId: string; period: string };
   };
+  [QueueName.LegacyPkiDeprecationNotice]: {
+    name: QueueJobs.SendLegacyPkiDeprecationNotice;
+    // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
+    payload: { orgId: string; period: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
@@ -659,7 +666,8 @@ export type TQueueServiceFactory = {
       token?: string,
       signal?: AbortSignal
     ) => Promise<void>,
-    queueSettings?: Omit<QueueOptions, "connection"> & Pick<WorkerOptions, "concurrency" | "limiter">
+    queueSettings?: Omit<QueueOptions, "connection"> &
+      Pick<WorkerOptions, "concurrency" | "limiter" | "maxStalledCount">
   ) => void;
   listen: <
     T extends QueueName,
