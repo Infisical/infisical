@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -44,10 +44,15 @@ export const getCloudflareErrorMessage = (error: unknown) => {
 };
 
 /** Walks a paginated Cloudflare list endpoint using the `result_info.total_pages` it reports. */
-const $paginateCloudflare = async <T>(
-  url: string,
-  { apiToken, params }: { apiToken: string; params?: Record<string, unknown> }
-): Promise<T[]> => {
+const $paginateCloudflare = async <T>({
+  url,
+  apiToken,
+  params
+}: {
+  url: string;
+  apiToken: string;
+  params?: Record<string, unknown>;
+}): Promise<T[]> => {
   const results: T[] = [];
 
   let page = 1;
@@ -64,6 +69,12 @@ const $paginateCloudflare = async <T>(
 
     totalPages = data.result_info?.total_pages ?? 1;
     page += 1;
+  }
+
+  if (totalPages > CLOUDFLARE_MAX_PAGES) {
+    logger.warn(
+      `Stopped listing Cloudflare resources from ${sanitizeUrlForLog(url)} after ${CLOUDFLARE_MAX_PAGES} pages; some results were not returned`
+    );
   }
 
   return results;
@@ -84,12 +95,12 @@ export const listCloudflarePagesProjects = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const { data } = await safeRequest.get<{ result: { name: string; id: string }[] }>(
-    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
-    { headers: getCloudflareAuthHeaders(apiToken) }
-  );
+  const projects = await $paginateCloudflare<{ name: string; id: string }>({
+    url: `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
+    apiToken
+  });
 
-  return data.result.map((a) => ({
+  return projects.map((a) => ({
     name: a.name,
     id: a.id
   }));
@@ -102,12 +113,12 @@ export const listCloudflareWorkersScripts = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const { data } = await safeRequest.get<{ result: { id: string }[] }>(
-    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/scripts`,
-    { headers: getCloudflareAuthHeaders(apiToken) }
-  );
+  const scripts = await $paginateCloudflare<{ id: string }>({
+    url: `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/scripts-search`,
+    apiToken
+  });
 
-  return data.result.map((a) => ({
+  return scripts.map((a) => ({
     id: a.id
   }));
 };
@@ -117,10 +128,10 @@ export const listCloudflareZones = async (appConnection: TCloudflareConnection):
     credentials: { apiToken }
   } = appConnection;
 
-  const zones = await $paginateCloudflare<{ id: string; name: string }>(
-    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`,
-    { apiToken }
-  );
+  const zones = await $paginateCloudflare<{ id: string; name: string }>({
+    url: `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`,
+    apiToken
+  });
 
   return zones.map((a) => ({
     name: a.name,
