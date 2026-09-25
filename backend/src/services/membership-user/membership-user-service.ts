@@ -9,9 +9,11 @@ import {
   TMembershipRolesInsert
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -91,6 +93,8 @@ type TMembershipUserServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -117,7 +121,9 @@ export const membershipUserServiceFactory = ({
   oidcConfigDAL,
   samlConfigDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -600,7 +606,9 @@ export const membershipUserServiceFactory = ({
           membershipRoleDAL,
           additionalPrivilegeDAL,
           approvalPolicyDAL,
-          alertChannelRecipientDAL
+          alertChannelRecipientDAL,
+          pamSessionDAL,
+          gatewayV2Service
         });
         return doc;
       }

@@ -9,8 +9,11 @@ import {
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import {
@@ -92,6 +95,8 @@ type TSuperAdminServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -171,7 +176,9 @@ export const superAdminServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -759,7 +766,17 @@ export const superAdminServiceFactory = ({
       actorUserId: userId
     });
 
+    let sendPamCancellations = () => {};
+
     const user = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds: [userId],
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUser = await userDAL.deleteById(userId, tx);
       // principalId carries no FK, so the user row going away leaves recipient rows behind.
       await alertChannelRecipientDAL.deleteByPrincipals(
@@ -768,6 +785,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUser;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return user;
@@ -789,7 +808,17 @@ export const superAdminServiceFactory = ({
       $in: { actorUserId: userIds }
     });
 
+    let sendPamCancellations = () => {};
+
     const users = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds,
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUsers = await userDAL.delete(
         {
           $in: {
@@ -804,6 +833,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUsers;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return users;
