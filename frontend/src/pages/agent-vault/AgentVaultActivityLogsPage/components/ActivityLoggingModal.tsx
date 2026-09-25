@@ -28,6 +28,7 @@ import {
   FieldLegend,
   FieldSet,
   Input,
+  Label,
   ProviderIcon,
   Toggle
 } from "@app/components/v3";
@@ -207,12 +208,13 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
                 render={({ field }) => (
                   <Field orientation="horizontal">
                     <FieldContent>
-                      <FieldLabel>Enable</FieldLabel>
+                      <Label htmlFor="agent-vault-activity-enabled">Enable</Label>
                       <FieldDescription>
                         When enabled, requests made by the agents are saved to the bucket below.
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
+                      id="agent-vault-activity-enabled"
                       variant="av"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}

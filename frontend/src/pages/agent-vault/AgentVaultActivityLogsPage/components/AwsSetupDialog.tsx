@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangleIcon } from "lucide-react";
 
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Button,
   CodeBlock,
   Dialog,
@@ -163,9 +165,11 @@ export const AwsSetupDialog = ({ isOpen, onOpenChange, bucket, keyPrefix }: Prop
             <TabsContent value="cors" className="space-y-4">
               {isCorsMissing && (
                 <Alert variant="warning">
+                  <AlertTriangleIcon />
+                  <AlertTitle>This bucket is not allowing requests from this origin.</AlertTitle>
                   <AlertDescription>
-                    This bucket is not allowing requests from this origin. Activity is still stored,
-                    but nobody can read it back until this rule is attached.
+                    Activity is still stored, but nobody can read it back until this rule is
+                    attached.
                   </AlertDescription>
                 </Alert>
               )}
