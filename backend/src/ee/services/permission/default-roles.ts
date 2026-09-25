@@ -37,7 +37,6 @@ import {
   ProjectPermissionSecretEventActions,
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
-  ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
@@ -389,11 +388,6 @@ const buildAdminPermissionRules = () => {
   );
 
   can(
-    [ProjectPermissionSecretScanningConfigActions.Read, ProjectPermissionSecretScanningConfigActions.Update],
-    ProjectPermissionSub.SecretScanningConfigs
-  );
-
-  can(
     [
       ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
       ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
@@ -674,8 +668,6 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretScanningFindings
   );
 
-  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
-
   can(
     [
       ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
@@ -756,8 +748,6 @@ const buildViewerPermissionRules = () => {
   );
 
   can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
-
-  can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
 
   can(
     [

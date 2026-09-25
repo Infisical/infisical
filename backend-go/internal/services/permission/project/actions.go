@@ -357,12 +357,6 @@ var (
 	SecretScanningFindingActionUpdate = gocasl.DefineAction[SecretScanningFindingsSubject]("update-findings")
 )
 
-// SecretScanningConfig actions (ProjectPermissionSecretScanningConfigActions)
-var (
-	SecretScanningConfigActionRead   = gocasl.DefineAction[SecretScanningConfigsSubject]("read-configs")
-	SecretScanningConfigActionUpdate = gocasl.DefineAction[SecretScanningConfigsSubject]("update-configs")
-)
-
 // AppConnection actions (ProjectPermissionAppConnectionActions)
 var (
 	AppConnectionActionRead              = gocasl.DefineAction[AppConnectionSubject]("read-app-connections")

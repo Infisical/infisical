@@ -603,14 +603,6 @@ type SecretScanningFindingsSubject struct{}
 func (s SecretScanningFindingsSubject) SubjectType() string { return SubSecretScanningFindings }
 func (s SecretScanningFindingsSubject) GetField(string) any { return nil }
 
-const SubSecretScanningConfigs = "secret-scanning-configs"
-
-// SecretScanningConfigsSubject — "secret-scanning-configs"
-type SecretScanningConfigsSubject struct{}
-
-func (s SecretScanningConfigsSubject) SubjectType() string { return SubSecretScanningConfigs }
-func (s SecretScanningConfigsSubject) GetField(string) any { return nil }
-
 // ===========================
 // App Connections
 // ===========================

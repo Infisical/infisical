@@ -39,7 +39,6 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   ShieldIcon,
-  SlidersHorizontalIcon,
   StampIcon,
   TableIcon,
   TagIcon,
@@ -228,7 +227,6 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.HsmConnectors]: kms(CpuIcon),
   [ProjectPermissionSub.SecretScanningDataSources]: scanning(DatabaseIcon),
   [ProjectPermissionSub.SecretScanningFindings]: scanning(SearchIcon),
-  [ProjectPermissionSub.SecretScanningConfigs]: scanning(SlidersHorizontalIcon),
   [ProjectPermissionSub.AgentVaultAccessBundles]: agentVault(PackageIcon),
   [ProjectPermissionSub.AgentVaultSessions]: agentVault(TicketIcon),
   [ProjectPermissionSub.AgentVaultProxies]: agentVault(RouteIcon)
