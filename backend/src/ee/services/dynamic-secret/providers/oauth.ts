@@ -151,11 +151,21 @@ export const OAuthProvider = (): TDynamicProviderFns => {
   ) => {
     const providerInputs = await $parseInputs(inputs);
 
-    const previousTokenUrl = (previousInputs as { tokenUrl?: unknown } | undefined)?.tokenUrl;
-    if (hasActiveLeases && typeof previousTokenUrl === "string" && previousTokenUrl !== providerInputs.tokenUrl) {
+    if (!hasActiveLeases) return providerInputs;
+
+    const previous = previousInputs as { tokenUrl?: unknown; clientId?: unknown } | undefined;
+    if (typeof previous?.tokenUrl === "string" && previous.tokenUrl !== providerInputs.tokenUrl) {
       throw new BadRequestError({
         message:
           "The token URL can't be changed while this dynamic secret has active leases, because their tokens were issued by the current authorization server. Revoke the active leases first, then change the token URL."
+      });
+    }
+
+    // RFC 7009 section 2.1: a server only lets the client that was issued a token revoke it
+    if (typeof previous?.clientId === "string" && previous.clientId !== providerInputs.clientId) {
+      throw new BadRequestError({
+        message:
+          "The client ID can't be changed while this dynamic secret has active leases, because only the client that issued their tokens can revoke them. Revoke the active leases first, then change the client ID."
       });
     }
 

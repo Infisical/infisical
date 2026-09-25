@@ -152,17 +152,32 @@ describe("OAuthProvider.validateProviderInputs", () => {
     ).rejects.toThrow("can't be changed while this dynamic secret has active leases");
   });
 
-  test("allows a token URL change when there are no leases, and a client ID change with leases", async () => {
-    const provider = OAuthProvider();
+  test("rejects a client ID change while leases are active", async () => {
     await expect(
-      provider.validateProviderInputs(
-        { ...baseInputs, tokenUrl: "https://other.example.com/token" },
+      OAuthProvider().validateProviderInputs(
+        { ...baseInputs, clientId: "rotated-client" },
+        { ...metadata, previousInputs: baseInputs, hasActiveLeases: true }
+      )
+    ).rejects.toThrow("client ID can't be changed while this dynamic secret has active leases");
+  });
+
+  test("allows token URL and client ID changes when there are no leases", async () => {
+    await expect(
+      OAuthProvider().validateProviderInputs(
+        { ...baseInputs, tokenUrl: "https://other.example.com/token", clientId: "rotated-client" },
         { ...metadata, previousInputs: baseInputs, hasActiveLeases: false }
       )
     ).resolves.toBeDefined();
+  });
+
+  test("allows rotating the secret, auth method and revocation URL while leases are active", async () => {
     await expect(
-      provider.validateProviderInputs(
-        { ...baseInputs, clientId: "rotated-client" },
+      OAuthProvider().validateProviderInputs(
+        {
+          ...baseInputs,
+          revocationUrl: "https://auth.example.com/oauth2/v2/revoke",
+          clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost, clientSecret: "rotated-secret" }
+        },
         { ...metadata, previousInputs: baseInputs, hasActiveLeases: true }
       )
     ).resolves.toBeDefined();
