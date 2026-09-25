@@ -9,8 +9,6 @@ const ZWSP = String.fromCharCode(0x200b);
 
 describe("sanitizeLogText", () => {
   test.each([
-    ["line feed", `deploy${String.fromCharCode(10)}worker`, "deploy worker"],
-    ["carriage return", `a${String.fromCharCode(13)}b`, "a b"],
     ["null byte", `svc${NUL}account`, "svcaccount"],
     ["ansi colour", `${ESC}[31mroot${ESC}[0m`, "root"],
     ["ansi osc", `${ESC}]0;title${String.fromCharCode(7)}x`, "x"],
@@ -121,10 +119,30 @@ describe("sanitizeLogPayload", () => {
     expect(value("__proto__~2")).toBe("second");
   });
 
-  test("whitespace controls collapse to a single space, preserving word boundaries", () => {
-    expect(sanitizeLogText(`approved by${String.fromCharCode(10)}ops`)).toBe("approved by ops");
-    expect(sanitizeLogText(`one${String.fromCharCode(13)}${String.fromCharCode(10)}two`)).toBe("one two");
-    expect(sanitizeLogText(`a${String.fromCharCode(9)}b`)).toBe("a b");
+  test("keeps line feeds and tabs, so a multiline reason reads as the user typed it", () => {
+    const LF = String.fromCharCode(10);
+    const TAB = String.fromCharCode(9);
+
+    expect(sanitizeLogText(`approved by${LF}ops`)).toBe(`approved by${LF}ops`);
+    expect(sanitizeLogText(`step one${LF}${LF}step${TAB}two`)).toBe(`step one${LF}${LF}step${TAB}two`);
+  });
+
+  test("normalizes CRLF and a lone CR to LF, so nothing overprints a terminal line", () => {
+    const CR = String.fromCharCode(13);
+    const LF = String.fromCharCode(10);
+
+    expect(sanitizeLogText(`one${CR}${LF}two`)).toBe(`one${LF}two`);
+    expect(sanitizeLogText(`real value${CR}forged value`)).toBe(`real value${LF}forged value`);
+  });
+
+  test("turns VT and FF into a space rather than running words together", () => {
+    expect(sanitizeLogText(`a${String.fromCharCode(11)}b${String.fromCharCode(12)}c`)).toBe("a b c");
+  });
+
+  test("still strips escape sequences and invisible characters on a multiline value", () => {
+    const LF = String.fromCharCode(10);
+
+    expect(sanitizeLogText(`${ESC}[31mline one${LF}line${ZWSP} two${NUL}`)).toBe(`line one${LF}line two`);
   });
 
   test("an unterminated OSC introducer does not swallow the rest of the value", () => {
@@ -160,9 +178,11 @@ describe("sanitizeLogPayload", () => {
     expect(sanitizeLogText(value)).toBe("ab");
   });
 
-  test("line and paragraph separators collapse like other line breaks", () => {
-    expect(sanitizeLogText(`one${String.fromCodePoint(0x2028)}two`)).toBe("one two");
-    expect(sanitizeLogText(`one${String.fromCodePoint(0x2029)}two`)).toBe("one two");
+  test("line and paragraph separators become LF, which JSON then escapes", () => {
+    const LF = String.fromCharCode(10);
+
+    expect(sanitizeLogText(`one${String.fromCodePoint(0x2028)}two`)).toBe(`one${LF}two`);
+    expect(sanitizeLogText(`one${String.fromCodePoint(0x2029)}two`)).toBe(`one${LF}two`);
   });
 
   test.each([0x2028, 0x2029])("a single-line field rejects U+%s", (code) => {

@@ -431,7 +431,7 @@ describe("audit-log-queue unified consumer", () => {
       expect((row.actorMetadata as Record<string, unknown>).name).toBe("svcacct");
 
       const eventMetadata = row.eventMetadata as Record<string, unknown>;
-      expect(eventMetadata.reason).toBe("approved by ops");
+      expect(eventMetadata.reason).toBe(`approved by${String.fromCharCode(10)}ops`);
       expect((eventMetadata.nested as Record<string, unknown>).note).toBe("ab");
     };
 

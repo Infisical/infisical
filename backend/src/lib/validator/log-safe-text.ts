@@ -5,6 +5,10 @@ import RE2 from "re2";
  * overrides and invisible formatting characters. All are legal in JSON, so well-formed output says
  * nothing about how a value renders in a terminal, a CSV export or a line-based SIEM.
  *
+ * Line breaks and tabs are kept. Every audit consumer JSON-encodes the value, which escapes them, and
+ * some fields are multiline by design (PAM reasons); the credential-view reason is recorded nowhere
+ * but the audit log, so collapsing it would lose what the user typed.
+ *
  * Reject at the API boundary, where the caller can correct its input; strip on the way into the
  * log, where dropping the event would lose the record.
  *
@@ -25,9 +29,15 @@ const ANSI_ESCAPE_PATTERN = new RE2(
   "g"
 );
 
-// Whitespace controls carry word boundaries, so a run collapses to a single space rather than being
-// deleted, which would run the surrounding words together.
-const WHITESPACE_CONTROL_RUN = new RE2("[\\t\\n\\v\\f\\r\\u2028\\u2029]+", "g");
+// CRLF and a lone CR become LF: a bare CR returns a terminal's cursor to the start of the line, so the
+// rest of the value overprints what was already shown. U+2028/U+2029 become LF too, because
+// JSON.stringify leaves them unescaped.
+const LINE_BREAK_VARIANTS = new RE2("\\r\\n?|[\\u2028\\u2029]", "g");
+
+// VT and FF still mark a word boundary, so they become a space rather than running words together.
+const VERTICAL_WHITESPACE = new RE2("[\\v\\f]", "g");
+
+const KEPT_WHITESPACE = new Set([0x09, 0x0a]);
 
 // The line-break set a multiline field is allowed to contain. U+2028/U+2029 are line and paragraph
 // separators: not C0 controls, but line breaks to anything that splits on them, so a single-line
@@ -53,8 +63,8 @@ const isUncategorizedFormat = (code: number) =>
 
 // A whole-string screen, run before the per-character walk below. The walk crosses into RE2 once per
 // character, which measures ~30x the cost of the walk itself, and audit text is almost always clean,
-// so one call per string answers the common case. The screen over-matches on ZWNJ and ZWJ, which
-// only costs those strings a walk that then keeps them.
+// so one call per string answers the common case. The screen over-matches on ZWNJ, ZWJ, LF and tab,
+// which only costs those strings a walk that then keeps them.
 const UNSAFE_SCREEN = new RE2("[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}]|[\\x{E0000}-\\x{E007F}]|\\p{Cf}", "u");
 
 // codePointAt, not charCodeAt: the astral ranges sit beyond U+FFFF, where charCodeAt would return a
@@ -67,8 +77,7 @@ const isUnsafeCharacter = (character: string) => {
 };
 
 // `allowMultiline` is for fields a user types into a textarea, where a line break or tab is ordinary
-// input. CR is included so CRLF-separated content is not rejected. The sink-side strip still
-// collapses them, so the stored record stays single-line.
+// input. CR is included so CRLF-separated content is not rejected; the sink normalizes it to LF.
 export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean => {
   if (!UNSAFE_SCREEN.test(value)) return false;
 
@@ -87,10 +96,13 @@ export const sanitizeLogText = <T extends string | null | undefined>(value: T): 
   if (!UNSAFE_SCREEN.test(value)) return value;
 
   // Sequences first, so a body leaves with its introducer rather than surviving as visible text.
-  const collapsed = value.replace(ANSI_ESCAPE_PATTERN, "").replace(WHITESPACE_CONTROL_RUN, " ");
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(LINE_BREAK_VARIANTS, "\n")
+    .replace(VERTICAL_WHITESPACE, " ");
 
-  return Array.from(collapsed)
-    .filter((character) => !isUnsafeCharacter(character))
+  return Array.from(normalized)
+    .filter((character) => KEPT_WHITESPACE.has(character.codePointAt(0) ?? 0) || !isUnsafeCharacter(character))
     .join("") as T;
 };
 
