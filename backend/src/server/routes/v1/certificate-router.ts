@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -1173,6 +1174,60 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:id/renewal-preview",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      hide: true,
+      operationId: "getCertificateRenewalPreview",
+      tags: [ApiDocsTags.PkiCertificates],
+      description:
+        "Get the values a renewal of this certificate will request, taken from the request that produced it, together with the fields the issuing authority changed.",
+      params: z.object({
+        id: z.string().trim().uuid().describe(CERTIFICATES.RENEWAL_PREVIEW.id)
+      }),
+      response: {
+        200: z.object({
+          hasOriginatingRequest: z.boolean().describe(CERTIFICATES.RENEWAL_PREVIEW.hasOriginatingRequest),
+          request: z
+            .object({
+              commonName: z.string().optional(),
+              organization: z.string().optional(),
+              organizationalUnit: z.string().optional(),
+              country: z.string().optional(),
+              state: z.string().optional(),
+              locality: z.string().optional(),
+              domainComponents: z.array(z.string()).optional(),
+              altNames: z.array(z.object({ type: z.string(), value: z.string() })),
+              keyUsages: z.array(z.string()),
+              extendedKeyUsages: z.array(z.string()),
+              keyAlgorithm: z.string().optional(),
+              signatureAlgorithm: z.string().optional(),
+              customExtensions: z.array(
+                z.object({ oid: z.string(), value: z.string().optional(), critical: z.boolean().optional() })
+              )
+            })
+            .describe(CERTIFICATES.RENEWAL_PREVIEW.request),
+          issuerModifiedFields: z
+            .array(z.object({ field: z.string(), requested: z.string(), issued: z.string() }))
+            .describe(CERTIFICATES.RENEWAL_PREVIEW.issuerModifiedFields)
+        })
+      }
+    },
+    handler: async (req) =>
+      server.services.certificateV3.getRenewalPreview({
+        certificateId: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
+  server.route({
     method: "POST",
     url: "/:id/renew",
     config: {
@@ -1841,7 +1896,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "deleteCertificate",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate",
+      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
       params: z.object({
         id: z.string().trim().uuid().describe(CERTIFICATES.DELETE.id)
       }),
@@ -1852,7 +1907,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
         id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -1869,7 +1924,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certId: deletedCert.id,
             cn: deletedCert.commonName,
+            friendlyName: deletedCert.friendlyName,
             serialNumber: deletedCert.serialNumber,
+            notAfter: deletedCert.notAfter.toISOString(),
+            source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+            deletionAllowedReason: deletionEligibility,
             applicationId: deletedCert.applicationId,
             applicationName
           }

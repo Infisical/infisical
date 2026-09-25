@@ -4,19 +4,14 @@ import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
-import {
-  CertExtendedKeyUsage,
-  CertExtendedKeyUsageOIDToName,
-  CertKeyAlgorithm,
-  CertKeyUsage,
-  CertStatus,
-  TAltNameType
-} from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
+import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { buildHsmCaSigner, buildLocalCaSigner, caKeyAlgorithmToHsmShape, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import {
@@ -117,53 +112,6 @@ export const extractDnParts = (name: x509.Name): TDNParts => {
     locality: getNameField(name, "L"),
     domainComponents: extractDomainComponentsInDisplayOrder(name)
   };
-};
-
-/**
- * Extract the common name, SANs, key usages, and extended key usages from an issued X.509
- * certificate. Used by external CAs (DigiCert, GoDaddy, ...) to populate the local certificate
- * record from a downloaded leaf certificate.
- */
-export const extractIssuedCertificateFields = (certObj: x509.X509Certificate) => {
-  const subject = extractDnParts(certObj.subjectName);
-  const commonName = subject.commonName ?? "";
-
-  const sanExt = certObj.getExtension("2.5.29.17");
-  const altNames: string[] = [];
-  if (sanExt) {
-    const sanNames = new x509.GeneralNames(sanExt.value);
-    for (const item of sanNames.items) {
-      if (
-        item.type === TAltNameType.DNS ||
-        item.type === TAltNameType.IP ||
-        item.type === TAltNameType.EMAIL ||
-        item.type === TAltNameType.URL
-      ) {
-        altNames.push(item.value);
-      }
-    }
-  }
-
-  const keyUsages: CertKeyUsage[] = [];
-  const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
-  if (keyUsagesExt) {
-    for (const keyUsage of Object.values(CertKeyUsage)) {
-      if ((x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0) {
-        keyUsages.push(keyUsage);
-      }
-    }
-  }
-
-  const extendedKeyUsages: CertExtendedKeyUsage[] = [];
-  const ekuExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
-  if (ekuExt) {
-    for (const oid of ekuExt.usages) {
-      const mapped = CertExtendedKeyUsageOIDToName[oid as string];
-      if (mapped) extendedKeyUsages.push(mapped);
-    }
-  }
-
-  return { commonName, altNames, keyUsages, extendedKeyUsages };
 };
 
 /**
@@ -763,4 +711,37 @@ export const buildCrlDistributionPointUrls = (
     acc.push(trimmed);
     return acc;
   }, []);
+};
+
+export const assertNoCertificateProfilesUsingCa = async (
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">,
+  caId: string,
+  caName: string
+) => {
+  const profiles = await certificateProfileDAL.findByCaId(caId);
+  if (profiles.length > 0) {
+    const profileNames = profiles.map((profile) => profile.slug || profile.id).join(", ");
+
+    throw new BadRequestError({
+      message: `Cannot delete CA '${caName}' as it is currently in use by the following certificate profiles: ${profileNames}. Please remove this CA from these profiles before deleting it.`
+    });
+  }
+};
+
+export const rethrowCaDeleteError = (error: unknown): never => {
+  if (error instanceof DatabaseError) {
+    const { code, constraint } = error.error as { code?: string; constraint?: string };
+    if (code === DatabaseErrorCode.ForeignKeyViolation) {
+      if (constraint === "pki_certificate_profiles_caid_foreign") {
+        throw new BadRequestError({
+          message:
+            "Cannot delete this CA because certificate profiles are associated with it. Delete those certificate profiles first."
+        });
+      }
+      throw new BadRequestError({
+        message: "Cannot delete this CA because it is referenced by another resource"
+      });
+    }
+  }
+  throw error;
 };

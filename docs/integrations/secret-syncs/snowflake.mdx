@@ -1,156 +1,144 @@
 ---
 title: "Snowflake sync"
-description: "Learn how to configure a Snowflake Sync for Infisical."
+sidebarTitle: "Snowflake"
+description: "Learn how to configure a Snowflake sync for Infisical."
 ---
 
-**Prerequisites:**
+import CreateUserAndToken from "/snippets/app-connections/snowflake/create-user-and-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/snowflake/form-fields.mdx";
 
-- Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-- Create a [Snowflake Connection](/integrations/app-connections/snowflake)
-- An existing Snowflake **database** and **schema** that secrets should be written to
-- The Snowflake user behind the connection must have the following privileges on the target schema: `USAGE` on the database, `USAGE` on the schema, and `CREATE SECRET` (plus `OWNERSHIP` on the synced secrets to support deletions)
-- Ensure your network security policies allow incoming requests from Infisical to your Snowflake account, if network restrictions apply
+A Snowflake Secret Sync pushes secrets from Infisical into a Snowflake schema, where your functions and procedures can reference them as [Snowflake secrets](https://docs.snowflake.com/en/sql-reference/sql/create-secret). Each Infisical secret becomes a `GENERIC_STRING` secret in the schema, with the same name unless you customize key names to add a prefix or suffix.
 
-<Info>
-  Snowflake Sync writes Infisical secrets as native Snowflake secrets of type
-  `GENERIC_STRING` (created via `CREATE OR REPLACE SECRET`). 
-</Info>
+<Note>
+    The Snowflake Secret Sync requires a [Snowflake app connection](/integrations/app-connections/snowflake). This guide walks you through creating a project-scoped app connection.
+</Note>
 
-<Tabs>
-  <Tab title="Infisical UI">
-    1. Navigate to **Project** > **Integrations** and select the **Secret Syncs** tab. Select the **Add Sync** button.
-    ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+## Prerequisites
 
-    2. Select the **Snowflake** option.
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A [Snowflake account](https://app.snowflake.com/) where you can create users, roles, and network policies, such as with the `ACCOUNTADMIN` role
+- A Snowflake [database](https://docs.snowflake.com/en/sql-reference/sql/create-database) and [schema](https://docs.snowflake.com/en/sql-reference/sql/create-schema) for the synced secrets
 
-      ![Select Snowflake](/images/secret-syncs/snowflake/select-option.png)
+## Step 1: Create a Snowflake user and programmatic access token
 
-    3. Configure the **Source** from where secrets should be retrieved, then click **Next**.
+Infisical needs a Snowflake user with a programmatic access token, a network policy, and a role that can create and own secrets in the schema. When you grant privileges, use the statements in the **Secret syncs** tab.
 
-      ![Configure Source](/images/secret-syncs/snowflake/sync-source.png)
+<CreateUserAndToken />
 
+## Step 2: Set up the sync in Infisical
 
-        - **Environment**: The project environment to retrieve secrets from.
-        - **Secret Path**: The folder path to retrieve secrets from.
+<Tip>
+    To create the sync using the API, use the [Create Snowflake Sync](/api-reference/endpoints/secret-syncs/snowflake/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your project, go to **Integrations** and open the **Secret Syncs** tab. Select **+ Add Sync**.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        Then, select the **Snowflake** sync.
+
+        ![Select Snowflake](/images/secret-syncs/snowflake/select-option.png)
+    </Step>
+    <Step>
+        Under **Source**, choose which secrets to sync from Infisical:
+
+        - **Environment**: The project environment to retrieve secrets from
+        - **Secret Path**: The folder path to retrieve secrets from
+        - **Include secrets from all subfolders**: When enabled, also syncs secrets from every folder under the secret path (secret names must be unique across those folders)
 
         <Tip>
-          If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
+            If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
         </Tip>
 
-    4. Configure the **Destination** to where secrets should be deployed, then click **Next**.
+        ![Configure Source](/images/secret-syncs/snowflake/sync-source.png)
 
-      ![Configure Destination](/images/secret-syncs/snowflake/sync-destination.png)
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Destination**, create or select the Snowflake app connection the sync will use, then choose where secrets go in Snowflake.
 
-        - **Snowflake Connection**: The Snowflake Connection to authenticate with.
-        - **Database**: The name of the Snowflake database to write secrets to. The database must already exist.
-        - **Schema**: The name of the Snowflake schema (within the selected database) where secrets will be created. The schema must already exist.
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **Snowflake Connection**, select **Create Connection** in the dropdown, then fill in:
+
+                <ConnectionFormFields />
+
+                Select **Connect to Snowflake**. Infisical returns you to the sync form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/snowflake#step-2-create-the-app-connection) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **Snowflake Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        - **Database**: The Snowflake database that contains the schema
+        - **Schema**: The schema the sync writes secrets to
+
+        Before the sync writes any secrets, Infisical checks that the database and schema exist and that the connection's role can access them. If either check fails, the sync fails without writing anything.
+
+        ![Configure Destination](/images/secret-syncs/snowflake/sync-destination.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Initial Sync Behavior**, select **Overwrite Snowflake**, then select **Continue**.
 
         <Note>
-          Infisical validates that the database and schema exist before creating any secrets. If either is missing or the connected Snowflake user lacks access, the sync fails with a descriptive error and no changes are written.
+            Snowflake doesn't return a secret's value after the secret is created, so this sync can't import existing Snowflake secrets into Infisical. **Overwrite Snowflake** is the only option.
         </Note>
+    </Step>
+    <Step>
+        Under **Sync Options**, choose how secrets are synced:
 
-        <Note>
-          Databases and schemas in the selectors are returned in lexicographic (A–Z) order by name. See [Snowflake's `SHOW DATABASES` reference](https://docs.snowflake.com/en/sql-reference/sql/show-databases) for details.
-        </Note>
+        - **Prevent secret deletion**: When enabled, Infisical adds and updates secrets in Snowflake but never deletes them; enable this if you manage some Snowflake secrets outside of Infisical
+        - **Auto-sync on changes**: When enabled, secrets sync to Snowflake automatically as the source changes; turn it off to sync manually only
+        - **Customize key names**: Adds a prefix or suffix to every synced name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
 
-    5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
-        ![Configure Options](/images/secret-syncs/snowflake/sync-options.png)
+        <Warning>
+            A Snowflake schema can hold secrets that other tools created, so a sync can change secrets that were created outside Infisical. If you don't customize key names, the sync treats every secret in the schema that its role owns as one it manages:
 
-        - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
-            - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-            <Note>
-              Snowflake does not support importing secrets.
-            </Note>
-        - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
-        <Note>
-          We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else in the schema untouched.
-        </Note>
-        - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.
-        - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
+            - If a Snowflake secret has the same name as an Infisical secret, the sync overwrites the Snowflake secret's value
+            - If **Prevent secret deletion** is off, every Snowflake secret that isn't in Infisical is deleted
 
-    6. Configure the **Details** of your Snowflake Sync, then click **Next**.
+            With customized key names, the sync writes only names with your prefix or suffix, and deletes only Snowflake secrets whose names match it.
 
-      ![Configure Details](/images/secret-syncs/snowflake/sync-details.png)
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
 
-        - **Name**: The name of your sync. Must be slug-friendly.
-        - **Description**: An optional description for your sync.
+        ![Configure Sync Options](/images/secret-syncs/snowflake/sync-options.png)
 
-    7. Review your Snowflake Sync configuration, then click **Create Sync**.
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
 
-    8. If enabled, your Snowflake Sync will begin syncing your secrets to the destination schema.
-      ![Sync Created](/images/secret-syncs/snowflake/sync-created.png)
+        ![Sync Details](/images/secret-syncs/snowflake/sync-details.png)
 
-  </Tab>
-  <Tab title="API">
-    To create a **Snowflake Sync**, make an API request to the [Create Snowflake Sync](/api-reference/endpoints/secret-syncs/snowflake/create) API endpoint.
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your Snowflake Sync configuration, then select **Create Sync**.
 
-    ### Sample request
+        ![Review and Create](/images/secret-syncs/snowflake/sync-created.png)
 
-    ```bash Request
-    curl    --request POST \
-            --url https://app.infisical.com/api/v1/secret-syncs/snowflake \
-            --header 'Content-Type: application/json' \
-            --data '{
-                "name": "my-snowflake-sync",
-                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "description": "sync to snowflake schema",
-                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "environment": "dev",
-                "secretPath": "/",
-                "isAutoSyncEnabled": true,
-                "syncOptions": {
-                    "initialSyncBehavior": "overwrite-destination",
-                    "disableSecretDeletion": false
-                },
-                "destinationConfig": {
-                    "database": "MY_DATABASE",
-                    "schema": "MY_SCHEMA"
-                }
-            }'
-    ```
+        <Check>
+            The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to the schema right away.
+        </Check>
+    </Step>
+</Steps>
 
-    ### Sample response
+## Next steps
 
-    ```bash Response
-    {
-        "secretSync": {
-            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "name": "my-snowflake-sync",
-            "description": "sync to snowflake schema",
-            "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "createdAt": "2026-04-29T12:00:00Z",
-            "updatedAt": "2026-04-29T12:00:00Z",
-            "syncStatus": "succeeded",
-            "lastSyncJobId": "job-1234",
-            "lastSyncMessage": null,
-            "lastSyncedAt": "2026-04-29T12:00:00Z",
-            "syncOptions": {
-                "initialSyncBehavior": "overwrite-destination",
-                "disableSecretDeletion": false
-            },
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "connection": {
-                "app": "snowflake",
-                "name": "my-snowflake-connection",
-                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
-            },
-            "environment": {
-                "slug": "dev",
-                "name": "Development",
-                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
-            },
-            "folder": {
-                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "path": "/"
-            },
-            "destination": "snowflake",
-            "destinationConfig": {
-                "database": "MY_DATABASE",
-                "schema": "MY_SCHEMA"
-            }
-        }
-    }
-    ```
-  </Tab>
-</Tabs>
+<CardGroup cols={2}>
+    <Card title="Secret syncs overview" icon="refresh-cw" href="/integrations/secret-syncs/overview">
+        Learn how syncs run, how key schemas work, and how to sync subfolders.
+    </Card>
+    <Card title="Snowflake user key pair rotation" icon="key" href="/documentation/platform/secret-rotation/snowflake-user-key-pair">
+        Rotate the RSA key pair of a Snowflake user with the same app connection.
+    </Card>
+</CardGroup>

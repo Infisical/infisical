@@ -433,6 +433,23 @@ Four invariants, each load-bearing:
   their alias, so one request can name the same person twice. Undeduped, that violates
   `membership_unique_user_org` and surfaces as a 500.
 
+Nothing constrains a user to one alias per `(orgId, aliasType)`, and SSO login mints a new one
+whenever the asserted subject differs from what SCIM last wrote, so **a SCIM read must match a
+`userName` against every one of a user's aliases, not the newest**. Matching only the newest made a
+provisioned user vanish from `GET /Users?filter=userName eq "..."` the first time they logged in
+under a different subject, and the IdP answered that empty lookup by provisioning them again. It was
+intermittent because `replaceScimUser` rewrites `externalId` on *all* of a user's aliases, so the
+next PUT healed it until the next login. `$buildScimMembershipQuery` (`org-dal.ts`) therefore
+answers every `userName` comparison with an `EXISTS` over the user's aliases, so the predicate is per
+user rather than per alias row. That matters for negation: evaluated per row, `userName ne "x"` or
+`not (userName eq "x")` would keep a user through their other alias, and a member with no alias at
+all would fall out through a NULL comparison. The parser (`lib/knex/scim.ts`) lets an attribute
+resolve to a handler instead of a column for exactly this. Display is separate: the query still
+joins every alias and collapses the fan-out with `DISTINCT ON`, ranked so the alias row that
+satisfies the filter wins and the newest is the fallback, which is how a lookup by an older alias
+echoes that alias back. The list query also carries a total order, because an IdP walking
+`startIndex`/`count` over an unordered result loses users the same way.
+
 A related case sits on the login side: provisioning can name someone before they have ever logged
 in, leaving a placeholder account keyed on the identifier instead of the mailbox.
 `adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
@@ -613,6 +630,8 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 
 **Only `general-workers` pods start the manager's timers**, so only they execute a scheduled handler; every pod still calls `register`. The separate `cronJobs` array in `src/server/routes/index.ts` is deliberately **not** gated: those refresh the process's own caches (license, rate limits, env overrides), not fleet work.
 
+**Per-process refreshes use `startLocalRefresh` (`src/lib/cron/local-refresh.ts`), never the cron manager and never a raw `new CronJob`.** The cron manager runs a job once per fleet, which would leave every other pod's in-memory state stale; a wall-clock cron pattern makes every pod fire in the same second. The helper starts each process at a random offset within one interval (random per process on purpose, unlike the manager's deterministic hash), skips a tick while the previous run is in flight, logs and swallows errors, and unrefs its timers. Its `stop()` handle is what goes in `cronJobs`. It records `infisical.local_refresh.*` on the `InfisicalCore` meter, labelled by `name` as `job.name`, so a new refresh needs no metric code; keep `name` a fixed string. A failing refresh keeps retrying on every tick rather than giving up after N failures, because stopping would freeze the pod's state at whatever it last loaded. The `consecutive_failures` gauge (reset on success) is the alerting signal.
+
 **Why this exists instead of BullMQ repeatables**: cron runs are coordinated across pods via a slot-election scheme (5 participant slots backed by Redis SET NX/PX) plus per-run redlocks, so each fire executes exactly once across the fleet without the orphaned-scheduler / duplicate-execution failure modes the BullMQ `JobScheduler` had. The manager also handles crash recovery via lease TTLs, hang recovery via per-handler timeouts, and bounded exponential backoff that won't overlap with the next scheduled fire.
 
 **Registering a cron job**:
@@ -645,6 +664,8 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 - Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
 - Failures (non-timeout) retry with exponential backoff (base 30 s, max 5 min) up to `maxAttempts`, but only if the retry would still fit before the next scheduled fire. Otherwise the next fire is treated as the natural retry.
 - Long-running handlers should override `handlerTimeoutMs` / `leaseDurationMs` per-entry (must satisfy `handlerTimeoutMs <= leaseDurationMs`).
+- **A fire is not picked up at its scheduled time; it is picked up at a deterministic offset past it.** Cron patterns cluster hard, so without a spread one pod claims a dozen handlers in a single tick. Two knobs bound that, both in `cronJobFactory`:
+  - **Jitter** spreads pickup, and is *derived, never configured*: a job's window is `JITTER_INTERVAL_FRACTION` (0.25) of its own cron interval, capped by the factory's `maxJitterMs` (5 min), so a `*/5` job gets 75s and anything at or past a 20-minute interval gets the full 5 min. Two things follow from the fraction being below 1: a run can never reach its own next fire, and the first retry always fits (worst case `0.25 x interval + 30s backoff + 1s`, under `interval` for anything above ~41s, and cron cannot fire faster than every 60s). The offset within the window is `sha256(name) % window`, never random: every pod computes a run's eligibility independently and the run id is keyed on the *unjittered* fire, so a per-pod offset would break the Redis enqueue dedup and the lease logic. Only the pending-zset score carries the offset; the run id and `scheduled_at` are unchanged. Development wiring passes `maxJitterMs: 0` so a job runs when its pattern says. `register` rejects anything but a 5-field pattern: the retry model assumes minute granularity, and a 6-field pattern firing every 30s would have its first retry land past its own next fire. Sub-minute recurring work belongs on a `setInterval` or a queue, as the event outbox relay does.
 
 **When to use cron vs. queue**:
 - Scheduled/recurring (every N minutes, daily at X, cron pattern) → `cronJob.register(...)`.

@@ -2,8 +2,10 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v3";
+import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAlert";
 import { PkiSubscriberSection } from "./components";
 
 export const PkiSubscribersPage = () => {
@@ -21,6 +23,7 @@ export const PkiSubscribersPage = () => {
               title="Subscribers"
               description="Manage subscribers that request and receive certificates, including user devices, servers, and services."
             />
+            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
             <PkiSubscriberSection />
           </div>
         </div>

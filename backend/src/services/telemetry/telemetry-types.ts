@@ -1,4 +1,4 @@
-import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
+import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
@@ -23,11 +23,12 @@ import {
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
 import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
+import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
@@ -218,6 +219,9 @@ export enum PostHogEventTypes {
   ProjectMembershipCreated = "Project Membership Created",
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
   ProjectMembershipDeleted = "Project Membership Deleted",
+  FolderAccessGrantCreated = "Folder Access Grant Created",
+  FolderAccessGrantUpdated = "Folder Access Grant Updated",
+  FolderAccessGrantDeleted = "Folder Access Grant Deleted",
   OrganizationCreated = "Organization Created",
   SubOrganizationCreated = "Sub Organization Created",
 
@@ -1275,7 +1279,7 @@ export type TResourceAuthMethodEvent = {
     resourceType: "gateway";
     resourceId: string;
     orgId: string;
-    method: "aws" | "kubernetes" | "token";
+    method: TSettableAuthMethod;
   };
 };
 
@@ -1887,6 +1891,19 @@ export type TProjectMembershipDeletedEvent = {
   properties: {
     projectId: string;
     userIds: string[];
+  };
+};
+
+export type TFolderAccessGrantEvent = {
+  event:
+    | PostHogEventTypes.FolderAccessGrantCreated
+    | PostHogEventTypes.FolderAccessGrantUpdated
+    | PostHogEventTypes.FolderAccessGrantDeleted;
+  properties: {
+    projectId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    permission: SecretFolderRole;
+    isTemporary: boolean;
   };
 };
 
@@ -2745,6 +2762,7 @@ export type TPostHogEvent = {
   | TProjectMembershipCreatedEvent
   | TProjectMembershipRoleUpdatedEvent
   | TProjectMembershipDeletedEvent
+  | TFolderAccessGrantEvent
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
   | TCmekCreatedEvent

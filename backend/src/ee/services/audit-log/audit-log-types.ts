@@ -1,12 +1,17 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
 } from "@app/ee/services/project-template/project-template-types";
+import {
+  ResourceAuthMethodType,
+  TSettableAuthMethod
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   TCreateSecretRotationV2DTO,
@@ -36,6 +41,7 @@ import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/a
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsage,
+  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CrlReason
@@ -899,6 +905,8 @@ export enum EventType {
 
   // Gateway Enrollment Tokens
   GATEWAY_CREATE = "gateway-create",
+  GATEWAY_UPDATE = "gateway-update",
+  GATEWAY_DELETE = "gateway-delete",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
   GATEWAY_CONNECT = "gateway-connect",
@@ -906,6 +914,7 @@ export enum EventType {
   // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
   RESOURCE_AUTH_METHOD_LOGIN_FAILED = "resource-auth-method-login-failed",
+  RESOURCE_AUTH_METHOD_CREATE = "resource-auth-method-create",
   RESOURCE_AUTH_METHOD_UPDATE = "resource-auth-method-update",
   RESOURCE_AUTH_METHOD_REVOKE = "resource-auth-method-revoke",
   RELAY_CREATE = "relay-create",
@@ -968,6 +977,7 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
 
 export const filterableSecretEvents: EventType[] = [
   EventType.GET_SECRET,
+  EventType.GET_SECRETS,
   EventType.DELETE_SECRETS,
   EventType.CREATE_SECRETS,
   EventType.UPDATE_SECRETS,
@@ -3184,7 +3194,11 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: CertificateSource;
+    deletionAllowedReason: CertificateDeletionEligibility;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -7230,6 +7244,7 @@ interface ScepRenewalEvent {
     transactionId: string;
     csrSubject: string;
     existingCertificateSerial?: string;
+    existingCertificateSubject?: string;
     status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
@@ -7421,6 +7436,23 @@ interface GatewayCreateEvent {
   };
 }
 
+interface GatewayUpdateEvent {
+  type: EventType.GATEWAY_UPDATE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    previousName: string;
+  };
+}
+
+interface GatewayDeleteEvent {
+  type: EventType.GATEWAY_DELETE;
+  metadata: {
+    gatewayId: string;
+    name: string;
+  };
+}
+
 interface GatewayEnrollmentTokenCreateEvent {
   type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE;
   metadata: {
@@ -7448,7 +7480,7 @@ interface GatewayConnectEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
+type ResourceAuthMethodKind = TSettableAuthMethod;
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -7456,6 +7488,7 @@ interface ResourceAuthMethodLoginEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
     principalArn?: string;
@@ -7463,6 +7496,9 @@ interface ResourceAuthMethodLoginEvent {
     enrollmentTokenId?: string;
     kubernetesNamespace?: string;
     kubernetesServiceAccountName?: string;
+    gcpServiceAccountEmail?: string;
+    gcpProjectId?: string;
+    gcpZone?: string;
   };
 }
 
@@ -7471,6 +7507,7 @@ interface ResourceAuthMethodLoginFailedEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     reasonCode: string;
     message: string;
@@ -7478,24 +7515,39 @@ interface ResourceAuthMethodLoginFailedEvent {
     accountId?: string;
     kubernetesNamespace?: string;
     kubernetesServiceAccountName?: string;
+    gcpServiceAccountEmail?: string;
+    gcpProjectId?: string;
+    gcpZone?: string;
   };
+}
+
+interface ResourceAuthMethodConfigMetadata {
+  resourceType: ResourceAuthMethodResourceType;
+  resourceId: string;
+  resourceName?: string;
+  method: ResourceAuthMethodType;
+  methodConfigId: string;
+  stsEndpoint?: string;
+  allowedPrincipalArns?: string;
+  allowedAccountIds?: string;
+  kubernetesHost?: string;
+  allowedNamespaces?: string;
+  allowedNames?: string;
+  allowedAudience?: string;
+  gcpAuthType?: string;
+  allowedServiceAccounts?: string;
+  allowedProjects?: string;
+  allowedZones?: string;
+}
+
+interface ResourceAuthMethodCreateEvent {
+  type: EventType.RESOURCE_AUTH_METHOD_CREATE;
+  metadata: ResourceAuthMethodConfigMetadata;
 }
 
 interface ResourceAuthMethodUpdateEvent {
   type: EventType.RESOURCE_AUTH_METHOD_UPDATE;
-  metadata: {
-    resourceType: ResourceAuthMethodResourceType;
-    resourceId: string;
-    method: ResourceAuthMethodKind;
-    methodConfigId: string;
-    stsEndpoint?: string;
-    allowedPrincipalArns?: string;
-    allowedAccountIds?: string;
-    kubernetesHost?: string;
-    allowedNamespaces?: string;
-    allowedNames?: string;
-    allowedAudience?: string;
-  };
+  metadata: ResourceAuthMethodConfigMetadata;
 }
 
 interface ResourceAuthMethodRevokeEvent {
@@ -8388,11 +8440,14 @@ export type Event =
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent
   | GatewayCreateEvent
+  | GatewayUpdateEvent
+  | GatewayDeleteEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
   | GatewayConnectEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
+  | ResourceAuthMethodCreateEvent
   | ResourceAuthMethodUpdateEvent
   | ResourceAuthMethodRevokeEvent
   | RelayCreateEvent

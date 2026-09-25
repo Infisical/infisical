@@ -19,6 +19,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
+  accountTypeSupportsSessionLogMasking,
   PamAccessMethod,
   PamAccessStatus,
   PamAccountType,
@@ -36,8 +37,8 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import {
+  buildPamPolicyRules,
   PamPolicyType,
-  PamSettingType,
   policyAppliesTo,
   resolveAccessControls,
   resolvePolicy,
@@ -374,19 +375,16 @@ export const pamSessionServiceFactory = ({
       : [];
 
     const parsedSettings = PamTemplateSettingsSchema.safeParse(account.templateSettings ?? {});
-    const maskingPatterns = parsedSettings.success
-      ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns)
-      : [];
 
-    const policyRules =
-      commandBlockingPatterns.length > 0 || maskingPatterns.length > 0
-        ? {
-            ...(commandBlockingPatterns.length > 0
-              ? { [PamPolicyType.CommandBlocking]: { patterns: commandBlockingPatterns } }
-              : {}),
-            ...(maskingPatterns.length > 0 ? { [PamSettingType.SessionLogMasking]: { patterns: maskingPatterns } } : {})
-          }
-        : null;
+    const policyRules = buildPamPolicyRules({
+      commandBlockingPatterns,
+      maskingPatterns: parsedSettings.success ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns) : [],
+      // Never send a rule the gateway has no way to honour.
+      maskingBuiltInDetection:
+        accountTypeSupportsSessionLogMasking(account.accountType as PamAccountType) &&
+        parsedSettings.success &&
+        parsedSettings.data.sessionLogMaskingBuiltInDetection
+    });
 
     const normalizedConnectionDetails = buildSessionGatewayConnectionDetails(
       account.accountType as PamAccountType,
@@ -768,7 +766,8 @@ export const pamSessionServiceFactory = ({
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.MongoDB ||
           account.accountType === PamAccountType.MsSQL ||
-          account.accountType === PamAccountType.OracleDB) &&
+          account.accountType === PamAccountType.OracleDB ||
+          account.accountType === PamAccountType.ClickHouse) &&
         rawConnectionDetails.database
       ) {
         metadata.database = rawConnectionDetails.database as string;

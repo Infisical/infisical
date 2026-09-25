@@ -155,7 +155,7 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 
 export const Navbar = () => {
   const { user } = useUser();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { config: serverConfig } = useServerConfig();
@@ -362,7 +362,7 @@ export const Navbar = () => {
   return (
     <div
       className={twMerge(
-        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
+        "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
@@ -380,7 +380,7 @@ export const Navbar = () => {
                 <Link
                   to="/organizations/$orgId/projects"
                   params={{ orgId: currentOrg.id }}
-                  className="flex h-full items-center gap-x-1 border-r border-border pr-4 pl-2 text-muted transition-colors hover:text-foreground"
+                  className="flex h-full items-center gap-x-1 border-r border-border-soft pr-4 pl-2 text-muted transition-colors hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
                   <OrgIcon className="size-3.5" />
@@ -400,7 +400,7 @@ export const Navbar = () => {
           <>
             <div
               className={twMerge(
-                "flex h-full min-w-0 items-center overflow-hidden border-border pr-2 pl-4 transition-all duration-300 ease-in-out",
+                "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
                 isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
               )}
             >
@@ -711,6 +711,22 @@ export const Navbar = () => {
         </DropdownMenu>
         <AnnouncementNavButton />
         <NotificationDropdown />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+              aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark", "navbar-toggle")}
+            >
+              {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Switch to {resolvedTheme === "dark" ? "light" : "dark"} theme
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <IconButton variant="outline" size="sm" aria-label="User menu">

@@ -59,7 +59,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
     activeConnectionId
   );
 
-  const handleConnectionChange = (id: string) => {
+  const handleConnectionChange = (id: string | null) => {
     setSelectedConnectionId(id);
     setSelectedNamespace(null);
     setSelectedMountPath(null);
@@ -68,7 +68,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
     setShouldFetchRoles(false);
   };
 
-  const handleNamespaceChange = (ns: string) => {
+  const handleNamespaceChange = (ns: string | null) => {
     setSelectedNamespace(ns);
     setSelectedMountPath(null);
     setSelectedRole(null);

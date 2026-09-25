@@ -157,7 +157,7 @@ export const SubjectAltNamesField = ({
                 ]}
               />
             )}
-            <FieldError>{error}</FieldError>
+            {error && <FieldError>{error}</FieldError>}
             {revealPolicyErrors && <PolicyNoticeList notices={policyNotices ?? []} />}
           </Field>
         );

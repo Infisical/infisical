@@ -1,0 +1,115 @@
+---
+title: "{Product} connection"
+sidebarTitle: "{Product}"
+description: "Learn how to configure a {Product} connection for Infisical."
+---
+
+{/*
+NOTE: Template for docs/integrations/app-connections/{product-slug}.mdx. Read templates/README.md
+first for what each kind of markup means.
+
+Example pages: integrations/app-connections/1password.mdx, integrations/app-connections/databricks.mdx.
+The setup steps and the form fields go in snippets under docs/snippets/app-connections/{product-slug}/,
+because the sync and rotation pages for the same product render the same two snippets.
+*/}
+
+import {SetupSnippetName} from "/snippets/app-connections/{product-slug}/{setup-snippet-file}.mdx";
+import ConnectionFormFields from "/snippets/app-connections/{product-slug}/form-fields.mdx";
+
+A {Product} connection authenticates Infisical to {Product} with {the credential type, linked to {Product}'s documentation for it}, so Infisical can {what the integrations that use this connection do}.
+
+{/* IF: the credential determines something the reader must know before starting, such as which account Infisical writes to */}
+{One sentence stating what the credential determines}
+{/* END IF */}
+
+<Note>
+    This guide only authenticates Infisical with {Product}. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- {The {Product} account or access the reader needs, asking for the least access that works, linked to where the reader gets it}
+
+## Step 1: {The setup task in {Product}, as an imperative}
+
+{One sentence stating what Infisical needs from {Product}}
+
+<{SetupSnippetName} />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create {Product} Connection](/api-reference/endpoints/app-connections/{product-slug}/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Organization Settings**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **+ Add Connection** and choose **{Product} Connection**.
+
+            ![Select {Product} Connection](/images/app-connections/{product-slug}/{image-file}.png)
+        </Step>
+        <Step>
+            {/* IF: the connection form has more than one method */}
+            Select the **{Method name}** method, then fill out the form's fields:
+            {/* END IF */}
+            {/* IF: the connection form has one method */}
+            Fill out the form's fields:
+            {/* END IF */}
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to {Product}**.
+
+            ![{Product} Connection Form](/images/app-connections/{product-slug}/{image-file}.png)
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **{Product} Connection**.
+
+            ![Select {Product} Connection](/images/app-connections/{product-slug}/{image-file}-project.png)
+        </Step>
+        <Step>
+            {/* NOTE: Use the same first sentence as the organization-level step. */}
+            {The same first sentence as the organization-level step}
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to {Product}**.
+
+            ![{Product} Connection Form](/images/app-connections/{product-slug}/{image-file}-project.png)
+        </Step>
+    </Steps>
+</View>
+
+{/* IF: the connection's validate function in backend/src/services/app-connection/{product-slug}/ checks something the reader should know about, such as a permission on the credential */}
+{One sentence stating what Infisical checks when the reader submits the form}
+{/* END IF */}
+
+<Check>
+    Your {Product} app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your {Product} app connection is configured, you can use it to set up the following integrations:
+
+{/* NOTE: One card per integration that uses this connection. Wrap two or more cards in <CardGroup cols={2}>. */}
+
+<Card title="{Title of the integration page}" icon="{Lucide icon name}" href="{Path of the integration page}">
+    {What the integration does, in one short sentence}
+</Card>

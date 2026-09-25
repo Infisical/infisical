@@ -106,7 +106,8 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
-  KmipServers = "KMIP Servers"
+  KmipServers = "KMIP Servers",
+  Instance = "Instance"
 }
 
 export const GROUPS = {
@@ -2276,6 +2277,15 @@ export const CERTIFICATES = {
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
+  RENEWAL_PREVIEW: {
+    id: "The ID of the certificate to preview a renewal for.",
+    hasOriginatingRequest:
+      "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    request:
+      "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
+    issuerModifiedFields:
+      "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
+  },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
@@ -4024,11 +4034,12 @@ export const GATEWAYS = {
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `gcp` carries the GCP token type and service account/project/zone allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
+    name: "New name for the gateway. Renaming does not affect the gateway's ID, so resources referencing it keep working.",
     authMethod:
-      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `gcp` with GCP allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
@@ -4036,6 +4047,14 @@ export const GATEWAYS = {
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
       "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    gcpAuthType:
+      "How the gateway proves its GCP identity. 'gce' verifies an ID token from the instance metadata server, which covers Compute Engine VMs and GKE workload identity. 'iam' verifies a JWT the service account signed through the IAM Credentials API, for hosts outside Compute Engine.",
+    allowedServiceAccounts:
+      "The comma-separated list of GCP service account emails that are allowed to authenticate as this gateway.",
+    allowedProjects:
+      "The comma-separated list of GCP project IDs whose Compute Engine instances are allowed to authenticate as this gateway. Only applies to the 'gce' type, and requires a token carrying Compute Engine instance details.",
+    allowedZones:
+      "The comma-separated list of GCP zones whose Compute Engine instances are allowed to authenticate as this gateway. Only applies to the 'gce' type, and requires a token carrying Compute Engine instance details.",
     kubernetesHost:
       "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
     tokenReviewMode:
@@ -4058,11 +4077,13 @@ export const GATEWAYS = {
       "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
+    gatewayId: "The ID of the gateway logging in (AWS, GCP and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
     jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
+    gcpJwt:
+      "The GCP token proving the gateway's identity, carrying the gateway ID as its audience: a metadata server ID token for the 'gce' type, or a service-account-signed JWT for the 'iam' type (GCP method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;
@@ -4321,6 +4342,12 @@ export const AGENT_VAULT = {
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
     offset: "How many members to skip."
+  },
+  AVAILABLE_MEMBER: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
+    search: "Match candidates by name, username or email address.",
+    limit: "The maximum number of candidates to return.",
+    offset: "How many candidates to skip."
   },
   PROXY: {
     proxyId: "The ID of the proxy.",

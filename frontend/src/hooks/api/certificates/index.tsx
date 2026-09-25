@@ -20,6 +20,7 @@ export {
   useGetCertBundle,
   useGetCertDashboardStats,
   useGetCertificateById,
+  useGetCertificateRenewalPreview,
   useGetCertificateRequest,
   useGetCertPqcTrend,
   useListCertificateRequests

@@ -105,10 +105,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
     description: "Matching commands will be rejected (one regex per line).",
-    appliesTo: [PamAccountType.SSH, PamAccountType.Snowflake],
+    appliesTo: [PamAccountType.SSH, PamAccountType.Snowflake, PamAccountType.ClickHouse],
     schema: patternsStringSchema(),
     typeOverrides: {
       [PamAccountType.Snowflake]: {
+        description: "Matching SQL statements will be rejected (one regex per line)."
+      },
+      [PamAccountType.ClickHouse]: {
         description: "Matching SQL statements will be rejected (one regex per line)."
       }
     }
@@ -192,13 +195,50 @@ export type TPamAccessControls = {
 
 const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
 
+const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
+  builtInDetection: z.boolean()
+});
+
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
-    [PamSettingType.SessionLogMasking]: PamPolicyRulePatternSchema.optional()
+    [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
   .optional();
+
+export type TPamPolicyRules = z.infer<typeof PamPolicyRulesSchema>;
+
+/**
+ * Assembles the rules the gateway enforces during a session.
+ *
+ * The masking arm is emitted whenever built-in detection is on, even with no custom patterns —
+ * an empty pattern list is no longer the same thing as "no masking".
+ */
+export const buildPamPolicyRules = ({
+  commandBlockingPatterns,
+  maskingPatterns,
+  maskingBuiltInDetection
+}: {
+  commandBlockingPatterns: string[];
+  maskingPatterns: string[];
+  maskingBuiltInDetection: boolean;
+}): TPamPolicyRules => {
+  const rules: Record<string, unknown> = {};
+
+  if (commandBlockingPatterns.length > 0) {
+    rules[PamPolicyType.CommandBlocking] = { patterns: commandBlockingPatterns };
+  }
+
+  if (maskingBuiltInDetection || maskingPatterns.length > 0) {
+    rules[PamSettingType.SessionLogMasking] = {
+      patterns: maskingPatterns,
+      builtInDetection: maskingBuiltInDetection
+    };
+  }
+
+  return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
+};
 
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);

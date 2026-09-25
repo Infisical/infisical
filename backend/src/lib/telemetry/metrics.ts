@@ -309,6 +309,54 @@ export const queueStalledCounter = infisicalCoreMeter.createCounter("infisical.q
   unit: "{job}"
 });
 
+// In-process refresh metrics. Wired in lib/cron/local-refresh.ts around every run. Each pod runs its own
+// copy, so a failure here means that pod is serving stale in-memory state, not that a fleet job was lost.
+export enum LocalRefreshOutcome {
+  COMPLETED = "completed",
+  FAILED = "failed",
+  SKIPPED = "skipped"
+}
+
+export const localRefreshRunCounter = infisicalCoreMeter.createCounter("infisical.local_refresh.run.count", {
+  description:
+    "In-process refresh runs by job and outcome. skipped means the previous run was still in progress when the next tick fired.",
+  unit: "{run}"
+});
+
+export const localRefreshRunDurationHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.local_refresh.run.duration",
+  {
+    description: "In-process refresh run duration by job and outcome. Not recorded for skipped runs.",
+    unit: "s"
+  }
+);
+
+// Read by the infisical.local_refresh.consecutive_failures gauge in registerInfrastructureMetrics().
+const localRefreshConsecutiveFailures = new Map<string, number>();
+
+export const recordLocalRefreshRunMetric = (params: {
+  name: string;
+  outcome: LocalRefreshOutcome;
+  durationMs?: number;
+  error?: unknown;
+  consecutiveFailures?: number;
+}) => {
+  safely(() => {
+    if (params.consecutiveFailures !== undefined) {
+      localRefreshConsecutiveFailures.set(params.name, params.consecutiveFailures);
+    }
+    if (!isTelemetryEnabled()) return;
+    const attributes: Record<string, string> = { "job.name": params.name, outcome: params.outcome };
+    if (params.durationMs !== undefined) {
+      localRefreshRunDurationHistogram.record(params.durationMs / 1000, attributes);
+    }
+    if (params.outcome === LocalRefreshOutcome.FAILED) {
+      attributes["error.type"] = classifyError(params.error);
+    }
+    localRefreshRunCounter.add(1, attributes);
+  });
+};
+
 // Audit log lifecycle metrics. Wired in audit-log-queue.ts: enqueued when an event is appended to
 // the Redis ingest stream, dropped when the request-path push fails, persist duration around the
 // batch insert in the unified consumer.
@@ -898,6 +946,20 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     if (!isTelemetryEnabled()) return;
     const { size, max } = getAgentPoolStats();
     result.observe(size, { "pool.max": String(max) });
+  });
+
+  // Resets to 0 on the next successful run, so a sustained non-zero value means the refresh is stuck
+  // failing rather than flaking. Alert on this instead of on the failure rate.
+  const localRefreshFailuresGauge = meter.createObservableGauge("infisical.local_refresh.consecutive_failures", {
+    description: "Consecutive failed runs of each in-process refresh on this pod. Resets to 0 on success.",
+    unit: "{run}"
+  });
+
+  localRefreshFailuresGauge.addCallback((result) => {
+    if (!isTelemetryEnabled()) return;
+    localRefreshConsecutiveFailures.forEach((count, name) => {
+      result.observe(count, { "job.name": name });
+    });
   });
 };
 

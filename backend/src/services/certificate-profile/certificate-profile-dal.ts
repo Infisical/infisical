@@ -367,6 +367,17 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByCaId = async (caId: string, tx?: Knex): Promise<Pick<TCertificateProfile, "id" | "slug">[]> => {
+    try {
+      const certificateProfiles = (await (tx || db)(TableName.PkiCertificateProfile)
+        .where({ caId })
+        .select("id", "slug")) as Pick<TCertificateProfile, "id" | "slug">[];
+      return certificateProfiles;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate profiles by ca id" });
+    }
+  };
+
   const findByProjectId = async (
     projectId: string,
     options: {
@@ -766,6 +777,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     findByIdWithOwnerOrgId,
     findByIdWithConfigs,
     findBySlugAndProjectId,
+    findByCaId,
     findByProjectId,
     countByProjectId,
     findByNameAndProjectId,

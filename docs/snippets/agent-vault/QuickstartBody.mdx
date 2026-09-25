@@ -161,9 +161,9 @@ The CLI adds the proxy's certificate authority to the agent process' trusted CAs
   <Accordion title="403 from the proxy">
     This could be for a few reasons:
 
-    - The session was revoked or has expired. Check the Sessions page in Infisical, and create a new one if needed.
-    - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host you called. Add a service that does, or use a pass-through service.
-    - The service covers the host, but the request uses a method or a path it doesn't allow. The message names the service and the method. Check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths).
+    - The session was revoked or has expired (check the **Sessions** page in Infisical, and create a new one if needed)
+    - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host you called (add a service that does, or use a pass-through service)
+    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths))
   </Accordion>
 </AccordionGroup>
 

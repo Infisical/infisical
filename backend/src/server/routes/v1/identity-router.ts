@@ -530,7 +530,16 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
       operationId: "getMachineIdentityDetails",
+      tags: [ApiDocsTags.Identities],
+      description:
+        "Get details for the calling machine identity, including the organization it belongs to. Called with the identity's own access token.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: z.object({
           identityDetails: z.object({
