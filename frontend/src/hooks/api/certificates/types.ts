@@ -401,7 +401,7 @@ export type TCertificateRenewalPreview = {
     extendedKeyUsages: string[];
     keyAlgorithm?: string;
     signatureAlgorithm?: string;
-    customExtensions: { oid: string; value: string; critical?: boolean }[];
+    customExtensions: { oid: string; value?: string; critical?: boolean }[];
   };
   issuerModifiedFields: TIssuerModifiedField[];
 };

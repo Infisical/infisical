@@ -177,7 +177,7 @@ export const buildRenewalFormDefaults = (
   customExtensions: renewalPreview?.hasOriginatingRequest
     ? renewalPreview.request.customExtensions.map(({ oid, value, critical }) => ({
         oid,
-        value,
+        value: value ?? "",
         critical
       }))
     : (cert.customExtensions ?? [])
