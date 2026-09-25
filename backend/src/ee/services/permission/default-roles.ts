@@ -834,6 +834,17 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionAppConnectionActions.Edit,
+      ProjectPermissionAppConnectionActions.Delete,
+      ProjectPermissionAppConnectionActions.Connect
+    ],
+    ProjectPermissionSub.AppConnections
+  );
+
+  can(
+    [
       ProjectPermissionMemberActions.Create,
       ProjectPermissionMemberActions.Edit,
       ProjectPermissionMemberActions.Delete,

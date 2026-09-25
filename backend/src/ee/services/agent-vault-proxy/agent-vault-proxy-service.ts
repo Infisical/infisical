@@ -26,6 +26,9 @@ import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vaul
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultActivityConfigDALFactory } from "../agent-vault-activity/agent-vault-activity-config-dal";
+import { openActivityKey } from "../agent-vault-activity/agent-vault-activity-secrets";
+import { resolveStorageConfig } from "../agent-vault-activity/agent-vault-activity-storage";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
@@ -55,6 +58,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultActivityConfigDAL: Pick<TAgentVaultActivityConfigDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -73,6 +77,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultServiceCustomHeaderDAL,
   agentVaultServiceSubstitutionDAL,
   agentVaultSessionDAL,
+  agentVaultActivityConfigDAL,
   membershipDAL,
   orgDAL,
   permissionService,
@@ -314,7 +319,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
-  const resolveSession = async ({ proxyId, orgId, sessionToken }: TResolveSessionDTO) => {
+  const resolveSession = async ({ proxyId, orgId, sessionToken, hasActivityKey }: TResolveSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
     if (!session) throw new NotFoundError({ message: "Session not found" });
 
@@ -400,9 +405,19 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
+    const activityConfig = await agentVaultActivityConfigDAL.findOne({ projectId: session.projectId });
+    const activityEnabled = Boolean(
+      activityConfig?.enabled && resolveStorageConfig(activityConfig) && session.encryptedActivityKey
+    );
+    const activityKeyNeeded = activityEnabled && !hasActivityKey;
+
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
+    // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential) || customHeaderRows.length > 0 || substitutionRows.length > 0;
+      rows.some((row) => row.encryptedCredential) ||
+      customHeaderRows.length > 0 ||
+      substitutionRows.length > 0 ||
+      activityKeyNeeded;
     const decryptor = hasSealedValue
       ? (
           await kmsService.createCipherPairWithDataKey({
@@ -444,7 +459,18 @@ export const agentVaultProxyServiceFactory = ({
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
-      services
+      services,
+      activity: {
+        enabled: activityEnabled,
+        sessionKey:
+          activityKeyNeeded && session.encryptedActivityKey
+            ? openActivityKey({
+                sessionId: session.id,
+                payload: decryptor!({ cipherTextBlob: session.encryptedActivityKey })
+              }).toString("base64")
+            : null,
+        projectId: session.projectId
+      }
     };
   };
 

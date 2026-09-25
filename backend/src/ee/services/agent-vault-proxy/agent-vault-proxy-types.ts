@@ -47,6 +47,7 @@ export type TResolveSessionDTO = {
   proxyId: string;
   orgId: string;
   sessionToken: string;
+  hasActivityKey: boolean;
 };
 
 export type TResolvedService = {

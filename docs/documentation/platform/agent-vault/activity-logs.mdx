@@ -1,0 +1,195 @@
+---
+title: "Activity logs"
+description: "Record what an agent reached through a proxy, store it encrypted in your own S3 bucket, and read it back on the session."
+---
+
+An activity log is the per-request record of what an agent actually did: the method, host, path, status, and whether a credential went out with it. Every request that reaches a proxy is recorded, including requests to hosts that no access bundle covers.
+
+Records are encrypted before they leave the proxy and stored in an S3 bucket you own. Your browser fetches and decrypts them, so the records never pass through Infisical.
+
+## What's recorded
+
+Each request produces one record:
+
+```json
+{
+  "ts": "2026-09-16T10:31:04.221Z",
+  "seq": 8412,
+  "proxyId": "7c1e…",
+  "method": "POST",
+  "host": "api.github.com",
+  "port": "443",
+  "path": "/repos/acme/web/issues",
+  "status": 201,
+  "decision": "brokered",
+  "service": "github",
+  "accessBundle": "code-review"
+}
+```
+
+`decision` is one of four outcomes:
+
+| Decision | What happened |
+| --- | --- |
+| `brokered` | A service matched and its credential went out with the request |
+| `passthrough` | No service matched, or the one that did carries no credential. The request went out untouched |
+| `blocked` | The traffic policy refused the request |
+| `error` | The proxy couldn't reach the upstream |
+
+Request and response bodies, headers, and query strings aren't recorded, because that's where credentials and tokens travel.
+
+## Prerequisites
+
+- An AWS connection, either organization-wide under **Integrations** or scoped to Agent Vault under [Activity Logs](#connections)
+- An S3 bucket, in a region the connection can reach
+- Each proxy's clock set to within 5 minutes of Infisical's
+
+## Setting up storage
+
+Go to **Activity Logs** under Agent Vault and select **Set Up Logging** on the **Activity Logging** card:
+
+1. Turn on **Enable**.
+2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the dialog.
+3. Enter the **Bucket** and its **Region**.
+4. Optionally set a **Key Prefix**, so activity objects sit under one path in a bucket you use for other things.
+5. Select **Save**.
+
+When you save, Infisical checks that the bucket exists and writes a small test object, `.test/write-check`, under your prefix. Each save overwrites that object. If the check fails, the error says which step failed and what to grant.
+
+The connection needs an IAM policy and the bucket needs a CORS rule. The **AWS Setup** dialog shows both. It opens after a successful save with your bucket and prefix already filled in, and **View AWS Setup** on the **Activity Logging** card reopens it.
+
+Attach this identity policy (not a bucket policy) to the user or role the connection authenticates as:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::<bucket>"
+    }
+  ]
+}
+```
+
+Add this CORS rule to the bucket, because your browser is what fetches the records:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT"],
+    "AllowedOrigins": ["https://app.infisical.com"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Use your own instance URL as the allowed origin. Without this rule the settings still save, but your browser can't load any session's activity. Each time the **AWS Setup** dialog opens, it checks whether the rule is in place and warns you if it isn't.
+
+Activity logging starts within one poll interval on every proxy, and covers sessions that are already running.
+
+## Reading a session's activity
+
+Go to **Sessions** and select a row. The **Activity Logs** sheet shows the session's requests, newest first, and marks any host that no access bundle covers.
+
+Filter by outcome or proxy, or search by host, path, method, or service. Filters apply to the requests already loaded, and load older ones if they match too few. Select **Search older requests** to go further back, or set a time range to reach an earlier part of a long session.
+
+While a session is active, new requests appear without a reload, usually within a minute.
+
+There's no view across sessions, because each session's records are encrypted under a key of their own.
+
+### When several proxies serve one session
+
+A session token works on any enrolled proxy, so several proxies can serve one session at the same time. Their records merge into one timeline with a **Proxy** column and a filter. Records from different proxies are ordered by each machine's clock, so two adjacent lines from different machines can be a second out of order.
+
+### Gaps in the timeline
+
+If a record couldn't be kept, the sheet shows a notice instead of leaving a silent gap:
+
+- **Records not kept:** if a proxy can't reach Infisical or your bucket for long enough, it drops the oldest records it's holding, and the sheet shows how many
+- **Unreadable batch:** if a batch is missing from the bucket, the bucket refuses the download, or the batch is the wrong size, was changed after it was uploaded, or fails decryption, the sheet marks the batch and shows the rest (select **Retry** to try a missing, refused, or failed download again)
+- **Batch in another bucket:** if you changed the bucket, batches recorded before the change are marked as stored in a bucket the project no longer uses, and become readable again if you switch back
+
+## Changing where activity is stored
+
+Rotating the AWS connection's credentials, or correcting the region, keeps every record readable. Rotate the connection rather than moving the bucket.
+
+Changing the bucket copies nothing, so everything recorded before the change can't be read in Infisical until you switch back to that bucket. The objects stay where they were, so you can still reach them with your own tooling.
+
+Changing only the key prefix keeps earlier records readable, as long as the AWS connection can still read the old prefix. The [IAM policy](#setting-up-storage) on this page covers only the current prefix.
+
+## Retention
+
+Infisical never deletes activity. A session that recorded activity is kept indefinitely, along with its records. A session that recorded nothing is removed 30 days after it's revoked or expires.
+
+Infisical doesn't delete anything from your bucket either, and the [IAM policy](#setting-up-storage) doesn't allow it. To keep records for less time, add an S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`. If the rule removes a batch, the timeline marks the batch as no longer in the bucket.
+
+## When activity logging reaches its limit
+
+If the **Activity Logs** page shows that activity logging has reached its limit for this organization, contact us.
+
+## Connections
+
+The AWS credentials that write the records are stored as an [app connection](/documentation/getting-started/concepts/app-connections). Agent Vault's own connections are listed at the bottom of the **Activity Logs** page, which only Agent Vault admins can see.
+
+### Two places a connection can live
+
+A connection is scoped either to your organization or to Agent Vault, and the choice decides which products can use it.
+
+| Scope | Where you create it | Which products can use it |
+| --- | --- | --- |
+| Organization | **Integrations** at the organization level | every product, including Agent Vault |
+| Agent Vault | **Activity Logs** under Agent Vault | Agent Vault only |
+
+Agent Vault's connection dropdowns list both, with the organization's connections marked. Pick the Agent Vault scope when the credential exists only for activity logs, so a secret sync can't reach the bucket. The scope is fixed when you create the connection; to move one, create it again in the other scope.
+
+### Adding a connection
+
+On the **Activity Logs** page, select **Add Connection**. Agent Vault supports **AWS** connections.
+
+You can also select **Create New Connection** from the **AWS Connection** dropdown in the setup dialog. The new connection is scoped to Agent Vault and selected for you.
+
+### Managing connections through the API
+
+Use [Agent Vault's app connection endpoints](/api-reference/endpoints/agent-vault-app-connections/create) rather than the general ones, which need a project ID that Agent Vault doesn't expose:
+
+```bash
+curl --request POST \
+  --url https://app.infisical.com/api/v1/agent-vault/app-connections/aws \
+  --header 'Authorization: Bearer <token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "agent-vault-activity",
+    "method": "access-key",
+    "credentials": {
+      "accessKeyId": "<access-key-id>",
+      "secretAccessKey": "<secret-access-key>"
+    }
+  }'
+```
+
+These endpoints only reach Agent Vault's connections. An organization connection returns `404` here, so manage it through the organization's own endpoints.
+
+### Deleting a connection
+
+You can't delete a connection that activity logging uses, whether from the **Activity Logs** page or from the organization's **Integrations**, because its credentials are what read recorded activity back.
+
+To replace the connection, select another one under **Configure** and save, then delete the old one.
+
+To stop using a connection without replacing it, turn off **Enable**, set **AWS Connection** to **None**, and save. The bucket and prefix are kept, but recorded activity can't be read in Infisical until a connection is attached again.
+
+## What this doesn't cover
+
+If a proxy can't reach your bucket, it keeps retrying and logs the failure, but doesn't report the error to Infisical. If a session you expect to see activity for shows none, check each proxy's logs.
+
+If a proxy's clock runs more than 5 minutes ahead of Infisical's, Infisical refuses that proxy's activity. The proxy logs how far ahead its clock is.
+
+Activity logging is an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch it off.

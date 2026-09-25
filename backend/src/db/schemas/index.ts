@@ -5,6 +5,8 @@ export * from "./access-approval-requests";
 export * from "./access-approval-requests-reviewers";
 export * from "./additional-privileges";
 export * from "./agent-vault-access-bundles";
+export * from "./agent-vault-activity-chunks";
+export * from "./agent-vault-activity-configs";
 export * from "./agent-vault-proxies";
 export * from "./agent-vault-service-custom-headers";
 export * from "./agent-vault-service-substitutions";

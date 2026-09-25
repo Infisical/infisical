@@ -1,4 +1,5 @@
 import {
+  AgentVaultActivityDecision,
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
@@ -180,6 +181,7 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
+  description: string | null;
   position: number;
 };
 
@@ -224,7 +226,7 @@ export type TAgentVaultEnrollment = {
 
 export type TListAgentVaultSessionsDTO = {
   scope?: AgentVaultSessionScope;
-  status?: AgentVaultSessionStatus;
+  statuses?: AgentVaultSessionStatus[];
   limit?: number;
   offset?: number;
   search?: string;
@@ -278,4 +280,113 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TAgentVaultActivityConfig = {
+  enabled: boolean;
+  appConnectionId: string | null;
+  bucket: string | null;
+  region: string | null;
+  keyPrefix: string | null;
+};
+
+export type TAgentVaultActivityConfigResponse = {
+  config: TAgentVaultActivityConfig;
+  isStorageFull: boolean;
+  corsProbeUrl: string | null;
+  connectionError: string | null;
+};
+
+export const isAgentVaultRecording = (config: TAgentVaultActivityConfig) =>
+  Boolean(config.enabled && config.appConnectionId && config.bucket && config.region);
+
+export type TUpdateAgentVaultActivityConfigDTO = {
+  enabled?: boolean;
+  appConnectionId?: string | null;
+  bucket?: string;
+  region?: string;
+  keyPrefix?: string;
+};
+
+export type TAgentVaultActivityChunk = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string;
+  startedAt: string;
+  endedAt: string;
+  firstSeq: number;
+  lastSeq: number;
+  recordCount: number;
+  droppedCount: number;
+  ciphertextBytes: number;
+  iv: string;
+  ciphertextSha256: string;
+  presignedGetUrl: string | null;
+};
+
+export type TAgentVaultActivityPage = {
+  enabled: boolean;
+  sessionKey: string | null;
+  projectId: string;
+  chunks: TAgentVaultActivityChunk[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  nextReceivedAfter: string;
+  storageUnavailable: {
+    reason: "no-connection" | "connection-unusable";
+    message: string | null;
+  } | null;
+};
+
+export type TAgentVaultActivityRecord = {
+  ts: string;
+  seq: number;
+  proxyId: string;
+  method: string;
+  host: string;
+  port: string;
+  path: string;
+  status: number;
+  decision: AgentVaultActivityDecision;
+  service: string | null;
+  accessBundle: string | null;
+};
+
+export type TAgentVaultActivityGapReason =
+  | "fetch"
+  | "missing"
+  | "refused"
+  | "size"
+  | "altered"
+  | "gcm"
+  | "json"
+  | "mismatch"
+  | "repointed";
+
+export type TAgentVaultActivityGap = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string;
+  startedAt: string;
+  reason: TAgentVaultActivityGapReason;
+  recordCount: number;
+};
+
+export type TAgentVaultActivityDrop = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string;
+  startedAt: string;
+  droppedCount: number;
+};
+
+export type TAgentVaultDecryptedChunk = {
+  records: TAgentVaultActivityRecord[];
+  gap: TAgentVaultActivityGap | null;
+  drop: TAgentVaultActivityDrop | null;
+  arrivedAt: number | null;
+};
+
+export type TAgentVaultDecryptedActivityPage = TAgentVaultActivityPage & {
+  decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };

@@ -29,6 +29,9 @@ import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vau
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultActivityChunkDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-chunk-dal";
+import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
+import { agentVaultActivityServiceFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-service";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
@@ -1855,6 +1858,8 @@ export const registerRoutes = async (
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
+  const agentVaultActivityChunkDAL = agentVaultActivityChunkDALFactory(db);
+  const agentVaultActivityConfigDAL = agentVaultActivityConfigDALFactory(db);
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
@@ -1874,7 +1879,8 @@ export const registerRoutes = async (
     agentVaultSessionAccessBundleDAL,
     agentVaultAccessBundleDAL,
     membershipDAL,
-    permissionService
+    permissionService,
+    kmsService
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
@@ -1983,6 +1989,7 @@ export const registerRoutes = async (
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
     agentVaultSessionDAL,
+    agentVaultActivityConfigDAL,
     membershipDAL,
     orgDAL,
     permissionService,
@@ -3190,6 +3197,17 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const agentVaultActivityService = agentVaultActivityServiceFactory({
+    agentVaultActivityChunkDAL,
+    agentVaultActivityConfigDAL,
+    agentVaultSessionDAL,
+    agentVaultProxyDAL,
+    appConnectionDAL,
+    appConnectionService,
+    permissionService,
+    kmsService
+  });
+
   const hsmConnectorService = hsmConnectorServiceFactory({
     hsmConnectorDAL,
     permissionService,
@@ -4314,6 +4332,7 @@ export const registerRoutes = async (
     agentVaultAccessBundle: agentVaultAccessBundleService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
+    agentVaultActivity: agentVaultActivityService,
     agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,

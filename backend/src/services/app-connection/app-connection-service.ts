@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TableName, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -388,10 +388,17 @@ export const appConnectionServiceFactory = ({
     );
   };
 
-  const findAppConnectionById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const findAppConnectionById = async (
+    app: AppConnection,
+    connectionId: string,
+    actor: OrgServiceActor,
+    scope?: { projectId: string }
+  ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
+    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -1123,6 +1130,12 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
+        if ((err.error as { table?: string })?.table === TableName.AgentVaultActivityConfig) {
+          throw new BadRequestError({
+            message:
+              "This connection is used by Agent Vault activity logging, so it can't be deleted. An Agent Vault administrator can switch activity logging to another connection, or remove it, first."
+          });
+        }
         throw new BadRequestError({
           message:
             "Cannot delete App Connection with existing connections. Remove all existing connections and try again."

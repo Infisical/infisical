@@ -106,6 +106,8 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultActivity = "Agent Vault Activity",
+  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -4370,6 +4372,61 @@ export const AGENT_VAULT = {
     sessionToken: "The session an agent is running with. A selector, not a second credential.",
     createdAt: "When the proxy was registered."
   },
+  ACTIVITY: {
+    chunkId: "The ID of the activity chunk, a ULID that is unique per session and sorts by time.",
+    proxyId: "The ID of the proxy that recorded the chunk.",
+    proxyName: "The proxy's current name, or the name it had when it recorded the chunk if it has since been deleted.",
+    startedAt: "When the first request in the chunk was recorded.",
+    endedAt: "When the last request in the chunk was recorded.",
+    firstSeq: "The sequence number of the first record in the chunk, counted per proxy.",
+    lastSeq: "The sequence number of the last record in the chunk, counted per proxy.",
+    recordCount: "How many records the chunk holds.",
+    droppedCount:
+      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused or switched off.",
+    ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
+    iv: "The AES-GCM initialisation vector, base64 encoded.",
+    ciphertextSha256:
+      "The SHA-256 of the encrypted chunk, unpadded base64. The browser checks the downloaded object against it before decrypting.",
+    objectKey: "Where the encrypted chunk lives in the configured bucket.",
+    uploadUrl: "A presigned URL to PUT the encrypted chunk to. Accepts exactly ciphertextBytes bytes.",
+    presignedGetUrl:
+      "A presigned URL to GET the encrypted chunk from. Null when the chunk was written under an earlier storage configuration, or when `storageUnavailable` is set.",
+    expiresInSeconds: "How long the presigned URL stays valid.",
+    sessionKey:
+      "The session's activity key, base64 encoded. Decrypts every chunk in this response. Null when there is nothing to decrypt.",
+    storageUnavailable:
+      "Set when the session recorded activity that cannot be read right now. The chunks are listed without URLs to fetch them. Null otherwise.",
+    storageUnavailableReason:
+      "`no-connection` when activity logging has no AWS connection, `connection-unusable` when Infisical could not use it.",
+    storageUnavailableMessage: "Why the connection could not be used. Only returned to administrators.",
+    nextCursor:
+      "Pass as `before` to fetch the next, older page. Null when there are no older chunks, and always null when reading with `receivedAfter`.",
+    hasMore:
+      "Whether more chunks are available: older ones for a page, or later arrivals when reading with `receivedAfter`.",
+    nextReceivedAfter:
+      "Pass as `receivedAfter` on the next read. The next read can return chunks you already hold, so drop repeats by `chunkId`.",
+    receivedAfter:
+      "Return the chunks received at or after this time, oldest first, instead of a page going back through the session. Pass the `nextReceivedAfter` of the previous response. Cannot be combined with `before`, `from` or `to`.",
+    limit: "Roughly how many activity records to return. Chunks are returned whole, so a page can hold more.",
+    from: "Only return chunks holding records at or after this time. A chunk that overlaps the window is included whole.",
+    to: "Only return chunks holding records at or before this time. A chunk that overlaps the window is included whole.",
+    before: "Return only chunks older than this chunk ID.",
+    enabled: "Whether activity logging is on for this project.",
+    configEnabled:
+      "Turn activity logging on or off. Turning it off stops new records being accepted; it deletes nothing.",
+    appConnectionId: "The AWS connection whose credentials write to and read from the bucket.",
+    bucket:
+      "The S3 bucket activity is stored in. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
+    region: "The region the bucket lives in.",
+    keyPrefix:
+      "An optional prefix every object key is written under. `logs`, `/logs` and `logs/` are all saved as `logs/`. Letters, numbers and `! - _ . ' ( ) /` only, with no `.` or `..` folder, up to 512 characters including the trailing slash.",
+    corsProbeUrl: "A presigned URL the browser fetches to check that the bucket allows cross-origin reads.",
+    connectionError:
+      "Why Infisical could not use the configured AWS connection, for example because AWS refused to let it assume its role. Null when it could, or when there is nothing to check.",
+    isStorageFull:
+      "Whether activity logging has reached its limit for this organization. Contact Infisical support to raise it.",
+    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again."
+  },
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
@@ -4377,7 +4434,7 @@ export const AGENT_VAULT = {
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
-    status: "Filter by session status: active, revoked or expired.",
+    status: "Filter by session status: active, revoked or expired. Separate several with commas to match any of them.",
     search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip."

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAgentVaultSessions } from "@app/db/schemas";
+import { TableName, TAgentVaultSessions, TAgentVaultSessionsInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
@@ -20,7 +20,7 @@ export type TAgentVaultSessionListRow = {
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
-  accessBundles: { id: string | null; name: string; position: number }[];
+  accessBundles: { id: string | null; name: string; description: string | null; position: number }[];
 };
 
 // Mirrors deriveSessionStatus: a session with neither actor id counts as revoked.
@@ -78,15 +78,17 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
   const findForList = async (
     {
       projectId,
+      sessionId,
       actor,
-      status,
+      statuses,
       search,
       limit,
       offset
     }: {
       projectId: string;
+      sessionId?: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
-      status?: AgentVaultSessionStatus;
+      statuses?: AgentVaultSessionStatus[];
       search?: string;
       limit: number;
       offset: number;
@@ -99,9 +101,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultSession}.projectId`, projectId);
+        if (sessionId) void query.where(`${TableName.AgentVaultSession}.id`, sessionId);
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
-        if (status) statusFilter(query, status, now);
+        if (statuses?.length) {
+          void query.where((qb) => {
+            statuses.forEach((status) => {
+              void qb.orWhere((sub) => statusFilter(sub, status, now));
+            });
+          });
+        }
         // Shared with the count query, so the pager describes the filtered set rather than the whole one.
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
@@ -197,6 +206,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
+          db.ref("description").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleDescription"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")
@@ -216,6 +226,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
+        accessBundleDescription: string | null;
         position: number | null;
       }[];
 
@@ -240,6 +251,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         session.accessBundles.push({
           id: row.accessBundleId,
           name: row.liveAccessBundleName ?? row.accessBundleName,
+          description: row.accessBundleDescription ?? null,
           position: row.position
         });
       });
@@ -279,11 +291,35 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
             });
         })
+        // Never prune a session that recorded activity: its row holds the only key that decrypts it.
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.AgentVaultActivityChunk)
+            .whereRaw(`??.?? = ??.??`, [
+              TableName.AgentVaultActivityChunk,
+              "sessionId",
+              TableName.AgentVaultSession,
+              "id"
+            ]);
+        })
         .del();
     } catch (error) {
       throw new DatabaseError({ error, name: "Prune retired Agent Vault sessions" });
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore };
+  // The id is chosen by the caller because the activity key is wrapped with it before the row exists.
+  const createWithId = async (data: TAgentVaultSessionsInsert & { id: string }, tx?: Knex) => {
+    try {
+      const [session] = await (tx || db)(TableName.AgentVaultSession)
+        .insert(data as never)
+        .returning("*");
+      return session;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create Agent Vault session" });
+    }
+  };
+
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore, createWithId };
 };

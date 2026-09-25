@@ -347,6 +347,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
+const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
@@ -452,7 +454,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.PAM:
           return false;
         case ProjectType.AgentVault:
-          return false;
+          return AGENT_VAULT_APP_CONNECTIONS.includes(option.app);
         default:
           return true;
       }

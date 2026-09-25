@@ -68,6 +68,16 @@ export const agentVaultResolveLimit: RateLimitOptions = {
   }
 };
 
+export const agentVaultActivityChunkLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-activity:${actorId}` : req.realIp;
+  }
+};
+
 export const agentVaultHeartbeatLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",

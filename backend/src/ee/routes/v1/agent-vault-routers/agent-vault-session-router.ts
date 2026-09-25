@@ -26,6 +26,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
   name: z.string(),
+  description: z.string().nullable(),
   position: z.number()
 });
 
@@ -56,7 +57,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .nativeEnum(AgentVaultSessionScope)
           .default(AgentVaultSessionScope.Mine)
           .describe(AGENT_VAULT.SESSION.scope),
-        status: z.nativeEnum(AgentVaultSessionStatus).optional().describe(AGENT_VAULT.SESSION.status),
+        status: z
+          .string()
+          .trim()
+          .max(64)
+          .optional()
+          .transform((val) => (val ? [...new Set(val.split(",").map((status) => status.trim()))] : undefined))
+          .pipe(z.nativeEnum(AgentVaultSessionStatus).array().optional())
+          .describe(AGENT_VAULT.SESSION.status),
         search: z
           .string()
           .trim()
@@ -75,8 +83,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSession.listSessions({
+    handler: async (req) => {
+      const { status, ...query } = req.query;
+      return server.services.agentVaultSession.listSessions({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,
@@ -84,7 +93,38 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           actorOrgId: req.permission.orgId,
           actorAuthMethod: req.permission.authMethod
         },
-        ...req.query
+        statuses: status,
+        ...query
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sessionId",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultSession",
+      description:
+        "Read one Agent Vault session. Answers 404 both when no such session exists and when the caller may not see it.",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      response: {
+        200: z.object({ session: SessionSchema.extend({ accessBundles: SessionAccessBundleSchema.array() }) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultSession.getSessionById({
+        projectId: req.internalAgentVaultProjectId,
+        sessionId: req.params.sessionId,
+        ctx: {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
       })
   });
 

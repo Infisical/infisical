@@ -790,6 +790,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_ACTIVITY_CONFIG_UPDATE = "agent-vault-activity-config-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -4424,6 +4425,7 @@ interface GetAppConnectionsEvent {
     app?: AppConnection;
     count: number;
     connectionIds: string[];
+    connectionNames?: string[];
   };
 }
 
@@ -4440,6 +4442,7 @@ interface GetAppConnectionEvent {
   type: EventType.GET_APP_CONNECTION;
   metadata: {
     connectionId: string;
+    connectionName?: string;
   };
 }
 
@@ -4466,6 +4469,7 @@ interface UpdateAppConnectionEvent {
   type: EventType.UPDATE_APP_CONNECTION;
   metadata: Omit<TUpdateAppConnectionDTO, "credentials" | "projectId"> & {
     connectionId: string;
+    connectionName?: string;
     credentialsUpdated: boolean;
   };
 }
@@ -4474,6 +4478,7 @@ interface DeleteAppConnectionEvent {
   type: EventType.DELETE_APP_CONNECTION;
   metadata: {
     connectionId: string;
+    connectionName?: string;
   };
 }
 
@@ -4481,6 +4486,7 @@ interface RotateAppConnectionCredentialsEvent {
   type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS;
   metadata: {
     connectionId: string;
+    connectionName?: string;
   };
 }
 
@@ -6297,6 +6303,19 @@ interface AgentVaultProxyDeleteEvent {
   metadata: {
     proxyId: string;
     name: string;
+  };
+}
+
+interface AgentVaultActivityConfigUpdateEvent {
+  type: EventType.AGENT_VAULT_ACTIVITY_CONFIG_UPDATE;
+  metadata: {
+    enabled: boolean;
+    appConnectionId: string | null;
+    appConnectionName: string | null;
+    bucket: string | null;
+    region: string | null;
+    keyPrefix: string | null;
+    relocated: boolean;
   };
 }
 
@@ -8324,6 +8343,7 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
+  | AgentVaultActivityConfigUpdateEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

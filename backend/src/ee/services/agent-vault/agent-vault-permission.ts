@@ -54,6 +54,21 @@ export const findReachableAccessBundleIds = async (
   return [...new Set(reachable.map((row) => row.scopeResourceId!))];
 };
 
+export const getAgentVaultProjectAuthority = async (
+  { permissionService }: { permissionService: TPermissionDep },
+  { projectId, ctx }: { projectId: string; ctx: TAgentVaultActorContext }
+): Promise<{ permission: TProjectPermissionResult["permission"]; isAdmin: boolean }> => {
+  const { permission, hasRole } = await permissionService.getProjectPermission({
+    actor: ctx.actor,
+    actorId: ctx.actorId,
+    projectId,
+    actorAuthMethod: ctx.actorAuthMethod,
+    actorOrgId: ctx.actorOrgId,
+    actionProjectType: ActionProjectType.AgentVault
+  });
+  return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin) };
+};
+
 // A service-layer filter rather than a CASL condition: conditions interpolate only identity.id,
 // username and metadata.
 export const getAgentVaultReachability = async (

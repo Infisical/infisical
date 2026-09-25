@@ -1,10 +1,13 @@
 import crypto from "node:crypto";
 
+import { createAwsAppConnection, deleteAppConnection } from "e2e-test/testUtils/secret-syncs";
+
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
@@ -18,6 +21,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
@@ -156,6 +160,51 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
 
 const getProjectId = async () =>
   (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+
+const createMemberIdentity = async (name: string) => {
+  const created = await inject("POST", "/api/v1/identities", {
+    name,
+    role: OrgMembershipRole.Member,
+    organizationId: seedData1.organization.id
+  });
+  expect(created.statusCode).toBe(200);
+  const identity = created.json().identity as { id: string };
+
+  const attached = await inject("POST", `/api/v1/auth/universal-auth/identities/${identity.id}`, {
+    accessTokenTTL: 3600,
+    accessTokenMaxTTL: 3600,
+    accessTokenNumUsesLimit: 0
+  });
+  expect(attached.statusCode).toBe(200);
+  const { clientId } = attached.json().identityUniversalAuth;
+
+  const secret = await inject("POST", `/api/v1/auth/universal-auth/identities/${identity.id}/client-secrets`, {});
+  expect(secret.statusCode).toBe(200);
+
+  const login = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/auth/universal-auth/login",
+    body: { clientId, clientSecret: secret.json().clientSecret }
+  });
+  expect(login.statusCode).toBe(200);
+  const token = login.json().accessToken as string;
+
+  expect(
+    (
+      await inject("POST", "/api/v1/agent-vault/members", {
+        machineIdentityIds: [identity.id],
+        role: ProjectMembershipRole.Member
+      })
+    ).statusCode
+  ).toBe(200);
+
+  return {
+    id: identity.id,
+    as: (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
+      testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) }),
+    cleanup: () => inject("DELETE", `/api/v1/identities/${identity.id}`)
+  };
+};
 
 const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
@@ -1224,7 +1273,129 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("app connections", async () => {
+    test("an organization connection is out of reach here, and an Agent Vault one is not", async () => {
+      const projectId = await getProjectId();
+
+      const orgConnectionId = await createAwsAppConnection({
+        name: `av-scope-org-${Date.now()}`,
+        authToken: jwtAuthToken
+      });
+
+      const created = await inject("POST", "/api/v1/agent-vault/app-connections/aws", {
+        name: `av-scope-own-${Date.now()}`,
+        method: "access-key",
+        credentials: { accessKeyId: "AKIAFAKEACCESSKEYID", secretAccessKey: "fake-secret-access-key" },
+        projectId: seedData1.project.id
+      });
+      expect(created.statusCode, created.payload).toBe(200);
+      const ownConnection = created.json().appConnection as { id: string; projectId: string };
+      expect(ownConnection.projectId).toBe(projectId);
+
+      const listed = await inject("GET", "/api/v1/agent-vault/app-connections/aws");
+      expect(listed.statusCode).toBe(200);
+      const listedIds = (listed.json().appConnections as { id: string }[]).map((row) => row.id);
+      expect(listedIds).toContain(ownConnection.id);
+      expect(listedIds).not.toContain(orgConnectionId);
+
+      const byId = (connectionId: string) => `/api/v1/agent-vault/app-connections/aws/${connectionId}`;
+      const reaching: ["GET" | "PATCH" | "POST" | "DELETE", string, Record<string, unknown>?][] = [
+        ["GET", byId(orgConnectionId)],
+        ["PATCH", byId(orgConnectionId), { description: "reached from the wrong scope" }],
+        ["POST", `${byId(orgConnectionId)}/rotate-credentials`],
+        ["DELETE", byId(orgConnectionId)]
+      ];
+      for await (const [method, url, body] of reaching) {
+        const res = await inject(method, url, body);
+        expect([method, res.statusCode]).toEqual([method, 404]);
+      }
+
+      const survived = await inject("GET", `/api/v1/app-connections/aws/${orgConnectionId}`);
+      expect(survived.statusCode).toBe(200);
+
+      const missingId = crypto.randomUUID();
+      const outOfScope = await inject("GET", byId(orgConnectionId));
+      const missing = await inject("GET", byId(missingId));
+      expect(outOfScope.json().message.replace(orgConnectionId, "<id>")).toBe(
+        missing.json().message.replace(missingId, "<id>")
+      );
+
+      const [otherApp] = (await testDb("app_connections")
+        .insert({
+          name: `av-scope-gh-${Date.now()}`,
+          app: AppConnection.GitHub,
+          method: "pat",
+          encryptedCredentials: Buffer.from("never-decrypted"),
+          orgId: seedData1.organization.id
+        })
+        .returning("id")) as { id: string }[];
+      try {
+        expect((await inject("GET", byId(otherApp.id))).statusCode).toBe(404);
+      } finally {
+        await testDb("app_connections").where({ id: otherApp.id }).delete();
+      }
+
+      const member = await createMemberIdentity(`av-scope-member-${Date.now()}`);
+      try {
+        expect((await member.as("GET", byId(orgConnectionId))).statusCode).toBe(404);
+        expect((await member.as("GET", byId(ownConnection.id))).statusCode).toBe(403);
+      } finally {
+        await member.cleanup();
+      }
+
+      expect((await inject("GET", byId(ownConnection.id))).statusCode).toBe(200);
+      expect(
+        (await inject("PATCH", byId(ownConnection.id), { description: "reached from its own scope" })).statusCode
+      ).toBe(200);
+      expect((await inject("DELETE", byId(ownConnection.id))).statusCode).toBe(200);
+
+      await deleteAppConnection({ connectionId: orgConnectionId, authToken: jwtAuthToken });
+    });
+
+    test("only AWS is offered under Agent Vault", async () => {
+      const res = await inject("GET", `/api/v1/app-connections/options?projectType=${ProjectType.AgentVault}`);
+      expect(res.statusCode).toBe(200);
+      const apps = (res.json().appConnectionOptions as { app: string }[]).map((option) => option.app);
+      expect(apps).toEqual(["aws"]);
+    });
+  });
+
   describe("sessions", async () => {
+    test("a session reads by id, and one you may not see is indistinguishable from one that is not there", async () => {
+      const bundle = await createAccessBundle(`session-by-id-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h"
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = JSON.parse(mint.payload) as { session: { id: string } };
+
+      const mine = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}`);
+      expect(mine.statusCode).toBe(200);
+      expect(mine.json().session).toMatchObject({
+        id: session.id,
+        status: "active",
+        actorName: expect.any(String),
+        accessBundles: [expect.objectContaining({ name: bundle.name })]
+      });
+
+      const member = await createMemberIdentity(`session-by-id-member-${Date.now()}`);
+      try {
+        expect((await member.as("GET", "/api/v1/agent-vault/sessions")).statusCode).toBe(200);
+
+        const missingId = crypto.randomUUID();
+        const somebodyElses = await member.as("GET", `/api/v1/agent-vault/sessions/${session.id}`);
+        const neverExisted = await member.as("GET", `/api/v1/agent-vault/sessions/${missingId}`);
+
+        expect([somebodyElses.statusCode, neverExisted.statusCode]).toEqual([404, 404]);
+        expect(somebodyElses.json().message).toBe(`Session with ID '${session.id}' not found`);
+        expect(neverExisted.json().message).toBe(`Session with ID '${missingId}' not found`);
+        expect(somebodyElses.json().error).toBe(neverExisted.json().error);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("the bundle comes only from the session row", async () => {
       const granted = await createAccessBundle("session-granted");
       const notNamed = await createAccessBundle("session-not-named");
@@ -1453,6 +1624,19 @@ describe("Agent Vault V1 Router", async () => {
           why: "a status with no members inside the match is empty",
           query: "search=matrix-&status=expired&limit=100",
           expect: (r) => expect(r.totalCount).toBe(0)
+        },
+        {
+          why: "several statuses match any of them",
+          query: "search=matrix-&status=active,revoked&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(7)
+        },
+        {
+          why: "a status with no members adds nothing to one that has them",
+          query: "search=matrix-&status=revoked,expired&limit=100",
+          expect: (r) => {
+            expect(r.totalCount).toBe(1);
+            expect(r.sessions[0].id).toBe(orphaned);
+          }
         }
       ];
 
@@ -1528,6 +1712,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1569,6 +1754,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1582,7 +1768,8 @@ describe("Agent Vault V1 Router", async () => {
       const resolved = await resolver.resolveSession({
         proxyId: proxy.id,
         orgId: seedData1.organization.id,
-        sessionToken: session.token
+        sessionToken: session.token,
+        hasActivityKey: false
       });
 
       expect(resolved.services).toHaveLength(1);
@@ -1619,7 +1806,8 @@ describe("Agent Vault V1 Router", async () => {
         resolver.resolveSession({
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
-          sessionToken: session.token
+          sessionToken: session.token,
+          hasActivityKey: false
         });
 
       const membership = await testDb("memberships")
@@ -1656,7 +1844,8 @@ describe("Agent Vault V1 Router", async () => {
         buildResolver().resolveSession({
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
-          sessionToken: session.token
+          sessionToken: session.token,
+          hasActivityKey: false
         });
 
       const [doomed] = (await testDb("users")
@@ -1686,7 +1875,8 @@ describe("Agent Vault V1 Router", async () => {
         buildResolver().resolveSession({
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
-          sessionToken: session.token
+          sessionToken: session.token,
+          hasActivityKey: false
         });
 
       const identity = await createOrgIdentity(`doomed-${crypto.randomUUID()}`);
@@ -1722,6 +1912,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1731,7 +1922,12 @@ describe("Agent Vault V1 Router", async () => {
         resourceAuthMethodService: {} as never
       });
       const resolve = () =>
-        resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+        resolver.resolveSession({
+          proxyId: proxy.id,
+          orgId: seedData1.organization.id,
+          sessionToken: session.token,
+          hasActivityKey: false
+        });
 
       const membership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
@@ -1885,7 +2081,8 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionAccessBundleDAL: agentVaultSessionAccessBundleDALFactory(testDb),
         agentVaultAccessBundleDAL: agentVaultAccessBundleDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
-        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) }
+        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) },
+        kmsService: {} as never
       });
       await sweeper.sweepRetiredSessions();
 
@@ -2389,6 +2586,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           permissionService: buildPermissionService(),
@@ -2398,7 +2596,12 @@ describe("Agent Vault V1 Router", async () => {
           resourceAuthMethodService: {} as never
         });
         const resolve = () =>
-          resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+          resolver.resolveSession({
+            proxyId: proxy.id,
+            orgId: seedData1.organization.id,
+            sessionToken: session.token,
+            hasActivityKey: false
+          });
 
         expect((await resolve()).services).toHaveLength(1);
 
@@ -2480,6 +2683,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           permissionService: buildPermissionService(),
@@ -2489,7 +2693,12 @@ describe("Agent Vault V1 Router", async () => {
           resourceAuthMethodService: {} as never
         });
         const resolve = () =>
-          resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+          resolver.resolveSession({
+            proxyId: proxy.id,
+            orgId: seedData1.organization.id,
+            sessionToken: session.token,
+            hasActivityKey: false
+          });
         expect((await resolve()).services).toHaveLength(1);
 
         const groupMembership = await testDb("memberships")

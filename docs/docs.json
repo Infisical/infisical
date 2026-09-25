@@ -799,6 +799,7 @@
                   "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/sessions",
                   "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/activity-logs",
                   "documentation/platform/agent-vault/access-control"
                 ]
               }
@@ -4486,8 +4487,27 @@
                     "group": "Sessions",
                     "pages": [
                       "api-reference/endpoints/agent-vault-sessions/list",
+                      "api-reference/endpoints/agent-vault-sessions/get",
                       "api-reference/endpoints/agent-vault-sessions/create",
                       "api-reference/endpoints/agent-vault-sessions/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Activity logs",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-activity/get-session-activity",
+                      "api-reference/endpoints/agent-vault-activity/get-settings",
+                      "api-reference/endpoints/agent-vault-activity/update-settings"
+                    ]
+                  },
+                  {
+                    "group": "App connections",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-app-connections/list",
+                      "api-reference/endpoints/agent-vault-app-connections/get",
+                      "api-reference/endpoints/agent-vault-app-connections/create",
+                      "api-reference/endpoints/agent-vault-app-connections/update",
+                      "api-reference/endpoints/agent-vault-app-connections/delete"
                     ]
                   }
                 ]
