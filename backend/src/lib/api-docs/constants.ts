@@ -2277,6 +2277,15 @@ export const CERTIFICATES = {
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
     removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
+  RENEWAL_PREVIEW: {
+    id: "The ID of the certificate to preview a renewal for.",
+    hasOriginatingRequest:
+      "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    request:
+      "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
+    issuerModifiedFields:
+      "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
+  },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:

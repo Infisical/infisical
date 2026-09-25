@@ -1,3 +1,4 @@
+import * as x509 from "@peculiar/x509";
 import { describe, expect, it } from "vitest";
 
 import { extractCertificateRequestFromCSR } from "./certificate-csr-utils";
@@ -92,5 +93,37 @@ describe("extractCertificateRequestFromCSR domain components", () => {
     expect(request.domainComponents).toBeUndefined();
     expect(request.commonName).toBe("host");
     expect(request.organization).toBe("Acme");
+  });
+});
+
+describe("extractCertificateRequestFromCSR custom extensions", () => {
+  const SCT_LIST_OID = "1.3.6.1.4.1.11129.2.4.2";
+  const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
+
+  const buildCsr = async (extensions: x509.Extension[]) => {
+    const keys = await crypto.subtle.generateKey(
+      { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+      true,
+      ["sign", "verify"]
+    );
+
+    const csr = await x509.Pkcs10CertificateRequestGenerator.create({
+      name: "CN=host",
+      keys,
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      extensions
+    });
+
+    return csr.toString("pem");
+  };
+
+  // openssl x509 -x509toreq copies the issuer's own extensions into the request.
+  it("does not request an issuer-generated extension a certificate-derived CSR carried over", async () => {
+    const csr = await buildCsr([
+      new x509.Extension(SCT_LIST_OID, false, Buffer.from([0x04, 0x02, 0x00, 0x42])),
+      new x509.Extension(CUSTOM_OID, false, Buffer.from([0x0c, 0x03, 0x6f, 0x70, 0x73]))
+    ]);
+
+    expect(extractCertificateRequestFromCSR(csr).customExtensions?.map((entry) => entry.oid)).toEqual([CUSTOM_OID]);
   });
 });
