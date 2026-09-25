@@ -33,7 +33,8 @@ const renewalPreview = {
     keyUsages: ["digital_signature"],
     extendedKeyUsages: ["client_auth"],
     keyAlgorithm: "RSA_2048",
-    signatureAlgorithm: "RSA-SHA256"
+    signatureAlgorithm: "RSA-SHA256",
+    customExtensions: [{ oid: "1.3.6.1.4.1.99001.1", value: "asked-for", critical: true }]
   },
   issuerModifiedFields: []
 };
@@ -49,6 +50,9 @@ describe("buildRenewalFormDefaults", () => {
     expect(defaults.signatureAlgorithm).toBe("RSA-SHA256");
     expect(defaults.keyUsages).toEqual({ digital_signature: true });
     expect(defaults.extendedKeyUsages).toEqual({ client_auth: true });
+    expect(defaults.customExtensions).toEqual([
+      { oid: "1.3.6.1.4.1.99001.1", value: "asked-for", critical: true }
+    ]);
   });
 
   it("falls back to the certificate when no request lies behind it, for imports and discovery", () => {

@@ -489,14 +489,20 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     [issuerModifiedFields]
   );
 
+  const extensionsIssuerChanges = useMemo(
+    () => issuerModifiedFields.filter((entry) => entry.field === "customExtensions"),
+    [issuerModifiedFields]
+  );
+
+  // Without an extensions step, the options step is the only place left to show extension changes.
   const optionsIssuerChanges = useMemo(
     () =>
-      issuerModifiedFields.filter(
-        (entry) =>
-          !SUBJECT_ISSUER_FIELDS.has(entry.field) &&
-          (entry.field === "keyAlgorithm" || !isExternalTemplateProfile)
-      ),
-    [issuerModifiedFields, isExternalTemplateProfile]
+      issuerModifiedFields.filter((entry) => {
+        if (SUBJECT_ISSUER_FIELDS.has(entry.field)) return false;
+        if (entry.field === "customExtensions") return !showCustomExtensions;
+        return entry.field === "keyAlgorithm" || !isExternalTemplateProfile;
+      }),
+    [issuerModifiedFields, isExternalTemplateProfile, showCustomExtensions]
   );
 
   const [isSeeded, setIsSeeded] = useState(false);
@@ -757,13 +763,16 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       )}
 
       {currentStepKey === "extensions" && (
-        <RequestCustomExtensionsField
-          control={control}
-          declarations={NO_RENEWAL_DECLARATIONS}
-          policyRules={policyData?.customExtensions}
-          errorsByOid={policy.customExtensions.errorsByOid}
-          revealPolicyErrors={policy.isRevealed("customExtensions")}
-        />
+        <div className="space-y-4">
+          <RequestCustomExtensionsField
+            control={control}
+            declarations={NO_RENEWAL_DECLARATIONS}
+            policyRules={policyData?.customExtensions}
+            errorsByOid={policy.customExtensions.errorsByOid}
+            revealPolicyErrors={policy.isRevealed("customExtensions")}
+          />
+          <IssuerModifiedNotice fields={extensionsIssuerChanges} />
+        </div>
       )}
 
       {currentStepKey === "options" && (

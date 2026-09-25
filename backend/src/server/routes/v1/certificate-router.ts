@@ -1205,7 +1205,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               keyUsages: z.array(z.string()),
               extendedKeyUsages: z.array(z.string()),
               keyAlgorithm: z.string().optional(),
-              signatureAlgorithm: z.string().optional()
+              signatureAlgorithm: z.string().optional(),
+              customExtensions: z.array(
+                z.object({ oid: z.string(), value: z.string(), critical: z.boolean().optional() })
+              )
             })
             .describe(CERTIFICATES.RENEWAL_PREVIEW.request),
           issuerModifiedFields: z

@@ -174,14 +174,24 @@ export const buildRenewalFormDefaults = (
       : cert.extendedKeyUsages,
     EXTENDED_KEY_USAGE_BY_NAME
   ),
-  customExtensions: (cert.customExtensions ?? [])
-    .filter(
-      (extension) =>
-        extension.displayValue !== undefined &&
-        !extension.issuerAdded &&
-        !isIssuerGeneratedExtensionOid(extension.oid)
-    )
-    .map((extension) => ({ oid: extension.oid, value: extension.displayValue as string }))
+  customExtensions: renewalPreview?.hasOriginatingRequest
+    ? renewalPreview.request.customExtensions.map(({ oid, value, critical }) => ({
+        oid,
+        value,
+        critical
+      }))
+    : (cert.customExtensions ?? [])
+        .filter(
+          (extension) =>
+            extension.displayValue !== undefined &&
+            !extension.issuerAdded &&
+            !isIssuerGeneratedExtensionOid(extension.oid)
+        )
+        .map((extension) => ({
+          oid: extension.oid,
+          value: extension.displayValue as string,
+          critical: extension.critical
+        }))
 });
 
 const buildBasicConstraints = (

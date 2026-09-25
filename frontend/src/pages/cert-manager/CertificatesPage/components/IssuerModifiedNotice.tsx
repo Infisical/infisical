@@ -5,6 +5,7 @@ import { TIssuerModifiedField } from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  customExtensionLabelFor,
   formatExtendedKeyUsage,
   formatKeyUsage
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
@@ -25,30 +26,58 @@ export const ISSUER_MODIFIED_LABELS: Record<string, string> = {
   keyUsages: "Key usages",
   extendedKeyUsages: "Extended key usages",
   keyAlgorithm: "Key algorithm",
-  signatureAlgorithm: "Signature algorithm"
+  signatureAlgorithm: "Signature algorithm",
+  customExtensions: "Custom extensions"
 };
 
 const FORMATTERS: Record<string, (value: string) => string> = {
   keyUsages: (value) => formatKeyUsage(value as CertKeyUsageType),
-  extendedKeyUsages: (value) => formatExtendedKeyUsage(value as CertExtendedKeyUsageType)
+  extendedKeyUsages: (value) => formatExtendedKeyUsage(value as CertExtendedKeyUsageType),
+  customExtensions: (oid) => customExtensionLabelFor(oid)
 };
 
-export const formatIssuerValue = (field: TIssuerModifiedField, value: string) => {
-  const format = FORMATTERS[field.field];
-  if (!format) return value;
-  return value
+const LIST_FIELDS = new Set(["altNames", "keyUsages", "extendedKeyUsages", "customExtensions"]);
+
+const splitValues = (value: string) =>
+  value
     .split(",")
     .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map(format)
-    .join(", ");
+    .filter(Boolean);
+
+const formatValues = (field: TIssuerModifiedField, values: string[]) => {
+  const format = FORMATTERS[field.field] ?? ((value: string) => value);
+  return values.map(format).join(", ");
+};
+
+const describeListChange = (field: TIssuerModifiedField) => {
+  const requested = splitValues(field.requested);
+  const issued = splitValues(field.issued);
+  const added = issued.filter((value) => !requested.includes(value));
+  const removed = requested.filter((value) => !issued.includes(value));
+
+  if (!removed.length && added.length) return formatValues(field, added);
+
+  const parts = [
+    added.length ? `added ${formatValues(field, added)}` : "",
+    removed.length ? `removed ${formatValues(field, removed)}` : ""
+  ].filter(Boolean);
+
+  // A value rewritten under the same identifier shows up in neither list.
+  return parts.length ? parts.join("; ") : `changed ${formatValues(field, issued)}`;
+};
+
+const describeValueChange = (field: TIssuerModifiedField) => {
+  if (!field.issued) return `removed ${field.requested}`;
+  if (!field.requested) return field.issued;
+  return `changed to ${field.issued}`;
 };
 
 export const describeIssuerChange = (field: TIssuerModifiedField) => {
   const label = ISSUER_MODIFIED_LABELS[field.field] ?? field.field;
-  const issued = formatIssuerValue(field, field.issued);
-  if (!issued) return `${label}: omitted`;
-  return `${label}: ${issued}`;
+  const change = LIST_FIELDS.has(field.field)
+    ? describeListChange(field)
+    : describeValueChange(field);
+  return `${label}: ${change}`;
 };
 
 export const IssuerModifiedNotice = ({ fields }: Props) => {
@@ -57,7 +86,7 @@ export const IssuerModifiedNotice = ({ fields }: Props) => {
   return (
     <Alert variant="warning">
       <InfoIcon />
-      <AlertTitle>Additional values set by the certificate authority</AlertTitle>
+      <AlertTitle>Additional values set by the CA on the current certificate</AlertTitle>
       <AlertDescription>
         {fields.map((field) => (
           <p key={field.field}>{describeIssuerChange(field)}</p>

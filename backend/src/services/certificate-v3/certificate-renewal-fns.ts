@@ -29,7 +29,13 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
-import { toRequestCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
+import {
+  isIssuerGeneratedExtensionOid,
+  readStoredCustomExtensions,
+  toRequestCustomExtensions,
+  TRequestCustomExtension,
+  TResolvedCustomExtension
+} from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
@@ -302,6 +308,7 @@ type TOriginatingRenewalRequest = {
   extendedKeyUsages: string[] | null;
   keyAlgorithm: string | null;
   signatureAlgorithm: string | null;
+  customExtensions: unknown;
 };
 
 type TRenewalCertificateFacts = {
@@ -317,6 +324,7 @@ type TRenewalCertificateFacts = {
   extendedKeyUsages?: unknown;
   keyAlgorithm?: string | null;
   signatureAlgorithm?: string | null;
+  customExtensions?: unknown;
 };
 
 const asKeyAlgorithm = (value?: string | null): CertKeyAlgorithm | undefined =>
@@ -472,7 +480,8 @@ export const buildRenewalPreview = (requested: TOriginatingRenewalRequest, certi
     ...subject,
     ...usages,
     ...algorithms,
-    altNames
+    altNames,
+    customExtensions: resolveRenewalCustomExtensions(requested, certificate)
   };
 
   const issuedSubject = {
@@ -524,6 +533,27 @@ export const buildRenewalPreview = (requested: TOriginatingRenewalRequest, certi
   );
   note("keyAlgorithm", algorithms.keyAlgorithm, asKeyAlgorithm(certificate.keyAlgorithm));
   note("signatureAlgorithm", algorithms.signatureAlgorithm, asSignatureAlgorithm(certificate.signatureAlgorithm));
+
+  // Issuer-generated extensions (SCTs, CT poison, CA version) can never be requested, so listing them
+  // would flag nearly every public certificate without telling the user anything they can act on.
+  const requestableExtensions = (stored: unknown) =>
+    readStoredCustomExtensions(stored).filter((extension) => !isIssuerGeneratedExtensionOid(extension.oid));
+  const requestedExtensions = requestableExtensions(
+    requested.exists ? requested.customExtensions : certificate.customExtensions
+  );
+  const issuedExtensions = requestableExtensions(certificate.customExtensions);
+  const extensionKeys = (extensions: TResolvedCustomExtension[]) =>
+    extensions
+      .map((extension) => `${extension.oid}|${Boolean(extension.critical)}|${extension.value}`)
+      .sort()
+      .join("\n");
+  if (extensionKeys(requestedExtensions) !== extensionKeys(issuedExtensions)) {
+    issuerModifiedFields.push({
+      field: "customExtensions",
+      requested: requestedExtensions.map((extension) => extension.oid).join(","),
+      issued: issuedExtensions.map((extension) => extension.oid).join(",")
+    });
+  }
 
   return { request, issuerModifiedFields, hasOriginatingRequest: requested.exists };
 };

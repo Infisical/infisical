@@ -634,7 +634,8 @@ describe("buildRenewalPreview", () => {
     keyUsages: ["digital_signature"],
     extendedKeyUsages: ["server_auth"],
     keyAlgorithm: CertKeyAlgorithm.RSA_2048,
-    signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256
+    signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256,
+    customExtensions: null
   };
 
   it("reports nothing when the authority issued what was asked for", () => {
@@ -682,5 +683,51 @@ describe("buildRenewalPreview", () => {
       requested: "client_auth",
       issued: "server_auth"
     });
+  });
+
+  it("offers the requested custom extensions with their criticality, not what the authority stamped on", () => {
+    const customOid = "1.3.6.1.4.1.99001.1";
+    const { request } = buildRenewalPreview(
+      {
+        ...requested,
+        customExtensions: [{ oid: customOid, value: encodeCustomExtensionValue(customOid, "mine"), critical: true }]
+      },
+      {
+        ...certificate,
+        customExtensions: [{ oid: "1.3.6.1.4.1.11129.2.4.2", value: "BAIAQg==", critical: false, issuerAdded: true }]
+      }
+    );
+
+    expect(request.customExtensions).toEqual([{ oid: customOid, value: "mine", critical: true }]);
+  });
+
+  it("reports a custom extension the authority stamped on, like any other issuer change", () => {
+    const addedOid = "1.3.6.1.4.1.99001.7";
+    const { issuerModifiedFields } = buildRenewalPreview(requested, {
+      ...certificate,
+      customExtensions: [{ oid: addedOid, value: "DAR0ZXN0", critical: false, issuerAdded: true }]
+    });
+
+    expect(issuerModifiedFields).toContainEqual({ field: "customExtensions", requested: "", issued: addedOid });
+  });
+
+  it("does not report issuer-generated extensions, which no request could ever carry", () => {
+    const { issuerModifiedFields } = buildRenewalPreview(requested, {
+      ...certificate,
+      customExtensions: [{ oid: "1.3.6.1.4.1.11129.2.4.2", value: "BAIAQg==", critical: false, issuerAdded: true }]
+    });
+
+    expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
+  });
+
+  it("does not report custom extensions the authority issued exactly as requested", () => {
+    const customOid = "1.3.6.1.4.1.99001.1";
+    const extension = { oid: customOid, value: encodeCustomExtensionValue(customOid, "mine"), critical: false };
+    const { issuerModifiedFields } = buildRenewalPreview(
+      { ...requested, customExtensions: [extension] },
+      { ...certificate, customExtensions: [extension] }
+    );
+
+    expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
   });
 });

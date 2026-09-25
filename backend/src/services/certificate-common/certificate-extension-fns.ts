@@ -364,7 +364,7 @@ export const findUnsatisfiedCustomExtensionOids = (
     .map((extension) => extension.oid);
 };
 
-const readStoredCustomExtensions = (stored: unknown): TResolvedCustomExtension[] =>
+export const readStoredCustomExtensions = (stored: unknown): TResolvedCustomExtension[] =>
   (stored as TResolvedCustomExtension[] | null) ?? [];
 
 export const toRequestCustomExtensions = (stored: unknown): TRequestCustomExtension[] =>
