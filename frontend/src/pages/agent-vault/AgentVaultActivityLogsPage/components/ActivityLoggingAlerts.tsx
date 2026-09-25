@@ -15,13 +15,12 @@ export const ActivityLoggingAlerts = () => {
     }
     if (!config?.enabled) {
       if (!config?.appConnectionId) {
-        return "Recording is switched off, and without an AWS connection the activity already in the bucket can't be read.";
+        return "Activity logging is off, and without an AWS connection the activity already in the bucket can't be read.";
       }
-      if (data?.connectionError)
-        return "Recording is switched off, so nothing new is being stored.";
-      return "Recording is switched off. Activity already in the bucket is still readable, but nothing new is being stored.";
+      if (data?.connectionError) return "Activity logging is off, so nothing new is being stored.";
+      return "Activity logging is off. Activity already in the bucket is still readable, but nothing new is being stored.";
     }
-    return "Recording is on, but the destination is incomplete, so nothing is being written to the bucket.";
+    return "Activity logging is enabled, but Storage isn't complete, so nothing is being written to the bucket.";
   })();
 
   return (

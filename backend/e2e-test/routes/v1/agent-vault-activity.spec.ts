@@ -296,7 +296,7 @@ describe("Agent Vault activity", async () => {
 
       const whileOn = await saveConfig({ appConnectionId: null });
       expect(whileOn.statusCode).toBe(400);
-      expect(JSON.parse(whileOn.payload).message).toContain("Turn recording off");
+      expect(JSON.parse(whileOn.payload).message).toContain("Turn off activity logging");
 
       const whileOff = await saveConfig({ enabled: false, appConnectionId: null });
       expect(whileOff.statusCode).toBe(200);

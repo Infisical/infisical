@@ -80,7 +80,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
         )
     })
     .refine((values) => !values.enabled || values.appConnectionId !== NO_CONNECTION, {
-      message: "Recording needs an AWS connection",
+      message: "Activity logging needs an AWS connection",
       path: ["appConnectionId"]
     })
     .superRefine((values, ctx) => {
@@ -92,7 +92,11 @@ const buildSchema = (hasSavedBucket: boolean) =>
           message: "A bucket can be replaced, not removed"
         });
       } else if (length === 0 && values.enabled) {
-        ctx.addIssue({ code: "custom", path: ["bucket"], message: "Recording needs a bucket" });
+        ctx.addIssue({
+          code: "custom",
+          path: ["bucket"],
+          message: "Activity logging needs a bucket"
+        });
       } else if (length > 0 && !S3_BUCKET_NAME.test(values.bucket)) {
         ctx.addIssue({
           code: "custom",
@@ -202,15 +206,16 @@ export const ActivityLoggingModal = ({ isOpen, onOpenChange, onSaved }: Props) =
 
           <FieldGroup>
             <FieldSet>
-              <FieldLegend variant="label">Recording</FieldLegend>
-
               <Controller
                 control={control}
                 name="enabled"
                 render={({ field }) => (
                   <Field orientation="horizontal">
                     <FieldContent>
-                      <FieldLabel>Enabled</FieldLabel>
+                      <FieldLabel>Enable</FieldLabel>
+                      <FieldDescription>
+                        When enabled, requests made by the agents are saved to the bucket below.
+                      </FieldDescription>
                     </FieldContent>
                     <Toggle
                       variant="av"

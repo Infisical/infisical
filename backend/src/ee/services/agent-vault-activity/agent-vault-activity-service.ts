@@ -501,7 +501,7 @@ export const agentVaultActivityServiceFactory = ({
 
     if (next.enabled) {
       if (!next.appConnectionId && current.enabled && current.appConnectionId) {
-        throw new BadRequestError({ message: "Turn recording off before removing its AWS connection." });
+        throw new BadRequestError({ message: "Turn off activity logging before removing its AWS connection." });
       }
       const missing = (
         [
@@ -514,7 +514,7 @@ export const agentVaultActivityServiceFactory = ({
         .map(([, label]) => label);
       if (missing.length) {
         throw new BadRequestError({
-          message: `Recording needs ${missing.join(", ").replace(/, ([^,]*)$/, " and $1")}.`
+          message: `Activity logging needs ${missing.join(", ").replace(/, ([^,]*)$/, " and $1")}.`
         });
       }
     }

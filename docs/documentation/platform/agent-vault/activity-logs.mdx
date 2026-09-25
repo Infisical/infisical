@@ -48,7 +48,7 @@ Request and response bodies, headers, and query strings aren't recorded, because
 
 Go to **Activity Logs** under Agent Vault and select **Set Up Logging** on the **Activity Logging** card:
 
-1. Under **Recording**, turn on **Enabled**.
+1. Turn on **Enable**.
 2. Pick the **AWS Connection** whose credentials write the records, or select **Create New Connection** to add one without leaving the dialog.
 3. Enter the **Bucket** and its **Region**.
 4. Optionally set a **Key Prefix**, so activity objects sit under one path in a bucket you use for other things.
@@ -94,7 +94,7 @@ Add this CORS rule to the bucket, because your browser is what fetches the recor
 
 Use your own instance URL as the allowed origin. Without this rule the settings still save, but your browser can't load any session's activity. Each time the **AWS Setup** dialog opens, it checks whether the rule is in place and warns you if it isn't.
 
-Recording starts within one poll interval on every proxy, and covers sessions that are already running.
+Activity logging starts within one poll interval on every proxy, and covers sessions that are already running.
 
 ## Reading a session's activity
 
@@ -182,7 +182,7 @@ You can't delete a connection that activity logging uses, whether from the **Act
 
 To replace the connection, select another one under **Configure** and save, then delete the old one.
 
-To stop using a connection without replacing it, turn **Enabled** off, set **AWS Connection** to **None**, and save. The bucket and prefix are kept, but recorded activity can't be read in Infisical until a connection is attached again.
+To stop using a connection without replacing it, turn off **Enable**, set **AWS Connection** to **None**, and save. The bucket and prefix are kept, but recorded activity can't be read in Infisical until a connection is attached again.
 
 ## What this doesn't cover
 
@@ -190,4 +190,4 @@ If a proxy can't reach your bucket, it keeps retrying and logs the failure, but 
 
 If a proxy's clock runs more than 5 minutes ahead of Infisical's, Infisical refuses that proxy's activity. The proxy logs how far ahead its clock is.
 
-Recording is an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch it off.
+Activity logging is an organization-wide setting and can't be turned off on a single proxy, so the person being recorded can't switch it off.
