@@ -18,7 +18,6 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 ## Prerequisites
 
 - Create a [Stripe Connection](/integrations/app-connections/stripe). That connection is used to create and expire restricted API keys on your behalf during rotation.
-- Your Stripe account must have access to the [Managed API Keys API](https://docs.stripe.com/api-keys), which Stripe currently offers as a private preview.
 
 ## Create a Stripe API key rotation in Infisical
 
@@ -30,31 +29,44 @@ Stripe API key rotation mints a new [restricted key](https://docs.stripe.com/key
 
         2. Select the **Stripe API Key** option.
 
-        3. Configure the rotation behavior, then select **Next**.
+        ![Select Stripe API Key](/images/secret-rotations-v2/stripe-api-key/select-stripe-api-key.png)
 
+        3. Configure the rotation behavior, then select **Continue**.
+
+        - **Environment** - The environment the rotated secret is stored in.
         - **Stripe Connection** - The connection that will create and expire restricted API keys during rotation.
         - **Rotation Interval** - The interval, in days, after which a rotation is triggered.
         - **Rotate At** - The local time of day when rotation runs once the interval has elapsed.
         - **Auto-Rotation Enabled** - Whether to rotate automatically on the interval. Turn off to rotate only manually or pause rotation.
 
-        4. Set the Stripe API key parameters, then select **Next**.
+        ![Rotation Configuration](/images/secret-rotations-v2/stripe-api-key/configuration.png)
 
-        - **Permissions** - The permissions granted to the generated key. Stripe's Managed API Keys API has no wildcard for "all access", so a key with full access is one where every permission in the list is selected individually. If you already have an active Stripe API key with the permissions you want, you can select it from **Copy permissions from an existing key** instead of selecting them by hand.
+        4. Set the Stripe API key parameters, then select **Continue**.
+
+        - **Permissions** - The permissions granted to the generated key. Stripe has no wildcard for "all access", so a key with full access is one where every permission in the list is selected. Use **Select All** to select every permission that matches your current search. If you already have an active Stripe API key with the permissions you want, you can select it from **Copy permissions from an existing key** instead of selecting them by hand.
+
+        ![Rotation Parameters](/images/secret-rotations-v2/stripe-api-key/parameters.png)
 
         <Note>
           Connect permissions, which apply when the generated key acts on behalf of a connected account under [Stripe Connect](https://docs.stripe.com/connect), have no field in the Infisical UI yet. Set them through the [API](/api-reference/endpoints/secret-rotations/stripe-api-key/create) instead.
         </Note>
 
-        5. Specify the secret name that the rotated API key will be mapped to. Then select **Next**.
+        5. Specify the secret name that the rotated API key will be mapped to. Then select **Continue**.
 
         - **API Key** - The name of the secret in Infisical where the generated restricted key's value will be stored.
 
-        6. Give your rotation a name and description (optional). Then select **Next**.
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/stripe-api-key/secrets-mapping.png)
+
+        6. Give your rotation a name and description (optional). Then select **Continue**.
 
         - **Name** - A slug-friendly name for this rotation configuration.
         - **Description** (optional) - Notes about this rotation.
 
-        7. Review your configuration, then select **Create Secret Rotation**.
+        ![Rotation Details](/images/secret-rotations-v2/stripe-api-key/details.png)
+
+        7. Review your configuration, then select **Create secret rotation**.
+
+        ![Rotation Review](/images/secret-rotations-v2/stripe-api-key/review.png)
 
         8. Your **Stripe API Key** rotation is created. The current restricted key is available as a secret at the mapped path. Each rotation creates a new key, expires the key from two rotations ago, then switches the active secret to the new key, so two keys are always valid at once for zero-downtime rotation.
 
