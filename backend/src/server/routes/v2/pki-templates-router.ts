@@ -70,8 +70,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "updatePkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -121,8 +124,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "deletePkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: z.string().min(1)
       }),
@@ -158,8 +164,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "getPkiTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -197,8 +206,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "listPkiTemplates",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       querystring: z.object({
         projectId: z.string(),
         limit: z.coerce.number().default(100),
@@ -235,8 +247,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "issueCertificateFromTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
@@ -283,8 +298,11 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     },
     schema: {
       hide: false,
+      deprecated: true,
       operationId: "signCertificateFromTemplate",
       tags: [ApiDocsTags.PkiCertificateTemplates],
+      description:
+        "Deprecated. Use certificate applications instead: https://infisical.com/docs/documentation/platform/pki/applications/overview",
       params: z.object({
         templateName: slugSchema()
       }),
